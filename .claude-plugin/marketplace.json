@@ -1,0 +1,12 @@
+{
+  "name": "human-review",
+  "owner": {"name": "Victor Rentea", "url": "https://github.com/victorrentea"},
+  "metadata": {"description": "A reviewer's guide, assembled from a change set.", "version": "1.0.0"},
+  "plugins": [
+    {
+      "name": "human-review",
+      "source": "./",
+      "description": "Assemble .human-review/review.html for a change set — diagram deltas, Code City, a feature video, endpoint complexity, and deep-linked snippets."
+    }
+  ]
+}

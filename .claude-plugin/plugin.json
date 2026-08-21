@@ -1,0 +1,4 @@
+{
+  "name": "human-review",
+  "description": "Build a reviewer's guide for a change set: red-annotated diagram deltas, a Code City shot, a video of the feature, the endpoint-complexity increment, and verbatim snippets deep-linked into the editor."
+}
