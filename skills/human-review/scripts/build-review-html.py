@@ -130,6 +130,14 @@ pre.code code { white-space:pre; }
 #genseq-panel pre { margin:0; max-height:24rem; overflow:auto; background:var(--code-bg);
                     border-radius:6px; padding:.5rem .6rem; white-space:pre;
                     font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.embedded-note { margin:0 0 1rem; padding:.6rem .8rem; border-radius:8px; font-size:.85rem;
+                 background:var(--code-bg); border:1px solid var(--line); color:var(--muted); }
+#copy-toast { position:fixed; left:50%; bottom:1.4rem; transform:translateX(-50%) translateY(.6rem);
+              background:var(--fg); color:var(--card); border-radius:999px; z-index:60;
+              padding:.45rem .9rem; font-size:.8rem; opacity:0; pointer-events:none;
+              transition:opacity .16s, transform .16s; max-width:80vw; overflow:hidden;
+              text-overflow:ellipsis; white-space:nowrap; }
+#copy-toast.shown { opacity:1; transform:translateX(-50%) translateY(0); }
 .badge { border-radius:4px; padding:.1rem .45rem; font-size:.74rem; font-weight:600; text-transform:uppercase;
           letter-spacing:.04em; background:var(--accent-soft); color:var(--accent); }
 .city { display:block; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:1rem 0; }
@@ -246,21 +254,67 @@ FOCUS_JS = """<script>
 </script>"""
 
 EDITOR_JS = """<script>
-// Every `vscode://file/...` link is emitted with target="_blank", which is the only
-// thing that works inside VS Code's Simple Browser: the guide runs in an iframe there,
-// and an iframe drops a navigation to a custom scheme without so much as an error — the
-// click simply does nothing.
+// Click-to-source depends on the OS handing `vscode://` to the editor, and only a real
+// browser tab can ask it to. VS Code's own Simple Browser is a webview: it cannot launch
+// an external scheme at all, so the click does nothing whatever the anchor says — a
+// target="_blank" does not help, because there is no tab to open it in.
 //
-// A real browser tab does not need it and is worse for it: the handoff to the editor
-// leaves an about:blank tab behind on every jump. So at top level the link navigates in
-// place instead, which hands off to the editor without moving the page.
+// So the page behaves differently depending on where it is being read. At top level the
+// link navigates in place, which hands off to the editor without stranding an about:blank
+// tab behind every jump. Embedded, it copies the reference and says what to do with it,
+// and a banner says once why the links cannot do the rest.
 (function () {
-  if (window.self !== window.top) return;
+  var EMBEDDED = window.self !== window.top;
+
+  function copy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(fallback);
+    }
+    return Promise.resolve(fallback());
+    function fallback() {
+      var box = document.createElement('textarea');
+      box.value = text;
+      box.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(box);
+      box.select();
+      try { document.execCommand('copy'); } catch (e) { /* nothing else to try */ }
+      box.remove();
+    }
+  }
+
+  var toast = null;
+  function flash(message) {
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'copy-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('shown');
+    clearTimeout(flash.timer);
+    flash.timer = setTimeout(function () { toast.classList.remove('shown'); }, 2600);
+  }
+
   document.addEventListener('click', function (ev) {
     var link = ev.target.closest && ev.target.closest('a[href^="vscode:"]');
     if (!link || ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
     ev.preventDefault();
-    window.location.href = link.getAttribute('href');
+    if (!EMBEDDED) { window.location.href = link.getAttribute('href'); return; }
+    // `path:line`, which is what Quick Open takes
+    var ref = (link.textContent || '').trim().split('-')[0]
+      || decodeURIComponent(link.getAttribute('href')).replace(/^vscode:\/\/file\/*/, '/').replace(/:\d+$/, '');
+    copy(ref).then(function () { flash('Copied ' + ref + ' — paste into Quick Open (\u2318P)'); });
+  });
+
+  if (!EMBEDDED) return;
+  document.addEventListener('DOMContentLoaded', function () {
+    var note = document.createElement('p');
+    note.className = 'embedded-note';
+    note.innerHTML = 'You are reading this inside an embedded browser, which cannot open '
+      + 'links into the editor. Clicking a <code>path:line</code> copies it instead — or '
+      + 'open <code>.human-review/review.html</code> in a real browser, where the links work.';
+    var body = document.querySelector('.wrap') || document.body;
+    body.insertBefore(note, body.firstChild);
   });
 })();
 </script>"""
@@ -657,6 +711,7 @@ def resolve_refs(items, root: Path):
 
 
 ANCHOR = re.compile(r'<a\s+([^>]*?)href="(?P<href>[^"]*)"([^>]*)>', re.I)
+TARGET_ATTR = re.compile(r'\s+target="[^"]*"', re.I)
 
 
 def open_links_in_new_tabs(doc: str) -> str:
@@ -664,15 +719,22 @@ def open_links_in_new_tabs(doc: str) -> str:
     should never lose their place in it. In-page anchors keep the current tab (a new tab
     for a jump to a section is nonsense).
 
-    `vscode://` gets the new tab too, for the guide read inside VS Code's Simple Browser:
-    that is an iframe, and an iframe drops a navigation to a custom scheme on the floor,
-    so the click did nothing at all. A top-level tab does not need it — see EDITOR_JS,
-    which takes the target back off there rather than strand an about:blank tab behind
-    every jump to a file."""
+    `vscode://` is deliberately *not* given one. A new tab was tried, for the guide read
+    inside VS Code's Simple Browser — and it made things worse: the browser opened another
+    Simple Browser tab, pointed it at the `vscode://` URL and rendered a blank page, so
+    every click left a dead tab behind. A webview cannot hand a custom scheme to the OS at
+    all; no anchor markup changes that. EDITOR_JS handles both cases instead — navigating
+    in place at top level, copying the reference where it cannot."""
 
     def fix(m):
         whole = m.group(0)
         href = m.group("href")
+        if href.startswith("vscode:"):
+            # PlantUML stamps `target="_top"` on the links it renders into an SVG, which
+            # inside a webview navigates the whole frame to a scheme it cannot open and
+            # leaves a blank page where the guide was. Strip any target: these links are
+            # driven by EDITOR_JS, never by the browser's own navigation.
+            return TARGET_ATTR.sub("", whole)
         if href.startswith("#") or "target=" in whole.lower():
             return whole
         return whole[:-1] + ' target="_blank" rel="noopener">'

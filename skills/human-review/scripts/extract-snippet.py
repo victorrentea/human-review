@@ -21,6 +21,7 @@ import argparse
 import html
 import re
 import subprocess
+import tempfile
 import sys
 from pathlib import Path
 
@@ -108,14 +109,27 @@ def parse_ref(ref: str):
 # an editor, where the range is obvious and the off-by-two is not.
 
 COMMENT_LINE = re.compile(r"^\s*(//|#|/\*|\*/|\*(?!\S))")
+# A line that only *finishes* something: `}`, `);`, `},` — the tail of the construct above
+# the one being quoted.
+CLOSING_ONLY = re.compile(r"^[\s)\]};,]*$")
 OPENERS, CLOSERS = "([{", ")]}"
 MAX_SNAP = 40
 
 
 def _first_code_line(lines: list[str], start: int, end: int) -> int:
-    """Skip leading comment and blank lines — the snippet is here for the code."""
+    """Skip what comes *before* the construct: blanks, comments, and the previous
+    construct's closing brace.
+
+    A range written by hand routinely opens one line early, so the snippet begins with a
+    lone `}` belonging to the method above. That is not merely ugly: it makes the bracket
+    depth start negative, cancelling out the `{` of the method actually being quoted, so
+    the end-snapping below concludes there is nothing left to close and stops mid-method.
+    One off-by-one at the top silently truncated the bottom.
+    """
     i = start
-    while i < end and (not lines[i - 1].strip() or COMMENT_LINE.match(lines[i - 1])):
+    while i < end and (not lines[i - 1].strip()
+                       or COMMENT_LINE.match(lines[i - 1])
+                       or CLOSING_ONLY.match(lines[i - 1])):
         i += 1
     return i if i <= end else start
 
@@ -216,6 +230,27 @@ def self_test() -> int:
     out = render(f"{me}:{start}-{start + 1}", None, root)
     assert f'<span class="ln">{start}</span>' in out, out
     assert "parse_ref" in out, out
+
+    # A range that opens one line early, on the previous construct's closing brace, snaps
+    # past it *and* still closes. Both halves matter: the stray `}` starts the bracket
+    # depth negative, which cancels the `{` of the construct actually being quoted, so an
+    # off-by-one at the top used to silently truncate the bottom. (Brace languages only —
+    # an indentation language has no bracket to balance, so its ranges are taken as given.)
+    braced = "\n".join([
+        "function before() {", "  return 1;", "}", "",
+        "function quoted(x) {", "  if (x) {", "    return 1;", "  }",
+        "  return 0;", "}",
+    ])
+    with tempfile.TemporaryDirectory() as tmp:
+        sandbox = Path(tmp)
+        (sandbox / "snap.ts").write_text(braced + "\n", encoding="utf-8")
+        out = render("snap.ts:3-7", None, sandbox)      # opens on `}`, ends inside the `if`
+        assert '<span class="ln">3</span>' not in out, out          # the stray brace is gone
+        assert '<span class="ln">5</span>' in out, out              # starts at the signature
+        # …and runs to its own `}`, two lines past where the range stopped — highlighting
+        # splits the source across spans, so the line gutter is what to assert on.
+        assert '<span class="ln">9</span>' in out, out
+        assert '<span class="ln">10</span>' in out, out
 
     print("[extract-snippet] self-test ok", file=sys.stderr)
     return 0
