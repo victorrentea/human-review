@@ -73,6 +73,37 @@ outwards, so the same delta can be read at whatever radius makes it legible.
 python3 -m pytest skills/human-review/puml-diff
 ```
 
+## The CI half: an architecture delta per pull request
+
+`skills/human-review/ci/` is the same idea as `/human-review`, published by CI instead of
+built locally — a browsable gallery of what a pull request did to the architecture
+diagrams, linked from a sticky comment on the PR.
+
+```sh
+ci/architecture-diff.sh origin/main     # -> pr-diff/*.diff.puml + SUMMARY.md
+plantuml -tsvg pr-diff/*.diff.puml      # render on the runner, not via plantuml.com
+python3 ci/build_pr_gallery.py pr-diff  # -> pr-diff/index.html
+```
+
+Which diagrams are worth diffing is your project's business, so your project says so — in
+`.architecture-diagrams` at its root, one `path|title` per line:
+
+```
+docs/generated/DomainModel.puml|Domain model
+docs/generated/DB.puml|Database schema (ERD)
+docs/packages.puml|Logical architecture (packages)
+```
+
+Deliberately a list rather than a glob over `*.puml`: per-run artifacts like e2e sequence
+diagrams are noise in an architecture delta, not the structural picture a reviewer needs.
+
+Publishing the gallery is left to you — it is your Pages branch, your token, your URL
+scheme. The reference project does it in `.github/workflows/pages-pr-preview.yml`, which
+also deletes the preview when the PR closes so the branch does not accumulate dead ones.
+
+`ci/plantuml_url.py` encodes a `.puml` into a plantuml.com render URL, for the places a
+committed SVG is overkill.
+
 ## Editing it in place
 
 The skill is developed by symlinking it into a project rather than reinstalling it:
