@@ -249,7 +249,12 @@ def test_a_changed_statement_reddens_the_arrow_it_hides_behind():
     out = _seq(ARROW % "aaa1111", ARROW % "bbb2222")
     assert "<s>" not in out                       # not a removal
     assert out.count("select visits") == 1        # not a pair
-    assert f"<color:{sq.RED}>" in out             # but marked
+    # The arrowhead carries the mark. The label cannot: PlantUML renders no markup inside
+    # a link label — the tags print as literal text and the link comes apart — so a
+    # coloured label would cost the click that the whole arrow exists to offer.
+    assert f"-[{sq.RED}]>" in out
+    assert "[[genseq://bbb2222{Click for the statement} select visits]]" in out
+    assert "<color" not in out.split("participant DB")[1]
 
 
 def test_an_untouched_arrow_stays_plain():

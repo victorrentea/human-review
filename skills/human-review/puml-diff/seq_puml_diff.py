@@ -79,6 +79,33 @@ def _struck(text: str) -> str:
     return _per_line(text, lambda part: f"<color:{RED}><s>{part}</s></color>")
 
 
+# `[[target{tooltip} label]]` — an arrow whose whole label is the handle a reader clicks.
+LINK = re.compile(r"^\[\[(?P<target>\S+?(?:\{[^}]*\})?)\s+(?P<label>.*?)\]\]$")
+
+
+def _paint(text: str, removed: bool):
+    """Mark one arrow's label as added or removed — around its link, never inside it.
+
+    PlantUML renders no inline markup inside a link label: a `<color>` there prints as
+    literal text *and* takes the link apart, so the arrow shows up as raw `[[…]]` source.
+    Wrapping the link from outside is no better, because the wrap is applied per rendered
+    line and a two-line label then has `[[` on one line and `]]` on the next.
+
+    So an added arrow keeps its link and lets the red arrowhead carry the meaning, and a
+    removed one gives the link up — its detail was never recorded in this diagram's
+    sidecar, so the handle is dead either way — and strikes the words instead.
+    """
+    m = LINK.match(text.strip())
+    if not m:
+        return _struck(text) if removed else _red(text)
+    if removed:
+        return _struck(m.group("label").rstrip().removesuffix(MARKER_GLYPH).rstrip())
+    return text
+
+
+MARKER_GLYPH = "⊕"
+
+
 def _colorize_arrow(arrow: str) -> str:
     """`->` -> `-[#red]>`, `-->` -> `-[#red]->`, `<-` -> `<[#red]-`."""
     if arrow.startswith("-"):
@@ -104,7 +131,7 @@ def _mark_line(line: str, removed: bool) -> str | None:
     if m:
         return (
             f"{m['src'].strip()} {_colorize_arrow(m['arrow'])} "
-            f"{m['dst'].strip()}: {paint(m['text'])}"
+            f"{m['dst'].strip()}: {_paint(m['text'], removed)}"
         )
 
     m = SEPARATOR_RE.match(stripped)
