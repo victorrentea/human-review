@@ -133,6 +133,12 @@ untracked — and dispatches by diagram family:
 Writes `<name>.diff.puml`, `<name>.diff.svg` and `MANIFEST.tsv` (name / source / kind /
 status / files). Zero changed diagrams is a quiet success — drop the section.
 
+A structural delta is **titled as one**: `title Domain Model` comes out
+`Domain Model - <color:red>Diff</color>`, so the picture says what it is to anyone who
+meets it outside this page — opened straight from `assets/diagrams/`, pasted into a
+ticket, or reached by a link. The red says *what* changed; the title has to say that the
+whole picture is a change.
+
 Never re-implement the diffing inline, and never hand-diff the `.puml` text: a second
 fork of the review pipeline drifts silently. `scripts/architecture-diff.sh` stays the
 CI-facing tool for the three structural diagrams; `puml-diff-vs-git.sh` stays the

@@ -72,6 +72,10 @@ Two diagram families need two algorithms. A class diagram's meaning is a *set* o
 and relationships, where order carries nothing. A sequence diagram is the opposite: an
 ordered script of messages, where the same arrow twice is two different events.
 
+The delta is titled as one — `title Domain Model` renders as **Domain Model - <span
+style="color:red">Diff</span>** — so a picture that escapes its page still says it is a
+change rather than a snapshot.
+
 `--focus 0|1|2|3|all` answers the problem every large diagram has — a two-line change
 arrives as a wall you have to search for red in. It keeps what changed plus N relationships
 outwards, so the same delta can be read at whatever radius makes it legible.

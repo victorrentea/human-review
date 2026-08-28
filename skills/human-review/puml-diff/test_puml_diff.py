@@ -80,14 +80,32 @@ def test_changed_member_shows_both():
     assert "<color:red><s>id : Integer</s></color>" in out     # old type struck
 
 
-# ── No-op: identical snapshots carry no diff markup (bar the legend caption) ──
+# ── No-op: identical snapshots mark no element as changed ────────────────────
+# The caption and the title are excluded because they describe the *artifact* — that
+# this picture is a diff rendering — which stays true on a diff that found nothing.
 
 def test_identical_snapshots_have_no_diff_markup():
     out = m.diff(_parse(AFTER), _parse(AFTER))
-    body = "\n".join(ln for ln in out.splitlines() if not ln.startswith("caption"))
+    body = "\n".join(
+        ln for ln in out.splitlines()
+        if not ln.startswith("caption") and not ln.lstrip().lower().startswith("title")
+    )
     assert "<color:red>" not in body
     assert "#line:red" not in body
     assert "<s>" not in body
+
+
+# ── The title says the picture is a delta ────────────────────────────────────
+
+def test_title_is_marked_as_a_diff():
+    out = m.diff(_parse(BEFORE), _parse(AFTER))
+    assert "title Domain Model - <color:red>Diff</color>" in out
+
+
+def test_title_marking_is_idempotent():
+    once = m.diff(_parse(BEFORE), _parse(AFTER))
+    twice = m.diff(m.parse(once), m.parse(once))
+    assert twice.count("<color:red>Diff</color>") == 1
 
 
 if __name__ == "__main__":

@@ -65,6 +65,27 @@ def _struck(text: str) -> str:
     return f"<color:red><s>{text}</s></color>"
 
 
+# `title Domain Model` — the single-line form. A bare `title` opens a multi-line block
+# instead, which this deliberately leaves alone rather than mangling.
+TITLE_RE = re.compile(r"^(\s*title\s+)(\S.*)$", re.I)
+DIFF_SUFFIX = "Diff"
+
+
+def _mark_title(line: str) -> str:
+    """Say in the title that the picture is a delta, not a snapshot.
+
+    A diff of DomainModel is still headed "Domain Model", and a reader who arrives at
+    it from a link — or finds it later in `.human-review/assets/` — has only the red to
+    tell them they are not looking at the model as it stands. The red says *what*
+    changed; the title has to say that the whole picture is a change.
+
+    Idempotent, so re-diffing an already-diffed .puml does not stack suffixes."""
+    m = TITLE_RE.match(line)
+    if not m or _red(DIFF_SUFFIX) in line:
+        return line
+    return f"{m.group(1)}{m.group(2).rstrip()} - {_red(DIFF_SUFFIX)}"
+
+
 def _struck_header(header: str) -> str:
     """A removed element's header: its display name struck through in red, kept
     addressable by an alias so relationships pointing at it still resolve.
@@ -356,7 +377,7 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     keep = names if focus == ALL else _within(old, new, int(focus))
 
     out = ["@startuml"]
-    out += [ln for ln in new.preamble if not ln.strip().startswith("caption")]
+    out += [_mark_title(ln) for ln in new.preamble if not ln.strip().startswith("caption")]
     caption = "caption <color:red>added</color> or <color:red><s>removed</s></color>"
     if focus != ALL:
         hops = int(focus)

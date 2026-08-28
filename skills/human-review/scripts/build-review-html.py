@@ -659,12 +659,25 @@ def resolve_source_links(svg: str, root: Path) -> str:
     return SRC_HANDLE.sub(fix, svg)
 
 
+# PlantUML renders a title's creole into coloured <text>, and *also* copies the title
+# verbatim into the SVG's own <title> element — which is what the browser shows as a
+# tooltip over the diagram background. A title that says `- <color:red>Diff</color>`
+# therefore reads correctly on the page and as raw markup in the tooltip. Escaped there,
+# hence both spellings.
+CREOLE_IN_TITLE = re.compile(r"(?:<|&lt;)/?(?:color(?::[^>&]*)?|s|b|i|u)(?:>|&gt;)", re.I)
+SVG_TITLE = re.compile(r"(<title>)(.*?)(</title>)", re.S | re.I)
+
+
+def _plain_svg_title(svg: str) -> str:
+    return SVG_TITLE.sub(lambda m: m[1] + CREOLE_IN_TITLE.sub("", m[2]).strip() + m[3], svg)
+
+
 def inline_svg(path: Path, root: Path) -> str:
     """Inline rather than <img src>: the guide must survive being emailed as one file."""
     svg = path.read_text(encoding="utf-8")
     svg = re.sub(r"^<\?xml[^>]*\?>\s*", "", svg)
     svg = re.sub(r"<!DOCTYPE[^>]*>\s*", "", svg)
-    return resolve_source_links(svg, root)
+    return _plain_svg_title(resolve_source_links(svg, root))
 
 
 def genseq_details(rel: str, root: Path) -> str:
