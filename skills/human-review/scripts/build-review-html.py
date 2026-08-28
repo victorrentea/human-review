@@ -727,10 +727,14 @@ def _provenance(rel: str, root: Path) -> str:
     return ('<p class="prov">' + " ".join(links) + '</p>') if links else ''
 
 
-# Which radius a reviewer meets first. Zero is the change with nothing to hang it on;
-# the whole diagram is what the focus levels exist to escape. One hop — what changed,
-# plus what it is attached to — is the reading that needs no explaining.
-DEFAULT_FOCUS = "1"
+# Which radius a reviewer meets first — the whole diagram.
+#
+# It used to open at one hop, on the reasoning that a large diagram is a wall to hunt for
+# red in. But opening pruned is a claim that the rest does not matter, made before the
+# reviewer has seen the rest: the question they arrive with is "is this change in the
+# right place", and a view that has already deleted the neighbourhood cannot answer it.
+# Narrowing is one click and reversible; the context you were never shown is neither.
+DEFAULT_FOCUS = "all"
 
 
 def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
