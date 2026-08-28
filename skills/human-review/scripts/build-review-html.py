@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import base64
 import html
 import json
 import re
@@ -907,9 +908,20 @@ def render_puml(block, root: Path, out_dir: Path) -> str:
     )
 
 
-# The guide is one of a dozen tabs the reviewer has open, all of them named after the
-# branch. The prefix is what makes it findable at a glance in the tab strip.
-TITLE_PREFIX = "\U0001F471\U0001F3FB\u200D\u2642\uFE0F "
+# The guide is one of forty tabs the reviewer has open, all of them named after the
+# branch. At that width the strip has room for the favicon and nothing else — so the
+# mark that makes the guide findable belongs on the icon, not in front of the title,
+# where it was only legible in the hover card you reach after already finding the tab.
+#
+# Base64 rather than percent-encoding the SVG: the payload is full of quotes and angle
+# brackets, and one missed escape is a silently blank icon rather than an error.
+FAVICON_EMOJI = "\U0001F471\U0001F3FB\u200D\u2642\uFE0F"
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+    '<text y=".9em" font-size="90" font-family="Apple Color Emoji,Segoe UI Emoji,'
+    'Noto Color Emoji,sans-serif">' + FAVICON_EMOJI + "</text></svg>"
+)
+FAVICON = "data:image/svg+xml;base64," + base64.b64encode(FAVICON_SVG.encode()).decode()
 
 
 def resolve_refs(items, root: Path):
@@ -1195,7 +1207,8 @@ def main(argv=None) -> int:
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{TITLE_PREFIX}{html.escape(spec.get('title', 'Review guide'))}</title>
+<title>{html.escape(spec.get('title', 'Review guide'))}</title>
+<link rel="icon" type="image/svg+xml" href="{FAVICON}">
 <style>{CSS}{extra_css}</style></head>
 <body><div class="wrap">
 <h1>{html.escape(spec.get('title', 'Review guide'))}</h1>
