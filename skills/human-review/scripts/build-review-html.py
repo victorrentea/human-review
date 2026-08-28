@@ -199,6 +199,42 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 @media (max-width:820px) { .vidwrap { grid-template-columns:1fr; } }
 video.vid { width:100%; max-width:900px; border:1px solid var(--line); border-radius:8px; display:block; margin:1rem 0; background:#000; }
 footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.85rem; }
+/* The tab strip. A review is not one argument read top to bottom — it is five or six
+    separate questions ("does the contract still hold?", "where did it land?"), and a
+    reviewer answers them in whatever order their doubt takes them. Full-bleed and
+    sticky, so the questions stay reachable from anywhere in an answer. */
+.tabstrip { position:sticky; top:0; z-index:30; margin:1.6rem 0 1.4rem;
+            margin-left:calc(50% - 50vw); width:100vw;
+            padding:.5rem max(1.25rem, calc(50vw - 540px + 1.25rem));
+            background:var(--bg); border-bottom:1px solid var(--line);
+            display:flex; gap:.3rem; flex-wrap:wrap; align-items:center; }
+.tabstrip .grow { flex:1 1 1rem; }
+button.tab { border:1px solid transparent; background:none; color:var(--muted); border-radius:999px;
+             cursor:pointer; font:600 .87rem/2 inherit; padding:0 .85rem; white-space:nowrap;
+             display:inline-flex; align-items:center; gap:.42rem; }
+button.tab:hover { color:var(--fg); background:var(--card); border-color:var(--line); }
+button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
+                font-variant-numeric:tabular-nums; }
+button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--accent); }
+button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
+                border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
+button.allbtn:hover { color:var(--fg); border-color:var(--link); }
+button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:#fff; }
+.panel[hidden] { display:none; }
+.panel > h2:first-child, .panel > .paneltag + h2 { margin-top:.2rem; }
+/* Only meaningful once every panel is on screen at once, which is what "show all"
+    (and printing) do — otherwise the heading names the tab you are already on. */
+.paneltag { display:none; margin:2.6rem 0 0; font:700 .72rem/1.6 inherit; letter-spacing:.1em;
+            text-transform:uppercase; color:var(--muted); }
+body.showall .paneltag { display:block; }
+body.showall .panel { border-top:1px solid var(--line); }
+body.showall .panel:first-of-type { border-top:0; }
+@media print {
+  .tabstrip { display:none; }
+  .panel[hidden] { display:block !important; }
+  .paneltag { display:block; }
+}
 """
 
 
@@ -253,7 +289,99 @@ FOCUS_JS = """<script>
 })();
 </script>"""
 
-EDITOR_JS = """<script>
+TABS_JS = """<script>
+// The tab strip. Runs *last* on purpose: every panel is in the document and visible
+// while the earlier scripts measure it, because getBBox() on anything inside a
+// display:none subtree returns zeros — which would silently cost every sequence
+// diagram its click targets. This script is what hides them, after the measuring.
+(function () {
+  var strip = document.querySelector('.tabstrip');
+  if (!strip) return;
+  var tabs = Array.prototype.slice.call(strip.querySelectorAll('button.tab'));
+  var panels = tabs.map(function (t) { return document.getElementById(t.getAttribute('aria-controls')); });
+  var showAll = strip.querySelector('button.allbtn');
+  var active = 0;
+
+  function paint() {
+    var all = document.body.classList.contains('showall');
+    tabs.forEach(function (t, i) {
+      t.setAttribute('aria-selected', String(i === active));
+      t.tabIndex = i === active ? 0 : -1;
+      if (panels[i]) panels[i].hidden = !all && i !== active;
+    });
+    if (showAll) showAll.setAttribute('aria-pressed', String(all));
+  }
+
+  // The hash is the shareable handle: a reviewer sends "look at #api" and it opens there.
+  // replaceState rather than location.hash, which would scroll the page out from under
+  // the click that caused it.
+  function select(i, remember) {
+    if (i < 0 || i >= tabs.length) return;
+    active = i;
+    paint();
+    if (remember && history.replaceState) {
+      history.replaceState(null, '', '#' + tabs[i].getAttribute('aria-controls'));
+    }
+  }
+
+  function panelIndexOf(node) {
+    for (var i = 0; i < panels.length; i++) {
+      if (panels[i] && panels[i].contains(node)) return i;
+    }
+    return -1;
+  }
+
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { select(i, true); });
+  });
+
+  strip.addEventListener('keydown', function (ev) {
+    var step = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
+    if (!step) return;
+    ev.preventDefault();
+    var next = (active + step + tabs.length) % tabs.length;
+    select(next, true);
+    tabs[next].focus();
+  });
+
+  if (showAll) {
+    showAll.addEventListener('click', function () {
+      document.body.classList.toggle('showall');
+      paint();
+    });
+  }
+
+  // A link into a section that lives on another tab has to switch tabs first, or it
+  // scrolls to something the browser is not showing.
+  document.addEventListener('click', function (ev) {
+    var link = ev.target.closest && ev.target.closest('a[href^="#"]');
+    if (!link) return;
+    var target = document.getElementById(decodeURIComponent(link.getAttribute('href').slice(1)));
+    if (!target) return;
+    var i = panelIndexOf(target);
+    if (i >= 0 && i !== active) select(i, false);
+  });
+
+  // Opening on a deep link: the hash may name a tab, or anything inside one.
+  var wanted = decodeURIComponent((location.hash || '').slice(1));
+  var start = 0;
+  if (wanted) {
+    var byTab = tabs.findIndex(function (t) { return t.getAttribute('aria-controls') === wanted; });
+    if (byTab >= 0) start = byTab;
+    else {
+      var node = document.getElementById(wanted);
+      var inPanel = node ? panelIndexOf(node) : -1;
+      if (inPanel >= 0) {
+        start = inPanel;
+        setTimeout(function () { node.scrollIntoView(); }, 0);
+      }
+    }
+  }
+  select(start, false);
+})();
+</script>"""
+
+EDITOR_JS = r"""<script>
 // Click-to-source depends on the OS handing `vscode://` to the editor, and only a real
 // browser tab can ask it to. VS Code's own Simple Browser is a webview: it cannot launch
 // an external scheme at all, so the click does nothing whatever the anchor says — a
@@ -613,17 +741,35 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
     )
 
 
-def render_diagrams(spec, root: Path, out_dir: Path) -> str:
+def select_rows(rows, block) -> list:
+    """The manifest rows one diagram block is responsible for.
+
+    Tabs split the gallery by what a diagram *answers* — sequence diagrams sit next to
+    the tests that generated them, DB and DomainModel next to each other — so a block
+    names either the families it takes (`kind`) or the diagrams themselves (`only`)."""
+    kinds = block.get("kind")
+    if kinds:
+        kinds = [kinds] if isinstance(kinds, str) else kinds
+        rows = [r for r in rows if r["kind"] in kinds]
+    only = block.get("only")
+    if only:
+        rows = [r for r in rows if r["name"] in only]
+    if block.get("except"):
+        rows = [r for r in rows if r["name"] not in block["except"]]
+    return rows
+
+
+def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
     manifest = out_dir / spec.get("manifest", "assets/diagrams/MANIFEST.tsv")
-    rows = read_manifest(manifest)
+    if rows is None:
+        rows = read_manifest(manifest)
+        if spec.get("only"):
+            rows = [r for r in rows if r["name"] in spec["only"]]
     if not rows:
         return '<p class="sub">No PlantUML diagram changed on this branch.</p>'
     notes = spec.get("notes", {})
-    only = spec.get("only")
-    if only:
-        rows = [r for r in rows if r["name"] in only]
     order = {"structural": 0, "sequence": 1}
-    rows.sort(key=lambda r: (order.get(r["kind"], 9), r["name"]))
+    rows = sorted(rows, key=lambda r: (order.get(r["kind"], 9), r["name"]))
     parts = []
     for r in rows:
         note = notes.get(r["name"], "")
@@ -675,6 +821,60 @@ def render_findings(findings) -> str:
             + "</li>"
         )
     return '<ol class="findings">' + "\n".join(items) + "</ol>"
+
+
+def render_autofixes(fixes) -> str:
+    """What the agent already fixed \u2014 the other half of the same review.
+
+    It sits next to the open findings on purpose. The two lists are one decision split
+    in two: everything with a single obvious right answer was applied, everything a
+    second engineer could reasonably disagree about was left. A reviewer who cannot see
+    the first pile has to take the size of the second on trust."""
+    if not fixes:
+        return '<p class="sub">Nothing was applied automatically \u2014 every finding needed a human.</p>'
+    items = []
+    for f in fixes:
+        items.append(
+            f'<li><span class="f-title">{f["title"]}</span>'
+            + (f'<p class="f-why">{f["why"]}</p>' if f.get("why") else "")
+            + (f'<p>{f["body"]}</p>' if f.get("body") else "")
+            + "".join(
+                f'<a class="srcref" href="vscode://file/{r["abs"]}">{html.escape(r["label"])}</a> '
+                for r in f.get("_refs", [])
+            )
+            + (f.get("_snippets", "") or "")
+            + "</li>"
+        )
+    return '<ul class="fixlist">' + "\n".join(items) + "</ul>"
+
+
+def render_puml(block, root: Path, out_dir: Path) -> str:
+    """A diagram this branch did *not* change, drawn as context rather than as a delta.
+
+    Package structure is the case that asks for it: a reviewer wants to see the shape
+    the change landed in even on the \u2014 common, and good \u2014 branches that left it alone.
+    Rendered here from the committed source, so the page carries no stale SVG."""
+    src = root / block["src"]
+    if not src.is_file():
+        return f'<p class="sub">no diagram at <code>{html.escape(block["src"])}</code></p>'
+    cache = out_dir / "assets" / (Path(block["src"]).stem + ".context.svg")
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    if not cache.is_file() or cache.stat().st_mtime < src.stat().st_mtime:
+        out = subprocess.run(["plantuml", "-tsvg", "-pipe"],
+                             input=src.read_bytes(), capture_output=True)
+        if out.returncode != 0 or not out.stdout:
+            return (f'<p class="sub">plantuml could not render '
+                    f'<code>{html.escape(block["src"])}</code> \u2014 is it installed?</p>')
+        cache.write_bytes(out.stdout)
+    return (
+        '<div class="diagram">'
+        f'<div class="head"><b>{html.escape(block.get("name", src.stem))}</b>'
+        f'<span class="badge sev-info">{html.escape(block.get("status", "unchanged"))}</span>'
+        f'<span>{html.escape(block["src"])}</span></div>'
+        + (f'<p>{block["note"]}</p>' if block.get("note") else "")
+        + _provenance(block["src"], root)
+        + f'<div class="svgbox">{inline_svg(cache, root)}</div></div>'
+    )
 
 
 # The guide is one of a dozen tabs the reviewer has open, all of them named after the
@@ -760,13 +960,13 @@ def main(argv=None) -> int:
     out_dir = out_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for f in spec.get("findings", []):
+    for f in spec.get("findings", []) + spec.get("autofixes", []):
         f["_refs"] = resolve_refs(f.get("refs", []), root)
         f["_snippets"] = "".join(
             snippet_html(s["ref"], s.get("caption"), root) for s in f.get("snippets", [])
         )
 
-    sections = []
+    sections, by_id = [], {}
     for s in spec.get("sections", []):
         snips = "".join(
             snippet_html(x["ref"], x.get("caption"), root) for x in s.get("snippets", [])
@@ -793,10 +993,12 @@ def main(argv=None) -> int:
                 f'src="{html.escape(s["video"])}"></video>'
                 f'<ol class="transcript">{items}</ol></div>'
             )
-        sections.append(
+        rendered = (
             f'<h2 id="{html.escape(s["id"])}">{html.escape(s["title"])}</h2>\n'
             f'{expand_snippets(s.get("body", ""), root)}\n{inc}{vid}{snips}'
         )
+        sections.append(rendered)
+        by_id[s["id"]] = rendered
 
     city = spec.get("codecity")
     city_html = ""
@@ -851,6 +1053,115 @@ def main(argv=None) -> int:
         cwd=root,
     ).stdout
 
+    dspec = spec.get("diagrams", {})
+    manifest_rows = read_manifest(out_dir / dspec.get("manifest", "assets/diagrams/MANIFEST.tsv"))
+    placed = set()
+
+    def heading(block, fallback_id, fallback_title):
+        title = block.get("title", fallback_title)
+        if not title:
+            return ""
+        head = (f'<h2 id="{html.escape(block.get("id", fallback_id))}">'
+                f'{html.escape(title)}</h2>')
+        return head + (f'<p>{block["body"]}</p>' if block.get("body") else "")
+
+    def render_block(block):
+        """One block of a tab, as (html, weight). Weight 0 means "nothing to show" —
+        a tab whose every block weighs nothing is dropped rather than shown empty."""
+        kind = block.get("type", "section")
+        if kind == "findings":
+            items = spec.get("findings", [])
+            return heading(block, "first", "Look here first") + render_findings(items), len(items)
+        if kind == "autofixes":
+            items = spec.get("autofixes", [])
+            return heading(block, "fixed", "Already fixed for you") + render_autofixes(items), len(items)
+        if kind == "diagrams":
+            rows = select_rows(manifest_rows, block)
+            placed.update(r["name"] for r in rows)
+            # Nothing of this family changed: contribute nothing rather than a paragraph
+            # saying so. Whether that leaves the tab empty is the tab's business.
+            if not rows:
+                return "", 0
+            merged = dict(dspec)
+            merged.pop("only", None)
+            return (
+                heading(block, "diagrams", dspec.get("title", "Diagram deltas"))
+                + render_diagrams(merged, root, out_dir, rows),
+                len(rows),
+            )
+        if kind == "puml":
+            return heading(block, "puml", block.get("title", "")) + render_puml(block, root, out_dir), 1
+        if kind == "codecity":
+            return city_html, 1 if city_html else 0
+        if kind == "section":
+            body = by_id.get(block["id"])
+            if body is None:
+                raise SystemExit(f'[review] tab block references no section: {block["id"]}')
+            return body, 1
+        if kind == "html":
+            return block.get("html", ""), 1 if block.get("html") else 0
+        raise SystemExit(f"[review] unknown tab block type: {kind}")
+
+    tabs = spec.get("tabs")
+    if tabs:
+        strip, panels, dropped = [], [], []
+        for tab in tabs:
+            body, weight = "", 0
+            for block in tab.get("blocks", []):
+                chunk, w = render_block(block)
+                body += chunk
+                weight += w
+            if not weight and not tab.get("keepEmpty"):
+                dropped.append(tab["label"])
+                continue
+            tid = html.escape(tab["id"])
+            # A number on a tab is a promise that it means something. It does on the tab
+            # holding the findings; on "Data model" it would just count pictures.
+            badge = tab.get("badge") or (str(weight) if tab.get("count") else "")
+            count = f'<span class="n">{html.escape(badge)}</span>' if badge else ""
+            strip.append(
+                f'<button type="button" class="tab" role="tab" id="tabbtn-{tid}" '
+                f'aria-controls="{tid}" aria-selected="false" tabindex="-1">'
+                f'{html.escape(tab["label"])}{count}</button>'
+            )
+            panels.append(
+                f'<section class="panel" id="{tid}" role="tabpanel" '
+                f'aria-labelledby="tabbtn-{tid}">'
+                f'<p class="paneltag">{html.escape(tab["label"])}</p>{body}</section>'
+            )
+        # A diagram in the manifest that no tab claimed would vanish without a word —
+        # the exact silent drop this pipeline exists to prevent.
+        orphans = [r["name"] for r in manifest_rows if r["name"] not in placed]
+        if orphans:
+            print(f"[review] WARNING: no tab claims these changed diagrams: {', '.join(orphans)}",
+                  file=sys.stderr)
+        if dropped:
+            print(f"[review] dropped empty tabs: {', '.join(dropped)}", file=sys.stderr)
+        body_html = (
+            '<div class="tabstrip" role="tablist" aria-label="Review sections">'
+            + "".join(strip)
+            + '<span class="grow"></span>'
+            + '<button type="button" class="allbtn" aria-pressed="false" '
+            'title="Reveal every tab at once — makes ⌘F search the whole guide">'
+            "show all</button></div>\n" + "\n".join(panels)
+        )
+        if dropped:
+            body_html += (
+                '<p class="sub">Nothing to show for: '
+                + ", ".join(html.escape(d) for d in dropped) + ".</p>"
+            )
+    else:
+        # No tab layout in the content file: the original single-column guide, unchanged.
+        body_html = (
+            '<h2 id="first">Look here first</h2>\n'
+            + render_findings(spec.get("findings", []))
+            + f'\n<h2 id="diagrams">{html.escape(dspec.get("title", "Diagram deltas"))}</h2>\n'
+            + f'<p>{dspec.get("body", "")}</p>\n'
+            + render_diagrams(dspec, root, out_dir)
+            + f"\n{city_html}\n"
+            + "".join(sections)
+        )
+
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -863,16 +1174,7 @@ def main(argv=None) -> int:
 <div class="lede">{spec.get('summary', '')}</div>
 {verdict_html}
 
-<h2 id="first">Look here first</h2>
-{render_findings(spec.get('findings', []))}
-
-<h2 id="diagrams">{html.escape(spec.get('diagrams', {}).get('title', 'Diagram deltas'))}</h2>
-<p>{spec.get('diagrams', {}).get('body', '')}</p>
-{render_diagrams(spec.get('diagrams', {}), root, out_dir)}
-
-{city_html}
-
-{"".join(sections)}
+{body_html}
 
 <footer>{spec.get('footer', '')}</footer>
 </div>
@@ -880,6 +1182,7 @@ def main(argv=None) -> int:
 {GENSEQ_JS}
 {FOCUS_JS}
 {EDITOR_JS}
+{TABS_JS}
 </body></html>
 """
     doc = open_links_in_new_tabs(doc)

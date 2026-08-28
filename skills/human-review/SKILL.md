@@ -6,11 +6,11 @@ disable-model-invocation: true
 
 # /human-review — assemble a review.html for a human
 
-Produce **one page, `.human-review/review.html`**, that lets a human review a change set fast:
-what to look at first, diagram deltas, where it landed in the city, a video of the
-feature working, what it cost in endpoint complexity, and the tests that pin it —
-every code reference a clickable VS Code deep-link, every snippet cut from the working
-tree at build time.
+Produce **one page, `.human-review/review.html`** — tabbed, one question per tab — that lets
+a human review a change set fast: what to look at first, diagram deltas, what the REST
+contract did, where it landed in the city, a video of the feature working, what it cost in
+endpoint complexity, and the tests that pin it — every code reference a clickable VS Code
+deep-link, every snippet cut from the working tree at build time.
 
 You are the assembler *and* the janitor: you run the automated reviews and apply the
 fixes nobody would argue with, then hand the human only the calls that are genuinely
@@ -23,7 +23,8 @@ thing you can read, copy, or install into any project without hunting through it
 skill's moving parts:
 
 - `scripts/` — the mechanics: the page builder, the snippet extractor, the diagram
-  driver, the video recorder, the Code City capture, the complexity delta.
+  driver, the video recorder, the Code City capture, the complexity delta, the OpenAPI
+  contract differ.
 - `puml-diff/` — the two differs, `puml_diff.py` (class / ER / package) and
   `seq_puml_diff.py` (sequence). They diff any PlantUML diagram and know nothing about
   the project being reviewed.
@@ -49,7 +50,7 @@ tests exist to catch.
 ## Adapting it to your project
 
 The steps below name the reference project's commands, because a skill that says "run your
-test suite" tells an agent nothing it can act on. Four hooks are yours to substitute; the
+test suite" tells an agent nothing it can act on. Five hooks are yours to substitute; the
 rest of the skill is project-agnostic:
 
 | step | what it needs from you | reference project's answer |
@@ -58,9 +59,11 @@ rest of the skill is project-agnostic:
 | 4 | a Code City render, if you have one | `petclinic-backend/generate-codecity.sh` |
 | 5 | a browser suite that can be filmed | Playwright, driven by `scripts/record-feature-video.sh` |
 | 6 | an entry-point complexity extractor | `mvn -q test -Dtest=EndpointComplexityExtractorTest` |
+| 7 | a committed API spec, generated not hand-written | `openapi.yaml`, extracted by `OpenApiExtractorTest` |
 
-Anything you have no answer for, drop — a section with nothing to show is dropped and said
-so, which is honest. Steps 0, 1, 2, 7 and 8 need nothing but git, python3 and plantuml.
+Anything you have no answer for, drop — a tab with nothing to show is dropped and named
+under the strip, which is honest. Steps 0, 1, 2, 8 and 9 need nothing but git, python3 and
+plantuml; step 7 additionally needs PyYAML.
 
 ## Step 0 — Resolve the change set (from `$ARGUMENTS`)
 
@@ -241,7 +244,36 @@ change made a cheap entry point expensive or merely nudged an already-heavy one.
 predates a widening of what counts as an entry point, say so — the newly-visible kinds will
 otherwise read as "added by this branch".
 
-## Step 7 — Snippets, findings, and the page
+## Step 7 — What the REST contract did
+
+```sh
+${SKILL}/scripts/openapi-diff.py --base $BASE --out .human-review/assets/openapi-diff.html
+${SKILL}/scripts/openapi-diff.py --css  >  .human-review/assets/openapi-diff.css
+```
+
+`git diff openapi.yaml` answers the question in the wrong currency: it says line 1937 gained
+six lines, when what the reviewer needs is "`VisitDto` grew three read-only fields, and none
+of it breaks a caller". So the differ parses both revisions **as structures** — every
+operation added/removed/changed, every schema down to the property, its type and its
+constraints — and classifies each individual difference by what it does to somebody already
+calling the API: **breaking** (a removal, a tightened constraint, a newly-required request
+field, a changed type or `$ref`), **additive**, **changed** (`readOnly`, `default`,
+`deprecated`, `operationId` — real, but a judgement call), **cosmetic** (docs only). The raw
+unified diff rides along in a `<details>`, because a classifier is a summary and a reviewer is
+entitled to the source.
+
+Point `--spec` at your spec if it is not `openapi.yaml` at the root; the "before" side comes
+from the **merge-base**, and a spec that did not exist there is an empty one, not a crash.
+Every subject deep-links into the spec at the line that defines it.
+
+⚠️ **Say what the classifier cannot see.** It reads the contract, not the handler. A `PUT`
+that starts *clearing* a field it was not sent is "an optional field appeared" to any
+structural differ alive — so if the automated reviews turned up a semantic break of that
+shape, put it in **Look here first** and cross-link it from the contract tab. And the spec is
+only evidence if it is generated: in a project where `openapi.yaml` is hand-written, this
+step diffs an intention rather than an API, and the guide should say so.
+
+## Step 8 — Snippets, findings, and the page
 
 Never retype code into the guide. Reference it:
 
@@ -259,20 +291,70 @@ ${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-re
 ```
 
 The JSON holds only prose + `path:from-to` references + per-diagram notes; the renderer
-owns the shell, the CSS, the inlined SVGs and the snippet extraction. Sections, in order:
+owns the shell, the CSS, the inlined SVGs and the snippet extraction.
 
-1. **Look here first** — the disputable findings, most critical first, each with the
-   failing scenario in one sentence and a snippet of the decisive lines.
-2. **Diagram deltas** — one per changed diagram, with a plain-English note on what
-   structurally changed.
-3. **Where it landed** — the Code City shot, click-through to the live view.
-4. **See it work** — the video.
-5. **Entry point complexity** — the increment, in context.
-6. **Core business logic** — 2–5 bullets in domain language, each backed by a snippet.
-7. **Acceptance tests** — the tests that pin this behaviour, as snippets, plus a plain
-   statement of what is **not** covered.
+### Lay it out as tabs, not as a scroll
 
-## Step 8 — Hand the app back
+A review is not one argument read top to bottom. It is five or six separate questions — *what
+do you want from me? does it work? does the contract still hold? what shape did it land in?
+what did it cost?* — and a reviewer answers them in whatever order their doubt takes them. A
+single column forces them past four answers to reach the one they wanted, so the page is a
+**tab strip over panels**, driven by a `tabs` array in the content file:
+
+```json
+"tabs": [
+  {"id":"review","label":"Review","count":true,
+   "blocks":[{"type":"findings","title":"Look here first","body":"…"},
+             {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
+  {"id":"behaviour","label":"Behaviour",
+   "blocks":[{"type":"diagrams","kind":"sequence","title":"Sequence deltas","body":"…"},
+             {"type":"section","id":"tests"},{"type":"section","id":"video"}]},
+  {"id":"api","label":"API contract","badge":"+4","blocks":[{"type":"section","id":"api"}]},
+  {"id":"data","label":"Data model",
+   "blocks":[{"type":"diagrams","only":["DB","DomainModel"]},{"type":"section","id":"logic"}]},
+  {"id":"packages","label":"Packages",
+   "blocks":[{"type":"diagrams","only":["Packages"]},
+             {"type":"puml","src":"petclinic-backend/docs/packages.puml","name":"Packages",
+              "status":"unchanged","note":"…"}]},
+  {"id":"shape","label":"Cost & shape",
+   "blocks":[{"type":"section","id":"complexity"},{"type":"codecity"}]}
+]
+```
+
+Block types: **`findings`** (the disputable calls), **`autofixes`** (the top-level
+`autofixes` array — what you applied in step 1, same shape as a finding), **`diagrams`**
+(the delta gallery, narrowed by `kind` / `only` / `except`), **`puml`** (a diagram this
+branch did *not* change, rendered from source as context), **`codecity`**, **`section`**
+(one entry of `sections` by `id`), **`html`**. Rules the renderer enforces:
+
+- a tab whose every block came back empty is **dropped**, and named in a line under the
+  strip — never shown as an empty page;
+- a changed diagram that no tab claimed prints a **warning** at build time. A gallery that
+  silently loses a diagram is the exact failure this pipeline exists to prevent;
+- `count: true` puts the item count on the tab, `badge: "…"` puts a literal there. Use one
+  only where the number means something — on the tab holding the findings it does; on
+  "Data model" it would just count pictures;
+- omit `tabs` entirely and you get the original single-column page, unchanged.
+
+Deep links work both ways: `#<tab-id>` opens on that tab, and a link to any `id` inside a
+panel switches to it first. `⌘F` searches only the open tab, so the strip carries a **show
+all** toggle that reveals every panel at once — which is also what printing does.
+
+What goes where, as a default worth departing from only with a reason:
+
+1. **Review** — the disputable findings, most critical first, each with the failing scenario
+   in one sentence and a snippet of the decisive lines; then the fixes you already applied.
+   The two lists are one decision split in two, and a reviewer who cannot see the first pile
+   has to take the size of the second on trust.
+2. **Behaviour** — the sequence deltas, the acceptance tests that produced them, the video,
+   and a plain statement of what is **not** covered.
+3. **API contract** — step 7's fragment, as a `section` with `includeHtml`.
+4. **Data model** — the DB and domain deltas, and the 2–5 core-logic bullets in domain
+   language, each backed by a snippet.
+5. **Packages** — the package delta, or the current package diagram as context.
+6. **Cost & shape** — the complexity increment and the Code City shot.
+
+## Step 9 — Hand the app back
 
 Open the finished guide (`open .human-review/review.html`). Then make sure the app is actually
 running from **this** checkout and open the screen the change affects, so the human can
