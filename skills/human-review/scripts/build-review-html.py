@@ -88,6 +88,19 @@ pre.code code { white-space:pre; }
 .diagram .svgbox { overflow-x:auto; margin-top:.7rem; background:#fff; border-radius:6px; padding:.6rem; }
 .diagram .svgbox svg { max-width:100%; height:auto; display:block; margin:0 auto; }
 .diagram .svgbox[hidden] { display:none; }
+/* A class name that opens the source looks exactly like one that does not. PlantUML's
+    tooltip says so, but only after a second of hovering and only if you were already
+    suspicious — so the name underlines the moment the pointer is over it. The class
+    anchor wraps the whole box, the attribute anchors wrap just their own line, so
+    hovering anywhere in a class underlines its name and hovering a field underlines
+    the field. */
+.diagram svg a[href^="vscode:"] { cursor:pointer; }
+.diagram svg a[href^="vscode:"]:hover text { text-decoration:underline; }
+/* A removed element carries its strikethrough as a presentation attribute, which a CSS
+    declaration would silently outrank — underlining it would erase the one mark that
+    says it was deleted. Keep both. */
+.diagram svg a[href^="vscode:"]:hover text[text-decoration="line-through"] {
+  text-decoration:line-through underline; }
 /* How much unchanged context to draw around what changed. DomainModel and DB are big
     enough that the whole diagram is a wall to hunt for red in, and how much context
     makes a given change legible is the reviewer's call, not the generator's. */
