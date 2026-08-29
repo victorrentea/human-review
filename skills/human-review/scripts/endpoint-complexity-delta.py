@@ -125,7 +125,7 @@ def _path_cell(r) -> str:
     path, line = found
     return (
         f'<a class="cx-link" href="vscode://file/{path}:{line}:1" '
-        f'title="{html.escape(r.get("handler") or "")} — open in VS Code">{label}</a>'
+        f'data-tip="{html.escape(r.get("handler") or "")} — open in VS Code">{label}</a>'
     )
 
 

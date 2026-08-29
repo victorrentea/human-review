@@ -201,7 +201,7 @@ def render(ref: str, caption: str | None, root: Path) -> str:
     return (
         f'<figure class="snippet">\n'
         f"{cap}"
-        f'<a class="srcref" href="{html.escape(link)}" title="Open in VS Code">{html.escape(label)}</a>\n'
+        f'<a class="srcref" href="{html.escape(link)}" data-tip="Open in VS Code">{html.escape(label)}</a>\n'
         f'<pre class="code lang-{lang}"><code>{numbered}</code></pre>\n'
         f"</figure>\n"
     )

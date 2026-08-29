@@ -28,6 +28,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 EXTRACT = HERE / "extract-snippet.py"
+CODEOWNERS = HERE / "codeowners-check.py"
 
 SEVERITIES = {
     "high": ("sev-high", "must look"),
@@ -223,6 +224,10 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
             background:var(--bg); border-bottom:1px solid var(--line);
             display:flex; gap:.3rem; flex-wrap:wrap; align-items:center; }
 .tabstrip .grow { flex:1 1 1rem; }
+/* Struck through, not hidden: the tab still holds the current state as context, and a
+   reviewer who cannot see that it exists cannot tell it was considered. */
+button.tab.quiet { text-decoration:line-through; text-decoration-thickness:1px; opacity:.5; }
+button.tab.quiet:hover, button.tab.quiet[aria-selected="true"] { opacity:.85; }
 button.tab { border:1px solid transparent; background:none; color:var(--muted); border-radius:999px;
              cursor:pointer; font:600 .87rem/2 inherit; padding:0 .85rem; white-space:nowrap;
              display:inline-flex; align-items:center; gap:.42rem; }
@@ -230,6 +235,12 @@ button.tab:hover { color:var(--fg); background:var(--card); border-color:var(--l
 button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
 button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
                 font-variant-numeric:tabular-nums; }
+/* A badge that says something is *wrong* cannot look like a count. This one is worn by
+   the tab the reviewer must not skip — a blocked merge — so it keeps its colour even
+   while the tab is selected, where the strip inverts everything else. */
+button.tab .n.alarm { background:#c62828; color:#fff; opacity:1; border-radius:999px;
+                      padding:.05rem .45rem; letter-spacing:.03em; }
+button.tab[aria-selected="true"] .n.alarm { background:#fdeaea; color:#8a1c1c; }
 button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--accent); }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
                 border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
@@ -302,6 +313,78 @@ FOCUS_JS = """<script>
   });
 })();
 </script>"""
+
+TIP_JS = """<script>
+// One tooltip for the whole page. The native `title` is unstyleable, unresizable and
+// waits ~500ms — long enough that a reviewer reads the icon, gives up, and moves on.
+// Listeners are delegated on `document` so markup written later by any of the other
+// scripts picks the behaviour up with no registration step.
+(function () {
+  var css = document.createElement('style');
+  css.textContent =
+    '.tip{position:fixed;z-index:9999;pointer-events:none;background:rgba(20,20,22,.96);' +
+    'color:#fff;font:600 1.05rem/1.25 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;' +
+    'padding:.6rem .9rem;border-radius:.6rem;max-width:22rem;box-shadow:0 10px 30px rgba(0,0,0,.35);' +
+    'opacity:0;transform:translateY(4px);transition:opacity 120ms ease,transform 120ms ease}' +
+    '.tip.visible{opacity:1;transform:translateY(0)}';
+  document.head.appendChild(css);
+
+  var bubble = document.createElement('div');
+  bubble.className = 'tip';
+  bubble.setAttribute('role', 'tooltip');
+  document.body.appendChild(bubble);
+  var timer = null, current = null;
+
+  function hide() {
+    clearTimeout(timer);
+    current = null;
+    bubble.classList.remove('visible');
+  }
+
+  function place(el) {
+    var r = el.getBoundingClientRect(), b = bubble.getBoundingClientRect();
+    var left = r.left + r.width / 2 - b.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - b.width - 8));
+    // Above by default; below when the top of the viewport is in the way.
+    var top = r.top - b.height - 10;
+    if (top < 8) top = r.bottom + 10;
+    bubble.style.left = left + 'px';
+    bubble.style.top = top + 'px';
+  }
+
+  function show(el) {
+    var text = el.getAttribute('data-tip');
+    if (!text) return;                       // data-tip="" shows nothing, by design
+    current = el;
+    bubble.textContent = text;
+    bubble.classList.remove('visible');
+    place(el);
+    timer = setTimeout(function () {
+      if (current !== el) return;
+      place(el);
+      bubble.classList.add('visible');
+    }, 150);
+  }
+
+  function trigger(ev) {
+    var el = ev.target.closest && ev.target.closest('[data-tip]');
+    if (!el || el === current) return;
+    hide();
+    show(el);
+  }
+
+  document.addEventListener('pointerover', trigger);
+  document.addEventListener('focusin', trigger);   // focus/blur do not bubble
+  document.addEventListener('pointerout', function (ev) {
+    if (current && !current.contains(ev.relatedTarget)) hide();
+  });
+  document.addEventListener('focusout', hide);
+  document.addEventListener('touchstart', hide, {passive: true});
+  window.addEventListener('scroll', hide, true);   // a fixed bubble would float away
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') hide(); });
+})();
+</script>"""
+
 
 TABS_JS = """<script>
 // The tab strip. Runs *last* on purpose: every panel is in the document and visible
@@ -489,7 +572,7 @@ GENSEQ_JS = """<script>
       '<div class="genseq-head"><span class="genseq-title"></span>' +
       '<button type="button" class="genseq-toggle" hidden></button>' +
       '<span class="genseq-step"></span>' +
-      '<button type="button" class="genseq-close" title="close (Esc)" aria-label="close">&times;</button></div>' +
+      '<button type="button" class="genseq-close" data-tip="close (Esc)" aria-label="close">&times;</button></div>' +
       '<div class="genseq-label"></div><pre></pre>';
     document.body.appendChild(panel);
     els = {
@@ -956,6 +1039,17 @@ ANCHOR = re.compile(r'<a\s+([^>]*?)href="(?P<href>[^"]*)"([^>]*)>', re.I)
 TARGET_ATTR = re.compile(r'\s+target="[^"]*"', re.I)
 
 
+def one_tooltip_only(doc: str) -> str:
+    """Every native `title` becomes the page's own tooltip.
+
+    Our own generators emit `data-tip` directly. PlantUML does not: it turns a
+    `[[url{hint}]]` in the diagram source into `title="hint"` inside the SVG we inline,
+    and that generator is not ours to change. Rewriting the assembled document is the
+    one place that catches both. `<title>` *elements* are a different thing and are
+    left alone — the regex only matches the attribute."""
+    return re.sub(r'(<[a-zA-Z][^>]*?)\stitle="', r'\1 data-tip="', doc)
+
+
 def open_links_in_new_tabs(doc: str) -> str:
     """Every outbound link leaves the guide in a new tab — a reviewer reading this page
     should never lose their place in it. In-page anchors keep the current tab (a new tab
@@ -984,6 +1078,23 @@ def open_links_in_new_tabs(doc: str) -> str:
     return ANCHOR.sub(fix, doc)
 
 
+# The code-owners flag is the one thing on this page whose severity is *discovered* at
+# build time rather than authored: whether a merge is blocked depends on the diff, not on
+# what we wrote about it. So the renderer runs the check itself instead of including a
+# fragment somebody remembered to regenerate — a stale "no owner touched this" is worse
+# than no tab at all.
+def codeowners_fragment(block, root: Path, out_dir: Path):
+    dest = out_dir / block.get("out", "assets/codeowners.html")
+    cmd = [sys.executable, str(CODEOWNERS), "--base", block.get("base", "origin/main"),
+           "--out", str(dest), "--json"]
+    if block.get("noUntracked"):
+        cmd.append("--no-untracked")
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root)
+    if proc.returncode != 0:
+        raise SystemExit(proc.stderr.strip() or "[review] codeowners-check.py failed")
+    return dest.read_text(encoding="utf-8"), json.loads(proc.stdout)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -1008,8 +1119,9 @@ def main(argv=None) -> int:
             snippet_html(s["ref"], s.get("caption"), root) for s in f.get("snippets", [])
         )
 
-    sections, by_id = [], {}
+    sections, by_id, unchanged_ids = [], {}, {}
     for s in spec.get("sections", []):
+        unchanged_ids[s["id"]] = bool(s.get("unchanged"))
         snips = "".join(
             snippet_html(x["ref"], x.get("caption"), root) for x in s.get("snippets", [])
         )
@@ -1049,7 +1161,7 @@ def main(argv=None) -> int:
             f'<h2 id="codecity">{html.escape(city.get("title", "Where it landed in the city"))}</h2>\n'
             f'<p>{city.get("body", "")}</p>\n'
             f'<a class="city" href="{html.escape(city["href"])}" target="_blank" rel="noopener"'
-            f' title="Open the interactive Code City in a new tab">'
+            f' data-tip="Open the interactive Code City in a new tab">'
             f'<img src="{html.escape(city["png"])}" alt="Code City with the branch change set highlighted"></a>\n'
             f'<p class="sub">{city.get("caption", "")}</p>'
         )
@@ -1094,6 +1206,14 @@ def main(argv=None) -> int:
         check=True,
         cwd=root,
     ).stdout
+    # Same rule for the code-owners check: the block is rendered by the script, so the
+    # content file never has to remember to list a stylesheet it does not own.
+    if any(b.get("type") == "codeowners"
+           for t in spec.get("tabs") or [] for b in t.get("blocks", [])):
+        extra_css += subprocess.run(
+            [sys.executable, str(CODEOWNERS), "--css"],
+            capture_output=True, text=True, check=True, cwd=root,
+        ).stdout
 
     dspec = spec.get("diagrams", {})
     manifest_rows = read_manifest(out_dir / dspec.get("manifest", "assets/diagrams/MANIFEST.tsv"))
@@ -1107,64 +1227,118 @@ def main(argv=None) -> int:
                 f'{html.escape(title)}</h2>')
         return head + (f'<p>{block["body"]}</p>' if block.get("body") else "")
 
+    # A block can hang a badge on the tab that holds it — filled in per tab, below.
+    auto_badge = {}
+
     def render_block(block):
-        """One block of a tab, as (html, weight). Weight 0 means "nothing to show" —
-        a tab whose every block weighs nothing is dropped rather than shown empty."""
+        """One block of a tab, as (html, weight, changes).
+
+        `weight` is "is there anything at all to show" — a tab whose every block weighs
+        nothing is dropped. `changes` is the narrower question "did *this branch* move
+        anything here" — a tab that is all context and no delta is kept, and struck
+        through on the strip. A picture of the current state is not a change; that is
+        why `puml` and `codecity` carry weight but no changes."""
         kind = block.get("type", "section")
+        if kind == "overview":
+            return overview_html, 1, 1
         if kind == "findings":
             items = spec.get("findings", [])
-            return heading(block, "first", "Look here first") + render_findings(items), len(items)
+            return (heading(block, "first", "Look here first") + render_findings(items),
+                    len(items), len(items))
         if kind == "autofixes":
             items = spec.get("autofixes", [])
-            return heading(block, "fixed", "Already fixed for you") + render_autofixes(items), len(items)
+            return (heading(block, "fixed", "Already fixed for you") + render_autofixes(items),
+                    len(items), len(items))
         if kind == "diagrams":
             rows = select_rows(manifest_rows, block)
             placed.update(r["name"] for r in rows)
             # Nothing of this family changed: contribute nothing rather than a paragraph
             # saying so. Whether that leaves the tab empty is the tab's business.
             if not rows:
-                return "", 0
+                return "", 0, 0
             merged = dict(dspec)
             merged.pop("only", None)
             return (
                 heading(block, "diagrams", dspec.get("title", "Diagram deltas"))
                 + render_diagrams(merged, root, out_dir, rows),
-                len(rows),
+                len(rows), len(rows),
             )
         if kind == "puml":
-            return heading(block, "puml", block.get("title", "")) + render_puml(block, root, out_dir), 1
+            return (heading(block, "puml", block.get("title", ""))
+                    + render_puml(block, root, out_dir), 1, 0)
+        if kind == "codeowners":
+            frag, summary = codeowners_fragment(block, root, out_dir)
+            state, owned = summary["state"], summary["owned"]
+            # No CODEOWNERS in the repository is not a finding, it is an absence: drop
+            # the tab rather than teach the reviewer to ignore a permanent grey box.
+            if state == "no_codeowners":
+                print("[review] no CODEOWNERS file — dropping the code-owners tab",
+                      file=sys.stderr)
+                return "", 0, 0
+            if state == "approval_required":
+                auto_badge["badge"], auto_badge["class"] = "approval required", "alarm"
+            return (heading(block, "codeowners", block.get("title", "Code owners")) + frag,
+                    1, len(owned))
         if kind == "codecity":
-            return city_html, 1 if city_html else 0
+            return city_html, 1 if city_html else 0, 0
         if kind == "section":
             body = by_id.get(block["id"])
             if body is None:
                 raise SystemExit(f'[review] tab block references no section: {block["id"]}')
-            return body, 1
+            # A section is prose we wrote about the change, so it counts as a change
+            # unless it declares itself context.
+            return body, 1, 0 if unchanged_ids.get(block["id"]) else 1
         if kind == "html":
-            return block.get("html", ""), 1 if block.get("html") else 0
+            has = 1 if block.get("html") else 0
+            return block.get("html", ""), has, 0 if block.get("unchanged") else has
         raise SystemExit(f"[review] unknown tab block type: {kind}")
 
     tabs = spec.get("tabs")
+    lede_html = f'<div class="lede">{spec.get("summary", "")}</div>' if spec.get("summary") else ""
+    overview_html = ""
+    if tabs and not any(tab.get("id") == "overview" for tab in tabs):
+        # The summary and the verdict used to sit above the strip, which pushed the
+        # questions below the fold on a laptop — a reviewer scrolled past the answers to
+        # find out what the answers were. They are a tab now: the first one, so the page
+        # opens on them, and the strip lands in the first screenful.
+        overview_html = lede_html + verdict_html
+        if overview_html:
+            tabs = [{"id": "overview", "label": "Overview", "keepEmpty": True,
+                     "noStrike": True, "blocks": [{"type": "overview"}]}] + list(tabs)
+            lede_html = verdict_html = ""
     if tabs:
-        strip, panels, dropped = [], [], []
+        strip, panels, dropped, quiet = [], [], [], []
         for tab in tabs:
-            body, weight = "", 0
+            body, weight, changes = "", 0, 0
+            auto_badge.clear()
             for block in tab.get("blocks", []):
-                chunk, w = render_block(block)
+                chunk, w, c = render_block(block)
                 body += chunk
                 weight += w
+                changes += c
             if not weight and not tab.get("keepEmpty"):
                 dropped.append(tab["label"])
                 continue
             tid = html.escape(tab["id"])
             # A number on a tab is a promise that it means something. It does on the tab
             # holding the findings; on "Data model" it would just count pictures.
-            badge = tab.get("badge") or (str(weight) if tab.get("count") else "")
-            count = f'<span class="n">{html.escape(badge)}</span>' if badge else ""
+            badge = (tab.get("badge") or auto_badge.get("badge")
+                     or (str(weight) if tab.get("count") else ""))
+            badge_class = tab.get("badgeClass") or (
+                auto_badge.get("class", "") if not tab.get("badge") else "")
+            count = (f'<span class="n{" " + html.escape(badge_class) if badge_class else ""}">'
+                     f'{html.escape(badge)}</span>') if badge else ""
+            # Struck through rather than dropped: the answer "we looked, and this branch
+            # did not touch it" is worth as much to a reviewer as the answer that it did.
+            still = not changes and not tab.get("noStrike")
+            if still:
+                quiet.append(tab["label"])
             strip.append(
-                f'<button type="button" class="tab" role="tab" id="tabbtn-{tid}" '
-                f'aria-controls="{tid}" aria-selected="false" tabindex="-1">'
-                f'{html.escape(tab["label"])}{count}</button>'
+                f'<button type="button" class="tab{" quiet" if still else ""}" role="tab" '
+                f'id="tabbtn-{tid}" aria-controls="{tid}" aria-selected="false" tabindex="-1"'
+                + (' data-tip="This change set did not touch anything here — the tab holds '
+                   'the current state as context."' if still else "")
+                + f'>{html.escape(tab["label"])}{count}</button>'
             )
             panels.append(
                 f'<section class="panel" id="{tid}" role="tabpanel" '
@@ -1184,14 +1358,18 @@ def main(argv=None) -> int:
             + "".join(strip)
             + '<span class="grow"></span>'
             + '<button type="button" class="allbtn" aria-pressed="false" '
-            'title="Reveal every tab at once — makes ⌘F search the whole guide">'
+            'data-tip="Reveal every tab at once — makes ⌘F search the whole guide">'
             "show all</button></div>\n" + "\n".join(panels)
         )
+        notes = []
         if dropped:
-            body_html += (
-                '<p class="sub">Nothing to show for: '
-                + ", ".join(html.escape(d) for d in dropped) + ".</p>"
-            )
+            notes.append("Nothing to show for: "
+                         + ", ".join(html.escape(d) for d in dropped) + ".")
+        if quiet:
+            notes.append("Unchanged by this branch, kept as context: "
+                         + ", ".join(html.escape(q) for q in quiet) + ".")
+        if notes:
+            body_html += '<p class="sub">' + " ".join(notes) + "</p>"
     else:
         # No tab layout in the content file: the original single-column guide, unchanged.
         body_html = (
@@ -1214,7 +1392,7 @@ def main(argv=None) -> int:
 <h1>{html.escape(spec.get('title', 'Review guide'))}</h1>
 <p class="sub">{spec.get('subtitle', '')}</p>
 <div class="scopebar">{chips}</div>
-<div class="lede">{spec.get('summary', '')}</div>
+{lede_html}
 {verdict_html}
 
 {body_html}
@@ -1226,9 +1404,11 @@ def main(argv=None) -> int:
 {FOCUS_JS}
 {EDITOR_JS}
 {TABS_JS}
+{TIP_JS}
 </body></html>
 """
     doc = open_links_in_new_tabs(doc)
+    doc = one_tooltip_only(doc)
     out_path.write_text(doc, encoding="utf-8")
     print(f"[review] wrote {out_path}", file=sys.stderr)
     return 0

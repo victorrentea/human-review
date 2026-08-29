@@ -24,7 +24,8 @@ skill's moving parts:
 
 - `scripts/` — the mechanics: the page builder, the snippet extractor, the diagram
   driver, the video recorder, the Code City capture, the complexity delta, the OpenAPI
-  contract differ.
+  contract differ, the backward-compatibility check that second-guesses it, and the
+  code-owners check that says whether the merge is blocked.
 - `puml-diff/` — the two differs, `puml_diff.py` (class / ER / package) and
   `seq_puml_diff.py` (sequence). They diff any PlantUML diagram and know nothing about
   the project being reviewed.
@@ -40,6 +41,12 @@ SKILL="$(dirname "$(readlink -f .claude/skills/human-review 2>/dev/null || echo 
 never from where the script itself lives.** That is what lets the skill live in its own
 repository and still review yours — so run them from the repository root, and never
 "helpfully" rewrite a path to be relative to the skill.
+
+**Tooltips go through the page's one component**, never a native `title`: emit
+`data-tip="…"` and `TIP_JS` picks it up anywhere, including markup written later. The
+assembled page is rewritten once at the end to catch what we do not own — PlantUML turns
+`[[url{hint}]]` into a `title` inside the SVG we inline. `scripts/test_tooltips.py` fails
+the day somebody adds a native one back.
 
 One piece deliberately stays in the host project: a CI-facing diagram tool such as
 petclinic's `scripts/architecture-diff.sh`, which answers a narrower question and predates
@@ -62,8 +69,9 @@ rest of the skill is project-agnostic:
 | 7 | a committed API spec, generated not hand-written | `openapi.yaml`, extracted by `OpenApiExtractorTest` |
 
 Anything you have no answer for, drop — a tab with nothing to show is dropped and named
-under the strip, which is honest. Steps 0, 1, 2, 8 and 9 need nothing but git, python3 and
-plantuml; step 7 additionally needs PyYAML.
+under the strip, which is honest. Steps 0, 1, 2, 8, 9 and 10 need nothing but git, python3 and
+plantuml; step 7 additionally needs PyYAML, plus a JVM **or** Docker for the compatibility
+check — which fetches its own tool and is skipped with a stated reason if it has neither.
 
 ## Step 0 — Resolve the change set (from `$ARGUMENTS`)
 
@@ -253,9 +261,13 @@ otherwise read as "added by this branch".
 ## Step 7 — What the REST contract did
 
 ```sh
-${SKILL}/scripts/openapi-diff.py --base $BASE --out .human-review/assets/openapi-diff.html
-${SKILL}/scripts/openapi-diff.py --css  >  .human-review/assets/openapi-diff.css
+${SKILL}/scripts/openapi-diff.py   --base $BASE --out .human-review/assets/openapi-diff.html
+${SKILL}/scripts/openapi-diff.py   --css  >  .human-review/assets/openapi-diff.css
+${SKILL}/scripts/openapi-compat.py --base $BASE --out .human-review/assets/openapi-compat.html
+${SKILL}/scripts/openapi-compat.py --css  >  .human-review/assets/openapi-compat.css
 ```
+
+Two scripts, because they answer to different authorities.
 
 `git diff openapi.yaml` answers the question in the wrong currency: it says line 1937 gained
 six lines, when what the reviewer needs is "`VisitDto` grew three read-only fields, and none
@@ -272,14 +284,100 @@ Point `--spec` at your spec if it is not `openapi.yaml` at the root; the "before
 from the **merge-base**, and a spec that did not exist there is an empty one, not a crash.
 Every subject deep-links into the spec at the line that defines it.
 
+### The verdict, from a tool that is not ours
+
+Under every operation the verdict names, a `<details>` opens the **effective shape** the
+operation exposes — request in one column, response in the other, `$ref`s resolved. That
+resolution is the whole point: a property that moved in `components.schemas.VisitDto`
+appears once in the YAML, in a place nobody is looking, and never at the four operations
+that serve it. Grey is the contract as it was, red is added, red struck through is
+removed — the same convention as the PlantUML deltas, learned once. Example values are
+the spec's own `example:` fields, **never invented**: a made-up payload in a review is a
+liability, and a generated spec already carries the real ones.
+
+`openapi-diff.py` is *our* reading, and a reviewer is entitled to ask who checked the checker.
+`openapi-compat.py` runs **[OpenAPITools/openapi-diff](https://github.com/OpenAPITools/openapi-diff)**
+— the reference implementation, a Java library with its own rule set, the same one people put in
+CI — over the same two revisions and puts its single machine verdict at the top of the tab:
+`no_changes` · `compatible` · `incompatible`, with every incompatibility named in the currency of
+the caller ("now requires `date`", "the operation is gone", "`maxLength` unset → 5").
+
+It resolves the tool itself: `--jar`, then `$OPENAPI_DIFF_JAR`, then `~/.cache/human-review/`,
+then a download from Maven Central **verified against Maven's own sha1**, then `--docker` for a
+machine with no JVM. Nothing to install by hand, and nothing that runs an unverified jar.
+
+**The cross-check is the point.** The script also asks `openapi-diff.py` for its verdict and
+prints, under the seal, whether the two agree. Agreement is a footnote. A **disagreement** is the
+most review-worthy line on the whole page — one classifier says a client breaks and the other says
+it does not, so exactly one of them is wrong, and the guide must say which lines caused it rather
+than quietly showing whichever answer is prettier. Never suppress it, and never reconcile it by
+editing the prose: if we are over-strict, say so; if the reference tool found a gap in ours, say
+that and treat its list as the real one.
+
+It is **not** a gate. Plenty of contract breaks are deliberate and agreed, so the verdict is
+evidence for a human, never a build failure — `--state` prints the one word if you want it in a
+script, and that is as far as it goes.
+
 ⚠️ **Say what the classifier cannot see.** It reads the contract, not the handler. A `PUT`
 that starts *clearing* a field it was not sent is "an optional field appeared" to any
 structural differ alive — so if the automated reviews turned up a semantic break of that
-shape, put it in **Look here first** and cross-link it from the contract tab. And the spec is
+shape, put it in **Look here first** and cross-link it from the contract tab — and say in
+the tab that a green seal means the *shape* of the contract holds, not the behaviour behind
+it. Two differs agreeing is still two structural differs agreeing. And the spec is
 only evidence if it is generated: in a project where `openapi.yaml` is hand-written, this
 step diffs an intention rather than an API, and the guide should say so.
 
-## Step 8 — Snippets, findings, and the page
+## Step 8 — Who has to approve this
+
+```sh
+${SKILL}/scripts/codeowners-check.py --base $BASE --state
+```
+
+A `CODEOWNERS` file is a standing decision somebody already made: *these paths do not
+move without a named human agreeing*. The host enforces it at merge time — which is far
+too late to help the person doing the review, who by then has read the whole diff without
+knowing that a line of it was load-bearing enough to be owned.
+
+So ask it at review time. The script intersects the change set with the rules and answers
+in one word — `approval_required` · `no_owners_touched` · `no_codeowners` — then renders
+the tab: a red flag, the owners who must approve, and under each one **which files pulled
+them in and which rule claimed each file**, every path a link into the editor. The rest of
+the change set, matching nothing, collapses into a `<details>` so the tab is only the part
+that blocks.
+
+It is **not a gate**. It cannot approve anything and it does not guess whether the owner
+already looked; it answers *will this be blocked waiting for somebody, and for whom*,
+early enough to matter. Plenty of owned paths are touched deliberately and get approved
+in a minute — the flag says "budget for a second reviewer", never "you did something
+wrong". If an owned file was touched *incidentally* (a generated diagram, a formatter
+sweep), say so in **Look here first**: the cheapest fix for a blocked merge is often to
+not touch the file.
+
+Matching is gitignore's, not `fnmatch`'s, and the semantics differ by host — flat GitHub
+files are **last match wins**, GitLab `[Section]` files require *every* matching section
+and treat `^[Section]` as advisory. The script implements both, picks by whether the file
+has sections, and prints on the page which it applied. It also names what a host would
+silently skip: a `!negation` (unsupported in CODEOWNERS — it protects nothing while
+looking like it does), an owner that is not a user/team/email, and a second `CODEOWNERS`
+sitting at a path the host never reads. `scripts/test_codeowners.py` pins the matcher,
+because both failure modes are invisible on the page: too narrow drops the warning, too
+broad cries wolf until the tab is ignored.
+
+Wire it into the content file as its own tab, right after **Review** — the answer to
+"can this merge?" belongs next to the answer to "should it?":
+
+```json
+{"id":"owners","label":"Code owners","blocks":[{"type":"codeowners","base":"origin/main"}]}
+```
+
+The renderer runs the check itself rather than including a fragment somebody remembered
+to regenerate, pulls in the stylesheet on its own, and hangs the red **approval required**
+badge on the tab when the state says so — a stale "no owner touched this" is worse than
+no tab at all. No `CODEOWNERS` in the repository drops the tab entirely; nothing owned
+being touched keeps it and strikes the label through, which is the honest answer to a
+question worth asking.
+
+## Step 9 — Snippets, findings, and the page
 
 Never retype code into the guide. Reference it:
 
@@ -315,6 +413,7 @@ single column forces them past four answers to reach the one they wanted, so the
   {"id":"behaviour","label":"Behaviour",
    "blocks":[{"type":"diagrams","kind":"sequence","title":"Sequence deltas","body":"…"},
              {"type":"section","id":"tests"},{"type":"section","id":"video"}]},
+  {"id":"owners","label":"Code owners","blocks":[{"type":"codeowners"}]},
   {"id":"api","label":"API contract","badge":"+4","blocks":[{"type":"section","id":"api"}]},
   {"id":"data","label":"Data model",
    "blocks":[{"type":"diagrams","only":["DB","DomainModel"]},{"type":"section","id":"logic"}]},
@@ -330,15 +429,29 @@ single column forces them past four answers to reach the one they wanted, so the
 Block types: **`findings`** (the disputable calls), **`autofixes`** (the top-level
 `autofixes` array — what you applied in step 1, same shape as a finding), **`diagrams`**
 (the delta gallery, narrowed by `kind` / `only` / `except`), **`puml`** (a diagram this
-branch did *not* change, rendered from source as context), **`codecity`**, **`section`**
-(one entry of `sections` by `id`), **`html`**. Rules the renderer enforces:
+branch did *not* change, rendered from source as context), **`codeowners`** (step 8's
+check, run by the renderer), **`codecity`**, **`section`** (one entry of `sections` by
+`id`), **`html`**. Rules the renderer enforces:
 
+- an **Overview** tab is synthesised as the first tab, holding the summary and the
+  verdict, and the page opens on it. They used to sit above the strip, which pushed the
+  questions below the fold on a laptop: a reviewer scrolled past the answers to find out
+  what the answers were. Declare a tab with `id: "overview"` yourself to take it over;
 - a tab whose every block came back empty is **dropped**, and named in a line under the
   strip — never shown as an empty page;
+- a tab that has content but **no delta** — all context, nothing this branch touched — is
+  kept and its label is **struck through**, with a tooltip saying so. "We looked, and this
+  branch did not touch it" is worth as much to a reviewer as the opposite, and a dropped
+  tab cannot say it. `puml` and `codecity` blocks carry content but never a delta (a
+  picture of the current state is not a change); a `section` counts as a delta unless it
+  declares `"unchanged": true`. `noStrike: true` on a tab opts out;
 - a changed diagram that no tab claimed prints a **warning** at build time. A gallery that
   silently loses a diagram is the exact failure this pipeline exists to prevent;
-- `count: true` puts the item count on the tab, `badge: "…"` puts a literal there. Use one
-  only where the number means something — on the tab holding the findings it does; on
+- `count: true` puts the item count on the tab, `badge: "…"` puts a literal there, and
+  `badgeClass: "alarm"` makes it red — a badge that says something is *wrong* must not
+  look like a count, which is why the code-owners block sets both itself rather than
+  leaving the severity to whoever wrote the content file. Use a number
+  only where it means something — on the tab holding the findings it does; on
   "Data model" it would just count pictures;
 - omit `tabs` entirely and you get the original single-column page, unchanged.
 
@@ -352,15 +465,22 @@ What goes where, as a default worth departing from only with a reason:
    in one sentence and a snippet of the decisive lines; then the fixes you already applied.
    The two lists are one decision split in two, and a reviewer who cannot see the first pile
    has to take the size of the second on trust.
-2. **Behaviour** — the sequence deltas, the acceptance tests that produced them, the video,
+2. **Code owners** — whether a named human has to approve this before it can merge, and
+   which files put them on the critical path. It sits second because it is the only
+   answer on the page that is about the *merge* rather than the code, and a reviewer who
+   learns at the end that they are not the last signature has read the diff in the wrong
+   frame of mind.
+3. **Behaviour** — the sequence deltas, the acceptance tests that produced them, the video,
    and a plain statement of what is **not** covered.
-3. **API contract** — step 7's fragment, as a `section` with `includeHtml`.
-4. **Data model** — the DB and domain deltas, and the 2–5 core-logic bullets in domain
+4. **API contract** — step 7's two fragments, each a `section` with `includeHtml`: the
+   compatibility verdict first, because it is the one-word answer, then the classified
+   change list underneath it.
+5. **Data model** — the DB and domain deltas, and the 2–5 core-logic bullets in domain
    language, each backed by a snippet.
-5. **Packages** — the package delta, or the current package diagram as context.
-6. **Cost & shape** — the complexity increment and the Code City shot.
+6. **Packages** — the package delta, or the current package diagram as context.
+7. **Cost & shape** — the complexity increment and the Code City shot.
 
-## Step 9 — Hand the app back
+## Step 10 — Hand the app back
 
 Open the finished guide (`open .human-review/review.html`). Then make sure the app is actually
 running from **this** checkout and open the screen the change affects, so the human can

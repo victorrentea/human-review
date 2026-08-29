@@ -491,7 +491,7 @@ def render_subject(s: Subject, spec_abs: Path) -> str:
         name = f'<code class="oad-path">{name}</code>'
     if s.anchor:
         name = (f'<a class="oad-link" href="vscode://file/{spec_abs}:{s.anchor}:1" '
-                f'title="open the spec at this definition">{name}</a>')
+                f'data-tip="open the spec at this definition">{name}</a>')
 
     items = "".join(
         f'<li class="oad-{c.level}"><span class="oad-chip oad-{c.level}">'
