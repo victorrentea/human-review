@@ -24,10 +24,54 @@ Usage:
   serve-review.py .human-review --page review.html   # prints the page URL
   serve-review.py .human-review --stop
 """
-import argparse, functools, http.server, json, os, socket, socketserver, subprocess, sys, threading, time, urllib.request
+import argparse, functools, http.server, json, os, socket, socketserver, subprocess, sys, threading, time, urllib.parse, urllib.request
 from pathlib import Path
 
 MARKER = "/__human_review__"
+OPEN = "/__open__"
+
+# Everything the server will open must live under here — the repository the guide is
+# about. A loopback endpoint that opens any path in the editor is a wider door than this
+# needs, and the guide only ever references its own working tree.
+ROOT = None
+
+
+def git_root(start):
+    try:
+        out = subprocess.run(["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=5)
+        return Path(out.stdout.strip()) if out.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def open_in_editor(path, line):
+    """Land the reader in the class. Through the VS Code window that has this repo open
+    where the bridge is installed, and through the OS otherwise.
+
+    The page cannot do this itself: its references are `vscode://file/...` links, and the
+    embedded browser's iframe is sandboxed under a `frame-src *` CSP, so a webview cannot
+    hand a custom scheme to the OS — the click does nothing whatever the anchor says. It
+    *can* fetch its own origin, which is how the request gets here."""
+    folder = ROOT.name if ROOT else None
+    for f in sorted((Path.home() / ".walkie-talkie" / "ide").glob("vscode-*.json")):
+        try:
+            entry = json.loads(f.read_text())
+            ping = urllib.request.Request(
+                f"http://127.0.0.1:{entry['port']}/ping", headers={"x-relay-token": entry["token"]})
+            if json.load(urllib.request.urlopen(ping, timeout=2)).get("folder") != folder:
+                continue
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{entry['port']}/open-file", method="POST",
+                data=json.dumps({"path": str(path), "line": line}).encode(),
+                headers={"x-relay-token": entry["token"], "Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=5).read()
+            return "relay"
+        except Exception:
+            continue
+    # No bridge: hand it to the OS, which routes it to the last-active window.
+    subprocess.run(["open", f"vscode://file/{path}:{line}:1"], capture_output=True)
+    return "os"
 
 
 def probe(port):
@@ -68,6 +112,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path.split("?")[0] == OPEN:
+            q = urllib.parse.parse_qs(self.path.partition("?")[2])
+            target = Path(q.get("path", [""])[0])
+            line = int(q.get("line", ["1"])[0] or 1)
+            ok = ROOT is not None and target.is_file()
+            if ok:
+                try:
+                    target.resolve().relative_to(ROOT.resolve())
+                except ValueError:
+                    ok = False
+            if ok:
+                open_in_editor(target, line)
+            # 204 either way: the click must never navigate the panel away from the
+            # guide, and a reader who clicked a stale reference wants the page they
+            # were reading, not an error document in place of it.
+            self.send_response(204 if ok else 404)
+            self.end_headers()
+            return
         Handler.hits += 1
         super().do_GET()
 
@@ -83,6 +145,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def serve(directory, port, idle_minutes):
+    global ROOT
+    ROOT = git_root(directory) or Path(directory).parent
     Handler.root = directory
     handler = functools.partial(Handler, directory=directory)
     socketserver.TCPServer.allow_reuse_address = True

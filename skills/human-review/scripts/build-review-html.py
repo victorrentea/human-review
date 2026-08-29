@@ -494,16 +494,24 @@ TABS_JS = """<script>
 
 EDITOR_JS = r"""<script>
 // Click-to-source depends on the OS handing `vscode://` to the editor, and only a real
-// browser tab can ask it to. VS Code's own Simple Browser is a webview: it cannot launch
-// an external scheme at all, so the click does nothing whatever the anchor says — a
-// target="_blank" does not help, because there is no tab to open it in.
+// browser tab can ask it to. VS Code's own Simple Browser is a webview: its iframe is
+// sandboxed without `allow-top-navigation` under a `frame-src *` CSP, so it cannot launch
+// an external scheme at all and the click does nothing whatever the anchor says — a
+// target="_blank" does not help either, because there is no tab to open it in.
 //
-// So the page behaves differently depending on where it is being read. At top level the
-// link navigates in place, which hands off to the editor without stranding an about:blank
-// tab behind every jump. Embedded, it copies the reference and says what to do with it,
-// and a banner says once why the links cannot do the rest.
+// **But a sandboxed iframe can still fetch its own origin.** When the guide is served by
+// serve-review.py rather than opened off disk, the click becomes a request back to that
+// server, which opens the file in the VS Code window that has this repository — and the
+// reader lands in the class, embedded or not. That is the whole reason the guide is
+// served instead of opened as a file.
+//
+// So there are three cases, and only the last one is a consolation prize:
+//   served    → ask the server; it puts the caret in the file.
+//   top level → navigate in place, handing off to the editor with no tab stranded behind.
+//   embedded, unserved → copy the reference and say what to do with it, once, in a banner.
 (function () {
   var EMBEDDED = window.self !== window.top;
+  var SERVED = location.protocol === 'http:' || location.protocol === 'https:';
 
   function copy(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -534,10 +542,27 @@ EDITOR_JS = r"""<script>
     flash.timer = setTimeout(function () { toast.classList.remove('shown'); }, 2600);
   }
 
+  // `vscode://file//abs/path.java:487:1` → the two halves the server wants.
+  function parse(href) {
+    var m = /^vscode:\/\/file\/*(\/[^:]*?)(?::(\d+))?(?::\d+)?$/.exec(decodeURIComponent(href));
+    return m ? { path: m[1], line: m[2] || '1' } : null;
+  }
+
   document.addEventListener('click', function (ev) {
     var link = ev.target.closest && ev.target.closest('a[href^="vscode:"]');
     if (!link || ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
     ev.preventDefault();
+    var ref2 = SERVED && parse(link.getAttribute('href'));
+    if (ref2) {
+      fetch('/__open__?path=' + encodeURIComponent(ref2.path) + '&line=' + ref2.line)
+        .then(function (r) {
+          // 404 means the server would not open it — a reference outside the repository,
+          // or a file that has since moved. Say so rather than leave the click silent.
+          if (!r.ok) flash('Could not open ' + ref2.path.split('/').pop());
+        })
+        .catch(function () { flash('The review server is no longer running'); });
+      return;
+    }
     if (!EMBEDDED) { window.location.href = link.getAttribute('href'); return; }
     // `path:line`, which is what Quick Open takes
     var ref = (link.textContent || '').trim().split('-')[0]
@@ -545,13 +570,14 @@ EDITOR_JS = r"""<script>
     copy(ref).then(function () { flash('Copied ' + ref + ' — paste into Quick Open (\u2318P)'); });
   });
 
-  if (!EMBEDDED) return;
+  if (!EMBEDDED || SERVED) return;
   document.addEventListener('DOMContentLoaded', function () {
     var note = document.createElement('p');
     note.className = 'embedded-note';
-    note.innerHTML = 'You are reading this inside an embedded browser, which cannot open '
-      + 'links into the editor. Clicking a <code>path:line</code> copies it instead — or '
-      + 'open <code>.human-review/review.html</code> in a real browser, where the links work.';
+    note.innerHTML = 'You are reading this inside an embedded browser, opened straight off '
+      + 'disk, so the links cannot reach the editor. Clicking a <code>path:line</code> '
+      + 'copies it instead. Serve the guide with <code>serve-review.py</code> and they open '
+      + 'the file for real.';
     var body = document.querySelector('.wrap') || document.body;
     body.insertBefore(note, body.firstChild);
   });
