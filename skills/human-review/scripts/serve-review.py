@@ -51,17 +51,24 @@ def free(port):
 class Handler(http.server.SimpleHTTPRequestHandler):
     root = "."
     last_seen = time.time()
+    hits = 0
 
     def do_GET(self):
         Handler.last_seen = time.time()
         if self.path.split("?")[0] == MARKER:
-            body = json.dumps({"served": str(Path(Handler.root).resolve()), "pid": os.getpid()}).encode()
+            # `hits` is here so a caller can tell "the panel reloaded" from "the
+            # panel is showing what it already had" — the two look identical from
+            # outside, and an embedded browser that quietly kept the previous
+            # build is the failure this whole step exists to avoid.
+            body = json.dumps({"served": str(Path(Handler.root).resolve()),
+                               "pid": os.getpid(), "hits": Handler.hits}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
             return
+        Handler.hits += 1
         super().do_GET()
 
     # The report is rebuilt in place and reloaded in a browser that was already
