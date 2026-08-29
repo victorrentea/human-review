@@ -88,8 +88,25 @@ review." and stop. Create `.human-review/assets/`.
 
 ## Step 1 — Run the automated reviews, fix what is not disputable
 
-Invoke **`/code-review`** and **`/simplify`** on the same range. Then split every finding
-in two, and say out loud which pile each landed in:
+Invoke **`/code-review`** and **`/simplify`** on the same range — in that order, one after
+the other, **never in the same turn**. The two are not two opinions on the same question:
+`/code-review` hunts correctness bugs, `/simplify` does not look for bugs at all and instead
+shrinks the solution, applying its own cleanups to the working tree. Step 9 has to report
+what each one did on its own, and two runs whose edits land interleaved can no longer be
+told apart.
+
+**Take a measurement between them and after them**, or the numbers in step 9 are a guess:
+
+```sh
+git diff --numstat | awk '{i+=$1; d+=$2} END {print i, d}'   # insertions deletions
+```
+
+Run it once after the `/code-review` fixes are in, once after `/simplify` has finished.
+`/simplify`'s net effect is `(d₂−d₁) − (i₂−i₁)` — the lines it removed minus the ones it
+added back. It is allowed to come out negative; a cleanup that grew the code is worth
+saying so.
+
+Then split every finding in two, and say out loud which pile each landed in:
 
 - **Non-disputable → fix it now.** One obvious right answer, no behaviour change, no
   product call: a duplicated helper, a test that passes vacuously, a shared persistence
@@ -396,6 +413,44 @@ ${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-re
 
 The JSON holds only prose + `path:from-to` references + per-diagram notes; the renderer
 owns the shell, the CSS, the inlined SVGs and the snippet extraction.
+
+### The scope bar — one chip per fact, and a chip per review
+
+`"scope"` is a list of `{label, value, href?}` chips across the top of the page: the
+change set in numbers, before any argument about it. `value` is **raw HTML** on purpose
+(`<span class="added">+2256</span> / <span class="removed">−34</span>`), and `href` makes
+the chip a link — an external one opens in a new tab.
+
+```json
+"scope": [
+  {"label":"commits","value":"2 (pushed to main)","href":"https://github.com/…/compare/…"},
+  {"label":"files","value":"25 (16 changed, 9 new)"},
+  {"label":"lines","value":"<span class=\"added\">+2256</span> / <span class=\"removed\">−34</span>"},
+  {"label":"unit tests","value":"125 green (20 new)"},
+  {"label":"diagrams","value":"3","href":"#diagrams"},
+  {"label":"/code-review","value":"6 findings",
+   "href":"https://code.claude.com/docs/en/code-review#review-a-diff-locally"},
+  {"label":"/simplify","value":"<span class=\"removed\">−118 lines</span> · 2 findings",
+   "href":"https://code.claude.com/docs/en/commands#all-commands"}
+]
+```
+
+⚠️ **The two automated reviews get one chip each — never a single merged "reviews run".**
+They answer different questions, so one number over both says neither. Each chip is
+labelled with the command that produced it and links to that command's own page in the
+Claude Code documentation, so a reviewer who has never run either can find out in one
+click what the number is a number *of*:
+
+| chip | value | measured in step 1 |
+| --- | --- | --- |
+| `/code-review` | `N findings` — **everything it found**, the disputable ones and the ones you fixed yourself. A chip that counted only the leftovers would shrink as you did more work. | count the findings it reported |
+| `/simplify` | `−N lines · M findings` — how much code it removed, *then* how many cleanups it raised. Its job is to shrink the solution, so the line count is the headline and goes first. | the `(d₂−d₁) − (i₂−i₁)` arithmetic above |
+
+Wrap the line count in `<span class="removed">…</span>` when it is a removal and
+`<span class="added">…</span>` on the rare run that grew the code, so the sign is legible
+at chip size. A review that found nothing still gets its chip, with `0 findings` — the
+absence of findings is a result, and a missing chip reads as "we never ran it". If one
+genuinely did not run, say so in its own chip (`not run — <reason>`) rather than dropping it.
 
 ### Lay it out as tabs, not as a scroll
 

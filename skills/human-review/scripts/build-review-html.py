@@ -1257,7 +1257,8 @@ def main(argv=None) -> int:
     # Chips carry HTML on purpose: a chip is often a link (to the branch on GitHub, to a
     # section further down) or coloured (+added / -removed), and escaping would kill both.
     chips = []
-    for c in spec.get("scope", []):
+    scope = spec.get("scope", [])
+    for c in scope:
         inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
         if c.get("href"):
             chips.append(
@@ -1267,6 +1268,16 @@ def main(argv=None) -> int:
         else:
             chips.append(f'<span class="chip">{inner}</span>')
     chips = "".join(chips)
+
+    # /code-review hunts bugs, /simplify shrinks the solution — different questions, so a
+    # single chip over both reports neither. Warn rather than fail: the page still builds
+    # for a run that legitimately skipped one, as long as it says which and why.
+    labels = " ".join(c["label"].lower() for c in scope)
+    missing = [name for name in ("/code-review", "/simplify") if name[1:] not in labels]
+    if scope and missing:
+        print(f"[review] WARNING: the scope bar has no chip for {', '.join(missing)} — "
+              "each automated review gets its own chip, never one merged 'reviews run'",
+              file=sys.stderr)
 
     v = spec.get("verdict")
     verdict_html = ""
