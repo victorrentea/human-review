@@ -69,7 +69,9 @@ rest of the skill is project-agnostic:
 | 7 | a committed API spec, generated not hand-written | `openapi.yaml`, extracted by `OpenApiExtractorTest` |
 
 Anything you have no answer for, drop — a tab with nothing to show is dropped and named
-under the strip, which is honest. Steps 0, 1, 2, 8, 9 and 10 need nothing but git, python3 and
+under the strip, which is honest. Step 10 opens the finished guide inside VS Code where a
+bridge for that is installed, and falls back to a URL you ⌘-click — never a hard requirement.
+Steps 0, 1, 2, 8, 9 and 10 need nothing but git, python3 and
 plantuml; step 7 additionally needs PyYAML, plus a JVM **or** Docker for the compatibility
 check — which fetches its own tool and is skipped with a stated reason if it has neither.
 
@@ -535,14 +537,50 @@ What goes where, as a default worth departing from only with a reason:
 6. **Packages** — the package delta, or the current package diagram as context.
 7. **Cost & shape** — the complexity increment and the Code City shot.
 
-## Step 10 — Hand the app back
+## Step 10 — Hand the guide over, then the app
 
-Open the finished guide (`open .human-review/review.html`). Then make sure the app is actually
-running from **this** checkout and open the screen the change affects, so the human can
-exercise it. Seed extra rows if the sample data is too thin to show the feature off.
-Finally start `/relay` so they can dictate UX tweaks straight into the session.
+Serve the guide and open it. **Never `open .human-review/review.html`**: that hands the page
+to whatever the OS thinks owns `.html`, which is another application on another desktop,
+while the terminal that just built it is sitting inside an editor.
+
+```sh
+URL=$(${SKILL}/scripts/serve-review.py .human-review)     # http://127.0.0.1:7654/review.html
+```
+
+A loopback static server on a fixed port, detached, idle-reaped after four hours, and a
+second run of the skill reuses the first one rather than leaving a listener behind. It is
+what makes the guide *addressable* — the report has to have a URL before anything can show
+it, and both of VS Code's embedded browsers refuse `file://` (the Simple Browser's iframe
+is bound by a `frame-src *` CSP, and a CSP wildcard does not cover non-network schemes, so
+a file URL renders as a blank panel with no error).
+
+Then open it where the reader already is:
+
+- **`$TERM_PROGRAM = vscode`** → in that VS Code window, beside the code. From a terminal
+  you cannot aim at the window you are running in — nothing in the environment identifies
+  it — so this needs a bridge inside the editor. Where `open-in-browser.py` from
+  [victor-vsc](https://github.com/victorrentea/victor-vsc) is available, run
+  `open-in-browser.py "$URL"`: it asks every window's extension host who it is, picks the
+  one whose workspace folder is this git root, and opens the page in its Simple Browser
+  beside the editor. Note it matches by **folder, not focus** — while an agent works, the
+  window Victor is watching is usually a different one.
+- **anything else, or no bridge** → print the URL and say to ⌘-click it. Any VS Code since
+  1.134 offers its own Browser View for a localhost link clicked in the terminal
+  (`workbench.browser.openLocalhostLinks`), so the fallback is still an embedded page and
+  not a trip to Chrome.
+
+Either way **print `$URL` as the last line of the run**, because the reader closes the panel
+and wants it back an hour later. It stays valid until the server idles out; re-running
+`serve-review.py` revives it at the same address.
+
+Then make sure the app is actually running from **this** checkout and open the screen the
+change affects, so the human can exercise it. Seed extra rows if the sample data is too thin
+to show the feature off. Finally start `/relay` so they can dictate UX tweaks straight into
+the session.
 
 ## Wrap-up
 
-`.human-review/` is a throwaway artifact — remind the human to delete it rather than commit it.
-Print the path, and list what you fixed vs what you left for them. Do not commit or push.
+`.human-review/` is a throwaway artifact — remind the human to delete it rather than commit it
+(`serve-review.py --stop` first, or the server holds the folder open until it idles out).
+Print the path and the URL, and list what you fixed vs what you left for them. Do not commit
+or push.
