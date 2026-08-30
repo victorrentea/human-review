@@ -1240,6 +1240,28 @@ REQUIRED = {
 }
 
 
+def cost_chip(root: Path) -> dict | None:
+    """What this review run consumed, asked of the run itself.
+
+    Returns None — dropping the chip rather than showing a wrong one — whenever the answer
+    cannot be trusted: no session id in the environment (the page was built outside a
+    Claude Code session), or no transcript for it.
+    """
+    script = Path(__file__).resolve().parent / "review-cost.py"
+    if not script.is_file():
+        return None
+    proc = subprocess.run([sys.executable, str(script), "--chip"],
+                          cwd=root, capture_output=True, text=True)
+    if proc.returncode != 0 or not proc.stdout.strip():
+        for line in proc.stderr.strip().splitlines()[-1:]:
+            print(f"[review] no cost chip: {line}", file=sys.stderr)
+        return None
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
 def validate(spec: dict, out_dir: Path) -> list[str]:
     """Every problem in the content file, named, in one pass.
 
@@ -1368,7 +1390,19 @@ def main(argv=None) -> int:
     chips = []
     scope = spec.get("scope", [])
     for c in scope:
+        # A chip that has to be kept up to date by hand is a chip that will be wrong. The
+        # cost of the run is the extreme case: it is still changing while the page is being
+        # written, so it is computed here, at build time, and never typed into the content
+        # file. `{"auto": "cost"}` is the whole declaration; label, value and tooltip all
+        # come back from the script.
+        if c.get("auto") == "cost":
+            computed = cost_chip(root)
+            if computed is None:
+                continue
+            c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
         inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
+        if c.get("tip"):
+            inner = f'<span data-tip="{html.escape(c["tip"])}">{inner}</span>'
         if c.get("href"):
             chips.append(
                 f'<a class="chip chip-link" href="{html.escape(c["href"])}"'
@@ -1381,7 +1415,7 @@ def main(argv=None) -> int:
     # /code-review hunts bugs, /simplify shrinks the solution — different questions, so a
     # single chip over both reports neither. Warn rather than fail: the page still builds
     # for a run that legitimately skipped one, as long as it says which and why.
-    labels = " ".join(c["label"].lower() for c in scope)
+    labels = " ".join((c.get("label") or c.get("auto") or "").lower() for c in scope)
     missing = [name for name in ("/code-review", "/simplify") if name[1:] not in labels]
     if scope and missing:
         print(f"[review] WARNING: the scope bar has no chip for {', '.join(missing)} — "

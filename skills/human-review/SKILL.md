@@ -119,7 +119,13 @@ undetectable. It is the only failure mode here that produces a confident, wrong 
 
 ```sh
 rm -rf .human-review/assets && mkdir -p .human-review/assets
+date -u +%Y-%m-%dT%H:%M:%S+00:00 > .human-review/.started
 ```
+
+That second line is what lets the page report **what it cost to produce**. Without it the
+cost chip falls back to the whole session — which, on a session that also built the feature,
+is a much bigger number than the review, and the tooltip has to say so instead of being
+useful. Write it once, here, before anything expensive runs.
 
 Run the skill's own tests once while you are here (~2 s). They are the only thing standing
 between the two differs and silent drift, and nothing else runs them:
@@ -586,6 +592,38 @@ the chip a link — an external one opens in a new tab.
    "href":"https://code.claude.com/docs/en/commands#all-commands"}
 ]
 ```
+
+### The chip that computes itself
+
+```json
+"scope": [ …, {"auto": "cost"} ]
+```
+
+That is the whole declaration: no label, no value. The renderer runs
+`scripts/review-cost.py` at build time and fills in **what this review run consumed** —
+list-price dollars and a token count, with the breakdown on hover. It is the one number on
+the page that is still changing while the page is being written, so it is the one number
+that must never be typed into the content file.
+
+What it counts, and why each part was easy to get wrong:
+
+* **Subagents.** They are not in the session transcript — a subagent's turns go to
+  `/tmp/claude-<uid>/…/tasks/<agentId>.output`, and nothing in the environment names that
+  directory. The script reads the agent ids out of the parent transcript instead, so the
+  link is exact rather than a filesystem guess that would sweep up a concurrent session's
+  agents. On the reference run this was **300 of 602 turns** — a chip without them would
+  have been wrong by most of the work.
+* **Deduped by `message.id`**, because a streamed message is written more than once with
+  its usage repeated, and summing rows roughly doubles the bill.
+* **Cache reads priced at a tenth of input.** They dominate the *token* count on any long
+  run (108M of 111M on the reference run) while contributing almost nothing to the *cost*,
+  which is exactly why the chip leads with dollars and keeps tokens as the smaller half.
+
+The figure is **list-price equivalent** — what these tokens would cost on the API. A
+subscription is not billed it, and the tooltip says so rather than letting the page imply
+somebody paid $78 for a code review. Drop the chip and nothing else changes; the renderer
+also drops it by itself, rather than printing a wrong number, when there is no session id
+in the environment or no transcript to read.
 
 ⚠️ **The two automated reviews get one chip each — never a single merged "reviews run".**
 They answer different questions, so one number over both says neither. Each chip is
