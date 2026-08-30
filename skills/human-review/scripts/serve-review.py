@@ -96,6 +96,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     root = "."
     last_seen = time.time()
     hits = 0
+    opens = 0
 
     def do_GET(self):
         Handler.last_seen = time.time()
@@ -105,7 +106,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # outside, and an embedded browser that quietly kept the previous
             # build is the failure this whole step exists to avoid.
             body = json.dumps({"served": str(Path(Handler.root).resolve()),
-                               "pid": os.getpid(), "hits": Handler.hits}).encode()
+                               "pid": os.getpid(), "hits": Handler.hits,
+                               "opens": Handler.opens}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -123,6 +125,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except ValueError:
                     ok = False
             if ok:
+                # Counted separately from `hits`: a click that reaches the editor is the
+                # one thing about this page that cannot be seen from outside — and on the
+                # night this was written, it could not be seen from *inside* either,
+                # because a 3am screenshot of a sleeping display is a black rectangle.
+                Handler.opens += 1
                 open_in_editor(target, line)
             # 204 either way: the click must never navigate the panel away from the
             # guide, and a reader who clicked a stale reference wants the page they
