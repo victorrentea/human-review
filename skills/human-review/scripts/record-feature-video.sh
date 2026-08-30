@@ -49,21 +49,58 @@ RAW="${OUT%.webm}.raw.webm"
 CUES="${OUT%.webm}.cues.json"
 VOICEDIR="${OUT%.webm}.narration"
 
-BASE_URL="${BASE_URL:-http://localhost:4200}"
-API_URL="${API_URL:-http://localhost:8080}"
+# 127.0.0.1, never "localhost": Node 18+ puts ::1 first, an IPv4-only dev server refuses it,
+# and undici reports that as the bare string "fetch failed". curl hides it (Happy Eyeballs).
+BASE_URL="${BASE_URL:-http://127.0.0.1:4200}"
+API_URL="${API_URL:-http://127.0.0.1:8080}"
 
 curl -fsS -o /dev/null "$BASE_URL/" || { echo "[video] frontend not up at $BASE_URL" >&2; exit 2; }
 curl -fsS -o /dev/null "$API_URL/api/pettypes" || { echo "[video] backend not up at $API_URL" >&2; exit 2; }
 
 mkdir -p "$(dirname "$OUT")" "$VOICEDIR"
 rm -f "$VOICEDIR"/*.wav
+# The flow being filmed belongs to the PROJECT, not to this skill. The skill owns the
+# harness — launching, narrating, timing the cues, spotlighting, annotating — and the
+# project owns the twenty lines that say what to click. Before this split the narration
+# and selectors of one project's feature lived in here, so filming the next feature meant
+# editing another git repository (or a plugin cache that the next update overwrites), and
+# the selectors were generic enough to keep resolving: you got a polished, correctly
+# captioned film of the wrong feature.
+FEATURE="${HUMAN_REVIEW_FEATURE_SCRIPT:-}"
+if [ -z "$FEATURE" ]; then
+  for candidate in "$ROOT/.human-review/feature-script.js" "$ROOT/human-review-feature.js"; do
+    [ -f "$candidate" ] && { FEATURE="$candidate"; break; }
+  done
+fi
+if [ -z "$FEATURE" ] || [ ! -f "$FEATURE" ]; then
+  cat >&2 <<'MSG'
+[video] no feature script — nothing to film, so step 5 is skipped (say so in the guide).
+
+Write one at .human-review/feature-script.js (or human-review-feature.js at the repo
+root, or point $HUMAN_REVIEW_FEATURE_SCRIPT at it). It exports one async function:
+
+  module.exports = async ({page, say, pause, get, app, apiUrl}) => {
+    await page.goto(`${app}/some/screen`);
+    const thing = page.locator("#the-new-thing");
+    await say("This is the new part.", thing);   // spoken, captioned, spotlit
+    await pause(2000);                           // a FLOOR; the narration may stretch it
+    return {ok: true, note: "one line for the run summary"};
+  };
+
+Return {ok:false} when the feature did not work: the film is still kept and the recorder
+exits 3, because a film of the feature NOT working is the most valuable one it can make.
+MSG
+  exit 2
+fi
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 set +e
 NODE_PATH="$ROOT/petclinic-test/node_modules" node -e '
 const {chromium} = require("playwright");
-const [baseUrl, apiUrl, videoDir, raw, cuesPath, voiceDir, narrator] = process.argv.slice(1);
+const [baseUrl, apiUrl, videoDir, raw, cuesPath, voiceDir, narrator, featurePath] =
+    process.argv.slice(1);
 const fs = require("fs");
 const path = require("path");
 const {execFileSync} = require("child_process");
@@ -84,6 +121,19 @@ const speak = (text, wav) => {
   } catch (e) { return null; }
 };
 
+// Everything network goes through this. undici throws a TypeError whose entire message is
+// the string "fetch failed" — no URL, no errno — and the cause hides on `.cause`. A feature
+// script that cannot reach the app should say which URL it could not reach.
+const get = async (url) => {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res;
+  } catch (e) {
+    throw new Error(`GET ${url}: ${e.cause?.code || e.message}`);
+  }
+};
+
 (async () => {
   const owners = await (await fetch(apiUrl + "/api/owners")).json();
   const owner = owners.find(o => (o.pets || []).length > 0);
@@ -91,7 +141,7 @@ const speak = (text, wav) => {
 
   // The dev server answers on every path, but the Angular router only matches routes under
   // the <base href> the served index.html carries. Hardcoding "/" films an empty shell.
-  const indexHtml = await (await fetch(baseUrl + "/")).text();
+  const indexHtml = await (await get(baseUrl + "/")).text();
   const app = baseUrl + ((indexHtml.match(/<base href="([^"]*)"/) || [, "/"])[1])
       .replace(/\/$/, "");
 
@@ -137,119 +187,14 @@ const speak = (text, wav) => {
   // for the sentence being spoken over it to finish, plus a beat before the next one starts.
   const pause = (ms) => page.waitForTimeout(Math.max(ms, spokenUntil + 350 - Date.now()));
 
-  await page.goto(`${app}/owners/${owner.id}`);
-  await page.locator("h2:has-text(\"Owner Information\")").waitFor();
-  const vetColumn = page.locator("app-visit-list th:has-text(\"Vet\")").first();
-  await vetColumn.scrollIntoViewIfNeeded();
-  await say("The owner’s page. Every pet lists its visits — and the list now has a Vet column.",
-      vetColumn);
-  await pause(2600);
-
-  const addVisit = page.locator("button:has-text(\"Add Visit\"), a:has-text(\"Add Visit\")").first();
-  await addVisit.scrollIntoViewIfNeeded();
-  await say("Booking a new visit for the first pet.", addVisit);
-  await pause(1500);
-  await addVisit.click();
-  await page.locator("input#description").waitFor();
-  await pause(1200);
-
-  await say("Date and reason, as before — nothing here changed.");
-  await page.locator("input[name=\"date\"]").fill("2026-09-15");
-  const description = `Post-op check ${Date.now()}`;
-  await page.locator("input#description").fill(description);
-  await pause(1400);
-
-  const vetSelect = page.locator("select#vetId");
-  const vetRow = page.locator("div.form-group").filter({has: page.locator("label[for=\"vetId\"]")})
-      .last();
-  const realVets = vetSelect.locator("option:not([value$=\"null\"]):not([value=\"\"])");
-  const vetName = (await realVets.first().textContent() || "").trim();
-  await vetSelect.scrollIntoViewIfNeeded();
-  await say("This is the new part: a Vet dropdown. It defaults to “not assigned”, because a "
-      + "visit is allowed to have no vet.", vetSelect);
-  await pause(2000);
-
-  await say(`Picking ${vetName} as the vet who attended.`, vetRow);
-  await vetSelect.selectOption({label: vetName});
-  await pause(1800);
-
-  const submit = page.locator("button[type=\"submit\"]:has-text(\"Add Visit\")");
-  await submit.scrollIntoViewIfNeeded();
-  await say("Saving — the vet id travels with the visit and lands in the new vets column.", submit);
-  await pause(1700);
-  await submit.click();
-  await page.locator("h2:has-text(\"Owner Information\")").waitFor();
-
-  // Anchor on the row we just created, never on "any cell showing that vet name": the
-  // sample data is full of other visits with the same vet, and matching one of those
-  // would film a success the feature did not actually deliver.
-  const newRow = page.locator("app-visit-list tr").filter({hasText: description}).first();
-  await newRow.scrollIntoViewIfNeeded();
-  await pause(1400);
-  // If the vet did not come back, that is the story worth filming — narrate it rather than
-  // letting the footage imply a success. The non-zero exit is what stops a broken run from
-  // being embedded silently.
-  const rowText = (await newRow.textContent() || "");
-  const saved = rowText.includes(vetName);
-  if (!saved) {
-    await say(`⚠ The visit came back with no vet — an em dash. Booking through the UI is NOT `
-        + `saving the vet right now.`, newRow);
-    await pause(3200);
+  // Everything above is the harness; everything the film SHOWS comes from the project.
+  const flow = require(featurePath);
+  if (typeof flow !== "function") {
+    throw new Error(`${featurePath} must module.exports = async ({page, say, pause, …}) => {…}`);
   }
-
-  if (saved) {
-    await say("Back on the owner’s page: the new visit is attributed to that vet. Older visits "
-        + "show an em dash — they never had one.", newRow);
-  } else {
-    await say("The rows above that DO show a vet were written straight to POST /api/visits — "
-        + "that path still works.");
-  }
-  await pause(2400);
-
-  // The Edit control lives in the per-pet visit list on the owner page, not on /visits.
-  // Match the vet CELL of a visit row, not any tr containing that text: the pet block is
-  // itself a tr wrapping the whole visit table, so a looser locator opens the first visit
-  // of the pet — which has no vet — under a narration promising a pre-selected one.
-  const editRow = page.locator("app-visit-list tr")
-      .filter({has: page.locator(`td.visit-vet:text-is("${vetName}")`)}).first();
-  const editLink = editRow.locator("button:has-text(\"Edit Visit\"), a:has-text(\"Edit Visit\")")
-      .first();
-  if (!(await editLink.count())) {
-    throw new Error("no Edit Visit control on the owner page — the edit half went unfilmed");
-  }
-  await editLink.scrollIntoViewIfNeeded();
-  await say("Booking is not the only way in. Opening that visit for editing.", editLink);
-  await pause(1600);
-  await editLink.click();
-  const editSelect = page.locator("select#vetId");
-  await editSelect.waitFor();
-  await pause(1600);
-
-  await editSelect.scrollIntoViewIfNeeded();
-  await say("The saved vet comes back pre-selected — the read path works, not just the write "
-      + "path.", editSelect);
-  await pause(2200);
-
-  const options = (await editSelect.locator("option:not([value$=\"null\"]):not([value=\"\"])")
-      .allTextContents()).map(t => t.trim());
-  const other = options.find(t => t && t !== vetName);
-  if (other) {
-    await say(`Reassigning to ${other}. Choosing “not assigned” here clears the vet again.`,
-        editSelect);
-    await editSelect.selectOption({label: other});
-    await pause(2600);
-  }
-
-  await page.goto(`${app}/visits`);
-  const allVisitsVetColumn = page.locator("#visitsTable th:has-text(\"Vet\")").first();
-  await allVisitsVetColumn.waitFor();
-  await say("And the all-visits page, across every owner: same column, an em dash wherever no "
-      + "vet attended.", allVisitsVetColumn);
-  await pause(3000);
-
-  await say(saved ? "That is the whole feature: set a vet when booking, or change it afterwards."
-                  : "So: the edit path works, the booking path does not. See finding 1.");
-  await pause(2600);
+  const outcome = (await flow({page, say, pause, get, app, apiUrl, baseUrl})) || {};
+  const saved = outcome.ok !== false;
+  const note = outcome.note || "";
 
   // The boxes are frame pixels only if the page was rendered 1:1 at the recorded size.
   const geom = await page.evaluate(
@@ -264,8 +209,8 @@ const speak = (text, wav) => {
   fs.copyFileSync(webm, raw);
   fs.writeFileSync(cuesPath, JSON.stringify(cues, null, 1));
   const boxed = cues.filter(c => c.box).length;
-  console.error(`[video] owner ${owner.id}, vet "${vetName}", ${cues.length} cues `
-      + `(${boxed} with a box) -> ${raw}`);
+  console.error(`[video] ${path.basename(featurePath)}${note ? ": " + note : ""}, `
+      + `${cues.length} cues (${boxed} with a box) -> ${raw}`);
   console.error(`[video] viewport ${geom.w}x${geom.h} @ dpr ${geom.dpr}`);
   const spoken = cues.filter(c => c.audio);
   console.error(spoken.length
@@ -273,11 +218,14 @@ const speak = (text, wav) => {
         + `${spoken.reduce((a, c) => a + c.speech, 0).toFixed(1)}s of speech, voice "${voice}"`
       : "[video] narration: none (NARRATION=off, or the synthesizer is unavailable)");
   if (!saved) {
-    console.error("[video] NOTE: booking did not persist the vet — the film says so out loud");
+    // Exit 3 is not a failure to handle — it is the most review-worthy film the pipeline
+    // can produce. Embed it, and put what it shows at the top of "Look here first".
+    console.error("[video] NOTE: the feature did NOT hold — the film says so out loud. "
+        + "Embed it anyway and lead the review with it.");
     process.exitCode = 3;
   }
 })().catch(e => { console.error("[video] " + e.message); process.exit(1); });
-' "$BASE_URL" "$API_URL" "$TMP" "$RAW" "$CUES" "$VOICEDIR" "$SCRIPT_DIR/narrate-cue.py"
+' "$BASE_URL" "$API_URL" "$TMP" "$RAW" "$CUES" "$VOICEDIR" "$SCRIPT_DIR/narrate-cue.py" "$FEATURE"
 RC=$?
 set -e
 if [ "$RC" != 0 ] && [ "$RC" != 3 ]; then exit "$RC"; fi

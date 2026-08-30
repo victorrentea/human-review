@@ -372,3 +372,61 @@ def test_a_legend_survives_body_and_all():
     assert "legend bottom" in out
     assert "Click any class or field to jump to the source code." in out
     assert "end legend" in out
+
+
+def test_caption_never_lands_inside_a_style_block():
+    """A styled diagram must still render.
+
+    `<style>` ends the preamble on its own line, so a caption appended "after the preamble"
+    used to land between `<style>` and its body — which PlantUML rejects, turning the whole
+    diagram into a green-on-black "Syntax Error?" image. That image is still a perfectly
+    valid .svg, so nothing downstream noticed; only opening the page showed it. Every
+    self-styling diagram in the reference project (packages.puml and both C4 views) was
+    rendering that way."""
+    src = """@startuml
+title Styled
+skinparam shadowing false
+<style>
+component {
+  FontStyle bold
+}
+</style>
+[A] <<..a>>
+[B] <<..b>>
+[A] --> [B]
+@enduml
+"""
+    out = m.diff(m.parse(src.replace("[A] --> [B]\n", "")), m.parse(src))
+    body = out.splitlines()
+    caption_at = next(i for i, ln in enumerate(body) if ln.startswith("caption"))
+    assert caption_at < body.index("<style>"), (
+        "the caption must not be emitted inside the <style> block:\n" + out)
+
+
+def test_style_block_survives_the_diff_intact():
+    """`<style>` is CSS, and CSS looks exactly like diagram content.
+
+    `component {` parses as an element opening a body, `}` closes it, and `</style>` is
+    neither — so the block came out unterminated, with a brace missing, and PlantUML
+    rendered the whole diagram as a "Syntax Error?" image. That image is a perfectly valid
+    .svg, so nothing downstream could tell; only opening the page showed it."""
+    src = """@startuml
+title Styled
+<style>
+component {
+  FontStyle bold
+  stereotype {
+    FontStyle plain
+  }
+}
+</style>
+[A] <<..a>>
+[B] <<..b>>
+[A] --> [B]
+@enduml
+"""
+    out = m.diff(m.parse(src.replace("[A] --> [B]\n", "")), m.parse(src))
+    assert "</style>" in out, "the style block was never closed:\n" + out
+    assert out.count("{") == out.count("}"), "unbalanced braces:\n" + out
+    assert "component" not in out.split("</style>")[1], (
+        "the stylesheet leaked into the diagram body as an element:\n" + out)

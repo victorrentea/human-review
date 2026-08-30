@@ -33,8 +33,18 @@ skill's moving parts:
 Paths below are written as `${SKILL}/…`. Resolve it once, at the start of the run:
 
 ```sh
-SKILL="$(dirname "$(readlink -f .claude/skills/human-review 2>/dev/null || echo .claude/skills/human-review)")/human-review"
-# installed as a plugin instead? SKILL="${CLAUDE_PLUGIN_ROOT}/skills/human-review"
+# A cascade, because there are three real layouts and only one of them is a symlink:
+# a plugin install (no .claude/skills entry at all), an env override, a project symlink,
+# and the gitignored clone a project fetches for CI.
+for candidate in \
+    "${CLAUDE_PLUGIN_ROOT:-/nonexistent}/skills/human-review" \
+    "${HUMAN_REVIEW_HOME:-/nonexistent}" \
+    "$(readlink -f .claude/skills/human-review 2>/dev/null)" \
+    ".claude/skills/human-review" \
+    "petclinic-backend/.tools/human-review/skills/human-review"; do
+  [ -x "$candidate/scripts/build-review-html.py" ] && { SKILL="$candidate"; break; }
+done
+[ -n "${SKILL:-}" ] || { echo "cannot locate the human-review skill"; exit 1; }
 ```
 
 **Every script resolves the project under review from the directory it was invoked in,
@@ -63,7 +73,7 @@ rest of the skill is project-agnostic:
 | step | what it needs from you | reference project's answer |
 | --- | --- | --- |
 | 3 | a test run that records traces | `cd petclinic-test && ./run-tests-with-tracing.sh` |
-| 4 | a Code City render, if you have one | `petclinic-backend/generate-codecity.sh` |
+| 4 | a Code City render, if you have one | `petclinic-backend/docs/generate-codecity.sh` |
 | 5 | a browser suite that can be filmed | Playwright, driven by `scripts/record-feature-video.sh` |
 | 6 | an entry-point complexity extractor | `mvn -q test -Dtest=EndpointComplexityExtractorTest` |
 | 7 | a committed API spec, generated not hand-written | `openapi.yaml`, extracted by `OpenApiExtractorTest` |
@@ -71,11 +81,21 @@ rest of the skill is project-agnostic:
 Anything you have no answer for, drop — a tab with nothing to show is dropped and named
 under the strip, which is honest. Step 10 opens the finished guide inside VS Code where a
 bridge for that is installed, and falls back to a URL you ⌘-click — never a hard requirement.
-Steps 0, 1, 2, 8, 9 and 10 need nothing but git, python3 and
-plantuml; step 7 additionally needs PyYAML, plus a JVM **or** Docker for the compatibility
-check — which fetches its own tool and is skipped with a stated reason if it has neither.
-Step 5 needs ffmpeg and Pillow, and for the spoken narration `swiftc` and macOS — without
-them the film is captioned but silent, which the recorder says out loud rather than failing.
+
+What each step actually needs:
+
+| step | hard requirement (fails without it) | degrades gracefully |
+| --- | --- | --- |
+| 0, 1, 2, 8, 10 | git, python3, plantuml | — |
+| 9 | python3, **Pygments** (`pip install pygments`) | — |
+| 7 | **PyYAML**; a JVM **or** Docker | no runtime → the tab says "not run — no JVM and no Docker" |
+| 5 | ffmpeg, **Pillow**, and a TTF the captions can use | no `swiftc`/macOS → captioned but silent |
+| 4, 6 | whatever your project's generators need | — |
+
+Pygments and Pillow are top-level imports, not optional ones: without Pygments **step 9
+cannot build a page at all**, even one with no snippets in it. `annotate-feature-video.py`
+looks for a font in a list of macOS paths and exits if it finds none, so on Linux step 5
+produces no video rather than a silent one — add a DejaVu/Liberation path before relying on it.
 
 ## Step 0 — Resolve the change set (from `$ARGUMENTS`)
 
@@ -88,7 +108,25 @@ Default `BASE` to `origin/main`. Every script below diffs against the **merge-ba
 commits that landed on the base after this branch started never show up as this branch's.
 
 Print a one-line scope banner (mode, refs, `--stat`). Empty change set → "Nothing to
-review." and stop. Create `.human-review/assets/`.
+review." and stop.
+
+**Then wipe `.human-review/assets/` and recreate it.** This is not tidiness. Every fragment
+producer below writes to a fixed path and the renderer inlines whatever it finds there, with
+no freshness check — so a step that fails silently leaves the *previous run's* artifact in
+place, and the page shows a green `compatible` seal for a diff it never saw, or a Code City
+of somebody else's branch. Every other tab around it is correct, which is what makes it
+undetectable. It is the only failure mode here that produces a confident, wrong page.
+
+```sh
+rm -rf .human-review/assets && mkdir -p .human-review/assets
+```
+
+Run the skill's own tests once while you are here (~2 s). They are the only thing standing
+between the two differs and silent drift, and nothing else runs them:
+
+```sh
+python3 -m pytest -q "${SKILL}/scripts" "${SKILL}/puml-diff"
+```
 
 ## Step 1 — Run the automated reviews, fix what is not disputable
 
@@ -181,11 +219,32 @@ at least one `@generate_sequence`-tagged `.feature` scenario**. Check
 `petclinic-test/features/*.feature`; if the interaction has no tagged scenario, add the
 tag (or the scenario) — **the tag alone, with no comment explaining why you added it**.
 
-Then regenerate from real traces:
+Then regenerate from real traces. **There are two runs, not one** — one per suite that
+produces diagrams — and naming only the first is how half the gallery goes stale:
 
 ```sh
-cd petclinic-test && ./run-tests-with-tracing.sh
+cd petclinic-test && ./run-tests-with-tracing.sh      # the browser suites (Playwright, Cucumber)
+cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq   # the @SpringBootTest suites
+cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram    # render what the JVM run recorded
 ```
+
+The last line is not optional and not the same as the first. A `@SpringBootTest` only
+**records a trace window**; the rendering happens in `petclinic-test`, and without
+`GENSEQ_REFRESH=1` the renderer re-uses its cached spans and quietly re-emits only the
+diagrams it already had — so the Java ones never appear and nothing says they are missing.
+
+⚠️ **Check afterwards that the run did not delete a diagram it then failed to rebuild.**
+`run-tests-with-tracing.sh` removes every `*.genseq.puml` up front and regenerates them; a
+suite that cannot start (wrong Node major, a missing browser) leaves the file deleted, and
+the delta then reports, in your branch's voice, that this branch removed a diagram:
+
+```sh
+git status --porcelain -- '*.genseq.puml'      # any ` D` here is the tool's doing, not the branch's
+```
+
+`puml-diff.sh` now warns when a diagram is missing from the work tree but still present in
+`HEAD`, which is exactly this case. Restore it with `git checkout --` and say in the guide
+that the suite could not run.
 
 It refuses to run unless the whole stack is up **and started in the right order**
 (`start-database.sh` → `start-grafana.sh` → `start-backend.sh` → `start-frontend.sh`;
@@ -214,9 +273,20 @@ git checkout $BASE -- petclinic-test/src/genseq petclinic-backend/src/main/resou
 cd petclinic-test && GENSEQ_REFRESH=1 ./run-tests-with-tracing.sh   # base traces, base renderer
 ```
 
-…then restore the branch's generator and re-render, so both sides differ only in what
-the *code* does. `npm run trace:diagram` re-renders from the cached spans in about a
-second, so the expensive part is the one traced run per side, not the rendering.
+…then **commit those regenerated base diagrams onto a throwaway ref and pass that ref as
+`$BASE`**. This last step is not optional: `puml-diff.sh` reads the "before" side with
+`git show "$MERGE_BASE:$path"`, straight from the commit object — never from the work tree.
+Regenerating the base side into the working directory and then restoring the branch (as an
+earlier version of these instructions said to do) throws the work away and diffs against the
+committed base diagram exactly as before, at the cost of a full traced run.
+
+```sh
+git checkout -b throwaway-base $BASE && git commit -am "base diagrams, same renderer" \
+  && BASE=throwaway-base
+```
+
+`npm run trace:diagram` re-renders from the cached spans in about a second, so the expensive
+part is the one traced run per side, not the rendering.
 
 If you skip it, say so in the guide next to the diagram: a red arrow the reviewer cannot
 distinguish from a real change is worse than no diagram.
@@ -238,11 +308,26 @@ itself. A picture with no provenance is a picture they have to trust.
 ${SKILL}/scripts/capture-codecity.sh .human-review/assets/codecity.png highlight
 ```
 
-Regenerate the city first if the branch moved (`petclinic-backend/generate-codecity.sh`);
+Regenerate the city first if the branch moved (`petclinic-backend/docs/generate-codecity.sh`);
 it auto-detects the branch as the change source. The script flips the **Changes** knob to
 "highlight changed" so the change set is lit and the rest of the skyline recedes.
 
-Embed the PNG **wrapped in a link to `codecity.html`** so a click opens the live 3D view.
+The script also **copies `codecity.html` in beside the PNG**, and that copy is what the page
+must link to (`assets/codecity/codecity.html`). A relative link out to
+`../petclinic-backend/…` looks right and 404s: step 10 serves `.human-review/` as the
+document root, and the server collapses `..` — so the one click the image invites went
+nowhere, on every run, and nothing checked.
+
+It prints the **measured** change count on stdout. Put that number under the image rather
+than typing one: "20 classes lit" in a content file is an assertion, and a city that
+highlighted nothing looks exactly like a city that highlighted everything.
+
+```sh
+LIT=$(${SKILL}/scripts/capture-codecity.sh .human-review/assets/codecity.png highlight)
+```
+
+The capture now fails rather than producing an unhighlighted skyline — if the `Changes`
+option it drives is ever renamed, the assignment used to be a silent no-op.
 
 ## Step 5 — Video of the feature
 
@@ -252,8 +337,38 @@ Record the feature actually working, with Playwright, straight into the guide:
 ${SKILL}/scripts/record-feature-video.sh .human-review/assets/<feature>.webm
 ```
 
-It drives the flow through the same selectors the e2e suite uses, deliberately slowed, and
-records the whole thing. Replaying the Playwright test and keeping its retained video is
+**The flow being filmed belongs to your project, not to this skill.** The skill owns the
+harness — launching, speaking each cue, timing the captions to the voice, spotlighting the
+element a cue is about, annotating the footage. You own the twenty lines that say what to
+click, in `.human-review/feature-script.js`, `human-review-feature.js` at the repo root, or
+wherever `$HUMAN_REVIEW_FEATURE_SCRIPT` points:
+
+```js
+module.exports = async ({page, say, pause, get, app, apiUrl}) => {
+  await page.goto(`${app}/some/screen`);
+  const thing = page.locator("#the-new-thing");
+  await say("This is the new part.", thing);   // spoken, captioned, spotlit on the frame
+  await pause(2000);                           // a FLOOR — the narration may stretch it
+  return {ok: true, note: "one line for the run summary"};
+};
+```
+
+No script → step 5 is skipped with a stated reason, like any other missing hook. This split
+exists because the narration and selectors of one project's feature used to live inside the
+script: filming the next feature meant editing *another git repository* (or a plugin cache
+that the next update silently reverts), and the selectors were generic enough to keep
+resolving — so you got a polished, correctly captioned film of the **wrong feature**, under
+the one heading a reviewer trusts without reading.
+
+**The exit code carries the verdict, and 3 is not a failure:**
+
+| code | meaning | what to do |
+| --- | --- | --- |
+| 0 | filmed, and the feature held | embed it |
+| 2 | no feature script, or the stack is down | skip the section and say why |
+| 3 | filmed, and **the feature did not hold** (`{ok:false}`) | **embed it and lead the review with what it shows** — this is the most valuable film the pipeline can make |
+
+It drives the flow deliberately slowed, and records the whole thing. Replaying the Playwright test and keeping its retained video is
 the purer idea — the test *is* the demo — but headless it finishes in about a second and
 the `.webm` shows only the final assertion, which teaches a reviewer nothing. Film it to be
 watched; the test still guards the behaviour. Embed with `<video controls>` (it now carries
@@ -285,6 +400,17 @@ re-run on the same footage without filming or re-speaking anything.
 
 ```sh
 cd petclinic-backend && mvn -q test -Dtest=EndpointComplexityExtractorTest
+```
+
+⚠️ **Every fragment needs its stylesheet listed in the content file's `extraCss`.** The
+renderer pulls in the snippet and code-owners stylesheets by itself, but the OpenAPI and
+complexity fragments are inlined HTML and their CSS is not: forget one and the tab renders
+fully populated and completely unstyled — no bars, no green/red — so the authorship
+convention the lede explains in words is simply absent from the page.
+
+```json
+"extraCss": ["assets/openapi-diff.css", "assets/openapi-compat.css",
+             "assets/complexity-delta.css"]
 ```
 
 Regenerates `docs/generated/endpoint-complexity.{html,json}` — the cyclomatic complexity of

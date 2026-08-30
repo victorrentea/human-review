@@ -235,19 +235,56 @@ DIRECTIVE_RE = re.compile(
     r"scale|autonumber|left\s+to\s+right\s+direction|top\s+to\s+bottom\s+direction)\b",
     re.I,
 )
+# A <style> block is CSS, not diagram content, and it is full of lines that look exactly
+# like content: `component {` parses as an element opening a body, `}` closes it, and
+# `</style>` is neither, so it was dropped. The delta then emitted an unterminated
+# stylesheet with a brace missing, PlantUML gave up and rendered a "Syntax Error?" image —
+# which is still a valid .svg, so every check downstream was happy. Copy the block through
+# verbatim instead.
+STYLE_OPEN_RE = re.compile(r"^<style\b", re.I)
+STYLE_CLOSE_RE = re.compile(r"^</style>", re.I)
 LEGEND_OPEN_RE = re.compile(r"^legend\b", re.I)
 LEGEND_CLOSE_RE = re.compile(r"^end\s*legend\b", re.I)
 
 
+# C4-PlantUML is a macro dialect, not PlantUML syntax: `Component(id, "label", $techn=…)`
+# and `Rel(a, b, "uses")` mean nothing to a differ that reasons about elements and arrows,
+# and `Container_Boundary(…) {` opens a body that is not an element's. Diffing one produced
+# a file with the relationships gone and the braces unbalanced, which PlantUML rendered as a
+# "Syntax Error?" image — a valid .svg, so nothing downstream noticed. Refusing is honest.
+C4_RE = re.compile(r"^\s*(?:Person|System|Container|Component|Rel|Boundary|"
+                   r"\w+_Boundary|SHOW_LEGEND|LAYOUT_\w+)\w*\s*\(", re.M)
+
+
+class UnsupportedDialect(Exception):
+    """The source is not something this differ can reason about."""
+
+
 def parse(puml: str) -> Diagram:
+    if C4_RE.search(puml):
+        raise UnsupportedDialect(
+            "C4-PlantUML macros (Component(…)/Rel(…)) — the structural differ does not "
+            "model them, and diffing one silently produces an unrenderable diagram")
     d = Diagram()
     current = None            # name of the element whose body we're inside
     seen_content = False      # have we passed the preamble yet?
     in_legend = False         # a legend's body is prose, and prose looks like anything
+    in_style = False          # a <style> block is CSS that happens to look like content
 
     for raw in puml.splitlines():
         clean = _strip_markup(raw.strip())
+
+        if in_style:
+            d.preamble.append(raw.rstrip())
+            in_style = not STYLE_CLOSE_RE.match(clean)
+            continue
+
         if not clean or clean.startswith("@start") or clean == "@enduml":
+            continue
+
+        if STYLE_OPEN_RE.match(clean):
+            d.preamble.append(raw.rstrip())
+            in_style = not STYLE_CLOSE_RE.search(clean)
             continue
 
         if in_legend:
@@ -376,16 +413,22 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     names = set(old.elements) | set(new.elements)
     keep = names if focus == ALL else _within(old, new, int(focus))
 
-    out = ["@startuml"]
-    out += [_mark_title(ln) for ln in new.preamble if not ln.strip().startswith("caption")]
     caption = "caption <color:red>added</color> or <color:red><s>removed</s></color>"
     if focus != ALL:
         hops = int(focus)
         scope = "the impacted elements only" if hops == 0 else (
             f"impacted + {hops} neighbour" + ("s" if hops > 1 else ""))
         caption += f" — {scope} ({len(keep)} of {len(names)} shown)"
-    out.append(caption)
-    out.append("")
+
+    # The caption goes FIRST, not after the preamble. A source that opens a `<style>` block
+    # ends its preamble on the `<style>` line itself — the block's body arrives later — so
+    # appending the caption there dropped it inside the stylesheet and PlantUML rendered the
+    # whole diagram as a green-on-black "Syntax Error?" dump. Every diagram in this project
+    # that styles itself (packages.puml, both C4 views) was failing that way, and a failed
+    # render still produces a perfectly valid .svg, so nothing downstream noticed.
+    # PlantUML does not care where a top-level directive sits.
+    out = ["@startuml", caption, ""]
+    out += [_mark_title(ln) for ln in new.preamble if not ln.strip().startswith("caption")]
 
     # ── Elements present in NEW (red header if the whole element is new) ──────
     for name, el in new.elements.items():

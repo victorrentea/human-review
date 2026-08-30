@@ -416,7 +416,9 @@ TABS_JS = """<script>
   function paint() {
     var all = document.body.classList.contains('showall');
     tabs.forEach(function (t, i) {
-      t.setAttribute('aria-selected', String(i === active));
+      // In show-all there is no selected tab: leaving one lit makes the strip claim a
+      // filter is applied while every panel is on screen.
+      t.setAttribute('aria-selected', String(!all && i === active));
       t.tabIndex = i === active ? 0 : -1;
       if (panels[i]) panels[i].hidden = !all && i !== active;
     });
@@ -426,10 +428,19 @@ TABS_JS = """<script>
   // The hash is the shareable handle: a reviewer sends "look at #api" and it opens there.
   // replaceState rather than location.hash, which would scroll the page out from under
   // the click that caused it.
-  function select(i, remember) {
+  function select(i, remember, keepScroll) {
     if (i < 0 || i >= tabs.length) return;
     active = i;
     paint();
+    // Panels differ in height by thousands of pixels, so keeping the scroll offset across
+    // a tab change drops the reader at an arbitrary point in the new panel — usually its
+    // tail. Clicking "Review" and landing in the middle of "already fixed for you" reads
+    // as if those were the open findings. Deep links (keepScroll) still scroll to their
+    // target, which is the whole point of a deep link.
+    if (!keepScroll) {
+      var top = strip.getBoundingClientRect().top + window.pageYOffset - 8;
+      window.scrollTo(0, Math.max(0, top));
+    }
     if (remember && history.replaceState) {
       history.replaceState(null, '', '#' + tabs[i].getAttribute('aria-controls'));
     }
@@ -459,6 +470,8 @@ TABS_JS = """<script>
     showAll.addEventListener('click', function () {
       document.body.classList.toggle('showall');
       paint();
+      // The page just changed length by an order of magnitude; the old offset means nothing.
+      window.scrollTo(0, 0);
     });
   }
 
@@ -470,7 +483,7 @@ TABS_JS = """<script>
     var target = document.getElementById(decodeURIComponent(link.getAttribute('href').slice(1)));
     if (!target) return;
     var i = panelIndexOf(target);
-    if (i >= 0 && i !== active) select(i, false);
+    if (i >= 0 && i !== active) select(i, false, true);
   });
 
   // Opening on a deep link: the hash may name a tab, or anything inside one.
@@ -488,7 +501,7 @@ TABS_JS = """<script>
       }
     }
   }
-  select(start, false);
+  select(start, false, Boolean(wanted));
 })();
 </script>"""
 
@@ -1209,6 +1222,55 @@ def codeowners_fragment(block, root: Path, out_dir: Path):
     return dest.read_text(encoding="utf-8"), json.loads(proc.stdout)
 
 
+REQUIRED = {
+    "sections": ("id", "title"),
+    "tabs": ("id", "label"),
+    "findings": ("title", "body"),
+    "autofixes": ("title",),
+}
+
+
+def validate(spec: dict, out_dir: Path) -> list[str]:
+    """Every problem in the content file, named, in one pass.
+
+    A bare ``KeyError: 'png'`` from 300 lines further down tells the author nothing about
+    which entry was wrong. ``resolve_refs`` already collects and names its failures; this is
+    the same courtesy for the rest of the file, and it runs before any subprocess so a bad
+    content file costs a second rather than a full page build."""
+    problems = []
+    for key, fields in REQUIRED.items():
+        for i, item in enumerate(spec.get(key) or []):
+            for f in fields:
+                if not item.get(f):
+                    problems.append(f"{key}[{i}] is missing {f!r}")
+    v = spec.get("verdict")
+    if v is not None and "score" not in v:
+        problems.append("verdict is missing 'score' (0-10, drives the pip scale)")
+    city = spec.get("codecity")
+    if city is not None:
+        for f in ("png", "href"):
+            if f not in city:
+                problems.append(f"codecity is missing {f!r}")
+        if city.get("png") and not (out_dir / city["png"]).is_file():
+            problems.append(f"codecity.png -> {city['png']} does not exist — did step 4 run?")
+    for i, s in enumerate(spec.get("sections") or []):
+        inc = s.get("includeHtml")
+        if inc and not (out_dir / inc).is_file():
+            problems.append(f"sections[{i}] ({s.get('id')}) includeHtml -> {inc} "
+                            "does not exist — did the step that produces it run?")
+    for c in spec.get("extraCss") or []:
+        if not (out_dir / c).is_file():
+            problems.append(f"extraCss -> {c} does not exist "
+                            "(the fragment's --css was never written)")
+    ids = {s.get("id") for s in spec.get("sections") or []}
+    for t_ in spec.get("tabs") or []:
+        for b in t_.get("blocks") or []:
+            if b.get("type") == "section" and b.get("id") not in ids:
+                problems.append(f"tabs[{t_.get('id')}] references section {b.get('id')!r}, "
+                                "which is not in 'sections'")
+    return problems
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -1226,6 +1288,13 @@ def main(argv=None) -> int:
     out_path = Path(args.out).resolve()
     out_dir = out_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    problems = validate(spec, out_dir)
+    if problems:
+        print(f"[review] {Path(args.content).name} cannot be rendered:", file=sys.stderr)
+        for problem in problems:
+            print(f"  - {problem}", file=sys.stderr)
+        return 1
 
     for f in spec.get("findings", []) + spec.get("autofixes", []):
         f["_refs"] = resolve_refs(f.get("refs", []), root)
@@ -1245,7 +1314,11 @@ def main(argv=None) -> int:
         if s.get("includeHtml"):
             inc = (out_dir / s["includeHtml"]).read_text(encoding="utf-8")
         vid = ""
-        if s.get("video"):
+        if s.get("video") and not (out_dir / s["video"]).is_file():
+            # A recording that failed leaves a dead <video> under a confident heading. Say so.
+            vid = ('<p class="sub">Not filmed — <code>' + html.escape(s["video"])
+                   + '</code> was not produced by this run.</p>')
+        elif s.get("video"):
             # Captions live under the player, driven by the cue list the recorder wrote as it
             # ran, so the narration cannot drift from what the video shows. Plain text swap on
             # timeupdate — no track element, which file:// pages are not allowed to load.

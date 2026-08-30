@@ -24,7 +24,7 @@ Usage:
   serve-review.py .human-review --page review.html   # prints the page URL
   serve-review.py .human-review --stop
 """
-import argparse, functools, http.server, json, os, socket, socketserver, subprocess, sys, threading, time, urllib.parse, urllib.request
+import argparse, functools, http.server, json, os, re, socket, socketserver, subprocess, sys, threading, time, urllib.parse, urllib.request
 from pathlib import Path
 
 MARKER = "/__human_review__"
@@ -138,13 +138,65 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             return
         Handler.hits += 1
+        if self.headers.get("Range") and self.serve_range():
+            return
         super().do_GET()
+
+    def serve_range(self) -> bool:
+        """Answer a byte-range request, so the <video> is seekable.
+
+        SimpleHTTPRequestHandler ignores Range and always answers 200 with the whole file.
+        Chromium reads that as "this stream cannot be sought": `video.seekable` comes back
+        empty, the scrub bar does nothing, and every timestamp in the transcript beside the
+        player silently restarts the film instead of jumping to the moment a finding is
+        about. The transcript is the reason the video is worth having, so this is not a
+        nicety — without it the page ships a control that lies."""
+        path = self.translate_path(self.path)
+        if not os.path.isfile(path):
+            return False
+        m = re.match(r"bytes=(\d*)-(\d*)$", self.headers["Range"].strip())
+        if not m:
+            return False
+        size = os.path.getsize(path)
+        first, last = m.group(1), m.group(2)
+        if first:
+            start = int(first)
+            end = int(last) if last else size - 1
+        elif last:                      # a suffix range: the LAST n bytes
+            start, end = max(0, size - int(last)), size - 1
+        else:
+            return False
+        if start >= size or start > end:
+            self.send_response(416)
+            self.send_header("Content-Range", f"bytes */{size}")
+            self.end_headers()
+            return True
+        end = min(end, size - 1)
+        self.send_response(206)
+        self.send_header("Content-Type", self.guess_type(path))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.end_headers()
+        with open(path, "rb") as f:
+            f.seek(start)
+            remaining = end - start + 1
+            while remaining > 0:
+                chunk = f.read(min(64 * 1024, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
+        return True
 
     # The report is rebuilt in place and reloaded in a browser that was already
     # showing it. A 304 from the previous build is the one answer that makes the
     # reader think nothing changed.
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
+        # Advertise it up front: Chromium decides whether a media element is seekable from
+        # the first response, before it ever sends a Range request.
+        self.send_header("Accept-Ranges", "bytes")
         super().end_headers()
 
     def log_message(self, *_):

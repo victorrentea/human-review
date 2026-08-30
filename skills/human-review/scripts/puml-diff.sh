@@ -93,7 +93,11 @@ classify() {
 count=0
 for rel in "${CHANGED[@]}"; do
   [ -n "$rel" ] || continue
-  name="$(basename "${rel%.puml}")"
+  label="$(basename "${rel%.puml}")"
+  # Key every output on the repo-relative PATH, not the basename: two diagrams called
+  # packages.puml in different modules used to overwrite each other's SVG and emit two
+  # manifest rows pointing at the same picture. `label` stays the display name.
+  name="$(printf '%s' "${rel%.puml}" | tr '/' '_')"
 
   old="$TMP/$name.base.puml"
   status=modified
@@ -107,6 +111,16 @@ for rel in "${CHANGED[@]}"; do
     new="$TMP/$name.empty.puml"
     : >"$new"
     status=deleted
+    # Deleted in the WORK TREE but still in HEAD means no commit removed it — something
+    # deleted-then-failed-to-regenerate it (a test runner that rm -f's up front and then
+    # dies). Rendering that as "this branch removed a diagram" is a lie the reviewer has
+    # no way to catch, so say it out loud and mark it differently.
+    if git cat-file -e "HEAD:$rel" 2>/dev/null; then
+      status=deleted-unstaged
+      echo "[puml-diff] WARNING: $rel is missing from the work tree but still in HEAD —" >&2
+      echo "[puml-diff]          a generator deleted it and did not put it back."        >&2
+      echo "[puml-diff]          git checkout -- '$rel' , or re-run the suite that makes it." >&2
+    fi
   fi
 
   if cmp -s "$old" "$new"; then
@@ -127,12 +141,25 @@ for rel in "${CHANGED[@]}"; do
   elif [ "$kind" = sequence ]; then
     python3 "$SEQ_DIFF" "$old" "$new" --out "$diff_puml"
   else
-    python3 "$STRUCT_DIFF" "$old" "$new" --out "$diff_puml"
+    if ! err="$(python3 "$STRUCT_DIFF" "$old" "$new" --out "$diff_puml" 2>&1)"; then
+      # A dialect the differ cannot model (C4-PlantUML). Saying so and dropping the diagram
+      # is honest; emitting a mangled one that renders as an error image is not.
+      echo "[puml-diff] SKIPPED $rel — $(printf '%s' "$err" | tail -1)" >&2
+      rm -f "$diff_puml"
+      continue
+    fi
   fi
 
   svg=""
   if command -v plantuml >/dev/null 2>&1; then
     plantuml -tsvg "$diff_puml" >/dev/null 2>&1 || true
+    # PlantUML emits a perfectly valid .svg that says "Syntax Error?" when it gives up.
+    # Embedding that is worse than embedding nothing — it looks like a diagram, and it is
+    # the loudest thing on the page. Drop it and say so.
+    if grep -lq "Syntax Error" "${diff_puml%.puml}.svg" 2>/dev/null; then
+      echo "[puml-diff] WARNING: PlantUML could not render the delta for $rel — dropping it" >&2
+      rm -f "${diff_puml%.puml}.svg"
+    fi
     [ -f "${diff_puml%.puml}.svg" ] && svg="$(basename "${diff_puml%.puml}.svg")"
   fi
 
@@ -142,10 +169,26 @@ for rel in "${CHANGED[@]}"; do
   # time costs nothing, and the guide has to survive being emailed as one file.
   focus=""
   if [ "$kind" = structural ] && [ "$status" != added ] && [ -n "$svg" ]; then
+    # Each level is a separate plantuml JVM start, and on small diagrams the levels
+    # frequently converge — four identical pictures behind four buttons. Hash first,
+    # render only what is new, and stop once a level equals the unpruned diagram.
+    # Hash the diagram BODY, not the file: every level carries a caption naming itself
+    # ("impacted + 3 neighbours"), so the bytes always differ even when the picture does not.
+    seen_hashes=""
+    full_hash="$(grep -v '^caption ' "$diff_puml" | shasum -a 1 | cut -d' ' -f1)"
     for level in $FOCUS_LEVELS; do
       level_puml="$OUT_DIR/$name.diff.focus$level.puml"
       python3 "$STRUCT_DIFF" "$old" "$new" --focus "$level" --out "$level_puml"
+      h="$(grep -v '^caption ' "$level_puml" | shasum -a 1 | cut -d' ' -f1)"
+      case " $seen_hashes " in *" $h "*) rm -f "$level_puml"; continue ;; esac
+      if [ "$h" = "$full_hash" ]; then rm -f "$level_puml"; break; fi
+      seen_hashes="$seen_hashes $h"
       plantuml -tsvg "$level_puml" >/dev/null 2>&1 || true
+      # PlantUML writes a perfectly valid .svg containing the words "Syntax Error?" when it
+      # gives up. Embedding that is worse than embedding nothing: it looks like a diagram.
+      if grep -lq "Syntax Error" "${level_puml%.puml}.svg" 2>/dev/null; then
+        rm -f "${level_puml%.puml}.svg"
+      fi
       if [ -f "${level_puml%.puml}.svg" ]; then
         focus="$focus${focus:+,}$level:$(basename "${level_puml%.puml}.svg")"
       fi
@@ -153,7 +196,7 @@ for rel in "${CHANGED[@]}"; do
   fi
 
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$rel" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" >> "$MANIFEST"
+    "$label" "$rel" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" >> "$MANIFEST"
   echo "[puml-diff] $rel ($kind, $status) -> $diff_puml" >&2
   count=$((count + 1))
 done

@@ -95,8 +95,15 @@ def load(path: Path):
 
 def compare(before, after):
     rows = []
-    for key, cur in after.items():
+    # Union, not `after` alone. An entry point this branch DELETED is absent from `after`, so
+    # iterating `after` dropped it silently — while the legend above promises red means "removed".
+    for key in sorted(set(before) | set(after)):
+        cur = after.get(key)
         old = before.get(key)
+        gone = cur is None
+        if gone:
+            cur = dict(old)
+            cur["flowCc"] = 0
         was = old["flowCc"] if old else None
         rows.append(
             {
@@ -105,13 +112,14 @@ def compare(before, after):
                 "path": key[2],
                 "now": cur["flowCc"],
                 "was": was,
+                "gone": gone,
                 "delta": cur["flowCc"] - was if was is not None else None,
                 "handler": cur.get("handler", ""),
                 "entry": (cur.get("flow") or [{}])[0].get("method", ""),
                 "methods": cur.get("methods"),
             }
         )
-    rows.sort(key=lambda r: (-r["now"], r["path"]))
+    rows.sort(key=lambda r: (-max(r["now"], r["was"] or 0), r["path"]))
     return rows
 
 
@@ -130,6 +138,19 @@ def _path_cell(r) -> str:
 
 
 def render_row(r, peak) -> str:
+    if r.get("gone"):
+        # The branch deleted this entry point. Red for the whole width it used to occupy —
+        # the same "red is what the branch removed" convention as everywhere else.
+        was = r["was"] or 0
+        return (
+            f'<div class="cx-row cx-down cx-gone">'
+            f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
+            f'<s>{_path_cell(r)}</s>'
+            f'<span class="cx-bar"><u style="width:{100.0 * was / peak:.1f}%"></u></span>'
+            f'<span class="cx-badge">gone</span>'
+            f'<span class="cx-n">0</span>'
+            f"</div>"
+        )
     if r["delta"] is None:
         badge, cls = "new", "cx-up"
     elif r["delta"] > 0:
@@ -237,8 +258,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("before")
-    ap.add_argument("after")
+    ap.add_argument("before", nargs="?")
+    ap.add_argument("after", nargs="?")
     ap.add_argument("--out")
     ap.add_argument("--json", action="store_true", help="emit the rows as JSON instead of HTML")
     ap.add_argument("--css", action="store_true", help="print the stylesheet this fragment needs")
@@ -247,6 +268,8 @@ def main(argv=None) -> int:
     if args.css:
         print(CSS)
         return 0
+    if not args.before or not args.after:
+        ap.error("the following arguments are required: before, after")
 
     rows = compare(load(Path(args.before)), load(Path(args.after)))
     body = json.dumps(rows, indent=1) if args.json else render(rows)

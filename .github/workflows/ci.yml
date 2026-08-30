@@ -1,0 +1,41 @@
+name: tests
+
+# The three test files in this repository were, until now, documentation: nothing ran them.
+# SKILL.md leans on them ("a private fork of the review pipeline drifts in silence, which is
+# the exact failure the guardrail tests exist to catch") — a claim that only holds if
+# something actually executes them. They take about two seconds.
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install what the scripts import at module level
+        run: python -m pip install --quiet pytest pygments pyyaml pillow
+      - name: Run the differ and script tests
+        run: python -m pytest -q skills/human-review/puml-diff skills/human-review/scripts
+
+      # Every script has to at least import and answer --help. A syntax error in one of them
+      # otherwise surfaces halfway through somebody's review run, after the expensive steps.
+      - name: Every script is importable and self-describing
+        run: |
+          set -e
+          for s in skills/human-review/scripts/*.py; do
+            case "$(basename "$s")" in test_*) continue ;; esac
+            echo "--- $s"
+            python "$s" --help > /dev/null
+          done
+
+      - name: Shell scripts parse
+        run: |
+          set -e
+          for s in skills/human-review/scripts/*.sh; do
+            echo "--- $s"
+            bash -n "$s"
+          done

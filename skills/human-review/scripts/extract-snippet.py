@@ -25,6 +25,11 @@ import tempfile
 import sys
 from pathlib import Path
 
+try:
+    from pygments import highlight
+    from pygments.formatters import HtmlFormatter
+except ImportError:
+    raise SystemExit("[extract-snippet] needs Pygments: python3 -m pip install pygments")
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, guess_lexer
