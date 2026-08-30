@@ -156,8 +156,12 @@ pre.code code { white-space:pre; }
                         font:600 .7rem/1.6 inherit; padding:0 .55rem; white-space:nowrap; }
 #genseq-panel .genseq-toggle:hover { color:var(--fg); border-color:var(--link); }
 #genseq-panel .genseq-toggle[hidden] { display:none; }
+/* pre-wrap, not pre: a real controller's SELECT is far wider than the panel, and
+    `white-space:pre` cut it mid-statement behind an overlay scrollbar nobody sees on a
+    Mac. The payloads here are read, not copied into a terminal, so wrapping wins. */
 #genseq-panel pre { margin:0; max-height:24rem; overflow:auto; background:var(--code-bg);
-                    border-radius:6px; padding:.5rem .6rem; white-space:pre;
+                    border-radius:6px; padding:.5rem .6rem; white-space:pre-wrap;
+                    overflow-wrap:anywhere;
                     font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .embedded-note { margin:0 0 1rem; padding:.6rem .8rem; border-radius:8px; font-size:.85rem;
                  background:var(--code-bg); border:1px solid var(--line); color:var(--muted); }
@@ -196,9 +200,15 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
             padding:1.5rem max(1.25rem, calc(50vw - 540px + 1.25rem));
             display:grid; grid-template-columns:auto 1fr; gap:2rem; align-items:center;
             border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-.verdict .score { text-align:center; }
+.verdict .score { text-align:center; max-width:16rem; }
+/* The label sits in the score column, so a long one used to stretch that column across
+    most of the band — leaving the bullets in a ~180px gutter beside 600px of empty
+    gradient. Cap the column, and stop tracking-out a sentence: uppercase letter-spacing
+    is for a two-word verdict, not for a paragraph. */
+.verdict .score span { max-width:16rem; margin:.45rem auto 0; }
 .verdict .score b { display:block; font-size:3.4rem; line-height:1; letter-spacing:-.04em; }
-.verdict .score span { font-size:.7rem; text-transform:uppercase; letter-spacing:.09em; opacity:.75; }
+.verdict .score span { display:block; font-size:.78rem; line-height:1.35; opacity:.8;
+                        text-transform:none; letter-spacing:0; }
 .verdict .scale { display:flex; gap:2px; margin:.6rem 0 0; }
 .verdict .scale i { width:9px; height:9px; border-radius:2px; background:currentColor; opacity:.18; }
 .verdict .scale i.on { opacity:1; }

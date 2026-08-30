@@ -308,6 +308,22 @@ def operation_tree(method: str, path: str, before: dict, after: dict) -> str:
         walk("body", res_b, res_a, before, after, 0, res_rows, (), False, False)
 
     code = code_a or code_b or "-"
+    cols = (column("Request", "path & query parameters, then the body", req_rows,
+                   "This operation takes no parameters and no body.")
+            + column("Response", f"{code} - the primary success body", res_rows,
+                     "This operation returns no body."))
+
+    # Most operations on a page like this "changed" for a reason that is not visible in the
+    # shape a caller sends and gets back — a response code added by a global exception
+    # handler, say. Rendering a panel for those means 30-odd identical <details> that open
+    # onto four lines of legend and "This operation takes no parameters and no body", which
+    # teaches the reader that the panels are empty and to stop opening them — including the
+    # one that is not. Say what happened instead, in one line, and render nothing to open.
+    if not any(r.status != "same" for r in req_rows + res_rows):
+        return ('<p class="oat-none">Nothing changed in the shape this operation sends or '
+                'returns — the difference is elsewhere in its definition (a response code, '
+                'a description, a constraint). See the classified list above.</p>')
+
     return (
         '<details class="oat"><summary>The shape a caller sends and gets back</summary>'
         '<div class="oat-legend">Grey is the contract as it was. '
@@ -315,17 +331,13 @@ def operation_tree(method: str, path: str, before: dict, after: dict) -> str:
         '<s class="oat-gone">red struck through is removed</s>. '
         '<code>$ref</code>s are resolved, so a schema that moved shows up here, at every '
         'operation that serves it. Example values are the spec\'s own.</div>'
-        '<div class="oat-cols">'
-        + column("Request", "path & query parameters, then the body", req_rows,
-                 "This operation takes no parameters and no body.")
-        + column("Response", f"{code} - the primary success body", res_rows,
-                 "This operation returns no body.")
-        + "</div></details>"
+        '<div class="oat-cols">' + cols + "</div></details>"
     )
 
 
 CSS = """
 .oat { margin:.5rem 0 0; }
+.oat-none { color:var(--muted); font-size:.8rem; margin:.5rem 0 0; }
 .oat > summary { cursor:pointer; color:var(--muted); font-size:.8rem; }
 .oat-legend { color:var(--muted); font-size:.78rem; line-height:1.7; margin:.5rem 0 .2rem; }
 .oat-cols { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem;
