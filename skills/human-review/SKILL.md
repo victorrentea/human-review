@@ -74,6 +74,8 @@ bridge for that is installed, and falls back to a URL you ⌘-click — never a 
 Steps 0, 1, 2, 8, 9 and 10 need nothing but git, python3 and
 plantuml; step 7 additionally needs PyYAML, plus a JVM **or** Docker for the compatibility
 check — which fetches its own tool and is skipped with a stated reason if it has neither.
+Step 5 needs ffmpeg and Pillow, and for the spoken narration `swiftc` and macOS — without
+them the film is captioned but silent, which the recorder says out loud rather than failing.
 
 ## Step 0 — Resolve the change set (from `$ARGUMENTS`)
 
@@ -254,8 +256,30 @@ It drives the flow through the same selectors the e2e suite uses, deliberately s
 records the whole thing. Replaying the Playwright test and keeping its retained video is
 the purer idea — the test *is* the demo — but headless it finishes in about a second and
 the `.webm` shows only the final assertion, which teaches a reviewer nothing. Film it to be
-watched; the test still guards the behaviour. Embed with `<video controls>`; skip the
-section (and say so) if the stack is not up.
+watched; the test still guards the behaviour. Embed with `<video controls>` (it now carries
+sound); skip the section (and say so) if the stack is not up.
+
+**The film narrates itself.** Every `say()` in the recorder is spoken by the offline macOS
+speech synthesizer before it is filmed, and the captions are karaoke: short chunks, one word
+arriving at a time, already-said words white and the word being said yellow. Two things fall
+out of doing it that way rather than pasting a sentence into a box:
+
+* The synthesizer reports *when it says each word*, so the highlight is locked to the voice
+  instead of estimated from string length — no drift inside a sentence, which is exactly
+  where a reviewer is looking.
+* It fixes the pacing. A hardcoded `pause(1500)` was a guess at how long a sentence takes to
+  read and could never be right for how long it takes to *say*; every pause is now a floor
+  that the narration stretches when it needs to. The film gets longer and stays in sync.
+
+`NARRATION=off` films silently and falls back to spreading the words across the cue at a
+reading rate — the captions still work, they just are not voiced. `NARRATION_VOICE` (any name
+from `say -v '?'`) and `NARRATION_RATE` (0..1, default 0.5) pick the voice and its speed. All
+of it is local: nothing about the change is sent to a TTS service.
+
+Both halves are plain programs — `narrate-cue.py` over `tts-cue.swift`, then
+`annotate-feature-video.py` over ffmpeg — so re-cutting the film costs CPU, not tokens. The
+per-cue `.wav`s stay in `<out>.narration/` beside `<out>.raw.webm`, so the annotation can be
+re-run on the same footage without filming or re-speaking anything.
 
 ## Step 6 — Entry-point complexity increment
 

@@ -18,22 +18,36 @@
 # recorded at the viewport size, so they are frame pixels 1:1 — the run prints the
 # devicePixelRatio and viewport it actually got, which is what makes that safe to assume.
 #
+# Each cue is also SPOKEN, by the offline macOS speech synthesizer, before it is filmed. That
+# is not decoration: the synthesizer reports when it says each word, which is what lets the
+# captions light up word by word in time with the voice. It also fixes the pacing problem the
+# hardcoded pauses below could never solve — a pause tuned for reading a sentence is not the
+# time it takes to say it — so every pause() is now a MINIMUM, stretched when the narration
+# needs longer. Set NARRATION=off to film silently; NARRATION_VOICE / NARRATION_RATE pick the
+# voice (`say -v "?"` lists them) and its speed.
+#
 # Usage:
 #   .claude/skills/human-review/scripts/record-feature-video.sh <out.webm>
 #
 # Writes, next to <out.webm>:
-#   <out>.cues.json  the narration, timestamped as the run happens (plus each cue's box),
-#                    so the guide can build a transcript that seeks the player
-#   <out>.raw.webm   the same film without the annotations
+#   <out>.cues.json  the narration, timestamped as the run happens (plus each cue's box, its
+#                    spoken .wav and the time of every word in it), so the guide can build a
+#                    transcript that seeks the player
+#   <out>.raw.webm   the same film without the annotations or the voice
+#   <out>.narration/ one .wav per cue, kept so the film can be re-annotated without re-filming
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
+# The project under review, not wherever the skill happens to be installed — every other
+# script in the skill resolves the root from the working directory, and when the skill is
+# a symlink or a plugin cache the two are not the same repository.
+ROOT="$(git rev-parse --show-toplevel)"
 
 OUT="${1:?usage: record-feature-video.sh <out.webm>}"
 case "$OUT" in /*) ;; *) OUT="$ROOT/$OUT" ;; esac
 RAW="${OUT%.webm}.raw.webm"
 CUES="${OUT%.webm}.cues.json"
+VOICEDIR="${OUT%.webm}.narration"
 
 BASE_URL="${BASE_URL:-http://localhost:4200}"
 API_URL="${API_URL:-http://localhost:8080}"
@@ -41,15 +55,34 @@ API_URL="${API_URL:-http://localhost:8080}"
 curl -fsS -o /dev/null "$BASE_URL/" || { echo "[video] frontend not up at $BASE_URL" >&2; exit 2; }
 curl -fsS -o /dev/null "$API_URL/api/pettypes" || { echo "[video] backend not up at $API_URL" >&2; exit 2; }
 
-mkdir -p "$(dirname "$OUT")"
+mkdir -p "$(dirname "$OUT")" "$VOICEDIR"
+rm -f "$VOICEDIR"/*.wav
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 set +e
 NODE_PATH="$ROOT/petclinic-test/node_modules" node -e '
 const {chromium} = require("playwright");
-const [baseUrl, apiUrl, videoDir, raw, cuesPath] = process.argv.slice(1);
+const [baseUrl, apiUrl, videoDir, raw, cuesPath, voiceDir, narrator] = process.argv.slice(1);
 const fs = require("fs");
+const path = require("path");
+const {execFileSync} = require("child_process");
+
+const narrationOn = process.env.NARRATION !== "off";
+const voice = process.env.NARRATION_VOICE || "Samantha";
+const speechRate = process.env.NARRATION_RATE || "0.5";
+// The synthesizer is deliberately run BEFORE the cue is timestamped: it takes a fraction of a
+// second, and a fraction of a second of frozen screen belongs to the shot that just ended, not
+// to the one about to be narrated.
+const speak = (text, wav) => {
+  if (!narrationOn) return null;
+  try {
+    const out = execFileSync("python3", [narrator, "--text", text, "--out", wav,
+        "--voice", voice, "--rate", speechRate], {encoding: "utf8"});
+    const res = JSON.parse(out);
+    return res.error ? null : res;
+  } catch (e) { return null; }
+};
 
 (async () => {
   const owners = await (await fetch(apiUrl + "/api/owners")).json();
@@ -77,9 +110,13 @@ const fs = require("fs");
   const cues = [];
   // A cue may name the element it is about. boundingBox() is viewport-relative, so it is
   // read at the moment the cue is spoken — after any scrolling — never earlier.
+  let spokenUntil = 0;
   const say = async (text, target) => {
-    const cue = {t: (Date.now() - t0) / 1000, text};
     const box = target ? await target.boundingBox() : null;
+    // The warning glyph is a caption device, not something to read out loud.
+    const wav = path.join(voiceDir, `cue${String(cues.length).padStart(2, "0")}.wav`);
+    const speech = speak(text.replace(/^⚠\s*/, ""), wav);
+    const cue = {t: (Date.now() - t0) / 1000, text};
     if (box) {
       cue.box = {
         x: Math.round(box.x),
@@ -88,9 +125,17 @@ const fs = require("fs");
         height: Math.round(box.height),
       };
     }
+    if (speech) {
+      cue.audio = path.basename(voiceDir) + "/" + path.basename(wav);
+      cue.speech = speech.duration;
+      cue.words = speech.words;
+      spokenUntil = Date.now() + speech.duration * 1000;
+    }
     cues.push(cue);
   };
-  const pause = (ms) => page.waitForTimeout(ms);
+  // Every hardcoded pause is a floor, never a ceiling: the shot also has to last long enough
+  // for the sentence being spoken over it to finish, plus a beat before the next one starts.
+  const pause = (ms) => page.waitForTimeout(Math.max(ms, spokenUntil + 350 - Date.now()));
 
   await page.goto(`${app}/owners/${owner.id}`);
   await page.locator("h2:has-text(\"Owner Information\")").waitFor();
@@ -222,12 +267,17 @@ const fs = require("fs");
   console.error(`[video] owner ${owner.id}, vet "${vetName}", ${cues.length} cues `
       + `(${boxed} with a box) -> ${raw}`);
   console.error(`[video] viewport ${geom.w}x${geom.h} @ dpr ${geom.dpr}`);
+  const spoken = cues.filter(c => c.audio);
+  console.error(spoken.length
+      ? `[video] narration: ${spoken.length}/${cues.length} cues, `
+        + `${spoken.reduce((a, c) => a + c.speech, 0).toFixed(1)}s of speech, voice "${voice}"`
+      : "[video] narration: none (NARRATION=off, or the synthesizer is unavailable)");
   if (!saved) {
     console.error("[video] NOTE: booking did not persist the vet — the film says so out loud");
     process.exitCode = 3;
   }
 })().catch(e => { console.error("[video] " + e.message); process.exit(1); });
-' "$BASE_URL" "$API_URL" "$TMP" "$RAW" "$CUES"
+' "$BASE_URL" "$API_URL" "$TMP" "$RAW" "$CUES" "$VOICEDIR" "$SCRIPT_DIR/narrate-cue.py"
 RC=$?
 set -e
 if [ "$RC" != 0 ] && [ "$RC" != 3 ]; then exit "$RC"; fi
