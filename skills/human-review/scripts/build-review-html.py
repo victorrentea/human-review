@@ -342,6 +342,12 @@ button.tab { padding:0 .6rem; }
    frame is left to be the evidence. */
 .oacframe { display:block; width:100%; height:760px; margin:1rem 0 1.4rem;
             border:1px solid var(--line); border-radius:8px; background:#12111a; }
+/* The Swagger-shaped diff is framed the same way, but it is not a dark-only
+   application the way pb33f's is: it follows the system theme, exactly as this
+   page does. So the frame gets the page's own card colour rather than pb33f's
+   near-black, and the two documents agree at the seam in both themes. */
+.oaviframe { display:block; width:100%; height:820px; margin:1rem 0 1.4rem;
+             border:1px solid var(--line); border-radius:8px; background:var(--card); }
 """
 
 

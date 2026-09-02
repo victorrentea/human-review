@@ -641,6 +641,48 @@ cannot reach the evidence:
   moved, while a `$ref`-resolving one reports the eleven operations that serve them. Say
   that, rather than leaving a reader to conclude one of the two tabs is broken.
 
+### The same verdict, on the screen everyone already knows
+
+```sh
+${SKILL}/scripts/openapi-visual-diff.py --base $MERGE_BASE --spec openapi.yaml \
+  --out .human-review/assets/openapi-visual-diff.html
+```
+
+The two blocks above answer *what changed* in prose. This one answers **where it lands**,
+on the surface every developer on the team has already spent years reading:
+[Swagger UI](https://swagger.io/tools/swagger-ui/), rendering the new spec, with the
+endpoints nobody touched faded to a third and the impacted ones carrying a coloured spine,
+a badge and their changes inline. A controller the change set left alone starts collapsed
+and grey, so the shape of the blast radius is legible before a single word is read — which
+is the one question a prose changelog answers slowest.
+
+It is not a fourth opinion: it runs `oasdiff changelog`, the same engine `openapi-compat.py`
+sources its operation list from, so a disagreement with that tab would be a bug, not a
+finding. What it adds is the *placement* — nine changed operations scattered across four
+controllers read as a list of nine lines in the tab above, and as four lit-up rows in a
+document of forty-three here.
+
+```json
+{"id": "swaggerdiff", "title": "The same verdict, on the screen everyone already knows",
+ "body": "<p>…what the blast radius looks like, in this page's own words…</p>",
+ "embed": {"src": "assets/openapi-visual-diff.html", "class": "oaviframe",
+           "label": "openapi-visual-diff — openapi.yaml at <sha> against the working tree",
+           "missing": "run scripts/openapi-visual-diff.py (needs `brew install oasdiff`)"}}
+```
+
+⚠️ **`"class": "oaviframe"`, not the default.** The default frame is painted pb33f's
+near-black because pb33f's report is dark whatever the reader's system says. This one
+follows the system theme like the rest of the page, so on a light desktop the default class
+would put a black gutter around a white document.
+
+Same fence, same duty as 7b: an iframe is a separate origin off `file://`, so `⌘F` stops at
+its edge. State the finding in this page's words and leave the frame as the evidence. The
+page also takes `?theme=dark` / `?theme=light` if you ever need to pin it against a reader's
+system setting — the embed deliberately does not, so that both documents change together.
+
+`oasdiff` is the only requirement, and it is already installed for the tab above; the
+`embed` degrades to a line naming what is missing, exactly like 7b.
+
 ## Step 7c — What it will say for itself in production
 
 ```sh
