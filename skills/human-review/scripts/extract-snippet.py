@@ -161,7 +161,7 @@ def _closing_line(lines: list[str], start: int, end: int) -> int:
     return end
 
 
-def render(ref: str, caption: str | None, root: Path) -> str:
+def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> str:
     rel, start, end = parse_ref(ref)
     path = (root / rel).resolve()
     if not path.is_file():
@@ -171,8 +171,15 @@ def render(ref: str, caption: str | None, root: Path) -> str:
     if start > len(lines):
         raise SystemExit(f"[extract-snippet] {rel} has {len(lines)} lines, asked for {start}")
     end = min(end, len(lines))
-    start = _first_code_line(lines, start, end)
-    end = _closing_line(lines, start, end)
+    # Both snaps are right for a snippet that quotes a *method*: it should not open on a
+    # blank line and a reviewer must be able to see where it stops. Both are wrong for one
+    # that quotes a single statement in its neighbourhood, which is what the logging tab
+    # does — there, skipping the leading comment drops the sentence that explains the line,
+    # and extending to the end of the enclosing handler buries it in twenty lines the
+    # caption is not about. `--exact` means "I chose this window; give me exactly it".
+    if not exact:
+        start = _first_code_line(lines, start, end)
+        end = _closing_line(lines, start, end)
     body = lines[start - 1 : end]
 
     # Strip the common indent so a deeply nested method does not read as a column
@@ -202,7 +209,12 @@ def render(ref: str, caption: str | None, root: Path) -> str:
         f'<span class="ln">{n}</span>{code}' for n, code in zip(range(start, end + 1), rendered)
     )
 
-    cap = f'<figcaption class="snippet-note">{html.escape(caption)}</figcaption>' if caption else ""
+    # The caption is prose, and every other piece of prose in a content file is HTML —
+    # `<code>log.warn</code>`, a bolded lead-in, a link. Escaping it here made this the one
+    # field where markup came out as literal angle brackets on the page, so it does not.
+    # The caption comes from the same authored content file as every body on the page; a
+    # content file that can already inject markup everywhere loses nothing by doing it here.
+    cap = f'<figcaption class="snippet-note">{caption}</figcaption>' if caption else ""
     return (
         f'<figure class="snippet">\n'
         f"{cap}"
@@ -266,7 +278,9 @@ def main(argv=None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument("refs", nargs="*", metavar="path:from-to")
-    ap.add_argument("--caption", help="one-line note shown above the snippet")
+    ap.add_argument("--caption", help="one-line note shown above the snippet (HTML allowed)")
+    ap.add_argument("--exact", action="store_true",
+                    help="quote the given window verbatim; do not extend it to a closing brace")
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument(
         "--css",
@@ -285,7 +299,7 @@ def main(argv=None) -> int:
 
     root = repo_root()
     for ref in args.refs:
-        sys.stdout.write(render(ref, args.caption, root))
+        sys.stdout.write(render(ref, args.caption, root, exact=args.exact))
     return 0
 
 

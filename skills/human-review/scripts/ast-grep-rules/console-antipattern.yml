@@ -1,0 +1,13 @@
+id: console-antipattern
+language: java
+severity: hint
+message: console output / stack trace dump instead of a logger
+rule:
+  any:
+    - pattern: System.out.println($$$ARGS)
+    - pattern: System.out.print($$$ARGS)
+    - pattern: System.out.printf($$$ARGS)
+    - pattern: System.err.println($$$ARGS)
+    - pattern: System.err.print($$$ARGS)
+    - pattern: System.err.printf($$$ARGS)
+    - pattern: $E.printStackTrace($$$ARGS)

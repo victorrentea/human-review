@@ -3,9 +3,8 @@
 
 `openapi-diff.py`, next door, is *our* reading of the spec: it classifies every
 difference and it is the thing a human actually reads. This script asks the same
-question of **OpenAPITools/openapi-diff** — the reference implementation, a Java
-library with its own rule set, used in other people's CI — and puts its verdict
-at the top of the contract tab:
+question of an independent differ and puts its verdict at the top of the contract
+tab:
 
     no_changes  ·  compatible  ·  incompatible
 
@@ -15,10 +14,29 @@ loud when the two disagree. A disagreement is not noise — it is the single mos
 review-worthy line on the page, because exactly one of the two is wrong about
 whether somebody's client breaks.
 
-The tool ships as a fat jar on Maven Central. This script resolves it in order:
-`--jar`, `$OPENAPI_DIFF_JAR`, the cache under `~/.cache/human-review/`, then a
-download (sha1-verified against Maven's own checksum), then `--docker`. Nothing
-to install by hand, and nothing that silently runs a jar it did not verify.
+**Which differ, and why it matters more than it sounds.** The list of affected
+operations used to come from *OpenAPITools/openapi-diff* (the Java tool), read out
+of its `changedOperations` / `newEndpoints` / `missingEndpoints` keys. Those keys
+are computed per `paths` entry and do **not** propagate a change through a `$ref`.
+On a generated spec that is not a corner case, it is the common case: the whole
+delta lives in `components.schemas`, the `paths` section is byte-identical, and
+every operation that serves the moved schema is invisible. On the change this was
+found with, the Java tool listed 4 operations; 11 had actually moved. A short list
+under a confident COMPATIBLE seal is worse than no list.
+
+So the operation list — and the breaking verdict with it — now comes from
+**[oasdiff](https://github.com/oasdiff/oasdiff)**, which resolves `$ref`s and
+reports one record per change *per operation it lands on*. It is a Homebrew /
+`go install` binary, so it is treated as **optional**: when it is missing the
+script falls back to the Java tool exactly as before and the page says, in the
+seal and in a band under it, that the list may be short. It never prints a bare
+COMPATIBLE over a list it knows is incomplete.
+
+The Java tool ships as a fat jar on Maven Central. The fallback path resolves it
+in order: `--jar`, `$OPENAPI_DIFF_JAR`, the cache under `~/.cache/human-review/`,
+then a download (sha1-verified against Maven's own checksum), then `--docker`.
+Nothing to install by hand, and nothing that silently runs a jar it did not
+verify. With oasdiff present the jar is never fetched and the JVM never starts.
 
 Emits an HTML fragment for `build-review-html.py` to `includeHtml`, in the same
 shape as its siblings; `--css` prints the stylesheet it needs.
@@ -27,6 +45,7 @@ Usage (from the repository root — the project is resolved from the CWD):
     openapi-compat.py --base origin/main --out .human-review/assets/openapi-compat.html
     openapi-compat.py --css > .human-review/assets/openapi-compat.css
     openapi-compat.py before.yaml after.yaml --state
+    openapi-compat.py before.yaml after.yaml --no-oasdiff   # force the fallback
 """
 from __future__ import annotations
 
@@ -59,6 +78,13 @@ MAVEN = (
 DOCKER_IMAGE = f"openapitools/openapi-diff:{VERSION}"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "human-review"
 
+OASDIFF = os.environ.get("OASDIFF_BIN", "oasdiff")
+# oasdiff's own severity ladder, straight out of its JSON: 3 ERR, 2 WARN, 1 INFO.
+# `oasdiff breaking` is exactly "changelog, level >= 2", so that is where the line goes.
+LEVEL_ERR, LEVEL_WARN, LEVEL_INFO = 3, 2, 1
+LEVEL_CHIP = {LEVEL_ERR: ("oac-lv-err", "breaking"),
+              LEVEL_WARN: ("oac-lv-warn", "possibly breaking")}
+
 NO_CHANGES, COMPATIBLE, INCOMPATIBLE, NOT_RUN = (
     "no_changes", "compatible", "incompatible", "not_run",
 )
@@ -81,6 +107,101 @@ def run(cmd, **kw):
 
 def repo_root() -> Path:
     return Path(run(["git", "rev-parse", "--show-toplevel"], check=True).stdout.strip())
+
+
+# ── the differ that follows a $ref: oasdiff ───────────────────────────────────────
+def oasdiff_version() -> str | None:
+    """The installed oasdiff's version, or None when it is not on PATH at all."""
+    if not shutil.which(OASDIFF):
+        return None
+    proc = run([OASDIFF, "--version"])
+    if proc.returncode != 0:
+        return None
+    found = re.search(r"\d+\.\d+\.\d+", proc.stdout)
+    return found.group(0) if found else (proc.stdout.strip() or "unknown")
+
+
+def oasdiff_changelog(before: Path, after: Path) -> list | None:
+    """One record per change, each already attributed to the operation it lands on.
+
+    `{"id": "response-optional-property-added", "operation": "GET",
+      "path": "/api/owners", "level": 1, "text": "added the optional property …"}`
+
+    None — never `[]` — when oasdiff is absent or refuses the pair, so the caller can
+    tell "nothing changed" from "we could not look".
+    """
+    if not shutil.which(OASDIFF):
+        return None
+    proc = run([OASDIFF, "changelog", str(before), str(after), "-f", "json"])
+    if proc.returncode != 0:
+        print(f"[openapi-compat] oasdiff failed, falling back to the Java tool: "
+              f"{proc.stderr.strip()[:400]}", file=sys.stderr)
+        return None
+    try:
+        entries = json.loads(proc.stdout.strip() or "[]")
+    except json.JSONDecodeError:
+        print("[openapi-compat] oasdiff did not emit JSON, falling back", file=sys.stderr)
+        return None
+    return entries if isinstance(entries, list) else None
+
+
+def oas_reason(entry: dict) -> str:
+    """One change, in the currency a caller thinks in, tagged only when it can hurt."""
+    level = int(entry.get("level") or LEVEL_INFO)
+    text = inline(entry.get("text") or entry.get("id") or "changed")
+    chip = ""
+    if level in LEVEL_CHIP:
+        cls, label = LEVEL_CHIP[level]
+        chip = f'<span class="oac-lv {cls}">{label}</span> '
+    rule = entry.get("id")
+    tail = f' <span class="oac-rule">{html.escape(str(rule))}</span>' if rule else ""
+    return f"{chip}{text}{tail}"
+
+
+def read_changelog(entries: list) -> dict:
+    """The same flattened shape `read_report` produces, from a differ that resolves refs.
+
+    The single reason this function exists: `entries` is already keyed by operation,
+    and an operation lands in it because of *any* schema it reaches, not only because
+    its own `paths` entry moved.
+    """
+    ops: dict = {}          # (METHOD, path) -> [entry, …], in oasdiff's order
+    elsewhere: list = []    # info.version, a server URL — changes that belong to no operation
+    deprecated: list = []
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        method = str(e.get("operation") or "").upper()
+        path = str(e.get("path") or "")
+        if e.get("id") == "endpoint-deprecated":
+            deprecated.append({"method": method, "path": path})
+            continue
+        if not method or not path:
+            elsewhere.append(e)
+            continue
+        ops.setdefault((method, path), []).append(e)
+
+    breaks, additive = [], []
+    for (method, path), found in ops.items():
+        subject = {"method": method, "path": path}
+        reasons = [([e.get("id", "")], oas_reason(e)) for e in found]
+        if any(int(e.get("level") or LEVEL_INFO) >= LEVEL_WARN for e in found):
+            breaks.append({**subject, "reasons": reasons})
+        else:
+            n = len(reasons)
+            additive.append({**subject, "reasons": reasons,
+                             "note": f"{n} compatible change{'s' if n != 1 else ''}"})
+
+    if not entries:
+        state = NO_CHANGES
+    elif breaks:
+        state = INCOMPATIBLE
+    else:
+        state = COMPATIBLE
+    return {"state": state, "breaks": breaks, "additive": additive,
+            "deprecated": deprecated,
+            "elsewhere": [oas_reason(e) for e in elsewhere],
+            "source": "oasdiff", "complete": True}
 
 
 # ── getting hold of the tool ──────────────────────────────────────────────────────
@@ -201,7 +322,13 @@ def leaves(node: dict, crumbs: list, out: list):
 
 
 def read_report(report: dict) -> dict:
-    """Everything the fragment needs, flattened out of the tool's recursive JSON."""
+    """Everything the fragment needs, flattened out of the tool's recursive JSON.
+
+    The fallback engine. `changedOperations` / `newEndpoints` / `missingEndpoints` are
+    per-`paths`-entry and stop at a `$ref`, so what comes out of here is a *lower bound*
+    on the operations this change touches — hence `complete: False`, which the renderer
+    turns into a band the reader cannot miss.
+    """
     breaks, additive = [], []
     for e in report.get("missingEndpoints") or []:
         breaks.append({
@@ -236,7 +363,8 @@ def read_report(report: dict) -> dict:
         state = INCOMPATIBLE
     else:
         state = COMPATIBLE
-    return {"state": state, "breaks": breaks, "additive": additive, "deprecated": deprecated}
+    return {"state": state, "breaks": breaks, "additive": additive, "deprecated": deprecated,
+            "elsewhere": [], "source": f"openapi-diff {VERSION}", "complete": False}
 
 
 # ── the second opinion: what our own classifier said ──────────────────────────────
@@ -269,28 +397,65 @@ def op_label(method: str, path: str) -> str:
             f'<code class="oac-path">{html.escape(path)}</code>')
 
 
+INCOMPLETE_BAND = (
+    '<div class="oac-incomplete"><b>This list is a lower bound — it may be short.</b> '
+    "<code>oasdiff</code> is not installed, so the operations below come from "
+    "OpenAPITools/openapi-diff, which reads one <code>paths</code> entry at a time and does "
+    "not follow a change through a <code>$ref</code>. Any operation that changed only because "
+    "of a schema it references is missing from this page, and on a generated spec — where the "
+    "whole delta usually lands in <code>components.schemas</code> and <code>paths</code> never "
+    "moves at all — that is the common case, not the corner case. Install it "
+    "(<code>brew install oasdiff</code>, or <code>go install "
+    "github.com/oasdiff/oasdiff@latest</code>) and re-run for the list that resolves refs."
+    "</div>"
+)
+
+
 def render(result: dict, ours: dict | None, provenance: str, changelog: str,
            before: dict | None = None, after: dict | None = None) -> str:
     state = result["state"]
     breaks, additive = result["breaks"], result["additive"]
+    complete = result.get("complete", True)
     n_reasons = sum(len(b["reasons"]) for b in breaks)
+    n_additive = sum(len(a.get("reasons") or []) for a in additive)
 
     if state == INCOMPATIBLE:
         sub = (f"{n_reasons} change{'s' if n_reasons != 1 else ''} across "
                f"{len(breaks)} operation{'s' if len(breaks) != 1 else ''} would break a client "
                "that is already calling this API.")
     elif state == COMPATIBLE:
-        sub = (f"{len(additive)} operation{'s' if len(additive) != 1 else ''} moved, and none of "
-               "it can break a client compiled against the base spec.")
-    else:
+        moved = (f"{n_additive} change{'s' if n_additive != 1 else ''} across "
+                 f"{len(additive)} operation{'s' if len(additive) != 1 else ''}"
+                 if n_additive else
+                 f"{len(additive)} operation{'s' if len(additive) != 1 else ''}")
+        sub = (f"{moved} moved, and none of it can break a client compiled against the "
+               "base spec.")
+    elif result.get("identical", True):
         sub = "The two specs are structurally identical."
+    else:
+        # "No changes" is a claim about callers, not about bytes. The specs *did* move —
+        # saying they are identical when the neighbouring tab lists a reworded description
+        # is the same overstatement in miniature.
+        sub = ("The specs differ, but nothing that moved can reach a client: no operation, "
+               "payload, status or constraint changed. The rest — a description, a version, "
+               "an example — is on the openapi-diff.py tab.")
+
+    # A seal is a claim about *everything*. Over a list we know can be short it would be a
+    # lie of omission, so it says so on its face rather than only in the small print.
+    seal = html.escape(state.replace("_", " ")).upper()
+    headline = VERDICT_HEADLINE[state]
+    if not complete and state != NO_CHANGES:
+        seal += " · PARTIAL LIST"
+        headline += " — as far as this list reaches"
+        sub += " Read the band below before you trust the count."
 
     parts = [
-        f'<div class="oac oac-{state}">',
+        f'<div class="oac oac-{state}{"" if complete else " oac-partial"}">',
         '<div class="oac-verdict">'
-        f'<span class="oac-seal">{html.escape(state.replace("_", " ")).upper()}</span>'
-        f'<div><div class="oac-headline">{VERDICT_HEADLINE[state]}</div>'
+        f'<span class="oac-seal">{seal}</span>'
+        f'<div><div class="oac-headline">{headline}</div>'
         f'<div class="oac-sub">{sub}</div></div></div>',
+        INCOMPLETE_BAND if not complete else "",
         f'<p class="oac-prov">{provenance}</p>',
     ]
 
@@ -318,13 +483,24 @@ def render(result: dict, ours: dict | None, provenance: str, changelog: str,
         parts.append(f'<div class="oac-kind">Newly deprecated</div>{rows}')
 
     if additive:
-        rows = "".join(f'<div class="oac-row"><div class="oac-head">'
-                       f'{op_label(a["method"], a["path"])}'
-                       f'<span class="oac-note">{html.escape(a["note"])}</span></div>'
-                       f'{tree(a["method"], a["path"])}</div>'
-                       for a in additive)
+        rows = []
+        for a in additive:
+            # The reasons are what turns "changed, compatibly" from a shrug into a
+            # sentence. The differ already wrote them; there is no case for hiding them.
+            items = "".join(f"<li>{text}</li>" for _, text in (a.get("reasons") or []))
+            reasons = f'<ul class="oac-reasons">{items}</ul>' if items else ""
+            rows.append(f'<div class="oac-row"><div class="oac-head">'
+                        f'{op_label(a["method"], a["path"])}'
+                        f'<span class="oac-note">{html.escape(a["note"])}</span></div>'
+                        f'{reasons}{tree(a["method"], a["path"])}</div>')
         parts.append('<div class="oac-kind">Compatible movement '
-                     f'<span class="oac-count">{len(additive)}</span></div>{rows}')
+                     f'<span class="oac-count">{len(additive)}</span></div>' + "".join(rows))
+
+    if result.get("elsewhere"):
+        items = "".join(f"<li>{text}</li>" for text in result["elsewhere"])
+        parts.append('<div class="oac-kind">Elsewhere in the document '
+                     f'<span class="oac-count">{len(result["elsewhere"])}</span></div>'
+                     f'<div class="oac-row"><ul class="oac-reasons">{items}</ul></div>')
 
     parts.append(cross_check(state, ours))
     if changelog:
@@ -334,17 +510,31 @@ def render(result: dict, ours: dict | None, provenance: str, changelog: str,
     return "\n".join(p for p in parts if p)
 
 
+CROSS_CHECK_LIMIT = 8
+
+
 def cross_check(state: str, ours: dict | None) -> str:
     if ours is None:
         return ""
     we_break, they_break = bool(ours["breaking"]), state == INCOMPATIBLE
     if we_break == they_break:
         verdict = "breaking" if we_break else "safe"
+        # "subjects" counts operations *and* schemas, its own way — spelling that out keeps
+        # the number from reading as a rival count of the operation list above.
         return ('<div class="oac-agree"><b>Both differs agree.</b> '
                 f'<code>openapi-diff.py</code> read {ours["subjects"]} changed subject'
-                f'{"s" if ours["subjects"] != 1 else ""} out of the same two revisions and also '
+                f'{"s" if ours["subjects"] != 1 else ""} — operations and schemas, counted its '
+                "own way, not the list above — out of the same two revisions, and also "
                 f'calls this <b>{verdict}</b>. The verdict is not one tool\'s opinion.</div>')
-    listed = "".join(f"<li>{html.escape(x)}</li>" for x in ours["breaking"][:8]) or "<li>—</li>"
+    # A cut list is fine. A cut list that looks whole is how a reviewer concludes there
+    # were eight, so the count of what is not on screen goes on screen.
+    total = len(ours["breaking"])
+    shown = ours["breaking"][:CROSS_CHECK_LIMIT]
+    listed = "".join(f"<li>{html.escape(x)}</li>" for x in shown) or "<li>—</li>"
+    if total > len(shown):
+        listed += (f'<li class="oac-more">showing {len(shown)} of {total} — the remaining '
+                   f'{total - len(shown)} are in the classified list on this tab, which is '
+                   "where they came from</li>")
     if we_break and not they_break:
         body = ("our own classifier flagged something as breaking that the reference "
                 "implementation considers compatible. Either we are over-strict, or the tool's "
@@ -428,6 +618,12 @@ CSS = """
             padding:.1rem .55rem; white-space:nowrap; background:#f0f0f4; color:#5d5d6b; }
 .oac-incompatible .oac-seal { background:#fdeaea; color:#8a1c1c; }
 .oac-compatible   .oac-seal { background:#eef7ef; color:#245c30; }
+/* A verdict over a list we know can be short is not allowed to look settled. */
+.oac-partial .oac-verdict { border-left-color:var(--oac-warn); }
+.oac-partial .oac-seal { background:#fdf3e2; color:#6b4a0f; }
+.oac-incomplete { margin:.6rem 0 0; border:1px solid #e5c98f; border-left:4px solid var(--oac-warn);
+                  background:#fdf3e2; color:#6b4a0f; border-radius:8px; padding:.65rem .85rem;
+                  font-size:.85rem; line-height:1.7; }
 .oac-headline { font-weight:700; font-size:1rem; }
 .oac-sub { color:var(--muted); font-size:.86rem; line-height:1.6; }
 .oac-prov { color:var(--muted); font-size:.8rem; line-height:1.7; margin:.5rem 0 1rem; }
@@ -450,6 +646,13 @@ CSS = """
 .oac-reasons { list-style:none; margin:.45rem 0 0; padding:0; display:grid; gap:.28rem; }
 .oac-reasons li { font-size:.88rem; line-height:1.6; }
 .oac-reasons li::before { content:"↳"; color:var(--muted); margin-right:.45rem; }
+.oac-reasons li.oac-more { color:var(--muted); font-size:.8rem; font-style:italic; }
+.oac-lv { font:700 .64rem/1.8 inherit; text-transform:uppercase; letter-spacing:.04em;
+          border-radius:3px; padding:0 .3rem; }
+.oac-lv-err  { background:#fdeaea; color:#8a1c1c; }
+.oac-lv-warn { background:#fdf3e2; color:#6b4a0f; }
+/* The rule id is provenance, not prose: readable when looked for, invisible when not. */
+.oac-rule { font:11px/1.5 ui-monospace,Menlo,monospace; color:var(--muted); opacity:.75; }
 .oac code { font:600 12px/1.5 ui-monospace,Menlo,monospace; background:var(--code-bg);
             border-radius:3px; padding:0 .25rem; }
 .oac b.oac-add { color:#2e7d32; } .oac b.oac-del { color:#c62828; }
@@ -474,8 +677,11 @@ CSS = """
   .oac-seal { background:#26262f; color:#a5a5b4; }
   .oac-incompatible .oac-seal { background:#3a1f1f; color:#f2a0a0; }
   .oac-compatible   .oac-seal { background:#1b2c1f; color:#9ad3a5; }
+  .oac-partial .oac-seal { background:#3a3018; color:#e6c07b; }
   .oac b.oac-add { color:#8fd39c; } .oac b.oac-del { color:#f08a8a; }
-  .oac-disagree { background:#3a3018; color:#e6c07b; border-color:#6b5520; }
+  .oac-disagree, .oac-incomplete { background:#3a3018; color:#e6c07b; border-color:#6b5520; }
+  .oac-lv-err  { background:#3a1f1f; color:#f2a0a0; }
+  .oac-lv-warn { background:#3a3018; color:#e6c07b; }
 }
 """
 
@@ -497,6 +703,8 @@ def main(argv=None) -> int:
     ap.add_argument("--docker", action="store_true", help=f"run {DOCKER_IMAGE} instead of java")
     ap.add_argument("--no-cross-check", action="store_true",
                     help="skip comparing the verdict against openapi-diff.py")
+    ap.add_argument("--no-oasdiff", action="store_true",
+                    help="ignore oasdiff and use the Java fallback (which cannot follow a $ref)")
     args = ap.parse_args(argv)
 
     if args.css:
@@ -511,8 +719,8 @@ def main(argv=None) -> int:
             before, after = Path(args.before).resolve(), Path(args.after).resolve()
             spec_rel = args.after
             sibling_args = [args.before, args.after]
-            provenance = (f"<code>{html.escape(before.name)}</code> → "
-                          f"<code>{html.escape(after.name)}</code>")
+            pair = (f"<code>{html.escape(before.name)}</code> → "
+                    f"<code>{html.escape(after.name)}</code>")
         else:
             root = repo_root()
             target = root / spec_rel
@@ -522,17 +730,13 @@ def main(argv=None) -> int:
             base_ref = merge_base.stdout.strip() if merge_base.returncode == 0 else args.base
             base_spec = run(["git", "show", f"{base_ref}:{spec_rel}"], cwd=root)
             sibling_args = ["--base", args.base, "--spec", args.spec]
-            provenance = (
-                f"<code>{html.escape(spec_rel)}</code> at the merge-base "
-                f"<code>{html.escape(base_ref[:8])}</code> against the working tree, read by "
-                f"<b>OpenAPITools/openapi-diff {VERSION}</b> — the reference implementation, "
-                "not ours."
-            )
+            pair = (f"<code>{html.escape(spec_rel)}</code> at the merge-base "
+                    f"<code>{html.escape(base_ref[:8])}</code> against the working tree")
             if base_spec.returncode != 0 or not base_spec.stdout.strip():
                 # No spec at the base means no client compiled against one. Nothing to break.
                 frag = render({"state": NO_CHANGES, "breaks": [], "additive": [],
-                               "deprecated": []}, None,
-                              provenance + " The spec did not exist at the merge-base, so there is "
+                               "deprecated": [], "elsewhere": [], "complete": True}, None,
+                              pair + ". The spec did not exist at the merge-base, so there is "
                               "no prior contract to break.", "")
                 return emit(args, frag, {"state": NO_CHANGES})
             before = tmpdir / "before.yaml"
@@ -540,23 +744,43 @@ def main(argv=None) -> int:
             after = tmpdir / "after.yaml"
             after.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
 
-        # Docker can only see one mounted directory, so both specs have to sit in it.
-        if args.docker and before.parent != tmpdir:
-            for src, name in ((before, "before.yaml"), (after, "after.yaml")):
-                shutil.copyfile(src, tmpdir / name)
-            before, after = tmpdir / "before.yaml", tmpdir / "after.yaml"
+        # Preferred engine: oasdiff resolves `$ref`s, so an operation shows up here because
+        # of any schema it reaches. Optional, so the fallback below has to stay whole.
+        entries = None if args.no_oasdiff else oasdiff_changelog(before, after)
+        changelog = ""
+        if entries is not None:
+            result = read_changelog(entries)
+            provenance = (
+                f"{pair}, read by <b>oasdiff {html.escape(oasdiff_version() or '')}</b> — an "
+                "independent differ, not ours. It resolves <code>$ref</code>s, so an operation "
+                "is listed here because of <i>any</i> schema it reaches, not only because its "
+                "own <code>paths</code> entry moved. Every line below carries the rule id that "
+                "produced it."
+            )
+        else:
+            # Docker can only see one mounted directory, so both specs have to sit in it.
+            if args.docker and before.parent != tmpdir:
+                for src, name in ((before, "before.yaml"), (after, "after.yaml")):
+                    shutil.copyfile(src, tmpdir / name)
+                before, after = tmpdir / "before.yaml", tmpdir / "after.yaml"
 
-        report_json, changelog_md = tmpdir / "report.json", tmpdir / "report.md"
-        invoke(before, after, {"json": report_json, "markdown": changelog_md},
-               args.docker, args.jar)
-        report = json.loads(report_json.read_text(encoding="utf-8"))
-        changelog = (markdown_to_html(changelog_md.read_text(encoding="utf-8"))
-                     if changelog_md.exists() else "")
+            report_json, changelog_md = tmpdir / "report.json", tmpdir / "report.md"
+            invoke(before, after, {"json": report_json, "markdown": changelog_md},
+                   args.docker, args.jar)
+            report = json.loads(report_json.read_text(encoding="utf-8"))
+            changelog = (markdown_to_html(changelog_md.read_text(encoding="utf-8"))
+                         if changelog_md.exists() else "")
+            result = read_report(report)
+            provenance = (
+                f"{pair}, read by <b>OpenAPITools/openapi-diff {VERSION}</b> — the fallback "
+                "engine, used because <code>oasdiff</code> is not on <code>PATH</code>."
+            )
+
         # Read inside the block: the temp copies are gone the moment it closes.
         before_spec = yaml.safe_load(before.read_text(encoding="utf-8")) or {}
         after_spec = yaml.safe_load(after.read_text(encoding="utf-8")) or {}
+        result["identical"] = before_spec == after_spec
 
-    result = read_report(report)
     if args.state:
         print(result["state"])
         return 0
@@ -566,13 +790,20 @@ def main(argv=None) -> int:
     return emit(args, frag, result)
 
 
+def plain(markup: str) -> str:
+    return html.unescape(re.sub("<[^>]+>", "", markup)).strip()
+
+
 def emit(args, fragment: str, result: dict) -> int:
     if args.json:
-        payload = json.dumps({k: v for k, v in result.items() if k != "breaks"} |
-                             {"breaks": [{"method": b["method"], "path": b["path"],
-                                          "reasons": [re.sub("<[^>]+>", "", t)
-                                                      for _, t in b["reasons"]]}
-                                         for b in result.get("breaks", [])]}, indent=1)
+        skip = ("breaks", "additive")
+        payload = json.dumps(
+            {k: v for k, v in result.items() if k not in skip} |
+            {group: [{"method": o["method"], "path": o["path"]} |
+                     ({"note": o["note"]} if o.get("note") else {}) |
+                     {"reasons": [plain(t) for _, t in (o.get("reasons") or [])]}
+                     for o in result.get(group, [])]
+             for group in skip}, indent=1)
         print(payload)
     elif args.out:
         out = Path(args.out)

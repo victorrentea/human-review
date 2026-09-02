@@ -24,8 +24,11 @@ skill's moving parts:
 
 - `scripts/` — the mechanics: the page builder, the snippet extractor, the diagram
   driver, the video recorder, the Code City capture, the complexity delta, the OpenAPI
-  contract differ, the backward-compatibility check that second-guesses it, and the
-  code-owners check that says whether the merge is blocked.
+  contract differ, the backward-compatibility check that second-guesses it, the
+  structural logging extractor, and the code-owners check that says whether the merge is
+  blocked. `scripts/ast-grep-rules/` is the logging extractor's nine rules as standalone
+  YAML (it carries its own copies as strings so it stays dependency-free; a test keeps the
+  two in step), and `scripts/testdata/` holds the Java fixtures its tests scan.
 - `puml-diff/` — the two differs, `puml_diff.py` (class / ER / package) and
   `seq_puml_diff.py` (sequence). They diff any PlantUML diagram and know nothing about
   the project being reviewed.
@@ -88,9 +91,20 @@ What each step actually needs:
 | --- | --- | --- |
 | 0, 1, 2, 8, 10 | git, python3, plantuml | — |
 | 9 | python3, **Pygments** (`pip install pygments`) | — |
-| 7 | **PyYAML**; a JVM **or** Docker | no runtime → the tab says "not run — no JVM and no Docker" |
-| 5 | ffmpeg, **Pillow**, and a TTF the captions can use | no `swiftc`/macOS → captioned but silent |
+| 7 | **PyYAML**; a JVM **or** Docker | no `oasdiff` → the seal reads `PARTIAL LIST`; no runtime at all → the tab says "not run — no JVM and no Docker" |
+| 7b | `openapi-changes` (Homebrew) | not installed → no Spec changes tab, named under the strip |
+| 5 | ffmpeg, **Pillow**, and a TTF the captions can use | no `swiftc`/macOS → captioned but silent; no recording at all → notice + transcript, never a dead player |
 | 4, 6 | whatever your project's generators need | — |
+| 7c | `ast-grep` (Homebrew, or `pip install ast-grep-cli`) | not installed → no Logging tab, named under the strip |
+
+Three of these are **optional Homebrew binaries**, not Python dependencies, so assume none
+of them and check before you use them:
+
+| binary | install | what it buys | without it |
+| --- | --- | --- | --- |
+| `oasdiff` | `brew install oasdiff` (or `go install github.com/oasdiff/oasdiff@latest`); `OASDIFF_BIN` overrides the path, `--no-oasdiff` bypasses it | the affected-operation list with `$ref`s **resolved** — 11 operations on the reference change set where the `$ref`-blind path finds 4 | the Java tool takes over as the fallback and the page says so in the open: the seal reads `COMPATIBLE · PARTIAL LIST` in amber, with a band under it stating the list is a **lower bound**. That amber is correct, not a bug |
+| `openapi-changes` | `brew install pb33f/taps/openapi-changes` | pb33f's whole report, embedded as a document — its own change list, side-by-side diff and document tree | the Spec changes tab is dropped |
+| `ast-grep` | `brew install ast-grep` | the logging extractor's structural pass — the only way to tell `log.info(x)` from `Math.log(x)` | the Logging tab is dropped, loudly: a false "no logging found" is the one answer that tab must never give |
 
 Pygments and Pillow are top-level imports, not optional ones: without Pygments **step 9
 cannot build a page at all**, even one with no snippets in it. `annotate-feature-video.py`
@@ -206,6 +220,13 @@ untracked — and dispatches by diagram family:
 Writes `<name>.diff.puml`, `<name>.diff.svg` and `MANIFEST.tsv` (name / source / kind /
 status / files). Zero changed diagrams is a quiet success — drop the section.
 
+A structural delta is also rendered at several radii of unchanged context (`focus0`,
+`focus1`, `focus2`, plus the whole diagram), and the page **opens at one hop**. The whole
+DB and DomainModel deltas are forty unchanged entities with the change somewhere inside;
+every reviewer who met one did the same thing, which was click `1`. One hop already carries
+the neighbourhood that "is this change in the right place?" needs, and `all` is one click
+away — a click the reader now makes only when the neighbourhood was not enough.
+
 A structural delta is **titled as one**: `title Domain Model` comes out
 `Domain Model - <color:red>Diff</color>`, so the picture says what it is to anyone who
 meets it outside this page — opened straight from `assets/diagrams/`, pasted into a
@@ -308,6 +329,20 @@ can get to the test that produced it: give every diagram in the guide a link to 
 scenario source (`file:from-to`, so VS Code opens it at the test) and a link to the `.puml`
 itself. A picture with no provenance is a picture they have to trust.
 
+**Put the test and its sequence in one block**, not in two lists on the same tab. They were
+a gallery of diagrams above a list of test snippets for a while, and the reader had to work
+out which picture belonged to which test from the file names — nothing hidden, nothing
+reliable. Use a `testpairs` block (step 9) and the renderer does the pairing from data that
+already exists: `MANIFEST.tsv` says which test file each diagram was generated from, and
+the `== [[src://<file>:<line>{…} <title>]] ==` chapter dividers inside that file's `.puml`
+say which scenarios, at which lines. Each pair renders as the scenario titles and their
+deep links, then whichever of the block's snippets quote that test file, then the diagram.
+
+A test with **no** diagram is neither dropped nor given one it did not produce: its
+snippets fall into a trailing "Tests that record no sequence" group that says exactly
+that. Both halves matter — a fabricated pairing is a lie about provenance, and a dropped
+one is the silent loss this pipeline exists to prevent.
+
 ## Step 4 — Code City screenshot
 
 ```sh
@@ -374,6 +409,43 @@ the one heading a reviewer trusts without reading.
 | 2 | no feature script, or the stack is down | skip the section and say why |
 | 3 | filmed, and **the feature did not hold** (`{ok:false}`) | **embed it and lead the review with what it shows** — this is the most valuable film the pipeline can make |
 
+**Give the video its own tab, and never emit a player for a file that is not there.** The
+very first thing this page got wrong was a `<video src="assets/….webm">` whose asset no
+step had written: a black rectangle stuck at 0:00 under a confident heading, with nothing
+to say the film was missing rather than broken. The builder now emits the player **only**
+for a file on disk; when there is none it emits a notice naming the absent file and
+**keeps the transcript**, because the cue list is a written account of the same walkthrough
+and is worth reading on its own. `scripts/test_build_review.py` pins both halves.
+
+**The links to the running app live inside the captions.** They used to be a paragraph of
+their own — "Pages this change touches: owner detail · all visits · vets" — a second list
+of the screens the narration was already walking through, in different words and a
+different order. Declare them on the video section instead and the builder wraps the words
+that are already in the cue:
+
+```json
+"appLinks": [
+  {"href": "http://localhost:4200/owners/2", "label": "owner detail", "anchor": "visit list"},
+  {"href": "http://localhost:4200/vets",     "label": "vets",  "anchor": "who will attend"},
+  {"href": "http://localhost:4200/visits",   "label": "all visits"}
+]
+```
+
+`anchor` is the phrase to wrap, matched in the first caption that contains it and never
+nested inside a link already placed. A link whose phrase is nowhere in the narration — or
+that has no `anchor` at all — is **not dropped**: it is printed after the transcript as
+*"Touched but not filmed"*, which is a fact about the coverage of the film and worth
+saying out loud.
+
+**It plays on arrival and pauses on the way out.** The tab script dispatches `panelshow` /
+`panelhide` on each panel as it becomes the active one; the video starts on the first and
+pauses (never rewinds) on the second, so coming back resumes where the reader left off.
+`play()`'s rejection is swallowed, because audible playback is only granted off a user
+gesture — a click on the Video tab is one, opening the page straight on `#video` is not.
+**Do not answer that by muting.** The narration is the point of the film; a silent film
+here is worse than a paused one, so the reader gets the controls instead. `show all` starts
+nothing, since no panel is *the* active one there.
+
 It drives the flow deliberately slowed, and records the whole thing. Replaying the Playwright test and keeping its retained video is
 the purer idea — the test *is* the demo — but headless it finishes in about a second and
 the `.webm` shows only the final assertion, which teaches a reviewer nothing. Film it to be
@@ -425,9 +497,19 @@ the *whole flow* behind each entry point, read from bytecode. An entry point is 
 `@JmsListener` family count too, each tagged with its `kind`.
 
 Get the baseline by running the same test at the merge-base (or by reading the committed JSON
-from that ref), then render with `${SKILL}/scripts/endpoint-complexity-delta.py before.json after.json`,
+from that ref), then render with
+`${SKILL}/scripts/endpoint-complexity-delta.py before.json after.json --base $BASE_BRANCH`,
 which groups by kind (HTTP → MCP → listeners → jobs) and colours **green for an increase, red
 for a decrease** — colour reads as authorship (what the branch added/removed), not as judgement.
+
+The lede no longer restates that legend, because **every bar explains itself on hover**: the
+grey segment says what the flow measured on the base branch and that the number is *measured,
+not estimated* (it is the committed complexity JSON at the merge-base, from the same
+extractor); the coloured segment says how much this branch added or removed, with both
+endpoints; the whole bar gives `before → after`, and an untouched row says so in one
+sentence rather than being silent. Pass `--base` the real branch name — it defaults to
+whatever `origin/HEAD` points at, and hardcoding "main" is wrong in every repository that
+calls it something else. A tooltip naming the wrong branch is worse than none.
 Report `before → after (Δ)` **ranked inside the full list**, so the reviewer sees whether the
 change made a cheap entry point expensive or merely nudged an already-heavy one. If the baseline
 predates a widening of what counts as an entry point, say so — the newly-visible kinds will
@@ -471,15 +553,31 @@ the spec's own `example:` fields, **never invented**: a made-up payload in a rev
 liability, and a generated spec already carries the real ones.
 
 `openapi-diff.py` is *our* reading, and a reviewer is entitled to ask who checked the checker.
-`openapi-compat.py` runs **[OpenAPITools/openapi-diff](https://github.com/OpenAPITools/openapi-diff)**
-— the reference implementation, a Java library with its own rule set, the same one people put in
-CI — over the same two revisions and puts its single machine verdict at the top of the tab:
-`no_changes` · `compatible` · `incompatible`, with every incompatibility named in the currency of
-the caller ("now requires `date`", "the operation is gone", "`maxLength` unset → 5").
+`openapi-compat.py` puts a second opinion at the top of the tab: a single machine verdict,
+`no_changes` · `compatible` · `incompatible`, with every incompatibility named in the currency
+of the caller ("now requires `date`", "the operation is gone", "`maxLength` unset → 5").
 
-It resolves the tool itself: `--jar`, then `$OPENAPI_DIFF_JAR`, then `~/.cache/human-review/`,
-then a download from Maven Central **verified against Maven's own sha1**, then `--docker` for a
-machine with no JVM. Nothing to install by hand, and nothing that runs an unverified jar.
+It sources the **affected-operation list** from
+**[oasdiff](https://github.com/oasdiff/oasdiff)**, because oasdiff resolves `$ref`s before
+it counts. That is the whole difference: a property added to `components.schemas.VisitDto`
+moves two lines of the document and reaches every operation that `$ref`s it — eleven of
+them on the reference change set, where a differ that stops at the `$ref` reports four.
+Install it with `brew install oasdiff`; `OASDIFF_BIN` points at another copy and
+`--no-oasdiff` forces the fallback.
+
+**[OpenAPITools/openapi-diff](https://github.com/OpenAPITools/openapi-diff)** — the Java
+reference implementation, the one people put in CI — is kept as that fallback, deliberately:
+it is auto-downloadable without Homebrew, so it is what keeps this tab working on a machine
+that has nothing installed. The script resolves it itself: `--jar`, then
+`$OPENAPI_DIFF_JAR`, then `~/.cache/human-review/`, then a download from Maven Central
+**verified against Maven's own sha1**, then `--docker` for a machine with no JVM. With
+oasdiff present the 20 MB jar is never fetched and no JVM ever starts.
+
+⚠️ **In fallback mode the page says so, in amber.** The seal reads `COMPATIBLE · PARTIAL
+LIST` and a band under the verdict states that the operation list is a **lower bound** —
+because a `$ref`-blind pass genuinely cannot know how many operations a shared schema
+reaches. It is a user-visible state, not a rendering bug: do not "fix" it in the prose, and
+do not present the short list as complete. Installing `oasdiff` and re-running is the fix.
 
 **The cross-check is the point.** The script also asks `openapi-diff.py` for its verdict and
 prints, under the seal, whether the two agree. Agreement is a footnote. A **disagreement** is the
@@ -501,6 +599,97 @@ the tab that a green seal means the *shape* of the contract holds, not the behav
 it. Two differs agreeing is still two structural differs agreeing. And the spec is
 only evidence if it is generated: in a project where `openapi.yaml` is hand-written, this
 step diffs an intention rather than an API, and the guide should say so.
+
+### Step 7b — the same two revisions, read by a third differ
+
+```sh
+openapi-changes html-report --no-logo --no-explorer \
+  --report-file .human-review/assets/openapi-changes.html \
+  "$MERGE_BASE:openapi.yaml" ./openapi.yaml
+```
+
+[pb33f/openapi-changes](https://pb33f.io/openapi-changes/) is not a summary — it is a whole
+application in one file: its own change list, its own side-by-side diff of the two
+revisions, and its own tree of the document. Three ways of asking the same question that
+this page does not otherwise offer, so it is **embedded whole** rather than picked apart and
+re-drawn in this page's styles:
+
+```json
+{"id": "pb33f", "title": "The same two revisions, read by a third differ",
+ "body": "<p>…what it says, in this page's own words…</p>",
+ "embed": {"src": "assets/openapi-changes.html",
+           "label": "openapi-changes report — openapi.yaml at <sha> against the working tree",
+           "missing": "run `openapi-changes html-report` (brew install pb33f/taps/openapi-changes)"}}
+```
+
+`--no-explorer` drops the document explorer and saves **32%** — 4.51 MB → 3.07 MB — and
+loses nothing the tab is there for. `--no-logo` keeps the frame from advertising.
+
+**It is an optional Homebrew binary.** If `openapi-changes` is not on `PATH`, skip the step:
+the section's `embed` degrades to a line naming the missing tool, and if the tab holds
+nothing else it is dropped and named under the strip. Never let a missing optional tool fail
+the run.
+
+Two things the tab must say in **this page's own words**, because an iframe is a fence — it
+is a separate origin off `file://`, so `⌘F` stops at its edge and the reader's find bar
+cannot reach the evidence:
+
+- the finding itself, written out, with a full-page link (`<a href="assets/openapi-changes.html">`)
+  for reading the diff at width;
+- **why its numbers differ from the tab beside it.** They count at different levels and
+  neither is wrong: a document-level differ reports the two shared schemas that literally
+  moved, while a `$ref`-resolving one reports the eleven operations that serve them. Say
+  that, rather than leaving a reader to conclude one of the two tabs is broken.
+
+## Step 7c — What it will say for itself in production
+
+```sh
+${SKILL}/scripts/logextract.py petclinic-backend \
+  --repo . --since $MERGE_BASE --json .human-review/assets/logging.json
+```
+
+The question is what a 3 a.m. pager gets when this code misbehaves, and **grep cannot
+answer it**. `log.info(x)` is a logging statement, `Math.log(x)` is not, `flux.log()` is
+Reactor, and a local variable that merely happens to be called `log` is neither. So this is
+structural, in two `ast-grep` passes:
+
+1. build a per-file symbol table of identifiers that really are loggers — a declared
+   `Logger`/`Log`/`XLogger`/`FluentLogger`/`LogAccessor` type, a `LoggerFactory.getLogger(…)`-style
+   initialiser, or one of the Lombok annotations `@Slf4j @XSlf4j @Log4j2 @Log4j @CommonsLog
+   @CustomLog @Log @Flogger @JBossLog` — resolved through the `extends` chain and through
+   enclosing outer classes, because an inner class routinely uses the outer one's logger;
+2. accept `$RECV.$METHOD(…)` only where `$RECV` is in that table.
+
+`System.out` / `System.err` / `printStackTrace` are collected **separately** and labelled as
+an anti-pattern, never mixed into the logger counts: they have no level, no timestamp, no
+MDC, no appender, and are invisible to the aggregator. Validated on seven Java projects —
+100% recall on `spring-framework` (2111 hits across 9186 files) and no false positives in
+140 hand-checked. `--since $MERGE_BASE` restricts the result to statements on added or
+modified lines, which is the set the tab is about.
+
+⚠️ **Three `ast-grep` gotchas are load-bearing** and are commented where they bite in
+`logextract.py`. The expensive one: **a `constraints:` block attached to a `has:` does not
+backtrack.** The matcher binds the first child that fits the pattern, then tests the
+constraint, then gives up — it does not try the next child. That silently lost every
+`@Slf4j` that sat behind another annotation, and lost it *quietly*, as a class that appeared
+to log nothing. Do not "simplify" a rule by folding a `has:` and a `constraints:` together.
+
+**The zero case is a finding, not an empty section.** On the reference change set the answer
+is "None. Not one line." across 14 touched Java files — and that is the most review-worthy
+thing on the tab, because the branch's own first finding is a live 500 whose only trace in
+production would be a generic catch-all line. So the tab renders the table of **every**
+touched Java file with its churn and its `0 logging` beside it: the evidence that the
+question was asked of each of them, not silence that could equally mean the tool did not
+run. The tab is never struck through for a zero — a zero here is a statement about this
+diff, not "we looked at unrelated context and nothing moved".
+
+Two context registers sit under the finding, both authored, both checked against the
+extractor's own counts (a section that quotes three of four statements draws a build
+warning): **pre-existing logging** ("what does this service log today", answered straight
+after "nothing new") and **console output where a logger belongs**. Their snippets are cut
+with `--exact` and their `path:line` link is aimed at the **statement**, not at the first
+line of the window — landing a reader on four lines of context and making them find the
+`log.warn` by eye defeats the point.
 
 ## Step 8 — Who has to approve this
 
@@ -561,7 +750,16 @@ ${SKILL}/scripts/extract-snippet.py petclinic-backend/.../Visit.java:33-38 --cap
 ```
 
 It cuts the lines verbatim at build time, numbers them from the real line number, and
-titles them `path:from-to` as a `vscode://file/<abs-path>:<line>:1` link.
+titles them `path:from-to` as a `vscode://file/<abs-path>:<line>:1` link — note the **two**
+slashes after `file`, which is how VS Code takes an absolute path; one slash silently
+resolves nothing.
+
+The range is **snapped**: it skips a leading blank or comment line and extends to whatever
+brace the window opened, so a snippet always shows where the quoted method stops. That is
+right when the snippet *is* the method and wrong when it is one statement in its
+neighbourhood — `--exact` turns both snaps off and gives you the window you asked for. The
+`--caption` is **HTML**, like every other piece of prose in the content file, so
+`<code>log.warn</code>` renders as code and a literal `<` has to be written `&lt;`.
 
 Author the judgement into a JSON content file and render:
 
@@ -652,20 +850,32 @@ single column forces them past four answers to reach the one they wanted, so the
 
 ```json
 "tabs": [
-  {"id":"review","label":"Review","count":true,
+  {"id":"autoreview","label":"Autoreview","count":true,
+   "intro":"<p class=\"sub\" id=\"review\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
    "blocks":[{"type":"findings","title":"Look here first","body":"…"},
              {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
+  {"id":"video","label":"Video","blocks":[{"type":"section","id":"seeitwork"}]},
   {"id":"behaviour","label":"Behaviour",
-   "blocks":[{"type":"diagrams","kind":"sequence","title":"Sequence deltas","body":"…"},
-             {"type":"section","id":"tests"},{"type":"section","id":"video"}]},
-  {"id":"owners","label":"Code owners","blocks":[{"type":"codeowners"}]},
-  {"id":"api","label":"API contract","badge":"+4","blocks":[{"type":"section","id":"api"}]},
+   "blocks":[{"type":"section","id":"tests"},
+             {"type":"testpairs","id":"sequences","title":"Sequence deltas","kind":"sequence",
+              "body":"…","snippets":[{"ref":"…:41-56","caption":"…"}],
+              "unpaired":{"id":"tests-nosequence","title":"Tests that record no sequence","body":"…"}},
+             {"type":"section","id":"notcovered"}]},
   {"id":"data","label":"Data model",
    "blocks":[{"type":"diagrams","only":["DB","DomainModel"]},{"type":"section","id":"logic"}]},
   {"id":"packages","label":"Packages",
    "blocks":[{"type":"diagrams","only":["Packages"]},
              {"type":"puml","src":"petclinic-backend/docs/packages.puml","name":"Packages",
               "status":"unchanged","note":"…"}]},
+  {"id":"owners","label":"Code owners","blocks":[{"type":"codeowners"}]},
+  {"id":"api","label":"API contract","badge":"+4","blocks":[{"type":"section","id":"apicompat"}]},
+  {"id":"specchanges","label":"Spec changes","tip":"pb33f's whole report, embedded rather than summarised.",
+   "blocks":[{"type":"section","id":"pb33f"}]},
+  {"id":"logging","label":"Logging","tip":"Every logging statement the change set added — found by syntax, not by grep.",
+   "blocks":[{"type":"logging","base":"origin/main","paths":["petclinic-backend"],
+              "id":"logging-added","title":"Logging this change set added","body":"<div class=\"lede\">…</div>",
+              "existing":{"id":"logging-existing","title":"…","body":"…","snippets":[]},
+              "console":{"id":"logging-console","title":"…","body":"…","snippets":[]}}]},
   {"id":"shape","label":"Cost & shape",
    "blocks":[{"type":"section","id":"complexity"},{"type":"codecity"}]}
 ]
@@ -673,17 +883,37 @@ single column forces them past four answers to reach the one they wanted, so the
 
 Block types: **`findings`** (the disputable calls), **`autofixes`** (the top-level
 `autofixes` array — what you applied in step 1, same shape as a finding), **`diagrams`**
-(the delta gallery, narrowed by `kind` / `only` / `except`), **`puml`** (a diagram this
-branch did *not* change, rendered from source as context), **`codeowners`** (step 8's
-check, run by the renderer), **`codecity`**, **`section`** (one entry of `sections` by
-`id`), **`html`**. Rules the renderer enforces:
+(the delta gallery, narrowed by `kind` / `only` / `except`), **`testpairs`** (step 3 —
+each acceptance test beside the sequence its own run recorded, paired from the manifest and
+the `.puml` chapter titles, with the tests that record no sequence in a trailing group),
+**`logging`** (step 7c — the structural logging scan, its per-file table, and the two
+context registers under it), **`puml`** (a diagram this branch did *not* change, rendered
+from source as context), **`codeowners`** (step 8's check, run by the renderer),
+**`codecity`**, **`section`** (one entry of `sections` by `id`), **`html`**.
+
+A tab may also carry an **`intro`** — raw HTML about the *tab*, emitted inside the panel
+before its first block and carrying no weight of its own (a tab is not kept alive by its own
+preamble) — and a **`tip`**, a sentence shown on hover for a tab whose subject two words
+cannot carry.
+
+Two section keys are worth knowing: **`video`** (step 5, with `appLinks`) and **`embed`**
+(step 7b, another tool's whole report in an `<iframe>` — `aria-label`, never `title`, since
+this page has exactly one tooltip component).
+
+Rules the renderer enforces:
 
 - an **Overview** tab is synthesised as the first tab, holding the summary and the
   verdict, and the page opens on it. They used to sit above the strip, which pushed the
   questions below the fold on a laptop: a reviewer scrolled past the answers to find out
   what the answers were. Declare a tab with `id: "overview"` yourself to take it over;
-- a tab whose every block came back empty is **dropped**, and named in a line under the
-  strip — never shown as an empty page;
+- a tab whose every block came back empty is **dropped**, and named in the build log —
+  never shown as an empty page. It used to be named in a `<p class="sub">` appended after
+  the last panel, together with the list of struck-through tabs, and that append landed
+  **outside every `<section class="panel">`** — making it the one element on the page no
+  tab could hide, sitting under all eleven of them and restating a strike-through the strip
+  was already drawing three inches above it. Anything the renderer wants to say about the
+  strip either belongs to the strip (which already says it) or belongs to whoever is
+  assembling the page. Nothing may be emitted outside a panel;
 - a tab that has content but **no delta** — all context, nothing this branch touched — is
   kept and its label is **struck through**, with a tooltip saying so. "We looked, and this
   branch did not touch it" is worth as much to a reviewer as the opposite, and a dropped
@@ -697,33 +927,69 @@ check, run by the renderer), **`codecity`**, **`section`** (one entry of `sectio
   look like a count, which is why the code-owners block sets both itself rather than
   leaving the severity to whoever wrote the content file. Use a number
   only where it means something — on the tab holding the findings it does; on
-  "Data model" it would just count pictures;
+  "Data model" it would just count pictures. An alarm renders as a single `!` in a red
+  circle, not as the words it stands for: at the width of a tab pill a phrase is unreadable,
+  so the phrase moves to `aria-label` (which keeps the button's accessible name "Code owners
+  approval required") and to `data-tip`. `badgeLabel` sets it for a literal badge;
+- **the Overview lede is checked against the strip it describes.** Write `{{tabcount}}`
+  where the number of tabs goes and the build fills it in from the tabs it actually
+  emitted — a hand-typed "Ten tabs" above eleven of them is exactly the sentence nobody
+  re-reads. The build also warns when the lede fails to name a tab, or names them in a
+  different order than the strip. It is a warning, not a failure: a lede may legitimately
+  group two tabs into one clause. It may not do so by accident;
 - omit `tabs` entirely and you get the original single-column page, unchanged.
+
+⚠️ **The strip has a budget, and it is not the window.** Its inner track is pinned to
+**1120 px at every viewport** by its own padding formula, and one row is 34 px at 1280 px
+and up. Eleven tabs plus `show all` need about 1130 px, so three rules at the very **end**
+of the stylesheet buy the room: `.tabstrip .grow { flex:1 1 0 }` (+16 px), `.tabstrip {
+padding-right:1.25rem }` (+20 px at 1280, +100 at 1440 — the strip is full-bleed, so the
+right padding is decorative; the **left** padding is untouched, so the first tab still
+starts where the body text does), and `button.tab { padding:0 .6rem }` (+88 px across
+eleven pills). They must be emitted last or the base sheet's `button.tab { padding:0
+.85rem }` wins the cascade and the strip silently wraps onto two rows — no error, nothing
+in the DOM to notice. `test_build_review.py` pins the ordering. **A twelfth tab does not
+fit**: merge one, shorten a label, or accept two rows deliberately.
 
 Deep links work both ways: `#<tab-id>` opens on that tab, and a link to any `id` inside a
 panel switches to it first. `⌘F` searches only the open tab, so the strip carries a **show
 all** toggle that reveals every panel at once — which is also what printing does.
 
-What goes where, as a default worth departing from only with a reason:
+The order, as a default worth departing from only with a reason — **Overview, Autoreview,
+Video, Behaviour, Data model, Packages, Code owners, API contract, Spec changes, Logging,
+Cost & shape** — with the panels in the same DOM order as the strip:
 
-1. **Review** — the disputable findings, most critical first, each with the failing scenario
-   in one sentence and a snippet of the decisive lines; then the fixes you already applied.
-   The two lists are one decision split in two, and a reviewer who cannot see the first pile
-   has to take the size of the second on trust.
-2. **Code owners** — whether a named human has to approve this before it can merge, and
-   which files put them on the critical path. It sits second because it is the only
-   answer on the page that is about the *merge* rather than the code, and a reviewer who
-   learns at the end that they are not the last signature has read the diff in the wrong
-   frame of mind.
-3. **Behaviour** — the sequence deltas, the acceptance tests that produced them, the video,
-   and a plain statement of what is **not** covered.
-4. **API contract** — step 7's two fragments, each a `section` with `includeHtml`: the
-   compatibility verdict first, because it is the one-word answer, then the classified
-   change list underneath it.
+1. **Overview** — synthesised: the summary and the verdict, and the lede that walks the
+   reader through the rest of the strip (see `{{tabcount}}` above).
+2. **Autoreview** — the disputable findings, most critical first, each with the failing
+   scenario in one sentence and a snippet of the decisive lines; then the fixes you already
+   applied. The two lists are one decision split in two, and a reviewer who cannot see the
+   first pile has to take the size of the second on trust. It is called *Autoreview*, not
+   *Review*, because the whole page is the review — this tab is what the automated passes
+   said. Its `intro` must state that `/code-review` and `/simplify` output was **merged**
+   before it reached the page and is not separable from the recorded data: nothing says
+   which command produced which item, so the split below is by *who decides*, not by which
+   tool spoke. Give the intro `id="review"` so older `#review` links still land. The two
+   header chips point in-page at `#autoreview` — not out to the docs in a new tab, which
+   answered a question nobody had while the findings themselves were one click away.
+3. **Video** — its own tab, not a paragraph inside Behaviour. It is the one artifact a
+   reader can watch instead of read, and burying it under the sequence diagrams meant most
+   of them never found it. Rename the section's `id` (`seeitwork`) so the tab can own
+   `#video`.
+4. **Behaviour** — each acceptance test with the sequence its run recorded directly beneath
+   it, then a plain statement of what is **not** covered.
 5. **Data model** — the DB and domain deltas, and the 2–5 core-logic bullets in domain
    language, each backed by a snippet.
 6. **Packages** — the package delta, or the current package diagram as context.
-7. **Cost & shape** — the complexity increment and the Code City shot.
+7. **Code owners** — whether a named human has to approve this before it can merge, and
+   which files put them on the critical path.
+8. **API contract** — step 7's two fragments, each a `section` with `includeHtml`: the
+   compatibility verdict first, because it is the one-word answer, then the classified
+   change list underneath it.
+9. **Spec changes** — step 7b's embedded pb33f report, beside the tab whose numbers it
+   will appear to contradict.
+10. **Logging** — step 7c: what this change set will say for itself in production.
+11. **Cost & shape** — the complexity increment and the Code City shot.
 
 ## Step 10 — Hand the guide over, then the app
 

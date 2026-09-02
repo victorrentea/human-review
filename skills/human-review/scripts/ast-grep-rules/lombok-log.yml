@@ -1,0 +1,19 @@
+id: lombok-log
+language: java
+severity: hint
+message: Lombok annotation injecting a logger field
+rule:
+  any:
+    - {kind: class_declaration}
+    - {kind: enum_declaration}
+    - {kind: record_declaration}
+    - {kind: interface_declaration}
+  all:
+    - has: {field: name, pattern: $CNAME}
+    - has:
+        kind: modifiers
+        has:
+          all:
+            - pattern: $ANN
+            - regex: '^@(lombok\.(extern\.[a-zA-Z0-9.]+\.)?)?(Slf4j|XSlf4j|Log4j2|Log4j|CommonsLog|CustomLog|Log|Flogger|JBossLog|Apachecommonslog)(\(.*\))?$'
+          stopBy: neighbor

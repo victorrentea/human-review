@@ -1,0 +1,9 @@
+id: log-call
+language: java
+severity: hint
+message: call to a method whose name is a log level
+rule:
+  pattern: $RECV.$METHOD($$$ARGS)
+constraints:
+  METHOD:
+    regex: '^(trace|debug|info|warn|warning|error|fatal|severe|config|fine|finer|finest|log|logp|logrb|atTrace|atDebug|atInfo|atWarn|atError|atFatal|atLevel|atSevere|atWarning|atConfig|atFine|atFiner|atFinest)$'

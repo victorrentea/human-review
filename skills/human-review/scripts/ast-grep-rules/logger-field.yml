@@ -1,0 +1,14 @@
+id: logger-field
+language: java
+severity: hint
+message: field whose declared type is a logger type
+rule:
+  kind: field_declaration
+  all:
+    - has: {field: type, pattern: $TYPE}
+    - has:
+        field: declarator
+        has: {field: name, pattern: $NAME}
+constraints:
+  TYPE:
+    regex: '(^|\.)(Logger|Log|XLogger|FluentLogger|Slf4jLogger|LogAccessor)$'

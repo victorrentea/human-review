@@ -21,9 +21,11 @@ import argparse
 import base64
 import html
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -235,6 +237,12 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .transcript li:hover { background:var(--accent-soft); }
 .transcript li.on { background:var(--accent-soft); font-weight:600; }
 .transcript .ts { font:600 11.5px/1.5 ui-monospace,Menlo,monospace; color:var(--link); }
+/* A caption is a seek target, so a link inside one has to read as a *different* affordance
+    without shouting: the page's own link colour and the dotted underline it already uses
+    for .srcref, solid on hover. The click separation is in the script, not here. */
+.transcript a { color:var(--link); text-decoration:none;
+                border-bottom:1px dotted currentColor; }
+.transcript a:hover { border-bottom-style:solid; }
 @media (max-width:820px) { .vidwrap { grid-template-columns:1fr; } }
 video.vid { width:100%; max-width:900px; border:1px solid var(--line); border-radius:8px; display:block; margin:1rem 0; background:#000; }
 footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.85rem; }
@@ -248,6 +256,13 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
             background:var(--bg); border-bottom:1px solid var(--line);
             display:flex; gap:.3rem; flex-wrap:wrap; align-items:center; }
 .tabstrip .grow { flex:1 1 1rem; }
+/* Ten tabs no longer fit the 1040px track the strip inherits from the text column:
+   the tabs themselves still make one row, but `show all` dropped to a second, doubling
+   the strip from 34px to 56px. The strip is already full-bleed, so the room is there —
+   only the RIGHT padding is relaxed, which lets `show all` sit ~80px further into the
+   bleed. The left padding is untouched, so the first tab stays aligned with the body
+   text exactly as before. */
+.tabstrip { padding-right: max(1.25rem, calc(50vw - 620px + 1.25rem)); }
 /* Struck through, not hidden: the tab still holds the current state as context, and a
    reviewer who cannot see that it exists cannot tell it was considered. */
 button.tab.quiet { text-decoration:line-through; text-decoration-thickness:1px; opacity:.5; }
@@ -262,8 +277,10 @@ button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
 /* A badge that says something is *wrong* cannot look like a count. This one is worn by
    the tab the reviewer must not skip — a blocked merge — so it keeps its colour even
    while the tab is selected, where the strip inverts everything else. */
-button.tab .n.alarm { background:#c62828; color:#fff; opacity:1; border-radius:999px;
-                      padding:.05rem .45rem; letter-spacing:.03em; }
+button.tab .n.alarm { background:#c62828; color:#fff; opacity:1; border-radius:50%;
+                      flex:0 0 auto; width:.9rem; height:.9rem; padding:0;
+                      display:inline-flex; align-items:center; justify-content:center;
+                      letter-spacing:0; text-indent:.02em; }
 button.tab[aria-selected="true"] .n.alarm { background:#fdeaea; color:#8a1c1c; }
 button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--accent); }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
@@ -271,6 +288,9 @@ button.allbtn { border:1px solid var(--line); background:var(--card); color:var(
 button.allbtn:hover { color:var(--fg); border-color:var(--link); }
 button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:#fff; }
 .panel[hidden] { display:none; }
+/* A hash lands the panel top flush against the viewport, where the sticky strip sits
+   on top of it and eats the first line. Push the scroll target down past the strip. */
+.panel { scroll-margin-top: 3.2rem; }
 .panel > h2:first-child, .panel > .paneltag + h2 { margin-top:.2rem; }
 /* Only meaningful once every panel is on screen at once, which is what "show all"
     (and printing) do — otherwise the heading names the tab you are already on. */
@@ -279,6 +299,13 @@ button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--
 body.showall .paneltag { display:block; }
 body.showall .panel { border-top:1px solid var(--line); }
 body.showall .panel:first-of-type { border-top:0; }
+/* A test and the sequence its run recorded are one exhibit, not two: the diagram is
+   evidence for the test directly above it. One ruled edge holds the pair together. */
+.testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
+.testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
+.testlead { margin:0; }
+.testlead b { display:block; font-size:1.02rem; margin:.5rem 0 .25rem; }
+.testlead b:first-child { margin-top:0; }
 @media print {
   .tabstrip { display:none; }
   .panel[hidden] { display:block !important; }
@@ -287,17 +314,70 @@ body.showall .panel:first-of-type { border-top:0; }
 """
 
 
+# Emitted *after* every other stylesheet — the fragments' own CSS included — because these
+# rules exist to outrank the base sheet's `button.tab { padding:0 .85rem }`. Anywhere
+# earlier in the block and the cascade quietly reverts them, with no error and no visible
+# clue beyond a tab strip that has silently wrapped onto two rows.
+LATE_CSS = """
+/* An eleventh tab does not fit, and no amount of window is going to help: the strip's
+   inner track is pinned to 1120px at every viewport by its own padding formula, and the
+   ten tabs plus `show all` already need 1115.5px of it — 4.5px of slack. "Spec changes"
+   is 113.7px wide and needs 118.5px with its gap, so the strip wraps to two rows (34px
+   → 55.8px) at 1280px, 1440px and 1920px alike. Three shavings, cheapest first: the
+   spacer stops reserving a 1rem basis it never draws (+16px); the right padding drops to
+   its floor, which the strip's full bleed already covers (+20px at 1280, +100px at 1440);
+   and every pill gives up .25rem of horizontal padding (+88px across eleven of them).
+   Budget at 1280px, the narrowest width that has to hold: 1140px of track, 1130px used.
+   The LEFT padding is deliberately untouched — the first tab still starts exactly where
+   the body text does. */
+.tabstrip .grow { flex:1 1 0; }
+.tabstrip { padding-right:1.25rem; }
+button.tab { padding:0 .6rem; }
+
+/* pb33f's report is a whole application in one file — its own tabs, its own diff view,
+   its own theme — so it is embedded as a document rather than picked apart and re-drawn
+   in this page's styles. A document is also a fence: the frame is a separate origin off
+   `file://`, so nothing in it can reach this page and this page's find bar cannot reach
+   into it. That is the trade, and it is why the finding is stated above in text and the
+   frame is left to be the evidence. */
+.oacframe { display:block; width:100%; height:760px; margin:1rem 0 1.4rem;
+            border:1px solid var(--line); border-radius:8px; background:#12111a; }
+"""
+
+
 CAPTION_JS = """<script>
 document.querySelectorAll('.vidwrap').forEach(function (wrap) {
   var video = wrap.querySelector('video');
   var items = Array.prototype.slice.call(wrap.querySelectorAll('.transcript li'));
   if (!items.length) return;
+  // A run that failed to record still ships the transcript, with a notice where the player
+  // would be. There is nothing to seek, so the captions stay plain text — and nothing here
+  // may throw, or the scripts after it never run.
+  if (!video) return;
   items.forEach(function (li) {
-    li.addEventListener('click', function () {
+    li.addEventListener('click', function (ev) {
+      // Captions carry links to the pages they describe. A click on one opens that page
+      // and nothing else — seeking as well would yank the video out from under a reader
+      // who was only following the link.
+      if (ev.target.closest && ev.target.closest('a')) return;
       video.currentTime = parseFloat(li.dataset.t);
       video.play();
     });
   });
+
+  // The narration is the point of this film, so it plays on arrival — but audible playback
+  // is only granted off a user gesture. A click on the Video tab is one; opening the page
+  // straight on #video is not, and that play() is refused. We do not answer that by muting:
+  // a silent film here is worse than a paused one, so the reader gets the controls instead.
+  var panel = wrap.closest && wrap.closest('.panel');
+  if (panel) {
+    panel.addEventListener('panelshow', function () {
+      var p = video.play();
+      if (p && p.catch) p.catch(function () {});
+    });
+    // Paused, not rewound: coming back should resume where the reader left off.
+    panel.addEventListener('panelhide', function () { video.pause(); });
+  }
   video.addEventListener('timeupdate', function () {
     var active = null;
     items.forEach(function (li) {
@@ -435,6 +515,22 @@ TABS_JS = """<script>
     if (showAll) showAll.setAttribute('aria-pressed', String(all));
   }
 
+  // A panel holding live media has to know when it comes and when it goes — the Video
+  // panel starts its narration on the way in and pauses it on the way out, because a
+  // voice-over playing under a panel nobody is looking at is a bug, not a feature.
+  // In show-all no panel is *the* active one, so every panel counts as off and nothing
+  // starts talking while the reader is somewhere else on the page.
+  function announce() {
+    var all = document.body.classList.contains('showall');
+    panels.forEach(function (p, i) {
+      if (!p) return;
+      var on = !all && i === active;
+      if (p.__panelOn === on) return;
+      p.__panelOn = on;
+      p.dispatchEvent(new CustomEvent(on ? 'panelshow' : 'panelhide'));
+    });
+  }
+
   // The hash is the shareable handle: a reviewer sends "look at #api" and it opens there.
   // replaceState rather than location.hash, which would scroll the page out from under
   // the click that caused it.
@@ -442,6 +538,7 @@ TABS_JS = """<script>
     if (i < 0 || i >= tabs.length) return;
     active = i;
     paint();
+    announce();
     // Panels differ in height by thousands of pixels, so keeping the scroll offset across
     // a tab change drops the reader at an arbitrary point in the new panel — usually its
     // tail. Clicking "Review" and landing in the middle of "already fixed for you" reads
@@ -480,6 +577,7 @@ TABS_JS = """<script>
     showAll.addEventListener('click', function () {
       document.body.classList.toggle('showall');
       paint();
+      announce();
       // The page just changed length by an order of magnitude; the old offset means nothing.
       window.scrollTo(0, 0);
     });
@@ -853,10 +951,12 @@ def expand_snippets(text: str, root: Path) -> str:
     )
 
 
-def snippet_html(ref: str, caption: str | None, root: Path) -> str:
+def snippet_html(ref: str, caption: str | None, root: Path, exact: bool = False) -> str:
     cmd = [sys.executable, str(EXTRACT), ref]
     if caption:
         cmd += ["--caption", caption]
+    if exact:
+        cmd.append("--exact")
     out = subprocess.run(cmd, capture_output=True, text=True, cwd=root)
     if out.returncode != 0:
         raise SystemExit(out.stderr.strip() or f"extract-snippet failed for {ref}")
@@ -948,14 +1048,15 @@ def _provenance(rel: str, root: Path) -> str:
     return ('<p class="prov">' + " ".join(links) + '</p>') if links else ''
 
 
-# Which radius a reviewer meets first — the whole diagram.
+# Which radius a reviewer meets first — one hop of unchanged context around the change.
 #
-# It used to open at one hop, on the reasoning that a large diagram is a wall to hunt for
-# red in. But opening pruned is a claim that the rest does not matter, made before the
-# reviewer has seen the rest: the question they arrive with is "is this change in the
-# right place", and a view that has already deleted the neighbourhood cannot answer it.
-# Narrowing is one click and reversible; the context you were never shown is neither.
-DEFAULT_FOCUS = "all"
+# It opened on the whole diagram for a while, on the reasoning that a pruned view is a
+# claim that the rest does not matter. In practice the whole DB and DomainModel deltas are
+# a wall of forty unchanged entities with the change somewhere inside, and every reviewer
+# who opened them did the same thing: clicked `1`. One hop already carries the
+# neighbourhood the "is this in the right place" question needs, and `all` is one click
+# away — a click the reader now makes only when the neighbourhood was not enough.
+DEFAULT_FOCUS = "1"
 
 
 def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
@@ -990,6 +1091,89 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
         '<div class="focus"><span class="lbl">unchanged context, in hops:</span>'
         + buttons + "</div>" + boxes
     )
+
+
+# `== <creole> [[src://<rel>:<line>{hint} <title>]] <creole> ==` — a chapter divider in a
+# generated sequence diagram. The generator writes one per scenario, carrying the test file
+# and the line the scenario starts at, so the diagram already knows which test produced
+# which stretch of itself. The delta .puml colours and strikes these; the committed .puml
+# next to the test does not, which is why the titles are read from the committed one.
+CHAPTER = re.compile(
+    r"^==.*?\[\[src://(?P<path>[^\s:\]]+):(?P<line>\d+)(?:\{[^}]*\})?\s+(?P<title>[^\]]*)\]\]"
+)
+
+
+def chapters(puml: Path):
+    """The scenarios a generated sequence diagram is made of, in the order it draws them."""
+    if not puml.is_file():
+        return []
+    found = []
+    for line in puml.read_text(encoding="utf-8").splitlines():
+        m = CHAPTER.match(line.strip())
+        if m:
+            found.append((m["path"], int(m["line"]), m["title"].strip()))
+    return found
+
+
+def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
+    """Each acceptance test next to the sequence its own run recorded.
+
+    They used to be two lists on the same tab — a gallery of diagrams, then a list of test
+    snippets — and the reader had to work out which picture belonged to which test from the
+    file names. Nothing was hidden and nothing was reliable. The pairing is not a judgement
+    call, either: the manifest says which test file each diagram came from, and the
+    diagram's own chapter titles say which scenarios inside that file, at which lines. So it
+    is derived, not authored.
+
+    A test with no diagram is never dropped and never given one it did not produce: it goes
+    to a trailing group that says exactly that."""
+    rows = [r for r in select_rows(manifest_rows, block) if r["kind"] == "sequence"]
+    snippets = list(block.get("snippets", []))
+    parts, used = [], set()
+
+    def take(test_rel):
+        """The snippets that quote this test file, removed from the pool."""
+        mine = [x for x in snippets if x["ref"].rpartition(":")[0] == test_rel]
+        used.update(id(x) for x in mine)
+        return [snippet_html(x["ref"], x.get("caption"), root) for x in mine]
+
+    merged = dict(dspec)
+    merged.pop("only", None)
+    for r in rows:
+        test_rel = r["source"][: -len(".genseq.puml")] if r["source"].endswith(".genseq.puml") \
+            else r["source"]
+        lead = "".join(
+            f'<b>{html.escape(title)}</b>'
+            f'<a class="srcref" href="vscode://file/{(root / path).resolve()}:{line}:1" '
+            f'data-tip="Open in VS Code">{html.escape(path)}:{line}</a>'
+            for path, line, title in chapters(root / r["source"])
+        )
+        pieces = ([f'<p class="testlead">{lead}</p>'] if lead else [""])
+        pieces += take(test_rel)
+        pieces.append(render_diagrams(merged, root, out_dir, [r]))
+        # Each piece already ends its own last tag; extract-snippet also ends with a
+        # newline, and joining on one more turns the ruled block into a gappy list.
+        parts.append('<div class="testpair">'
+                     + "\n".join(x.strip("\n") for x in pieces) + "</div>")
+
+    orphaned = [x for x in snippets if id(x) not in used]
+    tail = block.get("unpaired") or {}
+    if orphaned:
+        pieces = [""] + [snippet_html(x["ref"], x.get("caption"), root).strip("\n")
+                         for x in orphaned]
+        parts.append(
+            f'<h3 id="{html.escape(tail.get("id", "tests-nosequence"))}">'
+            f'{html.escape(tail.get("title", "Tests that record no sequence"))}</h3>'
+            + (f'<p>{tail["body"]}</p>' if tail.get("body") else "")
+        )
+        parts.append('<div class="testpair">' + "\n".join(pieces) + "</div>")
+
+    if not parts:
+        return "", 0, 0
+    head = (f'<h3 id="{html.escape(block.get("id", "sequences"))}">'
+            f'{html.escape(block.get("title", "Sequence deltas"))}</h3>'
+            + (f'<p>{block["body"]}</p>' if block.get("body") else ""))
+    return "\n".join([head] + parts) + "\n", len(rows) + len(orphaned), len(rows)
 
 
 def select_rows(rows, block) -> list:
@@ -1144,6 +1328,95 @@ FAVICON_SVG = (
 FAVICON = "data:image/svg+xml;base64," + base64.b64encode(FAVICON_SVG.encode()).decode()
 
 
+def _link_captions(cues, links):
+    """Put the app links *inside* the narration, on the words that already name the page.
+
+    They used to sit in a paragraph of their own — "Pages this change touches: owner detail
+    · all visits · vets" — a second list of the same screens the captions were already
+    walking through, in a different order and different words. A caption that says "back on
+    the owner" is the natural handle for the owner page; the separate list was a handle
+    nobody needed and a thing to keep in sync.
+
+    Returns (rendered <li> items, links that found no caption). A link is *never* dropped:
+    one whose phrase is not in the narration is reported back to be printed after the
+    transcript, because a page this change touches and the film did not show is a fact
+    about the coverage of the film."""
+    texts = [c["text"] for c in cues]
+    # Each caption is escaped once, then the anchors are spliced into the escaped text —
+    # so the phrase has to be escaped the same way to be found in it.
+    cells = [html.escape(t) for t in texts]
+    unplaced = []
+    for link in links:
+        phrase = html.escape(link.get("anchor") or "")
+        href = link["href"]
+        for i, cell in enumerate(cells):
+            at = cell.find(phrase) if phrase else -1
+            # Never inside an anchor already spliced in: nested <a> is invalid, and the
+            # second link would be unclickable. An unbalanced count of open tags before the
+            # match is exactly "we are inside one".
+            if at < 0 or cell[:at].count("<a ") != cell[:at].count("</a>"):
+                continue
+            cells[i] = (cell[:at] + f'<a href="{html.escape(href)}">' + phrase + "</a>"
+                        + cell[at + len(phrase):])
+            break
+        else:
+            unplaced.append(link)
+    items = "".join(
+        f'<li data-t="{c["t"]:.2f}"><span class="ts">{int(c["t"]) // 60}:'
+        f'{int(c["t"]) % 60:02d}</span><span>{cell}</span></li>'
+        for c, cell in zip(cues, cells)
+    )
+    return items, unplaced
+
+
+def video_html(s, out_dir: Path) -> str:
+    """The player and its transcript — or, when the recording failed, the transcript alone.
+
+    The first thing this page ever got wrong was a `<video src="assets/….webm">` whose
+    asset no step had written: a black rectangle stuck at 0:00 under a confident heading,
+    with nothing on the page to say the film was missing rather than broken. So the player
+    is only ever emitted for a file that is on disk. The narration is *not* held hostage to
+    it: the cue list is a written account of the same walkthrough and stays on the page,
+    under a notice that names the file that is absent."""
+    rel = s["video"]
+    cues_path = out_dir / rel.replace(".webm", ".cues.json")
+    cues = json.loads(cues_path.read_text(encoding="utf-8")) if cues_path.is_file() else []
+    items, unplaced = _link_captions(cues, s.get("appLinks", []))
+    player = (f'<video controls preload="metadata" src="{html.escape(rel)}"></video>'
+              if (out_dir / rel).is_file() else
+              f'<p class="embedded-note"><b>Not filmed.</b> <code>{html.escape(rel)}</code> '
+              'was not produced by this run, so there is no player here — the narration '
+              'below is what the recording would have shown, and it is the only part of '
+              'this section that is not evidence.</p>')
+    out = f'<div class="vidwrap">{player}<ol class="transcript">{items}</ol></div>'
+    if unplaced:
+        out += ('\n<p class="sub"><b>Touched but not filmed</b> — opens the running app: '
+                + " · ".join(f'<a href="{html.escape(l["href"])}">'
+                             f'{html.escape(l.get("label") or l["href"])}</a>'
+                             for l in unplaced) + ".</p>")
+    return out
+
+
+def embed_html(s, out_dir: Path) -> str:
+    """Another tool's whole report, framed rather than re-drawn.
+
+    `aria-label`, not `title`: a `title` on an iframe is a native tooltip, and this page has
+    exactly one tooltip component. The label is the same string either way, and a screen
+    reader reads it from `aria-label` just as happily."""
+    e = s.get("embed")
+    if not e:
+        return ""
+    if not (out_dir / e["src"]).is_file():
+        # The tool that writes it is an optional install. Say which one is missing rather
+        # than framing a 404.
+        return (f'<p class="sub">No embedded report at <code>{html.escape(e["src"])}</code>'
+                + (f' — { e["missing"]}' if e.get("missing") else "")
+                + ".</p>")
+    return (f'<iframe class="{html.escape(e.get("class", "oacframe"))}" '
+            f'src="{html.escape(e["src"])}" '
+            f'aria-label="{html.escape(e.get("label", ""))}"></iframe>')
+
+
 def resolve_refs(items, root: Path):
     """Turn `path:from-to` strings into {label, abs} so the renderer can link them.
 
@@ -1230,6 +1503,207 @@ def codeowners_fragment(block, root: Path, out_dir: Path):
     if proc.returncode != 0:
         raise SystemExit(proc.stderr.strip() or "[review] codeowners-check.py failed")
     return dest.read_text(encoding="utf-8"), json.loads(proc.stdout)
+
+
+# The Overview lede walks the reader through the strip — "Eleven tabs, one question each,
+# start on Autoreview, then …". Written by hand it is a second copy of the strip, and the
+# second copy is the one that rots: a tab added at the end of `tabs` leaves the sentence
+# saying "Ten" and skipping the newcomer, and nothing anywhere complains. So the number is
+# a token the build fills in from the tabs it actually emitted, and the names are checked
+# against the same list.
+TAB_COUNT_TOKEN = "{{tabcount}}"
+NUMBER_WORDS = ("Zero One Two Three Four Five Six Seven Eight Nine Ten Eleven Twelve "
+                "Thirteen Fourteen Fifteen Sixteen Seventeen Eighteen Nineteen Twenty").split()
+
+
+def spelled(n: int) -> str:
+    return NUMBER_WORDS[n] if n < len(NUMBER_WORDS) else str(n)
+
+
+def check_tab_enumeration(lede: str, labels: list[str]) -> None:
+    """Warn when the lede's walk-through has drifted from the strip it describes.
+
+    Not a build failure: prose is judgement, and a lede may legitimately group two tabs
+    into one clause or leave a self-evident one out. But it may not do so *by accident*,
+    which is what silence would make indistinguishable from a rotted sentence."""
+    if not lede:
+        return
+    seen, missing = [], []
+    for label in labels:
+        at = lede.find(html.escape(label))
+        (seen if at >= 0 else missing).append((at, label))
+    if missing:
+        print("[review] WARNING: the Overview lede never names these tabs: "
+              + ", ".join(l for _, l in missing)
+              + f" — the strip has {len(labels) + 1} of them and the lede walks "
+                f"through {len(seen)}.",
+              file=sys.stderr)
+    out_of_order = [l for (a, l), (b, _) in zip(seen[1:], seen) if a < b]
+    if out_of_order:
+        print("[review] WARNING: the Overview lede names tabs in a different order than the "
+              "strip does, from: " + ", ".join(out_of_order), file=sys.stderr)
+
+
+LOGEXTRACT = HERE / "logextract.py"
+
+
+def _java_churn(root: Path, base: str, paths: list[str]) -> dict[str, str]:
+    """`+5/−0` per touched Java file, and `new file` for the ones this branch created."""
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True).stdout
+    churn = {}
+    for line in git("diff", "--numstat", f"{base}...HEAD", "--", *paths).splitlines():
+        bits = line.split("\t")
+        if len(bits) == 3 and bits[2].endswith(".java"):
+            churn[bits[2]] = f"+{bits[0]}/&minus;{bits[1]}"
+    for line in git("diff", "--name-status", f"{base}...HEAD", "--", *paths).splitlines():
+        bits = line.split("\t")
+        if len(bits) >= 2 and bits[0].startswith("A") and bits[-1].endswith(".java"):
+            churn[bits[-1]] = "new file"
+    return churn
+
+
+def _short_label(rel: str, prefix: str) -> str:
+    """`…/src/main/java/victor/training/petclinic/domain/Visit.java` → `main · domain/Visit.java`.
+
+    A table of fifteen paths that share forty characters of prefix is a table of forty
+    characters of noise; what a reviewer reads it for is which layer and which class."""
+    m = re.search(r"/src/(main|test)/java/", rel)
+    if not m:
+        return rel
+    tail = rel[m.end():]
+    return f"{m.group(1)} · {tail[len(prefix):] if tail.startswith(prefix) else tail}"
+
+
+SRCREF_HREF = re.compile(r'(<a class="srcref" href="vscode://file/[^:"]*)(?::\d+){0,2}"')
+
+
+def _aim_at_statement(snippet: str, ref: str, hits) -> str:
+    """Point a quoted window's `path:line` link at the statement it is quoting.
+
+    Everything else on this page links a snippet to its first line, which is right when the
+    snippet *is* the thing. Here it is not: the snippet is four lines of context around one
+    `log.warn(...)`, and landing the reader on the first of them makes them find it again by
+    eye. The extractor already knows the line and the column, so the link uses them — and
+    only when exactly one known statement falls inside the window, because two would make
+    the choice a guess."""
+    rel, _, span = ref.rpartition(":")
+    lo = int(span.split("-")[0])
+    hi = int(span.split("-")[-1])
+    inside = [h for h in hits if h["file"] == rel and lo <= h["line"] <= hi]
+    if len(inside) != 1:
+        return snippet
+    h = inside[0]
+    return SRCREF_HREF.sub(lambda m: f'{m.group(1)}:{h["line"]}:{h["column"]}"', snippet, count=1)
+
+
+def _logging_aside(part, found, what, root: Path, hits=()) -> str:
+    """One of the two context registers under the added-logging finding.
+
+    The prose and the snippets are the author's — a log line is only interesting once
+    somebody says what is wrong with it — but the *count* is the extractor's, so a section
+    that quotes three of four statements is caught here rather than by a reader."""
+    if not part:
+        return ""
+    quoted = len(part.get("snippets", []))
+    if found and quoted != found:
+        print(f"[review] WARNING: the logging tab quotes {quoted} {what} statement(s) but "
+              f"logextract found {found} — one of the two is out of date.", file=sys.stderr)
+    return (
+        f'<h2 id="{html.escape(part["id"])}">{html.escape(part["title"])}</h2>'
+        + part.get("body", "")
+        + "".join(_aim_at_statement(
+            snippet_html(x["ref"], x.get("caption"), root, exact=True), x["ref"], hits)
+            for x in part.get("snippets", []))
+    )
+
+
+def logging_fragment(block, root: Path):
+    """What this change set will say for itself at 3 a.m., found structurally.
+
+    Grep cannot answer this question. `log.info(...)` is a hit and `Math.log(x)` is not, and
+    only the syntax tree plus a symbol table of what is actually a logger can tell them
+    apart — which is what `logextract.py` does, and why it is a script and not a regex.
+
+    The zero case is the point, not an edge case: a change set that logs nothing is not an
+    empty section, it is a finding, and the table of every touched file with a `0` beside it
+    is the evidence that the question was asked of each of them."""
+    paths = block.get("paths") or ["."]
+    base = subprocess.run(["git", "merge-base", block.get("base", "origin/main"), "HEAD"],
+                          cwd=root, capture_output=True, text=True).stdout.strip()
+    with tempfile.TemporaryDirectory() as td:
+        report = Path(td) / "logging.json"
+        proc = subprocess.run(
+            [sys.executable, str(LOGEXTRACT), *paths, "--root", str(root), "--repo", str(root),
+             "--since", base, "--json", str(report)],
+            cwd=root, capture_output=True, text=True)
+        if proc.returncode != 0 or not report.is_file():
+            # ast-grep is a binary, not a Python dependency, so a machine without it is a
+            # real case. Say which tool is missing rather than quietly reporting "no
+            # logging" — a false all-clear is the one answer this tab must never give.
+            print("[review] logextract.py failed — dropping the logging tab:\n"
+                  + proc.stderr.strip()[-500:], file=sys.stderr)
+            return "", 0, 0
+        payload = json.loads(report.read_text(encoding="utf-8"))
+
+    added = payload.get("changed", payload["all"])["logging"]
+    churn = _java_churn(root, base, paths)
+    files = sorted(churn)
+    # The package every touched class shares — cut back to a whole path segment, because a
+    # character-wise common prefix is happy to stop in the middle of a directory name.
+    shared = os.path.commonprefix(
+        [re.split(r"/src/(?:main|test)/java/", f, maxsplit=1)[-1].rsplit("/", 1)[0] + "/"
+         for f in files]) if files else ""
+    prefix = shared[: shared.rfind("/") + 1]
+    hits_per_file = {}
+    for h in added:
+        hits_per_file[h["file"]] = hits_per_file.get(h["file"], 0) + 1
+
+    rows = "".join(
+        f'<tr><td><a class="srcref" href="vscode://file/{(root / f).resolve()}:1:1" '
+        f'data-tip="Open in VS Code">{html.escape(_short_label(f, prefix))}</a></td>'
+        f'<td class="n">{churn[f]}</td>'
+        f'<td class="n">{hits_per_file.get(f, 0)} logging</td></tr>'
+        for f in files
+    )
+    n = len(added)
+    listing = ""
+    if added:
+        listing = '<ul class="fixlist">' + "".join(
+            f'<li><a class="srcref" href="vscode://file/{(root / h["file"]).resolve()}'
+            f':{h["line"]}:{h["column"]}" data-tip="Open in VS Code">'
+            f'{html.escape(h["file"])}:{h["line"]}</a> '
+            f'<span class="badge sev-info">{html.escape(h["level"])}</span> '
+            f'<code>{html.escape(h["raw_line"].strip())}</code></li>'
+            for h in added
+        ) + "</ul>"
+
+    head = (f'<h2 id="{html.escape(block.get("id", "logging-added"))}">'
+            f'{html.escape(block.get("title", "Logging this change set added"))}</h2>')
+    # Raw, not wrapped in a <p>: the lede here is several paragraphs — what was found, why
+    # it is a finding, and how it was measured — and it is the author's prose, not ours.
+    body = block.get("body", "")
+    frag = (
+        head + body
+        + '<div class="diagram"><div class="head">'
+        f'<b>{html.escape(block.get("tableTitle", "Every Java file in the change set"))}</b>'
+        f'<span class="badge {"sev-high" if n else "sev-info"}">{n} logging '
+        f'statement{"" if n == 1 else "s"}</span>'
+        f'<span>{html.escape(", ".join(paths))}, {html.escape(base[:7])}…HEAD</span>'
+        f'</div><table class="stat">{rows}</table></div>' + listing
+        # "What does this service log today" is the question a reader asks in the same
+        # breath as "what did this branch add", and `System.out` is a third answer that must
+        # not be counted as a fourth logger. Both are context, both sit under the finding.
+        + _logging_aside(block.get("existing"), len(payload["all"]["logging"]),
+                         "pre-existing logging", root, payload["all"]["logging"])
+        + _logging_aside(block.get("console"), len(payload["all"]["antipattern"]),
+                         "console-output", root, payload["all"]["antipattern"])
+    )
+    # Both counts are 1 even when `n` is 0. The zero is not "we looked at unrelated context
+    # and nothing moved" — the tab that gets struck through — it is a statement *about this
+    # diff*: fourteen touched Java files, five hundred added lines, and not one of them will
+    # say anything at 3 a.m. Striking that through would file the finding as a non-event.
+    return frag, 1, 1
 
 
 REQUIRED = {
@@ -1334,6 +1808,15 @@ def main(argv=None) -> int:
             snippet_html(s["ref"], s.get("caption"), root) for s in f.get("snippets", [])
         )
 
+    # Every panel is `id="<tab id>"`, so a section that happens to share a tab's id puts the
+    # same id on two elements — `id="api"` on the API contract panel and on the <h2> inside
+    # it, which is what this page shipped for months. Nothing looked broken, because
+    # getElementById returns the first match and the first match is the panel, which is
+    # where `#api` should land anyway. It is still invalid HTML and still a trap for the
+    # next person. The panel's id is not negotiable (the strip's aria-controls points at
+    # it), so the duplicate is resolved on the heading, which loses nothing.
+    tab_ids = {t.get("id") for t in (spec.get("tabs") or [])} | {"overview"}
+
     sections, by_id, unchanged_ids = [], {}, {}
     for s in spec.get("sections", []):
         unchanged_ids[s["id"]] = bool(s.get("unchanged"))
@@ -1346,29 +1829,21 @@ def main(argv=None) -> int:
         if s.get("includeHtml"):
             inc = (out_dir / s["includeHtml"]).read_text(encoding="utf-8")
         vid = ""
-        if s.get("video") and not (out_dir / s["video"]).is_file():
-            # A recording that failed leaves a dead <video> under a confident heading. Say so.
-            vid = ('<p class="sub">Not filmed — <code>' + html.escape(s["video"])
-                   + '</code> was not produced by this run.</p>')
-        elif s.get("video"):
-            # Captions live under the player, driven by the cue list the recorder wrote as it
-            # ran, so the narration cannot drift from what the video shows. Plain text swap on
-            # timeupdate — no track element, which file:// pages are not allowed to load.
-            cues_path = out_dir / s["video"].replace(".webm", ".cues.json")
-            cues = json.loads(cues_path.read_text(encoding="utf-8")) if cues_path.is_file() else []
-            items = "".join(
-                f'<li data-t="{c["t"]:.2f}"><span class="ts">{int(c["t"]) // 60}:'
-                f'{int(c["t"]) % 60:02d}</span><span>{html.escape(c["text"])}</span></li>'
-                for c in cues
-            )
-            vid = (
-                f'<div class="vidwrap"><video controls preload="metadata" '
-                f'src="{html.escape(s["video"])}"></video>'
-                f'<ol class="transcript">{items}</ol></div>'
-            )
+        if s.get("video"):
+            vid = video_html(s, out_dir)
+        body = expand_snippets(s.get("body", ""), root)
+        collides = s["id"] in tab_ids
+        if collides:
+            print(f'[review] section {s["id"]!r} shares its id with a tab: the heading drops '
+                  f'its id, so #{s["id"]} lands on the panel (which is where it was already '
+                  "going). Rename the section to get an anchor of its own.", file=sys.stderr)
+        h2_id = "" if collides else f' id="{html.escape(s["id"])}"'
         rendered = (
-            f'<h2 id="{html.escape(s["id"])}">{html.escape(s["title"])}</h2>\n'
-            f'{expand_snippets(s.get("body", ""), root)}\n{inc}{vid}{snips}'
+            f'<h2{h2_id}>{html.escape(s["title"])}</h2>\n'
+            # A section with no prose of its own — the video tab is one — must not open with
+            # a blank line where the paragraph would have been.
+            + (f"{body}\n" if body else "")
+            + f'{inc}{vid}{snips}{embed_html(s, out_dir)}'
         )
         sections.append(rendered)
         by_id[s["id"]] = rendered
@@ -1505,6 +1980,12 @@ def main(argv=None) -> int:
                 + render_diagrams(merged, root, out_dir, rows),
                 len(rows), len(rows),
             )
+        if kind == "testpairs":
+            rows = [r for r in select_rows(manifest_rows, block) if r["kind"] == "sequence"]
+            placed.update(r["name"] for r in rows)
+            return render_testpairs(block, dspec, manifest_rows, root, out_dir)
+        if kind == "logging":
+            return logging_fragment(block, root)
         if kind == "puml":
             return (heading(block, "puml", block.get("title", ""))
                     + render_puml(block, root, out_dir), 1, 0)
@@ -1518,7 +1999,8 @@ def main(argv=None) -> int:
                       file=sys.stderr)
                 return "", 0, 0
             if state == "approval_required":
-                auto_badge["badge"], auto_badge["class"] = "approval required", "alarm"
+                auto_badge["badge"], auto_badge["class"] = "!", "alarm"
+                auto_badge["label"] = "approval required"
             return (heading(block, "codeowners", block.get("title", "Code owners")) + frag,
                     1, len(owned))
         if kind == "codecity":
@@ -1549,7 +2031,7 @@ def main(argv=None) -> int:
                      "noStrike": True, "blocks": [{"type": "overview"}]}] + list(tabs)
             lede_html = verdict_html = ""
     if tabs:
-        strip, panels, dropped, quiet = [], [], [], []
+        strip, panels, dropped, quiet, emitted = [], [], [], [], []
         for tab in tabs:
             body, weight, changes = "", 0, 0
             auto_badge.clear()
@@ -1568,25 +2050,46 @@ def main(argv=None) -> int:
                      or (str(weight) if tab.get("count") else ""))
             badge_class = tab.get("badgeClass") or (
                 auto_badge.get("class", "") if not tab.get("badge") else "")
-            count = (f'<span class="n{" " + html.escape(badge_class) if badge_class else ""}">'
-                     f'{html.escape(badge)}</span>') if badge else ""
+            # An alarm is a mark, not a word: it has to survive being read at the width of a
+            # tab pill, so it is a single glyph in a red circle. The words it stands for are
+            # not dropped, they move to where a machine and a pointer can still find them —
+            # `aria-label`, which becomes part of the tab button's accessible name ("Code
+            # owners approval required"), and `data-tip`, which is the page's own tooltip.
+            badge_label = tab.get("badgeLabel") or (
+                auto_badge.get("label", "") if not tab.get("badge") else "")
+            count = (
+                f'<span class="n{" " + html.escape(badge_class) if badge_class else ""}"'
+                + (f' role="img" aria-label="{html.escape(badge_label)}"'
+                   f' data-tip="{html.escape(badge_label[:1].upper() + badge_label[1:])}"'
+                   if badge_label else "")
+                + f'>{html.escape(badge)}</span>'
+            ) if badge else ""
             # Struck through rather than dropped: the answer "we looked, and this branch
             # did not touch it" is worth as much to a reviewer as the answer that it did.
             still = not changes and not tab.get("noStrike")
             if still:
                 quiet.append(tab["label"])
+            # A tab whose subject is not obvious from two words gets a sentence on hover.
+            # The "we looked and found nothing" tooltip wins where both apply: it is the
+            # more surprising fact about the tab.
+            tip = ('This change set did not touch anything here — the tab holds '
+                   'the current state as context.') if still else tab.get("tip", "")
             strip.append(
                 f'<button type="button" class="tab{" quiet" if still else ""}" role="tab" '
                 f'id="tabbtn-{tid}" aria-controls="{tid}" aria-selected="false" tabindex="-1"'
-                + (' data-tip="This change set did not touch anything here — the tab holds '
-                   'the current state as context."' if still else "")
+                + (f' data-tip="{html.escape(tip)}"' if tip else "")
                 + f'>{html.escape(tab["label"])}{count}</button>'
             )
+            # `intro` is prose about the *tab*, not about any one block in it — where the
+            # data behind a whole panel came from, or what it deliberately does not say. It
+            # is raw HTML and carries no weight: a tab is not kept alive by its own preamble.
             panels.append(
                 f'<section class="panel" id="{tid}" role="tabpanel" '
                 f'aria-labelledby="tabbtn-{tid}">'
-                f'<p class="paneltag">{html.escape(tab["label"])}</p>{body}</section>'
+                f'<p class="paneltag">{html.escape(tab["label"])}</p>'
+                f'{tab.get("intro", "")}{body}</section>'
             )
+            emitted.append(tab)
         # A diagram in the manifest that no tab claimed would vanish without a word —
         # the exact silent drop this pipeline exists to prevent.
         orphans = [r["name"] for r in manifest_rows if r["name"] not in placed]
@@ -1603,15 +2106,23 @@ def main(argv=None) -> int:
             'data-tip="Reveal every tab at once — makes ⌘F search the whole guide">'
             "show all</button></div>\n" + "\n".join(panels)
         )
-        notes = []
-        if dropped:
-            notes.append("Nothing to show for: "
-                         + ", ".join(html.escape(d) for d in dropped) + ".")
+        # These two facts used to be appended to the page as a `<p class="sub">` — and the
+        # append landed OUTSIDE every `<section class="panel">`, so the only element on the
+        # page that no tab could hide sat under all eleven of them, restating a strike-
+        # through the strip was already drawing three inches above it. Nothing in the
+        # markup is a good home for it: a note about the strip belongs to the strip, and the
+        # strip already says it (struck-through label, tooltip on hover; a dropped tab is
+        # absent, which is the honest rendering of "nothing to show"). So it is said to the
+        # build log, where the person assembling the page is the one who needs it.
         if quiet:
-            notes.append("Unchanged by this branch, kept as context: "
-                         + ", ".join(html.escape(q) for q in quiet) + ".")
-        if notes:
-            body_html += '<p class="sub">' + " ".join(notes) + "</p>"
+            print("[review] tabs kept as context (struck through, no delta): "
+                  + ", ".join(quiet), file=sys.stderr)
+        # Filled in from the tabs that survived, not from the tabs that were asked for: a
+        # tab dropped for having nothing to show must not be counted in the walk-through
+        # that promises the reader eleven of them.
+        tab_labels = [t["label"] for t in emitted]
+        body_html = body_html.replace(TAB_COUNT_TOKEN, spelled(len(tab_labels)))
+        check_tab_enumeration(overview_html, [l for l in tab_labels if l != "Overview"])
     else:
         # No tab layout in the content file: the original single-column guide, unchanged.
         body_html = (
@@ -1629,7 +2140,8 @@ def main(argv=None) -> int:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(spec.get('title', 'Review guide'))}</title>
 <link rel="icon" type="image/svg+xml" href="{FAVICON}">
-<style>{CSS}{extra_css}</style></head>
+<style>{CSS}{extra_css.rstrip()}
+{LATE_CSS}</style></head>
 <body><div class="wrap">
 <h1>{html.escape(spec.get('title', 'Review guide'))}</h1>
 <p class="sub">{spec.get('subtitle', '')}</p>
@@ -1638,7 +2150,6 @@ def main(argv=None) -> int:
 {verdict_html}
 
 {body_html}
-
 <footer>{spec.get('footer', '')}</footer>
 </div>
 {CAPTION_JS}

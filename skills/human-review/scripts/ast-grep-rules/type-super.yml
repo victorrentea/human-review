@@ -1,0 +1,12 @@
+id: type-super
+language: java
+severity: hint
+message: type declaration with an extends clause
+rule:
+  any:
+    - kind: class_declaration
+    - kind: enum_declaration
+    - kind: record_declaration
+  all:
+    - has: {field: name, pattern: $CNAME}
+    - has: {field: superclass, pattern: $SUPER}

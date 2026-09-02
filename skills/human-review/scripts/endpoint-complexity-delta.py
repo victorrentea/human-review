@@ -137,16 +137,43 @@ def _path_cell(r) -> str:
     )
 
 
-def render_row(r, peak) -> str:
+# The bar is three facts drawn as two rectangles, and none of them is labelled: how big the
+# flow was, how big it is now, and which part of it this branch is responsible for. A
+# reviewer who hovers is asking exactly that, so each segment answers for itself — and says
+# where the baseline came from, because "12 on main" is a number people reasonably suspect
+# of being an estimate. It is not: it is the same extractor's committed output at the
+# merge-base. `{base}` is the real base branch, never the word "main" hardcoded — half the
+# repositories this runs in do not have one.
+TIP_BASELINE = ("{baseline} on {base} before this branch. Measured, not estimated — the "
+                "baseline is the committed complexity JSON at the merge-base, from the same "
+                "extractor as the new number.")
+TIP_UP = "+{delta} added by this branch — {baseline} → {total}."
+TIP_DOWN = "−{delta} removed by this branch — {baseline} → {total}."
+TIP_BAR = ("Whole-flow complexity behind this entry point: {baseline} on {base} "
+           "→ {total} on this branch.")
+TIP_SAME = ("Unchanged at {total} — this branch did not touch this flow. Measured, not "
+            "estimated: the same number sits in the committed complexity JSON at the "
+            "merge-base with {base}.")
+TIP_NEW = "New on this branch — {total}, none of it inherited: there was no such entry point on {base}."
+TIP_GONE = "Removed by this branch — {baseline} on {base}, gone here."
+
+
+def _tip(attr: str) -> str:
+    return f' data-tip="{html.escape(attr)}"'
+
+
+def render_row(r, peak, base) -> str:
     if r.get("gone"):
         # The branch deleted this entry point. Red for the whole width it used to occupy —
         # the same "red is what the branch removed" convention as everywhere else.
         was = r["was"] or 0
+        gone_tip = TIP_GONE.format(baseline=was, base=base)
         return (
             f'<div class="cx-row cx-down cx-gone">'
             f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
             f'<s>{_path_cell(r)}</s>'
-            f'<span class="cx-bar"><u style="width:{100.0 * was / peak:.1f}%"></u></span>'
+            f'<span class="cx-bar"{_tip(gone_tip)}>'
+            f'<u style="width:{100.0 * was / peak:.1f}%"></u></span>'
             f'<span class="cx-badge">gone</span>'
             f'<span class="cx-n">0</span>'
             f"</div>"
@@ -170,19 +197,50 @@ def render_row(r, peak) -> str:
     else:
         delta_pct = 100.0 * abs(delta) / peak
         kept_pct = now_pct - (delta_pct if delta > 0 else 0)
+    # The baseline is `cx-n` minus `cx-badge` — the two numbers already on the row — so the
+    # tooltip can never disagree with what the reader can see next to it.
+    total, baseline = r["now"], r["was"]
+    if r["delta"] is None:
+        bar_tip = TIP_NEW.format(total=total, base=base)
+        grey_tip, delta_tip = "", bar_tip
+    elif delta:
+        bar_tip = TIP_BAR.format(baseline=baseline, base=base, total=total)
+        grey_tip = TIP_BASELINE.format(baseline=baseline, base=base)
+        delta_tip = (TIP_UP if delta > 0 else TIP_DOWN).format(
+            delta=abs(delta), baseline=baseline, total=total)
+    else:
+        # An unchanged row has nothing to attribute to anyone, so the segments say nothing
+        # and the whole bar answers with the one fact there is.
+        bar_tip = TIP_SAME.format(total=total, base=base)
+        grey_tip = delta_tip = ""
     return (
         f'<div class="cx-row {cls}">'
         f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
         f"{_path_cell(r)}"
-        f'<span class="cx-bar"><i style="width:{kept_pct:.1f}%"></i>'
-        f'<u style="width:{delta_pct:.1f}%"></u></span>'
+        f'<span class="cx-bar"{_tip(bar_tip)}>'
+        f'<i{_tip(grey_tip) if grey_tip else ""} style="width:{kept_pct:.1f}%"></i>'
+        f'<u{_tip(delta_tip) if delta_tip else ""} style="width:{delta_pct:.1f}%"></u></span>'
         f'<span class="cx-badge">{badge}</span>'
         f'<span class="cx-n">{r["now"]}</span>'
         f"</div>"
     )
 
 
-def render(rows) -> str:
+def base_branch() -> str:
+    """What to call the other side of the comparison, in the reader's own words.
+
+    Hardcoding "main" is wrong in every repository that calls it something else, and a
+    tooltip that names the wrong branch is worse than one that names none."""
+    for cmd in (["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
+                ["config", "--get", "init.defaultBranch"]):
+        out = subprocess.run(["git", *cmd], capture_output=True, text=True)
+        name = out.stdout.strip()
+        if out.returncode == 0 and name:
+            return name.rpartition("/")[2]
+    return "the base branch"
+
+
+def render(rows, base="main") -> str:
     # A shrunk bar still draws what was removed past its current end, so the scale must fit
     # the taller of the two snapshots.
     peak = max((max(r["now"], r["was"] or 0) for r in rows), default=1) or 1
@@ -191,9 +249,11 @@ def render(rows) -> str:
         '<p class="cx-lede">Cyclomatic complexity of the <em>whole flow</em> behind each entry '
         "point — REST endpoint, MCP tool, message listener, job (bytecode-derived: every decision "
         "point in every method reachable from the handler, plus one). "
-        f"<b>{len(touched)}</b> of {len(rows)} entry points moved; "
-        '<span class="cx-up cx-key">green</span> is what this branch added, '
-        '<span class="cx-down cx-key">red</span> what it removed.</p>',
+        # The green/red legend used to close this sentence. Every bar now says which
+        # colour is which in its own words, on hover, next to the number it is talking
+        # about — so the legend was a rule the reader had to hold in their head to read a
+        # picture that can explain itself.
+        f"<b>{len(touched)}</b> of {len(rows)} entry points moved.</p>",
     ]
     known = {kind for kind, _ in KIND_TITLES}
     groups = KIND_TITLES + [
@@ -209,7 +269,7 @@ def render(rows) -> str:
             f"{len(of_kind)}</span></div>"
         )
         out.append('<div class="cx-list">')
-        out.extend(render_row(r, peak) for r in of_kind)
+        out.extend(render_row(r, peak, base) for r in of_kind)
         out.append("</div></div>")
     return "\n".join(out)
 
@@ -263,6 +323,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out")
     ap.add_argument("--json", action="store_true", help="emit the rows as JSON instead of HTML")
     ap.add_argument("--css", action="store_true", help="print the stylesheet this fragment needs")
+    ap.add_argument("--base", help="name of the base branch, for the tooltips "
+                                  "(default: whatever origin/HEAD points at)")
     args = ap.parse_args(argv)
 
     if args.css:
@@ -272,7 +334,7 @@ def main(argv=None) -> int:
         ap.error("the following arguments are required: before, after")
 
     rows = compare(load(Path(args.before)), load(Path(args.after)))
-    body = json.dumps(rows, indent=1) if args.json else render(rows)
+    body = json.dumps(rows, indent=1) if args.json else render(rows, args.base or base_branch())
     if args.out:
         Path(args.out).write_text(body, encoding="utf-8")
         print(f"[complexity-delta] wrote {args.out}", file=sys.stderr)

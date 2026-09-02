@@ -167,17 +167,41 @@ def _mark_participant(line: str, removed: bool) -> str:
     return f'{m["kind"]} "{shown}" as {alias} #FFEBEB'
 
 
-# `[[genseq://<id>{…} label]]` — the id is a fingerprint of what the arrow reveals, so
-# two arrows that read identically but carry different ids are the *same call* against a
-# *changed statement*. Matching on the visible label alone catches that as one modified
-# arrow; matching on the raw line reports it as a deletion with its replacement added
-# underneath, which is the same fact told twice and twice as much red.
-DETAIL_ID = re.compile(r"(genseq://)[A-Za-z0-9-]+")
+# `[[<target>{<tooltip>} <label>]]` — anywhere on a line, arrow label or section header.
+# The target is excluded from carrying `{`, so the tooltip cannot be mistaken for part
+# of it and swallow the label with it.
+ANY_LINK = re.compile(r"\[\[(?P<target>[^\s{\]]+)(?:\{[^}]*\})?(?:\s+(?P<label>[^\]]*))?\]\]")
+# The same, narrowed to the handles that point into the checkout.
+SRC_LINK = re.compile(r"\[\[(?P<target>src://[^\s{\]]*)(?:\{[^}]*\})?(?:\s+(?P<label>[^\]]*))?\]\]")
+
+
+def _link_label(m: "re.Match[str]") -> str:
+    """What a `[[…]]` puts on the picture — the words, never the handle behind them."""
+    return m.group("label") or ""
 
 
 def _as_read(line: str) -> str:
-    """The arrow as the reader sees it, with the fingerprint of its detail dropped."""
-    return DETAIL_ID.sub(r"\1", line.strip())
+    """The line as the reader sees it, with every handle behind it dropped.
+
+    Two things move under a stable picture. A `genseq://` id fingerprints the payload the
+    arrow hides, and a `src://` handle carries the file:line the test happens to sit on —
+    a header gains one the moment the generator learns to link a section to its test, and
+    every line below an edit shifts. Neither is part of the conversation, so neither may
+    decide whether two lines are *the same line*: matching on the raw text reports one
+    notation change as a deletion with its replacement underneath, which is the same fact
+    told twice and twice as much red.
+    """
+    return ANY_LINK.sub(_link_label, line.strip())
+
+
+def _as_meant(line: str) -> str:
+    """The line minus only the handles that say nothing — `src://` file:line.
+
+    Coarser than `_as_read` on purpose: a moved `genseq://` id *is* news (the statement
+    behind the arrow was rewritten) and still earns a red arrowhead, while a section
+    header that merely learned where its test lives has not changed at all.
+    """
+    return SRC_LINK.sub(_link_label, line.strip())
 
 
 def _split(puml: str):
@@ -232,7 +256,7 @@ def diff(old: str, new: str) -> str:
             # statement this change rewrote. That earns a red label, not a strikeout: what
             # the reviewer is being shown is still there, and only what it hides differs.
             for old_line, new_line in zip(old_body[i1:i2], new_body[j1:j2]):
-                changed = old_line.strip() != new_line.strip()
+                changed = _as_meant(old_line) != _as_meant(new_line)
                 out.append(_mark_line(new_line, removed=False) or new_line if changed else new_line)
             continue
         if tag in ("replace", "delete"):

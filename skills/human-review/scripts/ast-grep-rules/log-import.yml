@@ -1,0 +1,10 @@
+id: log-import
+language: java
+severity: hint
+message: import of a logging API
+rule:
+  kind: import_declaration
+  pattern: $IMP
+constraints:
+  IMP:
+    regex: 'import\s+(static\s+)?(org\.slf4j|org\.apache\.logging\.log4j|org\.apache\.commons\.logging|java\.util\.logging|com\.google\.common\.flogger|lombok\.extern|org\.jboss\.logging|ch\.qos\.logback)'

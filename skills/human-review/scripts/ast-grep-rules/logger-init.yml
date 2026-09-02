@@ -1,0 +1,19 @@
+id: logger-init
+language: java
+severity: hint
+message: declarator initialised from a logger factory
+rule:
+  kind: variable_declarator
+  all:
+    - has: {field: name, pattern: $NAME}
+    - has:
+        field: value
+        all:
+          - pattern: $OBJ.$FACTORY($$$FARGS)
+          - any:
+              - {kind: method_invocation}
+constraints:
+  FACTORY:
+    regex: '^(getLogger|getLog|getXLogger|forEnclosingClass|forClass|getFormatterLogger)$'
+  OBJ:
+    regex: '(^|\.)(LoggerFactory|LogManager|LogFactory|Logger|XLoggerFactory|FluentLogger|Log)$'

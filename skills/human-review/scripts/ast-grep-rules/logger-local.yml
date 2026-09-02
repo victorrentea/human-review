@@ -1,0 +1,18 @@
+id: logger-local
+language: java
+severity: hint
+message: local whose declared type is a logger type
+rule:
+  any:
+    - kind: local_variable_declaration
+    - kind: formal_parameter
+  all:
+    - has: {field: type, pattern: $TYPE}
+    - any:
+        - has:
+            field: declarator
+            has: {field: name, pattern: $NAME}
+        - has: {field: name, pattern: $NAME}
+constraints:
+  TYPE:
+    regex: '(^|\.)(Logger|Log|XLogger|FluentLogger|Slf4jLogger|LogAccessor)$'

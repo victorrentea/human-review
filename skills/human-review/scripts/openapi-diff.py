@@ -175,11 +175,24 @@ def _gt(a, b) -> bool:
         return str(a) > str(b)
 
 
+SHOW_LIMIT = 160
+
+
 def show(v) -> str:
+    """One value, short enough to sit on a line — and honest about it when it is not.
+
+    A cut that does not announce itself reads as the whole value, which is how a
+    reviewer decides two payloads are identical up to the point where they differ.
+    `default=str` is not cosmetic either: YAML parses `2013-01-01` into a `date`, and
+    a plain `json.dumps` over an example that contains one raises instead of rendering.
+    """
     if v is None:
         return "—"
     if isinstance(v, (dict, list)):
-        return json.dumps(v, sort_keys=True)[:160]
+        text = json.dumps(v, sort_keys=True, default=str)
+        if len(text) > SHOW_LIMIT:
+            return f"{text[:SHOW_LIMIT]}… (showing {SHOW_LIMIT} of {len(text)} characters)"
+        return text
     return str(v)
 
 
@@ -381,8 +394,11 @@ def compare(before: dict, after: dict, index: dict) -> list:
     sa = (after.get("components") or {}).get("schemas") or {}
     # A schema reachable from a request body is one a *client* fills in, so adding a
     # required field to it breaks callers; the same addition to a response schema
-    # only breaks a client that validates strictly.
+    # only breaks a client that validates strictly. That asymmetry is what drives the
+    # classification — but the *label* needs both sets, because most DTOs are on both
+    # sides and naming only one of them is a plain misstatement.
     request_schemas = request_side(after)
+    response_schemas = response_side(after)
 
     for name in sorted(set(sa) - set(sb)):
         subjects.append(
@@ -402,44 +418,104 @@ def compare(before: dict, after: dict, index: dict) -> list:
             subjects.append(
                 Subject("schemas", name, "modified", changes,
                         index.get(("components", "schemas", name)),
-                        "request body" if name in request_schemas else "")
+                        side_note(name, request_schemas, response_schemas))
             )
 
     return subjects
 
 
-def request_side(spec: dict) -> set:
-    """Schema names reachable from any requestBody or parameter, transitively."""
+def refs_in(node):
+    """Every `$ref` target name anywhere under `node`, however deep."""
+    if isinstance(node, dict):
+        if isinstance(node.get("$ref"), str):
+            yield node["$ref"].rsplit("/", 1)[-1]
+        for v in node.values():
+            yield from refs_in(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from refs_in(v)
+
+
+def close_over_refs(spec: dict, seeds: list) -> set:
+    """The seeds plus every schema they reach through a `$ref`, transitively."""
     schemas = (spec.get("components") or {}).get("schemas") or {}
-    seen, queue = set(), []
-
-    def refs(node):
-        if isinstance(node, dict):
-            if "$ref" in node and isinstance(node["$ref"], str):
-                yield node["$ref"].rsplit("/", 1)[-1]
-            for v in node.values():
-                yield from refs(v)
-        elif isinstance(node, list):
-            for v in node:
-                yield from refs(v)
-
-    for op in operations(spec).values():
-        for part in (op.get("requestBody"), op.get("parameters")):
-            queue += list(refs(part))
+    seen, queue = set(), list(seeds)
     while queue:
         name = queue.pop()
         if name in seen:
             continue
         seen.add(name)
-        queue += list(refs(schemas.get(name) or {}))
+        queue += list(refs_in(schemas.get(name) or {}))
     return seen
+
+
+def request_side(spec: dict) -> set:
+    """Schema names reachable from any requestBody or parameter, transitively."""
+    seeds = []
+    for op in operations(spec).values():
+        for part in (op.get("requestBody"), op.get("parameters")):
+            seeds += list(refs_in(part))
+    return close_over_refs(spec, seeds)
+
+
+def response_side(spec: dict) -> set:
+    """Schema names reachable from any response body, transitively.
+
+    Its own function because the two sets overlap far more than the old code assumed:
+    `VisitDto` is the request body of `POST /api/visits` *and* the response of two
+    `GET`s, and calling it "request body" on that basis told a reviewer the opposite
+    of where it mostly lives.
+    """
+    seeds = []
+    for op in operations(spec).values():
+        seeds += list(refs_in(op.get("responses")))
+    return close_over_refs(spec, seeds)
+
+
+def side_note(name: str, in_request: set, in_response: set) -> str:
+    """Where a schema actually shows up, said in full rather than half."""
+    req, res = name in in_request, name in in_response
+    if req and res:
+        return "request & response body"
+    if req:
+        return "request body"
+    if res:
+        return "response body"
+    return ""
+
+
+def operations_touching(spec: dict, names: set) -> set:
+    """Every operation whose effective payload reaches one of `names` through a `$ref`.
+
+    The reason this exists: comparing the two `paths` dicts as text answers a question
+    nobody asked. A `$ref` string does not move when its target does, so a change that
+    lands entirely in `components.schemas` shows up as "0 operations moved" — while
+    every caller of every operation that serves that schema sends or receives something
+    new. This is the count that makes that sentence true.
+    """
+    schemas = (spec.get("components") or {}).get("schemas") or {}
+    out = set()
+    for (path, method), op in operations(spec).items():
+        seeds = list(refs_in(op.get("requestBody"))) + list(refs_in(op.get("responses"))) \
+            + list(refs_in(op.get("parameters")))
+        reach, queue = set(), list(seeds)
+        while queue:
+            n = queue.pop()
+            if n in reach:
+                continue
+            reach.add(n)
+            queue += list(refs_in(schemas.get(n) or {}))
+        if reach & names:
+            out.add((path, method))
+    return out
 
 
 # ── rendering ─────────────────────────────────────────────────────────────────────
 VERB_CLASS = {"GET": "get", "POST": "post", "PUT": "put", "PATCH": "put", "DELETE": "delete"}
 
 
-def render(subjects: list, raw_diff: str, spec_abs: Path, spec_rel: str) -> str:
+def render(subjects: list, raw_diff: str, spec_abs: Path, spec_rel: str,
+           served_by: int = 0) -> str:
     if not subjects:
         return (
             '<p class="oad-lede">The REST contract is byte-identical to the base — '
@@ -459,11 +535,22 @@ def render(subjects: list, raw_diff: str, spec_abs: Path, spec_rel: str) -> str:
     )
     ops = sum(1 for s in subjects if s.group == "paths")
     schemas = sum(1 for s in subjects if s.group == "schemas")
+    # `ops` counts operations whose own `paths` entry differs as text. On a generated
+    # spec that is usually zero while the contract has moved for a dozen callers, because
+    # a `$ref` string is byte-identical when its target changed underneath it. Saying "0
+    # operations moved" and stopping there is the under-report; `served_by` finishes the
+    # sentence.
+    reach = ""
+    if served_by and served_by > ops:
+        reach = (f" Those schemas are served by <b>{served_by}</b> "
+                 f"operation{'s' if served_by != 1 else ''}, which change what a caller "
+                 "sends or receives even where the <code>paths</code> section did not move "
+                 "a byte — see the API contract tab for the per-operation shapes.")
     lede = (
         f'<p class="oad-lede">Read from <code>{html.escape(spec_rel)}</code> as a structure, not as '
         f"text: <b>{ops}</b> operation{'s' if ops != 1 else ''} and <b>{schemas}</b> "
-        f"schema{'s' if schemas != 1 else ''} moved. Each line is classified by what it does to "
-        f"somebody already calling this API — {counts}</p>"
+        f"schema{'s' if schemas != 1 else ''} moved.{reach} Each line is classified by what it "
+        f"does to somebody already calling this API — {counts}</p>"
     )
 
     parts = [lede]
@@ -643,7 +730,9 @@ def main(argv=None) -> int:
             indent=1,
         )
     else:
-        body = render(subjects, raw, spec_abs, spec_rel)
+        moved = {s.name for s in subjects if s.group == "schemas"}
+        served = len(operations_touching(after, moved) | operations_touching(before, moved))
+        body = render(subjects, raw, spec_abs, spec_rel, served)
 
     if args.out:
         out = Path(args.out)

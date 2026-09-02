@@ -290,6 +290,51 @@ def test_a_changed_label_is_still_a_removal_and_an_addition():
     assert "select pets" in out and "select visits" in out
 
 
+# ── A section header that learned where its test lives is not a behaviour change ──
+# The generator started hanging `[[src://<file>:<line>{…} Title]]` on every `== … ==`
+# header. Diffed against a base that predates it, every scenario in the picture read as
+# one struck chapter followed by an identical new one — before a single call had moved.
+
+def _sections(old_header, new_header):
+    frame = "@startuml\nparticipant Backend\n%s\nBackend -> Backend: x\n@enduml\n"
+    return sq.diff(frame % old_header, frame % new_header)
+
+
+LINKED_HEADER = "== [[src://petclinic-test/src/add-visit.spec.ts:26{Click to open the test} Add a visit]] =="
+
+
+def test_a_section_header_that_gained_a_source_link_is_not_a_change():
+    out = _sections("== Add a visit ==", LINKED_HEADER)
+    assert "<s>" not in out                       # not a removal
+    assert out.count("Add a visit") == 1          # not a pair
+    assert f"<color:{sq.RED}>" not in out         # not even a repaint
+    assert LINKED_HEADER in out                   # …and the link still renders
+
+
+def test_a_moved_test_does_not_move_the_conversation():
+    """Only the line number differs — everything above the test shifted, that is all."""
+    out = _sections(LINKED_HEADER, LINKED_HEADER.replace(":26{", ":43{"))
+    assert "<s>" not in out
+    assert f"<color:{sq.RED}>" not in out
+
+
+def test_a_renamed_section_is_still_a_removal_and_an_addition():
+    out = _sections(LINKED_HEADER, LINKED_HEADER.replace("Add a visit", "Book a visit"))
+    assert "<s>" in out
+    assert "Add a visit" in out and "Book a visit" in out
+
+
+# An arrow's `src://` handle is no more a change than a header's; its `genseq://` one
+# still is, because that fingerprint moving means the statement behind it was rewritten.
+def test_an_arrow_link_target_never_decides_identity():
+    plain = "Browser -> Backend: GET /api/vets"
+    linked = "Browser -> Backend: [[src://petclinic-test/src/x.spec.ts:9{open} GET /api/vets]]"
+    out = _seq(plain, linked)
+    assert "<s>" not in out
+    assert out.count("GET /api/vets") == 1
+    assert f"<color:{sq.RED}>" not in out
+
+
 # ── Member links: wrapping, whichever form the input used ────────────────────
 # PlantUML prints the URL when a `[[...]]` has no label. The generator wraps the member
 # text now, but the base side of a diff predates that — and a delta has to stay readable
