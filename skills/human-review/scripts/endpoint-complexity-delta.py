@@ -246,7 +246,7 @@ def render(rows, base="main") -> str:
     peak = max((max(r["now"], r["was"] or 0) for r in rows), default=1) or 1
     touched = [r for r in rows if r["delta"] != 0]
     out = [
-        '<p class="cx-lede">Cyclomatic complexity of the <em>whole flow</em> behind each entry '
+        '<p class="cx-lede">Cognitive complexity of the <em>whole flow</em> behind each entry '
         "point — REST endpoint, MCP tool, message listener, job (bytecode-derived: every decision "
         "point in every method reachable from the handler, plus one). "
         # The green/red legend used to close this sentence. Every bar now says which

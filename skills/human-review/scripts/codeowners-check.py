@@ -253,8 +253,8 @@ def plural(n: int, noun: str) -> str:
     return f"{n} {noun}" + ("" if n == 1 else "s")
 
 
-def file_link(root: Path, path: str, status: str, line: int = 1) -> str:
-    label = html.escape(path)
+def file_link(root: Path, path: str, status: str, line: int = 1, label: str = None) -> str:
+    label = html.escape(label if label is not None else path)
     if status == "D" or not (root / path).exists():
         return f'<code class="cow-gone">{label}</code>'
     return (f'<a class="cow-file" href="vscode://file/{(root / path).resolve()}:{line}:1">'
@@ -276,8 +276,7 @@ def render(root: Path, data: dict) -> str:
                f"<code>{html.escape(data['codeowners'])}</code>, so this branch cannot merge "
                f"until {n_owner} owner{'s' if n_owner != 1 else ''} "
                f"{'each ' if n_owner != 1 else ''}approve"
-               f"{'' if n_owner != 1 else 's'} it. They are named below, with the files and "
-               "the rule that pulled each one in.")
+               f"{'' if n_owner != 1 else 's'} it.")
     elif state == CLEAR:
         sub = (f"None of the {plural(data['changed'], 'changed file')} matches a rule in "
                f"<code>{html.escape(data['codeowners'])}</code>. Whoever normally reviews this "
@@ -297,19 +296,6 @@ def render(root: Path, data: dict) -> str:
         f'<div class="cow-sub">{sub}</div></div></div>',
     ]
 
-    if data["codeowners"]:
-        semantics = ("GitLab's, because the file has <code>[sections]</code>: every matching "
-                     "section is required, and a <code>^[section]</code> only suggests."
-                     if data["sectioned"] else
-                     "GitHub's: for each file the <b>last</b> matching rule wins, so a broad rule "
-                     "low in the file silently overrides a narrow one above it.")
-        parts.append(
-            f'<p class="cow-prov">{plural(data["rules"], "rule")} read from '
-            f'{file_link(root, data["codeowners"], "M")}, matched against the '
-            f'{plural(data["changed"], "file")} this branch changes since the merge-base '
-            f'<code>{html.escape(data["base_ref"][:8])}</code>. Matching follows {semantics}</p>'
-        )
-
     if data["shadowed"]:
         listed = ", ".join(f"<code>{html.escape(p)}</code>" for p in data["shadowed"])
         parts.append(f'<div class="cow-warn"><b>A second CODEOWNERS is being ignored.</b> '
@@ -325,13 +311,20 @@ def render(root: Path, data: dict) -> str:
                 f' href="vscode://file/{(root / data["codeowners"]).resolve()}:{r["line"]}:1">'
                 f'{html.escape(r["pattern"])}</a>' for r in e["rules"]
             )
+            # A rule that is just the file's own path says nothing the row has not
+            # already said, twice. Only a *pattern* — one that could have claimed other
+            # files too — is worth naming, and then the path is legible from the pattern,
+            # so the row leads with the bare filename instead of repeating the directories.
+            patterns = [r for r in e["rules"] if r["pattern"].lstrip("/") != e["path"]]
+            by = (f'<span class="cow-by">claimed by {rules}</span>' if patterns else "")
+            shown = Path(e["path"]).name if patterns else e["path"]
             rows.append(f'<li><span class="cow-st cow-st-{e["status"].lower()}">'
                         f'{STATUS_LABEL.get(e["status"], e["status"])}</span>'
-                        f'{file_link(root, e["path"], e["status"])}'
-                        f'<span class="cow-by">claimed by {rules}</span></li>')
+                        f'{file_link(root, e["path"], e["status"], label=shown)}'
+                        f'{by}</li>')
         parts.append(f'<div class="cow-row"><div class="cow-head">'
                      f'<span class="cow-owner">{html.escape(owner)}</span>'
-                     f'<span class="cow-note">{plural(len(entries), "file")} to approve'
+                     f'<span class="cow-note">have to approve {plural(len(entries), "file")}:'
                      "</span></div>"
                      f'<ul class="cow-files">{"".join(rows)}</ul></div>')
 
@@ -352,14 +345,6 @@ def render(root: Path, data: dict) -> str:
                        f"{html.escape(why)}</li>" for n, line, why in data["problems"])
         parts.append('<div class="cow-warn"><b>Lines a host would skip.</b> They are in the '
                      f'file but they claim nothing:<ul class="cow-files">{rows}</ul></div>')
-
-    if data["unowned"]:
-        rows = "".join(f'<li>{file_link(root, p, "M")}</li>'
-                       for p in sorted(data["unowned"]))
-        n = len(data["unowned"])
-        parts.append(f'<details class="cow-rest"><summary>The other '
-                     f'{plural(n, "changed file")} {"matches" if n == 1 else "match"} no rule'
-                     f'</summary><ul class="cow-files">{rows}</ul></details>')
 
     parts.append("</div>")
     return "\n".join(parts)

@@ -1,0 +1,11 @@
+id: any-field
+language: java
+severity: hint
+message: field declaration
+rule:
+  kind: field_declaration
+  all:
+    - has: {field: type, pattern: $FTYPE}
+    - has:
+        field: declarator
+        has: {field: name, pattern: $FNAME}

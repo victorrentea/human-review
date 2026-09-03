@@ -147,24 +147,45 @@ def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict) -
             continue
         mid = msg.get("id") or f"{d.get('uuid')}"
         prev = best.get(mid)
+        # `key` is the dedup tie-break only (a missing timestamp must still lose to a real
+        # one, so it sorts last); `when` rides along separately and stays None when the
+        # stamp was missing or unparseable, because a consumer that places turns in time
+        # (tab_costs, below) has to tell "no timestamp" apart from "very late timestamp" —
+        # collapsing them into one value the way `key` does would silently misfile a
+        # timestamp-less turn into whichever window happens to be open-ended.
         key = when or dt.datetime.max.replace(tzinfo=dt.timezone.utc)
         if prev is None or key < prev[0]:
             best[mid] = (key, msg.get("model"), usage,
-                         force_side or bool(d.get("isSidechain")))
+                         force_side or bool(d.get("isSidechain")), when)
 
 
-def collect(path: Path, since: dt.datetime | None, include_subagents: bool = True) -> dict:
+def gather_turns(path: Path, since: dt.datetime | None, include_subagents: bool = True):
+    """The deduped, priced turns `collect()` and `tab_costs()` both work from.
+
+    One scan, shared, so the two never drift on what counts as a turn — the same
+    dedupe-by-`message.id` and subagent-transcript discovery either would reimplement
+    otherwise."""
     best: dict[str, tuple] = {}
     _scan(path, since, False, best)
     agents = subagent_transcripts(path) if include_subagents else []
     for extra in agents:
         _scan(extra, since, True, best)
+    return list(best.values()), len(agents)
+
+
+def collect(path: Path, since: dt.datetime | None, include_subagents: bool = True,
+           turns=None, n_agents: int | None = None) -> dict:
+    """`turns`/`n_agents` let a caller that already ran `gather_turns()` (the `--chip`
+    path, when it also needs the residual) reuse that scan instead of reading the whole
+    transcript — subagents included — a second time."""
+    if turns is None:
+        turns, n_agents = gather_turns(path, since, include_subagents)
 
     totals = {"in": 0, "out": 0, "cache_write": 0, "cache_read": 0}
     per_model: dict[str, dict] = {}
     cost = sub_cost = 0.0
     msgs = subagent_msgs = searches = 0
-    for _, model, u, side in best.values():
+    for _, model, u, side, _when in turns:
         c = price(family(model), u)
         cost += c
         msgs += 1
@@ -186,7 +207,7 @@ def collect(path: Path, since: dt.datetime | None, include_subagents: bool = Tru
             searches += n
             cost += n * WEB_SEARCH_PER_1K / 1000
     return {
-        "subagents": len(agents),
+        "subagents": n_agents,
         "tokens": sum(totals.values()), "breakdown": totals, "cost": cost,
         "subagent_cost": sub_cost, "messages": msgs, "subagent_messages": subagent_msgs,
         "web_searches": searches,
@@ -206,6 +227,188 @@ def money(c: float) -> str:
     return f"${c:.2f}" if c >= 0.01 else "<$0.01"
 
 
+# --------------------------------------------------------------------------------------- #
+# Per-tab cost. Nothing today links a turn to a tab, so the link is made by whoever runs
+# the pipeline: `steps-ledger.py start <tabs> …` / `… end <index>` stamps a start/end
+# window into `.human-review/.steps.json` as each step runs, naming the tab(s) it feeds.
+# This turns that ledger, plus the same deduped/priced turns `collect()` uses, into a
+# cost per tab — and a residual bucket for whatever fell outside every window.
+# --------------------------------------------------------------------------------------- #
+
+def _parse_iso(raw) -> "dt.datetime | None":
+    if not raw:
+        return None
+    try:
+        return dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def load_steps(path: Path) -> tuple[list[dict], bool]:
+    """The ledger `steps-ledger.py` writes, parsed into `{tabs, label, start, end}` records.
+
+    Returns `(records, found)`. `found` is False for "the file is not there, or is not
+    something this ever wrote" — the whole feature was never wired up on this run. That
+    reads differently from "found, and simply says nothing about this tab", which is one
+    uninstrumented step on a run that otherwise measures itself. Conflating the two would
+    make an adopted-but-partial ledger look identical to one that was never adopted."""
+    if not path.is_file():
+        return [], False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return [], False
+    if not isinstance(data, list):
+        return [], False
+    out = []
+    for r in data:
+        if not isinstance(r, dict):
+            continue
+        tabs = [t for t in (r.get("tabs") or []) if isinstance(t, str) and t]
+        start = _parse_iso(r.get("start"))
+        if not tabs or start is None:
+            continue
+        end = _parse_iso(r.get("end"))
+        out.append({"tabs": tabs, "label": r.get("label") or "", "start": start, "end": end})
+    return out, True
+
+
+def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
+    """Attribute each turn's cost to the tab(s) whose step window it falls in.
+
+    A turn inside more than one matching tab's window — one step feeding two tabs at
+    once, or two windows that happen to overlap — has its cost split evenly across every
+    tab it falls into. Not because the work was literally divisible, but so the per-tab
+    numbers add up to the run total instead of double-counting it. A turn inside none of
+    the windows, or with no timestamp to place it, goes to `residual`: real cost with no
+    single tab to blame it on (Step 0, assembling `content.json`, or any step that never
+    ran through the ledger). Nothing is dropped and nothing is spread beyond the tabs a
+    step actually named.
+
+    `wanted` fixes which tabs get an entry in the return value even when the ledger never
+    mentions them — that absence (`has_closed: False, has_unclosed: False`) is itself the
+    "never stamped" signal a caller needs, not something it has to infer from a missing key.
+    """
+    per_tab = {t: {"cost": 0.0, "tokens": 0.0, "messages": 0,
+                    "has_closed": False, "has_unclosed": False} for t in wanted}
+    closed = []
+    for s in steps:
+        is_closed = s["end"] is not None and s["end"] >= s["start"]
+        if is_closed:
+            closed.append(s)
+        for t in s["tabs"]:
+            if t in per_tab:
+                per_tab[t]["has_closed" if is_closed else "has_unclosed"] = True
+
+    residual = {"cost": 0.0, "tokens": 0.0, "messages": 0}
+    for _, model, u, _side, when in turns:
+        c = price(family(model), u)
+        tok = sum(u.get(k, 0) for k in
+                  ("input_tokens", "output_tokens",
+                   "cache_creation_input_tokens", "cache_read_input_tokens"))
+        hit = set()
+        if when is not None:
+            for s in closed:
+                if s["start"] <= when <= s["end"]:
+                    hit |= {t for t in s["tabs"] if t in per_tab}
+        if not hit:
+            residual["cost"] += c
+            residual["tokens"] += tok
+            residual["messages"] += 1
+            continue
+        share = 1.0 / len(hit)
+        for t in hit:
+            per_tab[t]["cost"] += c * share
+            per_tab[t]["tokens"] += tok * share
+            per_tab[t]["messages"] += 1
+    return {"tabs": per_tab, "residual": residual}
+
+
+def tab_cost_tip(row: dict) -> str:
+    """Plain text — `data-tip` is read with `textContent`, not innerHTML."""
+    if not row["has_closed"]:
+        why = (" its step started but never recorded finishing" if row["has_unclosed"]
+               else " no step in the ledger named it")
+        return f"cost: not measured for this tab —{why}."
+    caveat = (" One of its steps started but never recorded finishing, so this is a "
+              "lower bound." if row["has_unclosed"] else "")
+    return (f"{money(row['cost'])} · {human(round(row['tokens']))} tok measured for "
+            f"this tab (list-price).{caveat}")
+
+
+def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path: Path,
+                    tabs: list[str], include_subagents: bool = True) -> dict:
+    """Everything a page builder needs to put an honest cost tooltip on every tab.
+
+    Always returns an entry for every tab in `tabs` — never an empty dict a caller has to
+    special-case — because "we could not measure this" has to reach the reader as a
+    sentence on the tab, not as a quietly absent tooltip that looks the same as a measured
+    zero. `available` is about the transcript (no session id, no transcript on disk);
+    `ledger` is the separate, later question of whether `.steps.json` exists at all.
+    """
+    def blank(reason: str) -> dict:
+        tab_tip = f"cost: not measured for this tab — {reason}."
+        return {
+            "available": False, "ledger": False, "reason": reason,
+            "tabs": {t: {"measured": False, "cost": 0.0, "tokens": 0, "messages": 0,
+                        "tip": tab_tip} for t in tabs},
+            "residual": {"measured": False, "cost": 0.0, "tokens": 0, "messages": 0,
+                        "tip": f"cost: not measured — {reason}."},
+        }
+
+    if not session:
+        return blank("no session id ($CLAUDE_CODE_SESSION_ID unset)")
+    path = transcript(session)
+    if path is None:
+        return blank(f"no transcript for session {session}")
+
+    steps, ledger_found = load_steps(steps_path)
+    if not ledger_found:
+        return {**blank(f"no step ledger at {steps_path}"), "available": True}
+
+    turns, _ = gather_turns(path, since, include_subagents)
+    result = tab_costs(turns, steps, tabs)
+    tabs_out = {
+        t: {"measured": row["has_closed"], "cost": row["cost"],
+            "tokens": round(row["tokens"]), "messages": row["messages"],
+            "tip": tab_cost_tip(row)}
+        for t, row in result["tabs"].items()
+    }
+    r = result["residual"]
+    residual_tip = (
+        f"{money(r['cost'])} · {human(round(r['tokens']))} tok of this run's cost is "
+        "not attributed to any single tab — assembling the guide itself, plus any step "
+        "whose window did not cover it."
+    )
+    return {
+        "available": True, "ledger": True, "reason": None,
+        "tabs": tabs_out,
+        "residual": {"measured": True, "cost": r["cost"], "tokens": round(r["tokens"]),
+                    "messages": r["messages"], "tip": residual_tip},
+    }
+
+
+def _resolve_since(since_file: str, since_raw: str | None) -> "dt.datetime | None":
+    """The run's own start marker, or an explicit override — shared by every mode, so the
+    `{"auto":"cost"}` chip and the per-tab report never disagree about where "this run"
+    begins."""
+    raw = since_raw
+    if not raw:
+        marker = Path(since_file)
+        if marker.is_file():
+            raw = marker.read_text(encoding="utf-8").strip()
+    if not raw:
+        print("[review-cost] no start marker — counting the WHOLE session, which is more "
+              "than this review", file=sys.stderr)
+        return None
+    try:
+        return dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        print(f"[review-cost] unparseable timestamp {raw!r} — counting the whole session",
+              file=sys.stderr)
+        return None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -218,7 +421,20 @@ def main(argv=None) -> int:
     ap.add_argument("--json", action="store_true", help="emit the full breakdown as JSON")
     ap.add_argument("--no-subagents", action="store_true",
                     help="count only the parent session's turns")
+    ap.add_argument("--tab-costs", action="store_true",
+                    help="emit a cost report per tab (needs --tabs) as JSON")
+    ap.add_argument("--tabs", help="comma-separated tab ids to report on, with --tab-costs")
+    ap.add_argument("--steps-file", default=".human-review/.steps.json",
+                    help="the start/end ledger steps-ledger.py writes")
     args = ap.parse_args(argv)
+
+    if args.tab_costs:
+        since = _resolve_since(args.since_file, args.since)
+        tabs = [t.strip() for t in (args.tabs or "").split(",") if t.strip()]
+        report = tab_cost_report(args.session, since, Path(args.steps_file), tabs,
+                                 include_subagents=not args.no_subagents)
+        print(json.dumps(report, indent=1))
+        return 0
 
     if not args.session:
         print("[review-cost] no session id ($CLAUDE_CODE_SESSION_ID unset) — "
@@ -230,23 +446,11 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
 
-    since = None
-    raw = args.since
-    if not raw:
-        marker = Path(args.since_file)
-        if marker.is_file():
-            raw = marker.read_text(encoding="utf-8").strip()
-    if raw:
-        try:
-            since = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        except ValueError:
-            print(f"[review-cost] unparseable timestamp {raw!r} — counting the whole session",
-                  file=sys.stderr)
-    if since is None:
-        print("[review-cost] no start marker — counting the WHOLE session, which is more "
-              "than this review", file=sys.stderr)
+    since = _resolve_since(args.since_file, args.since)
 
-    r = collect(path, since, include_subagents=not args.no_subagents)
+    turns, n_agents = gather_turns(path, since, not args.no_subagents)
+    r = collect(path, since, include_subagents=not args.no_subagents,
+               turns=turns, n_agents=n_agents)
     r["session"] = args.session
     r["since"] = since.isoformat() if since else None
     r["whole_session"] = since is None
@@ -266,6 +470,18 @@ def main(argv=None) -> int:
                + ("Counted from the start of this run. " if not r["whole_session"]
                   else "No start marker, so this is the WHOLE session, not just the review. ")
                + "List-price equivalent — a subscription is not billed this.")
+        # If the pipeline kept a step ledger, the per-tab breakdown has a residual — the
+        # cost that landed in no single tab's window (assembling the guide itself, mostly).
+        # The scope chip already explains the total, so it is the residual's honest home
+        # rather than a number left to float free with nowhere to be shown at all.
+        steps, ledger_found = load_steps(Path(args.steps_file))
+        if ledger_found:
+            wanted = sorted({t for s in steps for t in s["tabs"]})
+            residual = tab_costs(turns, steps, wanted)["residual"]
+            if residual["messages"]:
+                tip += (f" {money(residual['cost'])} of that is not attributed to any "
+                       "single tab — assembling the guide itself, plus any step whose "
+                       "window did not cover it.")
         print(json.dumps({
             "label": "this review cost",
             "value": f'{money(r["cost"])} <span class="sub">· {human(r["tokens"])} tok</span>',

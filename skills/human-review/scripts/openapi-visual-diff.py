@@ -9,9 +9,6 @@ added / removed), annotating each with the concrete changes from oasdiff.
     ./openapi-visual-diff.py old.yaml new.yaml -o diff.html
 
 Requires: oasdiff on PATH (brew install oasdiff), PyYAML.
-
-Vendored from https://github.com/victorrentea/OpenAPI-Visual-Diff (public domain).
-Keep the two copies in step: fixes belong upstream first.
 """
 import argparse
 import copy
@@ -380,7 +377,14 @@ TEMPLATE = r"""<!doctype html>
   .swagger-ui .opblock.dv-removed .opblock-summary-path__deprecated { text-decoration: line-through; }
   .swagger-ui .opblock.dv-removed .opblock-summary-method { background: var(--dv-removed); }
 
+  /* Swagger UI's own copy-to-clipboard button. This page is a diff, not a console:
+     there is nothing here anyone wants on their clipboard, and the icon sits exactly
+     where the eye goes for the change badge. */
+  .swagger-ui .copy-to-clipboard, .swagger-ui button.copy-to-clipboard { display: none; }
   .swagger-ui .info { margin: 20px 0 12px; }
+  /* Swagger UI's terms-of-service link: a contract detail for a consumer browsing the
+     live docs, noise in a diff of two revisions. */
+  .swagger-ui .info__tos { display: none; }
   .swagger-ui .scheme-container, .swagger-ui .topbar { display: none; }
 
   /* ---------- Swagger UI ships light-only; repaint its surfaces ----------
@@ -428,10 +432,11 @@ TEMPLATE = r"""<!doctype html>
 <body>
 <div class="dv-bar">
   <h1>OpenAPI visual diff</h1>
-  <span class="dv-vs"><b id="dv-old"></b> vs <b id="dv-new"></b></span>
+  <!-- revision first: the reader came to see what the branch does, and the page's own
+       title says "test-pr vs main". Each label still names its true side. -->
+  <span class="dv-vs"><b id="dv-new"></b> vs <b id="dv-old"></b></span>
   <span id="dv-chips"></span>
   <span class="dv-spacer"></span>
-  <label class="dv-toggle"><input type="checkbox" id="dv-only"> only touched endpoints</label>
   <label class="dv-toggle"><input type="checkbox" id="dv-expand"> expand impacted</label>
 </div>
 <div id="dv-global"></div>
@@ -471,6 +476,9 @@ ORDER.forEach(state => {
   el.onclick = () => {
     hidden.has(state) ? hidden.delete(state) : hidden.add(state);
     el.classList.toggle('off', hidden.has(state));
+    if (state === 'untouched') {
+      document.body.classList.toggle('dv-hide-untouched', hidden.has(state));
+    }
     apply();
   };
   chips.appendChild(el);
@@ -550,24 +558,28 @@ function apply() {
     const ops = [...sec.querySelectorAll('.opblock')];
     const visible = ops.filter(o => o.style.display !== 'none');
     const tag = sec.querySelector('.opblock-tag')?.dataset.tag;
-    sec.classList.toggle('dv-quiet', DATA.tags[tag] === 'quiet');
+    const quiet = DATA.tags[tag] === 'quiet';
+    sec.classList.toggle('dv-quiet', quiet);
+    // A collapsed section holds no opblocks, so the "nothing visible left" rule below
+    // can never reach it — and the untouched sections are exactly the collapsed ones.
+    // Their verdict comes from the tag map instead.
+    if (quiet && hidden.has('untouched')) { sec.style.display = 'none'; return; }
     // a tag whose every operation is filtered out has nothing left to say
     sec.style.display = ops.length > 0 && visible.length === 0 ? 'none' : '';
   });
 }
 
-const onlyBox = document.getElementById('dv-only');
-onlyBox.onchange = e => {
-  document.body.classList.toggle('dv-hide-untouched', e.target.checked);
-  if (e.target.checked) hidden.add('untouched'); else hidden.delete('untouched');
+// `#only-touched` opens on the filtered view — the same state the untouched chip
+// toggles, so there is one control for it rather than two that must agree.
+function setOnlyTouched(on) {
+  document.body.classList.toggle('dv-hide-untouched', on);
+  if (on) hidden.add('untouched'); else hidden.delete('untouched');
   document.querySelectorAll('.dv-chip').forEach(c => {
-    if (c.textContent.includes('untouched')) c.classList.toggle('off', e.target.checked);
+    if (c.textContent.includes('untouched')) c.classList.toggle('off', on);
   });
-  location.hash = e.target.checked ? 'only-touched' : '';
   apply();
-};
-// the view you are looking at is the view you can paste to a colleague
-if (location.hash.includes('only')) { onlyBox.checked = true; onlyBox.onchange({target: onlyBox}); }
+}
+if (location.hash.includes('only')) setOnlyTouched(true);
 
 document.getElementById('dv-expand').onchange = e => {
   document.querySelectorAll('.swagger-ui .opblock').forEach(op => {
@@ -593,6 +605,25 @@ new MutationObserver(() => {
   clearTimeout(window.__dvT);
   window.__dvT = setTimeout(decorate, 50);
 }).observe(document.getElementById('swagger-ui'), { childList: true, subtree: true });
+
+// Embedded in a page, this document should not grow a scrollbar of its own: a frame
+// that scrolls internally traps the wheel and hides how much is left. Report our real
+// height instead and let the host size the frame — the outer page keeps the only
+// scrollbar. Cross-origin over file://, so it goes by postMessage, not by reading us.
+function postHeight() {
+  if (window.parent === window) return;
+  const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+  if (h !== window.__dvH) {
+    window.__dvH = h;
+    window.parent.postMessage({ type: 'dv-height', height: h }, '*');
+  }
+}
+new MutationObserver(() => {
+  clearTimeout(window.__dvHT);
+  window.__dvHT = setTimeout(postHeight, 80);
+}).observe(document.body, { childList: true, subtree: true, attributes: true });
+window.addEventListener('load', postHeight);
+window.addEventListener('resize', postHeight);
 </script>
 </body>
 </html>
@@ -627,7 +658,8 @@ def main():
         new = Path(args.spec)
         if not new.is_file():
             sys.exit(f"no spec at {new}")
-        args.label_old = args.label_old or args.base
+        short = args.base[:8] if re.fullmatch(r"[0-9a-f]{40}", args.base) else args.base
+        args.label_old = args.label_old or short
         args.label_new = args.label_new or "working tree"
     elif args.old and args.new:
         old, new = Path(args.old), Path(args.new)

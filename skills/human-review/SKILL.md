@@ -26,7 +26,7 @@ skill's moving parts:
   driver, the video recorder, the Code City capture, the complexity delta, the OpenAPI
   contract differ, the backward-compatibility check that second-guesses it, the
   structural logging extractor, and the code-owners check that says whether the merge is
-  blocked. `scripts/ast-grep-rules/` is the logging extractor's nine rules as standalone
+  blocked. `scripts/ast-grep-rules/` is the logging extractor's eleven rules as standalone
   YAML (it carries its own copies as strings so it stays dependency-free; a test keeps the
   two in step), and `scripts/testdata/` holds the Java fixtures its tests scan.
 - `puml-diff/` — the two differs, `puml_diff.py` (class / ER / package) and
@@ -148,7 +148,41 @@ between the two differs and silent drift, and nothing else runs them:
 python3 -m pytest -q "${SKILL}/scripts" "${SKILL}/puml-diff"
 ```
 
+From here on, every step that produces a tab's content brackets its own commands with
+`steps-ledger.py start`/`end`, naming the tab(s) it feeds — Step 9 ("What each tab cost")
+explains the mechanics and what a crashed step does to the numbers; the short version is:
+
+```sh
+${SKILL}/scripts/steps-ledger.py start <tab[,tab2]> --label "…" > .human-review/.step-<name>
+# … the step's commands, and everything you do to work through them …
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-<name>)"
+```
+
+**The index goes through a file, never a shell variable.** `STEP=$(steps-ledger.py start …)`
+reads naturally, but a step's real span is rarely one shell call — Step 1's is two whole
+skill invocations plus the fixes between them, Step 3's is a traced test run with a
+conditional branch, and even a mechanical step can turn into three or four tool calls the
+moment something needs a second look. Shell state does not survive between them, only the
+working tree does, so `end` reads the index the same way `start` wrote it: from a file, not
+from a variable it can no longer see. A `$STEP` that silently came back empty would not
+error loudly — `end` would just fail its own argument parsing, and the record would sit with
+`"end": null` forever, which reads as an honestly-crashed step even though nothing crashed.
+Name the file after the step (`.human-review/.step-autoreview`, `.human-review/.step-data`, …)
+so two steps mid-flight at once never share a handle. This step and Step 9 itself are the two
+deliberate exceptions — neither wraps anything, so their own cost lands in `residual` rather
+than being pinned on a tab that did not earn it.
+
 ## Step 1 — Run the automated reviews, fix what is not disputable
+
+```sh
+${SKILL}/scripts/steps-ledger.py start autoreview --label "code-review + simplify" \
+  > .human-review/.step-autoreview
+```
+
+Everything from here through the end of this step — both invocations, the classification,
+and the fixes — lands on the **Autoreview** tab, so open the record now and close it once,
+at the bottom of the step, rather than per command: the tab is one continuous piece of work
+and a reader does not care which minute inside it a given fix landed in.
 
 Invoke **`/code-review`** and **`/simplify`** on the same range — in that order, one after
 the other, **never in the same turn**. The two are not two opinions on the same question:
@@ -203,10 +237,17 @@ A comment earns its place only when it explains something a future reader could 
 recover from the code itself — a trap, a non-obvious constraint, an order that matters.
 When in doubt, leave the code bare.
 
+```sh
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-autoreview)"
+```
+
 ## Step 2 — Diagram deltas (red = added, red + struck = removed)
 
 ```sh
+${SKILL}/scripts/steps-ledger.py start data,packages --label "diagram deltas" \
+  > .human-review/.step-data
 ${SKILL}/scripts/puml-diff.sh $BASE .human-review/assets/diagrams
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-data)"
 ```
 
 Diffs **every** `.puml` that differs from the merge-base — committed, modified or
@@ -247,9 +288,14 @@ at least one `@generate_sequence`-tagged `.feature` scenario**. Check
 tag (or the scenario) — **the tag alone, with no comment explaining why you added it**.
 
 Then regenerate from real traces. **There are two runs, not one** — one per suite that
-produces diagrams — and naming only the first is how half the gallery goes stale:
+produces diagrams — and naming only the first is how half the gallery goes stale. Everything
+from here to the end of this step lands on the **Behaviour** tab — the traced runs, the
+base-diagram regeneration below when it runs, and the manifest re-run — so one ledger record
+covers the whole step, opened now:
 
 ```sh
+${SKILL}/scripts/steps-ledger.py start behaviour --label "sequence diagrams from traces" \
+  > .human-review/.step-behaviour
 cd petclinic-test && ./run-tests-with-tracing.sh      # the browser suites (Playwright, Cucumber)
 cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq   # the @SpringBootTest suites
 cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram    # render what the JVM run recorded
@@ -316,7 +362,12 @@ git checkout -b throwaway-base $BASE && git commit -am "base diagrams, same rend
 part is the one traced run per side, not the rendering.
 
 If you skip it, say so in the guide next to the diagram: a red arrow the reviewer cannot
-distinguish from a real change is worse than no diagram.
+distinguish from a real change is worse than no diagram. Close the record once this step's
+diagrams (base regeneration included, whether or not you actually ran it) are in the manifest:
+
+```sh
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-behaviour)"
+```
 
 ⚠️ The DB arrows are labelled from Hibernate's own comment on each statement
 (`hibernate.use_sql_comments`, in the backend's `application.properties`). A backend
@@ -364,18 +415,26 @@ than typing one: "20 classes lit" in a content file is an assertion, and a city 
 highlighted nothing looks exactly like a city that highlighted everything.
 
 ```sh
+${SKILL}/scripts/steps-ledger.py start shape --label "Code City capture" \
+  > .human-review/.step-shape-codecity
 LIT=$(${SKILL}/scripts/capture-codecity.sh .human-review/assets/codecity.png highlight)
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-shape-codecity)"
 ```
 
 The capture now fails rather than producing an unhighlighted skyline — if the `Changes`
-option it drives is ever renamed, the assignment used to be a silent no-op.
+option it drives is ever renamed, the assignment used to be a silent no-op. `shape` is the
+same tab id Step 6 feeds below — **Cost & shape** holds both the complexity delta and this
+screenshot, so the two steps' records simply add up on it rather than colliding.
 
 ## Step 5 — Video of the feature
 
 Record the feature actually working, with Playwright, straight into the guide:
 
 ```sh
+${SKILL}/scripts/steps-ledger.py start video --label "feature recording" \
+  > .human-review/.step-video
 ${SKILL}/scripts/record-feature-video.sh .human-review/assets/<feature>.webm
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-video)"
 ```
 
 **The flow being filmed belongs to your project, not to this skill.** The skill owns the
@@ -476,7 +535,12 @@ re-run on the same footage without filming or re-speaking anything.
 
 ## Step 6 — Entry-point complexity increment
 
+Everything through the baseline run and the delta render below lands on **Cost & shape**,
+the same tab Step 4 fed — open the record once, here:
+
 ```sh
+${SKILL}/scripts/steps-ledger.py start shape --label "entry-point complexity" \
+  > .human-review/.step-shape-complexity
 cd petclinic-backend && mvn -q test -Dtest=EndpointComplexityExtractorTest
 ```
 
@@ -515,13 +579,20 @@ change made a cheap entry point expensive or merely nudged an already-heavy one.
 predates a widening of what counts as an entry point, say so — the newly-visible kinds will
 otherwise read as "added by this branch".
 
+```sh
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-shape-complexity)"
+```
+
 ## Step 7 — What the REST contract did
 
 ```sh
+${SKILL}/scripts/steps-ledger.py start api --label "REST contract diff" \
+  > .human-review/.step-api
 ${SKILL}/scripts/openapi-diff.py   --base $BASE --out .human-review/assets/openapi-diff.html
 ${SKILL}/scripts/openapi-diff.py   --css  >  .human-review/assets/openapi-diff.css
 ${SKILL}/scripts/openapi-compat.py --base $BASE --out .human-review/assets/openapi-compat.html
 ${SKILL}/scripts/openapi-compat.py --css  >  .human-review/assets/openapi-compat.css
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-api)"
 ```
 
 Two scripts, because they answer to different authorities.
@@ -602,10 +673,16 @@ step diffs an intention rather than an API, and the guide should say so.
 
 ### Step 7b — the same two revisions, read by a third differ
 
+This is its own tab, **Spec changes**, not more content on the API contract tab beside it —
+so it gets its own ledger record rather than sharing Step 7's:
+
 ```sh
+${SKILL}/scripts/steps-ledger.py start specchanges --label "pb33f report" \
+  > .human-review/.step-specchanges
 openapi-changes html-report --no-logo --no-explorer \
   --report-file .human-review/assets/openapi-changes.html \
   "$MERGE_BASE:openapi.yaml" ./openapi.yaml
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-specchanges)"
 ```
 
 [pb33f/openapi-changes](https://pb33f.io/openapi-changes/) is not a summary — it is a whole
@@ -643,9 +720,16 @@ cannot reach the evidence:
 
 ### The same verdict, on the screen everyone already knows
 
+This embed lands on the **API contract** tab beside the compatibility verdict, not a tab of
+its own — it is a second view of the same finding, not a fourth opinion — so it shares
+Step 7's tab id:
+
 ```sh
+${SKILL}/scripts/steps-ledger.py start api --label "contract blast radius" \
+  > .human-review/.step-api-visual
 ${SKILL}/scripts/openapi-visual-diff.py --base $MERGE_BASE --spec openapi.yaml \
   --out .human-review/assets/openapi-visual-diff.html
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-api-visual)"
 ```
 
 The two blocks above answer *what changed* in prose. This one answers **where it lands**,
@@ -686,8 +770,11 @@ system setting — the embed deliberately does not, so that both documents chang
 ## Step 7c — What it will say for itself in production
 
 ```sh
+${SKILL}/scripts/steps-ledger.py start logging --label "structural logging scan" \
+  > .human-review/.step-logging
 ${SKILL}/scripts/logextract.py petclinic-backend \
   --repo . --since $MERGE_BASE --json .human-review/assets/logging.json
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-logging)"
 ```
 
 The question is what a 3 a.m. pager gets when this code misbehaves, and **grep cannot
@@ -716,14 +803,75 @@ constraint, then gives up — it does not try the next child. That silently lost
 `@Slf4j` that sat behind another annotation, and lost it *quietly*, as a class that appeared
 to log nothing. Do not "simplify" a rule by folding a `has:` and a `constraints:` together.
 
-**The zero case is a finding, not an empty section.** On the reference change set the answer
-is "None. Not one line." across 14 touched Java files — and that is the most review-worthy
-thing on the tab, because the branch's own first finding is a live 500 whose only trace in
-production would be a generic catch-all line. So the tab renders the table of **every**
-touched Java file with its churn and its `0 logging` beside it: the evidence that the
-question was asked of each of them, not silence that could equally mean the tool did not
-run. The tab is never struck through for a zero — a zero here is a statement about this
-diff, not "we looked at unrelated context and nothing moved".
+**The tab is the answer, not the homework.** It used to open on a table of every touched
+Java file, most of them saying `0 logging` — on a twelve-file change set with two new
+`log.warn` calls, that is ten rows of noise sitting on top of the two lines a reviewer
+actually came for. There is no such table any more, not even collapsed behind a
+`<details>` — it does not exist at any level. What proves the scan actually ran over
+every touched file is simpler than an inventory of them: the tab rendering at all
+(weight 1, a real sentence or a real snippet) *is* the proof, and the one case that is
+not proof — `ast-grep` missing, or the extractor crashing outright — drops the whole tab
+with a loud line in the build log instead, a visibly different failure from a tab that
+opened and rendered a real zero (see below). So the tab is now, quite literally, the
+statements themselves and nothing else: one `.snippet` figure per statement — the same
+figure `extract-snippet.py` cuts everywhere else on this page, not a second, invented
+code-block style. There is no separate line for the level any more either: it rides into
+the box's own path tag (`WARN · Class:line`), which sits at the bottom-right of the
+footer row under the code, on the same line as the verdict — the trace on the left,
+because that is what a reviewer reads, the location on the right, because that is what
+they click. It moved twice before landing there (a top-right corner tag, then the same
+row ahead of the verdict) — say so if you are reading an older description of this tab,
+and trust this one.
+
+**The zero case is a finding, not an empty section.** A change set that logs nothing is not
+silence, it is an answer, and it is often the most review-worthy thing on the tab — a branch
+whose first finding is a live 500 whose only trace in production would be a generic
+catch-all line, say. So a genuine zero renders as a sentence — **"None. Not one logging
+statement was added or changed"** — with the same weight as the snippets it replaces. The
+tab is never struck through for a zero — a zero here is a statement about this diff, not "we
+looked at unrelated context and nothing moved". A scan that could not run at all is the
+other thing this must never be confused with, per above: dropped tab plus stderr, not a
+rendered page that merely says nothing.
+
+**Each statement also gets a verdict from a live model call — ✅ SAFE, 🤔 DOUBT, or
+❌ PRIVACY — with its provenance cut from the working tree underneath.** A word-list
+heuristic was tried first and rejected: it is trivially fooled exactly where it matters,
+because it can only ever look at a *name*. `log.info("{}", x)` where three lines up sits
+`String x = owner.getName();` reads as nothing to a word list — `x` says nothing — so it
+comes out either a shrug or, worse, a false SAFE if `x` happens to collide with a
+safe-looking word by accident. Knowing what a value actually holds means following the
+assignment, and that needs a model, not a list.
+
+So `privacy_verdict()` asks one: `_statement_context()` hands it the statement's enclosing
+method (`logextract.py`'s `method-decl`/`any-field` rules resolve method and field ranges
+structurally, the same AST pass that finds the statement itself) plus the class's numbered
+field declarations — never the whole file, never the one line alone — and the model traces
+every interpolated value back through it, hop by hop, to something self-evident: a
+parameter with a declared type, a literal, a field declaration, a call whose return type
+settles it. **The trace is not narrated, it is shown**: each hop names a `file:line`
+inside the given context, and the page — not the model — cuts that exact line fresh from
+the working tree with the same snippet machinery as everything else here, so the model's
+claim and the page's evidence cannot disagree. A hop the model cannot resolve is reported
+unresolved, never invented, and forces the verdict to DOUBT; a hop that resolves but whose
+cited line does not check out against the tree (a stale citation, or a hallucinated one)
+is treated exactly as seriously — a SAFE verdict downgrades to DOUBT on the page, with a
+note saying why, even though the cache still remembers what the model actually said. A
+statement whose arguments are already self-evident (`vetId`, an int parameter) gets no
+chain at all — the one-clause trace in the verdict line is the whole story, and the box is
+not padded with a hop that has nothing to add. A chain longer than about three hops shows
+its first link and its last, with a note for how many sat between them: evidence, not a wall.
+
+Verdicts are cached by a hash of the statement plus everything sent as its context, next to
+the other review artifacts (`.human-review/.privacy-verdicts.json`), so a re-run on
+unchanged code neither flips the answer nor pays for it twice — the chain is re-cut from
+the tree on every render regardless, cache hit or not, because a citation is only evidence
+if it still points at real code *now*. A call that cannot be reached at all — no `claude`
+binary, a timeout, a malformed response — renders **⚠️ NOT EVALUATED** in its own colour,
+never folded into DOUBT (which means the model looked and could not tell) and never
+silently SAFE. The legend under the last snippet is a vertical list, one mark per line,
+headed **`🤖 AI Evaluation:`** — accurate now in a way a word list's legend could not
+honestly have claimed, which is exactly why the heading survived the naming discussion
+that shipped alongside this rewrite.
 
 Two context registers sit under the finding, both authored, both checked against the
 extractor's own counts (a section that quotes three of four statements draws a build
@@ -736,7 +884,10 @@ line of the window — landing a reader on four lines of context and making them
 ## Step 8 — Who has to approve this
 
 ```sh
+${SKILL}/scripts/steps-ledger.py start owners --label "codeowners check" \
+  > .human-review/.step-owners
 ${SKILL}/scripts/codeowners-check.py --base $BASE --state
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-owners)"
 ```
 
 A `CODEOWNERS` file is a standing decision somebody already made: *these paths do not
@@ -882,6 +1033,68 @@ at chip size. A review that found nothing still gets its chip, with `0 findings`
 absence of findings is a result, and a missing chip reads as "we never ran it". If one
 genuinely did not run, say so in its own chip (`not run — <reason>`) rather than dropping it.
 
+### What each tab cost
+
+The scope chip answers "what did this run cost" for the run as a whole. It cannot say
+which *tab* that cost went into, because nothing links one turn of the assembling
+conversation to one tab of the finished page — a turn is just a timestamp in a transcript,
+and a tab is a JSON object nobody stamped with a clock.
+
+The fix is a second small artifact next to `.human-review/.started`:
+`.human-review/.steps.json`, a start/end ledger that the steps you already run stamp as
+they run, naming the tab(s) their output lands on. Wrap a step exactly like this — Step 2
+above does precisely this:
+
+```sh
+${SKILL}/scripts/steps-ledger.py start data,packages --label "diagram deltas" \
+  > .human-review/.step-data
+${SKILL}/scripts/puml-diff.sh $BASE .human-review/assets/diagrams
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-data)"
+```
+
+`start` prints the record's index, which `end` needs to close the *right* record — steps
+nest and interleave (a shell step that calls another script that stamps its own step), so
+"the most recent record" is not a safe enough handle. The index goes through a file rather
+than a shell variable **on purpose**: `STEP=$(steps-ledger.py start …)` only survives if
+`end` runs in the same shell invocation, and most steps do not — Step 1's span crosses two
+skill invocations and everything you do between them. Shell state does not carry across
+separate tool calls; the working tree does, so the file does too. A step that crashes
+between the two calls — or loses its handle, which fails the same way — leaves a record
+with `"end": null` — a true account of a step that began and never finished, not silently
+folded into whichever step happens to run next.
+
+At build time `scripts/review-cost.py --tab-costs` reads that ledger alongside the same
+deduped, priced transcript turns the scope chip uses, and attributes each turn to the
+tab(s) whose window its timestamp falls inside. The renderer calls it once per page (not
+once per tab) and hangs the result on every tab's existing `data-tip` — appended after the
+struck-through-tab tooltip where both apply, never a second tooltip component. Nothing in
+`content.json` opts into this: every tab gets a cost sentence on hover, automatically,
+because the runner is the same skill build that runs the steps in the first place.
+
+Three details make the number honest rather than merely present:
+
+* **A turn that lands in nobody's window is `residual`, never dropped and never spread.**
+  Step 0, Step 9, and any step that never ran through the ledger all fall here — real cost
+  with no single tab to blame it on. It is not a fourth, orphaned number: it rides on the
+  scope chip's own tooltip, right next to the total it is a slice of, which is why that chip
+  is the residual's home rather than a UI element built to hold one fact.
+* **A turn inside two tabs' windows at once splits evenly between them.** A step that feeds
+  both Data model and Packages in one pass (the diagram delta step, typically) is not
+  double the work twice over — splitting means the per-tab figures add back up to the run
+  total instead of inflating it.
+* **A missing measurement never looks like a measured zero.** A tab whose step genuinely
+  produced no billed turns in its window reports `<$0.01 measured for this tab` — a fact.
+  A tab the ledger never mentions reports `not measured for this tab — no step in the
+  ledger named it`, and a step that started but crashed before its `end` reports `started
+  but never recorded finishing`. All three read differently on hover on purpose: `$0` and
+  "we never checked" are not the same claim, and collapsing them into one blank tooltip
+  would have been the same silent-wrong-page failure mode Step 0 already guards against
+  for the whole run.
+
+None of this is required for the page to build — a run with no `.steps.json` still renders
+every tab, each saying plainly that its cost was not measured, the same way the scope chip
+itself degrades to nothing rather than a wrong number when there is no session to read.
+
 ### Lay it out as tabs, not as a scroll
 
 A review is not one argument read top to bottom. It is five or six separate questions — *what
@@ -906,9 +1119,8 @@ single column forces them past four answers to reach the one they wanted, so the
   {"id":"data","label":"Data model",
    "blocks":[{"type":"diagrams","only":["DB","DomainModel"]},{"type":"section","id":"logic"}]},
   {"id":"packages","label":"Packages",
-   "blocks":[{"type":"diagrams","only":["Packages"]},
-             {"type":"puml","src":"petclinic-backend/docs/packages.puml","name":"Packages",
-              "status":"unchanged","note":"…"}]},
+   "blocks":[{"type":"diagrams","only":["Packages"],
+              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}}]},
   {"id":"owners","label":"Code owners","blocks":[{"type":"codeowners"}]},
   {"id":"api","label":"API contract","badge":"+4","blocks":[{"type":"section","id":"apicompat"}]},
   {"id":"specchanges","label":"Spec changes","tip":"pb33f's whole report, embedded rather than summarised.",
@@ -928,10 +1140,21 @@ Block types: **`findings`** (the disputable calls), **`autofixes`** (the top-lev
 (the delta gallery, narrowed by `kind` / `only` / `except`), **`testpairs`** (step 3 —
 each acceptance test beside the sequence its own run recorded, paired from the manifest and
 the `.puml` chapter titles, with the tests that record no sequence in a trailing group),
-**`logging`** (step 7c — the structural logging scan, its per-file table, and the two
-context registers under it), **`puml`** (a diagram this branch did *not* change, rendered
+**`logging`** (step 7c — the structural logging scan: one reused `.snippet` box per
+statement it found on changed lines, each carrying its own GDPR verdict, and the two
+context registers under them), **`puml`** (a diagram this branch did *not* change, rendered
 from source as context), **`codeowners`** (step 8's check, run by the renderer),
 **`codecity`**, **`section`** (one entry of `sections` by `id`), **`html`**.
+
+A `diagrams` block that finds nothing for its `only`/`kind` may carry a **`context`**
+— the same shape as a `puml` block's fields (`src`, `name`, `note`, …) — and falls back to
+rendering it from source, exactly as a standalone `puml` block would. This is the whole
+fix for the Packages tab: without it, a `diagrams` block with nothing to show contributes
+no weight, and a tab built on that one block alone is silently **dropped** rather than kept
+and struck through — the trap is real even though the Packages example above used to pair
+`diagrams` with a second `puml` block that happened to always weigh 1, which worked only as
+long as nobody forgot the second block. `context` folds the fallback into the one block that
+needs it, so the tab can no longer be dropped by omission.
 
 A tab may also carry an **`intro`** — raw HTML about the *tab*, emitted inside the panel
 before its first block and carrying no weight of its own (a tab is not kept alive by its own
@@ -960,8 +1183,9 @@ Rules the renderer enforces:
   kept and its label is **struck through**, with a tooltip saying so. "We looked, and this
   branch did not touch it" is worth as much to a reviewer as the opposite, and a dropped
   tab cannot say it. `puml` and `codecity` blocks carry content but never a delta (a
-  picture of the current state is not a change); a `section` counts as a delta unless it
-  declares `"unchanged": true`. `noStrike: true` on a tab opts out;
+  picture of the current state is not a change), and so does a `diagrams` block that fell
+  back to its `context`; a `section` counts as a delta unless it declares
+  `"unchanged": true`. `noStrike: true` on a tab opts out;
 - a changed diagram that no tab claimed prints a **warning** at build time. A gallery that
   silently loses a diagram is the exact failure this pipeline exists to prevent;
 - `count: true` puts the item count on the tab, `badge: "…"` puts a literal there, and

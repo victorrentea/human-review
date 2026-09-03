@@ -19,10 +19,12 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import html
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -43,10 +45,38 @@ CSS = """
 :root {
   --bg:#fbfbfd; --fg:#1c1c22; --muted:#6b6b78; --line:#e2e2ea; --card:#ffffff;
   --accent:#8a1c1c; --accent-soft:#fdeaea; --code-bg:#f6f6fa; --link:#1a4fa0;
+  /* PlantUML's own fixed palette, named — not reused from --bg/--fg/etc above, because
+     those are tuned for prose and would visibly change every diagram's light-mode look.
+     Each one equals exactly what PlantUML already emits, so light mode is pixel-identical
+     to an unthemed render; only the dark block below diverges. `inline_svg`
+     (`_theme_diagram_colors`) rewrites the SVG's own fill/stroke/background literals to
+     `var(--dgm-*)` at inline time — the .puml sources stay generator output, undecorated,
+     since driving this from PlantUML's own `!theme`/`skinparam` would mean regenerating
+     every diagram (out of reach here) rather than restyling the one already rendered. */
+  --dgm-bg:#ffffff; --dgm-box:#f1f1f1; --dgm-frame:#eeeeee; --dgm-legend:#dddddd;
+  --dgm-line:#181818; --dgm-fg:#000000; --dgm-icon:#add1b2; --dgm-activation:#e2e2f0;
+  --dgm-muted:#888888; --dgm-link:#1a4fa0;
+  /* The diff renderer's reds (puml_diff.py's `<color:red>` and seq_puml_diff.py's
+     literal #D40000) are kept as their own variables rather than folded into --accent:
+     they mark *added/removed*, a different signal than the page's own accent color, and
+     must stay legible against whichever diagram surface they are drawn on. */
+  --dgm-diff:#ff0000; --dgm-diff-seq:#d40000;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg:#15151a; --fg:#e8e8ef; --muted:#9a9aa8; --line:#2c2c36; --card:#1d1d24;
-          --accent:#f08a8a; --accent-soft:#3a1f1f; --code-bg:#101015; --link:#8ab4f8; }
+          --accent:#f08a8a; --accent-soft:#3a1f1f; --code-bg:#101015; --link:#8ab4f8;
+          /* PlantUML draws these as flat, fully-opaque shapes, so each is picked to read
+             the way its light counterpart does on white — not lifted from --bg/--card,
+             whose contrast ratios were tuned for text, not a diagram's fills and hairline
+             strokes. --dgm-icon is deliberately absent: the stereotype ellipse's pale
+             green already sits at ~9:1 against a dark box, better than it does on white,
+             so it is left un-overridden. Both diff reds converge on one brighter red —
+             #ff0000/#d40000 sit at ~4.2:1 and worse against a near-black canvas, under
+             the 4.5:1 text minimum; #ff6b6b clears ~6:1 while still reading as "red". */
+          --dgm-bg:#1d1d24; --dgm-box:#26262e; --dgm-frame:#202028; --dgm-legend:#2c2c36;
+          --dgm-line:#8f8fa0; --dgm-fg:#e8e8ef; --dgm-activation:#2e2e42;
+          --dgm-muted:#9a9aa8; --dgm-link:#8ab4f8;
+          --dgm-diff:#ff6b6b; --dgm-diff-seq:#ff6b6b; }
 }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
@@ -86,18 +116,69 @@ pre.code code { white-space:pre; }
 .diagram { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem; margin:1.1rem 0; }
 .diagram .head { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap; }
 .diagram .head b { font-size:1rem; }
+/* The logging tab: no separate line for the level, no second coloured pill, and no
+   top-left label line either. Both ride below the code on one row: the verdict and its
+   reason at the left, since that is what a reviewer reads, and the level/location
+   ("WARN - Class:line", still the vscode:// link) pinned to the far right as the box's
+   corner marker, since that is what they click. `space-between` holds that layout when
+   both fit; `flex-wrap` lets the label drop under the verdict at a narrow width, in
+   markup order, rather than truncating either one. This spot has now moved three times
+   (top-right corner, sharing the line ahead of the verdict, here) -- this is the one
+   rule left; the two positions before it left nothing behind. */
+.log-footer { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
+              column-gap:.8rem; row-gap:.25rem; margin:.6rem 0 0; font-size:.85rem; }
+.log-footer .srcref { margin:0; }
+/* The provenance chain: where each logged value actually came from, one hop per line,
+   between the code and the verdict it supports. Compact on purpose -- "a few lines, not
+   a wall" -- numbered because the order of the hops is the story. */
+.chain-hops { margin:.5rem 0 0; padding-left:1.4rem; display:grid; gap:.25rem;
+              font-size:.8rem; color:var(--muted); }
+.chain-hops .srcref { font-size:11px; margin-bottom:0; }
+.chain-hops code { background:var(--code-bg); border-radius:4px; padding:.05rem .35rem;
+                    font-size:.85em; color:var(--fg); }
+.chain-hops .chain-note { color:var(--muted); }
+.chain-hops .chain-unresolved { color:#8a4b00; font-style:italic; }
+.chain-hops .chain-skip { font-style:italic; }
+@media (prefers-color-scheme: dark) {
+  .chain-hops .chain-unresolved { color:#f0b558; }
+}
+/* The verdict's trace is spelled out right here, in the same row -- not a hover-only
+   tooltip, because it is the point of the mark. `.warn` is the loud "not evaluated"
+   state (the model could not be reached) -- never styled like DOUBT's muted amber, so
+   a reader cannot mistake "never asked" for "asked, and could not tell". */
+.privacy-verdict { color:var(--fg); }
+.privacy-verdict.added b { color:#2e7d32; }
+.privacy-verdict.removed { color:#8a1c1c; }
+.privacy-verdict.removed b { color:#c62828; }
+.privacy-verdict.warn { color:#8a4b00; font-weight:700; }
+@media (prefers-color-scheme: dark) {
+  .privacy-verdict.added b { color:#8fd39c; }
+  .privacy-verdict.removed { color:#f2a0a0; }
+  .privacy-verdict.removed b { color:#f08a8a; }
+  .privacy-verdict.warn { color:#f0b558; }
+}
+.privacy-legend { margin:1rem 0 0; }
+.privacy-legend-title { margin:0 0 .35rem; font-weight:700; font-size:.85rem; }
+.privacy-legend-note { margin:0 0 .5rem; color:var(--muted); font-size:.78rem; line-height:1.6; }
+.privacy-legend-list { list-style:none; margin:0; padding:0; display:grid; gap:.35rem;
+                        color:var(--muted); font-size:.8rem; line-height:1.6; }
 .prov { margin:.5rem 0 0; display:flex; gap:.9rem; flex-wrap:wrap; }
 .prov .srcref { margin-bottom:0; }
 .diagram .head span { color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace; }
-.diagram .svgbox { overflow-x:auto; margin-top:.7rem; background:#fff; border-radius:6px; padding:.6rem; }
+/* --dgm-bg, not --card: the SVG's own canvas is already recoloured to --dgm-bg by
+    `_theme_diagram_colors` (build-review-html.py), and this box is what shows through
+    its margins — the same colour, or the diagram would sit in a visibly mismatched
+    frame in dark mode. */
+.diagram .svgbox { overflow-x:auto; margin-top:.7rem; background:var(--dgm-bg); border-radius:6px; padding:.6rem; }
 .diagram .svgbox svg { max-width:100%; height:auto; display:block; margin:0 auto; }
 .diagram .svgbox[hidden] { display:none; }
 /* A class name that opens the source looks exactly like one that does not. PlantUML's
     tooltip says so, but only after a second of hovering and only if you were already
-    suspicious — so the name underlines the moment the pointer is over it. The class
-    anchor wraps the whole box, the attribute anchors wrap just their own line, so
-    hovering anywhere in a class underlines its name and hovering a field underlines
-    the field. */
+    suspicious — so the name underlines the moment the pointer is over it. PlantUML draws
+    the class anchor around the whole box — icon, name and every field — which would make
+    a field look and act like the class; `_scope_entity_links` (build-review-html.py)
+    narrows it at inline time to the icon and the name, so only those two underline and
+    only those two are clickable. A field is inert: no link, no underline. */
 .diagram svg a[href^="vscode:"] { cursor:pointer; }
 .diagram svg a[href^="vscode:"]:hover text { text-decoration:underline; }
 /* A removed element carries its strikethrough as a presentation attribute, which a CSS
@@ -196,6 +277,21 @@ ol.findings > li::before { content:counter(f); float:left; margin:.1rem .7rem 0 
 table.stat { border-collapse:collapse; width:100%; font-size:.88rem; }
 table.stat td { border-bottom:1px solid var(--line); padding:.35rem .5rem; }
 table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace,Menlo,monospace; white-space:nowrap; }
+.titlerow { display:flex; align-items:baseline; justify-content:space-between; gap:1.5rem;
+             flex-wrap:wrap; }
+.titlerow h1 { margin-bottom:0; }
+.titlescore { display:inline-flex; align-items:baseline; gap:.35rem; padding:.3rem .8rem;
+              border-radius:999px; white-space:nowrap; }
+.titlescore b { font-size:1.5rem; line-height:1; letter-spacing:-.02em; }
+.titlescore small { font-size:.8rem; opacity:.6; }
+.titlescore i { font-style:normal; font-size:.82rem; opacity:.85; margin-left:.25rem; }
+.titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }
+.titlescore.v-mid  { background:rgba(217,130,24,.18); color:#9a5b06; }
+.titlescore.v-bad  { background:rgba(215,38,61,.16); color:#d7263d; }
+@media (prefers-color-scheme:dark) {
+  .titlescore.v-good { color:#6fce93; } .titlescore.v-mid { color:#e0a44a; }
+  .titlescore.v-bad { color:#f0757f; } }
+
 /* Full-bleed band: the verdict is the one thing that should not sit politely inside the
     text column. It breaks out to the viewport edges and pads itself back to the column. */
 .verdict { margin:1.6rem 0 2.2rem; margin-left:calc(50% - 50vw); width:100vw;
@@ -282,6 +378,15 @@ button.tab .n.alarm { background:#c62828; color:#fff; opacity:1; border-radius:5
                       display:inline-flex; align-items:center; justify-content:center;
                       letter-spacing:0; text-indent:.02em; }
 button.tab[aria-selected="true"] .n.alarm { background:#fdeaea; color:#8a1c1c; }
+/* A verdict the strip can carry without words: green nothing changed, amber changed
+   but nothing breaks, red a caller breaks. A number there ("+3") counted changes,
+   which is not the question anyone opens that tab with. */
+button.tab .n.dot-green, button.tab .n.dot-amber, button.tab .n.dot-red {
+  width:9px; height:9px; border-radius:50%; opacity:1; font-size:0; padding:0;
+  display:inline-block; vertical-align:middle; }
+button.tab .n.dot-green { background:#2e9e5b; }
+button.tab .n.dot-amber { background:#d98218; }
+button.tab .n.dot-red   { background:#d7263d; }
 button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--accent); }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
                 border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
@@ -340,6 +445,9 @@ button.tab { padding:0 .6rem; }
    `file://`, so nothing in it can reach this page and this page's find bar cannot reach
    into it. That is the trade, and it is why the finding is stated above in text and the
    frame is left to be the evidence. */
+.diagram .head .dgm-src { color:var(--muted); font:inherit; text-decoration:none;
+  border-bottom:1px dotted var(--line); }
+.diagram .head .dgm-src:hover { color:var(--link); border-bottom-color:currentColor; }
 .oacframe { display:block; width:100%; height:760px; margin:1rem 0 1.4rem;
             border:1px solid var(--line); border-radius:8px; background:#12111a; }
 /* The Swagger-shaped diff is framed the same way, but it is not a dark-only
@@ -371,17 +479,12 @@ document.querySelectorAll('.vidwrap').forEach(function (wrap) {
     });
   });
 
-  // The narration is the point of this film, so it plays on arrival — but audible playback
-  // is only granted off a user gesture. A click on the Video tab is one; opening the page
-  // straight on #video is not, and that play() is refused. We do not answer that by muting:
-  // a silent film here is worse than a paused one, so the reader gets the controls instead.
+  // It does NOT play on arrival. A film that starts talking the moment a tab opens
+  // interrupts the reader instead of serving them — they may be here for the transcript,
+  // or reading with someone next to them. The play button is right there.
+  // Leaving the tab still pauses it: sound following you to another tab is worse.
   var panel = wrap.closest && wrap.closest('.panel');
   if (panel) {
-    panel.addEventListener('panelshow', function () {
-      var p = video.play();
-      if (p && p.catch) p.catch(function () {});
-    });
-    // Paused, not rewound: coming back should resume where the reader left off.
     panel.addEventListener('panelhide', function () { video.pause(); });
   }
   video.addEventListener('timeupdate', function () {
@@ -493,6 +596,20 @@ TIP_JS = """<script>
   window.addEventListener('scroll', hide, true);   // a fixed bubble would float away
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') hide(); });
 })();
+</script>"""
+
+
+FRAME_JS = """<script>
+// A framed report sizes itself: it posts its height and we grow the frame to fit, so
+// the page keeps the only scrollbar. A frame that scrolls internally traps the wheel
+// and hides how much of it is left.
+window.addEventListener('message', function (e) {
+  var d = e.data;
+  if (!d || d.type !== 'dv-height' || !d.height) return;
+  Array.prototype.forEach.call(document.querySelectorAll('iframe'), function (f) {
+    if (f.contentWindow === e.source) f.style.height = (d.height + 4) + 'px';
+  });
+});
 </script>"""
 
 
@@ -842,7 +959,8 @@ GENSEQ_JS = """<script>
     build();
     source = href;
     els.title.style.cursor = href ? 'pointer' : '';
-    els.title.setAttribute('data-tip', href ? '⌘-click to open the test that produced this' : '');
+    // No tooltip on the title: the cursor already says it is clickable, and a hint that
+    // pops over the heading you are reading costs more than it explains.
     step = entry.steps[index];
     els.title.textContent = entry.title;
     els.step.textContent = entry.steps.length > 1 ? (index + 1) + ' / ' + entry.steps.length : '';
@@ -999,11 +1117,105 @@ def _plain_svg_title(svg: str) -> str:
     return SVG_TITLE.sub(lambda m: m[1] + CREOLE_IN_TITLE.sub("", m[2]).strip() + m[3], svg)
 
 
+# A class/entity PlantUML draws as `<g class="entity">`: a `<rect>` box, an optional
+# stereotype icon (the ellipse+letter for `class`/`interface`/…), the name as one or more
+# `<text>` runs (split when the diff colours part of it), a `<line>` under the title, and
+# then the field rows. When the element carries `[[link]]`, PlantUML wraps the *entire*
+# group's content in one `<a>` — box, name and every field alike — so a reviewer who
+# ⌘-clicks or hovers a field lands on the class, not the field. Fields carry none of their
+# own; the generator puts exactly one link per element, on the element itself.
+ENTITY_BLOCK = re.compile(r'(<g class="entity"[^>]*>)(.*?)(</g>)', re.S)
+ENTITY_SOLE_ANCHOR = re.compile(r'^<a\b(?P<attrs>[^>]*)>(?P<inner>.*)</a>$', re.S)
+ENTITY_TITLE_BAND = re.compile(
+    r'^(?P<rect><rect\b[^>]*/>)'
+    r'(?P<icon>(?:<(?!text\b|line\b)[^>]*/>)*)'      # stereotype icon: ellipse, path, …
+    r'(?P<title>(?:<text\b[^>]*>.*?</text>)+)'       # the name — one run, or several if coloured
+    r'(?P<line><line\b[^>]*/>)'
+    r'(?P<fields>.*)$',
+    re.S,
+)
+
+
+def _scope_entity_links(svg: str) -> str:
+    """Re-scope a class/entity's `<a>` to the title band (icon + name) it should be.
+
+    Restructures the markup rather than overlaying a rect: the icon and name are already
+    exactly the shapes that should answer to a click, so wrapping just them in the `<a>`
+    — and moving the box and field rows outside it — gets the right hit area for free,
+    with no coordinates to compute or keep in sync with the box's own size.
+
+    Touches only a `<g class="entity">` whose entire content is one `<a>…</a>` shaped
+    exactly as PlantUML draws it (rect, optional icon, name text(s), divider line, then
+    fields). Anything else — no link, more than one `<a>`, an unrecognised inner shape —
+    is left byte-for-byte alone; guessing at a diagram family this generator doesn't
+    produce is worse than leaving its box fully clickable.
+    """
+
+    def fix_block(m):
+        open_tag, content, close_tag = m.group(1), m.group(2), m.group(3)
+        stripped = content.strip()
+        if content.count("<a ") != 1 or not stripped.startswith("<a ") or not stripped.endswith("</a>"):
+            return m.group(0)
+        anchor = ENTITY_SOLE_ANCHOR.match(stripped)
+        if not anchor:
+            return m.group(0)
+        band = ENTITY_TITLE_BAND.match(anchor["inner"])
+        if not band:
+            return m.group(0)
+        title_anchor = f'<a{anchor["attrs"]}>{band["icon"]}{band["title"]}</a>'
+        return f'{open_tag}{band["rect"]}{title_anchor}{band["line"]}{band["fields"]}{close_tag}'
+
+    return ENTITY_BLOCK.sub(fix_block, svg)
+
+
+# PlantUML paints every diagram it draws for this repo (class, ER, sequence — none of
+# them set `!theme` or a colour skinparam beyond `hyperlinkColor`) in one fixed, hardcoded
+# palette. That is the whole of it: every fill/stroke/background literal below is one of
+# these twelve values, in every .svg this pipeline inlines. Mapping each to a `--dgm-*`
+# custom property (declared in CSS, above) — rather than a blanket `filter:invert()` on
+# the diagram, which would flatten these into a wash and turn the diff renderer's
+# deliberate reds into cyans — lets dark mode restyle exactly these shapes and nothing
+# else, and lets the reds stay red (just brighter) instead of getting fought by a filter.
+# `stroke` and `background` only ever appear as literal colours inside a `style="…"`
+# attribute in this generator's output (never `fill`, and there is no `<style>` block to
+# collide with); `fill` only ever appears as a bare attribute. Case-insensitive because
+# PlantUML is consistent within one render but not guaranteed to be across versions.
+DIAGRAM_COLOR_VARS = {
+    "#FFFFFF": "--dgm-bg", "#F1F1F1": "--dgm-box", "#EEEEEE": "--dgm-frame",
+    "#DDDDDD": "--dgm-legend", "#181818": "--dgm-line", "#000000": "--dgm-fg",
+    "#ADD1B2": "--dgm-icon", "#E2E2F0": "--dgm-activation", "#888888": "--dgm-muted",
+    "#1A4FA0": "--dgm-link", "#FF0000": "--dgm-diff", "#D40000": "--dgm-diff-seq",
+}
+DIAGRAM_FILL_ATTR = re.compile(r'\bfill="(#[0-9A-Fa-f]{6})"')
+DIAGRAM_STYLE_COLOR = re.compile(r'\b(stroke|background):(#[0-9A-Fa-f]{6})\b')
+
+
+def _theme_diagram_colors(svg: str) -> str:
+    """Rewrite PlantUML's hardcoded palette to the page's `--dgm-*` variables.
+
+    A colour this generator is not known to emit is left exactly as written — degrading
+    to an unthemed shape in the unlikely event PlantUML's defaults change, rather than
+    guessing at what a var name for it should mean."""
+
+    def fix_fill(m):
+        var = DIAGRAM_COLOR_VARS.get(m[1].upper())
+        return f'fill="var({var})"' if var else m[0]
+
+    def fix_style(m):
+        var = DIAGRAM_COLOR_VARS.get(m[2].upper())
+        return f'{m[1]}:var({var})' if var else m[0]
+
+    svg = DIAGRAM_FILL_ATTR.sub(fix_fill, svg)
+    return DIAGRAM_STYLE_COLOR.sub(fix_style, svg)
+
+
 def inline_svg(path: Path, root: Path) -> str:
     """Inline rather than <img src>: the guide must survive being emailed as one file."""
     svg = path.read_text(encoding="utf-8")
     svg = re.sub(r"^<\?xml[^>]*\?>\s*", "", svg)
     svg = re.sub(r"<!DOCTYPE[^>]*>\s*", "", svg)
+    svg = _scope_entity_links(svg)
+    svg = _theme_diagram_colors(svg)
     return _plain_svg_title(resolve_source_links(svg, root))
 
 
@@ -1036,6 +1248,23 @@ def read_manifest(path: Path):
     return rows
 
 
+def _pretty(name: str) -> str:
+    """`DomainModel` is a filename; `Domain Model` is a heading. Split the camel hump,
+    which leaves acronyms (DB) and already-spaced names untouched."""
+    return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
+
+
+def _source_link(rel: str, root: Path) -> str:
+    """The path already shown on the right of the header, made the link to the file.
+
+    It used to be plain text with a second `<a>name.puml</a>` under the title — two
+    controls for one destination, and the shorter of the two said less."""
+    if (root / rel).is_file():
+        return (f'<a class="dgm-src" href="vscode://file/{(root / rel).resolve()}:1:1">'
+                f'{html.escape(rel)}</a>')
+    return f'<span>{html.escape(rel)}</span>'
+
+
 def _provenance(rel: str, root: Path) -> str:
     """Links back to what produced a diagram: the test that generated it, and the .puml.
 
@@ -1048,9 +1277,6 @@ def _provenance(rel: str, root: Path) -> str:
         if (root / test).is_file():
             links.append(f'<a class="srcref" href="vscode://file/{(root / test).resolve()}:1:1">'
                           f'generated by {html.escape(Path(test).name)}</a>')
-    if (root / rel).is_file():
-        links.append(f'<a class="srcref" href="vscode://file/{(root / rel).resolve()}:1:1">'
-                      f'{html.escape(Path(rel).name)}</a>')
     return ('<p class="prov">' + " ".join(links) + '</p>') if links else ''
 
 
@@ -1094,7 +1320,7 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
         for level, svg in levels
     )
     return (
-        '<div class="focus"><span class="lbl">unchanged context, in hops:</span>'
+        '<div class="focus"><span class="lbl">Diff + extra neighbours:</span>'
         + buttons + "</div>" + boxes
     )
 
@@ -1210,7 +1436,12 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
         return '<p class="sub">No PlantUML diagram changed on this branch.</p>'
     notes = spec.get("notes", {})
     order = {"structural": 0, "sequence": 1}
-    rows = sorted(rows, key=lambda r: (order.get(r["kind"], 9), r["name"]))
+    # An explicit `only` is a running order, not just a filter: an author who writes
+    # ["DomainModel", "DB"] means the domain first. Alphabetical only decides the rest.
+    wanted = spec.get("only") or []
+    rows = sorted(rows, key=lambda r: (order.get(r["kind"], 9),
+                                       wanted.index(r["name"]) if r["name"] in wanted else 99,
+                                       r["name"]))
     parts = []
     for r in rows:
         note = notes.get(r["name"], "")
@@ -1222,10 +1453,13 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
         )
         parts.append(
             f'<div class="diagram">'
-            f'<div class="head"><b>{html.escape(r["name"])}</b>'
-            f'<span class="badge {"sev-high" if r["status"] == "added" else "sev-low"}">'
-            f'{html.escape(r["status"])} · {html.escape(r["kind"])}</span>'
-            f'<span>{html.escape(r["source"])}</span></div>'
+            f'<div class="head"><b>{html.escape(_pretty(r["name"]))}</b>'
+            # A badge earns its place by saying something surprising. "modified" is what
+            # a diagram in a delta gallery always is, and "structural" is legible from the
+            # picture — so only the states that carry information get one.
+            + (f'<span class="badge {"sev-high" if r["status"] == "added" else "sev-low"}">'
+               f'{html.escape(r["status"])}</span>' if r["status"] != "modified" else "")
+            + _source_link(r["source"], root) + '</div>'
             + (f"<p>{note}</p>" if note else "")
             + _provenance(r["source"], root)
             + genseq_details(r["source"], root)
@@ -1412,10 +1646,13 @@ def embed_html(s, out_dir: Path) -> str:
     e = s.get("embed")
     if not e:
         return ""
-    if not (out_dir / e["src"]).is_file():
+    # `src` may carry a fragment — a framed report that reads its own hash can be opened
+    # on a particular view (`…#only-touched`). Only the path in front of it is a file.
+    path = e["src"].split("#", 1)[0]
+    if not (out_dir / path).is_file():
         # The tool that writes it is an optional install. Say which one is missing rather
         # than framing a 404.
-        return (f'<p class="sub">No embedded report at <code>{html.escape(e["src"])}</code>'
+        return (f'<p class="sub">No embedded report at <code>{html.escape(path)}</code>'
                 + (f' — { e["missing"]}' if e.get("missing") else "")
                 + ".</p>")
     return (f'<iframe class="{html.escape(e.get("class", "oacframe"))}" '
@@ -1536,7 +1773,10 @@ def check_tab_enumeration(lede: str, labels: list[str]) -> None:
         return
     seen, missing = [], []
     for label in labels:
-        at = lede.find(html.escape(label))
+        # A label may carry a marker the prose has no business repeating — "🤖 Review"
+        # on the pill, "Review" in the sentence. Match on the words, not the badge.
+        words = label.lstrip("".join(c for c in label if not c.isalnum())).strip()
+        at = lede.find(html.escape(words or label))
         (seen if at >= 0 else missing).append((at, label))
     if missing:
         print("[review] WARNING: the Overview lede never names these tabs: "
@@ -1551,34 +1791,6 @@ def check_tab_enumeration(lede: str, labels: list[str]) -> None:
 
 
 LOGEXTRACT = HERE / "logextract.py"
-
-
-def _java_churn(root: Path, base: str, paths: list[str]) -> dict[str, str]:
-    """`+5/−0` per touched Java file, and `new file` for the ones this branch created."""
-    def git(*args):
-        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True).stdout
-    churn = {}
-    for line in git("diff", "--numstat", f"{base}...HEAD", "--", *paths).splitlines():
-        bits = line.split("\t")
-        if len(bits) == 3 and bits[2].endswith(".java"):
-            churn[bits[2]] = f"+{bits[0]}/&minus;{bits[1]}"
-    for line in git("diff", "--name-status", f"{base}...HEAD", "--", *paths).splitlines():
-        bits = line.split("\t")
-        if len(bits) >= 2 and bits[0].startswith("A") and bits[-1].endswith(".java"):
-            churn[bits[-1]] = "new file"
-    return churn
-
-
-def _short_label(rel: str, prefix: str) -> str:
-    """`…/src/main/java/victor/training/petclinic/domain/Visit.java` → `main · domain/Visit.java`.
-
-    A table of fifteen paths that share forty characters of prefix is a table of forty
-    characters of noise; what a reviewer reads it for is which layer and which class."""
-    m = re.search(r"/src/(main|test)/java/", rel)
-    if not m:
-        return rel
-    tail = rel[m.end():]
-    return f"{m.group(1)} · {tail[len(prefix):] if tail.startswith(prefix) else tail}"
 
 
 SRCREF_HREF = re.compile(r'(<a class="srcref" href="vscode://file/[^:"]*)(?::\d+){0,2}"')
@@ -1624,6 +1836,391 @@ def _logging_aside(part, found, what, root: Path, hits=()) -> str:
     )
 
 
+# --------------------------------------------------------------------------- #
+# GDPR verdict per logging statement — a real model call, not a word list.
+#
+# A word list over the argument names was tried first and rejected: it comes out SAFE
+# for `log.info("{}", x)` when `x` was assigned three lines up from
+# `owner.getName()`, because `x` looks like nothing. Knowing what a value actually
+# holds means following the assignment, and no word list does that — so this asks a
+# model, and gives it enough source to trace it: the statement's enclosing method
+# (parameters and locals both) plus the class's field declarations, never the whole
+# file and never the one line alone. `AI Evaluation` on the legend is therefore an
+# accurate label, not the aspirational one a word list would have made it.
+# --------------------------------------------------------------------------- #
+
+PRIVACY_MARK = {
+    "safe": ("✅", "SAFE", "added"),
+    "doubt": ("🤔", "DOUBT", ""),
+    "privacy": ("❌", "PRIVACY", "removed"),
+    # Not a fourth colour on the same footing as the other three: this is what a
+    # guessed SAFE would have looked like if the model could not be reached and this
+    # function papered over it instead of admitting so. DOUBT means the model looked
+    # and said it could not tell; this means it was never successfully asked at all.
+    "error": ("⚠️", "NOT EVALUATED", "warn"),
+}
+
+VERDICT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "verdict": {"type": "string", "enum": ["SAFE", "DOUBT", "PRIVACY"]},
+        "trace": {"type": "string"},
+        "chain": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "resolved": {"type": "boolean"},
+                    "file": {"type": "string"},
+                    "line": {"type": "integer"},
+                    "note": {"type": "string"},
+                },
+                "required": ["resolved", "note"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["verdict", "trace", "chain"],
+    "additionalProperties": False,
+}
+
+VERDICT_SYSTEM_PROMPT = (
+    "You are a precise static-analysis assistant embedded in a code review build script. "
+    "You are given one Java logging statement plus enough of its surrounding source to "
+    "trace where each interpolated value comes from. Decide whether the statement, once "
+    "it executes, could write personal data (GDPR-relevant: a name, an email address, a "
+    "phone number, a postal address, a government ID, free text about a person, or "
+    "similar) to a log aggregator kept for months.\n\n"
+    "For each interpolated value, trace its provenance as a chain of hops: where it is "
+    "declared or assigned and, if that right-hand side is itself another variable, "
+    "continue from there. Stop a chain the moment it reaches something self-evident: a "
+    "method parameter with a declared type, a literal, a field declaration, or a call "
+    "whose return type settles the question. Report the full chain you found -- do not "
+    "shorten it yourself, the page decides how much of it to show.\n\n"
+    "Every hop you report must cite a file and a line number that appears in the context "
+    "you were given -- you have no visibility beyond it, so never invent a location or "
+    "guess one outside what was shown to you. If you cannot resolve a hop with what you "
+    "were given, mark that hop `resolved: false`, explain why in its `note`, omit "
+    "`file`/`line` for it, and the verdict must be DOUBT -- never guess SAFE past an "
+    "unresolved hop. A statement whose arguments are already self-evident (an int "
+    "parameter, say) needs no chain at all: report an empty `chain` and put the one "
+    "clause of reasoning in `trace`.\n\n"
+    "Respond only through the given JSON schema."
+)
+
+
+def _statement_context(h: dict) -> str:
+    """Enough source for a model to trace every interpolated argument: the enclosing
+    method (`logextract.py` resolves its range structurally, the same AST pass that
+    finds the statement itself) so parameters and locals are both visible, plus the
+    class's field declarations (numbered, so a field-rooted chain can cite a real line)
+    for a value that turns out to come from `this`. Never the whole file — a class with
+    forty methods is forty methods of noise around the one that matters — and never just
+    the statement alone, which is the version of this feature that cannot tell a
+    parameter from a field from thin air, let alone trace a value past either of them."""
+    ms, me = h.get("method_start"), h.get("method_end")
+    try:
+        src_lines = Path(h["abs_file"]).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        src_lines = []
+    if ms and me and src_lines:
+        window = src_lines[ms - 1:me]
+        numbered = "\n".join(f"{n:>4}  {l}" for n, l in zip(range(ms, me + 1), window))
+        method_block = f"Enclosing method ({h['file']}:{ms}-{me}):\n{numbered}"
+    else:
+        method_block = ("No enclosing method could be resolved. All that is available "
+                        f"is the statement itself:\n{h['raw_line'].strip()}")
+    fields = h.get("_fields") or []
+    if fields:
+        field_lines = "\n".join(f"{f['line']:>4}  {f['type']} {f['name']}" for f in fields)
+        fields_block = f"Class fields in scope ({h['file']}):\n{field_lines}"
+    else:
+        fields_block = "Class fields in scope: none."
+    return f"{method_block}\n\n{fields_block}"
+
+
+def _verdict_prompt(h: dict, context: str) -> str:
+    return (
+        f"Logging statement ({h['file']}:{h['line']}):\n    {h['text']}\n\n"
+        f"{context}\n\n"
+        "Which value(s) does this statement log, trace each one's provenance as a chain "
+        "of hops back to something self-evident, and give your verdict."
+    )
+
+
+def _claude_bin() -> str | None:
+    for cand in (os.environ.get("CLAUDE_BIN"), "claude"):
+        p = shutil.which(cand) if cand else None
+        if p:
+            return p
+    return None
+
+
+def _call_privacy_model(prompt: str) -> dict:
+    """One live model call. Returns `{"verdict","trace","chain","cost_usd"}` on success,
+    or raises `RuntimeError` with a message written to go straight on the page — a
+    missing binary, a non-zero exit, a timeout, or a response that does not match the
+    schema. Never returns a guessed verdict; the caller turns any exception here into
+    the loud `error` state, not a fallback answer. `chain` is validated only for shape
+    here (a list of `{resolved, note, file?, line?}`) — whether a *resolved* hop's cited
+    line actually exists is the renderer's job, against the working tree at render time,
+    not this function's."""
+    claude_bin = _claude_bin()
+    if not claude_bin:
+        raise RuntimeError("the `claude` CLI is not on PATH (set $CLAUDE_BIN to point at it)")
+    cmd = [claude_bin, "-p", prompt, "--output-format", "json",
+           "--model", os.environ.get("PRIVACY_VERDICT_MODEL", "sonnet"),
+           "--restricted", "--strict-mcp-config", "--no-session-persistence",
+           "--max-turns", "1", "--system-prompt", VERDICT_SYSTEM_PROMPT,
+           "--json-schema", json.dumps(VERDICT_SCHEMA)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("the model call timed out")
+    except OSError as e:
+        raise RuntimeError(f"could not run `claude`: {e}")
+    if proc.returncode != 0:
+        raise RuntimeError(f"the model call exited {proc.returncode}: "
+                           f"{proc.stderr.strip()[-300:]}")
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        raise RuntimeError("the model call returned unparsable output")
+    if payload.get("is_error"):
+        raise RuntimeError(f"the model call failed: {str(payload.get('result'))[:300]}")
+    out = payload.get("structured_output")
+    chain = out.get("chain") if isinstance(out, dict) else None
+    if (not isinstance(out, dict) or out.get("verdict") not in ("SAFE", "DOUBT", "PRIVACY")
+            or not out.get("trace") or not isinstance(chain, list)
+            or not all(isinstance(hop, dict) and "resolved" in hop and "note" in hop
+                       for hop in chain)):
+        raise RuntimeError("the model's response did not match the expected verdict schema")
+    return {"verdict": out["verdict"].lower(), "trace": out["trace"], "chain": chain,
+            "cost_usd": payload.get("total_cost_usd") or 0.0}
+
+
+def _verdict_cache_path(root: Path) -> Path:
+    return root / ".human-review" / ".privacy-verdicts.json"
+
+
+def _load_verdict_cache(root: Path) -> dict:
+    p = _verdict_cache_path(root)
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_verdict_cache(root: Path, cache: dict) -> None:
+    p = _verdict_cache_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(cache, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def privacy_verdict(h: dict, root: Path, cache: dict, call=None) -> dict:
+    """SAFE / DOUBT / PRIVACY / error, with a trace naming what was resolved — a live
+    model call over the statement's enclosing method, cached by a hash of exactly what
+    was sent (the statement plus its context) so a re-run on unchanged code neither
+    flips the answer nor pays for it twice. `cache` is loaded once by the caller and
+    mutated here; the file is rewritten on every new entry, not batched, so a run that
+    dies partway through does not lose the calls it already paid for.
+
+    `call` defaults to `None`, resolved to `_call_privacy_model` *inside* the body
+    rather than as `def ...(call=_call_privacy_model)` — a default bound at def-time
+    would freeze in the original function object, so patching the module-level name
+    for a test (`monkeypatch.setattr(build, "_call_privacy_model", fake)`) would
+    silently do nothing here; every caller that does not pass its own `call` needs the
+    patch to actually take."""
+    call = call or _call_privacy_model
+    context = _statement_context(h)
+    key = hashlib.sha256((h["text"] + "\n" + context).encode("utf-8")).hexdigest()
+    cached = cache.get(key)
+    if cached:
+        return {**cached, "cached": True, "cost_usd": 0.0}
+    try:
+        result = call(_verdict_prompt(h, context))
+    except RuntimeError as e:
+        return {"verdict": "error", "trace": str(e), "chain": [], "cached": False, "cost_usd": 0.0}
+    # The chain is cached too — it is exactly as much a part of what the model was paid
+    # for as the verdict and the trace are, and a cache hit that dropped it would render
+    # a verdict with no evidence under it, indistinguishable from one that never needed any.
+    entry = {"verdict": result["verdict"], "trace": result["trace"],
+             "chain": result.get("chain") or []}
+    cache[key] = entry
+    _save_verdict_cache(root, cache)
+    return {**entry, "cached": False, "cost_usd": result.get("cost_usd", 0.0)}
+
+
+MAX_CHAIN_HOPS_SHOWN = 3
+
+
+def _chain_hop_line(root: Path, file: str, line) -> str | None:
+    """The exact source line a hop cites, read fresh from the working tree — never the
+    model's own retelling of it, so its claim and the page's evidence cannot disagree.
+    None on anything that does not check out: a bad line number, a file that is not
+    there, a value of the wrong shape. The model supplies the *address*; this is what
+    verifies the address is real before the page repeats it as fact."""
+    try:
+        line = int(line)
+        path = (root / file).resolve()
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if not (1 <= line <= len(lines)):
+            return None
+        return lines[line - 1].strip()
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _render_chain(chain: list, root: Path) -> tuple[str, bool]:
+    """The provenance list under the code: the statement's own line is already the
+    `<pre>` block above this, so here it is each hop the model traced, in order — a
+    `file:line` link plus the real source line at that spot, cut fresh from the working
+    tree rather than retyped by the model. An empty chain (every interpolated value was
+    already self-evident) renders nothing: evidence belongs next to a claim that needs
+    it, not padding a box that does not.
+
+    Long chains are cut to the first hop and the last, with a note for what sat between
+    them — "a few lines, not a wall" — never to a single line that hides how long the
+    real chain was.
+
+    Returns the HTML and whether any *resolved* hop's cited line failed to check out
+    against the working tree — a hallucinated or now-stale citation, which the caller
+    treats exactly as seriously as an unresolved one."""
+    if not chain:
+        return "", False
+    shown, skipped = chain, 0
+    if len(chain) > MAX_CHAIN_HOPS_SHOWN:
+        skipped = len(chain) - 2
+        shown = [chain[0], None, chain[-1]]
+    items, broken = [], False
+    for hop in shown:
+        if hop is None:
+            items.append(f'<li class="chain-skip">… {skipped} more hop'
+                        f'{"" if skipped == 1 else "s"} …</li>')
+            continue
+        note = html.escape((hop.get("note") or "").strip())
+        if not hop.get("resolved") or not hop.get("file") or not hop.get("line"):
+            items.append(f'<li class="chain-unresolved">{note or "could not be traced further"}'
+                        f'</li>')
+            continue
+        line_text = _chain_hop_line(root, hop["file"], hop["line"])
+        if line_text is None:
+            broken = True
+            items.append(f'<li class="chain-unresolved">cited {html.escape(str(hop["file"]))}:'
+                        f'{html.escape(str(hop["line"]))}, which could not be located</li>')
+            continue
+        abs_path = (root / hop["file"]).resolve()
+        items.append(
+            f'<li><a class="srcref" href="vscode://file/{abs_path}:{hop["line"]}:1" '
+            f'data-tip="Open in VS Code">{html.escape(str(hop["file"]))}:{hop["line"]}</a> '
+            f'<code>{html.escape(line_text)}</code>'
+            + (f' <span class="chain-note">— {note}</span>' if note else '')
+            + '</li>'
+        )
+    return f'<ol class="chain-hops">{"".join(items)}</ol>', broken
+
+
+def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None,
+                      call=None, cache_root: Path | None = None) -> str:
+    """The leading answer: one code snippet per logging statement this change set
+    actually added or modified — the same `.snippet` figure every other quoted line on
+    this page uses (`extract-snippet.py`), not a second, invented code-block style.
+    Files with nothing to say do not appear here at all.
+
+    An empty list is not silence. `logextract.py` ran and genuinely found zero — see
+    `logging_fragment`'s docstring for why that is itself the finding — so it renders as
+    a sentence carrying the same weight as the snippets it replaces, never as a blank
+    stretch of page that would read exactly like the scan never having run at all.
+
+    `cache_root` defaults to `root` — they are the same directory in production (both
+    the reviewed repo's checkout) — and exists as its own parameter only so a test can
+    point the verdict cache at a throwaway `tmp_path` while still handing `snippet_html`
+    the real repo it needs to resolve a fixture file against."""
+    if not added:
+        return ('<p class="lede"><b>None.</b> Not one logging statement was added or '
+                'changed on the lines this change set touches.</p>')
+    cache_root = cache_root or root
+    fields_by_file = fields_by_file or {}
+    cache = _load_verdict_cache(cache_root)
+    boxes = []
+    total_cost, live_calls, cached_hits = 0.0, 0, 0
+    ANCHOR_RE = re.compile(r'<a class="srcref" href="([^"]+)"[^>]*>[^<]*</a>\n')
+    for h in added:
+        end = h.get("end_line") or h["line"]
+        ref = f'{h["file"]}:{h["line"]}' if end == h["line"] else f'{h["file"]}:{h["line"]}-{end}'
+        label = f'{h["level"]} · {Path(h["file"]).stem}:{h["line"]}'
+        h = {**h, "_fields": fields_by_file.get(h["file"])}
+        result = privacy_verdict(h, cache_root, cache, call=call)
+        total_cost += result.get("cost_usd") or 0.0
+        cached_hits += 1 if result.get("cached") else 0
+        live_calls += 0 if result.get("cached") else 1
+        # The chain is re-cut from the *current* working tree on every render, cache hit
+        # or not: the verdict can be reused because the statement and its context hashed
+        # the same, but a citation is only evidence if it still points at real code now.
+        chain_html, chain_broken = _render_chain(result.get("chain") or [], root)
+        verdict_key = result["verdict"]
+        trace = result["trace"]
+        if chain_broken and verdict_key == "safe":
+            verdict_key = "doubt"
+            trace += " (a cited line in its trace could not be located — treated as unresolved)"
+        emoji, word, css = PRIVACY_MARK[verdict_key]
+        verdict_class = f"privacy-verdict {css}".strip()
+        # extract-snippet.py always captions and labels a snippet with the full
+        # repo-relative path, on its own line above the code — right when the path *is*
+        # the point (a diagram, a test pairing). Here neither is true: there is no
+        # caption line, and the label is pulled out of its default spot entirely and
+        # rebuilt below the code as the box's bottom-right corner marker (still the same
+        # vscode:// link) — the verdict and its trace sit on the same row, at the left,
+        # because that is the part a reviewer reads; the location is the part they
+        # click. `justify-content:space-between` pushes them to opposite ends when both
+        # fit on the row, and `flex-wrap` drops the label under the verdict — verdict
+        # first, since it is first in the markup — rather than truncating either one.
+        snippet = snippet_html(ref, None, root, exact=True)
+        m = ANCHOR_RE.search(snippet)
+        href = m.group(1) if m else ""
+        snippet = snippet[:m.start()] + snippet[m.end():] if m else snippet
+        footer = (
+            f'<p class="log-footer">'
+            f'<span class="{verdict_class}">{emoji} <b>{word}</b> — '
+            f'{html.escape(trace)}</span>'
+            f'<a class="srcref" href="{href}" data-tip="Open in VS Code">'
+            f'{html.escape(label)}</a>'
+            f'</p>'
+        )
+        # The chain sits between the code and the verdict — the statement itself (the
+        # code above) first, then each hop, in order, then the verdict it adds up to.
+        snippet = snippet.replace("</figure>", f"{chain_html}{footer}</figure>", 1)
+        boxes.append(snippet)
+    # "The page marks tabs by what produced them" — this legend is the disclosure for a
+    # tab whose verdicts are now a model's reading, not a program's, plus what that
+    # reading cost this run: a re-run on unchanged code pays nothing (cache hits), so
+    # the number here is honest about *this* build, not a standing per-run price.
+    cost_note = (f' A live model call per statement this run cost ${total_cost:.4f}'
+                if live_calls else ' Every verdict this run came from the cache (no charge).')
+    if cached_hits and live_calls:
+        cost_note = cost_note[:-1] + f' ({cached_hits} more reused from the cache).'
+    legend = (
+        '<div class="privacy-legend"><p class="privacy-legend-title">🤖 AI Evaluation:'
+        f'</p><p class="privacy-legend-note">Each verdict above is a live '
+        f'<code>claude</code> call tracing the statement and its enclosing method — '
+        f'never a guessed answer, and never asserted without its evidence: a value worth '
+        f'tracing gets its provenance cut from the working tree, line by line, under the '
+        f'code.{cost_note}</p>'
+        '<ul class="privacy-legend-list">'
+        '<li>✅ <b>SAFE</b> — nothing traced reads as personal data</li>'
+        '<li>🤔 <b>DOUBT</b> — could not trace it with confidence, and an unresolved '
+        'case is read as DOUBT on purpose rather than guessed SAFE</li>'
+        '<li>❌ <b>PRIVACY</b> — a value traced back to personal data, on its way to a '
+        'log aggregator kept for months</li>'
+        '<li>⚠️ <b>NOT EVALUATED</b> — the model could not be reached; never silently '
+        'read as SAFE</li>'
+        '</ul></div>'
+    )
+    return "".join(boxes) + legend
+
+
 def logging_fragment(block, root: Path):
     """What this change set will say for itself at 3 a.m., found structurally.
 
@@ -1632,8 +2229,17 @@ def logging_fragment(block, root: Path):
     apart — which is what `logextract.py` does, and why it is a script and not a regex.
 
     The zero case is the point, not an edge case: a change set that logs nothing is not an
-    empty section, it is a finding, and the table of every touched file with a `0` beside it
-    is the evidence that the question was asked of each of them."""
+    empty section — it is a finding, said as a plain sentence rather than shown as an
+    absence a reader could mistake for the scan not having run. There is no table of every
+    touched file behind this any more — a table where almost every row read `0 logging`
+    was exactly the noise a reviewer had to read past to find the one or two lines that
+    were the actual answer, on every change set, not just the pathological ones — so a
+    reviewer who wants proof the scan ran gets that from the tab actually rendering
+    (weight 1, a real sentence) rather than from an inventory of the files it walked. A
+    dropped tab (ast-grep missing, or the scan failing outright) is the other thing this
+    must never be confused with — that path returns `("", 0, 0)` below and the tab
+    disappears with a loud line in the build log, which is a different, visible failure
+    mode from a real, rendered zero."""
     paths = block.get("paths") or ["."]
     base = subprocess.run(["git", "merge-base", block.get("base", "origin/main"), "HEAD"],
                           cwd=root, capture_output=True, text=True).stdout.strip()
@@ -1653,50 +2259,20 @@ def logging_fragment(block, root: Path):
         payload = json.loads(report.read_text(encoding="utf-8"))
 
     added = payload.get("changed", payload["all"])["logging"]
-    churn = _java_churn(root, base, paths)
-    files = sorted(churn)
-    # The package every touched class shares — cut back to a whole path segment, because a
-    # character-wise common prefix is happy to stop in the middle of a directory name.
-    shared = os.path.commonprefix(
-        [re.split(r"/src/(?:main|test)/java/", f, maxsplit=1)[-1].rsplit("/", 1)[0] + "/"
-         for f in files]) if files else ""
-    prefix = shared[: shared.rfind("/") + 1]
-    hits_per_file = {}
-    for h in added:
-        hits_per_file[h["file"]] = hits_per_file.get(h["file"], 0) + 1
-
-    rows = "".join(
-        f'<tr><td><a class="srcref" href="vscode://file/{(root / f).resolve()}:1:1" '
-        f'data-tip="Open in VS Code">{html.escape(_short_label(f, prefix))}</a></td>'
-        f'<td class="n">{churn[f]}</td>'
-        f'<td class="n">{hits_per_file.get(f, 0)} logging</td></tr>'
-        for f in files
-    )
-    n = len(added)
-    listing = ""
-    if added:
-        listing = '<ul class="fixlist">' + "".join(
-            f'<li><a class="srcref" href="vscode://file/{(root / h["file"]).resolve()}'
-            f':{h["line"]}:{h["column"]}" data-tip="Open in VS Code">'
-            f'{html.escape(h["file"])}:{h["line"]}</a> '
-            f'<span class="badge sev-info">{html.escape(h["level"])}</span> '
-            f'<code>{html.escape(h["raw_line"].strip())}</code></li>'
-            for h in added
-        ) + "</ul>"
-
     head = (f'<h2 id="{html.escape(block.get("id", "logging-added"))}">'
             f'{html.escape(block.get("title", "Logging this change set added"))}</h2>')
     # Raw, not wrapped in a <p>: the lede here is several paragraphs — what was found, why
     # it is a finding, and how it was measured — and it is the author's prose, not ours.
     body = block.get("body", "")
+    # No header bar and no surrounding card any more: no heading repeating "logging", no
+    # count pill, no `path, base…HEAD` provenance line — the tab's own title already says
+    # "logging", and the snippets below say what they are without a caption restating it.
+    # The snippets and the legend sit directly on the page, exactly like every other
+    # block's content on this tab. `_logging_listing` alone decides what shows: the real
+    # snippets, or the explicit "None." sentence for a genuine zero.
+    listing = _logging_listing(added, root, payload.get("stats", {}).get("fields", {}))
     frag = (
-        head + body
-        + '<div class="diagram"><div class="head">'
-        f'<b>{html.escape(block.get("tableTitle", "Every Java file in the change set"))}</b>'
-        f'<span class="badge {"sev-high" if n else "sev-info"}">{n} logging '
-        f'statement{"" if n == 1 else "s"}</span>'
-        f'<span>{html.escape(", ".join(paths))}, {html.escape(base[:7])}…HEAD</span>'
-        f'</div><table class="stat">{rows}</table></div>' + listing
+        head + body + listing
         # "What does this service log today" is the question a reader asks in the same
         # breath as "what did this branch add", and `System.out` is a third answer that must
         # not be counted as a fourth logger. Both are context, both sit under the finding.
@@ -1705,10 +2281,16 @@ def logging_fragment(block, root: Path):
         + _logging_aside(block.get("console"), len(payload["all"]["antipattern"]),
                          "console-output", root, payload["all"]["antipattern"])
     )
-    # Both counts are 1 even when `n` is 0. The zero is not "we looked at unrelated context
-    # and nothing moved" — the tab that gets struck through — it is a statement *about this
-    # diff*: fourteen touched Java files, five hundred added lines, and not one of them will
-    # say anything at 3 a.m. Striking that through would file the finding as a non-event.
+    # Weight is 1 whenever the scan actually ran — never tied to the header bar or the
+    # card that used to wrap the snippets, both gone now, and never computed from `n`
+    # either. The zero is not "we looked at unrelated context and nothing moved" — the
+    # tab that gets struck through — it is a statement *about this diff*: twelve touched
+    # Java files, five hundred added lines, and not one of them will say anything at 3
+    # a.m. Striking that through would file the finding as a non-event, and dropping the
+    # tab (weight 0) would be worse: that reading is reserved for the one case that is
+    # not a real answer — `ast-grep` missing or the scan crashing outright, handled above
+    # by returning `("", 0, 0)` before any of this runs.
+    assert listing, "logging_fragment must always have content: a real listing or the zero sentence"
     return frag, 1, 1
 
 
@@ -1742,6 +2324,32 @@ def cost_chip(root: Path) -> dict | None:
         return None
 
 
+def tab_cost_report(root: Path, tab_ids: list[str]) -> dict | None:
+    """What each tab cost, asked of the run itself — same discipline as `cost_chip`.
+
+    Unlike `cost_chip`, this does not go quiet on a bad day: no session, no transcript, no
+    step ledger, a step that never stamped — every one of those comes back as *data*
+    (`report["tabs"][id]["tip"]` says so in words), because a tab whose cost silently has
+    no tooltip reads exactly like a tab that measured zero. Only returns None when
+    `review-cost.py` itself could not be asked at all.
+    """
+    script = Path(__file__).resolve().parent / "review-cost.py"
+    if not script.is_file() or not tab_ids:
+        return None
+    proc = subprocess.run(
+        [sys.executable, str(script), "--tab-costs", "--tabs", ",".join(tab_ids)],
+        cwd=root, capture_output=True, text=True,
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        for line in proc.stderr.strip().splitlines()[-1:]:
+            print(f"[review] no per-tab cost report: {line}", file=sys.stderr)
+        return None
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
 def validate(spec: dict, out_dir: Path) -> list[str]:
     """Every problem in the content file, named, in one pass.
 
@@ -1753,6 +2361,11 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
     for key, fields in REQUIRED.items():
         for i, item in enumerate(spec.get(key) or []):
             for f in fields:
+                # An explicit empty title is a decision, not an omission: a section whose
+                # content announces itself does not need a heading repeating the tab name
+                # above it. A *missing* key is still the mistake it always was.
+                if f == "title" and f in item and not item[f]:
+                    continue
                 if not item.get(f):
                     problems.append(f"{key}[{i}] is missing {f!r}")
     v = spec.get("verdict")
@@ -1845,7 +2458,9 @@ def main(argv=None) -> int:
                   "going). Rename the section to get an anchor of its own.", file=sys.stderr)
         h2_id = "" if collides else f' id="{html.escape(s["id"])}"'
         rendered = (
-            f'<h2{h2_id}>{html.escape(s["title"])}</h2>\n'
+            # An empty title means the section speaks for itself; emit no heading rather
+            # than an empty one, which would still take the vertical space of a heading.
+            (f'<h2{h2_id}>{html.escape(s["title"])}</h2>\n' if s.get("title") else "")
             # A section with no prose of its own — the video tab is one — must not open with
             # a blank line where the paragraph would have been.
             + (f"{body}\n" if body else "")
@@ -1881,6 +2496,16 @@ def main(argv=None) -> int:
             if computed is None:
                 continue
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
+            # Dollars are the number a reader acts on; the token count is the one they
+            # ask for second. The script hands both over with the tokens already wrapped
+            # in a <span class="sub">, so lift that span out rather than splitting on the
+            # separator inside it.
+            m = re.search(r'\s*<span class="sub">(.*?)</span>\s*', str(c["value"]))
+            if m:
+                tokens = re.sub(r"^[\s·]+", "", m.group(1)).strip()
+                c["value"] = str(c["value"])[:m.start()].strip()
+                c["tip"] = f'{tokens} — {c["tip"]}' if c.get("tip") else tokens
+            c["label"] = c["label"].replace("this review cost", "review cost")
         inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
         if c.get("tip"):
             inner = f'<span data-tip="{html.escape(c["tip"])}">{inner}</span>'
@@ -1905,8 +2530,14 @@ def main(argv=None) -> int:
 
     v = spec.get("verdict")
     verdict_html = ""
+    title_score = ""
     if v:
         n = int(v["score"])
+        # The score belongs beside the title: it is the one thing a reader wants before
+        # they have decided whether to read anything. The band below keeps the reasons.
+        title_score = (f'<span class="titlescore {"v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")}">'
+                       f'<b>{n}</b><small>/10</small>'
+                       f'<i>{html.escape(v.get("label", ""))}</i></span>')
         cls = "v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")
         pips = "".join(f'<i class="{"on" if i < n else ""}"></i>' for i in range(10))
         verdict_html = (
@@ -1975,14 +2606,27 @@ def main(argv=None) -> int:
         if kind == "diagrams":
             rows = select_rows(manifest_rows, block)
             placed.update(r["name"] for r in rows)
-            # Nothing of this family changed: contribute nothing rather than a paragraph
-            # saying so. Whether that leaves the tab empty is the tab's business.
+            # Nothing of this family changed. A block that names a `context` diagram
+            # (the Packages case: no delta, but the current package shape is still
+            # worth showing) falls back to rendering it from source — exactly like a
+            # standalone `puml` block, and `render_puml` never returns zero weight, not
+            # even for a missing file. That is what makes a tab built on this one block
+            # *reliably* struck-through-but-present rather than droppable: the guarantee
+            # lives here, not in the discipline of remembering to pair it with a second
+            # block that happens to always weigh 1.
             if not rows:
+                context = block.get("context")
+                if context:
+                    return (heading(block, "diagrams", dspec.get("title", ""))
+                            + render_puml(context, root, out_dir), 1, 0)
                 return "", 0, 0
             merged = dict(dspec)
-            merged.pop("only", None)
+            # The rows are already filtered; `only` survives purely as the running order
+            # the author asked for. Popping it here is what used to make
+            # `only: ["DomainModel", "DB"]` come out alphabetical anyway.
+            merged["only"] = block.get("only") or dspec.get("only") or []
             return (
-                heading(block, "diagrams", dspec.get("title", "Diagram deltas"))
+                heading(block, "diagrams", dspec.get("title", ""))
                 + render_diagrams(merged, root, out_dir, rows),
                 len(rows), len(rows),
             )
@@ -2037,6 +2681,12 @@ def main(argv=None) -> int:
                      "noStrike": True, "blocks": [{"type": "overview"}]}] + list(tabs)
             lede_html = verdict_html = ""
     if tabs:
+        # Measured once, for every tab, before the loop: one subprocess and one transcript
+        # scan rather than one per tab. `costs` is None only when review-cost.py itself
+        # could not be asked; a tab's own entry inside it is never missing (see
+        # `tab_cost_report`'s docstring) — a bad day comes back as a "not measured"
+        # sentence, not as a tab silently getting no tooltip at all.
+        costs = tab_cost_report(root, [t["id"] for t in tabs])
         strip, panels, dropped, quiet, emitted = [], [], [], [], []
         for tab in tabs:
             body, weight, changes = "", 0, 0
@@ -2080,10 +2730,16 @@ def main(argv=None) -> int:
             # more surprising fact about the tab.
             tip = ('This change set did not touch anything here — the tab holds '
                    'the current state as context.') if still else tab.get("tip", "")
+            # What this tab cost, appended rather than swapped in: a reviewer who hovers a
+            # struck-through tab should learn both why it is struck and what it cost, not
+            # have the cost silently win the one tooltip slot this page has.
+            cost_tip = (costs.get("tabs", {}).get(tab["id"], {}).get("tip", "")
+                       if costs else "")
+            if cost_tip:
+                tip = f"{tip} {cost_tip}" if tip else cost_tip
             strip.append(
                 f'<button type="button" class="tab{" quiet" if still else ""}" role="tab" '
                 f'id="tabbtn-{tid}" aria-controls="{tid}" aria-selected="false" tabindex="-1"'
-                + (f' data-tip="{html.escape(tip)}"' if tip else "")
                 + f'>{html.escape(tab["label"])}{count}</button>'
             )
             # `intro` is prose about the *tab*, not about any one block in it — where the
@@ -2134,7 +2790,7 @@ def main(argv=None) -> int:
         body_html = (
             '<h2 id="first">Look here first</h2>\n'
             + render_findings(spec.get("findings", []))
-            + f'\n<h2 id="diagrams">{html.escape(dspec.get("title", "Diagram deltas"))}</h2>\n'
+            + f'\n<h2 id="diagrams">{html.escape(dspec.get("title", ""))}</h2>\n'
             + f'<p>{dspec.get("body", "")}</p>\n'
             + render_diagrams(dspec, root, out_dir)
             + f"\n{city_html}\n"
@@ -2149,7 +2805,7 @@ def main(argv=None) -> int:
 <style>{CSS}{extra_css.rstrip()}
 {LATE_CSS}</style></head>
 <body><div class="wrap">
-<h1>{html.escape(spec.get('title', 'Review guide'))}</h1>
+<div class="titlerow"><h1>{html.escape(spec.get('title', 'Review guide'))}</h1>{title_score}</div>
 <p class="sub">{spec.get('subtitle', '')}</p>
 <div class="scopebar">{chips}</div>
 {lede_html}
@@ -2162,7 +2818,7 @@ def main(argv=None) -> int:
 {GENSEQ_JS}
 {FOCUS_JS}
 {EDITOR_JS}
-{TABS_JS}
+{FRAME_JS}\n{TABS_JS}
 {TIP_JS}
 </body></html>
 """

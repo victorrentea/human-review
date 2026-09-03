@@ -220,7 +220,7 @@ class SymbolTableTest(unittest.TestCase):
 
 
 class RuleFilesTest(unittest.TestCase):
-    """`ast-grep-rules/` is the same nine rules as a standalone scan config.
+    """`ast-grep-rules/` is the same eleven rules as a standalone scan config.
 
     logextract.py stays dependency-free by carrying its rules as strings and writing them
     to a temp dir per run, so anyone who wants to run `ast-grep scan` against them by hand

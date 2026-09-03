@@ -106,6 +106,40 @@ rule:
     - has: {field: superclass, pattern: $SUPER}
 """
 
+# --- pass 1f: method/constructor ranges, for the GDPR verdict's context window ------- #
+# Not part of the logger-detection surface at all: this is what lets a caller ask "what
+# method encloses line N", so the privacy verdict can be asked about a whole method —
+# parameters and locals both — instead of one line with nothing around it.
+RULES["method-decl"] = r"""
+id: method-decl
+language: java
+severity: hint
+message: method or constructor declaration
+rule:
+  any:
+    - kind: method_declaration
+    - kind: constructor_declaration
+"""
+
+# --- pass 1g: every field declaration, not just logger-typed ones -------------------- #
+# `logger-field` above is the same shape with a `constraints:` on the type. Kept as a
+# separate rule rather than dropping that constraint and filtering in Python, because the
+# `has:`+`constraints:` combo is exactly the pattern the gotcha docstring above warns
+# about — the two rules stay independent on purpose.
+RULES["any-field"] = r"""
+id: any-field
+language: java
+severity: hint
+message: field declaration
+rule:
+  kind: field_declaration
+  all:
+    - has: {field: type, pattern: $FTYPE}
+    - has:
+        field: declarator
+        has: {field: name, pattern: $FNAME}
+"""
+
 # --- pass 1b: any declarator initialised from a logger factory --------------- #
 # Catches `var log = LoggerFactory.getLogger(..)`, `private final Logger x =
 # LogManager.getLogger()`, `Log l = LogFactory.getLog(..)`, Flogger, ...
@@ -312,6 +346,8 @@ class Hit:
     args: list           # arguments after the format string
     raw_line: str        # exact source line
     text: str            # exact matched expression
+    method_start: int | None  # enclosing method/constructor, 1-based inclusive range —
+    method_end: int | None    # None when no enclosing method resolved (e.g. a static initializer)
 
 
 @dataclass
@@ -426,10 +462,23 @@ class Project:
         self.supers: dict[str, str] = {}
         # simple class name -> {field name: LoggerSymbol} for non-private fields
         self.inheritable: dict[str, dict[str, LoggerSymbol]] = defaultdict(dict)
+        # file -> [(start, end)] for every method/constructor body, 1-based inclusive
+        self.methods: dict[str, list[tuple[int, int]]] = defaultdict(list)
+        # file -> [(line, name, type, declaration text)] for every field, any type
+        self.all_fields: dict[str, list[tuple[int, str, str, str]]] = defaultdict(list)
 
     def enclosing(self, f: str, line: int) -> str | None:
         chain = self.enclosing_chain(f, line)
         return chain[0] if chain else None
+
+    def enclosing_method(self, f: str, line: int) -> tuple[int, int] | None:
+        """The innermost method/constructor whose range contains `line`.
+
+        Used for the GDPR verdict's context window: a lambda or an anonymous inner
+        class's own method nests inside the outer one, so the innermost (largest
+        start) match is the one actually enclosing the statement."""
+        hits = [(s, e) for s, e in self.methods.get(f, []) if s <= line <= e]
+        return max(hits, key=lambda t: t[0]) if hits else None
 
     def enclosing_chain(self, f: str, line: int) -> list[str]:
         """Lexically enclosing type names, innermost first (inner -> outer)."""
@@ -526,6 +575,15 @@ def build_symbol_tables(matches: list[dict]) -> Project:
                 fname, fl = LOMBOK_FIELD[base]
                 lombok[f].append((line, m["range"]["end"]["line"] + 1, fname, fl, ann))
 
+        elif rid == "method-decl":
+            p.methods[f].append((line, m["range"]["end"]["line"] + 1))
+
+        elif rid == "any-field":
+            typ = (_mv(m, "FTYPE") or "").strip()
+            name = _mv(m, "FNAME")
+            if name:
+                p.all_fields[f].append((line, name, typ, m["text"]))
+
     # project-wide inheritance table: a *non-private* logger field is visible to
     # every subclass.  Spring's `protected final Log logger = LogFactory.getLog(
     # getClass());` on ~40 base classes is the whole reason this exists.
@@ -612,7 +670,16 @@ def extract(paths: list[str], root: str | None = None,
     proj = build_symbol_tables(matches)
     symbols, imports, lombok = proj.symbols, proj.imports, proj.lombok
     src = SourceCache()
-    root = os.path.abspath(root) if root else None
+    # realpath, not abspath: `abs_file` below is built from `os.path.abspath()` on a
+    # path relative to the process's own cwd, and POSIX `getcwd()` always resolves
+    # symlinks — so on a machine where the temp dir (or any ancestor of the project) is
+    # itself a symlink (macOS's /tmp -> /private/tmp is the standing example), an
+    # `--root` that keeps the symlinked spelling stops matching the canonical one
+    # `abs_file` carries. `rel()` then silently produces a path with no rows in
+    # `changed_ranges()`'s table, and every hit in it gets diffed away — a false "no
+    # logging found" from a path-spelling mismatch, which is exactly the one answer this
+    # whole extractor exists to never give.
+    root = os.path.realpath(root) if root else None
 
     def rel(p: str) -> str:
         return os.path.relpath(p, root) if root else p
@@ -686,12 +753,15 @@ def extract(paths: list[str], root: str | None = None,
         if key in seen:
             continue
         seen.add(key)
+        menc = proj.enclosing_method(f, ln)
         hits.append(Hit(
             file=rel(f), abs_file=os.path.abspath(f), line=ln, column=col,
             end_line=m["range"]["end"]["line"] + 1,
             level=level, receiver=rr, flavour=flavour, evidence=evidence,
             confidence=confidence, method=method, format=fmt, args=rest,
             raw_line=src.line(f, ln), text=chain,
+            method_start=menc[0] if menc else None,
+            method_end=menc[1] if menc else None,
         ))
 
     for m in matches:
@@ -713,9 +783,18 @@ def extract(paths: list[str], root: str | None = None,
         sym_out.setdefault(rel(f), []).extend(
             asdict(LoggerSymbol(fname, fl, f"injected by Lombok `{ann}`", "lombok", start))
             for start, _end, fname, fl, ann in scopes)
+    # Every field, any type, per file — the GDPR verdict's class-level context: a value
+    # traced to `this.ownerName` or a bare inherited field needs the field's declared
+    # type in front of the reader (human or model), not just the method that used it.
+    fields_out: dict[str, list] = {
+        rel(f): [{"line": line, "name": name, "type": typ, "text": text}
+                 for line, name, typ, text in sorted(fl)]
+        for f, fl in proj.all_fields.items()
+    }
     stats = {
         "files_with_loggers": len(sym_out),
         "symbols": sym_out,
+        "fields": fields_out,
     }
     return hits, antis, stats
 
@@ -728,10 +807,18 @@ HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 
 def changed_ranges(repo: str, base: str, head: str = "HEAD") -> dict[str, list[tuple[int, int]]]:
-    """Added/modified line ranges on the *new* side, per file (repo-relative)."""
-    out = subprocess.run(
-        ["git", "-C", repo, "diff", "--unified=0", "--no-color", f"{base}", head],
-        capture_output=True, text=True, check=True).stdout
+    """Added/modified line ranges on the *new* side, per file (repo-relative).
+
+    With the default head, the *working tree* is the new side — not `HEAD`. Step 1 of
+    this skill tells you to leave the review's own fixes uncommitted so `git diff` shows
+    them alone, so a commit-to-commit diff here cannot see a log line an agent just
+    added, and the tab answers "no logging found" — the one answer it must never get
+    wrong. Naming an explicit --head still compares two commits.
+    """
+    args = ["git", "-C", repo, "diff", "--unified=0", "--no-color", base]
+    if head != "HEAD":
+        args.append(head)
+    out = subprocess.run(args, capture_output=True, text=True, check=True).stdout
     ranges: dict[str, list[tuple[int, int]]] = defaultdict(list)
     cur = None
     for line in out.splitlines():
@@ -776,8 +863,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.since:
         repo = args.repo or args.root or os.getcwd()
         rng = changed_ranges(repo, args.since, args.head)
+        # realpath, matching `extract()`'s own fix above and for the same reason: `git
+        # -C repo diff` reports paths relative to git's own view of the repo, which is
+        # canonical, and `h.abs_file` is canonical too, so a `--repo`/`--root` that is
+        # still spelled through a symlink (`/tmp/...` on macOS) must not be compared
+        # against them with plain `abspath`.
         def keep(h):
-            r = os.path.relpath(h.abs_file, os.path.abspath(repo))
+            r = os.path.relpath(h.abs_file, os.path.realpath(repo))
             return r in rng and in_ranges(h.line, rng[r])
         diff_hits = [h for h in hits if keep(h)]
         diff_antis = [a for a in antis if keep(a)]

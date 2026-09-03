@@ -8,6 +8,17 @@
 # saves the initial render as a PNG for the review guide to embed — the image is
 # the map, the click-through to codecity.html is the territory.
 #
+# The guide's prose used to explain what a building is, what its height means and
+# what its colour means, right next to the picture. That is a caption doing the
+# picture's job. codecity.html already carries that explanation itself: a first-run
+# "What each building tells you" tour that draws AREA/HEIGHT/COLOR (and CHANGED, when
+# there is one) as callout cards wired by dashed leaders to a real building on one end
+# and the control that sets it on the other. It builds itself automatically — this
+# script used to click it away ("Dismiss the first-run intro card") so it would not
+# sit on the skyline; now it leaves it up and shoots with it on screen instead, so the
+# picture is self-explanatory without a drawn-on legend that could drift from what the
+# renderer actually does.
+#
 # Regenerate the city first if the branch moved: petclinic-backend/docs/generate-codecity.sh
 #
 # Usage:
@@ -47,23 +58,57 @@ const [city, out, mode] = process.argv.slice(1);
   await page.goto("file://" + city, {waitUntil: "load"});
   await page.waitForSelector("#changeMode");
 
-  const changed = await page.evaluate((mode) => {
+  // codecity.html builds its "What each building tells you" tour synchronously while
+  // its own module script runs (buildIntro() is a direct call, not just a scheduled
+  // one) — by the time `load` fires and this evaluate() runs, #intro already exists,
+  // built against the pages own DEFAULT #changeMode option ("highlight", the same
+  // default this script uses). There is no query flag or localStorage key to ask for
+  // the tour some other way — that IS how the page intends it to be driven: land on
+  // it with data already loaded, and it is up.
+  //
+  // The tour is dismiss-ON-INTERACTION: the "change" listener on #changeMode itself
+  // calls dismissIntro() unconditionally, before it does anything else. So the driving move
+  // here is restraint — only touch the control when the requested mode actually
+  // differs from what is already selected. For the default "highlight" mode that means
+  // not dispatching a change event at all; for "hide"/"off" it means accepting that the
+  // page itself will drop the tour the moment the mode is switched, same as it would
+  // for a person.
+  const result = await page.evaluate((mode) => {
     const sel = document.getElementById("changeMode");
-    sel.value = mode;
+    const valid = [...sel.options].map(o => o.value);
     // A renamed <option> makes this a silent no-op: the event still fires, the screenshot is
     // still taken, and the guide embeds a city with nothing highlighted at all.
-    if (sel.value !== mode) {
-      throw new Error("#changeMode has no option " + JSON.stringify(mode) + " (has: "
-          + [...sel.options].map(o => o.value).join(", ") + ")");
+    if (!valid.includes(mode)) {
+      throw new Error("#changeMode has no option " + JSON.stringify(mode) + " (has: " + valid.join(", ") + ")");
     }
-    sel.dispatchEvent(new Event("change", {bubbles: true}));
-    // Dismiss the first-run intro card so it does not sit on top of the skyline.
-    document.querySelector(".intro-dismiss")?.click();
-    return document.getElementById("changeCount")?.textContent?.trim() || "";
+    let interacted = false;
+    if (sel.value !== mode) {
+      sel.value = mode;
+      sel.dispatchEvent(new Event("change", {bubbles: true}));
+      interacted = true;
+    }
+    return { changed: document.getElementById("changeCount")?.textContent?.trim() || "", interacted };
   }, mode);
+  const changed = result.changed;
 
   // Two rAF-worth of settle time for the layout animation plus the label pass.
   await page.waitForTimeout(2500);
+
+  // Fail loudly rather than silently shipping a shot without the legend — the same
+  // rule the #changeMode check above already follows.
+  const introVisible = await page.evaluate(() =>
+    document.getElementById("intro")?.classList.contains("visible") || false);
+  if (!introVisible) {
+    if (result.interacted) {
+      throw new Error(`switching #changeMode to ${JSON.stringify(mode)} dismisses the built-in tour `
+          + "by design (its change listener calls dismissIntro() unconditionally) — the tour and a "
+          + "non-default Changes mode cannot both be in one shot; capture mode \"highlight\" (the "
+          + "pages own default) to get the tour");
+    }
+    throw new Error("#intro (the built-in \"What each building tells you\" tour) is not showing "
+        + "— codecity.html may have changed how/when it builds itself");
+  }
+
   await page.screenshot({path: out});
   await browser.close();
 

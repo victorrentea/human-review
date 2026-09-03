@@ -1,0 +1,8 @@
+id: method-decl
+language: java
+severity: hint
+message: method or constructor declaration
+rule:
+  any:
+    - kind: method_declaration
+    - kind: constructor_declaration
