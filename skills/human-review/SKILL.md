@@ -135,6 +135,12 @@ commits that landed on the base after this branch started never show up as this 
 Print a one-line scope banner (mode, refs, `--stat`). Empty change set → "Nothing to
 review." and stop.
 
+**If `.human-review/review.html` already exists, ask what changed before you run any of
+this.** A request to fix, reword or polish a page that is already built is an
+*iteration*, not a review: Steps 1–8 mostly do not re-run, and `/code-review` and
+`/simplify` must not. *Iterating on a review that already exists*, after this step, says
+how to tell the two apart and what an iteration runs instead.
+
 ### The gate: push, then wait for green — no green build, no review
 
 **Nothing below this line runs until the branch is pushed and the build for the exact commit
@@ -204,12 +210,16 @@ undetectable. It is the only failure mode here that produces a confident, wrong 
 rm -rf .human-review/assets && mkdir -p .human-review/assets
 ${SKILL}/scripts/steps-ledger.py reset
 date -u +%Y-%m-%dT%H:%M:%S+00:00 > .human-review/.started
+echo "$CLAUDE_CODE_SESSION_ID"                  > .human-review/.session
 ```
 
-That last line is what lets the page report **what it cost to produce**. Without it the
+The timestamp is what lets the page report **what it cost to produce**. Without it the
 cost chip falls back to the whole session — which, on a session that also built the feature,
 is a much bigger number than the review, and the tooltip has to say so instead of being
-useful. Write it once, here, before anything expensive runs.
+useful. Write it once, here, before anything expensive runs. The session id beside it
+is for later: a rebuild of this page from a *different* session reads the wrong
+transcript and publishes the wrong cost, and `.session` is the only way back to the
+right one — see *Iterating on a review that already exists* below.
 
 **`steps-ledger.py reset` is the same wipe as the first line, for the same reason, and it
 is the one that fails worst if you skip it.** A stale `.human-review/assets/` at least shows
@@ -276,6 +286,148 @@ Three rules keep the ledger honest on the runs that do not go to plan, which is 
    file for its old id in the same edit. `scripts/test_skill_tab_ledger_wiring.py` pins the
    two together for the ids in the worked example.
 
+## Iterating on a review that already exists
+
+Most invocations after the first one are not reviews. `.human-review/review.html` is already
+on disk, the human has read it, and what they want back is a change to the *page*: a finding
+reworded, a snippet re-cut two lines wider, a caption naming the wrong file, a stale fragment,
+a tab renamed. That is an **iteration**, and from here down it runs almost nothing.
+
+### `/code-review` and `/simplify` do not run a second time
+
+⚠️ **On an iteration you do not invoke `/code-review`, and you do not invoke `/simplify`.**
+Step 1 already read their output, split it into open calls and applied fixes, merged both
+into `content.json`, and applied the non-disputable half to the working tree. The code they
+would read has not changed since — so a second pass re-derives, at full price, text the page
+already contains. It does not even re-derive it identically: two runs of the same pass over
+the same diff word their findings differently and rank them differently, so a request to fix
+one caption comes back with a reshuffled **Look here first** list nobody asked for, on a page
+the reviewer had already worked through.
+
+The price is why this is a rule and not a preference. Everything else in this runbook is a
+program: `puml-diff.sh`, `capture-codecity.sh`, `endpoint-complexity-delta.py`, the three
+OpenAPI tools, `logextract.py`, `ds-audit.py`, `codeowners-check.py`, `extract-snippet.py`
+and `build-review-html.py` read files that are already on disk, and re-running them costs
+CPU, not tokens — the same thing Step 5 says about re-cutting the film. The two automated
+passes and the prose in `content.json` are the whole model bill. On the reference run the
+chip came back at **$78 list-price equivalent over 111M tokens and 602 turns**, 108M of those
+tokens cache reads and **300 of those turns inside subagents** — half the run happening
+outside the assembling conversation altogether.
+
+**One caveat this file does not get to round away: the automated passes are not measurably
+*the* largest item.** Step 9 states that writing `content.json` is normally the most expensive
+stretch of a run, and nothing has ever split the bill between the two — `review-cost.py`
+attributes by tab, and 🤖 Review and `guide` are simply two rows of the same breakdown, never
+compared. What is certain is that Step 1 is the largest **avoidable** item: an iteration
+re-authors only the keys the request touches, so Step 9 shrinks to a handful of edits, while
+a re-run of Step 1 costs what it cost the first time and buys nothing.
+
+### Which is it — a re-review, or an iteration of the report?
+
+One question decides it: **has the code under review changed since the page was built?**
+
+- **The code changed** — new commits on the branch, a force-push, the human took a finding
+  and fixed it, the PR moved — then this is a **re-review**. Start at Step 0 and run the
+  whole thing, gate included. The two passes have something new to read, and a page rebuilt
+  from the old findings would describe a tree that no longer exists.
+- **Only the report changed** — wording, layout, a snippet range, a tab, a fragment that came
+  out wrong, anything the human said about the *page* rather than the code — then it is an
+  **iteration**, and the next section is the whole of it.
+
+When the request is ambiguous, the tree answers. Step 1 recorded the pre-fix HEAD in the
+ledger, so:
+
+```sh
+python3 -c 'import json,sys; print([r.get("rev") for r in json.load(open(".human-review/.steps.json")) if "rev" in r])'
+git --no-pager log --oneline <that rev>..HEAD
+git status --short
+```
+
+Commits in that range this run did not make, or working-tree changes beyond the fixes Step 1
+deliberately left uncommitted, mean the tree moved: re-review. An empty range and a tree
+holding only this skill's own uncommitted fixes mean it did not: iterate. If it stays
+genuinely unclear, **ask** — guessing wrong one way pays the run's biggest line item twice,
+and wrong the other way publishes a confident page about code that changed underneath it.
+
+### What an iteration runs, in order
+
+**Do not wipe `.human-review/assets/`.** Step 0's wipe exists because a silently-failed
+producer otherwise leaves the *previous change set's* artifact in place, and the page shows a
+green seal for a diff it never saw. An iteration is by definition the same change set at the
+same revision, so every fragment already in there belongs to this review — the failure the
+wipe guards against cannot occur, and re-filming the feature to satisfy a rule aimed at a
+different hazard is the same waste as re-running the reviews.
+
+Then, in this order, skipping every line whose inputs the request did not touch:
+
+1. **Prose, findings, captions, labels** — edit the keys in `.human-review/content.json` that
+   the request actually names, and nothing else. Snippets are extracted at build time, so
+   widening a range is an edit to a `path:from-to` string, not a re-extraction.
+2. **Whatever the tree changed under** — if you applied a fix during the iteration, re-run
+   only the producers that read the files you touched, each with the same arguments Steps 2–8
+   give them: `puml-diff.sh` (and `drawio-diff.py`) for the diagrams, `openapi-diff.py`,
+   `openapi-compat.py` and `openapi-visual-diff.py` for the contract, `openapi-changes` for
+   pb33f's embed, `logextract.py`, `ds-audit.py`, `codeowners-check.py`,
+   `capture-codecity.sh`, and `endpoint-complexity-delta.py` over a re-extracted
+   `endpoint-complexity.json`. Every one of them re-reads the tree; none of them asks a model
+   anything.
+3. **Rebuild the page:**
+
+   ```sh
+   ${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-review/review.html
+   ```
+
+4. **Serve it — the listener is sticky.** The server from the first run is still on `:7654`
+   and hands out the rebuilt file with no restart, so this is `serve-review.py` returning the
+   same URL rather than anything new. Print the URL again as the last line: the reader closed
+   the panel.
+
+A prose-only iteration is 1 and 3 — one edit and one build. That is the shape to aim for.
+
+### The ledger and the cost chip belong to the first run, and stay that way
+
+Both numbers claim to say *what producing this page consumed*, and an iteration is in a
+position to falsify both without anything warning you.
+
+**Do not run `steps-ledger.py reset`, and do not rewrite `.human-review/.started`.** They are
+Step 0's, they belong to the run they timed, and rewriting either destroys the only record of
+what the review cost. Do not open ledger records for the iteration's own edits either: a
+stamp is supposed to say what a tab's content cost to produce, and a second window against
+`data` for a two-word caption fix would make the diagram pass look more expensive than it
+was. The iteration's own spend is not a tab's cost and has no row on this page.
+
+⚠️ **An iteration in a *new session* cannot recompute either number, and it will not say so.**
+`review-cost.py` reads `$CLAUDE_CODE_SESSION_ID`'s transcript from `.started` onwards, and
+`build-review-html.py` re-runs it on every build. In a fresh session the first run's turns
+sit in a transcript nobody is reading, so the chip comes back as *the iteration's* spend — a
+couple of dollars where the run cost seventy-eight — under a label that says what the review
+cost. The per-tab report fails harder: the ledger's windows are the old session's timestamps,
+none of this session's turns fall inside any of them, so every tab prints a confident `$0.00`
+and the entire bill lands in the residual. That is exactly the stale-ledger failure Step 0's
+`reset` exists to prevent, reached from the other side — here the ledger is right and the
+transcript is the wrong one.
+
+So an iteration in a new session pins the build to the session that did the work:
+
+```sh
+CLAUDE_CODE_SESSION_ID=$(cat .human-review/.session) \
+  ${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-review/review.html
+```
+
+`build-review-html.py` shells out to `review-cost.py` with no arguments and inherits the
+environment, so setting the variable for that one command is the whole mechanism — and it is
+why Step 0 writes the id down beside the start marker. The iteration's own tokens are then
+counted nowhere on the page, which is the intended reading: the chip's subject is the review,
+not the editing of its report.
+
+**When the id cannot be recovered** — the page predates Step 0 writing `.session`, or the
+transcript has been cleaned up — publish no number rather than a measured-looking one. Delete
+`.human-review/.steps.json`, which makes every tab report *not measured for this tab — no
+step in the ledger named it*, and drop `{"auto": "cost"}` from `scope`, which removes the chip
+the same way the renderer removes it by itself when there is no session to read. A blank where
+a measurement used to be is a smaller lie than `$0.00`, and it is the trade this file makes
+everywhere else.
+
 ## Step 1 — Run the automated reviews, fix what is not disputable
 
 ```sh
@@ -307,6 +459,10 @@ Everything from here through the end of this step — both invocations, the clas
 and the fixes — lands on the **🤖 Review** tab, so open the record now and close it once,
 at the bottom of the step, rather than per command: the tab is one continuous piece of work
 and a reader does not care which minute inside it a given fix landed in.
+
+⚠️ **First make sure this is a review and not an iteration.** If the page already exists
+and only the report is being changed, stop here and follow *Iterating on a review that
+already exists* above — this is the step it exists to keep you from paying for twice.
 
 Invoke **`/code-review`** and **`/simplify`** on the same range — in that order, one after
 the other, **never in the same turn**. The two are not two opinions on the same question:
