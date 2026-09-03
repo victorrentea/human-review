@@ -23,6 +23,7 @@ tests skip when the binary is not installed; the rest never touch a subprocess.
 """
 from __future__ import annotations
 
+import html as html_module
 import importlib.util
 import json
 import os
@@ -447,6 +448,161 @@ def test_the_paths_diff_admits_how_many_operations_a_schema_serves():
     spec = yaml.safe_load(HEAD_SPEC)
     served = oad.operations_touching(spec, {"VisitDto", "VisitFieldsDto"})
     assert {(p, m.upper()) for p, m in served} == {(p, m) for m, p in AFFECTED}
+
+
+# ── the one line at the top of the tab ───────────────────────────────────────────
+# It shipped for months as a hand-typed string in the content file: "25 changes, none
+# breaking", green, over whatever the branch actually did. It happened to be right on the
+# day it was written. These tests exist so it cannot go back to being a sentence somebody
+# has to remember to update.
+def _panel_text(fragment: str) -> str:
+    stripped = re.sub("<[^>]+>", "", fragment.split("</style>")[-1])
+    return re.sub(r"\s+", " ", html_module.unescape(stripped)).strip()
+
+
+def _panel_class(fragment: str) -> str:
+    return re.search(r'class="apiverdict (\w+)"', fragment).group(1)
+
+
+def _result(state, breaks=(), additive=(), **extra):
+    return {"state": state, "breaks": list(breaks), "additive": list(additive),
+            "deprecated": [], "elsewhere": [], "complete": True, "source": "oasdiff",
+            **extra}
+
+
+def _op(method, path, n_reasons):
+    return {"method": method, "path": path,
+            "reasons": [([f"rule-{i}"], f"change {i}") for i in range(n_reasons)]}
+
+
+def test_the_panel_has_exactly_three_colours():
+    """Three states, three treatments. A fourth class means a fourth palette."""
+    nothing = oac.panel(_result(oac.NO_CHANGES, identical=True), {"breaking": [], "subjects": 0})
+    safe = oac.panel(_result(oac.COMPATIBLE, additive=[_op("GET", "/api/owners", 3)]),
+                     {"breaking": [], "subjects": 1})
+    broken = oac.panel(_result(oac.INCOMPATIBLE, breaks=[_op("GET", "/api/owners", 2)]),
+                       {"breaking": ["OwnerDto — gone"], "subjects": 1})
+    assert [_panel_class(f) for f in (nothing, safe, broken)] == ["none", "green", "red"]
+
+    # Grey, and struck through — the CSS has to carry the strike, not just the class.
+    assert ".apiverdict.none .v,.apiverdict.none .n{text-decoration:line-through}" in nothing
+    # Both themes, through the mechanism the rest of the page uses.
+    assert "@media (prefers-color-scheme:dark)" in safe
+    # The green/red are the score chip's own values, not a fifth pair invented here.
+    assert "rgba(46,158,91,.16)" in safe and "#6fce93" in safe
+    assert "rgba(215,38,61,.16)" in broken and "#f0757f" in broken
+    # Grey is not a hex at all: it is the page's tokens.
+    for token in ("var(--code-bg)", "var(--muted)", "var(--line)"):
+        assert token in nothing, token
+
+
+def test_the_panel_counts_what_the_differ_found_and_nothing_else():
+    """The count is the bug this panel was rewritten for: it must move with the result."""
+    result = _result(oac.COMPATIBLE, additive=[_op("GET", "/api/owners", 3),
+                                               _op("GET", "/api/pets", 22)])
+    assert oac.change_count(result) == 25
+    assert "25 changes, none breaking" in _panel_text(oac.panel(result, {"breaking": [],
+                                                                        "subjects": 2}))
+    # One more compatible change and the sentence moves with it. No fixture pins "25".
+    result["additive"].append(_op("GET", "/api/vets", 1))
+    assert "26 changes, none breaking" in _panel_text(oac.panel(result, {"breaking": [],
+                                                                         "subjects": 3}))
+    # A single change is not "1 changes".
+    one = _result(oac.COMPATIBLE, additive=[_op("GET", "/api/vets", 1)])
+    assert "1 change, none breaking" in _panel_text(oac.panel(one, {"breaking": [],
+                                                                    "subjects": 1}))
+
+
+def test_the_breaking_panel_names_both_counts():
+    result = _result(oac.INCOMPATIBLE,
+                     breaks=[_op("DELETE", "/api/visits/{id}", 2)],
+                     additive=[_op("GET", "/api/owners", 3)])
+    text = _panel_text(oac.panel(result, {"breaking": ["a", "b"], "subjects": 2}))
+    # verdict · counts · who checked it — the same shape as the green line.
+    assert text.startswith("Breaking changes · 5 changes, 2 breaking · checked by"), text
+    assert "oasdiff" in text and "openapi-diff.py" in text
+
+    single = _result(oac.INCOMPATIBLE, breaks=[_op("DELETE", "/api/visits/{id}", 1)])
+    assert _panel_text(oac.panel(single, {"breaking": ["a"], "subjects": 1})).startswith(
+        "Breaking change · 1 change, 1 breaking ·")
+
+
+def test_nothing_moved_says_so_and_gets_out_of_the_way():
+    same = oac.panel(_result(oac.NO_CHANGES, identical=True), {"breaking": [], "subjects": 0})
+    assert _panel_text(same).startswith("No API changes · 0 changes · checked by")
+    # A reworded description moves the spec without moving the contract; the panel must
+    # not flatly claim the two files are the same, the way the seal below does not.
+    moved = oac.panel(_result(oac.NO_CHANGES, identical=False), {"breaking": [], "subjects": 0})
+    assert "0 changes a caller can see" in _panel_text(moved)
+
+
+def test_a_disagreement_never_claims_both_tools_checked_it():
+    """"checked by oasdiff and openapi-diff.py" is a claim that the two agreed. When they
+    do not, the panel has to say the opposite — and it must not read as safe."""
+    over_strict = oac.panel(_result(oac.COMPATIBLE, additive=[_op("GET", "/api/owners", 3)]),
+                            {"breaking": ["VisitDto.vetId — type changed"], "subjects": 4})
+    text = _panel_text(over_strict)
+    assert _panel_class(over_strict) == "red", "a contested verdict rendered as safe"
+    assert "checked by" not in text, text
+    assert text == ("Verdict disputed · 3 changes, 1 breaking by openapi-diff.py, "
+                    "none by oasdiff · the two differs disagree — one of them is wrong "
+                    "about somebody's client"), text
+
+    missed = oac.panel(_result(oac.INCOMPATIBLE, breaks=[_op("DELETE", "/api/x", 2)]),
+                       {"breaking": [], "subjects": 1})
+    missed_text = _panel_text(missed)
+    assert _panel_class(missed) == "red"
+    assert "checked by" not in missed_text
+    assert "2 breaking by oasdiff, none by openapi-diff.py" in missed_text
+
+
+def test_the_panel_credits_only_the_differ_that_actually_ran():
+    """With oasdiff installed the Java tool is never invoked; crediting it would be a
+    check that did not happen. The fallback is the other way round."""
+    with_oasdiff = oac.panel(_result(oac.COMPATIBLE, additive=[_op("GET", "/api/o", 1)]),
+                             {"breaking": [], "subjects": 1})
+    assert "OpenAPITools/openapi-diff" not in with_oasdiff
+    assert "github.com/oasdiff/oasdiff" in with_oasdiff
+
+    fallback = _result(oac.COMPATIBLE, source=f"openapi-diff {oac.VERSION}", complete=False,
+                       additive=[{"method": "GET", "path": "/api/owners", "note": "changed"}])
+    text = _panel_text(oac.panel(fallback, {"breaking": [], "subjects": 1}))
+    assert "OpenAPITools/openapi-diff" in text
+    assert "oasdiff" in text and "lower bound" in text, (
+        "a count from a list that cannot follow a $ref must not look whole")
+    # An operation nobody itemised is still one change, not zero.
+    assert "1 change," in text
+
+    # Nobody to cross-check against is its own admission, not silence.
+    alone = _panel_text(oac.panel(_result(oac.COMPATIBLE,
+                                          additive=[_op("GET", "/api/o", 1)]), None))
+    assert "the cross-check did not run" in alone
+
+
+def test_the_panel_count_matches_what_oasdiff_reported():
+    """End to end: the number on the page is the number the binary emitted."""
+    if not HAVE_OASDIFF:
+        print(f"skip {SKIP_REASON}")
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        base, head = specs(Path(tmp))
+        rendered = compat(str(base), str(head), "--panel", "--no-cross-check")
+        assert rendered.returncode == 0, rendered.stderr
+        raw = subprocess.run([os.environ.get("OASDIFF_BIN", "oasdiff"), "changelog",
+                              str(base), str(head), "-f", "json"],
+                             capture_output=True, text=True)
+        entries = json.loads(raw.stdout.strip() or "[]")
+    assert f"{len(entries)} changes, none breaking" in _panel_text(rendered.stdout)
+
+
+def test_no_number_in_the_panel_is_typed_into_the_content_file():
+    """The regression this replaced: `"25 changes, none breaking"` sat in content.json.
+    Nothing in the generator may contain a literal count."""
+    source = COMPAT.read_text(encoding="utf-8")
+    body = source[source.index("def panel("):source.index("# ── the tool's markdown")]
+    # "0 changes" is allowed: it is the no-change state's own honest constant, and it is
+    # guarded by `state == NO_CHANGES`, not by somebody remembering to retype it.
+    assert not re.search(r"[1-9]\d* change", body), "a count is hardcoded in the panel"
 
 
 if __name__ == "__main__":

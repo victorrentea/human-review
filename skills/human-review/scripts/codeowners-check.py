@@ -44,12 +44,6 @@ import sys
 from pathlib import Path
 
 APPROVAL_REQUIRED, CLEAR, NO_FILE = "approval_required", "no_owners_touched", "no_codeowners"
-HEADLINE = {
-    APPROVAL_REQUIRED: "Warning: this pull request needs a code owner's approval",
-    CLEAR: "No code owner has to look at this",
-    NO_FILE: "This repository declares no code owners",
-}
-
 # Where hosts look, in the order GitHub resolves them. The first one that exists wins:
 # a repository with two of these has one that is being quietly ignored, and we say so.
 LOCATIONS = ("CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS", ".gitlab/CODEOWNERS")
@@ -269,31 +263,12 @@ def render(root: Path, data: dict) -> str:
         for owner in entry["owners"]:
             by_owner.setdefault(owner, []).append(entry)
 
-    if state == APPROVAL_REQUIRED:
-        n_owner = len(by_owner)
-        sub = (f"{len(blocking)} of the {plural(data['changed'], 'changed file')} "
-               f"{'is' if len(blocking) == 1 else 'are'} claimed in "
-               f"<code>{html.escape(data['codeowners'])}</code>, so this branch cannot merge "
-               f"until {n_owner} owner{'s' if n_owner != 1 else ''} "
-               f"{'each ' if n_owner != 1 else ''}approve"
-               f"{'' if n_owner != 1 else 's'} it.")
-    elif state == CLEAR:
-        sub = (f"None of the {plural(data['changed'], 'changed file')} matches a rule in "
-               f"<code>{html.escape(data['codeowners'])}</code>. Whoever normally reviews this "
-               "repository is enough — no owner is on the critical path.")
-    else:
-        sub = ("No <code>CODEOWNERS</code> file at any of the paths a host reads "
-               f"({', '.join(f'<code>{html.escape(p)}</code>' for p in LOCATIONS)}), so no path "
-               "in this repository is protected by one.")
-
     flag = {APPROVAL_REQUIRED: "&#128681; APPROVAL REQUIRED",
             CLEAR: "NO OWNER TOUCHED", NO_FILE: "NOT CONFIGURED"}[state]
     parts = [
         f'<div class="cow cow-{state}">',
         '<div class="cow-verdict">'
-        f'<span class="cow-seal">{flag}</span>'
-        f'<div><div class="cow-headline">{HEADLINE[state]}</div>'
-        f'<div class="cow-sub">{sub}</div></div></div>',
+        f'<span class="cow-seal">{flag}</span></div>',
     ]
 
     if data["shadowed"]:
@@ -362,8 +337,6 @@ CSS = """
             padding:.1rem .55rem; white-space:nowrap; background:#f0f0f4; color:#5d5d6b; }
 .cow-approval_required .cow-seal { background:#fdeaea; color:#8a1c1c; }
 .cow-no_owners_touched .cow-seal { background:#eef7ef; color:#245c30; }
-.cow-headline { font-weight:700; font-size:1rem; }
-.cow-sub { color:var(--muted); font-size:.86rem; line-height:1.6; }
 .cow-prov { color:var(--muted); font-size:.8rem; line-height:1.7; margin:.5rem 0 1rem; }
 .cow-kind { font:600 .82rem/1.6 inherit; text-transform:uppercase; letter-spacing:.06em;
             color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:.3rem;

@@ -44,6 +44,8 @@ shape as its siblings; `--css` prints the stylesheet it needs.
 Usage (from the repository root — the project is resolved from the CWD):
     openapi-compat.py --base origin/main --out .human-review/assets/openapi-compat.html
     openapi-compat.py --css > .human-review/assets/openapi-compat.css
+    openapi-compat.py --base origin/main --panel \
+        --out .human-review/assets/openapi-verdict.html   # the one-line verdict panel
     openapi-compat.py before.yaml after.yaml --state
     openapi-compat.py before.yaml after.yaml --no-oasdiff   # force the fallback
 """
@@ -548,6 +550,123 @@ def cross_check(state: str, ours: dict | None) -> str:
             f'<ul class="oac-reasons">{listed}</ul></div>')
 
 
+# ── the one line at the top of the API tab ────────────────────────────────────────
+# The first line of the tab is the only line every reviewer reads, so it is *generated*,
+# never typed into the content file. A count authored by hand is a count that is wrong on
+# the next commit and then says so with total confidence — which is precisely the failure
+# this whole report exists to prevent.
+#
+# Three states, three colours: nothing moved (grey, struck through), it moved and nothing
+# breaks (green), something breaks (red). The two differs disagreeing is a fourth
+# *situation*, not a fourth colour: a contested verdict is exactly as review-worthy as a
+# breaking one, and the single thing it certainly is not is "safe, checked by both". So it
+# renders red, and the clause that would have claimed agreement says the opposite instead.
+OASDIFF_URL = "https://github.com/oasdiff/oasdiff"
+JAVA_DIFF_URL = "https://github.com/OpenAPITools/openapi-diff"
+# Not "openapi-diff": with oasdiff installed the Java tool never runs, so naming it here
+# would credit a check that did not happen. The cross-check's other half is our sibling
+# script, and it is named as one.
+OURS_LABEL = "<code>openapi-diff.py</code>"
+
+PANEL_CSS = """<style>
+.apiverdict{display:flex;align-items:center;gap:.6rem;width:100%;box-sizing:border-box;
+ padding:.75rem 1.1rem;border-radius:8px;font-weight:600;font-size:1rem;
+ margin:.2rem 0 1.2rem;flex-wrap:wrap}
+.apiverdict .dot{width:.7rem;height:.7rem;border-radius:50%;background:currentColor;flex:none}
+.apiverdict .n{font-weight:400;opacity:.85;font-size:.94rem}
+.apiverdict a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.apiverdict code{font:600 .86em/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+/* The same two treatments as the score chip beside the page title (.titlescore v-good /
+   v-bad) and the tab dots — one palette on the page, not five. */
+.apiverdict.green{background:rgba(46,158,91,.16);color:#1f7a45}
+.apiverdict.red{background:rgba(215,38,61,.16);color:#d7263d}
+/* Nothing moved: the page's own code-bg/line/muted tokens and a line through the sentence,
+   so it reads as spent rather than as a verdict worth stopping on. The strike goes on the
+   text spans, not the flex container — decoration propagation into flex items is not
+   something to bet a state on. */
+.apiverdict.none{background:var(--code-bg);border:1px solid var(--line);color:var(--muted);
+ font-weight:500}
+.apiverdict.none .v,.apiverdict.none .n{text-decoration:line-through}
+@media (prefers-color-scheme:dark){
+ .apiverdict.green{color:#6fce93}
+ .apiverdict.red{color:#f0757f}}
+</style>"""
+
+
+def change_count(result: dict) -> int:
+    """Every difference the engine reported, in the currency the rows below are counted in.
+
+    An operation listed without itemised reasons counts as one. The fallback engine knows
+    *that* an operation moved without knowing in how many ways; letting it contribute zero
+    would print "0 changes" over a page full of rows.
+    """
+    n = 0
+    for group in ("breaks", "additive"):
+        for item in result.get(group) or []:
+            n += len(item.get("reasons") or []) or 1
+    return n + len(result.get("elsewhere") or []) + len(result.get("deprecated") or [])
+
+
+def breaking_count(result: dict) -> int:
+    return sum(len(b.get("reasons") or []) or 1 for b in result.get("breaks") or [])
+
+
+def engine_link(result: dict) -> str:
+    """Whichever differ actually produced this result — never both, they are alternatives."""
+    if result.get("source") == "oasdiff":
+        return f'<a href="{OASDIFF_URL}">oasdiff</a>'
+    return f'<a href="{JAVA_DIFF_URL}">OpenAPITools/openapi-diff</a>'
+
+
+def panel(result: dict, ours: dict | None) -> str:
+    """The verdict, the counts, and who checked it — in that order, on one line."""
+    state = result["state"]
+    engine = engine_link(result)
+    total = change_count(result)
+    n_break = breaking_count(result)
+    s = "" if total == 1 else "s"
+
+    they_break = state == INCOMPATIBLE
+    we_break = bool(ours and ours["breaking"])
+    disputed = ours is not None and we_break != they_break
+
+    checked = (f"checked by {engine} and {OURS_LABEL}" if ours is not None else
+               f"checked by {engine} alone — the cross-check did not run")
+
+    if disputed:
+        cls, verdict = "red", "Verdict disputed"
+        flagged, quiet = ((len(ours["breaking"]), OURS_LABEL), engine) if we_break \
+            else ((n_break, engine), OURS_LABEL)
+        counts = (f"{total} change{s}, {flagged[0]} breaking by {flagged[1]}, "
+                  f"none by {quiet}")
+        # The counts clause just named both tools; repeating them here only buys a
+        # second copy of the same link.
+        checked = "the two differs disagree — one of them is wrong about somebody's client"
+    elif state == INCOMPATIBLE:
+        cls = "red"
+        verdict = f"Breaking change{'' if n_break == 1 else 's'}"
+        counts = f"{total} change{s}, {n_break} breaking"
+    elif state == COMPATIBLE:
+        cls, verdict = "green", "Backwards compatible"
+        counts = f"{total} change{s}, none breaking"
+    else:
+        cls, verdict = "none", "No API changes"
+        # "No changes" is a claim about callers, not about bytes: the spec may well have
+        # moved. Saying "0 changes" flat over a reworded description is the same
+        # overstatement the seal below refuses to make.
+        counts = ("0 changes" if result.get("identical", True)
+                  else "0 changes a caller can see")
+
+    if not result.get("complete", True) and state != NO_CHANGES:
+        counts += " — a lower bound, <code>oasdiff</code> is not installed"
+
+    # The newline between the spans is not cosmetic: `gap` spaces them on screen, but a
+    # reader copying the line out gets "Backwards compatible· …" with the dot glued on.
+    return (f'{PANEL_CSS}\n<div class="apiverdict {cls}"><span class="dot"></span>'
+            f'<span class="v">{verdict}</span>\n'
+            f'<span class="n">· {counts} · {checked}</span></div>')
+
+
 # ── the tool's markdown, as HTML we control ───────────────────────────────────────
 def inline(text: str) -> str:
     out = html.escape(text)
@@ -698,6 +817,9 @@ def main(argv=None) -> int:
     ap.add_argument("--json", action="store_true", help="emit the flattened verdict as JSON")
     ap.add_argument("--state", action="store_true",
                     help="print only no_changes / compatible / incompatible")
+    ap.add_argument("--panel", action="store_true",
+                    help="emit only the one-line verdict panel for the top of the API tab "
+                         "(carries its own <style>, so it needs no extraCss entry)")
     ap.add_argument("--css", action="store_true", help="print the stylesheet this fragment needs")
     ap.add_argument("--jar", help="path to openapi-diff-cli-*-all.jar (default: fetch & cache)")
     ap.add_argument("--docker", action="store_true", help=f"run {DOCKER_IMAGE} instead of java")
@@ -734,10 +856,12 @@ def main(argv=None) -> int:
                     f"<code>{html.escape(base_ref[:8])}</code> against the working tree")
             if base_spec.returncode != 0 or not base_spec.stdout.strip():
                 # No spec at the base means no client compiled against one. Nothing to break.
-                frag = render({"state": NO_CHANGES, "breaks": [], "additive": [],
-                               "deprecated": [], "elsewhere": [], "complete": True}, None,
-                              pair + ". The spec did not exist at the merge-base, so there is "
-                              "no prior contract to break.", "")
+                fresh = {"state": NO_CHANGES, "breaks": [], "additive": [],
+                         "deprecated": [], "elsewhere": [], "complete": True}
+                frag = (panel(fresh, None) if args.panel else render(
+                    fresh, None,
+                    pair + ". The spec did not exist at the merge-base, so there is "
+                    "no prior contract to break.", ""))
                 return emit(args, frag, {"state": NO_CHANGES})
             before = tmpdir / "before.yaml"
             before.write_text(base_spec.stdout, encoding="utf-8")
@@ -786,7 +910,8 @@ def main(argv=None) -> int:
         return 0
 
     ours = None if args.no_cross_check else our_verdict(sibling_args)
-    frag = render(result, ours, provenance, changelog, before_spec, after_spec)
+    frag = (panel(result, ours) if args.panel
+            else render(result, ours, provenance, changelog, before_spec, after_spec))
     return emit(args, frag, result)
 
 

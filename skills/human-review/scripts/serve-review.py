@@ -24,11 +24,17 @@ Usage:
   serve-review.py .human-review --page review.html   # prints the page URL
   serve-review.py .human-review --stop
 """
-import argparse, functools, http.server, json, os, re, socket, socketserver, subprocess, sys, threading, time, urllib.parse, urllib.request
+import argparse, functools, http.server, json, os, re, shutil, socket, socketserver, subprocess, sys, threading, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 MARKER = "/__human_review__"
 OPEN = "/__open__"
+OPEN_DIFF = "/__open_diff__"
+
+# A ref, and nothing that could be a flag or a second argument. `git show` is invoked
+# without a shell, so this is not about quoting — it is about `--upload-pack=…` and
+# friends arriving from a query string.
+REF_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 
 # Everything the server will open must live under here — the repository the guide is
 # about. A loopback endpoint that opens any path in the editor is a wider door than this
@@ -45,33 +51,163 @@ def git_root(start):
         return None
 
 
-def open_in_editor(path, line):
-    """Land the reader in the class. Through the VS Code window that has this repo open
-    where the bridge is installed, and through the OS otherwise.
+def owning_windows(target: Path):
+    """The VS Code windows whose workspace folders contain `target`, best claim first.
 
-    The page cannot do this itself: its references are `vscode://file/...` links, and the
-    embedded browser's iframe is sandboxed under a `frame-src *` CSP, so a webview cannot
-    hand a custom scheme to the OS — the click does nothing whatever the anchor says. It
-    *can* fetch its own origin, which is how the request gets here."""
-    folder = ROOT.name if ROOT else None
+    Each window's extension host publishes {port, token} under ~/.walkie-talkie/ide/ and
+    answers /ping with the absolute paths of its workspace folders. We pick by longest
+    matching prefix, so a window opened on the checkout beats one opened on the directory
+    above it — the deeper folder is the more specific claim on the path.
+
+    Selecting by *name* (what this used to do) is the bug this replaces. A name is not an
+    address: two checkouts of the same project are both called `petclinic`, and handing a
+    file to the wrong one opens the right absolute path inside a window belonging to
+    another tree — where the `path:line` reference beside it, pasted into Quick Open,
+    resolves to the same relative path with different content. Nothing errors; the reader
+    just reads the wrong file.
+
+    A registry file is a claim, not a fact — a window that crashed never got to delete its
+    own. So an entry is trusted only once the process it names answers on its port with
+    our token. An entry whose port is *refused* is deleted, that being proof the window is
+    gone; a timeout proves nothing and deletes nothing, because unplugging a live window
+    from the bridge would cost it until its next activation."""
+    ranked = []
     for f in sorted((Path.home() / ".walkie-talkie" / "ide").glob("vscode-*.json")):
         try:
             entry = json.loads(f.read_text())
             ping = urllib.request.Request(
                 f"http://127.0.0.1:{entry['port']}/ping", headers={"x-relay-token": entry["token"]})
-            if json.load(urllib.request.urlopen(ping, timeout=2)).get("folder") != folder:
-                continue
-            req = urllib.request.Request(
-                f"http://127.0.0.1:{entry['port']}/open-file", method="POST",
-                data=json.dumps({"path": str(path), "line": line}).encode(),
-                headers={"x-relay-token": entry["token"], "Content-Type": "application/json"})
-            urllib.request.urlopen(req, timeout=5).read()
-            return "relay"
+            info = json.load(urllib.request.urlopen(ping, timeout=2))
+        except urllib.error.URLError as e:
+            if isinstance(e.reason, ConnectionRefusedError):
+                f.unlink(missing_ok=True)
+            continue
         except Exception:
             continue
-    # No bridge: hand it to the OS, which routes it to the last-active window.
+        if not info.get("ok") or info.get("app") != "vscode":
+            continue
+        # Older builds of the bridge only publish the first folder's *name*. Falling back
+        # to it keeps them working — worse routing, not none — while a current build wins
+        # on the prefix score below.
+        best = 0
+        for folder in info.get("folders") or []:
+            for spelling in (folder.get("path"), folder.get("realPath")):
+                # A checkout reached through a symlink is one tree under two names, and
+                # which one we hold is an accident of how the path was computed.
+                if not spelling:
+                    continue
+                root = Path(spelling)
+                if target == root or root in target.parents:
+                    best = max(best, len(str(root)))
+        if not best and not info.get("folders") and ROOT and info.get("folder") == ROOT.name:
+            best = 1
+        if best:
+            ranked.append((best, entry, info))
+    ranked.sort(key=lambda t: -t[0])
+    return [(e, i) for _, e, i in ranked]
+
+
+def open_in_editor(path, line):
+    """Land the reader in the class. Through the VS Code window that has this file's
+    folder open where the bridge is installed, and through the OS otherwise.
+
+    The page cannot do this itself: its references are `vscode://file/...` links, and the
+    embedded browser's iframe is sandboxed under a `frame-src *` CSP, so a webview cannot
+    hand a custom scheme to the OS — the click does nothing whatever the anchor says. It
+    *can* fetch its own origin, which is how the request gets here."""
+    target = Path(path)
+    try:
+        resolved = target.resolve()
+    except OSError:
+        resolved = target
+    for candidate in (target, resolved):
+        for entry, info in owning_windows(candidate):
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{entry['port']}/open-file", method="POST",
+                    # `focus`: showTextDocument moves the caret inside that window but
+                    # leaves the window itself behind the browser the click came from.
+                    # Measured — the file opened and the frontmost app never changed, so
+                    # the click read as a no-op and the file waited to be found by
+                    # accident. The bridge raises the window natively.
+                    data=json.dumps({"path": str(path), "line": line, "focus": True}).encode(),
+                    headers={"x-relay-token": entry["token"], "Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=5).read()
+                return "relay"
+            except Exception:
+                continue
+        if resolved == target:
+            break
+    # Nobody owns it, or the owner would not take it: hand it to the OS. VS Code 1.135
+    # routes `vscode://file/<abs>` to the window whose workspace contains the path and
+    # raises it — measured, across three windows on three checkouts of one project — so
+    # this is a good fallback, not a bad one. It degrades to the last-active window only
+    # when no window owns the path at all, which is also the one case nothing better
+    # exists.
     subprocess.run(["open", f"vscode://file/{path}:{line}:1"], capture_output=True)
     return "os"
+
+
+def code_cli():
+    """The `code` launcher, which is not on PATH in a GUI-launched terminal on macOS."""
+    found = shutil.which("code")
+    if found:
+        return found
+    mac = Path("/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code")
+    return str(mac) if mac.is_file() else None
+
+
+def open_diff(rel, base, served_root):
+    """Open `rel` as a diff — the file at `base` on the left, the working tree on the right.
+
+    Returns None on success, or the sentence to show the reader.
+
+    The before-side is written out of git rather than reconstructed: `git show <ref>:<path>`
+    or nothing. If the ref does not resolve, or the file did not exist in it, or the two
+    sides are identical, this refuses — a diff with an invented left half would be worse
+    than no diff, because it would look exactly like evidence.
+
+    It lands beside the report, *inside the repository*, and that is deliberate. VS Code
+    picks the window for a diff from the paths it is given; with the before-image in
+    /tmp only the right-hand file carries a workspace, while under the served directory
+    both sides do, so the window that owns this checkout wins outright. Named
+    `<stem>@<short><ext>` rather than `<name>@<short>` so the extension survives and the
+    left pane keeps its syntax highlighting — and so the editor tab reads
+    `packages@cb0988f5.puml ↔ packages.puml`, which says what is being compared."""
+    if ROOT is None:
+        return "This server is not attached to a repository"
+    if not REF_RE.match(base or ""):
+        return "Not a usable git ref"
+    target = (ROOT / rel).resolve()
+    try:
+        target.relative_to(ROOT.resolve())
+    except ValueError:
+        return "That file is outside the repository"
+    if not target.is_file():
+        return f"{Path(rel).name} is no longer in the working tree"
+    show = subprocess.run(["git", "-C", str(ROOT), "show", f"{base}:{rel}"],
+                          capture_output=True)
+    if show.returncode != 0:
+        return f"{Path(rel).name} does not exist at {base[:8]}"
+    if show.stdout == target.read_bytes():
+        return f"{Path(rel).name} is unchanged since {base[:8]}"
+    short = base[:8]
+    stem, ext = Path(rel).stem, Path(rel).suffix
+    before = Path(served_root) / ".diffbase" / short / Path(rel).parent / f"{stem}@{short}{ext}"
+    before.parent.mkdir(parents=True, exist_ok=True)
+    before.write_bytes(show.stdout)
+    cli = code_cli()
+    if not cli:
+        # No VS Code launcher: fall back to what every other reference on the page does
+        # rather than leaving the click silent. The reader loses the diff, not the file.
+        subprocess.run(["open", f"vscode://file/{target}:1:1"], capture_output=True)
+        return None
+    # Measured across four windows on three checkouts: with a *different* window raised
+    # first, `--diff` still opened in the one owning this checkout and brought it to the
+    # front. So this needs no window-routing of its own — unlike /open-file, whose single
+    # path leaves VS Code guessing.
+    subprocess.run([cli, "--diff", str(before), str(target)], capture_output=True)
+    return None
 
 
 def probe(port):
@@ -110,6 +246,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                "opens": Handler.opens}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path.split("?")[0] == OPEN_DIFF:
+            q = urllib.parse.parse_qs(self.path.partition("?")[2])
+            problem = open_diff(q.get("path", [""])[0], q.get("base", [""])[0], Handler.root)
+            if problem is None:
+                Handler.opens += 1
+                self.send_response(204)
+                self.end_headers()
+                return
+            # The reason travels back as the body, so the page can say *why* nothing
+            # opened instead of the generic shrug it would otherwise have to invent.
+            body = problem.encode()
+            self.send_response(404)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)

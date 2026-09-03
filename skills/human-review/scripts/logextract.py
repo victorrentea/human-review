@@ -140,6 +140,61 @@ rule:
         has: {field: name, pattern: $FNAME}
 """
 
+# --- pass 1h: the three declaration shapes a logged value can be traced back to ------ #
+# "Data flow to here", the syntactic half of it. A logged `vetId` is only interesting
+# once the reader can see where it came from, and that is a question about declarations:
+# the local that was assigned it, the parameter it arrived as, the field it was read
+# from. These three rules are the whole graph the walk-back in `origins_for()` walks —
+# there is no dataflow engine behind it and no model asked, so what it can follow is
+# exactly what these can see, and it stops rather than guesses everywhere else.
+
+RULES["local-decl"] = r"""
+id: local-decl
+language: java
+severity: hint
+message: local variable declared with an initialiser
+rule:
+  kind: local_variable_declaration
+  all:
+    - has: {field: type, pattern: $LTYPE}
+    - has:
+        field: declarator
+        all:
+          - has: {field: name, pattern: $LNAME}
+          - has: {field: value, pattern: $LVALUE}
+"""
+
+# A parameter is a *boundary*, not a hop: nothing before it is visible from inside the
+# method, so the walk shows the signature line and stops there. `catch_formal_parameter`
+# is the same story for the `e` in `log.error("…", e)`.
+RULES["param-decl"] = r"""
+id: param-decl
+language: java
+severity: hint
+message: method, lambda or catch parameter
+rule:
+  any:
+    - kind: formal_parameter
+    - kind: catch_formal_parameter
+    - kind: spread_parameter
+  has: {field: name, pattern: $PNAME}
+"""
+
+# Re-assignment after the declaration: `name = vet.name;` is where `name` actually comes
+# from at the log line, and quoting the declaration instead would be a lie by omission.
+RULES["assign"] = r"""
+id: assign
+language: java
+severity: hint
+message: assignment to an existing variable
+rule:
+  kind: assignment_expression
+  all:
+    - has: {field: left, pattern: $ALEFT}
+    - has: {field: right, pattern: $ARIGHT}
+"""
+
+
 # --- pass 1b: any declarator initialised from a logger factory --------------- #
 # Catches `var log = LoggerFactory.getLogger(..)`, `private final Logger x =
 # LogManager.getLogger()`, `Log l = LogFactory.getLog(..)`, Flogger, ...
@@ -348,6 +403,10 @@ class Hit:
     text: str            # exact matched expression
     method_start: int | None  # enclosing method/constructor, 1-based inclusive range —
     method_end: int | None    # None when no enclosing method resolved (e.g. a static initializer)
+    # "Data flow to here": one entry per hop back from an interpolated value to where it
+    # came from — `{line, name, kind, text}` — for the renderer to *quote* rather than
+    # paraphrase. Empty when every value is self-evident, or unresolvable, or capped out.
+    origins: list = field(default_factory=list)
 
 
 @dataclass
@@ -466,6 +525,16 @@ class Project:
         self.methods: dict[str, list[tuple[int, int]]] = defaultdict(list)
         # file -> [(line, name, type, declaration text)] for every field, any type
         self.all_fields: dict[str, list[tuple[int, str, str, str]]] = defaultdict(list)
+        # The three tables the origin walk reads. Kept flat and per-file rather than
+        # scoped into a symbol table: the walk already knows the enclosing method's line
+        # range, and filtering a short list by it is cheaper (and far less to get wrong)
+        # than building a second scope tree next to `classes`/`methods`.
+        # file -> [(line, name, initialiser text, whole declaration text)]
+        self.locals_: dict[str, list[tuple[int, str, str, str]]] = defaultdict(list)
+        # file -> [(line, name, right-hand side text)]
+        self.assigns: dict[str, list[tuple[int, str, str]]] = defaultdict(list)
+        # file -> [(line, name)]
+        self.params: dict[str, list[tuple[int, str]]] = defaultdict(list)
 
     def enclosing(self, f: str, line: int) -> str | None:
         chain = self.enclosing_chain(f, line)
@@ -584,6 +653,24 @@ def build_symbol_tables(matches: list[dict]) -> Project:
             if name:
                 p.all_fields[f].append((line, name, typ, m["text"]))
 
+        elif rid == "local-decl":
+            name, val = _mv(m, "LNAME"), _mv(m, "LVALUE")
+            if name and val is not None:
+                p.locals_[f].append((line, name, val.strip(), m["text"]))
+
+        elif rid == "assign":
+            lhs, rhs = _mv(m, "ALEFT"), _mv(m, "ARIGHT")
+            # `this.x = y` and `x = y` are the same story for the walk; `a[i] = y` and
+            # `o.f.g = y` are not something it can follow, so they are simply not recorded.
+            lhs = root_receiver(lhs or "") if lhs and PLAIN_TARGET_RE.match(lhs.strip()) else None
+            if lhs and rhs is not None:
+                p.assigns[f].append((line, lhs, rhs.strip()))
+
+        elif rid == "param-decl":
+            name = _mv(m, "PNAME")
+            if name:
+                p.params[f].append((line, name))
+
     # project-wide inheritance table: a *non-private* logger field is visible to
     # every subclass.  Spring's `protected final Log logger = LogFactory.getLog(
     # getClass());` on ~40 base classes is the whole reason this exists.
@@ -647,6 +734,148 @@ def _flavour_by_import(imps: set[str] | None, typ: str) -> str | None:
 def root_receiver(recv: str) -> str | None:
     m = ROOT_RECV_RE.match(recv)
     return m.group(1) if m else None
+
+
+# --------------------------------------------------------------------------- #
+# "Data flow to here" — the syntactic walk-back
+#
+# For each value a log statement interpolates, walk back to where it comes from and
+# report the *lines*, so the renderer can quote them instead of a paragraph describing
+# them. There is no dataflow engine here and no model is asked: the whole graph is the
+# `local-decl` / `assign` / `param-decl` / `any-field` matches above, which is why the
+# stop conditions are written down rather than tuned.
+#
+# It follows a chain, not one hop: `name` -> `var name = c.name` -> where `c` came from.
+# It stops at the first thing a reader can already read off the line it lands on:
+#
+#   * a **parameter** (method, lambda or catch) — nothing before it is visible here;
+#   * a **field** — the declaration is the answer;
+#   * an **initialiser that is not a bare name path** — a call (`repo.getById(id)`), a
+#     `new`, a literal, an expression. That line *is* the origin; chasing the receiver of
+#     a repository call leads to `private final VetRepository vetRepository` and tells
+#     the reader nothing they wanted;
+#   * anything it cannot resolve in this file at all — it shows nothing rather than guess.
+#
+# And two things are deliberately never shown, because showing everything is the same
+# failure as explaining everything: a `static final` **constant** (its value is a literal
+# a reader already knows), and a value that resolves to **nothing** (an enhanced-for loop
+# variable, a static import) — an obvious loop variable is not provenance.
+# --------------------------------------------------------------------------- #
+
+# How far one value may be chased. Three is the depth at which a chain still reads as a
+# story ("logged -> assigned from -> came in as"); past that the snippet stops being a
+# snippet.
+MAX_ORIGIN_HOPS = 3
+# …and the budget for the whole statement, across every value it interpolates, because
+# this tab lists every touched file and a three-line entry that becomes twenty is a worse
+# tab, not a better one. Values are walked in argument order and the walk stops when the
+# budget is gone.
+MAX_ORIGIN_LINES = 6
+
+# An expression the walk is willing to keep following: a bare name, or a name path
+# (`c.name`, `owner.address.city`). Anything with a `(`, a `new`, an operator or a
+# literal in it is a boundary — see the block comment above.
+NAME_PATH_RE = re.compile(r"^[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*$")
+# An assignment target simple enough to record: `x` or `this.x`, never `a[i]` or `o.f.g`.
+PLAIN_TARGET_RE = re.compile(r"^(?:this\s*\.\s*)?[A-Za-z_$][\w$]*$")
+JAVA_WORDS = {"this", "super", "true", "false", "null", "new", "class", "return"}
+
+
+def origin_root(expr: str) -> str | None:
+    """The identifier a logged expression is rooted at, or None if there is nothing to
+    trace: a literal, a keyword, or a Type-qualified static reference (`Instant.now()`).
+    An uppercase-initial root followed by a `.` is a class name by every Java convention
+    there is, and following it lands on an import, not on a value."""
+    expr = (expr or "").strip()
+    if not expr or expr[0] in '"\'' or expr[0].isdigit():
+        return None
+    m = ROOT_RECV_RE.match(expr)
+    if not m:
+        return None
+    name = m.group(1)
+    if name in JAVA_WORDS:
+        return None
+    rest = expr[m.end():].lstrip()
+    if name[:1].isupper() and rest.startswith("."):
+        return None
+    return name
+
+
+def origins_for(proj: "Project", f: str, line: int, args: Iterable[str],
+                method: tuple[int, int] | None,
+                max_hops: int = MAX_ORIGIN_HOPS,
+                max_lines: int = MAX_ORIGIN_LINES) -> list[dict]:
+    """Where each interpolated value comes from, as lines to quote — see the block
+    comment above for the stop conditions and why each one is where it is.
+
+    Returns one dict per hop, in walk order: `{line, name, kind, text}`, with `kind` in
+    `local` / `assign` (a hop the walk continued through) and `param` / `field` (a
+    boundary it stopped at). Lines inside the statement itself are dropped — the snippet
+    already shows those — and so is anything past `max_lines`."""
+    ms, me = method if method else (None, None)
+
+    def in_method(n: int) -> bool:
+        return ms is None or ms <= n <= me
+
+    fields = {name: (fline, text) for fline, name, _typ, text in proj.all_fields.get(f, [])}
+    out: list[dict] = []
+    lines_seen: set[int] = set()
+    visited: set[str] = set()
+
+    def budget_left() -> bool:
+        return len(lines_seen) < max_lines
+
+    for arg in args:
+        name = origin_root(arg)
+        hops = 0
+        while name and hops < max_hops and budget_left():
+            if name in visited:
+                break
+            visited.add(name)
+            hops += 1
+
+            # 1. nearest assignment or local declaration *before* the statement, inside
+            #    the enclosing method. Both are candidates and the later one wins: a
+            #    variable re-assigned after its declaration comes from the assignment.
+            cands: list[tuple[int, str, str, str]] = []
+            for aline, aname, rhs in proj.assigns.get(f, []):
+                if aname == name and aline < line and in_method(aline):
+                    cands.append((aline, "assign", rhs, ""))
+            for lline, lname, val, text in proj.locals_.get(f, []):
+                if lname == name and lline <= line and in_method(lline):
+                    cands.append((lline, "local", val, text))
+            if cands:
+                oline, kind, rhs, _text = max(cands, key=lambda t: t[0])
+                _record(out, lines_seen, oline, name, kind, rhs, line)
+                # Continue only through a bare name path; anything else is the boundary.
+                name = origin_root(rhs) if NAME_PATH_RE.match(rhs) else None
+                continue
+
+            # 2. a parameter of the enclosing method (or of the catch clause) — boundary.
+            plines = [pl for pl, pn in proj.params.get(f, []) if pn == name and in_method(pl)]
+            if plines:
+                _record(out, lines_seen, max(plines), name, "param", "", line)
+                break
+
+            # 3. a field — boundary, unless it is a `static final` constant, which is a
+            #    literal wearing a name and is left out entirely.
+            fld = fields.get(name)
+            if fld and not (re.search(r"\bstatic\b", fld[1].split("=")[0])
+                            and re.search(r"\bfinal\b", fld[1].split("=")[0])):
+                _record(out, lines_seen, fld[0], name, "field", "", line)
+            break
+
+    return out
+
+
+def _record(out: list, lines_seen: set, oline: int, name: str, kind: str,
+            rhs: str, stmt_line: int) -> None:
+    """Append one hop, unless its line is the statement's own (already on screen) or
+    already pulled in by an earlier value."""
+    if oline == stmt_line or oline in lines_seen:
+        return
+    lines_seen.add(oline)
+    out.append({"line": oline, "name": name, "kind": kind, "text": rhs})
 
 
 class SourceCache:
@@ -762,6 +991,7 @@ def extract(paths: list[str], root: str | None = None,
             raw_line=src.line(f, ln), text=chain,
             method_start=menc[0] if menc else None,
             method_end=menc[1] if menc else None,
+            origins=origins_for(proj, f, ln, rest if fmt is not None else args, menc),
         ))
 
     for m in matches:

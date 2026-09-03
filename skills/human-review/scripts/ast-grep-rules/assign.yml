@@ -1,0 +1,9 @@
+id: assign
+language: java
+severity: hint
+message: assignment to an existing variable
+rule:
+  kind: assignment_expression
+  all:
+    - has: {field: left, pattern: $ALEFT}
+    - has: {field: right, pattern: $ARIGHT}

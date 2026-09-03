@@ -16,7 +16,15 @@
 #   <name>.diff.puml   the merged delta
 #   <name>.diff.svg    rendered, when plantuml is on PATH
 #   <name>.diff.focus<N>.svg   the same delta, pruned to N hops around what changed
-#   MANIFEST.tsv       name / source / kind / status / diff.puml / svg / focus levels
+#   <name>.new.svg     the work-tree diagram, undiffed
+#   <name>.old.svg     the same diagram at the merge-base, undiffed
+#   MANIFEST.tsv       name / source / kind / status / diff.puml / svg / focus / new / old
+#
+# The undiffed pair exists because the delta is not always trustworthy. A sequence
+# diagram is generated from traces, and the ORDER of concurrent calls is not stable
+# between runs — so the differ reports moved messages that nobody moved. The reader
+# needs a one-click escape to the raw before/after to judge that for themselves; making
+# that cheap is worth two extra plantuml starts per diagram.
 #
 # Usage:
 #   scripts/puml-diff.sh [base-ref] [out-dir]
@@ -77,7 +85,27 @@ done < <(
 )
 
 MANIFEST="$OUT_DIR/MANIFEST.tsv"
-printf 'name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\n' > "$MANIFEST"
+printf 'name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\n' > "$MANIFEST"
+
+# Render one .puml as-is (no diff markup) to "$2.svg", echoing the basename on success.
+# PlantUML writes beside its input, so the source is copied in under the name we want
+# and the copy removed again — the .puml itself is either the work tree's or a git blob,
+# and a second copy of it in the output directory would be one more thing to go stale.
+render_plain() {
+  [ -s "$1" ] || return 1
+  command -v plantuml >/dev/null 2>&1 || return 1
+  cp "$1" "$2.puml"
+  plantuml -tsvg "$2.puml" >/dev/null 2>&1 || true
+  rm -f "$2.puml"
+  # PlantUML emits a valid .svg reading "Syntax Error?" rather than failing. Embedding
+  # that is worse than embedding nothing: it looks like a diagram, and it is the loudest
+  # thing on the page.
+  if [ ! -f "$2.svg" ] || grep -lq "Syntax Error" "$2.svg" 2>/dev/null; then
+    rm -f "$2.svg"
+    return 1
+  fi
+  basename "$2.svg"
+}
 
 # A sequence diagram is the one that declares lifelines and sends messages along
 # them; everything else in this repo is a structural snapshot.
@@ -195,8 +223,14 @@ for rel in "${CHANGED[@]}"; do
     done
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$label" "$rel" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" >> "$MANIFEST"
+  # The undiffed pair. An added diagram has no "old" and a deleted one has no "new",
+  # and both are normal: the control simply offers one word instead of two.
+  new_svg="$(render_plain "$new" "$OUT_DIR/$name.new" || true)"
+  old_svg="$(render_plain "$old" "$OUT_DIR/$name.old" || true)"
+
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$label" "$rel" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" \
+    "$new_svg" "$old_svg" >> "$MANIFEST"
   echo "[puml-diff] $rel ($kind, $status) -> $diff_puml" >&2
   count=$((count + 1))
 done

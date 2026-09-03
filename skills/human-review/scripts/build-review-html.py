@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import functools
 import hashlib
 import html
 import json
@@ -61,6 +62,12 @@ CSS = """
      they mark *added/removed*, a different signal than the page's own accent color, and
      must stay legible against whichever diagram surface they are drawn on. */
   --dgm-diff:#ff0000; --dgm-diff-seq:#d40000;
+  /* Which of the three pictures you are looking at, said by the frame around it rather
+     than by reading the buttons. Red is the delta's own red, taken by reference so the
+     border and the strokes inside it can never disagree; blue and green are the page's
+     link and "added" hues, which already mean "the current thing" and "the good side"
+     everywhere else on the page. */
+  --view-diff:var(--dgm-diff); --view-new:#1a4fa0; --view-old:#1f7a45;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg:#15151a; --fg:#e8e8ef; --muted:#9a9aa8; --line:#2c2c36; --card:#1d1d24;
@@ -76,7 +83,12 @@ CSS = """
           --dgm-bg:#1d1d24; --dgm-box:#26262e; --dgm-frame:#202028; --dgm-legend:#2c2c36;
           --dgm-line:#8f8fa0; --dgm-fg:#e8e8ef; --dgm-activation:#2e2e42;
           --dgm-muted:#9a9aa8; --dgm-link:#8ab4f8;
-          --dgm-diff:#ff6b6b; --dgm-diff-seq:#ff6b6b; }
+          --dgm-diff:#ff6b6b; --dgm-diff-seq:#ff6b6b;
+          /* --view-diff is not repeated: it is `var(--dgm-diff)`, so it follows the
+             line above on its own. These two are lifted to the same footing as the
+             page's dark link colour — #1a4fa0 and #1f7a45 are both under 3:1 on a
+             near-black ground, and a border nobody can see is not a signal. */
+          --view-new:#8ab4f8; --view-old:#6fce93; }
 }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
@@ -93,6 +105,41 @@ a { color:var(--link); }
 .chip b { color:var(--fg); font-weight:600; }
 a.chip-link { text-decoration:none; }
 a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
+/* The per-tab cost breakdown, hung off the one chip that already states the total.
+   A caret, not a hover hint: tab headers deliberately carry no tooltips, and a number
+   that only appears when a pointer happens to rest on the right pill is a number nobody
+   reads. Closed by default — the subject of this page is the diff, not what measuring it
+   cost — and one click from being a table you can scan in a single pass. */
+button.chip-cost { font:inherit; font-size:.82rem; cursor:pointer; }
+button.chip-cost .caret { display:inline-block; margin-left:.3rem; font-size:.62em;
+        opacity:.65; transform:rotate(0deg); transition:transform 120ms ease; }
+button.chip-cost:hover { border-color:var(--link); }
+button.chip-cost[aria-expanded="true"] { border-color:var(--link); background:var(--accent-soft); }
+button.chip-cost[aria-expanded="true"] .caret { transform:rotate(90deg); }
+/* `order` rather than markup position: the panel is emitted right after its own chip so
+   the two travel together, but a chip authored *after* the cost chip must not be shoved
+   onto a second line by a full-width block landing between them. */
+.costbreak { order:2; flex:1 0 100%; margin:.35rem 0 0; background:var(--card);
+             border:1px solid var(--line); border-radius:8px; padding:.75rem .95rem; }
+.costbreak[hidden] { display:none; }
+table.costtab { border-collapse:collapse; width:100%; font-size:.85rem; }
+table.costtab caption { caption-side:top; text-align:left; color:var(--muted);
+             font-size:.8rem; line-height:1.5; margin:0 0 .55rem; }
+table.costtab th { text-align:left; font:700 .68rem/1.7 inherit; letter-spacing:.09em;
+             text-transform:uppercase; color:var(--muted);
+             border-bottom:1px solid var(--line); padding:0 0 .2rem; }
+table.costtab td { padding:.24rem 0; border-bottom:1px solid var(--line); color:var(--fg); }
+table.costtab th + th, table.costtab td + td { text-align:right; padding-left:1.2rem;
+             font-variant-numeric:tabular-nums; white-space:nowrap; }
+table.costtab td:last-child { font-weight:600; }
+/* A measured zero is an answer, not a gap — the tab was produced by a script, so it cost
+   nothing. Muted and folded onto one row so the answer is on the page without a wall of
+   zeros burying the three rows that carry the actual spend. */
+table.costtab tr.costquiet td, table.costtab tr.costquiet td:last-child {
+             color:var(--muted); font-weight:400; }
+table.costtab tfoot td { border-bottom:0; }
+table.costtab tfoot tr.costtotal td { border-top:1px solid var(--line);
+             padding-top:.35rem; font-weight:700; }
 .added { color:#2e7d32; } .removed { color:#c62828; }
 @media (prefers-color-scheme: dark) { .added{color:#8fd39c} .removed{color:#f08a8a} }
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
@@ -108,6 +155,16 @@ figcaption { color:var(--muted); font-size:.86rem; }
 .srcref { display:inline-block; font:600 12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
           color:var(--link); text-decoration:none; border-bottom:1px dotted currentColor; margin-bottom:.5rem; }
 .srcref:hover { background:var(--accent-soft); }
+/* The diff handle belongs to the snippet *above* it — a fix is a change, and this opens
+   the change. Left to flow normally it lands in the gap between two cards, equidistant
+   from both, and reads as a stray line belonging to neither. Pulled up tight under its
+   own card and indented to that card's text column so it reads as its footer. Boxed
+   rather than underlined, because it does something different from every other srcref on
+   the page: those open a file, this opens a comparison. */
+a.srcref.diffref { display:inline-block; margin:-.35rem 0 1.15rem 1rem; padding:.1rem .5rem;
+          border:1px solid var(--line); border-bottom:1px solid var(--line); border-radius:5px;
+          background:var(--card); }
+a.srcref.diffref:hover { border-color:var(--link); background:var(--accent-soft); }
 pre.code { margin:0; background:var(--code-bg); border-radius:6px; padding:.6rem .2rem .6rem 0;
             overflow-x:auto; font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
 pre.code code { white-space:pre; }
@@ -128,20 +185,26 @@ pre.code code { white-space:pre; }
 .log-footer { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
               column-gap:.8rem; row-gap:.25rem; margin:.6rem 0 0; font-size:.85rem; }
 .log-footer .srcref { margin:0; }
-/* The provenance chain: where each logged value actually came from, one hop per line,
-   between the code and the verdict it supports. Compact on purpose -- "a few lines, not
-   a wall" -- numbered because the order of the hops is the story. */
-.chain-hops { margin:.5rem 0 0; padding-left:1.4rem; display:grid; gap:.25rem;
-              font-size:.8rem; color:var(--muted); }
-.chain-hops .srcref { font-size:11px; margin-bottom:0; }
-.chain-hops code { background:var(--code-bg); border-radius:4px; padding:.05rem .35rem;
-                    font-size:.85em; color:var(--fg); }
-.chain-hops .chain-note { color:var(--muted); }
-.chain-hops .chain-unresolved { color:#8a4b00; font-style:italic; }
-.chain-hops .chain-skip { font-style:italic; }
+/* One bullet per value the statement interpolates, under the verdict that sums them up.
+   The name is the argument as the source writes it, so a three-value statement can be
+   scanned for *which* value is the problem instead of read as one fused sentence. */
+.log-values { margin:.35rem 0 0; padding-left:1.15rem; display:grid; gap:.22rem;
+              font-size:.82rem; color:var(--muted); }
+.log-values code { background:var(--code-bg); border-radius:4px; padding:.05rem .3rem;
+                    font-size:.9em; color:var(--fg); }
+.log-values .val-unresolved { color:#8a4b00; font-style:italic; }
+/* The model-failure message: no per-value answers exist to bullet, so its one line sits
+   where they would have. */
+.log-note { margin:.35rem 0 0; font-size:.82rem; color:#8a4b00; font-style:italic; }
 @media (prefers-color-scheme: dark) {
-  .chain-hops .chain-unresolved { color:#f0b558; }
+  .log-values .val-unresolved { color:#f0b558; }
+  .log-note { color:#f0b558; }
 }
+/* Where a logged value came from is shown as *code* now -- the origin lines pulled into
+   the same <pre>, with their real line numbers and a "N lines not shown" row across the
+   jump (`extract-snippet.py` renders both; the muting lives in its own stylesheet). The
+   list of hops that used to sit here, retyping those same lines as prose with a note
+   attached, is gone -- it said nothing the block above it does not now say itself. */
 /* The verdict's trace is spelled out right here, in the same row -- not a hover-only
    tooltip, because it is the point of the mark. `.warn` is the loud "not evaluated"
    state (the model could not be reached) -- never styled like DOUBT's muted amber, so
@@ -196,6 +259,52 @@ pre.code code { white-space:pre; }
                 padding:0 .6rem; }
 .focus button:hover { border-color:var(--link); color:var(--fg); }
 .focus button[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:#fff; }
+/* Diff / New / Old, in two buttons and three states. The second button holds both
+   words and toggles between them, because a third pill would cost as much room as the
+   two that matter and this control has to fit above a sequence diagram as easily as
+   above a small one. Why it exists at all: a sequence diagram is generated from traces
+   whose call ORDER is not stable between runs, so the delta reports moves nobody made.
+   The reader needs a one-click escape to the raw before/after — this is it. */
+.dgmviews { margin-top:.7rem; }
+.dgmbar { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; margin-bottom:.5rem; }
+.dgmbar button { border:2px solid var(--line); background:var(--card); color:var(--muted);
+                 border-radius:999px; cursor:pointer; font:600 .78rem/1.75 inherit;
+                 padding:0 .75rem; }
+.dgmbar button:hover { border-color:currentColor; color:var(--fg); }
+.dgmbar .dgm-newold u { text-decoration:none; opacity:.55; }
+/* The active word, underlined inside the button — the only thing that separates the two
+   states the one button stands for. Thick and offset so it survives being read at a
+   glance next to the border. */
+.dgmbar .dgm-newold u.on { text-decoration:underline; text-decoration-thickness:2px;
+                           text-underline-offset:3px; opacity:1; }
+.dgmviews[data-state="diff"] .dgm-diff { background:var(--view-diff); border-color:var(--view-diff); color:#fff; }
+.dgmviews[data-state="new"] .dgm-newold { background:var(--view-new); border-color:var(--view-new); color:#fff; }
+.dgmviews[data-state="old"] .dgm-newold { background:var(--view-old); border-color:var(--view-old); color:#fff; }
+/* The frame. Deliberately loud: it is meant to be read peripherally, while the eye is
+   still on the picture, so nobody argues with a diagram they only think is the delta. */
+.dgmpane { border:5px solid var(--line); border-radius:8px; }
+.dgmpane[hidden] { display:none; }
+.dgmviews[data-state="diff"] .dgmpane { border-color:var(--view-diff); }
+.dgmviews[data-state="new"] .dgmpane { border-color:var(--view-new); }
+.dgmviews[data-state="old"] .dgmpane { border-color:var(--view-old); }
+.dgmpane > .svgbox { margin-top:0; border-radius:3px; }
+.dgmpane > .focus { margin:.5rem .6rem 0; }
+/* The header is a second, larger hit area for the same New/Old toggle — a sequence
+   diagram is tall, and reaching back up to a pill after scrolling is the friction this
+   removes. The BODY is deliberately not clickable: a stray click while scrolling or
+   selecting must never swap the picture out from under the reader.
+   Keyboard users get the two real buttons; the header is not focusable because it
+   already contains a link, and a focusable control wrapping a link is a worse trade. */
+.diagram.dgm-toggles .head { cursor:pointer; border-radius:6px; margin:-.25rem -.4rem .25rem;
+                             padding:.25rem .4rem; transition:background .12s; }
+.diagram.dgm-toggles .head:hover { background:var(--code-bg); }
+/* The literal character, never the CSS hex escape for it. This stylesheet is a plain
+   (non-raw) Python string, so a backslash-two-one-nine-four is read as an octal escape
+   by Python and eaten before CSS ever sees it: the arrow shipped as the text "94" on
+   every diagram header until someone looked. */
+.diagram.dgm-toggles .head b::after { content:"↔"; margin-left:.45rem; font-weight:400;
+                                      color:var(--muted); font-size:.8em; }
+.diagram.dgm-toggles .head:hover b::after { color:var(--fg); }
 /* Progressive disclosure: the diagram arrives simplified, and an arrow that has more
     to say is clickable. The hit area is a transparent rect the script lays under each
     such arrow, so the whole band — label, line, marker — answers to one click. */
@@ -527,6 +636,54 @@ FOCUS_JS = """<script>
 })();
 </script>"""
 
+DGM_VIEWS_JS = """<script>
+// Diff / New / Old. Delegated on `document` rather than bound per widget, so a
+// `.dgmviews` written by hand into a section body (the conceptual model is one) picks
+// up the identical behaviour with no registration step — one component, two callers.
+(function () {
+  function show(views, state) {
+    views.setAttribute('data-state', state);
+    views.querySelectorAll(':scope > .dgmpane').forEach(function (pane) {
+      pane.hidden = pane.getAttribute('data-view') !== state;
+    });
+    var pair = views.querySelector('.dgm-newold');
+    if (pair) {
+      pair.querySelectorAll('u[data-view]').forEach(function (word) {
+        word.classList.toggle('on', word.getAttribute('data-view') === state);
+      });
+    }
+    views.querySelectorAll('.dgmbar button[data-go]').forEach(function (b) {
+      var go = b.getAttribute('data-go');
+      b.setAttribute('aria-pressed',
+        String(go === 'diff' ? state === 'diff' : state !== 'diff'));
+    });
+  }
+  // From the delta, the first click lands on New; from New it lands on Old, and back.
+  // Two words, one button, and the same answer whichever control you reached for.
+  function flip(views) {
+    if (!views) return;
+    var has = function (v) { return !!views.querySelector(':scope > .dgmpane[data-view="' + v + '"]'); };
+    var now = views.getAttribute('data-state');
+    var next = now === 'new' ? 'old' : 'new';
+    if (!has(next)) next = next === 'new' ? 'old' : 'new';
+    if (has(next)) show(views, next);
+  }
+  document.addEventListener('click', function (ev) {
+    var button = ev.target.closest('.dgmbar button[data-go]');
+    if (button) {
+      var views = button.closest('.dgmviews');
+      if (button.getAttribute('data-go') === 'diff') show(views, 'diff');
+      else flip(views);
+      return;
+    }
+    // The header, but never a link inside it: the source path opens an editor.
+    var head = ev.target.closest('.diagram.dgm-toggles > .head');
+    if (head && !ev.target.closest('a')) flip(head.parentElement.querySelector('.dgmviews'));
+  });
+})();
+</script>"""
+
+
 TIP_JS = """<script>
 // One tooltip for the whole page. The native `title` is unstyleable, unresizable and
 // waits ~500ms — long enough that a reviewer reads the icon, gives up, and moves on.
@@ -595,6 +752,30 @@ TIP_JS = """<script>
   document.addEventListener('touchstart', hide, {passive: true});
   window.addEventListener('scroll', hide, true);   // a fixed bubble would float away
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') hide(); });
+})();
+</script>"""
+
+
+COST_JS = """<script>
+// The aggregate cost chip is a disclosure button: it opens the per-tab breakdown that
+// sits directly after it in the scope bar. Deliberately not a tooltip — the tab strip
+// carries no hover hints by design, and a decomposition is something you scan, not
+// something you discover one pill at a time. Escape closes it, like every other
+// transient surface on this page.
+(function () {
+  var btn = document.querySelector('button.chip-cost');
+  var panel = btn && document.getElementById(btn.getAttribute('aria-controls'));
+  if (!btn || !panel) return;                 // no breakdown was emitted: nothing to open
+  function set(open) {
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    panel.hidden = !open;
+  }
+  btn.addEventListener('click', function () {
+    set(btn.getAttribute('aria-expanded') !== 'true');
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') set(false);
+  });
 })();
 </script>"""
 
@@ -796,6 +977,22 @@ EDITOR_JS = r"""<script>
     var link = ev.target.closest && ev.target.closest('a[href^="vscode:"]');
     if (!link || ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
     ev.preventDefault();
+    // A fix is a change, so the reference to it opens as a change. Only the served path
+    // can do that — the diff needs the *before* file materialised out of git, which is
+    // work no page can do for itself. Everywhere else this link keeps the href it was
+    // given, which is the same `vscode://file/…` every other reference carries, so the
+    // worst case is today's behaviour (the file, at the first differing line) and never
+    // a dead custom URL on a machine without the helper.
+    var base = link.getAttribute('data-diff-base');
+    var dpath = link.getAttribute('data-diff-path');
+    if (SERVED && base && dpath) {
+      fetch('/__open_diff__?path=' + encodeURIComponent(dpath) + '&base=' + encodeURIComponent(base))
+        .then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { flash(t || 'Could not open the diff'); });
+        })
+        .catch(function () { flash('The review server is no longer running'); });
+      return;
+    }
     var ref2 = SERVED && parse(link.getAttribute('href'));
     if (ref2) {
       fetch('/__open__?path=' + encodeURIComponent(ref2.path) + '&line=' + ref2.line)
@@ -1068,8 +1265,65 @@ SNIPPET_TOKEN = re.compile(
 )
 
 
+# `{{difflink:<repo-relative path>@<ref>}}` — the fix as a *change*, not as a result.
+# A snippet shows the code that is there now, which is the answer to "what does it say"
+# and not to "what did you do": the reader has to imagine the delta. This opens the real
+# before/after in the editor instead.
+DIFF_TOKEN = re.compile(r"\{\{difflink:(?P<path>[^|}@]+)@(?P<base>[0-9a-fA-F]{7,40})\}\}")
+
+
+def diff_link_html(rel: str, base: str, root: Path) -> str:
+    """A link that opens `<rel>` as a diff: the file at `base` on the left, the working
+    tree on the right.
+
+    **Emitted only when the before-side is real.** The ref has to resolve, the file has to
+    exist in it, and the two sides have to actually differ. A diff whose left half is a
+    guess would be this page telling a confident lie about history — the exact failure it
+    exists to prevent — so a base that is missing, unreadable, or identical to the working
+    tree drops the link and says which on stderr. No link is strictly better than a wrong
+    one here; the snippet beside it still stands on its own.
+
+    The `href` is the ordinary `vscode://file/…` every other reference on this page emits,
+    aimed at the first line that actually differs. That is the whole portability story: a
+    reader with none of this installed, or reading the file off disk, gets today's
+    behaviour — the file, at the interesting line — rather than a dead custom URL. The
+    upgrade to a real diff happens in the click handler, and only where a server is
+    running that can perform it."""
+    src = root / rel
+    if not src.is_file():
+        print(f"[review] difflink: no file at {rel} — link dropped", file=sys.stderr)
+        return ""
+    show = subprocess.run(["git", "-C", str(root), "show", f"{base}:{rel}"],
+                          capture_output=True)
+    if show.returncode != 0:
+        print(f"[review] difflink: {rel} does not exist at {base} "
+              f"({show.stderr.decode(errors='replace').strip()}) — link dropped, because a "
+              "diff needs a before-state that was actually recorded", file=sys.stderr)
+        return ""
+    before, after = show.stdout, src.read_bytes()
+    if before == after:
+        print(f"[review] difflink: {rel} is identical at {base} and in the working tree — "
+              "link dropped rather than opening an empty diff", file=sys.stderr)
+        return ""
+    # The first line that differs, so the fallback (and the diff itself) opens where the
+    # change is instead of at the top of a file the reader then has to scan.
+    b_lines, a_lines = before.split(b"\n"), after.split(b"\n")
+    line = next((i + 1 for i, (x, y) in enumerate(zip(b_lines, a_lines)) if x != y),
+                min(len(b_lines), len(a_lines)) + 1)
+    short = base[:8]
+    return (
+        f'<a class="srcref diffref" href="vscode://file/{src.resolve()}:{line}:1"'
+        f' data-diff-path="{html.escape(rel)}" data-diff-base="{html.escape(base)}"'
+        f' data-tip="Open this fix as a diff — {short} on the left, the working tree on'
+        f' the right">&#8646; diff vs {html.escape(short)}</a>'
+    )
+
+
 def expand_snippets(text: str, root: Path) -> str:
     """Let prose interleave with code: `{{snippet:path:12-14|caption}}` inside any body."""
+    text = DIFF_TOKEN.sub(
+        lambda m: diff_link_html(m["path"].strip(), m["base"].strip(), root), text
+    )
     return SNIPPET_TOKEN.sub(
         lambda m: snippet_html(m["ref"].strip(), (m["caption"] or "").strip() or None, root), text
     )
@@ -1246,6 +1500,61 @@ def read_manifest(path: Path):
         if line.strip():
             rows.append(dict(zip(header, line.split("\t"))))
     return rows
+
+
+VIEW_WORDS = {"new": "New", "old": "Old"}
+
+
+def dgm_views_html(panes) -> str:
+    """The Diff / New-Old control and its panes — the ONE implementation of it.
+
+    `panes` is an ordered list of `(view, inner-html)` with `"diff"` first. Three states
+    off two buttons: the second holds both words and toggles between them, with the live
+    one underlined, because a third pill costs as much room as the two that carry the
+    argument and this control has to sit above a tall sequence diagram as comfortably as
+    above a small structural one.
+
+    Callers: `render_diagrams` below, for every PlantUML delta, and the conceptual-model
+    section, whose markup is generated by calling this. Behaviour and styling live in
+    `DGM_VIEWS_JS` / the stylesheet and are delegated off `document`, so hand-written
+    markup in a section body is driven by the same code as generated markup — a second
+    implementation of this would drift within a week.
+    """
+    pair = [v for v, _ in panes if v in VIEW_WORDS]
+    # Nothing to switch to: a lone "Diff" button is a control that does nothing, and a
+    # frame colour-coding one state is a legend for a single entry. Emit the picture.
+    if not pair:
+        return "".join(body for _, body in panes)
+    buttons = ['<button type="button" class="dgm-diff" data-go="diff" aria-pressed="true" '
+               'data-tip="the delta &mdash; what this branch changed, marked in red">Diff</button>']
+    if pair:
+        buttons.append(
+            '<button type="button" class="dgm-newold" data-go="newold" aria-pressed="false" '
+            'data-tip="the diagram itself, undiffed. Click again to swap sides. '
+            'Worth reaching for whenever the delta looks wrong: a generated sequence '
+            'diagram reorders concurrent calls between runs, and the differ reports that '
+            'as a change.">'
+            + "/".join(f'<u data-view="{v}">{VIEW_WORDS[v]}</u>' for v in pair)
+            + "</button>")
+    panels = "".join(
+        f'<div class="dgmpane" data-view="{v}"{"" if v == "diff" else " hidden"}>{body}</div>'
+        for v, body in panes)
+    return ('<div class="dgmviews" data-state="diff"><div class="dgmbar">'
+            + "".join(buttons) + "</div>" + panels + "</div>")
+
+
+def _diagram_views(row, assets: Path, full_svg: Path, root: Path):
+    """One diagram's panes: the delta (with its focus chooser inside it) plus whichever
+    of the undiffed pair `puml-diff.sh` managed to render. Returns the markup and whether
+    a New/Old pair exists — the header only advertises itself as a toggle when it does."""
+    panes = [("diff", _focus_views(row, assets, full_svg, root))]
+    for view, column in (("new", "new_svg"), ("old", "old_svg")):
+        name = (row.get(column) or "").strip()
+        if name and (assets / name).is_file():
+            panes.append((view, f'<div class="svgbox">{inline_svg(assets / name, root)}</div>'))
+    if len(panes) == 1:
+        return panes[0][1], False
+    return dgm_views_html(panes), True
 
 
 def _pretty(name: str) -> str:
@@ -1446,13 +1755,13 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
     for r in rows:
         note = notes.get(r["name"], "")
         svg_rel = manifest.parent / r["svg"] if r.get("svg") else None
-        body = (
-            _focus_views(r, manifest.parent, svg_rel, root)
-            if svg_rel and svg_rel.is_file()
-            else f'<p class="sub">not rendered — see <code>{html.escape(r["diff_puml"])}</code></p>'
-        )
+        if svg_rel and svg_rel.is_file():
+            body, toggles = _diagram_views(r, manifest.parent, svg_rel, root)
+        else:
+            body, toggles = (f'<p class="sub">not rendered — see '
+                             f'<code>{html.escape(r["diff_puml"])}</code></p>', False)
         parts.append(
-            f'<div class="diagram">'
+            f'<div class="diagram{" dgm-toggles" if toggles else ""}">'
             f'<div class="head"><b>{html.escape(_pretty(r["name"]))}</b>'
             # A badge earns its place by saying something surprising. "modified" is what
             # a diagram in a delta gallery always is, and "structural" is legible from the
@@ -1860,29 +2169,49 @@ PRIVACY_MARK = {
     "error": ("⚠️", "NOT EVALUATED", "warn"),
 }
 
+# No `chain` field any more. Asking the model where a value came from, and then
+# rendering its answer as a list of `file:line` + the source line, was a paraphrase of
+# code standing where the code could have stood. `logextract.py` walks that back
+# syntactically now and the snippet quotes the real lines, so the only thing left for
+# the model is the part no line of Java says out loud: whether the value is personal
+# data. `trace` is that, in one clause.
+# One clause per *value*, not one sentence per statement. A statement that logs three
+# things and gets one fused sentence makes the reader do the un-fusing, and the thing
+# they are trying to find out — which of the three carried the risk — is exactly what
+# the fusing destroyed. So the model answers per value, keyed by the argument as it is
+# written in the source, and the page renders one bullet per logged value.
 VERDICT_SCHEMA = {
     "type": "object",
     "properties": {
         "verdict": {"type": "string", "enum": ["SAFE", "DOUBT", "PRIVACY"]},
-        "trace": {"type": "string"},
-        "chain": {
+        "values": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "resolved": {"type": "boolean"},
-                    "file": {"type": "string"},
-                    "line": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "verdict": {"type": "string", "enum": ["SAFE", "DOUBT", "PRIVACY"]},
                     "note": {"type": "string"},
                 },
-                "required": ["resolved", "note"],
+                "required": ["name", "verdict", "note"],
                 "additionalProperties": False,
             },
         },
     },
-    "required": ["verdict", "trace", "chain"],
+    "required": ["verdict", "values"],
     "additionalProperties": False,
 }
+
+# SAFE < DOUBT < PRIVACY. The headline verdict is the worst of what the bullets say and
+# what the model called the statement overall — never better than its own worst bullet,
+# which is the one way a per-value answer could have made the page *less* honest than
+# the single sentence it replaced.
+VERDICT_RANK = {"safe": 0, "doubt": 1, "privacy": 2}
+
+
+def _worst_verdict(*verdicts: str) -> str:
+    real = [v for v in verdicts if v in VERDICT_RANK]
+    return max(real, key=lambda v: VERDICT_RANK[v]) if real else "doubt"
 
 VERDICT_SYSTEM_PROMPT = (
     "You are a precise static-analysis assistant embedded in a code review build script. "
@@ -1891,20 +2220,33 @@ VERDICT_SYSTEM_PROMPT = (
     "it executes, could write personal data (GDPR-relevant: a name, an email address, a "
     "phone number, a postal address, a government ID, free text about a person, or "
     "similar) to a log aggregator kept for months.\n\n"
-    "For each interpolated value, trace its provenance as a chain of hops: where it is "
-    "declared or assigned and, if that right-hand side is itself another variable, "
-    "continue from there. Stop a chain the moment it reaches something self-evident: a "
-    "method parameter with a declared type, a literal, a field declaration, or a call "
-    "whose return type settles the question. Report the full chain you found -- do not "
-    "shorten it yourself, the page decides how much of it to show.\n\n"
-    "Every hop you report must cite a file and a line number that appears in the context "
-    "you were given -- you have no visibility beyond it, so never invent a location or "
-    "guess one outside what was shown to you. If you cannot resolve a hop with what you "
-    "were given, mark that hop `resolved: false`, explain why in its `note`, omit "
-    "`file`/`line` for it, and the verdict must be DOUBT -- never guess SAFE past an "
-    "unresolved hop. A statement whose arguments are already self-evident (an int "
-    "parameter, say) needs no chain at all: report an empty `chain` and put the one "
-    "clause of reasoning in `trace`.\n\n"
+    "Trace each interpolated value through the source you were given: where it is "
+    "declared or assigned, and onward if that right-hand side is itself another "
+    "variable. If you cannot resolve a value with what you were given, its verdict is "
+    "DOUBT -- never guess SAFE past a value you could not follow.\n\n"
+    "Answer per VALUE, not per statement. Return one entry in `values` for EVERY value "
+    "the statement interpolates -- exactly those, no more and no fewer -- in the order "
+    "they appear in the call. Set each entry's `name` to the argument EXACTLY as it is "
+    "written in the source (`vetId`, `owner.getName()`), so the page can line your "
+    "answer up with the call; do not rename, shorten or paraphrase it. A statement that "
+    "interpolates nothing gets an empty `values` list. The top-level `verdict` is the "
+    "worst of the individual ones.\n\n"
+    "The page already shows the reader the statement AND the lines each value came "
+    "from, quoted verbatim from the file. So a `note` must not retell any of that: no "
+    "file names, no line numbers, no restating a declaration the reader is looking at, "
+    "no naming the enclosing method, no repeating the value's own name (the bullet is "
+    "already labelled with it), and no restating the verdict (`not personal data`, "
+    "`safe`, `a privacy risk` -- the bullet already carries its own mark). Give only "
+    "what the code cannot say for itself: WHAT that value actually holds, as ONE noun "
+    "phrase of at most 15 words, no trailing full stop.\n"
+    "Good: `{\"name\": \"vetId\", \"verdict\": \"SAFE\", "
+    "\"note\": \"just a numeric vet database id\"}`.\n"
+    "Good: `{\"name\": \"owner.getName()\", \"verdict\": \"PRIVACY\", "
+    "\"note\": \"the owner's full name, straight into the log\"}`.\n"
+    "Bad (restates the verdict): `\"note\": \"a numeric id, not personal data\"`.\n"
+    "Bad: `{\"name\": \"vetId\", \"note\": \"vetId is the declared Integer "
+    "parameter of resolveVet(Integer vetId) (VisitRestController.java:89), a numeric "
+    "database identifier passed straight into the log call...\"}`.\n\n"
     "Respond only through the given JSON schema."
 )
 
@@ -1913,7 +2255,7 @@ def _statement_context(h: dict) -> str:
     """Enough source for a model to trace every interpolated argument: the enclosing
     method (`logextract.py` resolves its range structurally, the same AST pass that
     finds the statement itself) so parameters and locals are both visible, plus the
-    class's field declarations (numbered, so a field-rooted chain can cite a real line)
+    class's field declarations (numbered, so a field-rooted value can be placed)
     for a value that turns out to come from `this`. Never the whole file — a class with
     forty methods is forty methods of noise around the one that matters — and never just
     the statement alone, which is the version of this feature that cannot tell a
@@ -1943,8 +2285,9 @@ def _verdict_prompt(h: dict, context: str) -> str:
     return (
         f"Logging statement ({h['file']}:{h['line']}):\n    {h['text']}\n\n"
         f"{context}\n\n"
-        "Which value(s) does this statement log, trace each one's provenance as a chain "
-        "of hops back to something self-evident, and give your verdict."
+        "Which value(s) does this statement log, where does each come from, and is any "
+        "of it personal data? Give one entry per interpolated value, named exactly as "
+        "the argument is written above, plus the statement's overall verdict."
     )
 
 
@@ -1957,14 +2300,13 @@ def _claude_bin() -> str | None:
 
 
 def _call_privacy_model(prompt: str) -> dict:
-    """One live model call. Returns `{"verdict","trace","chain","cost_usd"}` on success,
-    or raises `RuntimeError` with a message written to go straight on the page — a
-    missing binary, a non-zero exit, a timeout, or a response that does not match the
-    schema. Never returns a guessed verdict; the caller turns any exception here into
-    the loud `error` state, not a fallback answer. `chain` is validated only for shape
-    here (a list of `{resolved, note, file?, line?}`) — whether a *resolved* hop's cited
-    line actually exists is the renderer's job, against the working tree at render time,
-    not this function's."""
+    """One live model call. Returns `{"verdict","values","cost_usd"}` on success, or
+    raises `RuntimeError` with a message written to go straight on the page — a missing
+    binary, a non-zero exit, a timeout, or a response that does not match the schema.
+    Never returns a guessed verdict; the caller turns any exception here into the loud
+    `error` state, not a fallback answer. `values` is validated for *shape* only —
+    whether it actually covers the values the statement logs is decided against
+    `logextract.py`'s argument list at render time, not against the model's word."""
     claude_bin = _claude_bin()
     if not claude_bin:
         raise RuntimeError("the `claude` CLI is not on PATH (set $CLAUDE_BIN to point at it)")
@@ -1979,23 +2321,36 @@ def _call_privacy_model(prompt: str) -> dict:
         raise RuntimeError("the model call timed out")
     except OSError as e:
         raise RuntimeError(f"could not run `claude`: {e}")
-    if proc.returncode != 0:
-        raise RuntimeError(f"the model call exited {proc.returncode}: "
-                           f"{proc.stderr.strip()[-300:]}")
+    # The answer decides, not the exit code. `claude -p --json-schema --max-turns 1`
+    # stops on the structured-output tool call and can exit non-zero while stdout holds
+    # a complete, schema-conforming, already-paid-for response (`is_error: false`,
+    # `subtype: "success"`). Reading the exit code first threw that answer away and put
+    # the loud "the model could not be reached" on a page whose model *had* been
+    # reached — the one state that is supposed to mean nobody was ever asked. So parse
+    # first, and let a bad exit only colour the message when the payload is unusable
+    # too. Nothing here is loosened: an unparsable body, `is_error`, or a response that
+    # misses the schema still raises, and no verdict is ever guessed.
+    exited = (f" (the CLI also exited {proc.returncode}"
+              + (f": {proc.stderr.strip()[-200:]}" if proc.stderr.strip() else "")
+              + ")") if proc.returncode != 0 else ""
     try:
         payload = json.loads(proc.stdout)
     except json.JSONDecodeError:
-        raise RuntimeError("the model call returned unparsable output")
+        raise RuntimeError(f"the model call returned unparsable output{exited}")
     if payload.get("is_error"):
-        raise RuntimeError(f"the model call failed: {str(payload.get('result'))[:300]}")
+        raise RuntimeError(f"the model call failed: {str(payload.get('result'))[:300]}{exited}")
     out = payload.get("structured_output")
-    chain = out.get("chain") if isinstance(out, dict) else None
+    values = out.get("values") if isinstance(out, dict) else None
     if (not isinstance(out, dict) or out.get("verdict") not in ("SAFE", "DOUBT", "PRIVACY")
-            or not out.get("trace") or not isinstance(chain, list)
-            or not all(isinstance(hop, dict) and "resolved" in hop and "note" in hop
-                       for hop in chain)):
-        raise RuntimeError("the model's response did not match the expected verdict schema")
-    return {"verdict": out["verdict"].lower(), "trace": out["trace"], "chain": chain,
+            or not isinstance(values, list)
+            or not all(isinstance(v, dict) and v.get("name") and v.get("note")
+                       and v.get("verdict") in ("SAFE", "DOUBT", "PRIVACY")
+                       for v in values)):
+        raise RuntimeError("the model's response did not match the expected verdict "
+                           f"schema{exited}")
+    return {"verdict": out["verdict"].lower(),
+            "values": [{"name": v["name"], "verdict": v["verdict"].lower(),
+                        "note": v["note"]} for v in values],
             "cost_usd": payload.get("total_cost_usd") or 0.0}
 
 
@@ -2020,12 +2375,17 @@ def _save_verdict_cache(root: Path, cache: dict) -> None:
 
 
 def privacy_verdict(h: dict, root: Path, cache: dict, call=None) -> dict:
-    """SAFE / DOUBT / PRIVACY / error, with a trace naming what was resolved — a live
+    """SAFE / DOUBT / PRIVACY / error, with one clause per interpolated value — a live
     model call over the statement's enclosing method, cached by a hash of exactly what
     was sent (the statement plus its context) so a re-run on unchanged code neither
     flips the answer nor pays for it twice. `cache` is loaded once by the caller and
     mutated here; the file is rewritten on every new entry, not batched, so a run that
     dies partway through does not lose the calls it already paid for.
+
+    The key hashes the system prompt alongside the statement and its context, so an edit
+    to what the model is *asked* invalidates the cache the same way an edit to the code
+    does — a shortened `trace` instruction that kept serving the old paragraph out of
+    cache would be a silent no-op.
 
     `call` defaults to `None`, resolved to `_call_privacy_model` *inside* the body
     rather than as `def ...(call=_call_privacy_model)` — a default bound at def-time
@@ -2035,91 +2395,146 @@ def privacy_verdict(h: dict, root: Path, cache: dict, call=None) -> dict:
     patch to actually take."""
     call = call or _call_privacy_model
     context = _statement_context(h)
-    key = hashlib.sha256((h["text"] + "\n" + context).encode("utf-8")).hexdigest()
+    key = hashlib.sha256(
+        (VERDICT_SYSTEM_PROMPT + "\n" + h["text"] + "\n" + context).encode("utf-8")
+    ).hexdigest()
     cached = cache.get(key)
     if cached:
         return {**cached, "cached": True, "cost_usd": 0.0}
     try:
         result = call(_verdict_prompt(h, context))
     except RuntimeError as e:
-        return {"verdict": "error", "trace": str(e), "chain": [], "cached": False, "cost_usd": 0.0}
-    # The chain is cached too — it is exactly as much a part of what the model was paid
-    # for as the verdict and the trace are, and a cache hit that dropped it would render
-    # a verdict with no evidence under it, indistinguishable from one that never needed any.
-    entry = {"verdict": result["verdict"], "trace": result["trace"],
-             "chain": result.get("chain") or []}
+        return {"verdict": "error", "values": [], "note": str(e),
+                "cached": False, "cost_usd": 0.0}
+    entry = {"verdict": result["verdict"], "values": result.get("values") or []}
     cache[key] = entry
     _save_verdict_cache(root, cache)
     return {**entry, "cached": False, "cost_usd": result.get("cost_usd", 0.0)}
 
 
-MAX_CHAIN_HOPS_SHOWN = 3
+# How many origin lines one entry may pull in. `logextract.py` already caps the walk
+# (three hops per value, six lines per statement); this is the *page's* cap on top of
+# that, and it is deliberately tighter, because the failure here is not a wrong answer,
+# it is a tab. This tab lists every touched Java file, and an entry that grows from
+# three lines to twenty to show a chain nobody asked about has made the tab worse in
+# exactly the way the prose it replaced did.
+MAX_ORIGIN_LINES_SHOWN = 4
 
 
-def _chain_hop_line(root: Path, file: str, line) -> str | None:
-    """The exact source line a hop cites, read fresh from the working tree — never the
-    model's own retelling of it, so its claim and the page's evidence cannot disagree.
-    None on anything that does not check out: a bad line number, a file that is not
-    there, a value of the wrong shape. The model supplies the *address*; this is what
-    verifies the address is real before the page repeats it as fact."""
-    try:
-        line = int(line)
-        path = (root / file).resolve()
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        if not (1 <= line <= len(lines)):
-            return None
-        return lines[line - 1].strip()
-    except (OSError, ValueError, TypeError):
+def _logging_ref(h: dict) -> str:
+    """The snippet reference for one statement: its own line(s), plus the lines its
+    interpolated values were traced back to — `Foo.java:89,93`.
+
+    The origins are the extractor's (`logextract.py` walks them syntactically, from the
+    ast-grep graph); all that happens here is the cap and the sort. Nearest-first, so
+    when the budget runs out what survives is the hop closest to the statement — the one
+    a reader would have looked at first anyway — and never a far-away line with the
+    intervening ones silently dropped."""
+    end = h.get("end_line") or h["line"]
+    spans = [f'{h["line"]}' if end == h["line"] else f'{h["line"]}-{end}']
+    origins = sorted({o["line"] for o in (h.get("origins") or [])
+                      if not (h["line"] <= o["line"] <= end)},
+                     key=lambda n: abs(n - h["line"]))[:MAX_ORIGIN_LINES_SHOWN]
+    spans += [str(n) for n in sorted(origins)]
+    return f'{h["file"]}:{",".join(spans)}'
+
+
+def _value_bullets(args: list, values: list) -> tuple[list[dict], bool]:
+    """One row per value the statement actually logs — driven by `logextract.py`'s
+    argument list, never by whatever the model chose to mention.
+
+    The model is asked for one clause per interpolated value; a model that quietly drops
+    one must not quietly drop it from the page, so the rows come from the *code* and the
+    model's clauses are matched onto them. Anything left without a clause renders as its
+    own `unresolved` row and drags the headline verdict down — that is the same rule the
+    tab already applies to a value the model could not follow, and for the same reason:
+    "nobody said" must never read like "nothing to say".
+
+    Matching is by the argument text (whitespace-insensitive), then by root identifier
+    when that is unambiguous among the rows still unmatched — a model that answers
+    `owner` for `owner.getName()` is answering the right question with a shorter name,
+    but only while there is exactly one candidate it could mean.
+
+    Returns the rows and whether any of them came out unresolved."""
+    rows = [{"arg": a, "verdict": None, "note": None} for a in args]
+    pool = list(enumerate(rows))
+
+    def norm(t):
+        return re.sub(r"\s+", "", t or "")
+
+    def claim(idx, v):
+        # `_call_privacy_model` already lower-cases, but `privacy_verdict` accepts any
+        # `call`, and a verdict word is a key into `PRIVACY_MARK` two functions later.
+        verdict = str(v.get("verdict") or "").lower()
+        rows[idx]["verdict"] = verdict if verdict in VERDICT_RANK else None
+        rows[idx]["note"] = v.get("note")
+
+    unmatched = []
+    for v in values:
+        hit = next((i for i, r in pool if r["verdict"] is None
+                    and norm(r["arg"]) == norm(v.get("name"))), None)
+        if hit is None:
+            unmatched.append(v)
+            continue
+        claim(hit, v)
+    for v in unmatched:
+        root = logextract_root(v.get("name"))
+        cands = [i for i, r in pool
+                 if r["verdict"] is None and root and logextract_root(r["arg"]) == root]
+        if len(cands) == 1:
+            claim(cands[0], v)
+
+    broken = any(r["verdict"] is None for r in rows)
+    return rows, broken
+
+
+def logextract_root(expr: str | None) -> str | None:
+    """The leading identifier of an expression, for matching a model's `owner` onto the
+    page's `owner.getName()`. Deliberately the same reading `logextract.py` uses to root
+    its origin walk, imported rather than re-derived so the two cannot drift apart."""
+    if not expr:
         return None
+    return _logextract().origin_root(expr)
 
 
-def _render_chain(chain: list, root: Path) -> tuple[str, bool]:
-    """The provenance list under the code: the statement's own line is already the
-    `<pre>` block above this, so here it is each hop the model traced, in order — a
-    `file:line` link plus the real source line at that spot, cut fresh from the working
-    tree rather than retyped by the model. An empty chain (every interpolated value was
-    already self-evident) renders nothing: evidence belongs next to a claim that needs
-    it, not padding a box that does not.
+@functools.lru_cache(maxsize=1)
+def _logextract():
+    """`logextract.py` as a module, not a subprocess — this needs one pure function out
+    of it, not a scan. Registered in `sys.modules` *before* `exec_module`: its `@dataclass`
+    declarations resolve their own annotations by looking their module up by name, and a
+    module executed without being registered is not there to be found."""
+    import importlib.util
+    if "logextract" in sys.modules:
+        return sys.modules["logextract"]
+    spec = importlib.util.spec_from_file_location("logextract", str(LOGEXTRACT))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["logextract"] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
-    Long chains are cut to the first hop and the last, with a note for what sat between
-    them — "a few lines, not a wall" — never to a single line that hides how long the
-    real chain was.
 
-    Returns the HTML and whether any *resolved* hop's cited line failed to check out
-    against the working tree — a hallucinated or now-stale citation, which the caller
-    treats exactly as seriously as an unresolved one."""
-    if not chain:
-        return "", False
-    shown, skipped = chain, 0
-    if len(chain) > MAX_CHAIN_HOPS_SHOWN:
-        skipped = len(chain) - 2
-        shown = [chain[0], None, chain[-1]]
-    items, broken = [], False
-    for hop in shown:
-        if hop is None:
-            items.append(f'<li class="chain-skip">… {skipped} more hop'
-                        f'{"" if skipped == 1 else "s"} …</li>')
+def _value_bullets_html(rows: list) -> str:
+    """The bullets under the verdict: one per logged value, `name — what it is`.
+
+    The name is the argument as the source writes it, in `<code>`, so a reader scanning
+    a three-value statement can see which of the three carried the risk without reading
+    a sentence that fused them. A row the model never answered says exactly that."""
+    if not rows:
+        return ""
+    items = []
+    for r in rows:
+        name = f'<code>{html.escape(r["arg"])}</code>'
+        if r["verdict"] is None:
+            items.append(f'<li class="val-unresolved">{name} — no clause came back for '
+                         f'this value; it was not assessed</li>')
             continue
-        note = html.escape((hop.get("note") or "").strip())
-        if not hop.get("resolved") or not hop.get("file") or not hop.get("line"):
-            items.append(f'<li class="chain-unresolved">{note or "could not be traced further"}'
-                        f'</li>')
-            continue
-        line_text = _chain_hop_line(root, hop["file"], hop["line"])
-        if line_text is None:
-            broken = True
-            items.append(f'<li class="chain-unresolved">cited {html.escape(str(hop["file"]))}:'
-                        f'{html.escape(str(hop["line"]))}, which could not be located</li>')
-            continue
-        abs_path = (root / hop["file"]).resolve()
-        items.append(
-            f'<li><a class="srcref" href="vscode://file/{abs_path}:{hop["line"]}:1" '
-            f'data-tip="Open in VS Code">{html.escape(str(hop["file"]))}:{hop["line"]}</a> '
-            f'<code>{html.escape(line_text)}</code>'
-            + (f' <span class="chain-note">— {note}</span>' if note else '')
-            + '</li>'
-        )
-    return f'<ol class="chain-hops">{"".join(items)}</ol>', broken
+        emoji = PRIVACY_MARK[r["verdict"]][0]
+        # The per-value mark is shown only when it differs from "fine": a column of green
+        # ticks under a green tick is decoration, and the row a reader must not miss is
+        # the one that is not green.
+        mark = "" if r["verdict"] == "safe" else f'{emoji} '
+        items.append(f'<li>{mark}{name} — {html.escape(r["note"])}</li>')
+    return f'<ul class="log-values">{"".join(items)}</ul>'
 
 
 def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None,
@@ -2148,23 +2563,26 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
     total_cost, live_calls, cached_hits = 0.0, 0, 0
     ANCHOR_RE = re.compile(r'<a class="srcref" href="([^"]+)"[^>]*>[^<]*</a>\n')
     for h in added:
-        end = h.get("end_line") or h["line"]
-        ref = f'{h["file"]}:{h["line"]}' if end == h["line"] else f'{h["file"]}:{h["line"]}-{end}'
-        label = f'{h["level"]} · {Path(h["file"]).stem}:{h["line"]}'
+        ref = _logging_ref(h)
+        # Just the location. The level used to be prefixed here (`WARN · Class:93`), but
+        # the `log.warn(` in the code block directly above says it — in the same colour
+        # Pygments gives every other call — so the prefix was a second, worse copy of a
+        # fact already on screen.
+        label = f'{Path(h["file"]).stem}:{h["line"]}'
         h = {**h, "_fields": fields_by_file.get(h["file"])}
         result = privacy_verdict(h, cache_root, cache, call=call)
         total_cost += result.get("cost_usd") or 0.0
         cached_hits += 1 if result.get("cached") else 0
         live_calls += 0 if result.get("cached") else 1
-        # The chain is re-cut from the *current* working tree on every render, cache hit
-        # or not: the verdict can be reused because the statement and its context hashed
-        # the same, but a citation is only evidence if it still points at real code now.
-        chain_html, chain_broken = _render_chain(result.get("chain") or [], root)
+        # The rows come from the code (`logextract.py`'s argument list), the clauses from
+        # the model, and the headline verdict from the worst of everything below it — a
+        # value the model skipped counts as unassessed, not as fine.
+        rows, unassessed = _value_bullets(h.get("args") or [], result.get("values") or [])
         verdict_key = result["verdict"]
-        trace = result["trace"]
-        if chain_broken and verdict_key == "safe":
-            verdict_key = "doubt"
-            trace += " (a cited line in its trace could not be located — treated as unresolved)"
+        if verdict_key != "error":
+            verdict_key = _worst_verdict(verdict_key,
+                                         *[r["verdict"] for r in rows if r["verdict"]],
+                                         *(["doubt"] if unassessed else []))
         emoji, word, css = PRIVACY_MARK[verdict_key]
         verdict_class = f"privacy-verdict {css}".strip()
         # extract-snippet.py always captions and labels a snippet with the full
@@ -2178,20 +2596,31 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
         # fit on the row, and `flex-wrap` drops the label under the verdict — verdict
         # first, since it is first in the markup — rather than truncating either one.
         snippet = snippet_html(ref, None, root, exact=True)
-        m = ANCHOR_RE.search(snippet)
-        href = m.group(1) if m else ""
-        snippet = snippet[:m.start()] + snippet[m.end():] if m else snippet
+        snippet = ANCHOR_RE.sub("", snippet, count=1)
+        # The link is built from the hit, not scraped back out of the snippet's own
+        # anchor: with origin lines pulled in, that anchor now opens at the *first* line
+        # of the window (the origin), and the label next to it says `:93`. Aiming it at
+        # the statement's own line and column is both truthful and where a reader
+        # clicking "VisitRestController:93" expects to land.
+        href = f'vscode://file/{(root / h["file"]).resolve()}:{h["line"]}:{h.get("column", 1)}'
+        # The verdict stands alone on its row now — the word and nothing else, with the
+        # location at the far right. What used to ride on this line was one run-on
+        # sentence about the whole statement; it is a bullet per logged value below,
+        # because "which of the three values is the problem" is the question a reader
+        # brings here and a fused sentence is precisely what destroys the answer.
         footer = (
             f'<p class="log-footer">'
-            f'<span class="{verdict_class}">{emoji} <b>{word}</b> — '
-            f'{html.escape(trace)}</span>'
-            f'<a class="srcref" href="{href}" data-tip="Open in VS Code">'
+            f'<span class="{verdict_class}">{emoji} <b>{word}</b></span>'
+            f'<a class="srcref" href="{html.escape(href)}" data-tip="Open in VS Code">'
             f'{html.escape(label)}</a>'
             f'</p>'
         )
-        # The chain sits between the code and the verdict — the statement itself (the
-        # code above) first, then each hop, in order, then the verdict it adds up to.
-        snippet = snippet.replace("</figure>", f"{chain_html}{footer}</figure>", 1)
+        # The model-failure state has no per-value answers to show — it never got any —
+        # so its one message rides under the verdict in the same place the bullets would.
+        note = result.get("note")
+        body = (f'<p class="log-note">{html.escape(note)}</p>' if note
+                else _value_bullets_html(rows))
+        snippet = snippet.replace("</figure>", f"{footer}{body}</figure>", 1)
         boxes.append(snippet)
     # "The page marks tabs by what produced them" — this legend is the disclosure for a
     # tab whose verdicts are now a model's reading, not a program's, plus what that
@@ -2203,11 +2632,11 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
         cost_note = cost_note[:-1] + f' ({cached_hits} more reused from the cache).'
     legend = (
         '<div class="privacy-legend"><p class="privacy-legend-title">🤖 AI Evaluation:'
-        f'</p><p class="privacy-legend-note">Each verdict above is a live '
-        f'<code>claude</code> call tracing the statement and its enclosing method — '
-        f'never a guessed answer, and never asserted without its evidence: a value worth '
-        f'tracing gets its provenance cut from the working tree, line by line, under the '
-        f'code.{cost_note}</p>'
+        f'</p><p class="privacy-legend-note">The code block is the evidence: alongside '
+        f'each statement it quotes the lines its logged values came from, walked back '
+        f'structurally by <code>ast-grep</code> and cut from the working tree with their '
+        f'real line numbers. Only the verdicts are a live <code>claude</code> call — one '
+        f'per logged value, and the headline is the worst of them.{cost_note}</p>'
         '<ul class="privacy-legend-list">'
         '<li>✅ <b>SAFE</b> — nothing traced reads as personal data</li>'
         '<li>🤔 <b>DOUBT</b> — could not trace it with confidence, and an unresolved '
@@ -2350,6 +2779,180 @@ def tab_cost_report(root: Path, tab_ids: list[str]) -> dict | None:
         return None
 
 
+# The chip's place in the scope bar, held open until the tabs are known. Whether the chip
+# is an inert pill or a button that opens a breakdown depends on a measurement that has not
+# run yet when the bar is built (it needs the final, post-drop tab list), so the bar keeps
+# the slot and the chip is rendered into it further down.
+COST_CHIP_TOKEN = "{{costchip}}"
+COST_PANEL_ID = "cost-breakdown"
+
+# The unattributed cost, in the order a reader wants it: the one part that has a real name
+# first, then the two that are honestly leftovers. Keys come from `review-cost.py`'s
+# `tab_costs`; a part with no turns in it is not rendered at all.
+RESIDUAL_ROWS = [
+    ("guide", "assembling the guide itself — Step 9 writes every tab&rsquo;s prose in one pass"),
+    ("subagent", "subagent work that fell outside every step&rsquo;s window"),
+    ("conversation", "the orchestrating conversation — reading, deciding, recovering"),
+]
+
+
+def _cost_money(c: float) -> str:
+    """`review-cost.py`'s own `money()`, with one difference that matters in a table: a
+    measured zero prints as `$0.00`, not as `<$0.01`. In a tooltip the two read the same;
+    in a column of numbers, "less than a cent" claims a script-generated tab spent
+    something, which is the one thing the zero rows are there to deny."""
+    if c <= 0:
+        return "$0.00"
+    return f"${c:,.2f}" if c >= 0.01 else "<$0.01"
+
+
+def _cost_tokens(n: float) -> str:
+    n = int(round(n))
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.0f}k"
+    return str(n)
+
+
+def cost_breakdown_html(costs: dict | None, tabs: list[dict]) -> str:
+    """The per-tab ledger, as a panel the aggregate cost chip opens.
+
+    This measurement spent a while with no surface at all. It was born as a `data-tip` on
+    each tab header; when tab-header tooltips were removed the emission went with them, so
+    the subprocess kept running on every build and its answer reached nobody — the exact
+    silent-nothing this pipeline pins with tests everywhere else. A tooltip was the wrong
+    home anyway. A per-tab number is something a reader wants to *scan* — all rows at once,
+    ordered, adding up — not to discover one pill at a time by pointing at it, and a hover
+    hint is invisible to anyone who never happens to hover. So it hangs off the chip that
+    already states the total, which is the only place on the page that raises the question
+    "and where did that go?" in the first place.
+
+    Three shapes of row, because there are three honest answers:
+      * a tab with measured spend gets its own row, biggest first;
+      * every measured-zero tab collapses into ONE muted row that names them all — a script
+        wrote that tab, so zero is the true answer, but ten of those stacked above the three
+        rows that carry the actual money would bury the point;
+      * every unmeasured tab collapses the same way, carrying the reason in words, because
+        "we could not measure this" must never render identically to a measured zero.
+    Returns "" only when there is nothing at all to say (no report, no tabs).
+    """
+    if not costs or not tabs:
+        return ""
+    rows = costs.get("tabs") or {}
+    entries = []
+    for tab in tabs:
+        # Overview is synthesised from the other tabs and is deliberately never stamped
+        # (see test_skill_tab_ledger_wiring); a permanent "not measured" row for it would
+        # be noise about a tab that has no step of its own by design.
+        if tab.get("id") == "overview":
+            continue
+        row = rows.get(tab.get("id"))
+        if row:
+            entries.append((tab.get("label") or tab.get("id"), row))
+    if not entries:
+        return ""
+
+    def spend(row):
+        return row.get("cost") or 0.0
+
+    def toks(row):
+        return row.get("tokens") or 0
+
+    measured = [e for e in entries if e[1].get("measured")]
+    paid = sorted([e for e in measured if spend(e[1]) or toks(e[1])],
+                  key=lambda e: -spend(e[1]))
+    free = [e for e in measured if not (spend(e[1]) or toks(e[1]))]
+    unknown = [e for e in entries if not e[1].get("measured")]
+
+    def names(items):
+        return ", ".join(html.escape(str(l)) for l, _ in items)
+
+    body = "".join(
+        f'<tr><td>{html.escape(str(l))}</td><td>{_cost_tokens(toks(r))}</td>'
+        f'<td>{_cost_money(spend(r))}</td></tr>'
+        for l, r in paid
+    )
+    if free:
+        body += (
+            f'<tr class="costquiet"><td>{len(free)} tab'
+            f'{"s" if len(free) != 1 else ""} with no model spend — {names(free)}</td>'
+            f'<td>0</td><td>$0.00</td></tr>'
+        )
+    if unknown:
+        why = costs.get("reason") or "no step in the ledger named them"
+        body += (
+            f'<tr class="costquiet"><td>{len(unknown)} tab'
+            f'{"s" if len(unknown) != 1 else ""} not measured — {html.escape(str(why))}'
+            f' ({names(unknown)})</td><td>—</td><td>—</td></tr>'
+        )
+
+    total_cost = sum(spend(r) for _, r in entries)
+    total_toks = sum(toks(r) for _, r in entries)
+    foot = ""
+    resid = costs.get("residual") or {}
+    if resid.get("measured"):
+        total_cost += resid.get("cost") or 0.0
+        total_toks += resid.get("tokens") or 0
+        # One undifferentiated "not one tab's" row routinely carried 90%+ of the bill, which
+        # does not read as a caveat — it reads as an instruction to ignore the rows above it.
+        # Where the report can name the parts, name them: the largest is Step 9 writing the
+        # page, which is a real answer, not a leftover.
+        parts = costs.get("residual_parts") or {}
+        shown = [(label, parts[key]) for key, label in RESIDUAL_ROWS
+                 if (parts.get(key) or {}).get("messages")]
+        if shown:
+            foot += "".join(
+                f'<tr class="costquiet"><td>{label}</td>'
+                f'<td>{_cost_tokens(part.get("tokens") or 0)}</td>'
+                f'<td>{_cost_money(part.get("cost") or 0.0)}</td></tr>'
+                for label, part in shown
+            )
+        else:
+            foot += (
+                '<tr class="costquiet"><td>not one tab\'s — assembling the guide itself, plus '
+                'any step whose window did not cover it</td>'
+                f'<td>{_cost_tokens(resid.get("tokens") or 0)}</td>'
+                f'<td>{_cost_money(resid.get("cost") or 0.0)}</td></tr>'
+            )
+    # No total on a run that measured nothing. A `$0.00 total` sitting under a chip that
+    # says $308.64 does not read as "unmeasured", it reads as "wrong" — and the row above
+    # has already said, in words, why there is no number to add up.
+    if paid or free or resid.get("measured"):
+        foot += (f'<tr class="costtotal"><td>total</td><td>{_cost_tokens(total_toks)}</td>'
+                 f'<td>{_cost_money(total_cost)}</td></tr>')
+
+    return (
+        f'<div class="costbreak" id="{COST_PANEL_ID}" hidden>'
+        '<table class="costtab">'
+        '<caption>Which steps burned model time — every turn charged to whichever step was '
+        'running when it happened, at list price. A tab a script produced costs nothing to '
+        'produce, and says so.</caption>'
+        '<thead><tr><th scope="col">tab</th><th scope="col">tokens</th>'
+        '<th scope="col">cost</th></tr></thead>'
+        f'<tbody>{body}</tbody><tfoot>{foot}</tfoot></table></div>'
+    )
+
+
+def cost_chip_html(c: dict, panel: str) -> str:
+    """The aggregate cost chip — a plain pill on its own, a disclosure button once there
+    is a breakdown behind it. The caret is the whole point: the chip has to *look* like it
+    opens something, because nothing else on the page announces that the number decomposes.
+    """
+    tip = c.get("tip") or ""
+    inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
+    if not panel:
+        if tip:
+            inner = f'<span data-tip="{html.escape(tip)}">{inner}</span>'
+        return f'<span class="chip">{inner}</span>'
+    tip = f"{tip} Click to break it down per tab." if tip else "The cost, tab by tab."
+    return (
+        f'<button type="button" class="chip chip-cost" aria-expanded="false" '
+        f'aria-controls="{COST_PANEL_ID}" data-tip="{html.escape(tip)}">{inner}'
+        f'<span class="caret" aria-hidden="true">▸</span></button>{panel}'
+    )
+
+
 def validate(spec: dict, out_dir: Path) -> list[str]:
     """Every problem in the content file, named, in one pass.
 
@@ -2484,8 +3087,29 @@ def main(argv=None) -> int:
     # Chips carry HTML on purpose: a chip is often a link (to the branch on GitHub, to a
     # section further down) or coloured (+added / -removed), and escaping would kill both.
     chips = []
+    cost_scope_chip = None      # resolved here, rendered once the tab list is final
     scope = spec.get("scope", [])
     for c in scope:
+        # The other chip that must never be typed. `{"auto": "autofixed"}` counts the two
+        # lists this page actually renders — the open findings and the applied fixes — so
+        # the chip and the Auto-fixed tab can never disagree with each other. The reason
+        # it exists is that they already did: the hand-typed `/code-review 8 findings`
+        # outlived the ninth finding being added, and nothing caught it, because nothing
+        # was looking. `href` (and any label or tip) still comes from the content file.
+        if c.get("auto") == "autofixed":
+            fixed = len(spec.get("autofixes", []))
+            total = len(spec.get("findings", [])) + fixed
+            computed = {
+                "label": "auto-fixed",
+                "value": str(total),
+                # The number is a count of *items the two automated passes raised*, not a
+                # count of repairs: say so on hover, because the label alone reads as if
+                # all of them were fixed and only `fixed` of them were.
+                "tip": f"{total} items raised by /code-review and /simplify — "
+                       f"{fixed} applied for you, {total - fixed} left for your judgement. "
+                       "Counted from the lists on the page, never typed.",
+            }
+            c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
         # A chip that has to be kept up to date by hand is a chip that will be wrong. The
         # cost of the run is the extreme case: it is still changing while the page is being
         # written, so it is computed here, at build time, and never typed into the content
@@ -2506,6 +3130,12 @@ def main(argv=None) -> int:
                 c["value"] = str(c["value"])[:m.start()].strip()
                 c["tip"] = f'{tokens} — {c["tip"]}' if c.get("tip") else tokens
             c["label"] = c["label"].replace("this review cost", "review cost")
+            # Held, not rendered: the chip becomes a button that opens the per-tab
+            # breakdown, and whether there is a breakdown to open is only known after the
+            # tab list has been built and its empty tabs dropped.
+            cost_scope_chip = c
+            chips.append(COST_CHIP_TOKEN)
+            continue
         inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
         if c.get("tip"):
             inner = f'<span data-tip="{html.escape(c["tip"])}">{inner}</span>'
@@ -2518,15 +3148,29 @@ def main(argv=None) -> int:
             chips.append(f'<span class="chip">{inner}</span>')
     chips = "".join(chips)
 
-    # /code-review hunts bugs, /simplify shrinks the solution — different questions, so a
-    # single chip over both reports neither. Warn rather than fail: the page still builds
-    # for a run that legitimately skipped one, as long as it says which and why.
-    labels = " ".join((c.get("label") or c.get("auto") or "").lower() for c in scope)
-    missing = [name for name in ("/code-review", "/simplify") if name[1:] not in labels]
-    if scope and missing:
-        print(f"[review] WARNING: the scope bar has no chip for {', '.join(missing)} — "
-              "each automated review gets its own chip, never one merged 'reviews run'",
-              file=sys.stderr)
+    # This used to require a chip per automated pass — /code-review hunts bugs, /simplify
+    # shrinks the solution, so one number over both reports neither. The page now carries a
+    # single merged `auto-fixed N` chip instead, by decision, and the old check fired on
+    # every run: a warning that is always on is a warning nobody reads.
+    #
+    # The concern behind it survives in a form the merged chip can actually fail. One number
+    # over two questions is honest only while the split it summarises is still reachable —
+    # which is the Auto-fixed tab and its two chapters. So that is what is checked: a merged
+    # count with nothing behind it is the real regression, and it is one a content file can
+    # produce by dropping a section without touching the chip.
+    AUTOFIX_CHAPTERS = ("autofix-codereview", "autofix-simplify")
+    if any(c.get("auto") == "autofixed" for c in scope):
+        have = {s.get("id") for s in spec.get("sections", [])}
+        gone = [s for s in AUTOFIX_CHAPTERS if s not in have]
+        if not any(tb.get("id") == "autofixed" for tb in spec.get("tabs") or []):
+            print("[review] WARNING: the auto-fixed chip deep-links to #autofixed but no "
+                  "tab has that id — the one number on the scope bar opens nothing",
+                  file=sys.stderr)
+        if gone:
+            print(f"[review] WARNING: the auto-fixed chip merges both automated passes into "
+                  f"one number, but section(s) {', '.join(gone)} are missing — the chip is "
+                  "only honest while the per-pass split is on the page behind it",
+                  file=sys.stderr)
 
     v = spec.get("verdict")
     verdict_html = ""
@@ -2668,7 +3312,8 @@ def main(argv=None) -> int:
         raise SystemExit(f"[review] unknown tab block type: {kind}")
 
     tabs = spec.get("tabs")
-    lede_html = f'<div class="lede">{spec.get("summary", "")}</div>' if spec.get("summary") else ""
+    cost_panel_html = ""    # stays empty for the tabless single-column layout
+    lede_html =f'<div class="lede">{spec.get("summary", "")}</div>' if spec.get("summary") else ""
     overview_html = ""
     if tabs and not any(tab.get("id") == "overview" for tab in tabs):
         # The summary and the verdict used to sit above the strip, which pushed the
@@ -2725,18 +3370,13 @@ def main(argv=None) -> int:
             still = not changes and not tab.get("noStrike")
             if still:
                 quiet.append(tab["label"])
-            # A tab whose subject is not obvious from two words gets a sentence on hover.
-            # The "we looked and found nothing" tooltip wins where both apply: it is the
-            # more surprising fact about the tab.
-            tip = ('This change set did not touch anything here — the tab holds '
-                   'the current state as context.') if still else tab.get("tip", "")
-            # What this tab cost, appended rather than swapped in: a reviewer who hovers a
-            # struck-through tab should learn both why it is struck and what it cost, not
-            # have the cost silently win the one tooltip slot this page has.
-            cost_tip = (costs.get("tabs", {}).get(tab["id"], {}).get("tip", "")
-                       if costs else "")
-            if cost_tip:
-                tip = f"{tip} {cost_tip}" if tip else cost_tip
+            # No `data-tip` on a tab header, on purpose. The strip used to carry two
+            # sentences on hover — why a tab is struck through, and what it cost — and both
+            # were removed: a hover hint on a pill is unfindable, and the strip is the one
+            # part of the page a reviewer navigates by, not reads. Both facts still reach
+            # the reader, elsewhere and visibly: the strike-through itself says the branch
+            # did not touch that tab, and the cost moved into the breakdown the cost chip
+            # opens (`cost_breakdown_html`), where every tab's number can be read at once.
             strip.append(
                 f'<button type="button" class="tab{" quiet" if still else ""}" role="tab" '
                 f'id="tabbtn-{tid}" aria-controls="{tid}" aria-selected="false" tabindex="-1"'
@@ -2783,6 +3423,9 @@ def main(argv=None) -> int:
         # tab dropped for having nothing to show must not be counted in the walk-through
         # that promises the reader eleven of them.
         tab_labels = [t["label"] for t in emitted]
+        # Built from `emitted` for the same reason: a tab that was dropped for having
+        # nothing to show must not turn up in the ledger claiming to have cost something.
+        cost_panel_html = cost_breakdown_html(costs, emitted)
         body_html = body_html.replace(TAB_COUNT_TOKEN, spelled(len(tab_labels)))
         check_tab_enumeration(overview_html, [l for l in tab_labels if l != "Overview"])
     else:
@@ -2796,6 +3439,13 @@ def main(argv=None) -> int:
             + f"\n{city_html}\n"
             + "".join(sections)
         )
+
+    # The slot the scope bar left open. A build that measured nothing still gets its chip —
+    # as the inert pill it always was — so a missing breakdown costs the reader the
+    # breakdown, never the total.
+    if cost_scope_chip is not None:
+        chips = chips.replace(COST_CHIP_TOKEN,
+                              cost_chip_html(cost_scope_chip, cost_panel_html))
 
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -2817,8 +3467,10 @@ def main(argv=None) -> int:
 {CAPTION_JS}
 {GENSEQ_JS}
 {FOCUS_JS}
+{DGM_VIEWS_JS}
 {EDITOR_JS}
 {FRAME_JS}\n{TABS_JS}
+{COST_JS}
 {TIP_JS}
 </body></html>
 """

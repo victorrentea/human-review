@@ -26,6 +26,25 @@
 # needs longer. Set NARRATION=off to film silently; NARRATION_VOICE / NARRATION_RATE pick the
 # voice (`say -v "?"` lists them) and its speed.
 #
+# The film OPENS ON A TITLE CARD — "Demo" over the name of the change being reviewed — and it
+# is filmed, not spliced on afterwards. Splicing was the obvious build: render a card, concat
+# it in front with ffmpeg. It is also the one that silently rots, because the cue clock IS the
+# video clock. `<out>.cues.json` timestamps are what the guide's transcript uses to seek the
+# player, what annotate-feature-video.py hangs the burnt-in captions and spotlights off, and
+# where it places each spoken .wav in the mixed narration track. Prepending N seconds of
+# picture shifts all three, each needing its own +N, and a single one forgotten gives you the
+# worst possible outcome: a film that looks right and narrates the wrong shot. Filming the
+# card inside the take makes N zero everywhere — the timestamps are correct by construction —
+# and sidesteps the whole matching problem (resolution, frame rate, pixel format, codec) that
+# a concat has to get right, since the card is the same stream Playwright is already writing.
+# The cost is that the recorder now stages one screen of its own, which it was already doing
+# for the viewport, the pacing and the spotlights.
+#
+# The card's words come from the DATA, never from a literal here: the guide's own title
+# (`.human-review/content.json`), else the branch's PR title, else the branch name — so the
+# next run's film names the next run's change. $HUMAN_REVIEW_VIDEO_TITLE and
+# $HUMAN_REVIEW_VIDEO_SUBTITLE override, and TITLE_CARD=off films without one.
+#
 # Usage:
 #   .claude/skills/human-review/scripts/record-feature-video.sh <out.webm>
 #
@@ -34,7 +53,10 @@
 #                    spoken .wav and the time of every word in it), so the guide can build a
 #                    transcript that seeks the player
 #   <out>.raw.webm   the same film without the annotations or the voice
-#   <out>.narration/ one .wav per cue, kept so the film can be re-annotated without re-filming
+#   <out>.narration/ one .wav per cue, kept so the film can be re-annotated without re-filming,
+#                    plus `lead` — how long the title card holds the screen, which is the one
+#                    number annotate-feature-video.py cannot recover from the footage and the
+#                    reason a re-annotation does not print the first caption over the card
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,6 +70,7 @@ case "$OUT" in /*) ;; *) OUT="$ROOT/$OUT" ;; esac
 RAW="${OUT%.webm}.raw.webm"
 CUES="${OUT%.webm}.cues.json"
 VOICEDIR="${OUT%.webm}.narration"
+LEADFILE="$VOICEDIR/lead"
 
 # 127.0.0.1, never "localhost": Node 18+ puts ::1 first, an IPv4-only dev server refuses it,
 # and undici reports that as the bare string "fetch failed". curl hides it (Happy Eyeballs).
@@ -58,7 +81,7 @@ curl -fsS -o /dev/null "$BASE_URL/" || { echo "[video] frontend not up at $BASE_
 curl -fsS -o /dev/null "$API_URL/api/pettypes" || { echo "[video] backend not up at $API_URL" >&2; exit 2; }
 
 mkdir -p "$(dirname "$OUT")" "$VOICEDIR"
-rm -f "$VOICEDIR"/*.wav
+rm -f "$VOICEDIR"/*.wav "$LEADFILE"
 # The flow being filmed belongs to the PROJECT, not to this skill. The skill owns the
 # harness — launching, narrating, timing the cues, spotlighting, annotating — and the
 # project owns the twenty lines that say what to click. Before this split the narration
@@ -93,14 +116,64 @@ MSG
   exit 2
 fi
 
+# The card names the change, and it reads that name out of the run rather than carrying it.
+# A literal here would be right exactly once: the film of the NEXT change would open on the
+# title of the previous one, under the one heading a reviewer trusts without reading — the
+# same failure mode the feature script was split out to kill.
+#
+# The guide's own <title> is the first source because it is the name a human already approved
+# for this review; `gh` is the second because a PR has one whether or not the guide exists yet;
+# the branch is the floor, because there is always a branch. content.json is read
+# defensively — the run that writes it is often still writing it from another process — so a
+# half-flushed file degrades to the PR title instead of taking the recorder down with it.
+# Pulled out of the substitution below: bash 3.2, which is the one macOS ships and therefore
+# the one this runs under, cannot parse a here-document inside $( ). `read -d ""` stops at EOF
+# and reports failure for it, which is why it is allowed to fail.
+read -r -d "" TITLE_FROM_GUIDE <<'PY' || true
+import json, pathlib, re, sys
+raw = ""
+try:
+    raw = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+except OSError:
+    pass
+title = ""
+if raw:
+    try:
+        title = (json.loads(raw) or {}).get("title") or ""
+    except (ValueError, AttributeError):
+        # Mid-write, or hand-edited into invalid JSON. The top-level "title" is the first one
+        # in the file; a section's title would be a wrong-but-plausible answer, so only the
+        # first match is taken and anything unparseable falls through to the PR.
+        m = re.search(r'"title"\s*:\s*("(?:[^"\\]|\\.)*")', raw)
+        if m:
+            try:
+                title = json.loads(m.group(1))
+            except ValueError:
+                title = ""
+print(" ".join(str(title).split()))
+PY
+
+CARD_TITLE="${HUMAN_REVIEW_VIDEO_TITLE:-Demo}"
+CARD_SUBTITLE="${HUMAN_REVIEW_VIDEO_SUBTITLE:-}"
+if [ -z "$CARD_SUBTITLE" ]; then
+  CARD_SUBTITLE="$(python3 -c "$TITLE_FROM_GUIDE" "$ROOT/.human-review/content.json" 2>/dev/null || true)"
+fi
+if [ -z "$CARD_SUBTITLE" ]; then
+  CARD_SUBTITLE="$(gh pr view --json title --jq .title 2>/dev/null || true)"
+fi
+if [ -z "$CARD_SUBTITLE" ]; then
+  CARD_SUBTITLE="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+fi
+if [ "${TITLE_CARD:-on}" = "off" ]; then CARD_TITLE=""; CARD_SUBTITLE=""; fi
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 set +e
 NODE_PATH="$ROOT/petclinic-test/node_modules" node -e '
 const {chromium} = require("playwright");
-const [baseUrl, apiUrl, videoDir, raw, cuesPath, voiceDir, narrator, featurePath] =
-    process.argv.slice(1);
+const [baseUrl, apiUrl, videoDir, raw, cuesPath, voiceDir, narrator, featurePath,
+    cardTitle, cardSubtitle, leadPath] = process.argv.slice(1);
 const fs = require("fs");
 const path = require("path");
 const {execFileSync} = require("child_process");
@@ -119,6 +192,32 @@ const speak = (text, wav) => {
     const res = JSON.parse(out);
     return res.error ? null : res;
   } catch (e) { return null; }
+};
+
+// The card is one screen of the same browser at the same size — which is the whole reason it
+// is filmed rather than spliced — so it is styled straight out of the guide stylesheet it has
+// to look like: the same system font stack build-review-html.py sets on <body>, and its
+// --bg / --fg / --muted / --accent literally. It reads as the guide, not as a stock intro.
+const TITLE_MS = 3250;
+const titleCard = (title, subtitle) => {
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<!doctype html><meta charset="utf-8"><title>${esc(title)}</title><style>
+html,body{margin:0;height:100%}
+body{display:flex;align-items:center;justify-content:center;background:#fbfbfd;color:#1c1c22;
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.card{max-width:1040px;padding:0 4rem;text-align:center;
+  animation:card ${TITLE_MS}ms cubic-bezier(.22,.61,.36,1) both}
+h1{margin:0;font-size:4.4rem;font-weight:700;letter-spacing:-.03em;line-height:1}
+.rule{width:72px;height:3px;margin:1.7rem auto;border-radius:2px;background:#8a1c1c}
+p{margin:0;font-size:2rem;font-weight:400;line-height:1.3;letter-spacing:-.01em;color:#6b6b78}
+@keyframes card{
+  0%{opacity:0;transform:translateY(10px)}
+  11%{opacity:1;transform:none}
+  84%{opacity:1;transform:none}
+  100%{opacity:0;transform:translateY(-6px)}}
+</style><div class="card"><h1>${esc(title)}</h1><div class="rule"></div>
+<p>${esc(subtitle)}</p></div>`;
 };
 
 // Everything network goes through this. undici throws a TypeError whose entire message is
@@ -157,6 +256,26 @@ const get = async (url) => {
   // written as the run happens rather than guessed afterwards, so it can never drift
   // from what the video actually shows.
   const t0 = Date.now();
+
+  // The title card is filmed HERE, inside the take and on the cue clock, which is what keeps
+  // every downstream timestamp honest without a single offset anywhere. The one number that
+  // cannot be recovered from the footage afterwards is how long it held the screen, so it is
+  // measured (never assumed: slowMo taxes setContent too) and written down for the annotator,
+  // which would otherwise open the first caption over the card at t=0.
+  let lead = 0;
+  if (cardSubtitle) {
+    await page.setContent(titleCard(cardTitle || "Demo", cardSubtitle));
+    // Long enough to read two lines and no longer. The tail of the animation takes the words
+    // back down to the page ground, so the navigation that follows arrives on an already
+    // cleared frame rather than cutting away from full-strength type.
+    await page.waitForTimeout(TITLE_MS + 150);
+    lead = (Date.now() - t0) / 1000;
+  }
+  fs.writeFileSync(leadPath, lead.toFixed(3) + "\n");
+  console.error(lead
+      ? `[video] title card: "${cardTitle || "Demo"}" / "${cardSubtitle}", ${lead.toFixed(2)}s`
+      : "[video] title card: none (TITLE_CARD=off, or no name could be derived)");
+
   const cues = [];
   // A cue may name the element it is about. boundingBox() is viewport-relative, so it is
   // read at the moment the cue is spoken — after any scrolling — never earlier.
@@ -225,12 +344,18 @@ const get = async (url) => {
     process.exitCode = 3;
   }
 })().catch(e => { console.error("[video] " + e.message); process.exit(1); });
-' "$BASE_URL" "$API_URL" "$TMP" "$RAW" "$CUES" "$VOICEDIR" "$SCRIPT_DIR/narrate-cue.py" "$FEATURE"
+' "$BASE_URL" "$API_URL" "$TMP" "$RAW" "$CUES" "$VOICEDIR" "$SCRIPT_DIR/narrate-cue.py" "$FEATURE" \
+  "$CARD_TITLE" "$CARD_SUBTITLE" "$LEADFILE"
 RC=$?
 set -e
 if [ "$RC" != 0 ] && [ "$RC" != 3 ]; then exit "$RC"; fi
 
-python3 "$SCRIPT_DIR/annotate-feature-video.py" "$RAW" "$CUES" "$OUT"
+# How long the card holds, straight from the run that filmed it. It lives beside the .wavs
+# because it is part of the same answer: everything needed to re-cut this footage without
+# re-filming it. A missing or unreadable file means "no card", which is what a pre-title
+# recording is — so old footage re-annotates exactly as it always did.
+LEAD="$(cat "$LEADFILE" 2>/dev/null || echo 0)"
+python3 "$SCRIPT_DIR/annotate-feature-video.py" "$RAW" "$CUES" "$OUT" --lead "${LEAD:-0}"
 
 if command -v ffprobe >/dev/null 2>&1; then
   echo "[video] $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT")s, $(du -h "$OUT" | cut -f1)" >&2

@@ -25,8 +25,8 @@ skill's moving parts:
 - `scripts/` — the mechanics: the page builder, the snippet extractor, the diagram
   driver, the video recorder, the Code City capture, the complexity delta, the OpenAPI
   contract differ, the backward-compatibility check that second-guesses it, the
-  structural logging extractor, and the code-owners check that says whether the merge is
-  blocked. `scripts/ast-grep-rules/` is the logging extractor's eleven rules as standalone
+  differ for the hand-drawn draw.io diagram, the structural logging extractor, and the
+  code-owners check that says whether the merge is blocked. `scripts/ast-grep-rules/` is the logging extractor's eleven rules as standalone
   YAML (it carries its own copies as strings so it stays dependency-free; a test keeps the
   two in step), and `scripts/testdata/` holds the Java fixtures its tests scan.
 - `puml-diff/` — the two differs, `puml_diff.py` (class / ER / package) and
@@ -133,13 +133,24 @@ undetectable. It is the only failure mode here that produces a confident, wrong 
 
 ```sh
 rm -rf .human-review/assets && mkdir -p .human-review/assets
+${SKILL}/scripts/steps-ledger.py reset
 date -u +%Y-%m-%dT%H:%M:%S+00:00 > .human-review/.started
 ```
 
-That second line is what lets the page report **what it cost to produce**. Without it the
+That last line is what lets the page report **what it cost to produce**. Without it the
 cost chip falls back to the whole session — which, on a session that also built the feature,
 is a much bigger number than the review, and the tooltip has to say so instead of being
 useful. Write it once, here, before anything expensive runs.
+
+**`steps-ledger.py reset` is the same wipe as the first line, for the same reason, and it
+is the one that fails worst if you skip it.** A stale `.human-review/assets/` at least shows
+a *visibly* wrong picture. A stale `.human-review/.steps.json` parses perfectly: the per-tab
+report sees a ledger, marks every tab it names as measured, and then finds that none of this
+run's turns fall inside last run's windows — so the page prints a confident **`$0.00`
+against every tab** and drops the whole bill into the residual line. That reads as "this run
+was free", not as "we did not measure". `reset` also removes the `.step-<name>` handle files
+alongside the ledger, because a handle that outlives its ledger points at an index that now
+belongs to somebody else's step, and `end` would close a record it never opened.
 
 Run the skill's own tests once while you are here (~2 s). They are the only thing standing
 between the two differs and silent drift, and nothing else runs them:
@@ -167,20 +178,64 @@ working tree does, so `end` reads the index the same way `start` wrote it: from 
 from a variable it can no longer see. A `$STEP` that silently came back empty would not
 error loudly — `end` would just fail its own argument parsing, and the record would sit with
 `"end": null` forever, which reads as an honestly-crashed step even though nothing crashed.
-Name the file after the step (`.human-review/.step-autoreview`, `.human-review/.step-data`, …)
-so two steps mid-flight at once never share a handle. This step and Step 9 itself are the two
-deliberate exceptions — neither wraps anything, so their own cost lands in `residual` rather
-than being pinned on a tab that did not earn it.
+Name the file after the step (`.human-review/.step-review`, `.human-review/.step-data`, …)
+so two steps mid-flight at once never share a handle. **Step 0 is the one step that wraps
+nothing** — it is over before anything expensive begins, and its cost is rounding error.
+Step 9 does wrap itself, against the reserved id `guide`, because assembling the page is the
+opposite of rounding error; see that step for why it gets a name instead of disappearing
+into the residual.
+
+Three rules keep the ledger honest on the runs that do not go to plan, which is most of them:
+
+1. **Check the step's prerequisites *before* you stamp `start`.** Several steps below are
+   gated on an optional binary (`openapi-changes`, `ast-grep`) or on a generator your project
+   may not have, and a gate that fails after the stamp leaves a record naming a tab the page
+   will not even contain. Stamp when you have decided the step is going to run, not when you
+   start thinking about it — the fences below put the gate inside the block for exactly this.
+2. **A step you abandon still gets its `end`.** If you stamped, did some work, and then
+   decided to drop the tab or move on, close the record: the tokens you spent getting that
+   far were spent on that tab, and closing says so. Leave `end` off only for a step that
+   genuinely died mid-flight — that is what `"end": null` means, and the page prints
+   *"started but never recorded finishing"* for it, which should stay rare enough to be
+   informative.
+3. **The tab id in `start` must be the tab id in `content.json`.** It is a plain string on
+   both sides, so a rename on one side is invisible to the other. It does not stay invisible:
+   at build time `review-cost.py --tab-costs` compares the ids the ledger names against the
+   tabs the page actually has, and any id with no tab prints a `[review-cost]` warning **and
+   becomes the printed reason on the breakdown's "not measured" row** — "the step ledger
+   names tab(s) X, which this page does not have". If you rename a tab in Step 9, grep this
+   file for its old id in the same edit. `scripts/test_skill_tab_ledger_wiring.py` pins the
+   two together for the ids in the worked example.
 
 ## Step 1 — Run the automated reviews, fix what is not disputable
 
 ```sh
-${SKILL}/scripts/steps-ledger.py start autoreview --label "code-review + simplify" \
-  > .human-review/.step-autoreview
+${SKILL}/scripts/steps-ledger.py start review --label "code-review + simplify" \
+  --rev "$(git rev-parse HEAD)" \
+  > .human-review/.step-review
 ```
 
+⚠️ **`--rev` is the pre-fix HEAD, and it is the only chance to record it.** The Auto-fixed
+tab links every applied fix to a real before/after diff, and a diff needs a left side. Take
+it **before** the reviews change anything — one `git rev-parse HEAD`, into the ledger, done.
+
+Reconstructing it afterwards is archaeology, and on the reference run the archaeology gave
+the wrong answer: the obvious candidate, the commit named *"The review's own fixes, and the
+artifacts this run regenerated"*, contains **none of the three fixes** — they are in an
+earlier commit with an unrelated message. A commit message described work it did not
+contain, and trusting it would have put the wrong left side on all three diffs, silently,
+under a heading a reader takes on faith. That run only recovered because somebody happened
+to make a baseline commit by hand.
+
+And it is worse than unreliable — on the ordinary run it is **impossible**. This skill
+explicitly leaves its own fixes uncommitted, so on most runs there is no commit to find at
+all; squash the branch, or let a fix ride along inside a feature commit, and the pre-image is
+gone for good. Nothing in `.human-review/` or in the transcripts holds one. Two seconds of
+`git rev-parse` up front is the whole fix; `steps-ledger.py check` warns when the `review`
+step recorded no rev.
+
 Everything from here through the end of this step — both invocations, the classification,
-and the fixes — lands on the **Autoreview** tab, so open the record now and close it once,
+and the fixes — lands on the **🤖 Review** tab, so open the record now and close it once,
 at the bottom of the step, rather than per command: the tab is one continuous piece of work
 and a reader does not care which minute inside it a given fix landed in.
 
@@ -201,6 +256,22 @@ Run it once after the `/code-review` fixes are in, once after `/simplify` has fi
 `/simplify`'s net effect is `(d₂−d₁) − (i₂−i₁)` — the lines it removed minus the ones it
 added back. It is allowed to come out negative; a cleanup that grew the code is worth
 saying so.
+
+⚠️ **Nothing on this page records which command produced which item, and that is a property
+of the data, not an oversight in the writing.** Neither `findings` nor `autofixes` carries a
+source field, and no raw output from either pass survives the step — by the time the content
+file is written, the two have been read, judged and merged into one list of *open calls* and
+one list of *applied fixes*. So the Auto-fixed tab's two chapters split by **the kind of
+work each pass does** — correctness fixes against solution-shrinking — which is a true and
+useful cut, but it is your reconstruction, not a recorded provenance. Do not write a sentence
+claiming an item came from a named command unless you watched it happen in the same turn.
+
+**If a real per-tool split is ever wanted, this is the change to make:** the passes have to
+tag their findings at the source — a `"source": "/code-review"` on each item as it is
+recorded, before the merge — and then the chip's tooltip and the chapters can be derived
+instead of authored. Retro-fitting it downstream is not possible; the information is gone by
+then. Written here so the next person reaches for the fix rather than rediscovering the
+limitation.
 
 Then split every finding in two, and say out loud which pile each landed in:
 
@@ -238,7 +309,7 @@ recover from the code itself — a trap, a non-obvious constraint, an order that
 When in doubt, leave the code bare.
 
 ```sh
-${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-autoreview)"
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-review)"
 ```
 
 ## Step 2 — Diagram deltas (red = added, red + struck = removed)
@@ -278,6 +349,38 @@ Never re-implement the diffing inline, and never hand-diff the `.puml` text: a s
 fork of the review pipeline drifts silently. `scripts/architecture-diff.sh` stays the
 CI-facing tool for the three structural diagrams; `puml-diff-vs-git.sh` stays the
 single-diagram primitive.
+
+### The hand-drawn one: `drawio-diff.py`
+
+A generated diagram can be re-laid out on every run; a hand-drawn `.drawio.png` cannot,
+and that is the point of it — the layout is the reader's spatial memory. So it gets its
+own differ, which matches elements by the identity they **declare** in the mxGraph XML
+(`concept="Owner"` on a box, `assoc="Owner-Pet"` on a line, the mxCell `id` otherwise)
+and never by rendered text or pixels. Dragging a box is reported as *moved*, not as a
+change: position belongs to the human.
+
+```sh
+${SKILL}/scripts/drawio-diff.py --base $BASE \
+  --diagram petclinic-backend/docs/ConceptualModel.drawio.png \
+  --out-dir .human-review/assets --name conceptual
+```
+
+It writes `conceptual-{original,new,diff}.svg` plus `conceptual-diff.json`, and prints
+what the branch adds, drops and reworks. Feed the three SVGs to a `Diff | New | Original`
+tab widget in the section body — inline the SVG rather than linking it, so `light-dark()`
+resolves against the reader's own theme. A diagram missing at `$BASE` is an empty one, so
+a branch that introduces the map renders as one big "added".
+
+**Two colours, two meanings, never conflated.** Red is the *diagram's* — the patch script
+paints an element red when it draws one to keep the guardrail test green, and it stays red
+until a human re-lays it out. Orange is the *tool's* — new against the base. An element
+that is both renders red, because the to-do is the louder fact; the moment the human turns
+it black in draw.io it turns orange, still new. Red is therefore read off the drawn colour,
+never off the `addedBy=` marker, which outlives the fix.
+
+Rendering goes through the draw.io desktop app (`/Applications/draw.io.app`, whose binary
+takes `--export`) when it is installed, since only draw.io draws the file faithfully; a
+built-in mxGeometry renderer covers the machines without it (`--renderer builtin`).
 
 ## Step 3 — Sequence diagrams for boundary-crossing changes
 
@@ -415,27 +518,47 @@ than typing one: "20 classes lit" in a content file is an assertion, and a city 
 highlighted nothing looks exactly like a city that highlighted everything.
 
 ```sh
-${SKILL}/scripts/steps-ledger.py start shape --label "Code City capture" \
-  > .human-review/.step-shape-codecity
+${SKILL}/scripts/steps-ledger.py start city --label "Code City capture" \
+  > .human-review/.step-city
 LIT=$(${SKILL}/scripts/capture-codecity.sh .human-review/assets/codecity.png highlight)
-${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-shape-codecity)"
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-city)"
 ```
 
 The capture now fails rather than producing an unhighlighted skyline — if the `Changes`
-option it drives is ever renamed, the assignment used to be a silent no-op. `shape` is the
-same tab id Step 6 feeds below — **Cost & shape** holds both the complexity delta and this
-screenshot, so the two steps' records simply add up on it rather than colliding.
+option it drives is ever renamed, the assignment used to be a silent no-op. The city gets
+**its own tab**, `city`, rather than sharing one with the complexity delta: they are two
+different questions — *where did this land* and *what did it cost to run* — and a reader
+following one of them is not helped by finding the other underneath it.
 
 ## Step 5 — Video of the feature
 
 Record the feature actually working, with Playwright, straight into the guide:
 
 ```sh
-${SKILL}/scripts/steps-ledger.py start video --label "feature recording" \
+${SKILL}/scripts/steps-ledger.py start behaviour --label "feature recording" \
   > .human-review/.step-video
 ${SKILL}/scripts/record-feature-video.sh .human-review/assets/<feature>.webm
 ${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-video)"
 ```
+
+**The film opens on a title card, and it is filmed rather than spliced.** The card reads
+**Demo** over the name of the change — taken from the guide's own `title` in
+`content.json`, else the branch's PR title, else the branch name — so the next run's film
+names the next run's change without anybody retyping it.
+
+Splicing a card on afterwards with ffmpeg is the obvious build and the one that rots,
+because **the cue clock *is* the video clock**. Prepend N seconds of picture and every
+timing downstream is wrong by N at once: the burnt-in captions, the mixed narration, and the
+transcript's seek targets, each needing its own correction, each a separate place to forget
+one. Filming the card inside the take makes N zero everywhere — there is no offset to
+propagate because nothing moved.
+
+The one number that does not fall out for free is **how long the card holds**, which the
+footage cannot reveal to a later pass. The recorder measures it into
+`<out>.narration/lead` and hands it to `annotate-feature-video.py --lead`; that is what keeps
+the opening caption and its voice off the title card, and what lets a re-annotation get it
+right without re-filming. `TITLE_CARD=off` films without a card;
+`$HUMAN_REVIEW_VIDEO_TITLE` and `$HUMAN_REVIEW_VIDEO_SUBTITLE` override the two lines.
 
 **The flow being filmed belongs to your project, not to this skill.** The skill owns the
 harness — launching, speaking each cue, timing the captions to the voice, spotlighting the
@@ -468,7 +591,13 @@ the one heading a reviewer trusts without reading.
 | 2 | no feature script, or the stack is down | skip the section and say why |
 | 3 | filmed, and **the feature did not hold** (`{ok:false}`) | **embed it and lead the review with what it shows** — this is the most valuable film the pipeline can make |
 
-**Give the video its own tab, and never emit a player for a file that is not there.** The
+**The film lives on the Behaviour tab — labelled *Demo* — and never emits a player for a
+file that is not there.** It had its own tab for a while, on the argument that burying it
+under the sequence diagrams meant nobody found it. That is now settled the other way: the
+demo *is* the behaviour question, so the film opens the Behaviour tab as its first section
+and the sequences follow it, and the tab is labelled for what a reader wants from it rather
+than for the artifact it happens to contain. The player must not autostart there — the tab
+is entered for the sequences as often as for the film. The
 very first thing this page got wrong was a `<video src="assets/….webm">` whose asset no
 step had written: a black rectangle stuck at 0:00 under a confident heading, with nothing
 to say the film was missing rather than broken. The builder now emits the player **only**
@@ -500,7 +629,8 @@ saying out loud.
 `panelhide` on each panel as it becomes the active one; the video starts on the first and
 pauses (never rewinds) on the second, so coming back resumes where the reader left off.
 `play()`'s rejection is swallowed, because audible playback is only granted off a user
-gesture — a click on the Video tab is one, opening the page straight on `#video` is not.
+gesture — a click on the Behaviour tab is one, opening the page straight on `#video` (the
+film's section anchor, which outlived the tab that used to own it) is not.
 **Do not answer that by muting.** The narration is the point of the film; a silent film
 here is worse than a paused one, so the reader gets the controls instead. `show all` starts
 nothing, since no panel is *the* active one there.
@@ -535,12 +665,12 @@ re-run on the same footage without filming or re-speaking anything.
 
 ## Step 6 — Entry-point complexity increment
 
-Everything through the baseline run and the delta render below lands on **Cost & shape**,
-the same tab Step 4 fed — open the record once, here:
+Everything through the baseline run and the delta render below lands on **Complexity**,
+its own tab, separate from the Code City shot Step 4 takes — open the record once, here:
 
 ```sh
-${SKILL}/scripts/steps-ledger.py start shape --label "entry-point complexity" \
-  > .human-review/.step-shape-complexity
+${SKILL}/scripts/steps-ledger.py start complexity --label "entry-point complexity" \
+  > .human-review/.step-complexity
 cd petclinic-backend && mvn -q test -Dtest=EndpointComplexityExtractorTest
 ```
 
@@ -580,7 +710,7 @@ predates a widening of what counts as an entry point, say so — the newly-visib
 otherwise read as "added by this branch".
 
 ```sh
-${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-shape-complexity)"
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-complexity)"
 ```
 
 ## Step 7 — What the REST contract did
@@ -592,6 +722,8 @@ ${SKILL}/scripts/openapi-diff.py   --base $BASE --out .human-review/assets/opena
 ${SKILL}/scripts/openapi-diff.py   --css  >  .human-review/assets/openapi-diff.css
 ${SKILL}/scripts/openapi-compat.py --base $BASE --out .human-review/assets/openapi-compat.html
 ${SKILL}/scripts/openapi-compat.py --css  >  .human-review/assets/openapi-compat.css
+${SKILL}/scripts/openapi-compat.py --base $BASE --panel \
+  --out .human-review/assets/openapi-verdict.html
 ${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-api)"
 ```
 
@@ -622,6 +754,13 @@ that serve it. Grey is the contract as it was, red is added, red struck through 
 removed — the same convention as the PlantUML deltas, learned once. Example values are
 the spec's own `example:` fields, **never invented**: a made-up payload in a review is a
 liability, and a generated spec already carries the real ones.
+
+**`--panel` is not optional.** It renders the one-line verdict banner that opens the API
+tab, and the `swaggerdiff` section pulls it in with
+`"includeHtml": "assets/openapi-verdict.html"` — so it has to be written before Step 9 builds
+the page, or the banner the reader sees is whatever stale file happened to survive on disk,
+green for a diff it never read. It carries its own `<style>`, so unlike its siblings it needs
+no `extraCss` entry.
 
 `openapi-diff.py` is *our* reading, and a reviewer is entitled to ask who checked the checker.
 `openapi-compat.py` puts a second opinion at the top of the tab: a single machine verdict,
@@ -655,8 +794,15 @@ prints, under the seal, whether the two agree. Agreement is a footnote. A **disa
 most review-worthy line on the whole page — one classifier says a client breaks and the other says
 it does not, so exactly one of them is wrong, and the guide must say which lines caused it rather
 than quietly showing whichever answer is prettier. Never suppress it, and never reconcile it by
-editing the prose: if we are over-strict, say so; if the reference tool found a gap in ours, say
-that and treat its list as the real one.
+editing the prose: if we are over-strict, say so; if `openapi-diff.py` found a gap in the
+compatibility pass, say that and treat its list as the real one.
+
+⚠️ **Name `openapi-diff.py` as the cross-check partner, never OpenAPITools/openapi-diff.**
+The panel used to credit the Java reference implementation, which is only ever reached as the
+`oasdiff` fallback and therefore never runs at all on a machine with `oasdiff` on `PATH` —
+so the page cited a tool that had not been consulted, on the one line whose whole value is
+saying who consulted whom. The cross-check is against the **sibling script**, which is also
+what `--no-cross-check` turns off.
 
 It is **not** a gate. Plenty of contract breaks are deliberate and agreed, so the verdict is
 evidence for a human, never a build failure — `--state` prints the one word if you want it in a
@@ -673,16 +819,27 @@ step diffs an intention rather than an API, and the guide should say so.
 
 ### Step 7b — the same two revisions, read by a third differ
 
-This is its own tab, **Spec changes**, not more content on the API contract tab beside it —
-so it gets its own ledger record rather than sharing Step 7's:
+**The standalone *Spec changes* tab is gone.** It used to be its own tab, on the argument
+that a third differ deserved its own surface; the reference page dropped it because the API
+tab answers the same question better, and a fourth opinion on the contract turned out to
+read as a fourth *disagreement*. If you run this at all, the report is an embed **on the API
+contract tab**, which is why the wrap below stamps `api` and not an id of its own — its
+handle file keeps the step's name, because a handle is named after the step that owns it,
+not after the tab it feeds:
 
 ```sh
-${SKILL}/scripts/steps-ledger.py start specchanges --label "pb33f report" \
-  > .human-review/.step-specchanges
-openapi-changes html-report --no-logo --no-explorer \
-  --report-file .human-review/assets/openapi-changes.html \
-  "$MERGE_BASE:openapi.yaml" ./openapi.yaml
-${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-specchanges)"
+# The gate comes before the stamp: without the binary there is no Spec changes tab, and a
+# ledger record naming a tab the page does not contain is drift the build has to shout about.
+if command -v openapi-changes >/dev/null 2>&1; then
+  ${SKILL}/scripts/steps-ledger.py start api --label "pb33f report" \
+    > .human-review/.step-specchanges
+  openapi-changes html-report --no-logo --no-explorer \
+    --report-file .human-review/assets/openapi-changes.html \
+    "$MERGE_BASE:openapi.yaml" ./openapi.yaml
+  ${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-specchanges)"
+else
+  echo "no openapi-changes — Spec changes tab dropped, and deliberately never stamped"
+fi
 ```
 
 [pb33f/openapi-changes](https://pb33f.io/openapi-changes/) is not a summary — it is a whole
@@ -770,11 +927,16 @@ system setting — the embed deliberately does not, so that both documents chang
 ## Step 7c — What it will say for itself in production
 
 ```sh
-${SKILL}/scripts/steps-ledger.py start logging --label "structural logging scan" \
-  > .human-review/.step-logging
-${SKILL}/scripts/logextract.py petclinic-backend \
-  --repo . --since $MERGE_BASE --json .human-review/assets/logging.json
-${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-logging)"
+# Same gate-before-stamp rule as 7b: no ast-grep, no Logging tab, so no ledger record either.
+if command -v ast-grep >/dev/null 2>&1; then
+  ${SKILL}/scripts/steps-ledger.py start logging --label "structural logging scan" \
+    > .human-review/.step-logging
+  ${SKILL}/scripts/logextract.py petclinic-backend \
+    --repo . --since $MERGE_BASE --json .human-review/assets/logging.json
+  ${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-logging)"
+else
+  echo "no ast-grep — Logging tab dropped, and deliberately never stamped"
+fi
 ```
 
 The question is what a 3 a.m. pager gets when this code misbehaves, and **grep cannot
@@ -936,6 +1098,20 @@ question worth asking.
 
 ## Step 9 — Snippets, findings, and the page
 
+```sh
+${SKILL}/scripts/steps-ledger.py start guide --label "assemble content.json and build the page" \
+  > .human-review/.step-guide
+```
+
+`guide` is **not a tab** — it is a reserved id, and the only one. Writing this file is
+normally the most expensive stretch of the whole run (every tab's prose, the findings, the
+captions, in one interleaved pass), and it is the one stretch that genuinely cannot be
+pinned on a tab, because no shell call can bracket "the paragraph I wrote for the API tab".
+Left unstamped it lands in the residual next to idle time and recovery, and the breakdown
+becomes one enormous unexplained row that teaches a reader to ignore the rows above it.
+Stamped, it gets a name: *assembling the guide itself*. Close it at the bottom of this step,
+before the check and the build.
+
 Never retype code into the guide. Reference it:
 
 ```sh
@@ -963,7 +1139,7 @@ ${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-re
 The JSON holds only prose + `path:from-to` references + per-diagram notes; the renderer
 owns the shell, the CSS, the inlined SVGs and the snippet extraction.
 
-### The scope bar — one chip per fact, and a chip per review
+### The scope bar — one chip per fact, and two that compute themselves
 
 `"scope"` is a list of `{label, value, href?}` chips across the top of the page: the
 change set in numbers, before any argument about it. `value` is **raw HTML** on purpose
@@ -977,12 +1153,15 @@ the chip a link — an external one opens in a new tab.
   {"label":"lines","value":"<span class=\"added\">+2256</span> / <span class=\"removed\">−34</span>"},
   {"label":"unit tests","value":"125 green (20 new)"},
   {"label":"diagrams","value":"3","href":"#diagrams"},
-  {"label":"/code-review","value":"6 findings",
-   "href":"https://code.claude.com/docs/en/code-review#review-a-diff-locally"},
-  {"label":"/simplify","value":"<span class=\"removed\">−118 lines</span> · 2 findings",
-   "href":"https://code.claude.com/docs/en/commands#all-commands"}
+  {"auto":"autofixed","href":"#autofixed"},
+  {"auto":"cost"}
 ]
 ```
+
+The last two are **computed, never typed** — `autofixed` counts the page's own two lists and
+`cost` reads the run's transcript. Both are covered below. A chip whose number is typed by
+hand and whose subject keeps changing is a chip that goes stale without anything noticing,
+which is what happened to the per-command chips these two replaced.
 
 ### The chip that computes itself
 
@@ -1016,22 +1195,43 @@ somebody paid $78 for a code review. Drop the chip and nothing else changes; the
 also drops it by itself, rather than printing a wrong number, when there is no session id
 in the environment or no transcript to read.
 
-⚠️ **The two automated reviews get one chip each — never a single merged "reviews run".**
-They answer different questions, so one number over both says neither. Each chip is
-labelled with the command that produced it and links to that command's own page in the
-Claude Code documentation, so a reviewer who has never run either can find out in one
-click what the number is a number *of*:
+### The automated passes get one chip, and the split lives in a tab
 
-| chip | value | measured in step 1 |
-| --- | --- | --- |
-| `/code-review` | `N findings` — **everything it found**, the disputable ones and the ones you fixed yourself. A chip that counted only the leftovers would shrink as you did more work. | count the findings it reported |
-| `/simplify` | `−N lines · M findings` — how much code it removed, *then* how many cleanups it raised. Its job is to shrink the solution, so the line count is the headline and goes first. | the `(d₂−d₁) − (i₂−i₁)` arithmetic above |
+For a long time this file pinned the opposite rule: *the two automated reviews get one chip
+each — never a single merged "reviews run", because they answer different questions and one
+number over both says neither.* That rule is retired. The scope bar now carries **one
+computed chip**, and the two `/code-review` and `/simplify` chips are gone:
 
-Wrap the line count in `<span class="removed">…</span>` when it is a removal and
-`<span class="added">…</span>` on the rare run that grew the code, so the sign is legible
-at chip size. A review that found nothing still gets its chip, with `0 findings` — the
-absence of findings is a result, and a missing chip reads as "we never ran it". If one
-genuinely did not run, say so in its own chip (`not run — <reason>`) rather than dropping it.
+```json
+{"auto": "autofixed", "href": "#autofixed"}
+```
+
+That is the whole declaration — the same contract as `{"auto": "cost"}`. The renderer counts
+`findings` + `autofixes` **from the lists the page actually renders**, labels it `auto-fixed
+N`, and writes a tooltip saying how many of the N were applied for you and how many are left
+for your judgement. The `href` deep-links it to the **Auto-fixed** tab.
+
+Two reasons it changed, and they are different reasons:
+
+1. **The hand-typed chips went stale, silently.** `/code-review 8 findings` outlived the
+   ninth finding being added, because nothing was looking. A chip that must be kept correct
+   by hand is a chip that will eventually be wrong, and a wrong count on the scope bar is
+   worse than no count — it is the first number a reviewer reads.
+2. **Two chips for two commands is the wrong cut anyway.** The reader's question is *how
+   much of this did the machine already handle, and how much is still mine?* — which is a
+   split by **who decides**, not by which tool spoke. `auto-fixed 12` answers it in one
+   number, and the tooltip splits it the way the reader asked.
+
+**The old rule's concern was real, and it is answered by the tab, not by the chip.** One
+number over two different questions does say neither — so the number is a handle, and the
+Auto-fixed tab behind it carries the two chapters, `autofix-codereview` and
+`autofix-simplify`, that say what each pass actually did. That is the trade: a merged count
+is legitimate exactly as long as the split it summarises is one click away and on the page.
+`build-review-html.py` warns when it is not — a merged chip with no chapters behind it is
+the failure the retired rule was really guarding against.
+
+A run where a pass genuinely did not execute still says so — in the chapter, in words,
+rather than by a missing chip nobody notices.
 
 ### What each tab cost
 
@@ -1091,9 +1291,21 @@ Three details make the number honest rather than merely present:
   would have been the same silent-wrong-page failure mode Step 0 already guards against
   for the whole run.
 
+* **A tab id the ledger names but the page does not have is reported, not ignored.** The
+  binding between a step and a tab is a bare string on both sides, so renaming a tab here
+  and forgetting its `start` wrap upstream would otherwise turn that tab silently into "not
+  measured" — indistinguishable from a step nobody ever instrumented. `--tab-costs` compares
+  the two lists, prints a `[review-cost]` warning, and puts the mismatch on the page as the
+  stated *reason* the tab came back unmeasured. That is the loud half of the gate-before-you-
+  stamp rule in Step 0: a step that never stamps a tab it then drops never trips this, so a
+  warning here always means a real disagreement between the runbook and the tab list.
+
 None of this is required for the page to build — a run with no `.steps.json` still renders
 every tab, each saying plainly that its cost was not measured, the same way the scope chip
-itself degrades to nothing rather than a wrong number when there is no session to read.
+itself degrades to nothing rather than a wrong number when there is no session to read. What
+*is* required is that the ledger belongs to **this** run: Step 0 calls `steps-ledger.py reset`
+before anything expensive starts, because a ledger inherited from the previous run is the one
+input here that produces a confident wrong number instead of an honest blank.
 
 ### Lay it out as tabs, not as a scroll
 
@@ -1105,35 +1317,115 @@ single column forces them past four answers to reach the one they wanted, so the
 
 ```json
 "tabs": [
-  {"id":"autoreview","label":"Autoreview","count":true,
-   "intro":"<p class=\"sub\" id=\"review\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
+  {"id":"review","label":"🤖 Review","count":true,
+   "intro":"<p class=\"sub\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
    "blocks":[{"type":"findings","title":"Look here first","body":"…"},
              {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
-  {"id":"video","label":"Video","blocks":[{"type":"section","id":"seeitwork"}]},
-  {"id":"behaviour","label":"Behaviour",
-   "blocks":[{"type":"section","id":"tests"},
+  {"id":"autofixed","label":"Auto-fixed",
+   "blocks":[{"type":"section","id":"autofix-codereview"},
+             {"type":"section","id":"autofix-simplify"}]},
+  {"id":"behaviour","label":"Demo",
+   "blocks":[{"type":"section","id":"video"},
+             {"type":"section","id":"sequences-note"},
              {"type":"testpairs","id":"sequences","title":"Sequence deltas","kind":"sequence",
               "body":"…","snippets":[{"ref":"…:41-56","caption":"…"}],
               "unpaired":{"id":"tests-nosequence","title":"Tests that record no sequence","body":"…"}},
              {"type":"section","id":"notcovered"}]},
-  {"id":"data","label":"Data model",
-   "blocks":[{"type":"diagrams","only":["DB","DomainModel"]},{"type":"section","id":"logic"}]},
-  {"id":"packages","label":"Packages",
-   "blocks":[{"type":"diagrams","only":["Packages"],
+  {"id":"requirements","label":"Requirements","blocks":[{"type":"section","id":"requirements"}]},
+  {"id":"data","label":"Data",
+   "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
+  {"id":"packages","label":"Structure",
+   "blocks":[{"type":"section","id":"packages-note"},
+             {"type":"diagrams","only":["Packages"],
               "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}}]},
-  {"id":"owners","label":"Code owners","blocks":[{"type":"codeowners"}]},
-  {"id":"api","label":"API contract","badge":"+4","blocks":[{"type":"section","id":"apicompat"}]},
-  {"id":"specchanges","label":"Spec changes","tip":"pb33f's whole report, embedded rather than summarised.",
-   "blocks":[{"type":"section","id":"pb33f"}]},
+  {"id":"api","label":"API","badge":"+4","blocks":[{"type":"section","id":"swaggerdiff"}]},
+  {"id":"city","label":"Code City","blocks":[{"type":"codecity"}]},
+  {"id":"complexity","label":"Complexity","blocks":[{"type":"section","id":"complexity-delta"}]},
   {"id":"logging","label":"Logging","tip":"Every logging statement the change set added — found by syntax, not by grep.",
    "blocks":[{"type":"logging","base":"origin/main","paths":["petclinic-backend"],
               "id":"logging-added","title":"Logging this change set added","body":"<div class=\"lede\">…</div>",
               "existing":{"id":"logging-existing","title":"…","body":"…","snippets":[]},
               "console":{"id":"logging-console","title":"…","body":"…","snippets":[]}}]},
-  {"id":"shape","label":"Cost & shape",
-   "blocks":[{"type":"section","id":"complexity"},{"type":"codecity"}]}
+  {"id":"owners","label":"CODEOWNERS","blocks":[{"type":"codeowners"}]}
 ]
+
+Two id collisions are avoided on purpose and are easy to reintroduce: a tab's `id` becomes
+the panel's DOM id, so the Review tab's `intro` must **not** also carry `id="review"`, and
+the Complexity tab's section is `complexity-delta`, not `complexity`. A duplicate id makes
+`#review` land on whichever the browser happens to find first.
 ```
+
+⚠️ **A tab's `id` is a contract with the step ledger; its `label` is not.** Every `id`
+above is stamped by a `steps-ledger.py start` call somewhere in Steps 1–8, and the two are
+joined by nothing but the string being identical. Relabel as freely as you like — *Packages*
+became *Structure* with no consequence at all, because the id stayed `packages`. Re-key
+without touching the wrap and the step goes on stamping the old id: attribution finds no row
+for it, its tokens fall into the residual, and the tab reports *not measured* — which reads
+as "we never instrumented that step", not as "these two files disagree". Splitting one tab
+into two (as *Cost & shape* was split into **Code City** and **Complexity**) means splitting
+its step wraps in the same edit; folding two into one (as the Video tab was folded into
+**Demo**) means pointing both wraps at the surviving id.
+
+**The tab list follows the user's decisions, and this vocabulary follows the tab list —
+never the reverse.** What tabs exist, what they are called, and which of them get merged or
+split is a product question the person you are building this for answers, not one this file
+gets to settle by having written an argument down first. What this file owns is the *keying*:
+once a tab exists, its `id` is fixed here, because a step wrap and a tab id are joined by
+nothing but the string being identical. So the rule is narrow and one-directional — **the
+page decides which tabs there are; this table decides what each one is keyed as, and it is
+updated to follow the page, not used to overrule it.**
+
+This is the whole vocabulary, and the step that pays for each:
+
+| `id` | label on the reference page | fed by | handle file |
+| --- | --- | --- | --- |
+| `review` | 🤖 Review | Step 1 | `.step-review` |
+| `autofixed` | Auto-fixed | *nothing, deliberately* — see below | — |
+| `behaviour` | Demo | Steps 3 **and** 5 | `.step-behaviour`, `.step-video` |
+| `requirements` | Requirements | *no step yet* | — |
+| `data`, `packages` | Data, Structure | Step 2 | `.step-data` |
+| `api` | API | Step 7, its visual diff, and 7b | `.step-api`, `.step-api-visual`, `.step-specchanges` |
+| `city` | Code City | Step 4 | `.step-city` |
+| `complexity` | Complexity | Step 6 | `.step-complexity` |
+| `logging` | Logging | Step 7c | `.step-logging` |
+| `owners` | CODEOWNERS | Step 8 | `.step-owners` |
+| `guide` | *(not a tab)* | Step 9 | `.step-guide` |
+
+Read the third column as the map from *work* to *answer*, not as a naming convention. Two
+steps can feed one tab (`behaviour` gets both the film and the sequences; `api` gets the
+compatibility verdict, the blast-radius view and the pb33f report), and one step can feed
+two tabs (`data,packages` come out of one diagram pass). `requirements` is a real tab with
+no step behind it yet — the map is honest about that rather than quietly leaving it out, and
+whoever builds that step wraps it with `start requirements`. Until then it reports *not
+measured*, which is true.
+
+⚠️ **`autofixed` is deliberately fed by nothing, and this is the reasoning — do not
+re-litigate it.** The obvious move is to widen Step 1's wrap to `start review,autofixed`.
+Do not: a step naming two tabs has its cost **split evenly** between them, so that one edit
+would silently halve the Review tab's published number, and halve it in favour of a tab that
+did no work of its own. Auto-fixed does not *produce* anything — it re-presents material
+Step 1 already generated, on a second surface, because a reader wanted the applied fixes
+separated from the open calls. The tokens were spent under Step 1 and belong to **🤖 Review**
+whole. So the honest reading is the one the page gives: Review carries the full cost of the
+pass, and Auto-fixed reports *not measured* — not because instrumenting it was forgotten,
+but because there is no work to instrument. It sits with `overview` (synthesised from the
+other tabs) in the "will never have a step" category, as against `requirements`, which is
+waiting for one. If Auto-fixed ever grows a step that genuinely does new work — re-running a
+pass, classifying its output afresh — that step stamps `autofixed` and this note comes out.
+
+**Adding a tab is fine and needs no permission here** — give it any id, and it reports *not
+measured* until a step stamps it. **Dropping one is fine** — nothing stamps a step that did
+not run. What silently breaks is **re-keying a tab this table already names without
+re-keying its `start` wrap in the same edit**: the wrap goes on stamping the old id, the tab
+reads "not measured", and its tokens pile up in the residual with nothing on screen saying
+why. When the tab list changes, this table and the wraps in Steps 1–8 change with it, and
+`scripts/test_skill_tab_ledger_wiring.py` fails until they agree.
+
+Do not take this on trust — the check is three lines below, in *Close the ledger, check it,
+then build*: `steps-ledger.py check` compares the stamped ids against the ids the page will
+actually have, exits non-zero on any that no longer exist, and names both lists. It also
+reports, without failing, the tabs no step fed and any step that started and never recorded
+finishing.
 
 Block types: **`findings`** (the disputable calls), **`autofixes`** (the top-level
 `autofixes` array — what you applied in step 1, same shape as a finding), **`diagrams`**
@@ -1205,57 +1497,106 @@ Rules the renderer enforces:
   group two tabs into one clause. It may not do so by accident;
 - omit `tabs` entirely and you get the original single-column page, unchanged.
 
-⚠️ **The strip has a budget, and it is not the window.** Its inner track is pinned to
-**1120 px at every viewport** by its own padding formula, and one row is 34 px at 1280 px
-and up. Eleven tabs plus `show all` need about 1130 px, so three rules at the very **end**
-of the stylesheet buy the room: `.tabstrip .grow { flex:1 1 0 }` (+16 px), `.tabstrip {
-padding-right:1.25rem }` (+20 px at 1280, +100 at 1440 — the strip is full-bleed, so the
-right padding is decorative; the **left** padding is untouched, so the first tab still
-starts where the body text does), and `button.tab { padding:0 .6rem }` (+88 px across
-eleven pills). They must be emitted last or the base sheet's `button.tab { padding:0
-.85rem }` wins the cascade and the strip silently wraps onto two rows — no error, nothing
-in the DOM to notice. `test_build_review.py` pins the ordering. **A twelfth tab does not
-fit**: merge one, shorten a label, or accept two rows deliberately.
+⚠️ **The strip has a budget, and it is not the window.** Its inner track is pinned by its
+own padding formula rather than by the viewport, so widening the browser buys almost
+nothing. Three rules at the very **end** of the stylesheet buy the room instead:
+`.tabstrip .grow { flex:1 1 0 }` (+16 px), `.tabstrip { padding-right:1.25rem }` (+20 px at
+1280, +100 at 1440 — the strip is full-bleed, so the right padding is decorative; the
+**left** padding is untouched, so the first tab still starts where the body text does), and
+`button.tab { padding:0 .6rem }` (about +8 px per pill). They must be emitted last or the
+base sheet's `button.tab { padding:0 .85rem }` wins the cascade and the strip silently wraps
+onto two rows — no error, nothing in the DOM to notice. `test_build_review.py` pins the
+ordering.
+
+**Measured, rather than asserted** (2026-09-03, reference page, Chrome, at 1280 / 1440 /
+1920 px): all **12 pills plus `show all` sit on one row at every width**, strip height
+**41 px** throughout, the pills summing to **984 px** of a **~1140 px** track. That is
+roughly 156 px of slack — call it two more average pills. An earlier version of this note
+claimed a twelfth tab would not fit; it was written before the shavings above landed and was
+simply wrong by the time anyone read it. **Re-measure before believing either number**: open
+the built page, and in the console compare `document.querySelector('.tabstrip').getBoundingClientRect().height`
+against a single row, and sum the pills' `offsetWidth` against the track's `clientWidth`. If
+a new tab does push it over, the remedies are unchanged — merge one, shorten a label, or
+accept two rows deliberately — but decide that from a measurement, not from this paragraph.
 
 Deep links work both ways: `#<tab-id>` opens on that tab, and a link to any `id` inside a
 panel switches to it first. `⌘F` searches only the open tab, so the strip carries a **show
 all** toggle that reveals every panel at once — which is also what printing does.
 
-The order, as a default worth departing from only with a reason — **Overview, Autoreview,
-Video, Behaviour, Data model, Packages, Code owners, API contract, Spec changes, Logging,
-Cost & shape** — with the panels in the same DOM order as the strip:
+The order, as a default worth departing from only with a reason — **Overview, 🤖 Review,
+Auto-fixed, Demo, Requirements, Data, Structure, API, Code City, Complexity, Logging,
+CODEOWNERS** — with the panels in the same DOM order as the strip:
 
-1. **Overview** — synthesised: the summary and the verdict, and the lede that walks the
-   reader through the rest of the strip (see `{{tabcount}}` above).
-2. **Autoreview** — the disputable findings, most critical first, each with the failing
-   scenario in one sentence and a snippet of the decisive lines; then the fixes you already
-   applied. The two lists are one decision split in two, and a reviewer who cannot see the
-   first pile has to take the size of the second on trust. It is called *Autoreview*, not
-   *Review*, because the whole page is the review — this tab is what the automated passes
-   said. Its `intro` must state that `/code-review` and `/simplify` output was **merged**
-   before it reached the page and is not separable from the recorded data: nothing says
-   which command produced which item, so the split below is by *who decides*, not by which
-   tool spoke. Give the intro `id="review"` so older `#review` links still land. The two
-   header chips point in-page at `#autoreview` — not out to the docs in a new tab, which
-   answered a question nobody had while the findings themselves were one click away.
-3. **Video** — its own tab, not a paragraph inside Behaviour. It is the one artifact a
-   reader can watch instead of read, and burying it under the sequence diagrams meant most
-   of them never found it. Rename the section's `id` (`seeitwork`) so the tab can own
-   `#video`.
-4. **Behaviour** — each acceptance test with the sequence its run recorded directly beneath
-   it, then a plain statement of what is **not** covered.
-5. **Data model** — the DB and domain deltas, and the 2–5 core-logic bullets in domain
+1. **Overview** (`overview`) — synthesised: the summary and the verdict, and the lede that
+   walks the reader through the rest of the strip (see `{{tabcount}}` above). It is the one
+   tab no step feeds, by design.
+2. **🤖 Review** (`review`) — the disputable findings, most critical first, each with the
+   failing scenario in one sentence and a snippet of the decisive lines; then the fixes you
+   already applied. The two lists are one decision split in two, and a reviewer who cannot
+   see the first pile has to take the size of the second on trust. The robot in the label is
+   doing the work the name *Autoreview* used to do: saying these are the machine's findings,
+   not the whole review, while still being the word a reader scans for. Its `intro` must
+   state that `/code-review` and `/simplify` output was **merged** before it reached the page
+   and is not separable from the recorded data: nothing says which command produced which
+   item, so the split below is by *who decides*, not by which tool spoke. The tab id is
+   `review`, so nothing inside the panel may also be `id="review"`. The two header chips
+   point in-page at `#review` — not out to the docs in a new tab, which answered a question
+   nobody had while the findings themselves were one click away.
+3. **Auto-fixed** (`autofixed`) — what the automated passes changed for you, in two
+   chapters: `autofix-codereview` (what `/code-review` fixed — correctness) and
+   `autofix-simplify` (what `/simplify` removed — shrinking the solution). It exists because
+   the scope bar merged both passes into one `auto-fixed N` chip, and a merged number is
+   only honest while the split it summarises is a click away. **The two chapters split by
+   the kind of work each pass does, not by recorded provenance** — see Step 1 on why the
+   data cannot answer "which command produced this item". It re-presents Step 1's output
+   rather than doing new work, which is why no step stamps it in the cost ledger.
+4. **Demo** (`behaviour`) — the film first, then each acceptance test with the sequence its
+   run recorded directly beneath it, then a plain statement of what is **not** covered. The
+   film had its own *Video* tab for a while; it is here now because *does it work?* is one
+   question, and a reader who came to watch and a reader who came to read the sequences are
+   answering the same doubt. The label says **Demo** rather than *Behaviour* because that is
+   what a reviewer is looking for. Keep the film's section id `video`, so `#video` still
+   lands even though the tab that used to own it is gone, and do not autostart it — this tab
+   is opened for the sequences at least as often as for the film.
+5. **Requirements** (`requirements`) — what this change set was supposed to do, against what
+   it did. No step in this runbook produces it yet, so it will report *not measured* in the
+   cost breakdown until one does; that is a true statement, not a defect.
+6. **Data** (`data`) — the DB and domain deltas, and the 2–5 core-logic bullets in domain
    language, each backed by a snippet.
-6. **Packages** — the package delta, or the current package diagram as context.
-7. **Code owners** — whether a named human has to approve this before it can merge, and
-   which files put them on the critical path.
-8. **API contract** — step 7's two fragments, each a `section` with `includeHtml`: the
+7. **Structure** (`packages`) — the package delta, or the current package diagram as
+   context. The id stayed `packages` when the label changed, which is exactly the freedom
+   the id/label split exists to give you.
+8. **API** (`api`) — step 7's two fragments, each a `section` with `includeHtml`: the
    compatibility verdict first, because it is the one-word answer, then the classified
-   change list underneath it.
-9. **Spec changes** — step 7b's embedded pb33f report, beside the tab whose numbers it
-   will appear to contradict.
-10. **Logging** — step 7c: what this change set will say for itself in production.
-11. **Cost & shape** — the complexity increment and the Code City shot.
+   change list underneath it, and the blast-radius view beside them. Step 7b's pb33f report
+   belongs here too if you run it: it had a *Spec changes* tab of its own and lost it,
+   because a fourth reading of the contract on a fourth surface reads as a fourth
+   disagreement rather than as corroboration.
+9. **Code City** (`city`) — where the change set landed in the skyline. Its own tab: *where
+   did this land* is not the same question as *what did it cost to run*.
+10. **Complexity** (`complexity`) — the entry-point complexity increment. Split out from Code
+   City for the reason above; its section is `complexity-delta`, never `complexity`, which
+   the panel already owns.
+11. **Logging** (`logging`) — step 7c: what this change set will say for itself in
+    production.
+12. **CODEOWNERS** (`owners`) — whether a named human has to approve this before it can
+    merge, and which files put them on the critical path.
+
+### Close the ledger, check it, then build
+
+In this order, and only in this order:
+
+```sh
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-guide)"
+${SKILL}/scripts/steps-ledger.py check          # exits non-zero on a renamed tab
+${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-review/review.html
+```
+
+`end` before `check` so the guide record is closed when the check reads it — an open record
+draws a "started and never recorded finishing" warning that would be noise here rather than
+news. `check` before the build so a `DRIFT:` line is something you can still act on: once
+the page is written, the only trace of a renamed tab is a column of blanks nobody can
+distinguish from a step that was never instrumented.
 
 ## Step 10 — Hand the guide over, then the app
 
@@ -1273,6 +1614,13 @@ what makes the guide *addressable* — the report has to have a URL before anyth
 it, and both of VS Code's embedded browsers refuse `file://` (the Simple Browser's iframe
 is bound by a `frame-src *` CSP, and a CSP wildcard does not cover non-network schemes, so
 a file URL renders as a blank panel with no error).
+
+⚠️ **That reuse bites the moment you edit `serve-review.py` itself.** A second start does not
+replace the listener, it prints `:7654 already serves … — using it` and hands back the old
+one — which is still running the *old* code, so a route or endpoint you just added answers
+404 and the file on disk plainly contains it. Two agents lost time to this in one day. After
+any edit to the server, `serve-review.py .human-review --stop` and start it again; reading
+the source harder will not help, because the source is not what is answering.
 
 Then open it where the reader already is:
 

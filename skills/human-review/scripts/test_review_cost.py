@@ -272,5 +272,139 @@ def test_an_end_to_end_report_measures_the_tab_and_the_residual(tmp_path, monkey
     assert report["residual"]["messages"] == 1
 
 
+# --------------------------------------------------------------------------- #
+# Drift between a step wrap and the tab list — the failure that used to be silent
+# --------------------------------------------------------------------------- #
+
+def test_a_ledger_tab_the_page_does_not_have_is_named_not_ignored():
+    """`tab_costs` has to ignore a tab it has no row for — but ignoring it *quietly* is how
+    the binding rots, because the renamed tab then reads exactly like an uninstrumented one."""
+    steps = [{"tabs": ["packages"], "label": "diagrams",
+              "start": _ts("2026-09-02T10:00:00+00:00"),
+              "end": _ts("2026-09-02T10:10:00+00:00")}]
+    result = rc.tab_costs([_turn("2026-09-02T10:05:00+00:00")], steps, ["structure"])
+    assert result["unknown"] == ["packages"]
+    assert result["residual"]["messages"] == 1, "its tokens still have to land somewhere"
+
+
+def test_no_drift_reports_no_unknown_tabs():
+    steps = [{"tabs": ["data"], "label": "diagrams",
+              "start": _ts("2026-09-02T10:00:00+00:00"),
+              "end": _ts("2026-09-02T10:10:00+00:00")}]
+    assert rc.tab_costs([], steps, ["data", "owners"])["unknown"] == []
+
+
+def test_the_report_makes_drift_the_stated_reason_a_tab_is_unmeasured(tmp_path, monkeypatch,
+                                                                     capsys):
+    """`reason` is what the breakdown panel prints on its "N tabs not measured" row, so
+    putting the mismatch there is what carries it to a human instead of a log nobody opens."""
+    fake = _fake_transcript(tmp_path, [
+        {"type": "assistant", "timestamp": "2026-09-02T10:05:00Z",
+         "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
+                     "usage": {"input_tokens": 100, "output_tokens": 10}}},
+    ])
+    monkeypatch.setattr(rc, "transcript", lambda session: fake)
+    monkeypatch.setattr(rc, "subagent_transcripts", lambda path: [])
+    steps_path = tmp_path / ".steps.json"
+    steps_path.write_text(json.dumps([
+        {"tabs": ["packages"], "label": "diagrams",
+         "start": "2026-09-02T10:00:00+00:00", "end": "2026-09-02T10:10:00+00:00"},
+    ]), encoding="utf-8")
+    report = rc.tab_cost_report("fake-session", None, steps_path, ["structure"])
+    assert report["unknown_tabs"] == ["packages"]
+    assert "packages" in report["reason"] and "drifted apart" in report["reason"]
+    assert "[review-cost]" in capsys.readouterr().err
+
+
+def test_a_clean_run_still_reports_no_reason(tmp_path, monkeypatch):
+    """The reason field stays None when nothing is wrong — the panel falls back to its own
+    wording for a tab that simply had no step, and must not be handed a false alarm."""
+    fake = _fake_transcript(tmp_path, [
+        {"type": "assistant", "timestamp": "2026-09-02T10:05:00Z",
+         "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
+                     "usage": {"input_tokens": 100, "output_tokens": 10}}},
+    ])
+    monkeypatch.setattr(rc, "transcript", lambda session: fake)
+    monkeypatch.setattr(rc, "subagent_transcripts", lambda path: [])
+    steps_path = tmp_path / ".steps.json"
+    steps_path.write_text(json.dumps([
+        {"tabs": ["data"], "label": "diagrams",
+         "start": "2026-09-02T10:00:00+00:00", "end": "2026-09-02T10:10:00+00:00"},
+    ]), encoding="utf-8")
+    report = rc.tab_cost_report("fake-session", None, steps_path, ["data", "owners"])
+    assert report["reason"] is None and report["unknown_tabs"] == []
+
+
+# --------------------------------------------------------------------------- #
+# The residual, decomposed — one row carrying 90% of the bill is not a caveat
+# --------------------------------------------------------------------------- #
+
+def _win(tabs, a, b):
+    return {"tabs": tabs, "label": ",".join(tabs), "start": _ts(a), "end": _ts(b)}
+
+
+def test_the_guide_pseudo_tab_is_its_own_bucket_not_a_tab_row():
+    """`guide` is Step 9 assembling the page. It has to be named — it is normally the biggest
+    single share — without becoming a row in a table of tabs, because it is not one."""
+    steps = [_win(["guide"], "2026-09-02T11:00:00+00:00", "2026-09-02T11:30:00+00:00")]
+    r = rc.tab_costs([_turn("2026-09-02T11:10:00+00:00")], steps, ["data"])
+    assert "guide" not in r["tabs"], "the pseudo-tab must never render as a tab"
+    assert r["residual_parts"]["guide"]["messages"] == 1
+    assert r["unknown"] == [], "`guide` is reserved, not drift"
+
+
+def test_unattributed_turns_split_by_whether_a_subagent_spent_them():
+    """The two halves answer different questions: delegated work that nobody bracketed, and
+    the orchestrating conversation that never belonged to a step at all."""
+    turns = [_turn("2026-09-02T09:00:00+00:00", side=True),
+             _turn("2026-09-02T09:01:00+00:00", side=True),
+             _turn("2026-09-02T09:02:00+00:00", side=False)]
+    r = rc.tab_costs(turns, [], ["data"])
+    assert r["residual_parts"]["subagent"]["messages"] == 2
+    assert r["residual_parts"]["conversation"]["messages"] == 1
+    assert r["residual_parts"]["guide"]["messages"] == 0
+
+
+def test_the_parts_always_add_back_up_to_the_residual():
+    """The invariant every caller leans on — tabs + residual == the scope chip's total —
+    must survive the decomposition, or the panel's own total stops matching the chip."""
+    steps = [_win(["data"], "2026-09-02T10:00:00+00:00", "2026-09-02T10:10:00+00:00"),
+             _win(["guide"], "2026-09-02T11:00:00+00:00", "2026-09-02T11:10:00+00:00")]
+    turns = [_turn("2026-09-02T10:05:00+00:00"),
+             _turn("2026-09-02T11:05:00+00:00"),
+             _turn("2026-09-02T12:00:00+00:00", side=True),
+             _turn("2026-09-02T12:01:00+00:00")]
+    r = rc.tab_costs(turns, steps, ["data"])
+    parts = sum(v["cost"] for v in r["residual_parts"].values())
+    assert r["residual"]["cost"] == pytest.approx(parts)
+    assert r["residual"]["messages"] == 3
+    total = r["tabs"]["data"]["cost"] + r["residual"]["cost"]
+    assert total == pytest.approx(sum(rc.price(rc.family(m), u) for _, m, u, _s, _w in turns))
+
+
+def test_the_report_carries_the_parts_through_to_the_page(tmp_path, monkeypatch):
+    fake = _fake_transcript(tmp_path, [
+        {"type": "assistant", "timestamp": "2026-09-02T11:05:00Z",
+         "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
+                     "usage": {"input_tokens": 100, "output_tokens": 10}}},
+        {"type": "assistant", "timestamp": "2026-09-02T13:00:00Z",
+         "message": {"id": "m2", "model": "claude-sonnet-5-20260101",
+                     "usage": {"input_tokens": 200, "output_tokens": 20}}},
+    ])
+    monkeypatch.setattr(rc, "transcript", lambda session: fake)
+    monkeypatch.setattr(rc, "subagent_transcripts", lambda path: [])
+    steps_path = tmp_path / ".steps.json"
+    steps_path.write_text(json.dumps([
+        {"tabs": ["guide"], "label": "assemble the page",
+         "start": "2026-09-02T11:00:00+00:00", "end": "2026-09-02T11:10:00+00:00"},
+    ]), encoding="utf-8")
+    report = rc.tab_cost_report("fake-session", None, steps_path, ["data"])
+    assert report["reason"] is None, "`guide` must not be reported as a drifted tab id"
+    parts = report["residual_parts"]
+    assert parts["guide"]["messages"] == 1
+    assert parts["conversation"]["messages"] == 1
+    assert sum(p["cost"] for p in parts.values()) == pytest.approx(report["residual"]["cost"])
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

@@ -239,6 +239,68 @@ def test_a_genuine_zero_reads_as_a_sentence_not_as_silence():
 
 
 # --------------------------------------------------------------------------- #
+# "Data flow to here" on the page: the origin lines `logextract.py` walked back to,
+# pulled into the same <pre> as the statement, with the file's own line numbers.
+# --------------------------------------------------------------------------- #
+
+def _extract_snippet():
+    """`extract-snippet.py` is a hyphenated filename, so it is not importable by name."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("extract_snippet", HERE / "extract-snippet.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_origin_lines_join_the_statement_in_one_reference():
+    h = {"file": "a/A.java", "line": 93, "end_line": 93,
+         "origins": [{"line": 89, "name": "vetId", "kind": "param", "text": ""}]}
+    assert build._logging_ref(h) == "a/A.java:93,89"
+
+
+def test_a_statement_with_nothing_to_trace_is_the_reference_it_always_was():
+    h = {"file": "a/A.java", "line": 9, "end_line": 9, "origins": []}
+    assert build._logging_ref(h) == "a/A.java:9"
+    assert build._logging_ref({**h, "end_line": 11}) == "a/A.java:9-11"
+
+
+def test_an_origin_inside_the_statement_is_not_quoted_twice():
+    """`log.error("boom", e)` inside `catch (RuntimeException e)` on the same line: the
+    origin is already on screen, and a second copy of it is not evidence."""
+    h = {"file": "a/A.java", "line": 20, "end_line": 22,
+         "origins": [{"line": 21, "name": "e", "kind": "param", "text": ""}]}
+    assert build._logging_ref(h) == "a/A.java:20-22"
+
+
+def test_the_page_caps_how_many_origin_lines_one_entry_may_pull_in():
+    """The tab lists every touched Java file. An entry that grows from three lines to
+    twenty to show a chain nobody asked about has made the tab worse in exactly the way
+    the prose it replaced did — so the page caps on top of the extractor's own cap, and
+    keeps the hops *nearest* the statement rather than an arbitrary slice."""
+    h = {"file": "a/A.java", "line": 50, "end_line": 50,
+         "origins": [{"line": n, "name": f"v{n}", "kind": "local", "text": ""}
+                     for n in (10, 20, 30, 40, 45, 48)]}
+    assert build.MAX_ORIGIN_LINES_SHOWN == 4
+    assert build._logging_ref(h) == "a/A.java:50,30,40,45,48"   # 10 and 20 are the far ones
+
+
+def test_the_quoted_origin_keeps_its_real_line_number_behind_a_gap_marker(tmp_path):
+    """Truthful numbering is the point: the pulled-in line is numbered where it really
+    lives, and the jump is marked rather than hidden — renumbering it to look adjacent
+    would make the snippet a drawing of the code instead of the code."""
+    src = "\n".join(f"line{n}" for n in range(1, 13)) + "\n"
+    (tmp_path / "A.java").write_text(src, encoding="utf-8")
+    # `render` directly, not `snippet_html`: the latter shells out and the child resolves
+    # its root with `git rev-parse`, which a bare tmp_path is not.
+    out = _extract_snippet().render("A.java:3,11", None, tmp_path, exact=True)
+    assert '<span class="ln">3</span>' in out
+    assert '<span class="ln">11</span>' in out
+    assert '<span class="ln">7</span>' not in out          # not renumbered, not filled in
+    assert "7 lines not shown" in out                       # and the jump is stated
+    assert 'class="ln ln-gap"' in out
+
+
+# --------------------------------------------------------------------------- #
 # faking the model call — no test in this file makes a real `claude` call: it is slow,
 # billed, and non-deterministic, none of which belong in a routine `pytest` run. What is
 # pinned here instead is the contract `_logging_listing`/`privacy_verdict` hold the model
@@ -247,17 +309,22 @@ def test_a_genuine_zero_reads_as_a_sentence_not_as_silence():
 
 DEBUG_HIT = {"file": FIXTURE_REL, "abs_file": str(REPO_ROOT / FIXTURE_REL), "line": 9,
              "column": 9, "end_line": 9, "level": "DEBUG",
-             "raw_line": '        LOG.debug("cache miss");', "format": '"cache miss"',
-             "text": 'LOG.debug("cache miss")',
-             "args": [], "method_start": 7, "method_end": 14}
+             "raw_line": '        LOG.debug("cache miss");', "format": '"cache miss {}"',
+             "text": 'LOG.debug("cache miss {}", id)',
+             "args": ["id"], "method_start": 7, "method_end": 14}
 
 
-def _fake_call(verdict="safe", trace="test trace", cost=0.0021):
+def _fake_call(verdict="safe", values=None, cost=0.0021):
+    """`values` defaults to the one clause `DEBUG_HIT`'s single argument needs; pass a
+    list to model a statement with several, or an empty list to model a model that
+    answered nothing."""
     calls = []
+    if values is None:
+        values = [{"name": "id", "verdict": verdict, "note": "test clause"}]
 
     def call(prompt):
         calls.append(prompt)
-        return {"verdict": verdict, "trace": trace, "cost_usd": cost}
+        return {"verdict": verdict, "values": list(values), "cost_usd": cost}
     call.calls = calls
     return call
 
@@ -284,7 +351,8 @@ def test_each_statement_renders_as_the_page_s_one_snippet_style(no_verdict_disk)
     full repo path."""
     out = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=_fake_call())
     assert out.count('<figure class="snippet">') == 1
-    assert '>DEBUG · Slf4jExplicit:9</a>' in out                # level folded into the label
+    assert '>Slf4jExplicit:9</a>' in out                        # the location, and only that
+    assert 'DEBUG · ' not in out                # the level rides in the quoted code, not here
     assert f'>{html.escape(FIXTURE_REL)}:9</a>' not in out      # the old full-path label is gone
     assert 'badge sev-info">DEBUG</span>' not in out            # no more coloured level pill
     assert "cache miss" in out                                  # the real source line, verbatim
@@ -305,26 +373,105 @@ def test_the_footer_puts_the_verdict_left_and_the_label_right(no_verdict_disk):
     narrow width wraps label-under-verdict rather than truncating either one."""
     out = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=_fake_call())
     footer = out[out.index('<p class="log-footer">'):out.index("</p>", out.index('<p class="log-footer">')) + 4]
-    assert footer.index('class="privacy-verdict') < footer.index('DEBUG · Slf4jExplicit:9')
+    assert footer.index('class="privacy-verdict') < footer.index('Slf4jExplicit:9')
     assert 'class="srcref"' in footer  # still the same shared link/anchor markup
     assert "log-snippet" not in out    # the old wrapper div from the previous position is gone
     assert ".log-snippet" not in build.CSS  # and so is its corner-tag CSS, not layered under a third rule
 
 
-def test_the_verdict_sits_after_the_code_with_its_trace_spelled_out(no_verdict_disk):
-    """The verdict is below the <pre> block, inside the same card, and its trace is
-    visible text — not only reachable by hovering a tooltip."""
+def test_the_verdict_sits_after_the_code_and_stands_alone_on_its_row(no_verdict_disk):
+    """The verdict is below the <pre> block, inside the same card — and it is now the
+    word and nothing else. The reasoning moved to the bullets under it, so a reader
+    scanning a column of statements reads a column of verdicts, not of sentences."""
     out = build._logging_listing(
         [DEBUG_HIT], REPO_ROOT,
-        call=_fake_call(trace="vetId is an Integer parameter, nothing else"))
+        call=_fake_call(values=[{"name": "id", "verdict": "SAFE",
+                                 "note": "a cache key, nothing personal"}]))
     pre_end = out.index("</pre>")
     verdict_at = out.index('class="privacy-verdict')
     figure_end = out.index("</figure>")
     assert pre_end < verdict_at < figure_end          # between the code and the card's own end
     assert "✅" in out and "<b>SAFE</b>" in out
-    assert "vetId is an Integer parameter, nothing else" in out   # the trace, in plain text
-    verdict_span = out[out.index('<span class="privacy-verdict'):out.index("</span>", out.index('<span class="privacy-verdict'))]
-    assert "data-tip" not in verdict_span  # the trace is prose on the page, not tooltip-only
+    verdict_span = out[out.index('<span class="privacy-verdict'):
+                       out.index("</span>", out.index('<span class="privacy-verdict'))]
+    assert verdict_span.endswith("<b>SAFE</b>")       # the word, and nothing after it
+    assert "a cache key" not in verdict_span          # the clause is not fused onto it
+    assert "data-tip" not in verdict_span             # nor hidden in a tooltip
+    assert "a cache key, nothing personal" in out     # it is a bullet, in plain text
+    assert out.index("</p>", verdict_at) < out.index("a cache key")   # below the verdict
+
+
+def test_one_bullet_per_logged_value_named_as_the_source_writes_it(no_verdict_disk):
+    """The shape the reader asked for: `vetId — just a numeric vet database id`, one row
+    per value, so a three-value statement can be scanned for *which* value is the
+    problem instead of read as one sentence that fused all three."""
+    h = {**DEBUG_HIT, "args": ["vetId", "owner.getName()", "count"]}
+    out = build._logging_listing([h], REPO_ROOT, call=_fake_call(verdict="privacy", values=[
+        {"name": "vetId", "verdict": "SAFE", "note": "just a numeric vet database id"},
+        {"name": "owner.getName()", "verdict": "PRIVACY", "note": "the owner's full name"},
+        {"name": "count", "verdict": "SAFE", "note": "a row count"},
+    ]))
+    bullets = out[out.index('<ul class="log-values">'):out.index("</ul>")]
+    assert bullets.count("<li") == 3
+    assert "<code>vetId</code> — just a numeric vet database id" in bullets
+    assert "<code>owner.getName()</code> — the owner&#x27;s full name" in bullets
+    # The one row that is not fine carries the mark; a column of green ticks under a
+    # green tick would be decoration.
+    assert bullets.index("❌") < bullets.index("owner.getName()")
+    assert "✅" not in bullets
+
+
+def test_the_headline_verdict_is_the_worst_of_the_bullets(no_verdict_disk):
+    """A per-value answer must never let the page come out *better* than its own worst
+    row — so the headline is recomputed from the bullets, not taken on the model's word."""
+    h = {**DEBUG_HIT, "args": ["vetId", "email"]}
+    out = build._logging_listing([h], REPO_ROOT, call=_fake_call(verdict="SAFE", values=[
+        {"name": "vetId", "verdict": "SAFE", "note": "a numeric id"},
+        {"name": "email", "verdict": "PRIVACY", "note": "the owner's email address"},
+    ]))
+    box = out.split("privacy-legend")[0]            # the legend names all four words
+    assert "<b>PRIVACY</b>" in box and "<b>SAFE</b>" not in box
+    assert build._worst_verdict("safe", "doubt", "privacy") == "privacy"
+    assert build._worst_verdict("safe", "safe") == "safe"
+    assert build._worst_verdict() == "doubt"          # nothing to go on is never SAFE
+
+
+def test_a_value_the_model_skipped_gets_its_own_row_and_costs_the_all_clear(no_verdict_disk):
+    """The bullets are driven by `logextract.py`'s argument list, never by whatever the
+    model chose to mention: a model that silently drops a value must not silently drop
+    it from the page, and "nobody said" must not read like "nothing to say"."""
+    h = {**DEBUG_HIT, "args": ["vetId", "ownerEmail"]}
+    out = build._logging_listing([h], REPO_ROOT, call=_fake_call(verdict="SAFE", values=[
+        {"name": "vetId", "verdict": "SAFE", "note": "a numeric id"},
+    ]))
+    bullets = out[out.index('<ul class="log-values">'):out.index("</ul>")]
+    assert bullets.count("<li") == 2
+    assert "val-unresolved" in bullets and "ownerEmail" in bullets
+    assert "not assessed" in bullets
+    box = out.split("privacy-legend")[0]            # the legend names all four words
+    assert "<b>DOUBT</b>" in box and "<b>SAFE</b>" not in box
+
+
+def test_a_clause_answered_by_root_name_still_lands_on_its_row(no_verdict_disk):
+    """`owner` for `owner.getName()` is the right answer under a shorter name — accepted
+    while exactly one row could be meant, and never guessed when two could."""
+    rows, broken = build._value_bullets(["owner.getName()"],
+                                        [{"name": "owner", "verdict": "PRIVACY",
+                                          "note": "the owner's name"}])
+    assert not broken and rows[0]["verdict"] == "privacy"
+    rows, broken = build._value_bullets(["owner.getName()", "owner.getEmail()"],
+                                        [{"name": "owner", "verdict": "PRIVACY",
+                                          "note": "the owner's name"}])
+    assert broken and [r["verdict"] for r in rows] == [None, None]
+
+
+def test_a_statement_that_interpolates_nothing_gets_no_bullet_list(no_verdict_disk):
+    """`log.debug("cache miss")` logs no value, so there is no row to write. The verdict
+    alone is the whole answer, and an empty <ul> would be furniture."""
+    h = {**DEBUG_HIT, "args": [], "text": 'LOG.debug("cache miss")'}
+    out = build._logging_listing([h], REPO_ROOT, call=_fake_call(values=[]))
+    assert "log-values" not in out
+    assert "<b>SAFE</b>" in out
 
 
 def test_two_statements_yield_two_boxes_and_nothing_else(no_verdict_disk):
@@ -344,7 +491,8 @@ def test_the_legend_is_a_vertical_list_headed_ai_evaluation(no_verdict_disk):
     discussion this superseded)."""
     out = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=_fake_call())
     assert '<p class="privacy-legend-title">🤖 AI Evaluation:</p>' in out
-    assert out.count("<li>") == 4  # SAFE, DOUBT, PRIVACY, and NOT EVALUATED
+    legend = out[out.index('<ul class="privacy-legend-list">'):]
+    assert legend.count("<li>") == 4  # SAFE, DOUBT, PRIVACY, and NOT EVALUATED
     assert "SAFE" in out and "DOUBT" in out and "PRIVACY" in out and "NOT EVALUATED" in out
     assert "on purpose" in out  # the ambiguity-resolves-to-DOUBT clause
 
@@ -365,7 +513,8 @@ def test_a_cache_hit_never_calls_the_model_again(tmp_path):
     """The point of the cache: a re-run on unchanged code neither flips the answer nor
     pays for it twice. `cache_root=tmp_path` isolates the cache file from this checkout
     while `root=REPO_ROOT` still lets `snippet_html` resolve the real fixture."""
-    fake = _fake_call(verdict="privacy", trace="ownerEmail is a String field")
+    fake = _fake_call(verdict="privacy", values=[
+        {"name": "id", "verdict": "PRIVACY", "note": "ownerEmail is a String field"}])
     out1 = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=fake, cache_root=tmp_path)
     assert len(fake.calls) == 1
     out2 = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=fake, cache_root=tmp_path)
@@ -390,7 +539,8 @@ def test_the_cost_note_names_a_live_call_and_reused_cache_hits(tmp_path):
 def test_privacy_verdict_never_reads_a_raised_error_as_a_verdict(tmp_path):
     result = build.privacy_verdict(DEBUG_HIT, tmp_path, {}, call=_raising_call("boom"))
     assert result["verdict"] == "error"
-    assert result["trace"] == "boom"
+    assert result["note"] == "boom"
+    assert result["values"] == []
     assert result["cached"] is False
     assert result["cost_usd"] == 0.0
 
@@ -435,11 +585,39 @@ def test_no_claude_binary_is_a_runtime_error_not_a_crash(monkeypatch):
         build._call_privacy_model("prompt")
 
 
-def test_a_nonzero_exit_is_reported_not_swallowed(monkeypatch):
+def test_a_nonzero_exit_with_no_usable_output_is_reported_not_swallowed(monkeypatch):
     monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
     monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
                         subprocess.CompletedProcess(a, 1, stdout="", stderr="boom"))
     with pytest.raises(RuntimeError, match="exited 1"):
+        build._call_privacy_model("prompt")
+
+
+def test_a_good_answer_is_not_thrown_away_over_the_exit_code(monkeypatch):
+    """`claude -p --json-schema --max-turns 1` stops on the structured-output tool call
+    and can exit non-zero while stdout holds a complete, schema-conforming, already-paid
+    -for response. Reading the exit code first put "the model could not be reached" on a
+    page whose model *had* been reached — the one state reserved for never having asked.
+    The answer decides; the exit code only colours the message when there is no answer."""
+    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    ok = json.dumps({"is_error": False, "subtype": "success", "total_cost_usd": 0.02,
+                     "structured_output": {"verdict": "SAFE", "values": [
+                         {"name": "vetId", "verdict": "SAFE", "note": "a numeric id"}]}})
+    monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
+                        subprocess.CompletedProcess(a, 1, stdout=ok, stderr=""))
+    result = build._call_privacy_model("prompt")
+    assert result["verdict"] == "safe"
+    assert result["values"][0]["note"] == "a numeric id"
+
+
+def test_a_bad_payload_still_raises_and_names_the_exit_code(monkeypatch):
+    """Nothing is loosened: an exit code plus a response that misses the schema is still
+    a failure, and the message says both halves so the cause is not guesswork."""
+    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    bad = json.dumps({"is_error": False, "structured_output": {"verdict": "SAFE"}})
+    monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
+                        subprocess.CompletedProcess(a, 1, stdout=bad, stderr="oops"))
+    with pytest.raises(RuntimeError, match="did not match.*exited 1.*oops"):
         build._call_privacy_model("prompt")
 
 
@@ -454,27 +632,75 @@ def test_a_response_missing_the_verdict_field_is_rejected(monkeypatch):
 
 def test_a_well_formed_response_is_parsed(monkeypatch):
     monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
-    chain = [{"resolved": True, "file": "Foo.java", "line": 12, "note": "assigned here"}]
     ok = json.dumps({"is_error": False, "total_cost_usd": 0.0123,
-                     "structured_output": {"verdict": "PRIVACY", "trace": "x is a name",
-                                            "chain": chain}})
+                     "structured_output": {
+                         "verdict": "PRIVACY",
+                         "values": [{"name": "x", "verdict": "PRIVACY",
+                                     "note": "a name"}]}})
     monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
                         subprocess.CompletedProcess(a, 0, stdout=ok, stderr=""))
     result = build._call_privacy_model("prompt")
-    assert result == {"verdict": "privacy", "trace": "x is a name", "chain": chain,
-                      "cost_usd": 0.0123}
+    assert result == {"verdict": "privacy", "cost_usd": 0.0123,
+                      "values": [{"name": "x", "verdict": "privacy", "note": "a name"}]}
 
 
-def test_a_response_missing_the_chain_field_is_rejected(monkeypatch):
-    """The chain is required in the schema, not bolted on optionally — a model that
-    skips it is a model that did not do the tracing this feature exists for."""
+def test_a_response_whose_values_are_the_wrong_shape_is_rejected(monkeypatch):
+    """Shape only — whether the list *covers* the logged values is decided against
+    `logextract.py`'s argument list at render time, not against the model's word."""
     monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
-    ok = json.dumps({"is_error": False,
-                     "structured_output": {"verdict": "SAFE", "trace": "x"}})
+    for values in ("not a list", [{"name": "x"}],
+                   [{"name": "x", "verdict": "MAYBE", "note": "n"}]):
+        ok = json.dumps({"is_error": False, "structured_output": {
+            "verdict": "SAFE", "values": values}})
+        monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
+                            subprocess.CompletedProcess(a, 0, stdout=ok, stderr=""))
+        with pytest.raises(RuntimeError, match="did not match"):
+            build._call_privacy_model("prompt")
+
+
+def test_the_model_is_no_longer_asked_where_a_value_came_from(monkeypatch):
+    """The provenance chain used to be the model's answer, rendered as a list of
+    `file:line` + the source line. `logextract.py` walks it syntactically now and the
+    snippet quotes the real lines, so the schema asks for the one thing no line of Java
+    says out loud — is this personal data — and a stray `chain` key is refused rather
+    than quietly carried."""
+    assert "chain" not in build.VERDICT_SCHEMA["properties"]
+    assert build.VERDICT_SCHEMA["required"] == ["verdict", "values"]
+    assert build.VERDICT_SCHEMA["additionalProperties"] is False
+    assert not hasattr(build, "_render_chain")
+    assert "chain-hops" not in build.CSS
+    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    ok = json.dumps({"is_error": False, "structured_output": {
+        "verdict": "SAFE",
+        "values": [{"name": "id", "verdict": "SAFE", "note": "an int id"}]}})
     monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
                         subprocess.CompletedProcess(a, 0, stdout=ok, stderr=""))
-    with pytest.raises(RuntimeError, match="did not match"):
-        build._call_privacy_model("prompt")
+    assert build._call_privacy_model("prompt")["verdict"] == "safe"
+
+
+def test_the_prompt_asks_for_one_short_clause_not_a_paragraph():
+    """Item 3 of the redesign, enforced where it is actually decided. The trace on the
+    page used to be four sentences retelling the declaration the reader can now see
+    quoted above it; the instruction not to do that is the fix, so it is pinned."""
+    prompt = build.VERDICT_SYSTEM_PROMPT
+    assert "at most 15 words" in prompt
+    assert "no line numbers" in prompt and "no file names" in prompt
+    # ...and it is now per value, keyed to the argument as the source writes it.
+    assert "one entry in `values` for EVERY value" in prompt
+    assert "no more and no fewer" in prompt
+
+
+def test_editing_the_prompt_invalidates_the_verdict_cache(tmp_path, monkeypatch):
+    """A shortened `trace` instruction that kept serving the old paragraph out of cache
+    would be a silent no-op, so the key hashes the system prompt too."""
+    fake = _fake_call()
+    build._logging_listing([DEBUG_HIT], REPO_ROOT, call=fake, cache_root=tmp_path)
+    assert len(fake.calls) == 1
+    build._logging_listing([DEBUG_HIT], REPO_ROOT, call=fake, cache_root=tmp_path)
+    assert len(fake.calls) == 1                     # same prompt, same key: a cache hit
+    monkeypatch.setattr(build, "VERDICT_SYSTEM_PROMPT", build.VERDICT_SYSTEM_PROMPT + " x")
+    build._logging_listing([DEBUG_HIT], REPO_ROOT, call=fake, cache_root=tmp_path)
+    assert len(fake.calls) == 2                     # a different ask is a different answer
 
 
 # --------------------------------------------------------------------------- #
@@ -537,8 +763,9 @@ def test_logging_fragment_keeps_its_weight_with_no_header_or_card(tmp_path, monk
     parameter of its own to inject one, so this patches `_call_privacy_model` directly,
     the same seam `privacy_verdict`'s default argument points at."""
     monkeypatch.setattr(build, "_call_privacy_model",
-                        lambda prompt: {"verdict": "safe", "trace": "id is an int parameter",
-                                       "cost_usd": 0.0})
+                        lambda prompt: {"verdict": "safe", "cost_usd": 0.0,
+                                        "values": [{"name": "id", "verdict": "safe",
+                                                    "note": "an int parameter"}]})
     repo, src = _tiny_java_repo(tmp_path, FOO_BASE)
     # The pipeline's own contract: review fixes stay uncommitted, so `changed_ranges`
     # reads the working tree, not a second commit.
@@ -553,7 +780,7 @@ def test_logging_fragment_keeps_its_weight_with_no_header_or_card(tmp_path, monk
     assert "Foo:7" in frag           # the Class:line corner label
     assert "bad id" in frag          # the statement's own text, verbatim in the snippet
     assert "SAFE" in frag            # the verdict, visible below the code
-    assert "id is an int parameter" in frag  # the trace, from the (mocked) model
+    assert "an int parameter" in frag  # the value's clause, from the (mocked) model
 
 
 def test_logging_fragment_keeps_its_weight_on_a_genuine_zero_too(tmp_path, monkeypatch):

@@ -1,0 +1,13 @@
+id: local-decl
+language: java
+severity: hint
+message: local variable declared with an initialiser
+rule:
+  kind: local_variable_declaration
+  all:
+    - has: {field: type, pattern: $LTYPE}
+    - has:
+        field: declarator
+        all:
+          - has: {field: name, pattern: $LNAME}
+          - has: {field: value, pattern: $LVALUE}

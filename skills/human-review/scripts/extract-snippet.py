@@ -35,7 +35,8 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, guess_lexer
 from pygments.util import ClassNotFound
 
-REF_RE = re.compile(r"^(?P<path>.+?):(?P<start>\d+)(?:-(?P<end>\d+))?$")
+REF_RE = re.compile(r"^(?P<path>.+?):(?P<spans>\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$")
+SPAN_RE = re.compile(r"^(?P<start>\d+)(?:-(?P<end>\d+))?$")
 
 LANG_BY_SUFFIX = {
     ".java": "java",
@@ -86,6 +87,10 @@ def stylesheet() -> str:
     return (
         f"{light}\n@media (prefers-color-scheme: dark) {{\n{dark}\n}}\n"
         "pre.code .ln { color:inherit; }\n"
+        # The skipped-lines row. Muted and italic so it never reads as source, and
+        # `user-select:none` so copying the block out yields the real lines only.
+        "pre.code .ln-gap { font-style:normal; }\n"
+        "pre.code .code-gap { font-style:italic; opacity:.55; user-select:none; }\n"
     )
 
 
@@ -97,14 +102,38 @@ def repo_root() -> Path:
 
 
 def parse_ref(ref: str):
+    """`path:12`, `path:12-14`, or several of those comma-separated: `path:89,93-95`.
+
+    The comma form is what the logging tab's "data flow to here" needs — the log line
+    plus the lines its values came from, which are nowhere near each other in the file
+    and must not be quoted as if they were. Returns the path and a list of (start, end),
+    sorted and merged; a single-span reference is the same one-element list, so nothing
+    else in here needs to know which form it was given."""
     m = REF_RE.match(ref)
     if not m:
         raise SystemExit(f"[extract-snippet] not a path:from-to reference: {ref!r}")
-    start = int(m["start"])
-    end = int(m["end"]) if m["end"] else start
-    if end < start:
-        start, end = end, start
-    return m["path"], start, end
+    spans = []
+    for part in m["spans"].split(","):
+        sm = SPAN_RE.match(part)
+        start = int(sm["start"])
+        end = int(sm["end"]) if sm["end"] else start
+        spans.append((min(start, end), max(start, end)))
+    return m["path"], merge_spans(spans)
+
+
+# Two spans one line apart are quoted whole rather than split: an "… lines omitted …"
+# marker standing in for a single line is more interruption than the line it hides.
+GAP_MERGE = 1
+
+
+def merge_spans(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    out: list[list[int]] = []
+    for start, end in sorted(spans):
+        if out and start <= out[-1][1] + 1 + GAP_MERGE:
+            out[-1][1] = max(out[-1][1], end)
+        else:
+            out.append([start, end])
+    return [(a, b) for a, b in out]
 
 
 # A hand-written line range is a guess at where a construct begins and ends, and it is
@@ -161,33 +190,48 @@ def _closing_line(lines: list[str], start: int, end: int) -> int:
     return end
 
 
+# The row that stands in for what was skipped between two spans. Deliberately not a
+# number: the gutter is a line-number column and every other row in it is true, so the
+# one row that is *not* a line must not look like one. The count rides in the code
+# column, because "lines 90-92 are not here" is the whole point of the row.
+def _gap_row(hidden: int) -> str:
+    return (f'<span class="ln ln-gap">⋯</span>'
+            f'<span class="code-gap">{hidden} line{"" if hidden == 1 else "s"} not shown</span>')
+
+
 def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> str:
-    rel, start, end = parse_ref(ref)
+    rel, spans = parse_ref(ref)
     path = (root / rel).resolve()
     if not path.is_file():
         raise SystemExit(f"[extract-snippet] no such file: {rel}")
 
     lines = path.read_text(encoding="utf-8").splitlines()
-    if start > len(lines):
-        raise SystemExit(f"[extract-snippet] {rel} has {len(lines)} lines, asked for {start}")
-    end = min(end, len(lines))
+    if spans[0][0] > len(lines):
+        raise SystemExit(f"[extract-snippet] {rel} has {len(lines)} lines, "
+                         f"asked for {spans[0][0]}")
+    spans = [(s, min(e, len(lines))) for s, e in spans if s <= len(lines)]
     # Both snaps are right for a snippet that quotes a *method*: it should not open on a
     # blank line and a reviewer must be able to see where it stops. Both are wrong for one
     # that quotes a single statement in its neighbourhood, which is what the logging tab
     # does — there, skipping the leading comment drops the sentence that explains the line,
     # and extending to the end of the enclosing handler buries it in twenty lines the
     # caption is not about. `--exact` means "I chose this window; give me exactly it".
-    if not exact:
+    # A multi-span reference is exact by construction: the caller picked those lines one
+    # at a time, so there is no hand-written range left to correct.
+    if not exact and len(spans) == 1:
+        start, end = spans[0]
         start = _first_code_line(lines, start, end)
-        end = _closing_line(lines, start, end)
-    body = lines[start - 1 : end]
+        spans = [(start, _closing_line(lines, start, end))]
+    body = [l for s, e in spans for l in lines[s - 1 : e]]
 
     # Strip the common indent so a deeply nested method does not read as a column
     # of whitespace, but keep the relative shape.
     indents = [len(l) - len(l.lstrip()) for l in body if l.strip()]
     shift = min(indents) if indents else 0
 
-    label = f"{rel}:{start}-{end}" if end != start else f"{rel}:{start}"
+    start, end = spans[0][0], spans[-1][1]
+    label = ",".join(f"{s}-{e}" if e != s else f"{s}" for s, e in spans)
+    label = f"{rel}:{label}"
     link = f"vscode://file/{path}:{start}:1"
     lang = LANG_BY_SUFFIX.get(path.suffix, "")
 
@@ -204,10 +248,21 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> st
         )
     else:
         rendered = [html.escape(l) for l in dedented]
+    # `.rstrip("\n")` above drops trailing blank lines, and a snippet that ends on one
+    # would otherwise run the row loop off the end of the list. Pad rather than zip:
+    # `zip` used to hide this by silently truncating, which is the same bug quieter.
+    rendered += [""] * (len(dedented) - len(rendered))
 
-    numbered = "\n".join(
-        f'<span class="ln">{n}</span>{code}' for n, code in zip(range(start, end + 1), rendered)
-    )
+    # Line numbers stay the file's own — never renumbered to look adjacent. The gap row
+    # between two spans is what makes the jump readable instead of a silent lie.
+    rows, i = [], 0
+    for k, (s, e) in enumerate(spans):
+        if k:
+            rows.append(_gap_row(s - spans[k - 1][1] - 1))
+        for n in range(s, e + 1):
+            rows.append(f'<span class="ln">{n}</span>{rendered[i]}')
+            i += 1
+    numbered = "\n".join(rows)
 
     # The caption is prose, and every other piece of prose in a content file is HTML —
     # `<code>log.warn</code>`, a bolded lead-in, a link. Escaping it here made this the one

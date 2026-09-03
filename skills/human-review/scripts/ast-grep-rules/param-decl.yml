@@ -1,0 +1,10 @@
+id: param-decl
+language: java
+severity: hint
+message: method, lambda or catch parameter
+rule:
+  any:
+    - kind: formal_parameter
+    - kind: catch_formal_parameter
+    - kind: spread_parameter
+  has: {field: name, pattern: $PNAME}

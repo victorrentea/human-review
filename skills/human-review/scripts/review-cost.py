@@ -235,6 +235,16 @@ def money(c: float) -> str:
 # cost per tab — and a residual bucket for whatever fell outside every window.
 # --------------------------------------------------------------------------------------- #
 
+# The one tab id that is not a tab. Step 9 — writing `content.json`: the findings prose, the
+# sections, every tab's body — is the single most expensive stretch of a real run, and it is
+# also the one stretch that cannot be attributed to a tab, because all ten tabs' prose is
+# written in one interleaved go. Left unstamped it lands in the residual along with genuine
+# dead time, which is how a breakdown ends up 90%+ "not one tab's" and teaches the reader to
+# ignore the rows above it. Stamping it against a reserved pseudo-tab moves the largest and
+# most explicable chunk out of the mystery bucket without pretending it belongs to a tab.
+GUIDE_TAB = "guide"
+
+
 def _parse_iso(raw) -> "dt.datetime | None":
     if not raw:
         return None
@@ -288,9 +298,19 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
     `wanted` fixes which tabs get an entry in the return value even when the ledger never
     mentions them — that absence (`has_closed: False, has_unclosed: False`) is itself the
     "never stamped" signal a caller needs, not something it has to infer from a missing key.
+
+    The reverse mismatch is the dangerous one and is reported as `unknown`: a tab id the
+    ledger names that is not in `wanted`. Attribution has to ignore those turns (there is no
+    row to put them in, so they land in `residual`), and ignoring them *quietly* is how the
+    binding rots — rename a tab in `content.json` without touching its step wrap and every
+    number for it silently becomes "not measured", which reads as "we forgot to instrument
+    it" rather than "these two files disagree". Naming the orphaned ids is what lets the
+    caller say which of the two it is.
     """
     per_tab = {t: {"cost": 0.0, "tokens": 0.0, "messages": 0,
-                    "has_closed": False, "has_unclosed": False} for t in wanted}
+                    "has_closed": False, "has_unclosed": False}
+               for t in [*wanted, GUIDE_TAB]}
+    unknown: set[str] = set()
     closed = []
     for s in steps:
         is_closed = s["end"] is not None and s["end"] >= s["start"]
@@ -299,9 +319,17 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
         for t in s["tabs"]:
             if t in per_tab:
                 per_tab[t]["has_closed" if is_closed else "has_unclosed"] = True
+            else:
+                unknown.add(t)
 
-    residual = {"cost": 0.0, "tokens": 0.0, "messages": 0}
-    for _, model, u, _side, when in turns:
+    # The unattributed cost is split by where the turn came from rather than reported as one
+    # lump. `side` is already carried on every turn, and the two halves answer different
+    # questions: subagent turns outside a step are work that was delegated but not bracketed
+    # (instrumentable, in principle), while the parent's are the orchestrating conversation —
+    # reading, deciding, recovering — which never belonged to a step in the first place.
+    parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0}
+             for k in ("subagent", "conversation")}
+    for _, model, u, side, when in turns:
         c = price(family(model), u)
         tok = sum(u.get(k, 0) for k in
                   ("input_tokens", "output_tokens",
@@ -312,16 +340,24 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
                 if s["start"] <= when <= s["end"]:
                     hit |= {t for t in s["tabs"] if t in per_tab}
         if not hit:
-            residual["cost"] += c
-            residual["tokens"] += tok
-            residual["messages"] += 1
+            bucket = parts["subagent" if side else "conversation"]
+            bucket["cost"] += c
+            bucket["tokens"] += tok
+            bucket["messages"] += 1
             continue
         share = 1.0 / len(hit)
         for t in hit:
             per_tab[t]["cost"] += c * share
             per_tab[t]["tokens"] += tok * share
             per_tab[t]["messages"] += 1
-    return {"tabs": per_tab, "residual": residual}
+
+    guide = per_tab.pop(GUIDE_TAB)
+    parts = {"guide": {k: guide[k] for k in ("cost", "tokens", "messages")}, **parts}
+    # `residual` stays the sum of the parts, so the invariant every caller relies on —
+    # tabs + residual == the scope chip's total — survives the decomposition untouched.
+    residual = {k: sum(p[k] for p in parts.values()) for k in ("cost", "tokens", "messages")}
+    return {"tabs": per_tab, "residual": residual, "residual_parts": parts,
+            "unknown": sorted(unknown)}
 
 
 def tab_cost_tip(row: dict) -> str:
@@ -375,16 +411,35 @@ def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path
         for t, row in result["tabs"].items()
     }
     r = result["residual"]
+    parts = {
+        k: {"measured": True, "cost": v["cost"], "tokens": round(v["tokens"]),
+            "messages": v["messages"]}
+        for k, v in (result.get("residual_parts") or {}).items()
+    }
     residual_tip = (
         f"{money(r['cost'])} · {human(round(r['tokens']))} tok of this run's cost is "
         "not attributed to any single tab — assembling the guide itself, plus any step "
         "whose window did not cover it."
     )
+    # Drift between a step wrap and the tab list is reported as the *reason* a tab came
+    # back unmeasured, because that is the sentence the page already prints in that case —
+    # so the mismatch reaches a human reading the breakdown, not just a log nobody opens.
+    # Stderr as well, for the run that is watching its own output.
+    orphans = result.get("unknown") or []
+    reason = None
+    if orphans:
+        reason = (f"the step ledger names tab(s) {', '.join(orphans)}, which this page does "
+                  "not have — a step wrap and the tab list have drifted apart, or a step "
+                  "stamped a tab whose content was then dropped")
+        print(f"[review-cost] {reason}. Wanted: {', '.join(tabs) or '(none)'}",
+              file=sys.stderr)
     return {
-        "available": True, "ledger": True, "reason": None,
+        "available": True, "ledger": True, "reason": reason,
+        "unknown_tabs": orphans,
         "tabs": tabs_out,
         "residual": {"measured": True, "cost": r["cost"], "tokens": round(r["tokens"]),
                     "messages": r["messages"], "tip": residual_tip},
+        "residual_parts": parts,
     }
 
 
