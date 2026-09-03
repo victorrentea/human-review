@@ -425,19 +425,80 @@ pre.code code { white-space:pre; }
 ol.findings { list-style:none; counter-reset:f; padding:0; margin:1rem 0; }
 ol.findings > li { counter-increment:f; background:var(--card); border:1px solid var(--line);
                     border-radius:8px; padding:.9rem 1.1rem; margin:.7rem 0; }
+/* The number carries the severity's own colour, so the bubble and the badge beside it say
+   the same thing. A uniform accent bubble made every item look equally urgent at a glance
+   and left the badge doing all the work; now the left margin *is* the triage column.
+   `--num-bg` falls back to the accent so an item with no severity still renders. */
 ol.findings > li::before { content:counter(f); float:left; margin:.1rem .7rem 0 0; width:1.6rem; height:1.6rem;
-    border-radius:50%; background:var(--accent); color:#fff; font-size:.8rem; font-weight:700;
+    border-radius:50%; background:var(--num-bg,var(--accent)); color:#fff; font-size:.8rem; font-weight:700;
     display:grid; place-items:center; }
+ol.findings > li.n-high { --num-bg:#8a1c1c; }
+ol.findings > li.n-med  { --num-bg:#8a5a12; }
+ol.findings > li.n-low  { --num-bg:#26518f; }
+ol.findings > li.n-info { --num-bg:#245c30; }
+/* An applied fix is still an item on the same list — same numbering, same shape — but it
+   is *done*, and the page must not spend a reviewer's attention on it the way it spends it
+   on an open call. Grey is the whole difference: the card recedes, the number keeps its
+   place, and the code inside is rendered exactly as loudly as everywhere else. */
+ol.findings > li.fixed { background:var(--code-bg); border-style:dashed; --num-bg:#6b7280; }
+ol.findings > li.fixed .f-title { font-weight:600; }
+@media (prefers-color-scheme: dark) {
+  ol.findings > li.n-high { --num-bg:#c05555; }
+  ol.findings > li.n-med  { --num-bg:#9a7a2a; }
+  ol.findings > li.n-low  { --num-bg:#3f68ad; }
+  ol.findings > li.n-info { --num-bg:#33724a; }
+  ol.findings > li.fixed  { --num-bg:#565e6b; }
+}
+/* Who raised it. Not a severity and not a link — a provenance stamp, so it is quiet and
+   monospaced, and it sits after the badge where the eye is already looking. */
+.f-src { font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted);
+          border:1px solid var(--line); border-radius:4px; padding:.05rem .35rem; margin-left:.35rem;
+          vertical-align:.05em; }
 .f-title { font-weight:650; }
 .f-why { color:var(--muted); font-size:.9rem; margin:.35rem 0 0; }
 .sev-high { background:#fdeaea; color:#8a1c1c; }
 .sev-med  { background:#fdf3e2; color:#8a5a12; }
 .sev-low  { background:#eef3fb; color:#26518f; }
 .sev-info { background:#eef7ef; color:#245c30; }
+.sev-fixed { background:#eceef1; color:#4b5563; }
 @media (prefers-color-scheme: dark) {
   .sev-high{background:#3a1f1f;color:#f2a0a0}.sev-med{background:#3a3018;color:#e6c07b}
   .sev-low{background:#1c2738;color:#9dc0f5}.sev-info{background:#1b2c1f;color:#9ad3a5}
+  .sev-fixed{background:#24282e;color:#9aa3af}
 }
+/* A unified diff, drawn the way GitHub draws one: two gutters of line numbers, a colour
+   band per side, and the +/- marker inside the code column rather than as a third gutter.
+   It is a <table> because the gutters must not scroll away from their line when the code
+   overflows horizontally, and because copying a hunk should copy the code and not the
+   numbers — `user-select:none` on the gutters is what buys that. */
+:root { --diff-add-bg:#e6ffec; --diff-add-gutter:#ccffd8;
+        --diff-del-bg:#ffebe9; --diff-del-gutter:#ffd7d5; }
+@media (prefers-color-scheme: dark) {
+  :root { --diff-add-bg:#12261e; --diff-add-gutter:#1b4721;
+          --diff-del-bg:#2d1214; --diff-del-gutter:#5c2225; }
+}
+.ghdiff { border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:.9rem 0; background:var(--card); }
+.ghdiff-head { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
+               gap:.5rem; padding:.45rem .7rem; border-bottom:1px solid var(--line);
+               background:var(--code-bg); font:600 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.ghdiff-head .path { color:var(--fg); overflow-wrap:anywhere; }
+.ghdiff-head .stat { font-weight:700; white-space:nowrap; }
+.ghdiff-scroll { overflow-x:auto; }
+table.ghdiff-body { border-collapse:collapse; width:100%;
+                    font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+table.ghdiff-body td { padding:0 .5rem; vertical-align:top; white-space:pre; }
+table.ghdiff-body td.gln { width:1%; min-width:2.6rem; text-align:right; user-select:none;
+                          color:var(--muted); opacity:.7; border-right:1px solid var(--line); }
+table.ghdiff-body td.code { width:100%; }
+table.ghdiff-body tr.add td.code { background:var(--diff-add-bg); }
+table.ghdiff-body tr.add td.gln  { background:var(--diff-add-gutter); }
+table.ghdiff-body tr.del td.code { background:var(--diff-del-bg); }
+table.ghdiff-body tr.del td.gln  { background:var(--diff-del-gutter); }
+table.ghdiff-body tr.hunk td { background:var(--code-bg); color:var(--muted); font-style:italic;
+                               border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.ghdiff-note { margin:0; padding:.4rem .7rem .55rem; color:var(--muted); font-size:.86rem;
+               border-top:1px solid var(--line); }
+.ghdiff-note a.srcref { margin:0 .6rem 0 0; }
 table.stat { border-collapse:collapse; width:100%; font-size:.88rem; }
 table.stat td { border-bottom:1px solid var(--line); padding:.35rem .5rem; }
 table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace,Menlo,monospace; white-space:nowrap; }
@@ -1435,6 +1496,187 @@ SNIPPET_TOKEN = re.compile(
 # before/after in the editor instead.
 DIFF_TOKEN = re.compile(r"\{\{difflink:(?P<path>[^|}@]+)@(?P<base>[0-9a-fA-F]{7,40})\}\}")
 
+# The same handle, one letter shorter, for the diff a reader should not have to click to
+# see. `{{diff:path@base}}` renders the hunks inline, GitHub-style; `{{difflink:…}}` only
+# links out to them. The rule of thumb the page follows: an applied fix shows its diff,
+# because the diff *is* the whole finding, and an open call links to one, because the
+# reviewer is going to open the file anyway.
+# The base accepts a trailing `^` or `~n`, because the usual left side of a committed fix
+# is the commit before it, and spelling that out as a second sha is one more thing to get
+# wrong.
+DIFF_INLINE_TOKEN = re.compile(
+    r"\{\{diff:(?P<path>[^|}@]+)@(?P<base>[0-9a-fA-F]{7,40}(?:\^|~\d+)?)"
+    r"(?:\|(?P<caption>[^}]*))?\}\}"
+)
+
+# How much unchanged code to keep around each hunk. Three is git's own default and what
+# GitHub shows before you click "expand": enough to place a hunk in its method, short
+# enough that the diff stays the thing being read.
+DIFF_CONTEXT = 3
+
+
+def github_blob_base(root: Path) -> str | None:
+    """`https://github.com/<owner>/<repo>` for this checkout, or None when it is not one.
+
+    Read from `origin` rather than configured, because a URL that has to be maintained by
+    hand in a content file is a URL that eventually points at somebody else's fork. Both
+    remote spellings are accepted; anything that is not github.com returns None and the
+    caller falls back to the editor link, which always works."""
+    proc = subprocess.run(["git", "-C", str(root), "remote", "get-url", "origin"],
+                          capture_output=True, text=True)
+    if proc.returncode != 0:
+        return None
+    m = re.match(r"(?:https://github\.com/|git@github\.com:)(?P<slug>[^/]+/[^/]+?)(?:\.git)?$",
+                 proc.stdout.strip())
+    return f"https://github.com/{m['slug']}" if m else None
+
+
+def _github_compare_link(rel: str, base: str, root: Path, head: str | None = None) -> str:
+    """The same comparison on github.com — the link a reviewer forwards to somebody else.
+
+    Only emitted when the *after* side is something GitHub can be expected to have. A fix
+    still sitting uncommitted in the working tree has no URL there at all, and inventing
+    one that 404s is worse than the editor link rendered beside it."""
+    host = github_blob_base(root)
+    if not host:
+        return ""
+    if head is None:
+        # The right side is the working tree. That has a URL on github.com only if the
+        # file is clean at HEAD; otherwise the page is showing something github.com has
+        # never seen, and inventing a link to it would be a confident lie.
+        rev = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                             capture_output=True, text=True)
+        if rev.returncode != 0:
+            return ""
+        if subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", rel],
+                          capture_output=True, text=True).stdout.strip():
+            return ""
+        head = rev.stdout.strip()
+    url = f"{host}/compare/{base}...{head}"
+    return (f'<a class="srcref" target="_blank" rel="noopener" href="{html.escape(url)}"'
+            f' data-tip="Open the same comparison on github.com">&#8599; on GitHub</a>')
+
+
+def _parse_unified(diff_text: str):
+    """Unified diff text -> rows of `(kind, old_no, new_no, text)`, one per rendered line.
+
+    Only the hunks: the `diff --git`/`index`/`---`/`+++` preamble says nothing a reader of
+    a single-file diff needs, and the header above the table already names the file."""
+    rows, old_no, new_no = [], 0, 0
+    # `.split` on text that ends in a newline leaves an empty tail element, and an empty
+    # line in a unified diff is a *context* line — so without this the table grows a blank
+    # row and every number after it is off by one.
+    lines = diff_text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    for line in lines:
+        if line.startswith(("diff --git", "index ", "--- ", "+++ ", "new file", "deleted file",
+                            "old mode", "new mode", "similarity", "rename ")):
+            continue
+        m = re.match(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$", line)
+        if m:
+            old_no, new_no = int(m[1]), int(m[2])
+            rows.append(("hunk", None, None, m[3].strip()))
+        elif line.startswith("+"):
+            rows.append(("add", None, new_no, line[1:])); new_no += 1
+        elif line.startswith("-"):
+            rows.append(("del", old_no, None, line[1:])); old_no += 1
+        elif line.startswith("\\"):
+            rows.append(("hunk", None, None, line[1:].strip()))
+        else:
+            rows.append(("ctx", old_no, new_no, line[1:] if line else ""))
+            old_no += 1; new_no += 1
+    return rows
+
+
+def review_step_rev(out_dir: Path) -> str | None:
+    """The revision the review pass started from, as the ledger recorded it.
+
+    This is the left side of every applied-fix diff on the page, and step 1 takes it with
+    one `git rev-parse HEAD` before `/code-review` touches anything precisely because it
+    cannot be reconstructed afterwards. Absent — an older ledger, or a page re-rendered
+    somewhere the ledger did not travel — the caller drops the diffs rather than guessing
+    at a before-state."""
+    ledger = out_dir / ".steps.json"
+    if not ledger.is_file():
+        return None
+    try:
+        records = json.loads(ledger.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    for rec in records:
+        if "review" in (rec.get("tabs") or []) and rec.get("rev"):
+            return rec["rev"]
+    return None
+
+
+def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
+              head: str | None = None) -> str:
+    """One file's change, rendered as a GitHub-style two-gutter table.
+
+    `head` is the right-hand side, and defaults to the working tree. Name it when the fix
+    is one commit and the file moved for other reasons since `base`: `base` alone would
+    show the fix buried in every unrelated edit that landed in between, which is precisely
+    the noise this block exists to cut. A committed fix is usually `base: "<sha>^"`,
+    `head: "<sha>"` — the change on its own.
+
+    Same contract as `diff_link_html`: the before-side has to be real. A base that does not
+    resolve, a file that did not exist in it, or a diff that comes back empty drops the
+    whole block and says which on stderr — a fix illustrated with a diff of nothing is the
+    page lying about its own work, which is the one failure it exists to prevent."""
+    src = root / rel
+    if not src.is_file():
+        print(f"[review] diff: no file at {rel} — block dropped", file=sys.stderr)
+        return ""
+    show = subprocess.run(["git", "-C", str(root), "show", f"{base}:{rel}"], capture_output=True)
+    if show.returncode != 0:
+        print(f"[review] diff: {rel} does not exist at {base} — block dropped, because a "
+              "diff needs a before-state that was actually recorded", file=sys.stderr)
+        return ""
+    proc = subprocess.run(
+        ["git", "-C", str(root), "diff", f"-U{DIFF_CONTEXT}", "--no-color", base]
+        + ([head] if head else []) + ["--", rel],
+        capture_output=True, text=True)
+    if proc.returncode != 0 or not proc.stdout.strip():
+        print(f"[review] diff: {rel} is unchanged since {base} — block dropped rather than "
+              "rendering an empty diff", file=sys.stderr)
+        return ""
+    rows = _parse_unified(proc.stdout)
+    adds = sum(1 for r in rows if r[0] == "add")
+    dels = sum(1 for r in rows if r[0] == "del")
+    body = []
+    for kind, old_no, new_no, code in rows:
+        if kind == "hunk":
+            body.append('<tr class="hunk"><td class="gln"></td><td class="gln"></td>'
+                        f'<td class="code">{html.escape(code) or "&nbsp;"}</td></tr>')
+            continue
+        marker = {"add": "+", "del": "-", "ctx": " "}[kind]
+        body.append(
+            f'<tr class="{kind}">'
+            f'<td class="gln">{old_no or ""}</td><td class="gln">{new_no or ""}</td>'
+            f'<td class="code">{html.escape(marker + code)}</td></tr>')
+    # `diff_link_html` styles itself as a card footer that pulls up under a snippet; here
+    # it sits in a note row of its own, so the offset margin has to go.
+    # The editor link diffs against the working tree, so it is only the same comparison
+    # when `head` is the working tree. Pinned to a commit, the GitHub link is the honest
+    # one and the editor link is dropped rather than pointed somewhere else.
+    link = ("" if head else
+            diff_link_html(rel, base, root).replace('class="srcref diffref"',
+                                                    'class="srcref diffref inhead"'))
+    gh = _github_compare_link(rel, base, root, head)
+    return (
+        '<div class="ghdiff">'
+        f'<div class="ghdiff-head"><span class="path">{html.escape(rel)}</span>'
+        f'<span class="stat"><span class="added">+{adds}</span> '
+        f'<span class="removed">&minus;{dels}</span> vs <code>{html.escape(base[:8])}</code>'
+        '</span></div>'
+        f'<div class="ghdiff-scroll"><table class="ghdiff-body"><tbody>{"".join(body)}</tbody></table></div>'
+        + (f'<p class="ghdiff-note">{caption}</p>' if caption else "")
+        + (f'<p class="ghdiff-note">{link}{gh}</p>' if (link or gh) else "")
+        + '</div>'
+    )
+
+
 
 def diff_uri_handler() -> str | None:
     """The extension id that can open a diff for a guide read off disk, if it is installed.
@@ -1518,6 +1760,11 @@ def diff_link_html(rel: str, base: str, root: Path) -> str:
 
 def expand_snippets(text: str, root: Path) -> str:
     """Let prose interleave with code: `{{snippet:path:12-14|caption}}` inside any body."""
+    text = DIFF_INLINE_TOKEN.sub(
+        lambda m: diff_html(m["path"].strip(), m["base"].strip(), root,
+                            (m["caption"] or "").strip() or None),
+        text,
+    )
     text = DIFF_TOKEN.sub(
         lambda m: diff_link_html(m["path"].strip(), m["base"].strip(), root), text
     )
@@ -2168,59 +2415,101 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
     return "\n".join(parts)
 
 
+# The one list. Open calls first, applied fixes after them, numbered straight through,
+# because a reviewer asking "how much did the automated passes find?" should get one answer
+# and not two. What separates the halves is the card's colour and one badge — not a restart
+# of the counter, and not a second surface.
+#
+# `render_findings` is called first and leaves where it stopped in this module-level offset,
+# which `render_autofixes` picks up. It is state, and state is a thing to justify: the
+# alternative is threading a number through `render_block`, which renders blocks one at a
+# time by type and has no notion that two of them belong to the same list. The ordering
+# assumption is checked at build time rather than trusted.
+_FINDING_OFFSET = 0
+
+
+def _finding_source(f) -> str:
+    """Which pass raised it, when the content file says so.
+
+    Optional by design: nothing downstream of the two runs records provenance, so an item
+    that does not claim a source renders without one rather than being attributed to a
+    guess. See SKILL.md, step 1 — a `source` here has to be stamped while the pass that
+    produced it is the one running."""
+    src = (f.get("source") or "").strip()
+    return f'<span class="f-src">{html.escape(src)}</span>' if src else ""
+
+
+def _finding_refs(f) -> str:
+    """The bare `file:line` links — only when nothing else already carries them.
+
+    An item that shows a snippet or a diff already links the file, with a line RANGE, from
+    that block's own header. Repeating a bare `file:line` link above it says the same thing
+    twice and worse."""
+    if f.get("_snippets") or f.get("_diffs"):
+        return ""
+    return "".join(
+        f'<a class="srcref" href="vscode://file/{r["abs"]}">{html.escape(r["label"])}</a> '
+        for r in f.get("_refs", [])
+    )
+
+
 def render_findings(findings) -> str:
+    global _FINDING_OFFSET
+    _FINDING_OFFSET = len(findings)
     if not findings:
-        return '<p class="sub">Nothing outstanding — the automated passes came back clean.</p>'
+        return '<p class="sub">Nothing outstanding \u2014 the automated passes came back clean.</p>'
     items = []
     for f in findings:
         cls, label = SEVERITIES.get(f.get("severity", "info"), SEVERITIES["info"])
-        # A finding that shows a snippet already links the file — with a line RANGE — from
-        # the snippet's own header. Repeating a bare file:line link just above it says the
-        # same thing twice and worse, so the standalone refs only render when there is no
-        # snippet to carry them.
-        refs = (
-            ""
-            if f.get("_snippets")
-            else "".join(
-                f'<a class="srcref" href="vscode://file/{r["abs"]}">{html.escape(r["label"])}</a> '
-                for r in f.get("_refs", [])
-            )
-        )
+        refs = _finding_refs(f)
         items.append(
-            f'<li><span class="badge {cls}">{html.escape(label)}</span> '
-            f'<span class="f-title">{f["title"]}</span>'
-            f'<p>{f["body"]}</p>'
+            f'<li class="{cls.replace("sev-", "n-")}">'
+            f'<span class="badge {cls}">{html.escape(label)}</span>'
+            + _finding_source(f)
+            + f' <span class="f-title">{f["title"]}</span>'
+            + (f'<p>{f["body"]}</p>' if f.get("body") else "")
             + (f'<p class="f-why">{f["why"]}</p>' if f.get("why") else "")
             + (f"<p>{refs}</p>" if refs else "")
             + (f.get("_snippets", "") or "")
+            + (f.get("_diffs", "") or "")
             + "</li>"
         )
     return '<ol class="findings">' + "\n".join(items) + "</ol>"
 
 
 def render_autofixes(fixes) -> str:
-    """What the agent already fixed \u2014 the other half of the same review.
+    """What the agent already fixed \u2014 the tail of the same list.
 
-    It sits next to the open findings on purpose. The two lists are one decision split
-    in two: everything with a single obvious right answer was applied, everything a
-    second engineer could reasonably disagree about was left. A reviewer who cannot see
-    the first pile has to take the size of the second on trust."""
+    It continues the open findings' numbering on purpose. The two piles are one decision
+    split in two: everything with a single obvious right answer was applied, everything a
+    second engineer could reasonably disagree about was left. A reviewer who cannot see the
+    first pile has to take the size of the second on trust \u2014 and a reviewer shown two lists
+    that both start at 1 has to add them up by hand.
+
+    Each item shows its diff rather than describing it. That is the whole difference between
+    this and a changelog: the reader sees what was done to their code without leaving the
+    page or trusting a sentence about it."""
     if not fixes:
         return '<p class="sub">Nothing was applied automatically \u2014 every finding needed a human.</p>'
     items = []
     for f in fixes:
+        refs = _finding_refs(f)
         items.append(
-            f'<li><span class="f-title">{f["title"]}</span>'
+            '<li class="fixed">'
+            '<span class="badge sev-fixed">auto-fixed</span>'
+            + _finding_source(f)
+            + f' <span class="f-title">{f["title"]}</span>'
             + (f'<p class="f-why">{f["why"]}</p>' if f.get("why") else "")
             + (f'<p>{f["body"]}</p>' if f.get("body") else "")
-            + "".join(
-                f'<a class="srcref" href="vscode://file/{r["abs"]}">{html.escape(r["label"])}</a> '
-                for r in f.get("_refs", [])
-            )
+            + (f"<p>{refs}</p>" if refs else "")
+            + (f.get("_diffs", "") or "")
             + (f.get("_snippets", "") or "")
             + "</li>"
         )
-    return '<ul class="fixlist">' + "\n".join(items) + "</ul>"
+    # `counter-reset` sets the counter to N so the first `counter-increment` lands on N+1 —
+    # the number straight after the last open finding.
+    return (f'<ol class="findings" style="counter-reset:f {_FINDING_OFFSET}">'
+            + "\n".join(items) + "</ol>")
 
 
 # What happened to a test, and what the page calls it. The colour classes are the page's
@@ -3545,19 +3834,38 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
 HOME_URL = "https://github.com/victorrentea/human-review"
 
 
-def _link_home(footer: str) -> str:
-    """Point the footer's `/human-review` at the repo the toolset lives in.
+# The footer used to end on a sentence about the page's own honesty — "every snippet is cut
+# from the working tree at build time; every number on this page was measured by the step
+# that produced it". It is true, and it is the build's job to *be* true rather than to say
+# so; a reviewer opening a review does not want a paragraph of methodology before they have
+# seen a line of code. Stripped here rather than only in the writing guidance, because
+# content files outlive the instructions that produced them.
+FOOTER_BOILERPLATE = re.compile(
+    r"\s*(?:Every snippet is cut from the working tree at build time;?\s*"
+    r"every number on this page was measured by the step that produced it\.?"
+    r"|Snippets were cut from the working tree at build time by\s*"
+    r"<code>scripts/extract-snippet\.py</code>;?\s*"
+    r"every\s*<code>path:line</code>\s*link opens VS Code at that line\.?)",
+    re.I,
+)
 
-    The footer is prose from content.json, so a hand-written link would have to be
-    remembered by every author on every run — and the one that matters most is the
-    one a reader follows to copy the toolset. Linking it here means the mention is
-    enough. Only the first occurrence, and never one already inside an <a>.
+
+def _link_home(footer: str) -> str:
+    """Turn the footer's `/human-review` into the repository it names.
+
+    The slash-command spelling only means something to a reader who already has the skill
+    installed; everyone else is holding a page produced by a tool they cannot find. So the
+    mention is *replaced* by the URL, not merely linked — the address is the useful thing,
+    and it survives the page being printed, pasted or mailed on.
+
+    Only the first occurrence, and never one already inside an <a>.
     """
-    if not footer or "/human-review" not in footer or "human-review\"" in footer:
+    footer = FOOTER_BOILERPLATE.sub("", footer or "").strip()
+    if not footer or "/human-review" not in footer or 'human-review"' in footer:
         return footer
     return footer.replace(
         "/human-review",
-        f'<a href="{HOME_URL}">/human-review</a>', 1)
+        f'<a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a>', 1)
 
 
 
@@ -3586,10 +3894,28 @@ def main(argv=None) -> int:
             print(f"  - {problem}", file=sys.stderr)
         return 1
 
+    # The base every `diffs` entry is measured against when the entry does not name its
+    # own: the rev the ledger recorded before the review pass touched anything. That is the
+    # only left side that shows a fix on its own, and step 1 exists to record it.
+    default_diff_base = review_step_rev(out_dir)
     for f in spec.get("findings", []) + spec.get("autofixes", []):
         f["_refs"] = resolve_refs(f.get("refs", []), root)
         f["_snippets"] = "".join(
             snippet_html(s["ref"], s.get("caption"), root) for s in f.get("snippets", [])
+        )
+        # An applied fix that shows no diff is a claim with nothing behind it, so the build
+        # says so — loudly enough to fix, quietly enough not to block a page whose ledger
+        # has no rev (an older run, or a review re-rendered from a fresh clone).
+        diffs = f.get("diffs", [])
+        if diffs and not all(d.get("base") for d in diffs) and not default_diff_base:
+            print("[review] WARNING: %r asks for a diff with no base, and the ledger's "
+                  "review step recorded no rev \u2014 that diff is dropped"
+                  % f.get("title", "")[:60], file=sys.stderr)
+        f["_diffs"] = "".join(
+            diff_html(d["path"], d.get("base") or default_diff_base, root, d.get("caption"),
+                      d.get("head"))
+            for d in diffs
+            if d.get("base") or default_diff_base
         )
 
     # Every panel is `id="<tab id>"`, so a section that happens to share a tab's id puts the
@@ -3725,27 +4051,42 @@ def main(argv=None) -> int:
 
     # This used to require a chip per automated pass — /code-review hunts bugs, /simplify
     # shrinks the solution, so one number over both reports neither. The page now carries a
-    # single merged `auto-fixed N` chip instead, by decision, and the old check fired on
-    # every run: a warning that is always on is a warning nobody reads.
+    # single merged chip instead, by decision, and the old check fired on every run: a
+    # warning that is always on is a warning nobody reads.
     #
     # The concern behind it survives in a form the merged chip can actually fail. One number
-    # over two questions is honest only while the split it summarises is still reachable —
-    # which is the Auto-fixed tab and its two chapters. So that is what is checked: a merged
-    # count with nothing behind it is the real regression, and it is one a content file can
-    # produce by dropping a section without touching the chip.
-    AUTOFIX_CHAPTERS = ("autofix-codereview", "autofix-simplify")
+    # over two questions is honest only while the split it summarises is still visible. That
+    # split used to be a second tab with a chapter per pass; it is now the `source` stamp on
+    # each item, which is a better home for it — the reader sees who raised a finding beside
+    # the finding, rather than in a parallel listing that can fall out of step with this one.
+    # So two things are checked: that the chip's target exists, and that the stamps are
+    # actually there. A merged count with nothing behind it is the real regression.
     if any(c.get("auto") == "autofixed" for c in scope):
-        have = {s.get("id") for s in spec.get("sections", [])}
-        gone = [s for s in AUTOFIX_CHAPTERS if s not in have]
-        if not any(tb.get("id") == "autofixed" for tb in spec.get("tabs") or []):
-            print("[review] WARNING: the auto-fixed chip deep-links to #autofixed but no "
-                  "tab has that id — the one number on the scope bar opens nothing",
+        target = next((c.get("href", "") for c in scope if c.get("auto") == "autofixed"), "")
+        anchor = target.lstrip("#")
+        known = {tb.get("id") for tb in spec.get("tabs") or []} | \
+                {sec.get("id") for sec in spec.get("sections", [])}
+        if anchor and anchor not in known:
+            print(f"[review] WARNING: the LLM-review chip deep-links to {target} but nothing "
+                  "on the page has that id — the one number on the scope bar opens nothing",
                   file=sys.stderr)
-        if gone:
-            print(f"[review] WARNING: the auto-fixed chip merges both automated passes into "
-                  f"one number, but section(s) {', '.join(gone)} are missing — the chip is "
-                  "only honest while the per-pass split is on the page behind it",
-                  file=sys.stderr)
+        items = spec.get("findings", []) + spec.get("autofixes", [])
+        if items and not any((i.get("source") or "").strip() for i in items):
+            print("[review] WARNING: the chip merges /code-review and /simplify into one "
+                  "number and not one item carries a 'source' — the split the chip "
+                  "summarises is nowhere on the page behind it", file=sys.stderr)
+
+    # The applied fixes continue the open findings' numbering, and `render_autofixes` learns
+    # where to start from the `findings` block having already run. That holds only while the
+    # two render in that order, so the order is checked rather than assumed: a content file
+    # with them the other way round numbers the fixes from 1 and the open calls after them,
+    # which looks deliberate and is not.
+    _blocks = [b.get("type") for tb in (spec.get("tabs") or []) for b in (tb.get("blocks") or [])
+               if b.get("type") in ("findings", "autofixes")]
+    if _blocks[:1] == ["autofixes"] and "findings" in _blocks:
+        print("[review] WARNING: the autofixes block renders before the findings block, so "
+              "the applied fixes are numbered from 1 and the open calls continue after them "
+              "— put 'findings' first; the two are one list", file=sys.stderr)
 
     v = spec.get("verdict")
     verdict_html = ""

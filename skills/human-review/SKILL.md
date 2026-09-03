@@ -436,8 +436,10 @@ ${SKILL}/scripts/steps-ledger.py start review --label "code-review + simplify" \
   > .human-review/.step-review
 ```
 
-⚠️ **`--rev` is the pre-fix HEAD, and it is the only chance to record it.** The Auto-fixed
-tab links every applied fix to a real before/after diff, and a diff needs a left side. Take
+⚠️ **`--rev` is the pre-fix HEAD, and it is the only chance to record it.** Every applied
+fix on the page renders as a real before/after diff, and a diff needs a left side. It is
+also the default `base` for every `diffs` entry, so getting it right here is what lets the
+content file say `{"path": "…"}` and nothing more. Take
 it **before** the reviews change anything — one `git rev-parse HEAD`, into the ledger, done.
 
 Reconstructing it afterwards is archaeology, and on the reference run the archaeology gave
@@ -482,21 +484,14 @@ Run it once after the `/code-review` fixes are in, once after `/simplify` has fi
 added back. It is allowed to come out negative; a cleanup that grew the code is worth
 saying so.
 
-⚠️ **Nothing on this page records which command produced which item, and that is a property
-of the data, not an oversight in the writing.** Neither `findings` nor `autofixes` carries a
-source field, and no raw output from either pass survives the step — by the time the content
-file is written, the two have been read, judged and merged into one list of *open calls* and
-one list of *applied fixes*. So the Auto-fixed tab's two chapters split by **the kind of
-work each pass does** — correctness fixes against solution-shrinking — which is a true and
-useful cut, but it is your reconstruction, not a recorded provenance. Do not write a sentence
-claiming an item came from a named command unless you watched it happen in the same turn.
-
-**If a real per-tool split is ever wanted, this is the change to make:** the passes have to
-tag their findings at the source — a `"source": "/code-review"` on each item as it is
-recorded, before the merge — and then the chip's tooltip and the chapters can be derived
-instead of authored. Retro-fitting it downstream is not possible; the information is gone by
-then. Written here so the next person reaches for the fix rather than rediscovering the
-limitation.
+⚠️ **Provenance exists only while the pass is running, so record it there.** No raw output
+from either pass survives the step: by the time the content file is written the two have
+been read, judged and merged into one list of *open calls* and one list of *applied fixes*.
+Retro-fitting a per-tool split downstream is not possible — the information is gone. So each
+item gets a `"source": "/code-review"` or `"source": "/simplify"` **as it is recorded**,
+before the merge, and the page shows it beside the item. Never write a source you did not
+watch happen in the same turn; an item with none renders without the stamp, which is honest,
+and the build warns only when *nothing* on the page carries one.
 
 Then split every finding in two, and say out loud which pile each landed in:
 
@@ -511,6 +506,50 @@ Then split every finding in two, and say out loud which pile each landed in:
 
 Never argue a finding away silently. If you skip one, it goes in the list with a
 one-line reason.
+
+### Reviewing is one job; writing it down is another
+
+Keep the two apart, in this order, and do not let the second bleed into the first.
+
+**The review itself is replaceable.** `/code-review` and `/simplify` are the default because
+they ship with the harness, and a project that has its own rules — a house checklist, a
+lint-derived pass, a domain reviewer somebody wrote — substitutes them here without touching
+anything else in this skill. The contract is only the shape of what comes out:
+
+```json
+{"severity":"high|medium|low|info", "source":"/code-review", "title":"…", "body":"…",
+ "why":"…", "refs":["path:line"], "snippets":[{"ref":"path:12-30","caption":"…"}],
+ "diffs":[{"path":"…","base":"<sha>","caption":"…"}]}
+```
+
+`source` is the pass that raised it, stamped **while that pass is the one running** — it is
+the only moment the information exists (see the warning above), and the page shows it beside
+the item so the reader knows who is talking. An item with no `source` renders without the
+stamp rather than being attributed to a guess.
+
+**The writing-down has one rule: show the code, do not narrate it.** A finding is not a
+story about a defect, it is the defect, quoted. Concretely, per item:
+
+- **Two or three sentences of prose, hard ceiling.** `title` says what is wrong in one
+  line; `body` says what breaks and under which input; `why` says what the human has to
+  decide. Anything past that is the reviewer reading your reasoning instead of their code.
+- **Then the code, and most of the item is code.** `snippets` for an open call — the
+  decisive lines, with a `caption` that points at the *one thing* in them (`"the null
+  branch that never runs"`), not a summary of the block. Prefer several short snippets,
+  each captioned, over one long one with a paragraph above it.
+- **An applied fix shows its diff.** `diffs` renders the change inline, GitHub-style —
+  two line-number gutters, green and red bands, three lines of context — with a link
+  under it that opens the same comparison in the editor and, when the fix is committed
+  and the remote is github.com, on github.com. `base` defaults to the rev the ledger
+  recorded in this step, which is the only left side that shows a fix *on its own*, so
+  the usual entry is just `{"path": "…"}`. A fix described in a sentence with no diff
+  is a claim the reader has to take on trust; the build warns when it finds one.
+- **No preamble, no restating the title, no "as we can see".** The reader is a senior
+  engineer holding their own code.
+
+The same doctrine, in one sentence: **the review decides *what* to say, this page decides
+that it is said in code.**
+
 
 ### Commit the work you found; leave your own fixes uncommitted
 
@@ -1555,6 +1594,41 @@ titles them `path:from-to` as a `vscode://file/<abs-path>:<line>:1` link — not
 slashes after `file`, which is how VS Code takes an absolute path; one slash silently
 resolves nothing.
 
+### Two more tokens, and the footer
+
+Any `body` on the page understands three inline tokens, expanded at build time:
+
+| token | renders |
+| --- | --- |
+| `{{snippet:path:12-30\|caption}}` | the lines, verbatim, as a captioned card |
+| `{{diff:path@<sha>\|caption}}` | the file's change since `<sha>`, GitHub-style: two line-number gutters, green and red bands, three lines of context, and a link under it that opens the same comparison in the editor — and on github.com when the change is committed and `origin` is a GitHub repo |
+| `{{difflink:path@<sha>}}` | only the link, for when the diff itself is not the point |
+
+`{{diff:…}}` and the `diffs` array on an item are the same renderer; the array is the way
+to write it on a finding, the token the way to write it mid-paragraph.
+
+An entry is `{"path": "…"}` and nothing more in the ordinary case — `base` defaults to the
+rev step 1 recorded. Add `"head"` when the fix is **one commit** and the file moved for
+other reasons afterwards: `{"path": "…", "base": "bf26a0de^", "head": "bf26a0de"}` shows the
+fix on its own, where `base` alone would bury it in everything that landed since. A pinned
+diff drops the editor link (which always compares against the working tree, so it would open
+a different comparison) and keeps the github.com one, which is exact. Both drop the block
+and say so on stderr when the before-side is not real — a base that does not resolve, a
+file that did not exist in it, or a diff that comes back empty. **No diff beats a wrong
+one**: the whole value of this page is that a reader can stop checking it.
+
+**The footer names the toolset and nothing else.** Write `/human-review` in it and the
+builder replaces the mention with the repository's URL, so a reader holding a printout can
+find it. What the footer must **not** carry is a sentence about the page's own honesty —
+"every snippet is cut from the working tree at build time", "every number was measured by
+the step that produced it". Both were true and both were still the page arguing for itself
+before the reader had seen a line of code; the build strips them if they reappear. Say what
+it was built from and when, and stop:
+
+```json
+"footer": "Built by /human-review against the running stack on 2 Sep 2026. <code>.human-review/</code> is a throwaway artifact — delete it rather than commit it."
+```
+
 The range is **snapped**: it skips a leading blank or comment line and extends to whatever
 brace the window opened, so a snippet always shows where the quoted method stops. That is
 right when the snippet *is* the method and wrong when it is one statement in its
@@ -1585,7 +1659,7 @@ the chip a link — an external one opens in a new tab.
   {"label":"lines","value":"<span class=\"added\">+2256</span> / <span class=\"removed\">−34</span>"},
   {"label":"unit tests","value":"125 green (20 new)"},
   {"label":"diagrams","value":"3","href":"#diagrams"},
-  {"auto":"autofixed","href":"#autofixed"},
+  {"auto":"autofixed","href":"#review"},
   {"auto":"cost"}
 ]
 ```
@@ -1635,13 +1709,13 @@ number over both says neither.* That rule is retired. The scope bar now carries 
 computed chip**, and the two `/code-review` and `/simplify` chips are gone:
 
 ```json
-{"auto": "autofixed", "href": "#autofixed"}
+{"auto": "autofixed", "href": "#review"}
 ```
 
 That is the whole declaration — the same contract as `{"auto": "cost"}`. The renderer counts
 `findings` + `autofixes` **from the lists the page actually renders**, labels it `auto-fixed
 N`, and writes a tooltip saying how many of the N were applied for you and how many are left
-for your judgement. The `href` deep-links it to the **Auto-fixed** tab.
+for your judgement. The `href` deep-links it to the one list, on the **🤖 Review** tab.
 
 Two reasons it changed, and they are different reasons:
 
@@ -1654,13 +1728,17 @@ Two reasons it changed, and they are different reasons:
    split by **who decides**, not by which tool spoke. `auto-fixed 12` answers it in one
    number, and the tooltip splits it the way the reader asked.
 
-**The old rule's concern was real, and it is answered by the tab, not by the chip.** One
-number over two different questions does say neither — so the number is a handle, and the
-Auto-fixed tab behind it carries the two chapters, `autofix-codereview` and
-`autofix-simplify`, that say what each pass actually did. That is the trade: a merged count
-is legitimate exactly as long as the split it summarises is one click away and on the page.
-`build-review-html.py` warns when it is not — a merged chip with no chapters behind it is
-the failure the retired rule was really guarding against.
+**The old rule's concern was real, and it is answered by the item, not by the chip.** One
+number over two different questions does say neither — so every item on the list carries a
+`"source"` naming the pass that raised it, and the reader sees it beside the finding rather
+than in a parallel listing that can fall out of step with this one. That is the trade: a
+merged count is legitimate exactly as long as the split it summarises is visible on the same
+page, on the items themselves. `build-review-html.py` warns when not one item carries a
+source — a merged chip with nothing behind it is the failure the retired rule was really
+guarding against.
+
+The `href` deep-links to whatever section carries the list; `#review` is the ordinary
+answer, and the renderer warns if it points at an id nothing on the page has.
 
 A run where a pass genuinely did not execute still says so — in the chapter, in words,
 rather than by a missing chip nobody notices.
@@ -1753,9 +1831,6 @@ single column forces them past four answers to reach the one they wanted, so the
    "intro":"<p class=\"sub\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
    "blocks":[{"type":"findings","title":"Look here first","body":"…"},
              {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
-  {"id":"autofixed","label":"Auto-fixed",
-   "blocks":[{"type":"section","id":"autofix-codereview"},
-             {"type":"section","id":"autofix-simplify"}]},
   {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
   {"id":"sequence","label":"Sequence",
    "blocks":[{"type":"section","id":"sequences-note"},
@@ -1816,7 +1891,6 @@ This is the whole vocabulary, and the step that pays for each:
 | `id` | label on the reference page | fed by | handle file |
 | --- | --- | --- | --- |
 | `review` | 🤖 Review | Step 1 | `.step-review` |
-| `autofixed` | Auto-fixed | *nothing, deliberately* — see below | — |
 | `behaviour` | Demo | Step 5 | `.step-video` |
 | `sequence` | Sequence | Step 3 | `.step-sequence` |
 | `requirements` | Requirements | *no step yet* | — |
@@ -1839,8 +1913,7 @@ measured*, which is true.
 
 **`sequence` took Step 3's stamp with it, rather than sharing `behaviour`'s.** When the
 sequence diagrams moved out of Demo, the obvious edit was to widen Step 3 to
-`start behaviour,sequence` — and that is the same trap as `autofixed` below, from the other
-direction: a step naming two tabs has its cost **split evenly**, so Demo would have been
+`start behaviour,sequence` — and the trap is that a step naming two tabs has its cost **split evenly**, so Demo would have been
 credited with half of a traced test run it no longer has anything to do with. Step 3's
 output *is* the Sequence tab now — the traced runs, the rendering, the base-diagram
 regeneration, the manifest — while the film that feeds Demo is Step 5's, stamped separately.
@@ -1848,19 +1921,27 @@ So the stamp was **re-keyed, not widened**, and Demo is fed by Step 5 alone. The
 cases share: **the stamp follows the work, not the surface.** A tab that takes the work with
 it takes the stamp too; a tab that only re-presents work already done gets none.
 
-⚠️ **`autofixed` is deliberately fed by nothing, and this is the reasoning — do not
-re-litigate it.** The obvious move is to widen Step 1's wrap to `start review,autofixed`.
-Do not: a step naming two tabs has its cost **split evenly** between them, so that one edit
-would silently halve the Review tab's published number, and halve it in favour of a tab that
-did no work of its own. Auto-fixed does not *produce* anything — it re-presents material
-Step 1 already generated, on a second surface, because a reader wanted the applied fixes
-separated from the open calls. The tokens were spent under Step 1 and belong to **🤖 Review**
-whole. So the honest reading is the one the page gives: Review carries the full cost of the
-pass, and Auto-fixed reports *not measured* — not because instrumenting it was forgotten,
-but because there is no work to instrument. It sits with `overview` (synthesised from the
-other tabs) in the "will never have a step" category, as against `requirements`, which is
-waiting for one. If Auto-fixed ever grows a step that genuinely does new work — re-running a
-pass, classifying its output afresh — that step stamps `autofixed` and this note comes out.
+⚠️ **The applied fixes do not get a tab of their own, and this is the reasoning — do not
+re-litigate it.** There used to be an `autofixed` tab re-presenting them on a second
+surface, with a chapter per pass. It came out, for two reasons that are worth keeping
+written down because the split looks tidy on paper:
+
+1. **Two lists that both start at 1 make the reader do arithmetic.** The question a
+   reviewer arrives with is *how much did the machine find, and how much of it is still
+   mine?* On two surfaces they have to hold one number in their head while they go and
+   count the other. One list — open calls first, applied fixes after them, numbered
+   straight through — answers it by being read.
+2. **Nothing was on the second surface that could not be a property of an item.** The
+   chapters split by which pass did the work; that is now a `"source"` stamp on each item,
+   right where a reader is already looking. A parallel listing is a second copy of the
+   same facts, and second copies fall out of step.
+
+And it never had a step of its own anyway: it produced nothing, it re-presented Step 1's
+output, so widening Step 1's wrap to `start review,autofixed` would have **split the cost
+evenly** and silently halved the Review tab's published number in favour of a tab that did
+no work. That trap is gone with the tab. `overview` is the one that remains in the "will
+never have a step" category — it is synthesised from the others — as against
+`requirements`, which is waiting for one.
 
 **Adding a tab is fine and needs no permission here** — give it any id, and it reports *not
 measured* until a step stamps it. **Dropping one is fine** — nothing stamps a step that did
@@ -2034,40 +2115,32 @@ and at two. `⌘F` searches only the open tab, so the strip carries a **show
 all** toggle that reveals every panel at once — which is also what printing does.
 
 The order, as a default worth departing from only with a reason — **Overview, 🤖 Review,
-Auto-fixed, Demo, Sequence, Requirements, Data, Structure, API, Code City, Complexity,
+Demo, Sequence, Requirements, Data, Structure, API, Code City, Complexity,
 Logging, UX, CODEOWNERS** — with the panels in the same DOM order as the strip:
 
 1. **Overview** (`overview`) — synthesised: the summary and the verdict, and the lede that
    walks the reader through the rest of the strip (see `{{tabcount}}` above). It is the one
    tab no step feeds, by design.
-2. **🤖 Review** (`review`) — the disputable findings, most critical first, each with the
-   failing scenario in one sentence and a snippet of the decisive lines; then the fixes you
-   already applied. The two lists are one decision split in two, and a reviewer who cannot
-   see the first pile has to take the size of the second on trust. The robot in the label is
-   doing the work the name *Autoreview* used to do: saying these are the machine's findings,
-   not the whole review, while still being the word a reader scans for. Its `intro` must
-   state that `/code-review` and `/simplify` output was **merged** before it reached the page
-   and is not separable from the recorded data: nothing says which command produced which
-   item, so the split below is by *who decides*, not by which tool spoke. The tab id is
-   `review`, so nothing inside the panel may also be `id="review"`. The two header chips
-   point in-page at `#review` — not out to the docs in a new tab, which answered a question
-   nobody had while the findings themselves were one click away.
-3. **Auto-fixed** (`autofixed`) — what the automated passes changed for you, in two
-   chapters: `autofix-codereview` (what `/code-review` fixed — correctness) and
-   `autofix-simplify` (what `/simplify` removed — shrinking the solution). It exists because
-   the scope bar merged both passes into one `auto-fixed N` chip, and a merged number is
-   only honest while the split it summarises is a click away. **The two chapters split by
-   the kind of work each pass does, not by recorded provenance** — see Step 1 on why the
-   data cannot answer "which command produced this item". It re-presents Step 1's output
-   rather than doing new work, which is why no step stamps it in the cost ledger.
-4. **Demo** (`behaviour`) — the film of the feature working, and now only that. It had its
+2. **🤖 Review** (`review`) — **one list**: the open calls first, most critical first, then
+   the fixes already applied, numbered straight through and greyed out. The robot in the
+   label is doing the work the name *Autoreview* used to do: saying these are the machine's
+   findings, not the whole review, while still being the word a reader scans for. Its
+   `intro` must state that `/code-review` and `/simplify` both ran and in which order. The
+   tab id is `review`, so nothing inside the panel may also be `id="review"`. The two header
+   chips point in-page at `#review` — not out to the docs in a new tab, which answered a
+   question nobody had while the findings themselves were one click away.
+
+   **How each item is written is not a matter of taste here — it is the rule below**, and
+   it is the one part of this page a reviewer reads word by word.
+
+3. **Demo** (`behaviour`) — the film of the feature working, and now only that. It had its
    own *Video* tab once, was folded in here beside the sequence diagrams, and the sequences
    have since moved out again to the tab below — so Demo is back to one artifact and one
    question, *does it work?* The label says **Demo** rather than *Behaviour* because that is
    what a reviewer is looking for. Keep the film's section id `video`, so `#video` still
    lands across both moves, and do not autostart it: a reader arrives here to watch, but they
    also arrive by deep link from elsewhere on the page.
-5. **Sequence** (`sequence`) — the sequence diagrams the traced runs recorded: the
+4. **Sequence** (`sequence`) — the sequence diagrams the traced runs recorded: the
    `sequences-note` section, then a `testpairs` block (`id: "sequences"`,
    `kind: "sequence"`). It sits next to Demo on purpose: the two are the same subject at
    different resolutions — the film is what the feature *looks like*, the diagrams are what
@@ -2080,7 +2153,7 @@ Logging, UX, CODEOWNERS** — with the panels in the same DOM order as the strip
    than dropped. The tab split carried the old block across unchanged first and the upgrade
    followed separately, which is the right order — move a tab, then improve it, so a
    regression has only one candidate cause.
-6. **Requirements** (`requirements`) — what this change set was supposed to do, against what
+5. **Requirements** (`requirements`) — what this change set was supposed to do, against what
    it did. No step in this runbook produces it yet, so it will report *not measured* in the
    cost breakdown until one does; that is a true statement, not a defect.
 
@@ -2114,29 +2187,29 @@ Logging, UX, CODEOWNERS** — with the panels in the same DOM order as the strip
    line its removal landed on; when the whole file went, it carries no link at all rather
    than a dead one. A requirement with no `tests` renders exactly as it did before — prose,
    and nothing under it, which is the honest rendering of a requirement nothing pins.
-7. **Data** (`data`) — the DB and domain deltas, and the 2–5 core-logic bullets in domain
+6. **Data** (`data`) — the DB and domain deltas, and the 2–5 core-logic bullets in domain
    language, each backed by a snippet.
-8. **Structure** (`packages`) — the package delta, or the current package diagram as
+7. **Structure** (`packages`) — the package delta, or the current package diagram as
    context. The id stayed `packages` when the label changed, which is exactly the freedom
    the id/label split exists to give you.
-9. **API** (`api`) — step 7's two fragments, each a `section` with `includeHtml`: the
+8. **API** (`api`) — step 7's two fragments, each a `section` with `includeHtml`: the
    compatibility verdict first, because it is the one-word answer, then the classified
    change list underneath it, and the blast-radius view beside them. Step 7b's pb33f report
    belongs here too if you run it: it had a *Spec changes* tab of its own and lost it,
    because a fourth reading of the contract on a fourth surface reads as a fourth
    disagreement rather than as corroboration.
-10. **Code City** (`city`) — where the change set landed in the skyline. Its own tab: *where
+9. **Code City** (`city`) — where the change set landed in the skyline. Its own tab: *where
     did this land* is not the same question as *what did it cost to run*.
-11. **Complexity** (`complexity`) — the entry-point complexity increment. Split out from Code
+10. **Complexity** (`complexity`) — the entry-point complexity increment. Split out from Code
     City for the reason above; its section is `complexity-delta`, never `complexity`, which
     the panel already owns.
-12. **Logging** (`logging`) — step 7c: what this change set will say for itself in
+11. **Logging** (`logging`) — step 7c: what this change set will say for itself in
     production.
-13. **UX** (`dsaudit`) — step 7d: native controls sitting where a standardised
+12. **UX** (`dsaudit`) — step 7d: native controls sitting where a standardised
     component belongs. It reads as the odd one out in this list because it is the only tab
     whose finding is an **absence**, and the only one no other check in the repository can
     produce — the Playwright suite passes on the very branch it flags.
-14. **CODEOWNERS** (`owners`) — whether a named human has to approve this before it can
+13. **CODEOWNERS** (`owners`) — whether a named human has to approve this before it can
     merge, and which files put them on the critical path.
 
 ### Close the ledger, check it, then build

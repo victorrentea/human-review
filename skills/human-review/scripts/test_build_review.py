@@ -1086,13 +1086,32 @@ if __name__ == "__main__":
 
 
 
-# ── the footer's /human-review mention carries the link to the toolset ───────────
+# ── the footer's /human-review mention becomes the repo it names ─────────────────
 # A reader who wants to copy this toolset has one obvious place to look, and the
-# footer is it. Linking it in the builder rather than in content.json means no
-# author has to remember it on any run.
-def test_the_footer_mention_links_to_the_public_repo():
+# footer is it. The slash-command spelling only means something to somebody who
+# already has the skill installed, so the mention is replaced by the address rather
+# than merely linked — and doing it in the builder means no author has to remember
+# it on any run.
+def test_the_footer_mention_becomes_the_public_repo_url():
     out = build._link_home("Built by /human-review against the running stack.")
-    assert '<a href="https://github.com/victorrentea/human-review">/human-review</a>' in out
+    assert ">/human-review<" not in out
+    assert ">https://github.com/victorrentea/human-review</a>" in out
+    assert 'href="https://github.com/victorrentea/human-review"' in out
+
+
+# ── the page does not editorialise about its own honesty ─────────────────────────
+# The sentence was true and it was still the first thing a reviewer read. Stripped
+# in the builder, not only in the writing guidance, because content files outlive
+# the instructions that produced them.
+def test_the_methodology_boilerplate_is_stripped_from_the_footer():
+    out = build._link_home(
+        "Built by /human-review on 2 Sep 2026. Every snippet is cut from the working "
+        "tree at build time; every number on this page was measured by the step that "
+        "produced it."
+    )
+    assert "working tree at build time" not in out
+    assert "measured by the step" not in out
+    assert "Built by" in out
 
 
 def test_only_the_first_mention_is_linked():
@@ -1374,3 +1393,145 @@ def test_naming_tests_without_a_manifest_is_a_content_error(tmp_path):
 def test_a_manifest_that_was_never_generated_is_named_before_anything_is_built(tmp_path):
     problems = build.validate({"testChanges": "assets/test-changes.json"}, tmp_path)
     assert any("run scripts/test-changes.py first" in p for p in problems)
+
+
+# ── open calls and applied fixes are one list, numbered straight through ─────────
+# Two lists that both start at 1 make a reviewer add them up by hand to answer the
+# only question they had: how much did the automated passes find? The counter is
+# continued with `counter-reset`, so the assertion is on the offset the autofix
+# list starts from, not on rendered text a browser computes.
+def test_the_autofix_list_continues_the_findings_numbering():
+    findings = [{"title": "a", "body": "x"}, {"title": "b", "body": "y"},
+                {"title": "c", "body": "z"}]
+    build.render_findings(findings)
+    out = build.render_autofixes([{"title": "d"}])
+    assert 'counter-reset:f 3' in out
+
+
+def test_an_empty_findings_list_still_starts_the_fixes_at_one():
+    build.render_findings([])
+    assert "counter-reset:f 0" in build.render_autofixes([{"title": "d"}])
+
+
+# ── the number bubble wears the severity's colour ───────────────────────────────
+# The left margin is the triage column. A uniform accent bubble made every item look
+# equally urgent and left the badge doing all the work.
+def test_the_number_bubble_carries_the_severity_class():
+    out = build.render_findings([{"title": "a", "body": "x", "severity": "high"}])
+    assert 'class="n-high"' in out
+    assert 'class="badge sev-high"' in out
+
+
+def test_an_item_with_no_severity_falls_back_to_info():
+    out = build.render_findings([{"title": "a", "body": "x"}])
+    assert 'class="n-info"' in out
+
+
+# ── an applied fix recedes, but keeps its place in the list ─────────────────────
+def test_applied_fixes_render_greyed_out_on_the_same_list():
+    out = build.render_autofixes([{"title": "d"}])
+    assert '<li class="fixed">' in out
+    assert 'class="findings"' in out
+    assert 'sev-fixed' in out
+
+
+# ── who raised it ───────────────────────────────────────────────────────────────
+# Optional, because nothing downstream of the two passes records provenance. An item
+# that does not claim a source renders without one rather than being attributed to a
+# guess.
+def test_the_source_is_shown_when_the_content_file_names_one():
+    out = build.render_findings([{"title": "a", "body": "x", "source": "/code-review"}])
+    assert '<span class="f-src">/code-review</span>' in out
+
+
+def test_no_source_stamp_when_none_was_recorded():
+    assert 'f-src' not in build.render_findings([{"title": "a", "body": "x"}])
+
+
+# ── the unified-diff parser ─────────────────────────────────────────────────────
+# The line numbers are the part a reader trusts without checking, so they are what
+# the test pins: both gutters have to keep counting across a hunk of mixed lines.
+def test_the_diff_parser_numbers_both_sides():
+    rows = build._parse_unified(
+        "diff --git a/f b/f\n"
+        "index 1111111..2222222 100644\n"
+        "--- a/f\n+++ b/f\n"
+        "@@ -10,3 +10,3 @@ void m() {\n"
+        " keep\n-gone\n+new\n keep2\n"
+    )
+    assert [r[0] for r in rows] == ["hunk", "ctx", "del", "add", "ctx"]
+    assert rows[1][1:3] == (10, 10)      # context advances both sides
+    assert rows[2][1] == 11 and rows[2][2] is None    # a deletion is old-side only
+    assert rows[3][1] is None and rows[3][2] == 11    # an addition is new-side only
+    assert rows[4][1:3] == (12, 12)
+
+
+def test_a_trailing_newline_does_not_become_a_context_row():
+    rows = build._parse_unified("@@ -1,1 +1,1 @@\n-a\n+b\n")
+    assert [r[0] for r in rows] == ["hunk", "del", "add"]
+
+
+# ── the GitHub remote, read rather than configured ──────────────────────────────
+def test_both_github_remote_spellings_resolve_to_the_same_repo(tmp_path, monkeypatch):
+    import subprocess as sp
+    for url in ("https://github.com/victorrentea/petclinic.git",
+                "git@github.com:victorrentea/petclinic"):
+        repo = tmp_path / url.replace("/", "_").replace(":", "_")
+        repo.mkdir()
+        sp.run(["git", "init", "-q", str(repo)], check=True)
+        sp.run(["git", "-C", str(repo), "remote", "add", "origin", url], check=True)
+        assert build.github_blob_base(repo) == "https://github.com/victorrentea/petclinic"
+
+
+def test_a_non_github_remote_gets_no_link(tmp_path):
+    import subprocess as sp
+    sp.run(["git", "init", "-q", str(tmp_path)], check=True)
+    sp.run(["git", "-C", str(tmp_path), "remote", "add", "origin",
+            "https://gitlab.com/x/y.git"], check=True)
+    assert build.github_blob_base(tmp_path) is None
+
+
+# ── a committed fix shows its own commit, not everything since ──────────────────
+# `base` alone diffs against the working tree, which buries a one-line fix in every
+# unrelated edit that landed on the branch afterwards. `head` pins the right side.
+def _repo_with_two_commits(tmp_path):
+    import subprocess as sp
+    r = tmp_path / "repo"
+    r.mkdir()
+    sp.run(["git", "init", "-q", "-b", "main", str(r)], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.email", "t@t"], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.name", "t"], check=True)
+    f = r / "a.txt"
+    f.write_text("one\ntwo\nthree\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "base"], check=True)
+    f.write_text("one\nTWO\nthree\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "the fix"], check=True)
+    f.write_text("one\nTWO\nthree\nunrelated\n")     # left uncommitted, on purpose
+    return r
+
+
+def test_head_pins_the_right_side_to_the_commit(tmp_path):
+    r = _repo_with_two_commits(tmp_path)
+    out = build.diff_html("a.txt", "HEAD^", r, head="HEAD")
+    assert "+1</span>" in out and "&minus;1</span>" in out   # only the fix
+    assert "unrelated" not in out                            # not the working tree
+
+
+def test_without_head_the_working_tree_is_the_right_side(tmp_path):
+    r = _repo_with_two_commits(tmp_path)
+    out = build.diff_html("a.txt", "HEAD^", r)
+    assert "unrelated" in out
+
+
+def test_a_pinned_diff_drops_the_editor_link_that_would_show_something_else(tmp_path):
+    # The editor link always diffs against the working tree, so it is only the same
+    # comparison when the right side *is* the working tree.
+    r = _repo_with_two_commits(tmp_path)
+    assert "diffref" not in build.diff_html("a.txt", "HEAD^", r, head="HEAD")
+
+
+def test_a_diff_with_no_before_state_is_dropped_rather_than_faked(tmp_path):
+    r = _repo_with_two_commits(tmp_path)
+    assert build.diff_html("nope.txt", "HEAD^", r) == ""

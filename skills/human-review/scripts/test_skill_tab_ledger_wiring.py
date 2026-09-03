@@ -111,8 +111,11 @@ def test_schema_example_has_the_tabs_this_test_expects():
     # Sanity check on the parser itself, so a regex that silently matched nothing still
     # fails loudly instead of making both real tests vacuously pass.
     schema = _schema_tab_ids(_text())
+    # `autofixed` is deliberately absent: the applied fixes are the tail of the Review
+    # tab's one list, not a tab of their own. See SKILL.md on why the second surface came
+    # out — two lists that both start at 1 make the reader do arithmetic.
     assert schema == {
-        "review", "autofixed", "behaviour", "sequence", "requirements", "data",
+        "review", "behaviour", "sequence", "requirements", "data",
         "packages", "api", "city", "complexity", "logging", "dsaudit", "owners",
     }
 
