@@ -1635,8 +1635,16 @@ def _github_compare_link(rel: str, base: str, root: Path, head: str | None = Non
             return ""
         head = rev.stdout.strip()
     url = f"{host}/compare/{base}...{head}"
+    # A compare page can be forty files long, and landing at its top makes the reader hunt
+    # for the one file the finding is about. GitHub anchors each file by the sha-256 of its
+    # path exactly as the diff header spells it — no `a/`/`b/` prefix — so jump straight
+    # there. Without a path there is nothing to hash, and the bare compare URL stands.
+    if rel:
+        url += "#diff-" + hashlib.sha256(rel.encode()).hexdigest()
+    tip = ("Open this file's diff on github.com" if rel
+           else "Open the same comparison on github.com")
     return (f'<a class="srcref" target="_blank" rel="noopener" href="{html.escape(url)}"'
-            f' data-tip="Open the same comparison on github.com">&#8599; on GitHub</a>')
+            f' data-tip="{tip}">&#8599; on GitHub</a>')
 
 
 def _parse_unified(diff_text: str):
