@@ -35,6 +35,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 EXTRACT = HERE / "extract-snippet.py"
 CODEOWNERS = HERE / "codeowners-check.py"
+TESTCHANGES = HERE / "test-changes.py"
 
 SEVERITIES = {
     "high": ("sev-high", "must look"),
@@ -164,6 +165,31 @@ table.costtab tfoot tr.costtotal td { border-top:1px solid var(--line);
              padding-top:.35rem; font-weight:700; }
 .added { color:#2e7d32; } .removed { color:#c62828; }
 @media (prefers-color-scheme: dark) { .added{color:#8fd39c} .removed{color:#f08a8a} }
+/* Requirements, each with the tests that pin it nested underneath its own text. The
+   requirement is prose and keeps no bullet — the marker would compete with the flags on
+   the tests below it, which are the part carrying information. */
+ul.reqlist { list-style:none; margin:.6rem 0 1rem; padding:0; display:grid; gap:1.1rem; }
+ul.reqlist > li { border-left:2px solid var(--line); padding-left:.85rem; }
+.req-text { font-size:.96rem; }
+ul.req-tests { margin:.4rem 0 0; padding-left:1.05rem; display:grid; gap:.22rem;
+        font-size:.9rem; }
+ul.req-tests li { list-style:none; }
+/* The flag reuses `.added` / `.removed` for its colour rather than declaring its own, so
+   new/deleted read here exactly as they read in the diagram deltas and the line counts.
+   "modified" and "unchanged" get no colour: only the two ends of the scale are news. */
+.tflag { display:inline-block; min-width:5.4rem; margin-right:.5rem;
+        font:700 .64rem/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;
+        letter-spacing:.09em; text-transform:uppercase; vertical-align:baseline; }
+.tflag.added { color:#2e7d32; } .tflag.removed { color:#c62828; }
+.tflag.changed { color:var(--fg); } .tflag.same { color:var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .tflag.added { color:#8fd39c; } .tflag.removed { color:#f08a8a; }
+}
+a.srcref.testref, span.srcref.testref { margin-bottom:0; font-size:11.5px; }
+span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
+        text-decoration-thickness:1px; cursor:default; }
+.tloc { color:var(--muted); font-weight:400; }
+.tnote { color:var(--muted); font-size:.86rem; }
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
@@ -2197,6 +2223,134 @@ def render_autofixes(fixes) -> str:
     return '<ul class="fixlist">' + "\n".join(items) + "</ul>"
 
 
+# What happened to a test, and what the page calls it. The colour classes are the page's
+# existing added/removed vocabulary — the same green and red the diff gutters, the line
+# counts in the scope bar and the diagram deltas already use, dark mode included — because
+# a fourth palette for the fourth surface would read as a fourth meaning.
+TEST_STATES = {
+    "added":     ("added", "new"),
+    "modified":  ("changed", "modified"),
+    "deleted":   ("removed", "deleted"),
+    "unchanged": ("same", "unchanged"),
+}
+
+
+def _test_changes_module():
+    """`test-changes.py`, loaded by path — a hyphen is not an identifier."""
+    import importlib.util
+    if "test_changes" in sys.modules:
+        return sys.modules["test_changes"]
+    spec = importlib.util.spec_from_file_location("test_changes", str(TESTCHANGES))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["test_changes"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_index(rows) -> dict:
+    """The manifest, keyed both ways: by `(path, name)` and by name alone.
+
+    Naming the path in the content file is optional, because most test names are unique
+    across a change set and repeating the path for each is noise. When one is not unique
+    the build says so rather than picking a side."""
+    by_key, by_name = {}, {}
+    for r in rows:
+        by_key[(r["path"], r["name"])] = r
+        by_name.setdefault(r["name"], []).append(r)
+    return {"key": by_key, "name": by_name}
+
+
+def resolve_tests(entries, index: dict, root: Path) -> list[dict]:
+    """Attach each named test to what the diff says happened to it.
+
+    A test the manifest does not mention is not an error: a requirement is often covered
+    by a test nobody touched, and saying so is worth a row. But it has to *exist* — the
+    file is parsed for the declaration, and a name that is nowhere in it fails the build,
+    for the same reason `resolve_refs` fails on a stale path. A coverage claim that links
+    to nothing is worse than no claim."""
+    out = []
+    for e in entries:
+        name, rel = e["name"], e.get("path")
+        if rel:
+            row = index["key"].get((rel, name))
+        else:
+            hits = index["name"].get(name, [])
+            if len(hits) > 1:
+                raise SystemExit(
+                    f"[review] the test name {name!r} occurs in {len(hits)} changed files "
+                    f"({', '.join(sorted(h['path'] for h in hits))}) — add a 'path' to the "
+                    "entry so the page links the right one."
+                )
+            row = hits[0] if hits else None
+        if row is None:
+            if not rel:
+                raise SystemExit(
+                    f"[review] test {name!r} is not in the change set, so it needs a 'path' "
+                    "saying which existing file it lives in."
+                )
+            f = root / rel
+            if not f.is_file():
+                raise SystemExit(f"[review] test {name!r} names a file that does not exist: {rel}")
+            line = _test_changes_module().test_cases(
+                rel, f.read_text(encoding="utf-8", errors="replace")).get(name)
+            if line is None:
+                raise SystemExit(
+                    f"[review] no test called {name!r} in {rel} — the change set did not touch "
+                    "it and the file does not declare it either. Fix the name, or the path."
+                )
+            row = {"name": name, "path": rel, "status": "unchanged", "line": line}
+        out.append(dict(row, note=e.get("note", "")))
+    return out
+
+
+def render_tests(rows, root: Path) -> str:
+    """The sub-list under one requirement: what pins it, and what the diff did to each.
+
+    The link is the page's ordinary `vscode://file/…` reference, so it inherits the whole
+    fallback chain in EDITOR_JS for free — served, top level, or embedded in a webview.
+    A test whose *file* was deleted gets no link, deliberately: there is nothing on disk
+    to open, and a dead custom URL is the one thing this page never emits."""
+    if not rows:
+        return ""
+    items = []
+    for r in rows:
+        cls, label = TEST_STATES.get(r["status"], TEST_STATES["unchanged"])
+        where = Path(r["path"]).name + (f':{r["line"]}' if r.get("line") else "")
+        inner = (f'{html.escape(r["name"])} '
+                 f'<span class="tloc">{html.escape(where)}</span>')
+        if r.get("line") and not r.get("gone"):
+            target = (root / r["path"]).resolve()
+            body = (f'<a class="srcref testref" href="vscode://file/{target}:{r["line"]}:1"'
+                    f' data-tip="{html.escape(r["path"])}">{inner}</a>')
+        else:
+            why = ("the file was deleted by this change set, so there is nothing left to open"
+                   if r.get("gone") else "this change set left no line to open it at")
+            body = (f'<span class="srcref testref tgone"'
+                    f' data-tip="{html.escape(r["path"])} — {why}">{inner}</span>')
+        note = f' <span class="tnote">{r["note"]}</span>' if r.get("note") else ""
+        items.append(f'<li><span class="tflag {cls}">{label}</span>{body}{note}</li>')
+    return '<ul class="req-tests">' + "\n".join(items) + "</ul>"
+
+
+def render_requirements(items, index: dict, root: Path) -> str:
+    """Each requirement, with the tests that pin it nested under its own text.
+
+    Nested rather than tabulated on purpose: the question a reviewer is asking here is
+    "is *this* requirement covered, and by what", and a table elsewhere on the page makes
+    them hold the requirement in their head while they go and look it up."""
+    if not items:
+        return ""
+    lis = []
+    for it in items:
+        lis.append(
+            '<li>'
+            + f'<div class="req-text">{it.get("text", "")}</div>'
+            + render_tests(resolve_tests(it.get("tests", []), index, root), root)
+            + '</li>'
+        )
+    return '<ul class="reqlist">' + "\n".join(lis) + "</ul>"
+
+
 def render_puml(block, root: Path, out_dir: Path) -> str:
     """A diagram this branch did *not* change, drawn as context rather than as a delta.
 
@@ -3358,6 +3512,24 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
         if inc and not (out_dir / inc).is_file():
             problems.append(f"sections[{i}] ({s.get('id')}) includeHtml -> {inc} "
                             "does not exist — did the step that produces it run?")
+    # A requirement may name tests only when the page can say what happened to them. The
+    # alternative — rendering every one as "unchanged" because no manifest was loaded —
+    # would be the page inventing an answer, which is the one thing it must never do.
+    tc = spec.get("testChanges")
+    if tc and not (out_dir / tc).is_file():
+        problems.append(f"testChanges -> {tc} does not exist — run scripts/test-changes.py first")
+    for i, s in enumerate(spec.get("sections") or []):
+        for j, req in enumerate(s.get("requirements") or []):
+            if not req.get("text"):
+                problems.append(f"sections[{i}] ({s.get('id')}) requirements[{j}] is missing 'text'")
+            for k, t in enumerate(req.get("tests") or []):
+                if not t.get("name"):
+                    problems.append(f"sections[{i}] ({s.get('id')}) requirements[{j}] "
+                                    f"tests[{k}] is missing 'name'")
+            if req.get("tests") and not tc:
+                problems.append(f"sections[{i}] ({s.get('id')}) requirements[{j}] names tests, "
+                                "but no top-level 'testChanges' manifest says what the change "
+                                "set did to them")
     for c in spec.get("extraCss") or []:
         if not (out_dir / c).is_file():
             problems.append(f"extraCss -> {c} does not exist "
@@ -3429,6 +3601,13 @@ def main(argv=None) -> int:
     # it), so the duplicate is resolved on the heading, which loses nothing.
     tab_ids = {t.get("id") for t in (spec.get("tabs") or [])} | {"overview"}
 
+    # What the change set did to each test, computed by `test-changes.py` from the diff
+    # itself. Loaded once: the content file only says which requirement a test belongs to.
+    tests_idx = test_index(
+        json.loads((out_dir / spec["testChanges"]).read_text(encoding="utf-8")).get("tests", [])
+        if spec.get("testChanges") else []
+    )
+
     sections, by_id, unchanged_ids = [], {}, {}
     for s in spec.get("sections", []):
         unchanged_ids[s["id"]] = bool(s.get("unchanged"))
@@ -3457,6 +3636,10 @@ def main(argv=None) -> int:
             # A section with no prose of its own — the video tab is one — must not open with
             # a blank line where the paragraph would have been.
             + (f"{body}\n" if body else "")
+            # The requirement list sits between the prose and anything else the section
+            # carries: it *is* the section's answer, and a snippet or an include is
+            # commentary on it.
+            + render_requirements(s.get("requirements") or [], tests_idx, root)
             + f'{inc}{vid}{snips}{embed_html(s, out_dir)}'
         )
         sections.append(rendered)

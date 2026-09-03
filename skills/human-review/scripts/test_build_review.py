@@ -1262,3 +1262,115 @@ def test_a_route_this_checkout_no_longer_serves_gets_no_row(tmp_path):
         "aaa": {"title": "Browser → Backend: DELETE /api/gone", "steps": []},
     }}, tmp_path)
     assert "handler" not in index["details"]["aaa"]
+
+
+# --------------------------------------------------------------------------- #
+# requirements, and the tests nested under them
+# --------------------------------------------------------------------------- #
+
+MANIFEST = [
+    {"name": "create_withVet", "path": "src/test/VisitTest.java", "status": "added", "line": 226},
+    {"name": "update_ok", "path": "src/test/VisitTest.java", "status": "modified", "line": 211},
+    {"name": "vet_column_removed", "path": "src/test/VisitTest.java", "status": "deleted",
+     "line": 240},
+    {"name": "old_scenario", "path": "features/gone.feature", "status": "deleted",
+     "line": None, "gone": True},
+    {"name": "create_withVet", "path": "src/test/OtherTest.java", "status": "added", "line": 12},
+]
+
+
+def _idx(rows=None):
+    return build.test_index(rows if rows is not None else MANIFEST[:-1])
+
+
+def test_a_test_is_looked_up_by_name_alone_when_that_is_unambiguous():
+    rows = build.resolve_tests([{"name": "update_ok"}], _idx(), Path("/repo"))
+    assert rows[0]["status"] == "modified" and rows[0]["line"] == 211
+
+
+def test_a_name_that_occurs_in_two_changed_files_asks_for_the_path():
+    with pytest.raises(SystemExit) as e:
+        build.resolve_tests([{"name": "create_withVet"}], build.test_index(MANIFEST), Path("/repo"))
+    assert "add a 'path'" in str(e.value)
+    rows = build.resolve_tests([{"name": "create_withVet", "path": "src/test/OtherTest.java"}],
+                               build.test_index(MANIFEST), Path("/repo"))
+    assert rows[0]["line"] == 12
+
+
+def test_a_test_the_change_set_never_touched_is_found_in_the_file_and_called_unchanged(tmp_path):
+    """A requirement is often pinned by a test nobody edited. Saying so is worth a row —
+    but the row still has to be real, so the file is parsed for the declaration."""
+    f = tmp_path / "src" / "test" / "OldTest.java"
+    f.parent.mkdir(parents=True)
+    f.write_text("class OldTest {\n  @Test\n  void alreadyThere() {\n  }\n}\n")
+    rows = build.resolve_tests(
+        [{"name": "alreadyThere", "path": "src/test/OldTest.java"}], _idx(), tmp_path)
+    assert rows[0]["status"] == "unchanged" and rows[0]["line"] == 3
+
+
+def test_a_coverage_claim_that_names_no_real_test_fails_the_build(tmp_path):
+    """The same rule as a stale `refs` entry: a link that goes nowhere costs the reviewer's
+    trust in every other link on the page."""
+    f = tmp_path / "src" / "test" / "OldTest.java"
+    f.parent.mkdir(parents=True)
+    f.write_text("class OldTest {\n}\n")
+    with pytest.raises(SystemExit) as e:
+        build.resolve_tests([{"name": "imagined", "path": "src/test/OldTest.java"}],
+                            _idx(), tmp_path)
+    assert "no test called 'imagined'" in str(e.value)
+
+
+def test_each_state_gets_the_page_s_own_added_removed_vocabulary():
+    out = build.render_tests(MANIFEST[:4], Path("/repo"))
+    assert '<span class="tflag added">new</span>' in out
+    assert '<span class="tflag changed">modified</span>' in out
+    assert out.count('<span class="tflag removed">deleted</span>') == 2
+
+
+def test_a_test_row_is_the_same_editor_link_every_other_reference_on_the_page_is():
+    out = build.render_tests([MANIFEST[0]], Path("/repo"))
+    assert 'href="vscode://file//repo/src/test/VisitTest.java:226:1"' in out
+    assert 'class="srcref testref"' in out
+    assert "VisitTest.java:226" in out
+
+
+def test_a_deleted_test_whose_file_survives_still_opens_at_the_gap():
+    out = build.render_tests([MANIFEST[2]], Path("/repo"))
+    assert 'href="vscode://file//repo/src/test/VisitTest.java:240:1"' in out
+
+
+def test_a_test_whose_file_is_gone_gets_no_link_rather_than_a_dead_one():
+    out = build.render_tests([MANIFEST[3]], Path("/repo"))
+    assert "vscode://" not in out
+    assert 'class="srcref testref tgone"' in out
+
+
+def test_the_tests_are_nested_under_the_requirement_they_belong_to():
+    out = build.render_requirements(
+        [{"text": "<b>R1.</b> A visit names its vet.",
+          "tests": [{"name": "update_ok"}]}], _idx(), Path("/repo"))
+    li = out.split("<li>", 1)[1]
+    assert li.index("R1.") < li.index('<ul class="req-tests">')
+    assert li.index('<ul class="req-tests">') < li.index("</li>")
+
+
+def test_a_requirement_list_that_declares_no_tests_renders_only_its_prose():
+    out = build.render_requirements([{"text": "<b>R2.</b> Nothing pins this yet."}],
+                                    _idx(), Path("/repo"))
+    assert "req-tests" not in out and "R2." in out
+
+
+def test_a_section_with_no_requirements_at_all_renders_exactly_as_before():
+    assert build.render_requirements([], _idx(), Path("/repo")) == ""
+
+
+def test_naming_tests_without_a_manifest_is_a_content_error(tmp_path):
+    problems = build.validate(
+        {"sections": [{"id": "requirements", "title": "Requirements",
+                       "requirements": [{"text": "R1", "tests": [{"name": "x"}]}]}]}, tmp_path)
+    assert any("no top-level 'testChanges' manifest" in p for p in problems)
+
+
+def test_a_manifest_that_was_never_generated_is_named_before_anything_is_built(tmp_path):
+    problems = build.validate({"testChanges": "assets/test-changes.json"}, tmp_path)
+    assert any("run scripts/test-changes.py first" in p for p in problems)

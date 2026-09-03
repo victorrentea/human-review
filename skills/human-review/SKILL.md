@@ -2077,6 +2077,37 @@ Logging, UX, CODEOWNERS** — with the panels in the same DOM order as the strip
 6. **Requirements** (`requirements`) — what this change set was supposed to do, against what
    it did. No step in this runbook produces it yet, so it will report *not measured* in the
    cost breakdown until one does; that is a true statement, not a defect.
+
+   Each requirement is an entry in the section's `requirements` array — its own prose in
+   `text`, and under it a `tests` list naming the tests that pin it. The list renders as a
+   sub-list beneath the requirement's own text, because the question being asked here is
+   *is this one covered, and by what*, and a coverage table further down the page makes the
+   reader hold the requirement in their head while they go and look it up. Every row is the
+   same `vscode://file/…` reference the rest of the page emits, so it opens the test at its
+   own line through the same three fallbacks as every other link.
+
+   **You attach; the diff classifies.** An entry says only `{"name": …}` — plus `"path"`
+   when the name is not unique, and an optional `"note"`. Whether that test is new, edited,
+   deleted or untouched comes from `scripts/test-changes.py`, run before the build:
+
+   ```sh
+   ${SKILL}/scripts/test-changes.py --base "$BASE" --out .human-review/assets/test-changes.json
+   ```
+
+   and named once at the top level of the content file as `"testChanges":
+   "assets/test-changes.json"`. Without it, a requirement that names tests fails validation
+   rather than rendering them all as untouched. The unit is a **test case**, not a file:
+   on the reference branch that manifest holds 300 cases — 198 added, 33 deleted, 6
+   modified, 63 untouched — and `VisitTest.java`, which `git diff --name-status` reports as
+   one letter `M`, contributes 3 new tests, 1 edited and 10 the change never reached.
+   Reporting that file as "modified" would bury the three rows the reviewer came for.
+
+   Say `new` and `modified` apart on the page, because a reviewer weighs them differently:
+   a new test is evidence the requirement was pinned, an edited one is evidence an existing
+   pin moved and is worth reading for what it stopped asserting. A deleted test links to the
+   line its removal landed on; when the whole file went, it carries no link at all rather
+   than a dead one. A requirement with no `tests` renders exactly as it did before — prose,
+   and nothing under it, which is the honest rendering of a requirement nothing pins.
 7. **Data** (`data`) — the DB and domain deltas, and the 2–5 core-logic bullets in domain
    language, each backed by a snippet.
 8. **Structure** (`packages`) — the package delta, or the current package diagram as
