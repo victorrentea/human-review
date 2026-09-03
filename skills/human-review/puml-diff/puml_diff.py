@@ -40,6 +40,9 @@ ELEMENT_KEYWORDS = {
 # A connector is a run of line-drawing characters; these substrings mark one.
 _CONNECTOR = re.compile(r"--|\.\.|->|<-|<\||\|>|\*-|-\*|o-|-o")
 
+# A quoted end label on a relationship: a multiplicity, a role name, or both.
+_QUOTED = re.compile(r'"[^"]*"')
+
 # PlantUML's component shorthand — `[Domain] <<..domain>>`, as packages.puml uses.
 # Without this, such a declaration matches no keyword, falls through to the
 # preamble, and is copied verbatim from NEW: an added component would never be
@@ -126,13 +129,19 @@ def _identity(s: str) -> str:
 
 
 def _endpoint(side: str) -> str:
-    """The element a relationship end names, without the cardinality glued to it.
+    """The element a relationship end names, without the end label glued to it.
 
     `_split_relationship` hands back `User "1"` and `"0..*" Role`, because a cardinality
     change *is* a change to the relationship. It is not a change to which elements the
     relationship joins, which is what a focus level walks.
+
+    The whole quoted span goes, not each token that opens with a quote: an end label
+    holds spaces as soon as it carries a role name beside its multiplicity
+    (`"* visits" Visit`), and dropping only its first token left `visits" Visit` naming
+    an element no diagram declares — so the relationship resolved to nothing and
+    silently vanished from the delta.
     """
-    tokens = [t for t in _identity(side).split() if not t.startswith('"')]
+    tokens = _QUOTED.sub(" ", _identity(side)).split()
     return " ".join(tokens) if tokens else _identity(side)
 
 

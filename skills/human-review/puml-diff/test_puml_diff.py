@@ -35,6 +35,20 @@ def test_parse_elements_and_members():
     assert "email : String" not in d.elements["Owner"].members
 
 
+def test_end_label_holding_a_role_beside_its_multiplicity_still_names_its_element():
+    """`Pet "* visits" Visit` joins Pet and Visit — not Pet and `visits" Visit`.
+
+    An end label carries a role name next to its multiplicity now, so it holds spaces.
+    Dropping only the token that opened the quote left the rest of the label glued to
+    the element name, the end resolved to an element no diagram declares, and the whole
+    relationship dropped out of the delta without a word.
+    """
+    d = m.parse('@startuml\nclass Pet\nclass Visit\n'
+                'Pet "pet" <--> "~* visits" Visit\n@enduml\n')
+    left, _conn, right, _label = d.relationships[0]
+    assert (m._endpoint(left), m._endpoint(right)) == ("Pet", "Visit")
+
+
 def test_cardinality_dots_not_mistaken_for_connector():
     d = _parse(BEFORE)
     vet_rel = next(r for r in d.relationships if r[0].startswith("Vet"))
