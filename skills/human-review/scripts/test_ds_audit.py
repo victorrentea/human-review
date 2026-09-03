@@ -32,6 +32,7 @@ Run with:  python3 -m pytest test_ds_audit.py
 """
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 import re
@@ -668,6 +669,56 @@ def test_each_screen_gets_its_own_viewer_and_its_own_pictures():
     for stem in ("book-a-visit", "clinic-settings"):
         for side in ("new", "old", "delta"):
             assert f'assets/ds-audit-{stem}-{side}.png' in frag
+
+
+# ── the screens the branch never touched ──────────────────────────────────────────
+
+def _untouched(screen):
+    """The same screen with nothing changed on it — what a run gets back for every form
+    a one-control-per-form migration did not reach."""
+    sc = copy.deepcopy(screen)
+    sc["delta"]["dom"] = {"added": [], "removed": [], "changed": [], "moved": {}}
+    sc["delta"]["elements"] = {k: dict(v, dom="same", status="same", pixel_churn=0.0)
+                               for k, v in sc["delta"]["elements"].items()}
+    sc["summary"]["regressions"] = []
+    sc["summary"]["improvements"] = []
+    return sc
+
+
+def test_a_screen_the_branch_moved_is_the_one_left_open():
+    result = _both_screens()
+    assert [ds.screen_touched(sc) for sc in result["screens"]] == [True, True]
+    frag = ds.render(result, "")
+    assert frag.count('<details class="dsa-screen" open>') == 2
+    assert 'did not touch this screen' not in frag
+
+
+def test_a_screen_nothing_happened_on_opens_collapsed():
+    """Seven forms audited, one touched: the other six are three full-page screenshots
+    each of a picture that did not change. They fold, and they say why."""
+    _, screen = _screen_from_capture()
+    sc = _untouched(screen)
+    assert ds.screen_touched(sc) is False
+    frag = ds.render(ds.build_result([sc], _screen_from_capture()[0]), "")
+    assert '<details class="dsa-screen">' in frag
+    assert " open>" not in frag
+    assert "did not touch this screen" in frag
+
+
+def test_an_element_that_only_moved_does_not_reopen_the_screen():
+    _, screen = _screen_from_capture()
+    sc = _untouched(screen)
+    sc["delta"]["dom"]["moved"] = {"a": "b"}
+    assert ds.screen_touched(sc) is False
+
+
+def test_a_folded_screen_still_states_its_gaps():
+    """Collapsing a screen may hide the pictures; hiding the count would be hiding a
+    finding. The heading stays above the fold."""
+    _, screen = _screen_from_capture()
+    frag = ds.render(ds.build_result([_untouched(screen)], _screen_from_capture()[0]), "")
+    head, _, _ = frag.partition('<details class="dsa-screen">')
+    assert "gap" in head and "design-system component" in head
 
 
 def test_the_registry_is_stated_once_for_the_whole_run():

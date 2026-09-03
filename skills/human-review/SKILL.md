@@ -1439,6 +1439,12 @@ fragment. A reviewing agent should read the JSON and never have to OCR a PNG.
 **A green badge is context; the red one is the finding. An empty registry means no
 `data-ds` component was found, which is not a pass.**
 
+Every screen keeps its heading and its gap count in view, but the pictures and the table
+fold: a screen this branch **did not touch** renders collapsed (`this branch did not
+touch this screen`), a screen it modified stays open. Name as many screens as the
+migration could have reached — the ones nothing happened on cost the reviewer one line
+each, and they are still one click away.
+
 ### Why it is built around the absence
 
 Labelling what *is* a design-system component proves nothing — the defect is an **absence**.

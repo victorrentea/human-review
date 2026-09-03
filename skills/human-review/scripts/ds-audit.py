@@ -823,6 +823,9 @@ CSS = """/* ds-audit — the annotated screenshots and the findings table, and n
 .dsa-prov { opacity: .7; font-style: italic; }
 .dsa-sel { font-size: .78rem; opacity: .72; word-break: break-all; }
 .dsa-none { opacity: .7; font-style: italic; }
+.dsa-screen > summary { cursor: pointer; font-size: .82rem; opacity: .8;
+  margin: .1rem 0 .5rem; }
+.dsa-screen[open] > summary { margin-bottom: .3rem; }
 .dsa-considered { margin: .6rem 0 0; font-size: .84rem; opacity: .85; }
 .dsa-considered summary { cursor: pointer; }
 .dsa-considered ul { margin: .4rem 0 0 .2rem; }
@@ -925,6 +928,30 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "screen"
 
 
+def screen_touched(screen: dict) -> bool:
+    """Did this branch modify this screen at all?
+
+    A run audits every form a migration could have touched, and most of them come back
+    identical on both sides. Those are the screens the reviewer scrolls past — three
+    full-page screenshots and a table of components that were already right — so they
+    open collapsed and the ones the branch actually moved stay open.
+
+    The question is asked of the delta, not of the findings: an element the audit does
+    not judge is still a modification, and a screen whose only change is a paragraph is
+    not an unchanged screen. `moved` is deliberately not counted — a field that only
+    slid down because something above it grew is the one case the differ exists to call
+    "nothing happened here".
+    """
+    dom = screen.get("delta", {}).get("dom", {})
+    if dom.get("added") or dom.get("removed") or dom.get("changed"):
+        return True
+    if any(st.get("status") == "restyled"
+           for st in screen.get("delta", {}).get("elements", {}).values()):
+        return True
+    counts = screen["summary"]
+    return bool(counts["regressions"] or counts["improvements"])
+
+
 def render_screen(screen: dict, assets_prefix: str, build) -> str:
     findings = screen["findings"]
     pages = {s: screen["sides"][s]["page"] for s in ("new", "old")}
@@ -1007,7 +1034,16 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
         considered = (f'<details class="dsa-considered"><summary>{len(passed)} control'
                       f'{"" if len(passed) == 1 else "s"} considered and deliberately not '
                       f'judged</summary><ul>{items}</ul></details>')
-    return f'<div class="dsa">{head}{build.dgm_views_html(panes)}{table}{considered}</div>'
+    # The heading and its counts stay outside the fold: a collapsed screen still has to
+    # say how many gaps it carries, or collapsing it would be hiding a finding.
+    touched = screen_touched(screen)
+    label = ("screenshots and findings" if touched else
+             'screenshots and findings <span class="dsa-prov">— this branch did not '
+             "touch this screen</span>")
+    return (f'<div class="dsa">{head}'
+            f'<details class="dsa-screen"{" open" if touched else ""}>'
+            f'<summary>{label}</summary>'
+            f'{build.dgm_views_html(panes)}{table}{considered}</details></div>')
 
 
 def render(result: dict, assets_prefix: str) -> str:
