@@ -1654,22 +1654,33 @@ and the title starts at the top edge rather than behind a gutter that would then
 pinned there.
 
 Name the PR in a `"pr"` block and the heading becomes the name the reviewer's own tabs,
-notifications and `gh pr` output use, with the two refs beside it as badges that open
-their pages on GitHub:
+notifications and `gh pr` output use:
 
 ```json
 "pr": {"number": 37, "title": "Link Visit with Vet",
        "url": "https://github.com/victorrentea/petclinic/pull/37",
        "repo": "https://github.com/victorrentea/petclinic",
-       "branch": "test-pr", "base": "main"},
-"note": "A visit now records the vet that attended it."
+       "branch": "test-pr", "base": "main"}
 ```
 
-renders `GH#37 Link Visit with Vet (test-pr) (main)`, with the note to the right of it.
-Every field is optional and the block as a whole is: without it the page keeps the title
-and the subtitle line it always had. With it, **stop writing the branch, the base and the
-issue into the subtitle** — they are in the heading now, and the `note` (falling back to
-`subtitle`) is the one sentence that says what the change does.
+The title row is then **one line and only two things**: `GH#37 Link Visit with Vet` on the
+left, the verdict score hard right. A long PR title ellipsises rather than pushing the
+score onto a second row — the masthead is pinned for the whole read, so every row it grows
+is a row taken off every tab underneath it.
+
+`branch` and `base` render as **the first two chips on the scope bar**, each opening its
+ref on GitHub. That row already answers *how much* — `files`, `lines`, what the review
+found, what it cost — and two refs with six numbers about them are one thought; putting the
+refs anywhere else makes a reader assemble it. They are labelled chips rather than
+parenthesised asides because in that row an unlabelled `(test-pr)` beside `files +1 / ~40`
+reads as another number.
+
+Every field is optional, and the block as a whole is: without it the page keeps the title
+and the subtitle line it always had. **With it, `subtitle` does not render in the masthead
+at all** — not the branch, not the base, not the issue, and not the sentence describing the
+change. That sentence is the first thing the Overview says, and a block that never scrolls
+cannot spend its width on something read once. Keep `subtitle` in the content file for the
+`<title>` and for a page built without a `pr` block; do not write the refs into it.
 
 The `show all` control is labelled **`(single)`**: it is a toggle, and the state the
 reader needs a way out of is the one where every panel is open at once.

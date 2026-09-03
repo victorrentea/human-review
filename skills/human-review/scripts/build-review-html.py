@@ -547,23 +547,26 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
             padding:.35rem max(1.25rem, calc(50vw - 540px + 1.25rem)) 0;
             border-bottom:1px solid var(--line); }
 .masthead .titlerow { align-items:baseline; gap:.3rem .9rem; }
-/* The note stays beside the title rather than under it: it is one sentence about the
-   change, and a masthead that never scrolls cannot spend a whole row on it. It is the
-   one part of the block allowed to shrink. */
-.masthead .titlerow .sub { flex:1 1 14rem; min-width:0; margin:0; }
+/* One line, always: the PR and its name on the left, the score hard right. Nothing here
+   is allowed to wrap the masthead onto a second row, so the title is the part that gives
+   — it ellipsises rather than pushing the score down, and the full text is in the tab
+   title anyway. `min-width:0` is what lets a flex child shrink below its content. */
+.titlerow.oneline { flex-wrap:nowrap; align-items:baseline; }
+.titlerow.oneline h1 { min-width:0; overflow:hidden; text-overflow:ellipsis;
+                        white-space:nowrap; }
+.titlerow.oneline .titlescore { flex:0 0 auto; }
 .masthead .scopebar { margin:.3rem 0 .05rem; }
 /* Inside the masthead the strip is no longer its own sticky, full-bleed band: the block
    around it does the bleeding, the pinning and the edge. */
 .masthead .tabstrip { position:static; margin:.1rem 0 0; width:auto;
             padding:.1rem 0 .15rem; background:transparent; border-bottom:0; }
-/* The two refs the whole page is a comparison of, in the heading and one click from
-   their own page on GitHub. The parentheses are the point: `(test-pr)` reads as an
-   aside on the title, not as a second heading. */
-.refbadge { font:600 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
-            color:var(--muted); text-decoration:none; white-space:nowrap;
-            padding:.1rem .3rem; border-radius:.3rem; }
-.refbadge:hover { color:var(--fg); background:var(--card); }
-.refbadge.head { color:var(--link); }
+/* The two refs the whole page is a comparison of: the first two chips on the scope bar,
+   each one click from its own page on GitHub. Monospaced names, because a git ref is a
+   name to be matched character for character against a terminal, and the branch under
+   review takes the link colour so the pair reads head-then-base at a glance. */
+.chip.refchip b.refname { font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+            font-size:.95em; }
+.chip.refchip b.refname.head { color:var(--link); }
 h1 .prref { text-decoration:none; }
 h1 .prref:hover { text-decoration:underline; }
 .titlescore { display:inline-flex; align-items:baseline; gap:.35rem; padding:.3rem .8rem;
@@ -3966,29 +3969,37 @@ def page_title(spec: dict) -> str:
 
 
 def ref_badges(spec: dict) -> str:
-    """`(test-pr)` `(main)` beside the title — the two refs every number on this page is
-    a comparison of, each one click from its own page on GitHub.
+    """`branch test-pr` `base main` — the two refs every number on this page is a
+    comparison of, each one click from its own page on GitHub.
 
-    In the heading rather than in the prose subtitle, because "against what, again?" is
-    a question asked halfway down the ninth tab, not while reading the first sentence,
-    and the masthead is the part of the page that is still there by then.
+    They lead the scope bar rather than trailing the title, and both moves are the same
+    decision. "Against what, again?" is a question asked halfway down the ninth tab, so
+    the answer has to be somewhere the masthead still shows — and the row it belongs in
+    is the one that already answers *how much*: `files`, `lines`, what the review found,
+    what it cost. Two refs and six numbers about them are one thought, and the title row
+    is then free to be a title.
+
+    They are chips, not parenthesised asides, because in that row `(test-pr)` beside
+    `files +1 / ~40` reads as an unlabelled number. The label is what makes the pair
+    legible in one pass, and it costs four characters.
     """
     pr = spec.get("pr") or {}
     repo = (pr.get("repo") or "").rstrip("/")
     out = []
-    for key, cls, why in (("branch", "head", "the branch under review"),
-                          ("base", "base", "the base it is compared against")):
+    for key, label, cls, why in (("branch", "branch", "head", "the branch under review"),
+                                 ("base", "base", "base", "the base it is compared against")):
         ref = pr.get(key)
         if not ref:
             continue
-        text = f'({html.escape(ref)})'
+        inner = (f'{label} <b class="refname {cls}">{html.escape(ref)}</b>')
         tip = html.escape(why + (" — open it on GitHub" if repo else ""))
         if repo:
             href = html.escape(f"{repo}/tree/{urllib.parse.quote(ref)}")
-            out.append(f'<a class="refbadge {cls}" href="{href}" data-tip="{tip}">{text}</a>')
+            out.append(f'<a class="chip chip-link refchip" href="{href}" '
+                       f'data-tip="{tip}">{inner}</a>')
         else:
-            out.append(f'<span class="refbadge {cls}" data-tip="{tip}">{text}</span>')
-    return " ".join(out)
+            out.append(f'<span class="chip refchip" data-tip="{tip}">{inner}</span>')
+    return "".join(out)
 
 
 def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str) -> str:
@@ -4002,15 +4013,16 @@ def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str) -> 
     Only a tabbed page gets one: without a strip there is nothing to pin the masthead
     for, and the plain single-column guide keeps the heading it always had.
     """
-    badges = ref_badges(spec)
-    heading = f'<h1>{page_title(spec)}{" " + badges if badges else ""}</h1>'
+    heading = f'<h1>{page_title(spec)}</h1>'
     if spec.get("pr"):
-        # The note moves up beside the title. With the PR named in the heading and the
-        # refs on the badges, what is left of the old subtitle is the one sentence that
-        # says what the change does — and a block that never scrolls cannot spend a row
-        # of its own on it.
-        note = spec.get("note") or spec.get("subtitle", "")
-        rows = [f'<div class="titlerow">{heading}<p class="sub">{note}</p>{title_score}</div>']
+        # One line, and only the two things a reader navigates by: which change this is,
+        # and how it scored. The refs moved down to the scope bar (`ref_badges`), and the
+        # sentence describing the change is gone from here entirely — it is the first
+        # thing the Overview says, and a block that never scrolls cannot spend its width
+        # on a sentence that is read once. `subtitle` is still in the content file and
+        # still renders on a page with no `pr` block.
+        rows = [f'<div class="titlerow oneline">{heading}{title_score}</div>']
+        chips = ref_badges(spec) + chips
     else:
         rows = [f'<div class="titlerow">{heading}{title_score}</div>',
                 f'<p class="sub">{spec.get("subtitle", "")}</p>']

@@ -1014,28 +1014,48 @@ def test_without_a_pr_block_the_title_is_the_one_the_content_file_wrote(tmp_path
     assert "GH#" not in page
 
 
-def test_the_two_refs_the_page_compares_are_in_the_heading_and_clickable(tmp_path):
+def test_the_two_refs_the_page_compares_lead_the_scope_bar_and_are_clickable(tmp_path):
     """"Against what, again?" is asked halfway down the ninth tab, not while reading the
-    first sentence — so the refs live in the pinned heading, not in the prose, and each
-    one opens its own page on GitHub."""
+    first sentence — so the refs live in the pinned masthead. They lead the scope bar,
+    which is the row that already answers *how much*, and each opens its own page on
+    GitHub."""
+    page, _ = _build(tmp_path, dict(PR, scope=[{"label": "files", "value": "40"}]))
+    bar = page[page.index('<div class="scopebar">'):]
+    bar = bar[:bar.index("</div>")]
+    assert "https://github.com/victorrentea/petclinic/tree/test-pr" in bar
+    assert "https://github.com/victorrentea/petclinic/tree/main" in bar
+    # Before every measurement of them: two refs and six numbers about those refs are one
+    # thought, and the refs are the half that says what the numbers are of.
+    assert bar.index("tree/test-pr") < bar.index("tree/main") < bar.index("files")
+    # The page's own tooltip, never the native one nobody waits for.
+    assert "title=" not in bar
+    assert "data-tip=" in bar
+
+
+def test_the_refs_are_out_of_the_title_row(tmp_path):
+    """The title row is the PR and its score, on one line. Anything else in it is what
+    pushed the masthead onto a second row."""
     page, _ = _build(tmp_path, PR)
     head = page[page.index("<h1>"):page.index("</h1>")]
-    assert "(test-pr)" in head and "(main)" in head
-    assert "https://github.com/victorrentea/petclinic/tree/test-pr" in head
-    assert "https://github.com/victorrentea/petclinic/tree/main" in head
-    # The page's own tooltip, never the native one nobody waits for.
-    assert "title=" not in head
-    assert "data-tip=" in head
+    assert "test-pr" not in head and "(main)" not in head
 
 
-def test_the_note_keeps_its_place_beside_the_title(tmp_path):
-    """With the PR in the heading and the refs on the badges, what is left of the old
-    subtitle is one sentence about the change. A block that never scrolls cannot spend a
-    row of its own on it, so it sits in the title row."""
+def test_the_note_is_not_in_the_masthead_at_all(tmp_path):
+    """It is the first thing the Overview says, and a block that never scrolls cannot
+    spend its width on a sentence that is read once. `subtitle` stays in the content
+    file, and still renders on a page with no `pr` block."""
     page, _ = _build(tmp_path, PR)
-    row = page[page.index('<div class="titlerow">'):]
-    row = row[:row.index("</div>")]
-    assert "A visit now records the vet that attended it." in row
+    mast = page[page.index('<header class="masthead">'):page.index("</header>")]
+    assert "A visit now records the vet that attended it." not in mast
+
+
+def test_the_title_row_is_one_line_and_the_title_is_what_gives(tmp_path):
+    """The score must never be pushed onto a second row by a long PR title."""
+    page, _ = _build(tmp_path, PR)
+    css = page[page.index("<style>"):page.index("</style>")]
+    assert ".titlerow.oneline { flex-wrap:nowrap;" in css
+    assert "text-overflow:ellipsis" in css[css.index(".titlerow.oneline h1 {"):]
+    assert '<div class="titlerow oneline">' in page
 
 
 def test_title_refs_chips_and_tabs_are_one_block_that_does_not_scroll(tmp_path):
@@ -1045,7 +1065,7 @@ def test_title_refs_chips_and_tabs_are_one_block_that_does_not_scroll(tmp_path):
     behind a gutter that would then be pinned there for the whole read."""
     page, _ = _build(tmp_path, PR)
     mast = page[page.index('<header class="masthead">'):page.index("</header>")]
-    for part in ('<div class="titlerow">', '<div class="scopebar">',
+    for part in ('<div class="titlerow oneline">', '<div class="scopebar">',
                  '<div class="tabstrip"'):
         assert part in mast, part
     css = page[page.index("<style>"):page.index("</style>")]
