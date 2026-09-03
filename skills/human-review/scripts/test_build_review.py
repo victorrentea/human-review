@@ -1179,3 +1179,86 @@ def test_a_snippet_git_cannot_be_asked_about_is_unmarked(tmp_path):
     assert "code-badge" not in out
     assert 'class="dm"' not in out
     assert '<span class="ln">1</span>' in out          # everything else unchanged
+
+
+# --------------------------------------------------------------------------- #
+# the entry point behind a call arrow
+# --------------------------------------------------------------------------- #
+
+CONTROLLER = '''package x.rest;
+
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/owners")
+public class OwnerRestController {
+    @GetMapping(produces = "application/json")
+    @ApiResponse(responseCode = "200",
+            content = @Content(mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = OwnerDto.class))))
+    public List<OwnerDto> listOwners() {
+        return List.of();
+    }
+
+    @PostMapping("{ownerId}/pets/{petId}/visits")
+    // Booking is one unit of work.
+    @Transactional
+    public ResponseEntity<Void> addVisitToOwner(@PathVariable int ownerId,
+            @RequestBody VisitFieldsDto dto) {
+        return null;
+    }
+}
+'''
+
+
+def _spring_repo(tmp_path):
+    src = tmp_path / "backend/src/main/java/x/rest"
+    src.mkdir(parents=True)
+    (src / "OwnerRestController.java").write_text(CONTROLLER, encoding="utf-8")
+    build.spring_handlers.cache_clear()
+    return build.spring_handlers(tmp_path)
+
+
+def test_a_route_resolves_to_the_method_that_answers_it(tmp_path):
+    """Class-level base plus method-level path, and the declaration under the annotation -
+    not the annotation's own line, which is where a reviewer would land on `@Transactional`."""
+    handlers = _spring_repo(tmp_path)
+    rel, line, name = handlers["POST /api/owners/{ownerId}/pets/{petId}/visits"]
+    assert rel == "backend/src/main/java/x/rest/OwnerRestController.java"
+    assert name == "OwnerRestController.addVisitToOwner"
+    assert CONTROLLER.splitlines()[line - 1].strip().startswith("public ResponseEntity<Void>")
+
+
+def test_a_media_type_is_not_mistaken_for_a_route(tmp_path):
+    """`produces = "application/json"` is the first string literal in the arguments, and a
+    wrapped `@ApiResponse` under it looks exactly like a method declaration to a line scan."""
+    handlers = _spring_repo(tmp_path)
+    rel, line, name = handlers["GET /api/owners"]
+    assert name == "OwnerRestController.listOwners"
+    assert "/api/owners/application/json" not in handlers
+
+
+def test_a_call_arrow_carries_its_handler_into_the_panel(tmp_path):
+    """The sidecar the generator filed knows the route and nothing about the code, so the
+    entry point is hung on it here, against this checkout."""
+    _spring_repo(tmp_path)
+    index = build._with_handlers({"details": {
+        "aaa": {"title": "Browser → Backend: POST /api/owners/{ownerId}/pets/{petId}/visits",
+                "steps": [{"label": "request body", "text": "{}"}]},
+        "bbb": {"title": "Backend → Browser: 200", "steps": [{"label": "response body",
+                                                                  "text": "{}"}]},
+    }}, tmp_path)
+    handler = index["details"]["aaa"]["handler"]
+    assert handler["name"] == "OwnerRestController.addVisitToOwner"
+    assert handler["href"].startswith("vscode://file/")
+    assert handler["href"].endswith(":1")
+    assert "handler" not in index["details"]["bbb"]
+
+
+def test_a_route_this_checkout_no_longer_serves_gets_no_row(tmp_path):
+    """A dead link into a method that is gone is worse than the route on its own."""
+    _spring_repo(tmp_path)
+    index = build._with_handlers({"details": {
+        "aaa": {"title": "Browser → Backend: DELETE /api/gone", "steps": []},
+    }}, tmp_path)
+    assert "handler" not in index["details"]["aaa"]

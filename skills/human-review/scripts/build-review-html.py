@@ -365,6 +365,13 @@ pre.code code { white-space:pre; }
 #genseq-panel .genseq-close:hover { color:var(--fg); }
 #genseq-panel .genseq-label { color:var(--link); font-size:.8rem; margin:.15rem 0 .4rem; }
 #genseq-panel .genseq-label[hidden] { display:none; }
+/* The method that answers the route, at the same level as `request body`: both are
+   sub-headings of the arrow, one naming what travelled and the other where it landed. */
+#genseq-panel .genseq-handler { display:flex; align-items:baseline; gap:.4rem;
+                                font-size:.8rem; margin:.15rem 0 .4rem; }
+#genseq-panel .genseq-handler[hidden] { display:none; }
+#genseq-panel .genseq-handler .genseq-key { color:var(--muted); }
+#genseq-panel .genseq-handler .srcref { margin-bottom:0; }
 #genseq-panel .genseq-toggle { border:1px solid var(--line); background:var(--code-bg);
                         color:var(--muted); cursor:pointer; border-radius:999px;
                         font:600 .7rem/1.6 inherit; padding:0 .55rem; white-space:nowrap; }
@@ -1189,11 +1196,13 @@ GENSEQ_JS = """<script>
       '<button type="button" class="genseq-toggle" hidden></button>' +
       '<span class="genseq-grow"></span><span class="genseq-step"></span>' +
       '<button type="button" class="genseq-close" data-tip="close (Esc)" aria-label="close">&times;</button></div>' +
+      '<div class="genseq-handler" hidden></div>' +
       '<div class="genseq-label"></div><pre></pre>';
     document.body.appendChild(panel);
     els = {
       title: panel.querySelector('.genseq-title'),
       step: panel.querySelector('.genseq-step'),
+      handler: panel.querySelector('.genseq-handler'),
       label: panel.querySelector('.genseq-label'),
       toggle: panel.querySelector('.genseq-toggle'),
       body: panel.querySelector('pre'),
@@ -1245,6 +1254,29 @@ GENSEQ_JS = """<script>
     }
   }
 
+  // The entry point that answered the call. The arrow already carries the route, which is
+  // the contract; a reviewer reading a request body next wants the method that receives
+  // it, and no trace knows its name — the generator resolved it against this checkout's
+  // controllers, so the link lands on the real declaration line.
+  function renderHandler(entry) {
+    var handler = entry.handler;
+    els.handler.textContent = '';
+    els.handler.hidden = !handler;
+    if (!handler) return;
+    var key = document.createElement('span');
+    key.className = 'genseq-key';
+    key.textContent = 'handler';
+    var name = document.createElement(handler.href ? 'a' : 'span');
+    name.className = 'srcref';
+    name.textContent = handler.name;
+    if (handler.href) {
+      name.href = handler.href;
+      name.setAttribute('data-tip', 'Open in VS Code');
+    }
+    els.handler.appendChild(key);
+    els.handler.appendChild(name);
+  }
+
   function show(entry, index, target, href) {
     build();
     source = href;
@@ -1254,6 +1286,7 @@ GENSEQ_JS = """<script>
     step = entry.steps[index];
     els.title.textContent = entry.title;
     els.step.textContent = entry.steps.length > 1 ? (index + 1) + ' / ' + entry.steps.length : '';
+    renderHandler(entry);
     render();
     place(target);
   }
@@ -1616,6 +1649,148 @@ def inline_svg(path: Path, root: Path) -> str:
     return _plain_svg_title(resolve_source_links(svg, root))
 
 
+# `Browser → Backend: POST /api/owners/{ownerId}/pets/{petId}/visits` — a call arrow's
+# title, as the generator writes it. The route is the contract; the method that answers it
+# is where a reviewer actually has to go, and nothing in a trace knows its name.
+GENSEQ_CALL_TITLE = re.compile(
+    r"(?:\u2192|->)\s*\w+\s*:\s*"
+    r"(?P<verb>GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(?P<route>/\S*)\s*$"
+)
+
+MAPPING_ANNOTATION = re.compile(r"@(?P<kind>Get|Post|Put|Patch|Delete|Request)Mapping\b")
+# `@GetMapping(produces = "application/json")` names a media type, not a route, so the
+# first string literal in the arguments is only the path when it is positional or spelled
+# `value =`/`path =`. Anything else leaves the mapping at its class-level base.
+MAPPING_NAMED_PATH = re.compile(r'(?:value|path)\s*=\s*\{?\s*"(?P<path>[^"]*)"')
+MAPPING_POSITIONAL_PATH = re.compile(r'^\s*\{?\s*"(?P<path>[^"]*)"')
+REQUEST_METHOD = re.compile(r"RequestMethod\.(?P<verb>GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)")
+TYPE_DECL = re.compile(
+    r"^(?:(?:public|private|protected|static|final|abstract|sealed|non-sealed)\s+)*"
+    r"(?:class|interface|record|enum)\s+(?P<name>\w+)"
+)
+METHOD_NAME = re.compile(r"(?P<name>\w+)\s*\(")
+HTTP_VERBS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
+SKIP_DIRS = {".git", "node_modules", "target", "build", "out", "dist", ".idea", ".gradle"}
+
+
+def _annotation_span(lines, i: int):
+    """The parenthesised argument text of the annotation on line `i`, and where it ends.
+
+    Read as one balanced span rather than per line: a mapping wraps as soon as it carries
+    `produces`, and an `@ApiResponse` above it wraps over four — whose continuation lines
+    look exactly like a method declaration to a line scan, which is how `@Content(` once
+    became the name of the method under it."""
+    text, depth, started = "", 0, False
+    for j in range(i, len(lines)):
+        for ch in lines[j]:
+            if ch == "(":
+                depth += 1
+                started = True
+                if depth == 1:
+                    continue
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    return text, j
+            if started:
+                text += ch
+        if not started and lines[j].strip():
+            return "", j
+    return text, len(lines) - 1
+
+
+def _mapping_path(args: str) -> str:
+    m = MAPPING_NAMED_PATH.search(args) or MAPPING_POSITIONAL_PATH.match(args)
+    return m["path"] if m else ""
+
+
+def _join_route(base: str, sub: str) -> str:
+    parts = [p for p in (base.strip("/"), sub.strip("/")) if p]
+    return "/" + "/".join(parts)
+
+
+def _controller_routes(source: str, rel: str, found: dict) -> None:
+    """Every `VERB /route` this file handles, mapped to `Class.method` and its line.
+
+    A line scan, not a parser: the three things it needs — the class-level base path, a
+    method's mapping annotation, and the declaration under it — are each one line of Java,
+    and a mapping annotation is never anywhere else in a file. Annotations pile up until a
+    declaration consumes them, so the comments and the other annotations Spring code puts
+    between `@PostMapping` and its method cost nothing."""
+    lines = source.splitlines()
+    base, cls, pending, i = "", Path(rel).stem, None, 0
+    while i < len(lines):
+        stripped, at = lines[i].strip(), i
+        i += 1
+        if not stripped or stripped.startswith(("//", "/*", "*")):
+            continue
+        if stripped.startswith("@"):
+            args, end = _annotation_span(lines, at)
+            i = end + 1
+            mapping = MAPPING_ANNOTATION.match(stripped)
+            if mapping:
+                verbs = ([mapping["kind"].upper()] if mapping["kind"] != "Request"
+                         else [m["verb"] for m in REQUEST_METHOD.finditer(args)] or list(HTTP_VERBS))
+                pending = (verbs, _mapping_path(args))
+            continue
+        declared = TYPE_DECL.match(stripped)
+        if declared:
+            cls = declared["name"]
+            base, pending = (pending[1] if pending else ""), None
+            continue
+        name = METHOD_NAME.search(stripped) if pending else None
+        if name:
+            verbs, sub = pending
+            for verb in verbs:
+                found[f"{verb} {_join_route(base, sub)}"] = (rel, at + 1, f"{cls}.{name['name']}")
+        pending = None
+
+
+@functools.lru_cache(maxsize=None)
+def spring_handlers(root: Path) -> dict:
+    """`VERB /route` → (repo-relative file, line, `Class.method`) for this checkout.
+
+    Only files that declare themselves controllers are opened, so a repo with no Spring in
+    it pays one directory walk and nothing else. Resolved here rather than in the diagram
+    generator because that generator sees a trace, which carries the route and no code."""
+    found: dict = {}
+    for folder, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for name in names:
+            if not name.endswith(".java"):
+                continue
+            path = Path(folder) / name
+            try:
+                source = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if "@RestController" not in source and "@Controller" not in source:
+                continue
+            _controller_routes(source, str(path.relative_to(root)), found)
+    return found
+
+
+def _with_handlers(index: dict, root: Path) -> dict:
+    """Hang the entry point on every call arrow whose route this checkout still serves.
+
+    A route the branch deleted simply gets no row — the base-ref sidecar is resolved
+    against the work tree too, and a link into a method that is no longer there would be
+    worse than the route alone."""
+    handlers = None
+    for entry in (index.get("details") or {}).values():
+        called = GENSEQ_CALL_TITLE.search(entry.get("title", ""))
+        if not called:
+            continue
+        if handlers is None:
+            handlers = spring_handlers(root)
+        hit = handlers.get(f'{called["verb"]} {called["route"]}')
+        if hit:
+            rel, line, name = hit
+            entry["handler"] = {"name": name,
+                                "href": f"vscode://file/{(root / rel).resolve()}:{line}:1"}
+    return index
+
+
 def genseq_details(rel: str, root: Path) -> str:
     """The sidecar the generator filed beside the diagram, carried into the page.
 
@@ -1626,18 +1801,19 @@ def genseq_details(rel: str, root: Path) -> str:
     sidecar = root / (rel[: -len(".puml")] + ".json")
     if not sidecar.is_file():
         return ""
-    return _details_carrier(sidecar)
+    return _details_carrier(sidecar, root)
 
 
-def _details_carrier(sidecar: Path) -> str:
+def _details_carrier(sidecar: Path, root: Path) -> str:
     # `<` is the only character that can end a <script> block early, and a JSON string
     # may legally spell it \\u003c — so the payload stays valid JSON and inert to the
     # HTML parser without any un-escaping step on the other side.
-    payload = sidecar.read_text(encoding="utf-8").replace("<", "\\u003c")
+    index = _with_handlers(json.loads(sidecar.read_text(encoding="utf-8")), root)
+    payload = json.dumps(index, ensure_ascii=False).replace("<", "\\u003c")
     return f'<script type="application/json" class="genseq-details">{payload}</script>'
 
 
-def genseq_details_at_base(row, assets: Path) -> str:
+def genseq_details_at_base(row, assets: Path, root: Path) -> str:
     """The same sidecar as of the base ref, for the diagram's `Old` pane.
 
     The handles PlantUML draws are generation-time ids, and an id is derived from the
@@ -1652,7 +1828,7 @@ def genseq_details_at_base(row, assets: Path) -> str:
     content-derived, so an id in both sides means the same payload on both.
     """
     name = (row.get("old_details") or "").strip()
-    return _details_carrier(assets / name) if name and (assets / name).is_file() else ""
+    return _details_carrier(assets / name, root) if name and (assets / name).is_file() else ""
 
 
 def read_manifest(path: Path):
@@ -1960,7 +2136,7 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
             + (f"<p>{note}</p>" if note else "")
             + _provenance(r["source"], root)
             + genseq_details(r["source"], root)
-            + genseq_details_at_base(r, manifest.parent)
+            + genseq_details_at_base(r, manifest.parent, root)
             + body + '</div>'
         )
     return "\n".join(parts)
