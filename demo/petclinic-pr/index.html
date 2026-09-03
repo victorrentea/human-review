@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attending vet on a visit — /human-review snapshot</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #fbfbfa; --panel: #ffffff; --fg: #1c1b1a; --muted: #6b6864;
+  --line: #e3e0dc; --accent: #9a3412;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17161a; --panel: #201f24; --fg: #eceaf0; --muted: #a09da8;
+          --line: #34323a; --accent: #f0a06a; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 3rem 1.25rem 5rem; background: var(--bg); color: var(--fg);
+       font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+main { max-width: 68rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; letter-spacing: -0.02em; margin: 0 0 .35rem; }
+.lede { color: var(--muted); margin: 0 0 1.5rem; }
+.lede code { font-size: .9em; }
+h2 { font-size: 1.15rem; margin: 2.75rem 0 .6rem; }
+h2 .num { color: var(--muted); font-weight: 500; margin-right: .5rem; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em;
+       background: color-mix(in srgb, var(--fg) 8%, transparent); padding: .1em .35em; border-radius: 4px; }
+a { color: var(--accent); }
+figure { margin: 0 0 1rem; }
+figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line);
+             border-radius: 10px; background: var(--panel); }
+.note { border-left: 3px solid var(--accent); background: var(--panel);
+        padding: .85rem 1.1rem; border-radius: 0 8px 8px 0; color: var(--muted); font-size: .93rem;
+        margin: 0 0 2rem; }
+.toc { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem .5rem; padding: 0; margin: 0 0 2rem; }
+.toc a { font-size: .85rem; text-decoration: none; border: 1px solid var(--line);
+         border-radius: 999px; padding: .2rem .7rem; color: var(--muted); background: var(--panel); }
+.toc a:hover { border-color: var(--accent); color: var(--accent); }
+video { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #000; }
+.dark-only { display: none; }
+@media (prefers-color-scheme: dark) {
+  .light-only { display: none; }
+  .dark-only { display: block; }
+}
+footer { margin-top: 3.5rem; color: var(--muted); font-size: .88rem;
+         border-top: 1px solid var(--line); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Attending vet on a visit</h1>
+  <p class="lede"><code>test-pr</code> vs <code>main</code> — <code>5acf2472</code> · <span class="issue-ref"><a href="https://github.com/victorrentea/petclinic/issues/37">#37 Link Visit with Vet</a></span>. A visit now records the vet that attended it.</p>
+  <p class="note">This is a <b>static snapshot</b> of an interactive page: one full-page
+  screenshot per tab of the <code>review.html</code> that
+  <a href="https://github.com/victorrentea/human-review"><code>/human-review</code></a> built
+  locally. Nothing here is clickable the way the real page is — no tab switching, no VS Code
+  deep links, no tooltips. Every tab was shot twice — light and dark — and the page below follows your system theme. Click any screenshot to open it full size.</p>
+  <ul class="toc"><li><a href="#overview">Overview</a></li><li><a href="#review">🤖 Review</a></li><li><a href="#demo">Demo</a></li><li><a href="#sequence">Sequence</a></li><li><a href="#requirements">Requirements</a></li><li><a href="#data">Data</a></li><li><a href="#structure">Structure</a></li><li><a href="#api">API</a></li><li><a href="#ux">UX</a></li><li><a href="#code-city">Code City</a></li><li><a href="#complexity">Complexity</a></li><li><a href="#logging">Logging</a></li><li><a href="#codeowners">CODEOWNERS</a></li></ul>
+<section id="feature-video">
+<h2><span class="num">▶</span>The feature, filmed</h2>
+<p>The Demo tab plays this clip. A screenshot cannot carry it, so the file itself travels with the snapshot.</p>
+<video controls preload="metadata" src="assets/attending-vet.webm"></video>
+</section>
+<section id="overview">
+<h2><span class="num">01</span>Overview</h2>
+<figure><a class="light-only" href="light/01-overview.png"><img src="light/01-overview.png" alt="Overview tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/01-overview.png"><img src="dark/01-overview.png" alt="Overview tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="review">
+<h2><span class="num">02</span>🤖 Review</h2>
+<figure><a class="light-only" href="light/02-review.png"><img src="light/02-review.png" alt="🤖 Review tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/02-review.png"><img src="dark/02-review.png" alt="🤖 Review tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="demo">
+<h2><span class="num">03</span>Demo</h2>
+<figure><a class="light-only" href="light/03-demo.png"><img src="light/03-demo.png" alt="Demo tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/03-demo.png"><img src="dark/03-demo.png" alt="Demo tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="sequence">
+<h2><span class="num">04</span>Sequence</h2>
+<figure><a class="light-only" href="light/04-sequence.png"><img src="light/04-sequence.png" alt="Sequence tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/04-sequence.png"><img src="dark/04-sequence.png" alt="Sequence tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="requirements">
+<h2><span class="num">05</span>Requirements</h2>
+<figure><a class="light-only" href="light/05-requirements.png"><img src="light/05-requirements.png" alt="Requirements tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/05-requirements.png"><img src="dark/05-requirements.png" alt="Requirements tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="data">
+<h2><span class="num">06</span>Data</h2>
+<figure><a class="light-only" href="light/06-data.png"><img src="light/06-data.png" alt="Data tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/06-data.png"><img src="dark/06-data.png" alt="Data tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="structure">
+<h2><span class="num">07</span>Structure</h2>
+<figure><a class="light-only" href="light/07-structure.png"><img src="light/07-structure.png" alt="Structure tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/07-structure.png"><img src="dark/07-structure.png" alt="Structure tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="api">
+<h2><span class="num">08</span>API</h2>
+<figure><a class="light-only" href="light/08-api.png"><img src="light/08-api.png" alt="API tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/08-api.png"><img src="dark/08-api.png" alt="API tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="ux">
+<h2><span class="num">09</span>UX</h2>
+<figure><a class="light-only" href="light/09-ux.png"><img src="light/09-ux.png" alt="UX tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/09-ux.png"><img src="dark/09-ux.png" alt="UX tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="code-city">
+<h2><span class="num">10</span>Code City</h2>
+<figure><a class="light-only" href="light/10-code-city.png"><img src="light/10-code-city.png" alt="Code City tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/10-code-city.png"><img src="dark/10-code-city.png" alt="Code City tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="complexity">
+<h2><span class="num">11</span>Complexity</h2>
+<figure><a class="light-only" href="light/11-complexity.png"><img src="light/11-complexity.png" alt="Complexity tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/11-complexity.png"><img src="dark/11-complexity.png" alt="Complexity tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="logging">
+<h2><span class="num">12</span>Logging</h2>
+<figure><a class="light-only" href="light/12-logging.png"><img src="light/12-logging.png" alt="Logging tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/12-logging.png"><img src="dark/12-logging.png" alt="Logging tab, dark theme" loading="lazy"></a></figure>
+</section>
+<section id="codeowners">
+<h2><span class="num">13</span>CODEOWNERS</h2>
+<figure><a class="light-only" href="light/13-codeowners.png"><img src="light/13-codeowners.png" alt="CODEOWNERS tab, light theme" loading="lazy"></a><a class="dark-only" href="dark/13-codeowners.png"><img src="dark/13-codeowners.png" alt="CODEOWNERS tab, dark theme" loading="lazy"></a></figure>
+</section>
+  <footer>Snapshot <code>petclinic-pr</code> · 13 tabs ×
+  2 themes · published from the
+  <code>demo/</code> directory of
+  <a href="https://github.com/victorrentea/human-review">victorrentea/human-review</a>.</footer>
+</main>
+</body>
+</html>
