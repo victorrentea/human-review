@@ -184,8 +184,8 @@ table.costtab tfoot tr.costtotal td { border-top:1px solid var(--line);
 .evi > h4 { margin:0 0 .3rem; font-size:.95rem; display:flex; align-items:baseline;
         gap:.4rem; }
 .evi > h4 .evi-ic { font-size:1rem; line-height:1; }
-.evi > h4 .evi-n { margin-left:auto; color:var(--evi); font:700 .7rem/1.5
-        ui-monospace,SFMono-Regular,Menlo,monospace; }
+.evi > h4 .evi-n { margin-left:auto; color:var(--evi); white-space:nowrap;
+        font:700 .7rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .evi p { margin:.3rem 0; font-size:.9rem; }
 .evi ul { margin:.35rem 0 0; padding-left:1.05rem; display:grid; gap:.28rem; font-size:.89rem; }
 .evi.e2e { --evi:#1c5aaf; } .evi.api { --evi:#703aa8; } .evi.unit { --evi:#147878; }
@@ -761,6 +761,13 @@ button.tab { padding:0 .6rem; }
    between a label and its badge, a hair of the type, and the button beside them. */
 button.tab { padding:0 .5rem; font-size:.83rem; line-height:1.7; gap:.32rem; }
 button.allbtn { padding:0 .5rem; font-size:.72rem; line-height:1.85; }
+/* The last of the room is to the right of the text column, and the masthead is holding
+   it: its padding keeps the title and the chips aligned with the body, which is right
+   for a heading and pure waste for a strip of pills. So the strip alone gives that
+   padding back and runs to 1.25rem from the viewport edge — the same relaxation the
+   strip used to do for itself when it was the full-bleed element. Left untouched: the
+   first tab still starts exactly where the body text does. */
+.masthead .tabstrip { margin-right:calc(1.25rem - max(1.25rem, 50vw - 540px + 1.25rem)); }
 
 /* pb33f's report is a whole application in one file — its own tabs, its own diff view,
    its own theme — so it is embedded as a document rather than picked apart and re-drawn
