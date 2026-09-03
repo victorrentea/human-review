@@ -959,9 +959,11 @@ def test_the_deep_link_offset_is_measured_from_the_strip_not_hardcoded(tmp_path)
     assert all("var(--strip-h" in l for l in offset), offset
     # …and the target of a hash inside a panel gets it too, not only the panel itself.
     assert any(".panel [id]" in l for l in offset), offset
-    # The measurement itself: taken from the strip, and re-taken when the strip resizes.
+    # The measurement itself: taken from whatever is actually stuck to the top of the
+    # viewport — the masthead the strip travels in — and re-taken when it resizes.
     assert "setProperty('--strip-h'" in page
-    assert "strip.getBoundingClientRect().height" in page
+    assert "sticky.getBoundingClientRect().height" in page
+    assert "strip.closest('.masthead')" in page
     assert "ResizeObserver" in page
 
 
@@ -970,17 +972,132 @@ def test_the_deep_link_offset_is_measured_from_the_strip_not_hardcoded(tmp_path)
 # its first word, and whether the strip stays reachable once it is spent.
 
 
-def test_the_strip_is_pinned_to_the_top_of_the_viewport(tmp_path):
+def test_the_kinds_of_acceptance_evidence_are_cards_not_a_paragraph(tmp_path):
+    """"Is there anything at this level at all?" is the question the Requirements tab is
+    read with, and a run of prose with bold lead-ins answers it only for whoever reads
+    every sentence. One card per kind answers it by looking — including the kind nothing
+    covers, which keeps its card and says so."""
+    page, _ = _build(tmp_path, dict(BARE, sections=[
+        {"id": "one", "title": "One",
+         "body": '<div class="evidence"><section class="evi e2e"><h4>e2e</h4></section>'
+                 '<section class="evi none"><h4>unit</h4></section></div>'},
+        {"id": "two", "title": "Two", "body": "<p>b</p>"}]))
+    css = page[page.index("<style>"):page.index("</style>")]
+    assert ".evidence { display:grid" in css
+    # Each kind carries its own colour, and the one nothing covers is not a fourth
+    # shade of grey.
+    for kind in (".evi.e2e", ".evi.api", ".evi.unit", ".evi.none"):
+        assert kind + " {" in css, kind
+    assert '<section class="evi e2e">' in page
+
+
+PR = dict(BARE, pr={"number": 37, "title": "Link Visit with Vet",
+                    "url": "https://github.com/victorrentea/petclinic/pull/37",
+                    "repo": "https://github.com/victorrentea/petclinic",
+                    "branch": "test-pr", "base": "main"},
+          subtitle="A visit now records the vet that attended it.")
+
+
+def test_the_page_is_named_the_way_the_reviewer_s_other_tabs_name_it(tmp_path):
+    """The content file's own title is a sentence about the change; the reviewer is
+    looking at a pull request. `GH#37 Link Visit with Vet` is the name that matches their
+    notifications, their tabs and their `gh pr` output, and the number is the link."""
+    page, _ = _build(tmp_path, PR)
+    head = page[page.index("<h1>"):page.index("</h1>")]
+    assert "GH#37" in head and "Link Visit with Vet" in head
+    assert "https://github.com/victorrentea/petclinic/pull/37" in head
+
+
+def test_without_a_pr_block_the_title_is_the_one_the_content_file_wrote(tmp_path):
+    page, _ = _build(tmp_path, BARE)
+    assert "<h1>t</h1>" in page
+    assert "GH#" not in page
+
+
+def test_the_two_refs_the_page_compares_are_in_the_heading_and_clickable(tmp_path):
+    """"Against what, again?" is asked halfway down the ninth tab, not while reading the
+    first sentence — so the refs live in the pinned heading, not in the prose, and each
+    one opens its own page on GitHub."""
+    page, _ = _build(tmp_path, PR)
+    head = page[page.index("<h1>"):page.index("</h1>")]
+    assert "(test-pr)" in head and "(main)" in head
+    assert "https://github.com/victorrentea/petclinic/tree/test-pr" in head
+    assert "https://github.com/victorrentea/petclinic/tree/main" in head
+    # The page's own tooltip, never the native one nobody waits for.
+    assert "title=" not in head
+    assert "data-tip=" in head
+
+
+def test_the_note_keeps_its_place_beside_the_title(tmp_path):
+    """With the PR in the heading and the refs on the badges, what is left of the old
+    subtitle is one sentence about the change. A block that never scrolls cannot spend a
+    row of its own on it, so it sits in the title row."""
+    page, _ = _build(tmp_path, PR)
+    row = page[page.index('<div class="titlerow">'):]
+    row = row[:row.index("</div>")]
+    assert "A visit now records the vet that attended it." in row
+
+
+def test_title_refs_chips_and_tabs_are_one_block_that_does_not_scroll(tmp_path):
+    """Four bands that scrolled away, leaving the strip pinned alone over the text, are
+    now one masthead. Every one of them answers a question a reader has *while* reading
+    a tab, so they travel together — and the title starts at the top edge instead of
+    behind a gutter that would then be pinned there for the whole read."""
+    page, _ = _build(tmp_path, PR)
+    mast = page[page.index('<header class="masthead">'):page.index("</header>")]
+    for part in ('<div class="titlerow">', '<div class="scopebar">',
+                 '<div class="tabstrip"'):
+        assert part in mast, part
+    css = page[page.index("<style>"):page.index("</style>")]
+    assert ".wrap:has(.masthead) { padding-top:" in css
+
+
+def test_a_page_with_no_tabs_grows_no_masthead(tmp_path):
+    """Nothing to pin it for, and the single-column guide keeps the heading it had."""
+    page, _ = _build(tmp_path, {"title": "t", "sections": [
+        {"id": "one", "title": "One", "body": "<p>a</p>"}]})
+    assert '<header class="masthead">' not in page
+    assert '<div class="titlerow">' in page
+
+
+def test_the_show_all_button_says_what_it_does_next(tmp_path):
+    """It is a toggle, and the reader pressing it is on their way to seeing every tab at
+    once; the way back — one tab at a time — is what the label has to name, because that
+    is the state the button is the only route out of."""
+    page, _ = _build(tmp_path, BARE)
+    assert "(single)</button>" in page
+    assert ">show all<" not in page
+
+
+def test_every_pill_still_has_to_fit_on_one_row(tmp_path):
+    """The strip wrapping to a second row used to cost a scroll past it; inside a
+    masthead that row is on screen for the whole read. The labels are not abbreviated,
+    so the room comes out of the padding and the type."""
+    page, _ = _build(tmp_path, BARE)
+    css = page[page.index("<style>"):page.index("</style>")]
+    assert css.rindex("button.tab { padding:0 .5rem;") > css.rindex("padding:0 .85rem")
+    assert css.rindex("button.allbtn { padding:0 .5rem;") > css.rindex("padding:0 .7rem;")
+
+
+def test_the_masthead_is_pinned_to_the_top_of_the_viewport(tmp_path):
     """A reviewer answers a dozen questions in whatever order their doubt takes them, from
     wherever they are in a panel. `position:sticky; top:0` is the whole mechanism — a
     `position:relative` here, or a `top` that is not 0, and the tabs sail off the screen
-    with the masthead and every jump back costs a scroll to the top first."""
+    and every jump back costs a scroll to the top first.
+
+    It is the *masthead* that sticks, not the strip inside it: which change this is and
+    what it is against are questions asked halfway down a diff, and a strip pinned alone
+    over the text answered neither."""
     page, _ = _build(tmp_path, BARE)
     css = page[page.index("<style>"):page.index("</style>")]
-    rule = css[css.index(".tabstrip { position:"):]
+    rule = css[css.index(".masthead { position:"):]
     rule = rule[:rule.index("}")]
     assert "position:sticky" in rule, rule
     assert "top:0" in rule, rule
+    # And exactly one of the two sticks: a sticky strip inside a sticky masthead is two
+    # blocks racing for the same top edge.
+    inner = css[css.index(".masthead .tabstrip {"):]
+    assert "position:static" in inner[:inner.index("}")], inner[:200]
 
 
 def test_the_pinned_state_is_observed_not_assumed(tmp_path):
@@ -990,9 +1107,9 @@ def test_the_pinned_state_is_observed_not_assumed(tmp_path):
     threshold, which would be a second hardcoded copy of the masthead's height and would
     go wrong the moment the masthead changes (it just did)."""
     page, _ = _build(tmp_path, BARE)
-    assert ".tabstrip.pinned" in page
+    assert ".masthead.pinned" in page
     assert "classList.toggle('pinned'" in page
-    assert "strip.getBoundingClientRect().top" in page
+    assert "sticky.getBoundingClientRect().top" in page
 
 
 def test_shrinking_the_strip_did_not_turn_its_height_into_a_constant(tmp_path):

@@ -116,6 +116,10 @@ body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-sys
    air between them. The rhythm is now one tight stack -- title, subtitle, chips, tabs --
    read as a single masthead rather than four independent bands. */
 .wrap { max-width:1080px; margin:0 auto; padding:1.4rem 1.25rem 5rem; }
+/* With a masthead the strip is no longer the only thing that survives a scroll: title,
+   refs, chips and tabs travel together, so the page opens with the title against the top
+   edge rather than behind a gutter that would then be pinned there for the whole read. */
+.wrap:has(.masthead) { padding-top:.25rem; }
 h1 { font-size:1.5rem; margin:0 0 .15rem; letter-spacing:-.02em; }
 h2 { font-size:1.3rem; margin:2.8rem 0 .8rem; padding-bottom:.4rem; border-bottom:1px solid var(--line); }
 h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
@@ -165,6 +169,34 @@ table.costtab tfoot tr.costtotal td { border-top:1px solid var(--line);
              padding-top:.35rem; font-weight:700; }
 .added { color:#2e7d32; } .removed { color:#c62828; }
 @media (prefers-color-scheme: dark) { .added{color:#8fd39c} .removed{color:#f08a8a} }
+/* The kinds of test a change set offers as acceptance evidence: e2e through the
+   browser, at the API, unit. They were one run of prose with bold lead-ins, and the
+   reader's question -- "is there anything at this level at all?" -- was answered only by
+   whoever read every sentence. As cards it is answered by looking: one panel per kind,
+   the kind's own colour on its edge, and a kind with nothing behind it is a card that
+   says so rather than a paragraph that never got written. The palette is the one the
+   requirements map already uses for the same three words, so a card and the map below
+   it do not disagree about what "e2e" is coloured. */
+.evidence { display:grid; gap:.7rem; margin:.8rem 0 1.1rem;
+        grid-template-columns:repeat(auto-fit,minmax(17rem,1fr)); }
+.evi { --evi:var(--muted); background:var(--card); border:1px solid var(--line);
+        border-top:3px solid var(--evi); border-radius:8px; padding:.65rem .9rem .8rem; }
+.evi > h4 { margin:0 0 .3rem; font-size:.95rem; display:flex; align-items:baseline;
+        gap:.4rem; }
+.evi > h4 .evi-ic { font-size:1rem; line-height:1; }
+.evi > h4 .evi-n { margin-left:auto; color:var(--evi); font:700 .7rem/1.5
+        ui-monospace,SFMono-Regular,Menlo,monospace; }
+.evi p { margin:.3rem 0; font-size:.9rem; }
+.evi ul { margin:.35rem 0 0; padding-left:1.05rem; display:grid; gap:.28rem; font-size:.89rem; }
+.evi.e2e { --evi:#1c5aaf; } .evi.api { --evi:#703aa8; } .evi.unit { --evi:#147878; }
+/* A level nothing covers is the finding, not a gap in the page: it keeps its card and
+   says what is missing, in the colour the rest of the page uses for that. */
+.evi.none { --evi:#c62828; }
+.evi.none p { color:var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .evi.e2e { --evi:#78afff; } .evi.api { --evi:#c39bff; } .evi.unit { --evi:#5ad7d7; }
+  .evi.none { --evi:#f08a8a; }
+}
 /* Requirements, each with the tests that pin it nested underneath its own text. The
    requirement is prose and keeps no bullet — the marker would compete with the flags on
    the tests below it, which are the part carrying information. */
@@ -505,6 +537,35 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .titlerow { display:flex; align-items:baseline; justify-content:space-between; gap:1.5rem;
              flex-wrap:wrap; }
 .titlerow h1 { margin-bottom:0; }
+/* One block that never scrolls away: which change this is, what it is against, how big
+   it is, and where in it you are. Those four answers are the ones a reader needs *while*
+   reading a tab -- "which branch is this, again?" is asked halfway down a diff, not at
+   the top -- and the strip alone, pinned over a masthead that had scrolled off, answered
+   none of them. Full-bleed like the strip was, padded back to the text column. */
+.masthead { position:sticky; top:0; z-index:31; background:var(--bg);
+            margin-left:calc(50% - 50vw); width:100vw;
+            padding:.35rem max(1.25rem, calc(50vw - 540px + 1.25rem)) 0;
+            border-bottom:1px solid var(--line); }
+.masthead .titlerow { align-items:baseline; gap:.3rem .9rem; }
+/* The note stays beside the title rather than under it: it is one sentence about the
+   change, and a masthead that never scrolls cannot spend a whole row on it. It is the
+   one part of the block allowed to shrink. */
+.masthead .titlerow .sub { flex:1 1 14rem; min-width:0; margin:0; }
+.masthead .scopebar { margin:.3rem 0 .05rem; }
+/* Inside the masthead the strip is no longer its own sticky, full-bleed band: the block
+   around it does the bleeding, the pinning and the edge. */
+.masthead .tabstrip { position:static; margin:.1rem 0 0; width:auto;
+            padding:.1rem 0 .15rem; background:transparent; border-bottom:0; }
+/* The two refs the whole page is a comparison of, in the heading and one click from
+   their own page on GitHub. The parentheses are the point: `(test-pr)` reads as an
+   aside on the title, not as a second heading. */
+.refbadge { font:600 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+            color:var(--muted); text-decoration:none; white-space:nowrap;
+            padding:.1rem .3rem; border-radius:.3rem; }
+.refbadge:hover { color:var(--fg); background:var(--card); }
+.refbadge.head { color:var(--link); }
+h1 .prref { text-decoration:none; }
+h1 .prref:hover { text-decoration:underline; }
 .titlescore { display:inline-flex; align-items:baseline; gap:.35rem; padding:.3rem .8rem;
               border-radius:999px; white-space:nowrap; }
 .titlescore b { font-size:1.5rem; line-height:1; letter-spacing:-.02em; }
@@ -606,7 +667,7 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
 /* The strip is the top of the page once the masthead has scrolled away, so it carries
    the edge that used to be the masthead's: a shadow under the border, only while it is
    actually pinned, so content passing beneath it reads as passing *under* something. */
-.tabstrip.pinned { box-shadow:0 2px 6px rgba(0,0,0,.13); }
+.tabstrip.pinned, .masthead.pinned { box-shadow:0 2px 6px rgba(0,0,0,.13); }
 /* Struck through, not hidden: the tab still holds the current state as context, and a
    reviewer who cannot see that it exists cannot tell it was considered. */
 button.tab.quiet { text-decoration:line-through; text-decoration-thickness:1px; opacity:.5; }
@@ -694,6 +755,12 @@ LATE_CSS = """
 .tabstrip .grow { flex:1 1 0; }
 .tabstrip { padding-right:1.25rem; }
 button.tab { padding:0 .6rem; }
+/* A thirteenth tab, and the row the strip wraps onto is no longer paid once on the way
+   past: the masthead keeps it on screen for the whole read. Nothing is abbreviated --
+   a tab is named or it is not there -- so the last of the room comes out of the gap
+   between a label and its badge, a hair of the type, and the button beside them. */
+button.tab { padding:0 .5rem; font-size:.83rem; line-height:1.7; gap:.32rem; }
+button.allbtn { padding:0 .5rem; font-size:.72rem; line-height:1.85; }
 
 /* pb33f's report is a whole application in one file — its own tabs, its own diff view,
    its own theme — so it is embedded as a document rather than picked apart and re-drawn
@@ -953,6 +1020,11 @@ TABS_JS = """<script>
   var panels = tabs.map(function (t) { return document.getElementById(t.getAttribute('aria-controls')); });
   var showAll = strip.querySelector('button.allbtn');
   var active = 0;
+  // What is actually stuck to the top of the viewport. The strip travels inside the
+  // masthead, so the block that pins -- and whose height a deep link has to clear -- is
+  // the masthead, not the strip inside it. A page built without one falls back to the
+  // strip, which is what every measurement below used to be about.
+  var sticky = strip.closest('.masthead') || strip;
 
   // How far a deep link has to clear the sticky strip is the strip's rendered height,
   // and that is not a constant: the pills wrap to a second row as soon as they outgrow
@@ -961,11 +1033,11 @@ TABS_JS = """<script>
   // the arithmetic, so one row, two rows and whatever the next tab does are all correct
   // without anyone editing a number.
   function syncStripHeight() {
-    var h = strip.getBoundingClientRect().height;
+    var h = sticky.getBoundingClientRect().height;
     if (h > 0) document.documentElement.style.setProperty('--strip-h', h + 'px');
   }
   syncStripHeight();
-  if (window.ResizeObserver) new ResizeObserver(syncStripHeight).observe(strip);
+  if (window.ResizeObserver) new ResizeObserver(syncStripHeight).observe(sticky);
   else window.addEventListener('resize', syncStripHeight);
 
   // `position:sticky` gives no state to style against: the strip looks identical whether
@@ -974,8 +1046,8 @@ TABS_JS = """<script>
   // the difference IS the scroll the strip has absorbed. Marks the pinned state so the
   // stylesheet can put an edge under it; nothing here measures or sets a height.
   function syncPinned() {
-    var pinned = strip.getBoundingClientRect().top <= 0.5;
-    strip.classList.toggle('pinned', pinned);
+    var pinned = sticky.getBoundingClientRect().top <= 0.5;
+    sticky.classList.toggle('pinned', pinned);
   }
   syncPinned();
   window.addEventListener('scroll', syncPinned, {passive: true});
@@ -1023,7 +1095,7 @@ TABS_JS = """<script>
     // as if those were the open findings. Deep links (keepScroll) still scroll to their
     // target, which is the whole point of a deep link.
     if (!keepScroll) {
-      var top = strip.getBoundingClientRect().top + window.pageYOffset - 8;
+      var top = sticky.getBoundingClientRect().top + window.pageYOffset - 8;
       window.scrollTo(0, Math.max(0, top));
     }
     if (remember && history.replaceState) {
@@ -3868,6 +3940,78 @@ def _link_home(footer: str) -> str:
         f'<a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a>', 1)
 
 
+def page_title(spec: dict) -> str:
+    """The one line that says which change this is.
+
+    A content file’s own `title` is a sentence about the change ("Attending vet on a
+    visit"). The reviewer, though, is looking at a pull request, and the name that
+    matches what is in their tabs, their notifications and their `gh pr` output is
+    `GH#37 <the PR’s own title>`. So when the content file names a PR, that wins, and
+    the number is the link to it. With no `pr` block nothing changes.
+    """
+    pr = spec.get("pr") or {}
+    if pr.get("number") and pr.get("title"):
+        num = f'GH#{html.escape(str(pr["number"]))}'
+        if pr.get("url"):
+            num = f'<a class="prref" href="{html.escape(pr["url"])}">{num}</a>'
+        return f'{num} {html.escape(pr["title"])}'
+    return html.escape(spec.get("title", "Review guide"))
+
+
+def ref_badges(spec: dict) -> str:
+    """`(test-pr)` `(main)` beside the title — the two refs every number on this page is
+    a comparison of, each one click from its own page on GitHub.
+
+    In the heading rather than in the prose subtitle, because "against what, again?" is
+    a question asked halfway down the ninth tab, not while reading the first sentence,
+    and the masthead is the part of the page that is still there by then.
+    """
+    pr = spec.get("pr") or {}
+    repo = (pr.get("repo") or "").rstrip("/")
+    out = []
+    for key, cls, why in (("branch", "head", "the branch under review"),
+                          ("base", "base", "the base it is compared against")):
+        ref = pr.get(key)
+        if not ref:
+            continue
+        text = f'({html.escape(ref)})'
+        tip = html.escape(why + (" — open it on GitHub" if repo else ""))
+        if repo:
+            href = html.escape(f"{repo}/tree/{urllib.parse.quote(ref)}")
+            out.append(f'<a class="refbadge {cls}" href="{href}" data-tip="{tip}">{text}</a>')
+        else:
+            out.append(f'<span class="refbadge {cls}" data-tip="{tip}">{text}</span>')
+    return " ".join(out)
+
+
+def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str) -> str:
+    """Title, refs, note, scope chips and the tab strip — as one block that stays put.
+
+    They used to be four bands that scrolled away, leaving the strip pinned alone over
+    the text. Every one of them answers a question a reader has *while* reading a tab,
+    so they travel together, and the title sits against the top edge rather than behind
+    a gutter that would then be pinned there for the whole read.
+
+    Only a tabbed page gets one: without a strip there is nothing to pin the masthead
+    for, and the plain single-column guide keeps the heading it always had.
+    """
+    badges = ref_badges(spec)
+    heading = f'<h1>{page_title(spec)}{" " + badges if badges else ""}</h1>'
+    if spec.get("pr"):
+        # The note moves up beside the title. With the PR named in the heading and the
+        # refs on the badges, what is left of the old subtitle is the one sentence that
+        # says what the change does — and a block that never scrolls cannot spend a row
+        # of its own on it.
+        note = spec.get("note") or spec.get("subtitle", "")
+        rows = [f'<div class="titlerow">{heading}<p class="sub">{note}</p>{title_score}</div>']
+    else:
+        rows = [f'<div class="titlerow">{heading}{title_score}</div>',
+                f'<p class="sub">{spec.get("subtitle", "")}</p>']
+    rows.append(f'<div class="scopebar">{chips}</div>')
+    if not strip_html:
+        return "\n".join(rows)
+    return '<header class="masthead">\n' + "\n".join(rows + [strip_html]) + "\n</header>"
+
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
@@ -4241,6 +4385,9 @@ def main(argv=None) -> int:
             tabs = [{"id": "overview", "label": "Overview", "keepEmpty": True,
                      "noStrike": True, "blocks": [{"type": "overview"}]}] + list(tabs)
             lede_html = verdict_html = ""
+    # Only a tabbed page grows a masthead; the plain single-column guide keeps the
+    # heading it always had.
+    strip_html = ""
     if tabs:
         # Measured once, for every tab, before the loop: one subprocess and one transcript
         # scan rather than one per tab. `costs` is None only when review-cost.py itself
@@ -4316,14 +4463,22 @@ def main(argv=None) -> int:
                   file=sys.stderr)
         if dropped:
             print(f"[review] dropped empty tabs: {', '.join(dropped)}", file=sys.stderr)
-        body_html = (
+        # The strip leaves the body: it belongs to the masthead now, and the masthead is
+        # assembled around it below. `body_html` is the panels alone, which is what every
+        # rewrite downstream of here (the tab count, the enumeration check) is about.
+        #
+        # The button says what it does *next*, not what mode you are in: pressed, it is
+        # the way back to one tab at a time.
+        strip_html = (
             '<div class="tabstrip" role="tablist" aria-label="Review sections">'
             + "".join(strip)
             + '<span class="grow"></span>'
             + '<button type="button" class="allbtn" aria-pressed="false" '
-            'data-tip="Reveal every tab at once — makes ⌘F search the whole guide">'
-            "show all</button></div>\n" + "\n".join(panels)
+            'data-tip="Reveal every tab at once — makes ⌘F search the whole guide. '
+            'Press it again to go back to one tab at a time.">'
+            "(single)</button></div>"
         )
+        body_html = "\n".join(panels)
         # These two facts used to be appended to the page as a `<p class="sub">` — and the
         # append landed OUTSIDE every `<section class="panel">`, so the only element on the
         # page that no tab could hide sat under all eleven of them, restating a strike-
@@ -4371,9 +4526,7 @@ def main(argv=None) -> int:
 <style>{CSS}{extra_css.rstrip()}
 {LATE_CSS}</style></head>
 <body><div class="wrap">
-<div class="titlerow"><h1>{html.escape(spec.get('title', 'Review guide'))}</h1>{title_score}</div>
-<p class="sub">{spec.get('subtitle', '')}</p>
-<div class="scopebar">{chips}</div>
+{masthead_html(spec, title_score, chips, strip_html)}
 {lede_html}
 {verdict_html}
 

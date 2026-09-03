@@ -1645,6 +1645,35 @@ ${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-re
 The JSON holds only prose + `path:from-to` references + per-diagram notes; the renderer
 owns the shell, the CSS, the inlined SVGs and the snippet extraction.
 
+### The masthead — name the pull request, not the sentence
+
+Title, refs, note, scope chips and the tab strip are **one block that does not scroll**.
+Everything in it answers a question a reader has *while* reading a tab — which change is
+this, against what, how big, and where am I — so it stays on screen for the whole read,
+and the title starts at the top edge rather than behind a gutter that would then be
+pinned there.
+
+Name the PR in a `"pr"` block and the heading becomes the name the reviewer's own tabs,
+notifications and `gh pr` output use, with the two refs beside it as badges that open
+their pages on GitHub:
+
+```json
+"pr": {"number": 37, "title": "Link Visit with Vet",
+       "url": "https://github.com/victorrentea/petclinic/pull/37",
+       "repo": "https://github.com/victorrentea/petclinic",
+       "branch": "test-pr", "base": "main"},
+"note": "A visit now records the vet that attended it."
+```
+
+renders `GH#37 Link Visit with Vet (test-pr) (main)`, with the note to the right of it.
+Every field is optional and the block as a whole is: without it the page keeps the title
+and the subtitle line it always had. With it, **stop writing the branch, the base and the
+issue into the subtitle** — they are in the heading now, and the `note` (falling back to
+`subtitle`) is the one sentence that says what the change does.
+
+The `show all` control is labelled **`(single)`**: it is a toggle, and the state the
+reader needs a way out of is the one where every panel is open at once.
+
 ### The scope bar — one chip per fact, and two that compute themselves
 
 `"scope"` is a list of `{label, value, href?}` chips across the top of the page: the
@@ -2156,6 +2185,15 @@ Logging, UX, CODEOWNERS** — with the panels in the same DOM order as the strip
 5. **Requirements** (`requirements`) — what this change set was supposed to do, against what
    it did. No step in this runbook produces it yet, so it will report *not measured* in the
    cost breakdown until one does; that is a true statement, not a defect.
+
+   Lead with **what kinds of test the change set offers as acceptance evidence**, as
+   cards rather than a run of prose with bold lead-ins: `<div class="evidence">` holding
+   one `<section class="evi e2e|api|unit">` per level, each with an `<h4>` and its own
+   list. The kinds carry the colours the requirements map already uses for the same three
+   words. A level **nothing** covers keeps its card and says so — `class="evi none"`
+   renders it in the page's red — because "there is no unit test at this level" is a
+   finding, and a paragraph that was simply never written looks identical to one nobody
+   thought to write.
 
    Each requirement is an entry in the section's `requirements` array — its own prose in
    `text`, and under it a `tests` list naming the tests that pin it. The list renders as a
