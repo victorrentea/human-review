@@ -17,7 +17,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install what the scripts import at module level
-        run: python -m pip install --quiet pytest pygments pyyaml pillow
+        run: python -m pip install --quiet -r requirements-dev.txt
+
+      # `ast-grep-cli` puts both `ast-grep` and its short alias `sg` on PATH. On Ubuntu
+      # `/usr/bin/sg` (set-group-id, from `passwd`) already owns that name, so this asserts
+      # the wheel's binary is the one that answers — if PATH order ever puts the system one
+      # first, the failure belongs here and not in 60 confusing "no logging found" tests.
+      - name: ast-grep on PATH is ast-grep
+        run: ast-grep --version
       - name: Run the differ and script tests
         run: python -m pytest -q skills/human-review/puml-diff skills/human-review/scripts
 

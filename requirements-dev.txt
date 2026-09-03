@@ -1,0 +1,21 @@
+# Everything the test suite and the review scripts import at module level, in one place
+# so `ci.yml` and a laptop install the same list. The list used to live inline in the
+# workflow, which is how it drifted: `numpy` (ds-audit's pixel comparison) and the
+# `ast-grep` binary (logextract's entire structural scan) were never in it, and CI had
+# been red on them for weeks.
+pytest
+pygments
+pyyaml
+pillow
+numpy
+
+# The `ast-grep` binary, shipped as a wheel so no package manager is involved. Pinned:
+# the rule files in scripts/ast-grep-rules and the pattern strings in logextract.py are
+# written against this version's YAML rule schema, and a silently upgraded matcher shows
+# up as "no logging found" rather than as an error.
+ast-grep-cli==0.42.3
+
+# NOT here on purpose: `playwright`. Both places that use it (ds-audit's screen capture,
+# shoot-review) import it inside the function that needs a browser, and no test drives
+# one — the ds-audit tests run off checked-in PNGs. Installing it in CI would mean a
+# ~150MB chromium download per run for nothing.

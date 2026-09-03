@@ -19,6 +19,7 @@ Dependency-free: stdlib + the `ast-grep` binary.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -433,6 +434,23 @@ class LoggerSymbol:
 # ast-grep driver
 # --------------------------------------------------------------------------- #
 
+def _is_really_ast_grep(path: str) -> bool:
+    """`sg` is ast-grep's own short alias — and, on every mainstream Linux distribution, it
+    is also `/usr/bin/sg` from `util-linux`/`passwd`, the "run a command with a different
+    group id" tool. Picking that one up is worse than finding nothing: `sg scan …` exits
+    with a status this driver treats as "ran fine, matched nothing", so the extractor
+    reports *no logging anywhere* with total confidence. That is precisely the wrong answer
+    the docstring below swears never to give, and it is what made this scan silently empty
+    on Ubuntu CI. So a candidate has to introduce itself before it is trusted."""
+    try:
+        proc = subprocess.run([path, "--version"], capture_output=True, text=True,
+                              timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0 and "ast-grep" in (proc.stdout + proc.stderr).lower()
+
+
+@functools.lru_cache(maxsize=None)
 def _ast_grep_bin() -> str:
     """The `ast-grep` binary, which is not a Python dependency and must not be assumed.
 
@@ -440,10 +458,11 @@ def _ast_grep_bin() -> str:
     editing this file — the fallback used to be one hardcoded absolute path from the author's
     laptop, which is a portability bug in a skill whose whole point is running in your
     repository. `sg` is ast-grep's own short alias; on some systems it is a different tool
-    entirely, so it is tried last."""
+    entirely, so it is tried last — and, either way, every candidate has to answer
+    `--version` with its own name before it is used."""
     for cand in (os.environ.get("AST_GREP_BIN"), "ast-grep", "sg"):
         p = shutil.which(cand) if cand else None
-        if p:
+        if p and _is_really_ast_grep(p):
             return p
     raise SystemExit(
         "ast-grep not found on PATH — install it (`brew install ast-grep`, or "
