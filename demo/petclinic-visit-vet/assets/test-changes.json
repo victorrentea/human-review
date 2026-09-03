@@ -1,0 +1,936 @@
+{
+  "base": "39ceefc",
+  "tests": [
+    {
+      "name": "test_parse_real_schema_tables_and_columns",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "unchanged",
+      "line": 17
+    },
+    {
+      "name": "test_parse_real_schema_foreign_keys",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "unchanged",
+      "line": 27
+    },
+    {
+      "name": "test_not_null_detected",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "unchanged",
+      "line": 40
+    },
+    {
+      "name": "test_render_is_plain_snapshot",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "unchanged",
+      "line": 52
+    },
+    {
+      "name": "test_caption_states_how_the_diagram_stays_in_sync",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "added",
+      "line": 60
+    },
+    {
+      "name": "test_footer_credits_generator_and_makes_no_diff_claim",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "modified",
+      "line": 65
+    },
+    {
+      "name": "test_columns_render_in_declaration_order",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "unchanged",
+      "line": 71
+    },
+    {
+      "name": "test_deterministic_output",
+      "path": "petclinic-backend/docs/scripts/db/test_db_schema_to_puml.py",
+      "status": "unchanged",
+      "line": 79
+    },
+    {
+      "name": "generateDomainModelDiagram",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/DomainModelExtractorTest.java",
+      "status": "unchanged",
+      "line": 55
+    },
+    {
+      "name": "generateEndpointComplexityReport",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/EndpointComplexityExtractorTest.java",
+      "status": "added",
+      "line": 155
+    },
+    {
+      "name": "thePetDoesNotExist",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 100
+    },
+    {
+      "name": "thePetBelongsToAnotherOwner",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 108
+    },
+    {
+      "name": "theDateIsInThePast",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 117
+    },
+    {
+      "name": "theTimeHasAlreadyPassedToday",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 126
+    },
+    {
+      "name": "thePetAlreadyHasTheMaximumOfUpcomingVisits",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 136
+    },
+    {
+      "name": "saveTheVisitAsDescribed",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 160
+    },
+    {
+      "name": "linkTheVisitToThePetOnBothSides",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 173
+    },
+    {
+      "name": "confirmWithTheIdOfTheNewVisit",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java",
+      "status": "added",
+      "line": 182
+    },
+    {
+      "name": "getByIdOk",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 101
+    },
+    {
+      "name": "getById_notFound",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 110
+    },
+    {
+      "name": "getAll",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 116
+    },
+    {
+      "name": "getAll_returnsEnrichedFields",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 131
+    },
+    {
+      "name": "create_invalid",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 156
+    },
+    {
+      "name": "update_invalid",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 169
+    },
+    {
+      "name": "delete_ok",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 180
+    },
+    {
+      "name": "delete_notFound",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 189
+    },
+    {
+      "name": "create_ok",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 195
+    },
+    {
+      "name": "update_ok",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "modified",
+      "line": 211
+    },
+    {
+      "name": "create_withVet",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "added",
+      "line": 226
+    },
+    {
+      "name": "getById_exposesTheAttendingVet",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "added",
+      "line": 246
+    },
+    {
+      "name": "update_changesTheAttendingVet",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "added",
+      "line": 259
+    },
+    {
+      "name": "update_clearsTheAttendingVet",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "added",
+      "line": 276
+    },
+    {
+      "name": "findVisitsByPetId",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 306
+    },
+    {
+      "name": "should create VisitAddComponent",
+      "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
+      "status": "unchanged",
+      "line": 105
+    },
+    {
+      "name": "should submit visit and navigate to owner detail",
+      "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
+      "status": "unchanged",
+      "line": 109
+    },
+    {
+      "name": "should navigate to owner detail via gotoOwnerDetail",
+      "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
+      "status": "unchanged",
+      "line": 121
+    },
+    {
+      "name": "should create VisitEditComponent",
+      "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.spec.ts",
+      "status": "unchanged",
+      "line": 111
+    },
+    {
+      "name": "should submit visit and navigate to owner detail",
+      "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.spec.ts",
+      "status": "unchanged",
+      "line": 115
+    },
+    {
+      "name": "should navigate to owner detail via gotoOwnerDetail",
+      "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.spec.ts",
+      "status": "unchanged",
+      "line": 125
+    },
+    {
+      "name": "should create VisitListComponent",
+      "path": "petclinic-frontend/src/app/visits/visit-list/visit-list.component.spec.ts",
+      "status": "unchanged",
+      "line": 86
+    },
+    {
+      "name": "should show the attending vet",
+      "path": "petclinic-frontend/src/app/visits/visit-list/visit-list.component.spec.ts",
+      "status": "added",
+      "line": 90
+    },
+    {
+      "name": "should call deleteVisit() method",
+      "path": "petclinic-frontend/src/app/visits/visit-list/visit-list.component.spec.ts",
+      "status": "unchanged",
+      "line": 96
+    },
+    {
+      "name": "should create",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "unchanged",
+      "line": 54
+    },
+    {
+      "name": "loads and sorts visits descending by date",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "unchanged",
+      "line": 58
+    },
+    {
+      "name": "shows \"No visits found.\" when service returns empty list",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "unchanged",
+      "line": 67
+    },
+    {
+      "name": "renders owner cell as a link to /owners/{ownerId}",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "modified",
+      "line": 77
+    },
+    {
+      "name": "renders the attending vet, and a dash when none is assigned",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 89
+    },
+    {
+      "name": "Add a visit to an existing pet from the owner detail page",
+      "path": "petclinic-test/features/add-visit.feature",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "Add a back-dated visit without capturing a sequence diagram",
+      "path": "petclinic-test/features/add-visit.feature",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "Add a follow-up visit and capture its sequence diagram",
+      "path": "petclinic-test/features/add-visit.feature",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "Add a visit",
+      "path": "petclinic-test/features/add-visit.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "Add a visit to an existing pet from the owner detail page",
+      "path": "petclinic-test/src/add-visit.spec.ts",
+      "status": "added",
+      "line": 25
+    },
+    {
+      "name": "Add a visit attended by a vet",
+      "path": "petclinic-test/src/add-visit.spec.ts",
+      "status": "added",
+      "line": 41
+    },
+    {
+      "name": "PetClinic Assistant (chatbot)",
+      "path": "petclinic-test/src/chatbot.spec.ts",
+      "status": "added",
+      "line": 7
+    },
+    {
+      "name": "shows the signed-in owner from the JWT as read-only text (no editable name field)",
+      "path": "petclinic-test/src/chatbot.spec.ts",
+      "status": "added",
+      "line": 8
+    },
+    {
+      "name": "answers a triage question without a server error",
+      "path": "petclinic-test/src/chatbot.spec.ts",
+      "status": "added",
+      "line": 19
+    },
+    {
+      "name": "the same detail twice is one entry under one id",
+      "path": "petclinic-test/src/genseq/detail-index.spec.ts",
+      "status": "added",
+      "line": 8
+    },
+    {
+      "name": "different detail never shares an id",
+      "path": "petclinic-test/src/genseq/detail-index.spec.ts",
+      "status": "added",
+      "line": 14
+    },
+    {
+      "name": "the index round-trips what was collected",
+      "path": "petclinic-test/src/genseq/detail-index.spec.ts",
+      "status": "added",
+      "line": 20
+    },
+    {
+      "name": "an id is plain lowercase alphanumerics",
+      "path": "petclinic-test/src/genseq/detail-index.spec.ts",
+      "status": "added",
+      "line": 30
+    },
+    {
+      "name": "slugify makes filesystem-safe names",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 14
+    },
+    {
+      "name": "the diagram is filed next to its test, named after it",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 18
+    },
+    {
+      "name": "what the markers reveal is filed beside the diagram, and is not itself a diagram",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 27
+    },
+    {
+      "name": "the static path writes the picture alone, and drops a sidecar left by an earlier level",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 48
+    },
+    {
+      "name": "generateFromWindows writes one puml per source file, sectioned by scenario",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 62
+    },
+    {
+      "name": "generateFromWindows skips (no throw) when a test has zero traces",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 88
+    },
+    {
+      "name": "generateFromWindows retries a window until Tempo has ingested it",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 105
+    },
+    {
+      "name": "generateFromWindows gives up after the configured number of attempts",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 124
+    },
+    {
+      "name": "traces are ordered by the server clock, not by the browser root span",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 152
+    },
+    {
+      "name": "generateFromWindows caches the spans it fetched",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 184
+    },
+    {
+      "name": "renderScenarios redraws from the cache at another detail level, touching no Tempo",
+      "path": "petclinic-test/src/genseq/generate.spec.ts",
+      "status": "added",
+      "line": 202
+    },
+    {
+      "name": "pretty-prints a payload that came over the wire minified",
+      "path": "petclinic-test/src/genseq/json-label.spec.ts",
+      "status": "added",
+      "line": 5
+    },
+    {
+      "name": "a body that is not JSON is shown as it came",
+      "path": "petclinic-test/src/genseq/json-label.spec.ts",
+      "status": "added",
+      "line": 14
+    },
+    {
+      "name": "an empty body draws nothing at all",
+      "path": "petclinic-test/src/genseq/json-label.spec.ts",
+      "status": "added",
+      "line": 18
+    },
+    {
+      "name": "caps a long payload",
+      "path": "petclinic-test/src/genseq/json-label.spec.ts",
+      "status": "added",
+      "line": 26
+    },
+    {
+      "name": "wraps a very wide line instead of clipping it away",
+      "path": "petclinic-test/src/genseq/json-label.spec.ts",
+      "status": "added",
+      "line": 36
+    },
+    {
+      "name": "jsonNote wraps the payload in a PlantUML note over both participants",
+      "path": "petclinic-test/src/genseq/json-label.spec.ts",
+      "status": "added",
+      "line": 43
+    },
+    {
+      "name": "a body the browser clipped mid-token is repaired, then pretty-printed",
+      "path": "petclinic-test/src/genseq/json-label.spec.ts",
+      "status": "added",
+      "line": 53
+    },
+    {
+      "name": "an empty environment renders the middle ground: SQL, no payloads",
+      "path": "petclinic-test/src/genseq/options.spec.ts",
+      "status": "added",
+      "line": 4
+    },
+    {
+      "name": "SEQ_SQL takes the three levels, however they are spelled",
+      "path": "petclinic-test/src/genseq/options.spec.ts",
+      "status": "added",
+      "line": 9
+    },
+    {
+      "name": "SEQ_HTTP_BODIES is a plain switch",
+      "path": "petclinic-test/src/genseq/options.spec.ts",
+      "status": "added",
+      "line": 17
+    },
+    {
+      "name": "an unrecognized value falls back to the default",
+      "path": "petclinic-test/src/genseq/options.spec.ts",
+      "status": "added",
+      "line": 24
+    },
+    {
+      "name": "SEQ_INTERACTIVE=0 goes back to baking the detail into the picture",
+      "path": "petclinic-test/src/genseq/options.spec.ts",
+      "status": "added",
+      "line": 29
+    },
+    {
+      "name": "describeOptions states the level a generated file was rendered at",
+      "path": "petclinic-test/src/genseq/options.spec.ts",
+      "status": "added",
+      "line": 36
+    },
+    {
+      "name": "describeOptions names what is revealable rather than what is drawn",
+      "path": "petclinic-test/src/genseq/options.spec.ts",
+      "status": "added",
+      "line": 45
+    },
+    {
+      "name": "opts in only when the @generate_sequence tag is present",
+      "path": "petclinic-test/src/genseq/sequence-tag.spec.ts",
+      "status": "added",
+      "line": 4
+    },
+    {
+      "name": "opts out when the tag is absent or there are no tags",
+      "path": "petclinic-test/src/genseq/sequence-tag.spec.ts",
+      "status": "added",
+      "line": 9
+    },
+    {
+      "name": "accepts Playwright-style string tags",
+      "path": "petclinic-test/src/genseq/sequence-tag.spec.ts",
+      "status": "added",
+      "line": 17
+    },
+    {
+      "name": "breaks a statement into one line per clause, keywords uppercased",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 4
+    },
+    {
+      "name": "keeps a multi-word keyword whole instead of splitting it",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 15
+    },
+    {
+      "name": "breaks joins onto their own line, condition included",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 26
+    },
+    {
+      "name": "truncates a clause longer than ten words",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 38
+    },
+    {
+      "name": "caps how many clause lines a single arrow may carry",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 45
+    },
+    {
+      "name": "formatSqlLabel joins the clauses with PlantUML line breaks",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 52
+    },
+    {
+      "name": "a statement with nothing to break stays a single line",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 56
+    },
+    {
+      "name": "applyParameters fills the placeholders in order",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 60
+    },
+    {
+      "name": "applyParameters leaves what it cannot fill alone",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 67
+    },
+    {
+      "name": "a keyword inside a string literal is not a clause",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 76
+    },
+    {
+      "name": "a subquery keeps its clauses inside the line that contains it",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 85
+    },
+    {
+      "name": "a `?` inside a literal is not a placeholder",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 95
+    },
+    {
+      "name": "a bound value is quoted, and cannot invent a clause of its own",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 100
+    },
+    {
+      "name": "numbers stay bare, strings get quotes",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 112
+    },
+    {
+      "name": "a backslash in the SQL cannot eat the line break after it",
+      "path": "petclinic-test/src/genseq/sql-label.spec.ts",
+      "status": "added",
+      "line": 117
+    },
+    {
+      "name": "tempoConfigFromEnv falls back to localhost grafana admin",
+      "path": "petclinic-test/src/genseq/tempo-client.spec.ts",
+      "status": "added",
+      "line": 6
+    },
+    {
+      "name": "authHeader builds Basic base64",
+      "path": "petclinic-test/src/genseq/tempo-client.spec.ts",
+      "status": "added",
+      "line": 13
+    },
+    {
+      "name": "buildSearchUrl hits the tempo datasource proxy with TraceQL + window",
+      "path": "petclinic-test/src/genseq/tempo-client.spec.ts",
+      "status": "added",
+      "line": 18
+    },
+    {
+      "name": "buildTraceUrl targets the trace-by-id proxy endpoint",
+      "path": "petclinic-test/src/genseq/tempo-client.spec.ts",
+      "status": "added",
+      "line": 30
+    },
+    {
+      "name": "searchTraceIds maps Tempo response traceID list, converting ms\u2192s",
+      "path": "petclinic-test/src/genseq/tempo-client.spec.ts",
+      "status": "added",
+      "line": 36
+    },
+    {
+      "name": "parseTempoTrace normalizes spans with service name and kind",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 21
+    },
+    {
+      "name": "spansToPuml renders browser\u2192backend\u2192DB with the custom span",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 32
+    },
+    {
+      "name": "spansToPuml nests a self-span\\",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 49
+    },
+    {
+      "name": "a call that reaches nothing draws a bare arrow, no activation bar",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 65
+    },
+    {
+      "name": "spansToPuml footers the diagram with its provenance",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 74
+    },
+    {
+      "name": "a DB arrow carries the statement, not the generic span name",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 86
+    },
+    {
+      "name": "a DB span with no statement attribute keeps its span name",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 104
+    },
+    {
+      "name": "SEQ_SQL=off falls back to the generic span name",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 111
+    },
+    {
+      "name": "SEQ_SQL=values puts the bound parameters back into the statement",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 117
+    },
+    {
+      "name": "SEQ_HTTP_BODIES draws the request and response payloads as notes",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 125
+    },
+    {
+      "name": "payloads stay off unless asked for",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 133
+    },
+    {
+      "name": "the legend states the detail level and how to change it, visibly in the image",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 138
+    },
+    {
+      "name": "renderPuml titles by source file and sections by scenario",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 155
+    },
+    {
+      "name": "renderPuml drops traces that would draw nothing",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 171
+    },
+    {
+      "name": "an interactive diagram keeps the DB arrow simplified and hangs the SQL off a marker",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 194
+    },
+    {
+      "name": "a statement with no bound parameters offers only the statement",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 214
+    },
+    {
+      "name": "the payloads become markers on the request and the response, not notes",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 224
+    },
+    {
+      "name": "payloads stay unrevealable unless asked for, SQL off leaves no marker at all",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 240
+    },
+    {
+      "name": "a marker id follows the arrow content, not its position in the file",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 252
+    },
+    {
+      "name": "an interactive diagram tones its link markup down and says how to use it",
+      "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+      "status": "added",
+      "line": 262
+    },
+    {
+      "name": "mergeWindow appends a new title",
+      "path": "petclinic-test/src/genseq/trace-window-store.spec.ts",
+      "status": "added",
+      "line": 4
+    },
+    {
+      "name": "a runner forgets its own windows and keeps the other suite\\",
+      "path": "petclinic-test/src/genseq/trace-window-store.spec.ts",
+      "status": "added",
+      "line": 11
+    },
+    {
+      "name": "mergeWindow replaces an existing same-title entry",
+      "path": "petclinic-test/src/genseq/trace-window-store.spec.ts",
+      "status": "added",
+      "line": 20
+    },
+    {
+      "name": "Filter owners by a case-sensitive prefix of the last name",
+      "path": "petclinic-test/src/owner-search.feature",
+      "status": "added",
+      "line": 11
+    },
+    {
+      "name": "Searching with an empty last name lists every owner",
+      "path": "petclinic-test/src/owner-search.feature",
+      "status": "added",
+      "line": 26
+    },
+    {
+      "name": "slugify makes filesystem-safe names",
+      "path": "petclinic-test/src/trace-diagram/generate.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "generateFromWindows writes one puml per test that has traces",
+      "path": "petclinic-test/src/trace-diagram/generate.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "generateFromWindows skips (no throw) when a test has zero traces",
+      "path": "petclinic-test/src/trace-diagram/generate.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "generateFromWindows retries a window until Tempo has ingested it",
+      "path": "petclinic-test/src/trace-diagram/generate.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "generateFromWindows gives up after the configured number of attempts",
+      "path": "petclinic-test/src/trace-diagram/generate.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "parseTempoTrace normalizes spans with service name and kind",
+      "path": "petclinic-test/src/trace-diagram/trace-to-puml.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "spansToPuml renders browser\u2192backend\u2192DB with the custom span",
+      "path": "petclinic-test/src/trace-diagram/trace-to-puml.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "spansToPuml nests a self-span\\",
+      "path": "petclinic-test/src/trace-diagram/trace-to-puml.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "spansToPuml footers the diagram with its provenance",
+      "path": "petclinic-test/src/trace-diagram/trace-to-puml.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "renderPuml drops traces that would draw nothing",
+      "path": "petclinic-test/src/trace-diagram/trace-to-puml.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "mergeWindow appends a new title",
+      "path": "petclinic-test/src/trace-diagram/trace-window-store.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "mergeWindow replaces an existing same-title entry",
+      "path": "petclinic-test/src/trace-diagram/trace-window-store.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "Visits Page",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "added",
+      "line": 7
+    },
+    {
+      "name": "shows all visits on initial load",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "added",
+      "line": 27
+    },
+    {
+      "name": "rows are sorted descending by date",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "added",
+      "line": 45
+    },
+    {
+      "name": "owner link navigates to owner detail",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "added",
+      "line": 53
+    },
+    {
+      "name": "Owners Page",
+      "path": "petclinic-test/tests/owners.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "shows all owners on initial load",
+      "path": "petclinic-test/tests/owners.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    },
+    {
+      "name": "filters owners by last name prefix",
+      "path": "petclinic-test/tests/owners.spec.ts",
+      "status": "deleted",
+      "line": null,
+      "gone": true
+    }
+  ]
+}

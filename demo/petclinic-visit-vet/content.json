@@ -31,7 +31,7 @@
       "href": "#first"
     }
   ],
-  "summary": "<p><b>What it does.</b> <code>visits</code> gains a nullable <code>vet_id</code>, so a visit can name the vet that attended it. The vet flows end to end: a dropdown on the add/edit visit forms, a column in both visit lists, a field on <code>VisitDto</code>, and a <code>LEFT JOIN FETCH</code> so listing visits does not turn into an N+1.</p><p><b>What I already fixed</b>, from <code>/code-review</code> and <code>/simplify</code> (<a href=\"#fixed\">detail at the bottom</a>) — backend tests green after all six:</p><ul class=\"fixlist\"><li>Vet lookup out of the controller, onto the repository &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:24:1\">VetRepository.java:24</a></li><li>Three vet tests were passing vacuously — now flush + clear &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:296:1\">VisitTest.java:296</a></li><li>Vet dropdown opened blank &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:36:1\">visit-add.component.ts:36</a></li><li>Em-dash rule out of two templates, into a pipe &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/vet-name.pipe.ts:8:1\">vet-name.pipe.ts:8</a></li><li>e2e vet picker no longer positional &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-test/features/dsl/add-visit.dsl.ts:42:1\">add-visit.dsl.ts:42</a></li><li>Dead <code>Vet</code> import &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:13:1\">VisitRestController.java:13</a></li></ul><p><b>What is left is genuinely yours</b> — <a href=\"#first\">five calls</a>, none of which I should make for you. The first one is a live 500.</p>",
+  "summary": "<p><b>What it does.</b> <code>visits</code> gains a nullable <code>vet_id</code>, so a visit can name the vet that attended it. The vet flows end to end: a dropdown on the add/edit visit forms, a column in both visit lists, a field on <code>VisitDto</code>, and a <code>LEFT JOIN FETCH</code> so listing visits does not turn into an N+1.</p><p><b>What I already fixed</b>, from <code>/code-review</code> and <code>/simplify</code> (<a href=\"#fixed\">detail at the bottom</a>) — backend tests green after all six:</p><ul class=\"fixlist\"><li>Vet lookup out of the controller, onto the repository &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:24:1\">VetRepository.java:24</a></li><li>Three vet tests were passing vacuously — now flush + clear &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:296:1\">VisitTest.java:296</a></li><li>Vet dropdown opened blank &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:36:1\">visit-add.component.ts:36</a></li><li>Em-dash rule out of two templates, into a pipe &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/vet-name.pipe.ts:8:1\">vet-name.pipe.ts:8</a></li><li>e2e vet picker no longer positional &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-test/src/add-visit.dsl.ts:48:1\">add-visit.dsl.ts:48</a></li><li>Dead <code>Vet</code> import &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:13:1\">VisitRestController.java:13</a></li></ul><p><b>What is left is genuinely yours</b> — <a href=\"#first\">five calls</a>, none of which I should make for you. The first one is a live 500.</p>",
   "findings": [
     {
       "severity": "info",
@@ -130,7 +130,7 @@
       "body": "<code>trace-window-store.ts:13</code> read-modify-writes a shared JSON file from parallel Playwright workers; on the first traced run one worker read a truncated file and the scenario failed with <code>SyntaxError: Unexpected end of JSON input</code>, losing its sequence diagram. Re-running with <code>--workers=1</code> produced all four. Pre-existing, not this branch — but it will keep costing diagrams.",
       "why": "Not fixed: it is outside the change set under review.",
       "refs": [
-        "petclinic-test/tests/support/trace-window-store.ts:13"
+        "petclinic-test/src/support/trace-window-store.ts:13"
       ]
     }
   ],
@@ -158,6 +158,7 @@
   "extraCss": [
     "assets/complexity.css"
   ],
+  "testChanges": "assets/test-changes.json",
   "sections": [
     {
       "id": "video",
@@ -183,6 +184,75 @@
         {
           "ref": "petclinic-frontend/src/app/visits/vet-name.pipe.ts:8-19",
           "caption": "3. “No vet” is a first-class display state, not an empty cell. Extracted during this review from two templates that each spelled the rule out inline."
+        }
+      ]
+    },
+    {
+      "id": "requirements",
+      "title": "Requirements",
+      "body": "<p>What the change set was supposed to do, and what pins each of it. The flag on every row below is not a claim in this file: <code>scripts/test-changes.py</code> reads the diff against the merge-base and decides, per <em>test case</em>, whether it is new, edited, deleted or untouched. This file only says which requirement a test belongs to.</p><div class=\"evidence\"><section class=\"evi e2e\"><h4><span class=\"evi-ic\">🌐</span> End-to-end (Playwright)<span class=\"evi-n\">1 new</span></h4><p>A real browser, the real API, the real database.</p><ul><li><b>Add a visit attended by a vet</b> — picks a vet in the dropdown and reads the name back off the owner's visit list. It is the scenario tagged <code>@generate_sequence</code>, so its own trace is the sequence diagram above.</li></ul></section><section class=\"evi api\"><h4><span class=\"evi-ic\">🔌</span> API (Spring MockMvc)<span class=\"evi-n\">4 new</span></h4><p><code>VisitTest</code> drives the two write endpoints and the read-back, inside a transaction that is flushed and cleared so the assertion reaches the database.</p><ul><li>Creating with a vet, exposing it on <code>GET</code>, changing it, and clearing it.</li></ul></section><section class=\"evi unit\"><h4><span class=\"evi-ic\">🧪</span> Component (Jasmine)<span class=\"evi-n\">2 new</span></h4><p>Both visit tables, rendered against a fixture that carries one attended visit and one unattended one — so the em-dash fallback is asserted, not assumed.</p></section><section class=\"evi none\"><h4><span class=\"evi-ic\">⚠️</span> Migration and vet lifecycle<span class=\"evi-n\">nothing</span></h4><p>No test at any level runs V9 against a database whose vet ids are not 1–6, and none deletes a vet that attended a visit. Those are the two requirements below that carry no list, and the two findings at the top of this page.</p></section></div>",
+      "requirements": [
+        {
+          "text": "<b>A visit may name the vet who attended it — and may legitimately name none.</b> <code>visits.vet_id</code> is nullable and <code>Visit.vet</code> is an optional <code>@ManyToOne</code>, so legacy rows, and visits booked over MCP, stay valid. The field travels the whole way out to <code>VisitDto</code> and back in through both write endpoints.",
+          "tests": [
+            {
+              "name": "create_withVet"
+            },
+            {
+              "name": "getById_exposesTheAttendingVet"
+            },
+            {
+              "name": "update_changesTheAttendingVet"
+            },
+            {
+              "name": "update_clearsTheAttendingVet",
+              "note": "The behaviour finding 4 asks you to confirm is intended rather than accidental."
+            },
+            {
+              "name": "update_ok",
+              "note": "Flagged edited because the four new tests landed directly beneath it — its own body is untouched. The unit is the test case, and its span runs to the next declaration, so an insertion at the seam reads as a change."
+            },
+            {
+              "name": "create_ok",
+              "note": "Untouched, and that is the point: creating a visit with no vet at all still has to work."
+            }
+          ]
+        },
+        {
+          "text": "<b>The Add Visit and Edit Visit forms offer a vet dropdown, defaulting to <code>-- not assigned --</code>.</b> On Edit it comes back pre-selected from the saved visit; on Add it starts on the placeholder, which is what the <code>{vetId: null}</code> seed in both components is for.",
+          "tests": [
+            {
+              "name": "Add a visit attended by a vet",
+              "path": "petclinic-test/src/add-visit.spec.ts"
+            },
+            {
+              "name": "Add a visit to an existing pet from the owner detail page",
+              "path": "petclinic-test/features/add-visit.feature",
+              "note": "The Cucumber scenario that used to cover this form went with the suite flattening in this change set; the Playwright spec above replaced it."
+            },
+            {
+              "name": "should submit visit and navigate to owner detail",
+              "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
+              "note": "Untouched — the form's own component test never learned that there is a vet to submit."
+            }
+          ]
+        },
+        {
+          "text": "<b>Both visit lists carry a Vet column, showing an em-dash when nobody attended.</b> The per-pet list on the owner detail page and the cross-owner list on <code>/visits</code>, both through the <code>vetName</code> pipe extracted during this review — so the two tables cannot drift apart on what “no vet” looks like.",
+          "tests": [
+            {
+              "name": "should show the attending vet"
+            },
+            {
+              "name": "renders the attending vet, and a dash when none is assigned"
+            }
+          ]
+        },
+        {
+          "text": "<b>Existing visits are backfilled with one of the six seeded vets, so the UI has something to show.</b> <code>UPDATE visits SET vet_id = 1 + (id % 6)</code>, unconditional, in V9. <span class=\"sub\">Nothing pins this: no test runs the migration against a database whose vet ids are not 1–6, which is why findings 2 and 3 are as easy to miss as they are.</span>"
+        },
+        {
+          "text": "<b>A vet can still be deleted.</b> The requirement nobody wrote down, and the one the new foreign key broke: <code>DELETE /api/vets/{id}</code> now answers 500 for every seeded vet. <span class=\"sub\">No test at any level covers it — the empty list under this requirement is the honest rendering of that.</span>"
         }
       ]
     },
