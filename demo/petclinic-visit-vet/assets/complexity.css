@@ -1,0 +1,38 @@
+
+/* Green = complexity this branch ADDED, red = complexity it REMOVED: the colour names the
+   author of the change, it is not a verdict on whether growing is bad. */
+.cx-lede { color:var(--muted); font-size:.92rem; --cx-added:#2e9e5b; --cx-removed:#c62828; }
+.cx-group { --cx-added:#2e9e5b; --cx-removed:#c62828; }
+.cx-group + .cx-group { margin-top:1.1rem; }
+.cx-kind { font:600 11px/1 system-ui,sans-serif; text-transform:uppercase; letter-spacing:.07em;
+           color:var(--muted); margin:0 0 .35rem .15rem; }
+.cx-count { opacity:.65; font-weight:400; }
+.cx-key { font-weight:700; }
+.cx-list { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); }
+.cx-row { display:grid; grid-template-columns:3.6rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
+          align-items:center; gap:.55rem; padding:.3rem .8rem; border-bottom:1px solid var(--line);
+          font-size:.84rem; }
+.cx-row:last-child { border-bottom:0; }
+.cx-same { opacity:.5; }
+.cx-verb { font:700 10.5px/1 ui-monospace,Menlo,monospace; letter-spacing:.03em; }
+.cx-get{color:#2e7d32}.cx-post{color:#1565c0}.cx-put{color:#e08a00}.cx-delete{color:#c62828}.cx-any{color:var(--muted)}
+.cx-patch{color:#8e44ad}.cx-mcp{color:#7c4dff}.cx-job{color:#e08a00}
+.cx-kafka,.cx-rabbit,.cx-jms{color:#00838f}
+a.cx-link { text-decoration:none; display:block; overflow:hidden; }
+a.cx-link:hover .cx-path { text-decoration:underline; }
+.cx-path { font:12px/1.4 ui-monospace,Menlo,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cx-bar { display:flex; height:9px; border-radius:5px; overflow:hidden; background:transparent; }
+.cx-bar i { background:#c9c9d4; border-radius:5px 0 0 5px; }
+.cx-bar u { border-radius:0 5px 5px 0; }
+.cx-up .cx-bar u { background:var(--cx-added); }
+.cx-down .cx-bar u { background:var(--cx-removed); }
+.cx-same .cx-bar i { border-radius:5px; }
+.cx-badge { font:700 11px/1 ui-monospace,Menlo,monospace; text-align:right; color:var(--muted); }
+.cx-up .cx-badge, .cx-up.cx-key { color:var(--cx-added); }
+.cx-down .cx-badge, .cx-down.cx-key { color:var(--cx-removed); }
+.cx-n { font:600 12px/1 ui-monospace,Menlo,monospace; text-align:right; }
+@media (prefers-color-scheme: dark) {
+  .cx-lede, .cx-group { --cx-added:#4ec27f; --cx-removed:#ef6a6a; }
+  .cx-bar i { background:#3d3d4a; }
+}
+

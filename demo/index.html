@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>/human-review — published snapshots</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfbfa;
+    --panel: #ffffff;
+    --fg: #1c1b1a;
+    --muted: #6b6864;
+    --line: #e3e0dc;
+    --accent: #9a3412;
+    --added: #15803d;
+    --removed: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17161a;
+      --panel: #201f24;
+      --fg: #eceaf0;
+      --muted: #a09da8;
+      --line: #34323a;
+      --accent: #f0a06a;
+      --added: #4ade80;
+      --removed: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 3rem 1.25rem 5rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.9rem; letter-spacing: -0.02em; margin: 0 0 .35rem; }
+  .lede { color: var(--muted); margin: 0 0 2rem; }
+  h2 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2.5rem 0 1rem; }
+  p { margin: 0 0 1rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em;
+         background: color-mix(in srgb, var(--fg) 8%, transparent); padding: .1em .35em; border-radius: 4px; }
+  a { color: var(--accent); }
+  .card {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 1.15rem 1.35rem; margin-bottom: 1rem;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .card h3 { margin: 0 0 .3rem; font-size: 1.15rem; }
+  .card .sub { color: var(--muted); font-size: .92rem; margin: 0 0 .8rem; }
+  .stats { display: flex; flex-wrap: wrap; gap: .4rem .5rem; list-style: none; margin: 0; padding: 0; }
+  .stats li {
+    font-size: .8rem; border: 1px solid var(--line); border-radius: 999px;
+    padding: .15rem .6rem; color: var(--muted);
+  }
+  .stats b { color: var(--fg); font-weight: 600; }
+  .added { color: var(--added); font-weight: 600; }
+  .removed { color: var(--removed); font-weight: 600; }
+  .note {
+    border-left: 3px solid var(--accent); background: var(--panel);
+    padding: .85rem 1.1rem; border-radius: 0 8px 8px 0; color: var(--muted); font-size: .93rem;
+  }
+  footer { margin-top: 3rem; color: var(--muted); font-size: .88rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>/human-review</h1>
+  <p class="lede">Static snapshots of review pages, published so you can click through one without running the skill.</p>
+
+  <p><a href="https://github.com/victorrentea/human-review"><code>/human-review</code></a> is a skill for
+  <a href="https://claude.com/claude-code">Claude Code</a>. It assembles <b>one page, tabbed one question per tab</b>,
+  that lets a human review a change set fast — what to look at first, what the diagrams say changed, what the REST
+  contract did, where it landed in the code, a video of the feature working, what it cost in complexity, and the tests
+  that pin it. Every code reference is a click into your editor, and every snippet is cut from the working tree at
+  build time, so the page cannot drift from the code it describes.</p>
+
+  <h2>Published snapshots</h2>
+
+  <a class="card" href="petclinic-visit-vet/review.html">
+    <h3>A visit remembers the vet who attended it</h3>
+    <p class="sub">Review guide for <code>test-pr</code> vs <code>origin/main</code> on
+      <a href="https://github.com/victorrentea/petclinic">victorrentea/petclinic</a> — merge-base <code>39ceefc</code>.</p>
+    <ul class="stats">
+      <li>branch <b>test-pr</b></li>
+      <li>files <b>35</b></li>
+      <li>lines <span class="added">+329</span> / <span class="removed">−10</span></li>
+      <li>reviews run <b>/code-review + /simplify</b></li>
+      <li>fixed for you <b>6</b></li>
+      <li>left to you <b>6</b></li>
+    </ul>
+  </a>
+
+  <h2>One caveat</h2>
+  <p class="note">Inside a snapshot, every code reference is a <code>vscode://file/...</code> deep link pointing at an
+  absolute path on the machine that generated the page. Those links only resolve there — on any other machine they open
+  nothing, or the wrong file. Everything else on the page (diagrams, video, complexity, snippets) is self-contained and
+  works anywhere.</p>
+
+  <footer>Deployed from the <code>demo/</code> directory of
+    <a href="https://github.com/victorrentea/human-review">victorrentea/human-review</a> by GitHub Actions.</footer>
+</main>
+</body>
+</html>

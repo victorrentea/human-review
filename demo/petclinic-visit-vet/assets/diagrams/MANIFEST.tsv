@@ -1,0 +1,5 @@
+name	source	kind	status	diff_puml	svg
+DB	petclinic-backend/docs/generated/DB.puml	structural	modified	DB.diff.puml	DB.diff.svg
+DomainModel	petclinic-backend/docs/generated/DomainModel.puml	structural	modified	DomainModel.diff.puml	DomainModel.diff.svg
+add-visit.spec.ts.genseq	petclinic-test/src/add-visit.spec.ts.genseq.puml	sequence	modified	add-visit.spec.ts.genseq.diff.puml	add-visit.spec.ts.genseq.diff.svg
+owner-search.feature.genseq	petclinic-test/src/owner-search.feature.genseq.puml	sequence	modified	owner-search.feature.genseq.diff.puml	owner-search.feature.genseq.diff.svg

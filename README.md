@@ -249,6 +249,37 @@ The JSON is the artefact and the picture is its rendering — a reviewing agent 
 `--json` rather than OCR-ing a PNG. Needs Playwright (`pip install playwright &&
 playwright install chromium`), Pillow and numpy, and both revisions served.
 
+## Publishing a snapshot to GitHub Pages
+
+A review page is a throwaway artifact — but one frozen copy is worth keeping, so that
+somebody can see what `/human-review` produces before installing anything. Anything under
+`demo/` in this repo is published to GitHub Pages:
+
+<https://victorrentea.github.io/human-review/>
+
+`demo/index.html` is a hand-written landing page listing the snapshots; each snapshot lives
+in `demo/<slug>/` and is a verbatim copy of a `.human-review/` output directory —
+`review.html`, `content.json` and `assets/`, bytes untouched. `.github/workflows/pages.yml`
+uploads the whole `demo/` directory and deploys it on every push to `main` that touches
+`demo/**` (or the workflow itself), and on `workflow_dispatch`.
+
+To add one:
+
+```sh
+skills/human-review/scripts/publish-demo.sh <slug> [source-dir]   # source-dir defaults to .human-review
+```
+
+It copies the snapshot into `demo/<slug>/` — the target checkout comes from
+`HUMAN_REVIEW_REPO`, defaulting to `~/workspace/human-review` — refuses any file over
+50 MB, and prints the commit-and-push commands rather than running them. Then add a card
+for it in `demo/index.html`.
+
+**One caveat.** Every code reference in a review page is a `vscode://file/...` deep link
+holding an absolute path on the machine that generated it. Those links open nothing on a
+stranger's machine. Diagrams, video, complexity and snippets are self-contained and work
+anywhere, so a published snapshot is a faithful tour of everything except the click-into-
+your-editor part.
+
 ## Editing it in place
 
 The skill is developed by symlinking it into a project rather than reinstalling it:

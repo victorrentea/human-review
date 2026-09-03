@@ -1,0 +1,114 @@
+[
+ {
+  "t": 1.114,
+  "text": "The owner’s page. Every pet lists its visits — and the list now has a Vet column.",
+  "box": {
+   "x": 865,
+   "y": 358,
+   "width": 116,
+   "height": 31
+  }
+ },
+ {
+  "t": 4.198,
+  "text": "Booking a new visit for the first pet.",
+  "box": {
+   "x": 238,
+   "y": 382,
+   "width": 88,
+   "height": 36
+  }
+ },
+ {
+  "t": 7.477,
+  "text": "Date and reason, as before — nothing here changed."
+ },
+ {
+  "t": 10.281,
+  "text": "This is the new part: a Vet dropdown. It defaults to “not assigned”, because a visit is allowed to have no vet.",
+  "box": {
+   "x": 248,
+   "y": 358,
+   "width": 987,
+   "height": 34
+  }
+ },
+ {
+  "t": 12.286,
+  "text": "Picking Rafael Ortega as the vet who attended.",
+  "box": {
+   "x": 30,
+   "y": 358,
+   "width": 1220,
+   "height": 34
+  }
+ },
+ {
+  "t": 15.03,
+  "text": "Saving — the vet id travels with the visit and lands in the new vets column.",
+  "box": {
+   "x": 319,
+   "y": 422,
+   "width": 88,
+   "height": 36
+  }
+ },
+ {
+  "t": 19.105,
+  "text": "⚠ The visit came back with no vet — an em dash. Booking through the UI is NOT saving the vet right now.",
+  "box": {
+   "x": 394,
+   "y": 678,
+   "width": 826,
+   "height": 36
+  }
+ },
+ {
+  "t": 22.309,
+  "text": "The rows above that DO show a vet were written straight to POST /api/visits — that path still works."
+ },
+ {
+  "t": 25.197,
+  "text": "Booking is not the only way in. Opening that visit for editing.",
+  "box": {
+   "x": 981,
+   "y": 426,
+   "width": 87,
+   "height": 36
+  }
+ },
+ {
+  "t": 29.378,
+  "text": "The saved vet comes back pre-selected — the read path works, not just the write path.",
+  "box": {
+   "x": 248,
+   "y": 358,
+   "width": 987,
+   "height": 34
+  }
+ },
+ {
+  "t": 31.598,
+  "text": "Reassigning to James Carter. Choosing “not assigned” here clears the vet again.",
+  "box": {
+   "x": 248,
+   "y": 358,
+   "width": 987,
+   "height": 34
+  }
+ },
+ {
+  "t": 35.202,
+  "text": "And the all-visits page, across every owner: same column, an em dash wherever no vet attended.",
+  "box": {
+   "x": 1104,
+   "y": 148,
+   "width": 116,
+   "height": 37
+  }
+ },
+ {
+  "t": 38.221,
+  "text": "So: the edit path works, the booking path does not. See finding 1."
+ }
+]

@@ -1,0 +1,176 @@
+@startuml
+hide footbox
+skinparam hyperlinkUnderline false
+skinparam hyperlinkColor #1A4FA0
+title src/add-visit.spec.ts
+footer @generate_sequence — generated from real traces, do not edit
+participant Browser
+participant Backend
+participant DB
+legend right
+  ⚠️  GENERATED FILE — DO NOT EDIT. Every edit is lost on the next run.
+  Drawn from real Tempo traces of src/add-visit.spec.ts, for the scenarios tagged
+  @generate_sequence. Change the test, not this file, then regenerate with
+  petclinic-test/run-tests-with-tracing.sh
+  This picture is deliberately simplified. In review/review.html, click an
+  arrow (or its ⊕) to reveal that one call's SQL / JSON payloads —
+  a DB arrow twice, for the statement and then for the bound values.
+  Detail shown here: simplified · click an arrow to reveal its SQL / JSON payloads
+  Want more or less? The traces already carry all of it — re-rendering replays
+  the spans cached in test-results/trace-spans.json (~1s): nothing has to run,
+  not even Grafana (GENSEQ_REFRESH=1 re-fetches from Tempo instead):
+      cd petclinic-test
+      npm run diagram:reveal  # simplified, click to reveal SQL + payloads
+      npm run diagram:lean    # baked in: call flow only
+      npm run diagram:static  # baked in: + the SQL statements
+      npm run diagram:full    # baked in: + bound parameter values + JSON payloads
+      SEQ_SQL=off|statement|values SEQ_HTTP_BODIES=0|1 SEQ_INTERACTIVE=0|1 npm run trace:diagram
+end legend
+== Add a visit to an existing pet from the owner detail page ==
+Browser -[#D40000]> Backend: <color:#D40000>GET /api/vets</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>VetRepository.findAll</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Hibernate Query</color>
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0nf2y5o{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Transaction.commit</color>
+deactivate Backend
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://1nmg2oo{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+Browser -> Backend: GET /api/pets/{petId}
+activate Backend
+Backend -> Backend: PetRepository.findById
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>petclinic</color>
+Backend -> Backend: Session.find victor.training.petclinic.domain.Pet
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, (select …</s></color>\n<color:#D40000><s>FROM pets p1_0</s></color>\n<color:#D40000><s>LEFT JOIN owners o1_0</s></color>\n<color:#D40000><s>ON o1_0.id=p1_0.owner_id</s></color>\n<color:#D40000><s>LEFT JOIN types t1_0</s></color>\n<color:#D40000><s>ON t1_0.id=p1_0.type_id</s></color>\n<color:#D40000><s>WHERE p1_0.id=?</s></color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0ehnpdy{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -> Backend: Transaction.commit
+deactivate Backend
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT v1_0.pet_id, v1_0.id, v1_0.visit_date, v1_0.description, v1_0.visit_time</s></color>\n<color:#D40000><s>FROM visits v1_0</s></color>\n<color:#D40000><s>WHERE v1_0.pet_id=?</s></color>
+Backend -[#D40000]-> Browser: <color:#D40000><s>200</s></color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://1gbemwe{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://0id2znx{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+Browser -> Backend: GET /api/owners/{ownerId}
+activate Backend
+Backend -> Backend: OwnerRepository.findById
+activate Backend
+Backend -> Backend: Session.find victor.training.petclinic.domain.Owner
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, (select count(*) from pets …</s></color>\n<color:#D40000><s>FROM owners o1_0</s></color>\n<color:#D40000><s>WHERE o1_0.id=?</s></color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic.owners [[genseq://0v1zfua{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -> Backend: Transaction.commit
+deactivate Backend
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT p1_0.owner_id, p1_0.id, p1_0.birth_date, p1_0.name, t1_0.id, t1_0.name</s></color>\n<color:#D40000><s>FROM pets p1_0</s></color>\n<color:#D40000><s>LEFT JOIN types t1_0</s></color>\n<color:#D40000><s>ON t1_0.id=p1_0.type_id</s></color>\n<color:#D40000><s>WHERE p1_0.owner_id=?</s></color>
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT v1_0.pet_id, v1_0.id, v1_0.visit_date, v1_0.description, v1_0.visit_time</s></color>\n<color:#D40000><s>FROM visits v1_0</s></color>\n<color:#D40000><s>WHERE v1_0.pet_id = any (?)</s></color>
+Backend -[#D40000]-> Browser: <color:#D40000><s>200</s></color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0jhcrfi{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://1gbemwe{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://09kc8m8{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+Browser -[#D40000]> Backend: <color:#D40000><s>POST /api/owners/{ownerId}/pets/{petId}/visits</s></color>
+Browser -[#D40000]> Backend: <color:#D40000>POST /api/owners/{ownerId}/pets/{petId}/visits [[genseq://174znjn{Click for this call’s JSON body} ⊕]]</color>
+activate Backend
+Backend -> Backend: VisitRepository.save
+activate Backend
+Backend -> Backend: Session.persist victor.training.petclinic.domain.Visit
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000><s>INSERT INTO visits (visit_date, description, pet_id, visit_time)</s></color>\n<color:#D40000><s>VALUES (?, ?, ?, ?)</s></color>
+Backend -[#D40000]> DB: <color:#D40000>INSERT petclinic.visits [[genseq://1plk4wr{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -> Backend: Transaction.commit
+deactivate Backend
+Backend --> Browser: 201
+deactivate Backend
+Browser -> Backend: GET /api/owners/{ownerId}
+activate Backend
+Backend -> Backend: OwnerRepository.findById
+activate Backend
+Backend -> Backend: Session.find victor.training.petclinic.domain.Owner
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, (select count(*) from pets …</s></color>\n<color:#D40000><s>FROM owners o1_0</s></color>\n<color:#D40000><s>WHERE o1_0.id=?</s></color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic.owners [[genseq://0v1zfua{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -> Backend: Transaction.commit
+deactivate Backend
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT p1_0.owner_id, p1_0.id, p1_0.birth_date, p1_0.name, t1_0.id, t1_0.name</s></color>\n<color:#D40000><s>FROM pets p1_0</s></color>\n<color:#D40000><s>LEFT JOIN types t1_0</s></color>\n<color:#D40000><s>ON t1_0.id=p1_0.type_id</s></color>\n<color:#D40000><s>WHERE p1_0.owner_id=?</s></color>
+Backend -[#D40000]> DB: <color:#D40000><s>SELECT v1_0.pet_id, v1_0.id, v1_0.visit_date, v1_0.description, v1_0.visit_time</s></color>\n<color:#D40000><s>FROM visits v1_0</s></color>\n<color:#D40000><s>WHERE v1_0.pet_id = any (?)</s></color>
+Backend -[#D40000]-> Browser: <color:#D40000><s>200</s></color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0jhcrfi{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://1gbemwe{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://0b5q3un{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+== <color:#D40000>Add a visit attended by a vet</color> ==
+Browser -[#D40000]> Backend: <color:#D40000>GET /api/vets</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>VetRepository.findAll</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Hibernate Query</color>
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0nf2y5o{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Transaction.commit</color>
+deactivate Backend
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://1nmg2oo{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+Browser -[#D40000]> Backend: <color:#D40000>GET /api/pets/{petId}</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>PetRepository.findById</color>
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>petclinic</color>
+Backend -[#D40000]> Backend: <color:#D40000>Session.find victor.training.petclinic.domain.Pet</color>
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0ehnpdy{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Transaction.commit</color>
+deactivate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://1gbemwe{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://1ksmytc{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+Browser -[#D40000]> Backend: <color:#D40000>GET /api/owners/{ownerId}</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>OwnerRepository.findById</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Session.find victor.training.petclinic.domain.Owner</color>
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic.owners [[genseq://0v1zfua{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Transaction.commit</color>
+deactivate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0jhcrfi{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://1gbemwe{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://1n70u23{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+Browser -[#D40000]> Backend: <color:#D40000>POST /api/owners/{ownerId}/pets/{petId}/visits [[genseq://1d9u5x3{Click for this call’s JSON body} ⊕]]</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>VisitRepository.save</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Session.persist victor.training.petclinic.domain.Visit</color>
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>INSERT petclinic.visits [[genseq://1gnv641{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Transaction.commit</color>
+deactivate Backend
+Backend -[#D40000]-> Browser: <color:#D40000>201</color>
+deactivate Backend
+Browser -[#D40000]> Backend: <color:#D40000>GET /api/owners/{ownerId}</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>OwnerRepository.findById</color>
+activate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Session.find victor.training.petclinic.domain.Owner</color>
+activate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic.owners [[genseq://0v1zfua{Click for the statement, again for the bound values} ⊕]]</color>
+deactivate Backend
+Backend -[#D40000]> Backend: <color:#D40000>Transaction.commit</color>
+deactivate Backend
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://0jhcrfi{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]> DB: <color:#D40000>SELECT petclinic [[genseq://1gbemwe{Click for the statement, again for the bound values} ⊕]]</color>
+Backend -[#D40000]-> Browser: <color:#D40000>200 [[genseq://0x0g655{Click for this call’s JSON body} ⊕]]</color>
+deactivate Backend
+@enduml

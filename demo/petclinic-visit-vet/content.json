@@ -1,0 +1,228 @@
+{
+  "title": "A visit remembers the vet who attended it",
+  "subtitle": "Review guide for <a href=\"https://github.com/victorrentea/petclinic/tree/test-pr\" target=\"_blank\"><code>test-pr</code></a> vs <code>origin/main</code> — assembled by /human-review, merge-base <code>39ceefc</code>.",
+  "scope": [
+    {
+      "label": "branch",
+      "value": "test-pr",
+      "href": "https://github.com/victorrentea/petclinic/tree/test-pr"
+    },
+    {
+      "label": "files",
+      "value": "35"
+    },
+    {
+      "label": "lines",
+      "value": "<span class=\"added\">+329</span> / <span class=\"removed\">−10</span>"
+    },
+    {
+      "label": "reviews run",
+      "value": "/code-review + /simplify",
+      "href": "https://claude.com/claude-code"
+    },
+    {
+      "label": "fixed for you",
+      "value": "6",
+      "href": "#fixed"
+    },
+    {
+      "label": "left to you",
+      "value": "6",
+      "href": "#first"
+    }
+  ],
+  "summary": "<p><b>What it does.</b> <code>visits</code> gains a nullable <code>vet_id</code>, so a visit can name the vet that attended it. The vet flows end to end: a dropdown on the add/edit visit forms, a column in both visit lists, a field on <code>VisitDto</code>, and a <code>LEFT JOIN FETCH</code> so listing visits does not turn into an N+1.</p><p><b>What I already fixed</b>, from <code>/code-review</code> and <code>/simplify</code> (<a href=\"#fixed\">detail at the bottom</a>) — backend tests green after all six:</p><ul class=\"fixlist\"><li>Vet lookup out of the controller, onto the repository &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:24:1\">VetRepository.java:24</a></li><li>Three vet tests were passing vacuously — now flush + clear &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:296:1\">VisitTest.java:296</a></li><li>Vet dropdown opened blank &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:36:1\">visit-add.component.ts:36</a></li><li>Em-dash rule out of two templates, into a pipe &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/vet-name.pipe.ts:8:1\">vet-name.pipe.ts:8</a></li><li>e2e vet picker no longer positional &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-test/features/dsl/add-visit.dsl.ts:42:1\">add-visit.dsl.ts:42</a></li><li>Dead <code>Vet</code> import &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:13:1\">VisitRestController.java:13</a></li></ul><p><b>What is left is genuinely yours</b> — <a href=\"#first\">five calls</a>, none of which I should make for you. The first one is a live 500.</p>",
+  "findings": [
+    {
+      "severity": "info",
+      "title": "Local only: the working tree has <code>addVisitToOwner</code> stripped of its vet handling",
+      "body": "Not a defect in the change set — <code>HEAD</code> is intact. An <b>uncommitted</b> edit in the working tree removes four things from <code>addVisitToOwner</code>: the <code>VetRepository</code> import, the field, <code>@Validated</code> on the body, and the whole <code>if (vetId != null) setVet(...)</code> block — <code>+1 −6</code>. Because the Add Visit form posts to that owner-scoped endpoint (<code>visit.service.ts:34</code>), booking through the UI silently drops the vet <em>as the tree stands now</em>: a bare <code>curl</code> returns <code>201</code> with <code>vetId: null</code>, the e2e scenario is red, and the video narrates it.",
+      "why": "Listed so the red test and the video are not mistaken for a defect in the branch. <code>git checkout -- petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java</code> restores it. Everything below is about the committed change.",
+      "refs": [],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:142-153",
+          "caption": "The handler the form actually calls — vetId never leaves the DTO."
+        },
+        {
+          "ref": "petclinic-frontend/src/app/visits/visit.service.ts:34-42",
+          "caption": "Why this is the path that matters: the form posts owner-scoped, not to /api/visits."
+        }
+      ]
+    },
+    {
+      "severity": "high",
+      "title": "The new foreign key makes every seeded vet undeletable — <code>DELETE /api/vets/{id}</code> now returns 500",
+      "body": "<code>vet_id INT REFERENCES vets (id)</code> carries no <code>ON DELETE</code> clause, and nothing on the JPA side nulls it out: <code>Visit</code> is the owning side and <code>Vet</code> has no <code>visits</code> mapping. <code>deleteVet</code> just calls <code>delete(vet)</code>, so Postgres raises a FK violation, which <code>handleGeneralException</code> turns into a 500. The backfill on line 8 assigns a vet to <em>every</em> seeded visit, so all six demo vets become undeletable the moment this migration runs.",
+      "why": "Your call: <code>ON DELETE SET NULL</code> on the constraint, or null the visits out in <code>deleteVet</code>. Either changes behaviour, and amending V9 in place will trip Flyway's checksum on any database that already ran it — which is why I left it. No test covers deleting a vet that has visits.",
+      "refs": [
+        "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:3",
+        "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:88"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:1-8",
+          "caption": "The migration — no ON DELETE, and an unconditional backfill."
+        },
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:86-91",
+          "caption": "The delete path that now breaks."
+        }
+      ]
+    },
+    {
+      "severity": "high",
+      "title": "The backfill hardcodes vet ids 1–6 and has no <code>WHERE</code>",
+      "body": "<code>UPDATE visits SET vet_id = 1 + (id % 6)</code> assumes <code>vets</code> holds exactly ids 1..6 — true only for a pristine V3 seed. Delete a vet and add another through the existing API before upgrading, and the UPDATE points at a missing id: FK violation, Flyway marks V9 <b>failed</b>, and the backend refuses to boot until someone repairs it by hand. And the comment above it (\"every visit in the DB at this point comes from the V3 sample data\") is false for any database that has been in use: visits created through the UI or booked over MCP silently acquire a fabricated attending vet.",
+      "why": "The commit's own design says a null vet is legitimate, and both the UI and the tests already render the <code>—</code> fallback — so this write buys a demo nicety at the price of a data-integrity assumption. House precedent (<code>V5__clear_demo_owner_phone.sql</code>) keys data fixes off a name, not a hardcoded id.",
+      "refs": [
+        "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:6"
+      ]
+    },
+    {
+      "severity": "medium",
+      "title": "<code>PUT /api/visits/{id}</code> silently clears the attending vet when <code>vetId</code> is absent",
+      "body": "The handler overwrites unconditionally, so an existing consumer that PUTs only <code>{date, description}</code> — a script, or a client generated from the OpenAPI spec before this change — now also wipes <code>vet_id</code>, with nothing in the response to say so. <code>update_clearsTheAttendingVet</code> blesses this as intended behaviour, which makes it a decision rather than a bug.",
+      "why": "Either document it as a breaking change to the endpoint, or distinguish \"field absent\" from \"explicitly null\" (a <code>JsonNullable</code>/PATCH split). Both are contract decisions.",
+      "refs": [
+        "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:75"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:70-77",
+          "caption": "Absent vetId and explicit null are indistinguishable here."
+        }
+      ]
+    },
+    {
+      "severity": "medium",
+      "title": "An unknown <code>vetId</code> answers 404, not 400",
+      "body": "<code>getByIdOrNull</code> throws a bare <code>NoSuchElementException</code>, which the advice maps to <code>404</code> with a plain-text <code>\"Not found!\"</code> body — not the <code>ProblemDetail</code> shape every other error uses. <code>PUT /api/visits/5</code> with <code>{\"vetId\": 999}</code> on an existing visit 5 therefore returns a 404 that is indistinguishable from \"visit 5 does not exist\", and the Angular error handler surfaces the wrong message. A bad <em>request field</em> is a 400.",
+      "why": "Fixing it means picking an exception type and touching <code>ExceptionControllerAdvice</code> — a cross-cutting contract change, so it is yours. It applies to <code>POST /api/visits</code> too.",
+      "refs": [
+        "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:24"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:18-29",
+          "caption": "The lookup I extracted — the null rule is now in one place, but the failure mode is still 404."
+        }
+      ]
+    },
+    {
+      "severity": "low",
+      "title": "<code>@ManyToOne</code> defaults to EAGER, so vets load on every visit-reading path",
+      "body": "Only <code>findAllWithPetAndOwner</code> got the <code>LEFT JOIN FETCH v.vet</code>. <code>GET /api/pets</code>, the owner-detail page and MCP <code>list_visits</code> each now issue extra <code>SELECT … FROM vets</code> when visits are materialised. The first-level cache bounds it to the number of distinct vets per session, so the cost is modest.",
+      "why": "I left it because <code>fetch = LAZY</code> risks a <code>LazyInitializationException</code> in the mappers that run outside a transaction — which is a correctness change disguised as a tuning knob, and needs your read on the other paths.",
+      "refs": [
+        "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:35"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:35-37",
+          "caption": "The new association."
+        }
+      ]
+    },
+    {
+      "severity": "info",
+      "title": "Unrelated: the trace-window store races itself and drops a diagram",
+      "body": "<code>trace-window-store.ts:13</code> read-modify-writes a shared JSON file from parallel Playwright workers; on the first traced run one worker read a truncated file and the scenario failed with <code>SyntaxError: Unexpected end of JSON input</code>, losing its sequence diagram. Re-running with <code>--workers=1</code> produced all four. Pre-existing, not this branch — but it will keep costing diagrams.",
+      "why": "Not fixed: it is outside the change set under review.",
+      "refs": [
+        "petclinic-test/tests/support/trace-window-store.ts:13"
+      ]
+    }
+  ],
+  "diagrams": {
+    "title": "Diagram deltas",
+    "body": "Red = added, red struck-through = removed. Each image is the <em>delta</em>, not the snapshot — produced by <code>scripts/puml-diff.sh origin/main</code>, which diffs every changed <code>.puml</code> and dispatches structural diagrams to <code>puml_diff.py</code> and sequence diagrams to <code>seq_puml_diff.py</code>. The sequence arrows now carry the <b>real SQL</b> and the request/response payloads, and the browser's page-load resource fetches are gone — that engine came in with the merge of <code>origin/main</code>.",
+    "only": [
+      "DB",
+      "DomainModel",
+      "add-visit.spec.ts.genseq"
+    ],
+    "notes": {
+      "DB": "One nullable FK column and one relationship: <code>visits.vet_id → vets.id</code>. Nothing else in the schema moved.",
+      "DomainModel": "<code>Vet 1 — 0..* Visit</code>. The multiplicity is the design statement: a visit <em>may</em> have a vet, which is what makes the change backward-compatible with the legacy rows.",
+      "add-visit.spec.ts.genseq": "Red is what this branch adds to the trace. The new <code>== Add a visit attended by a vet ==</code> section is the boundary crossing that matters: <code>GET /api/vets</code> to fill the dropdown, then the booking round-trip. Each section is one <code>@generate_sequence</code> test in the file — the links below open the test that produced it and the diagram source."
+    }
+  },
+  "codecity": {
+    "title": "Where it landed in the city",
+    "body": "Every building is a class, sized by file size, coloured by churn; the branch's change set is lit and the rest of the skyline recedes. The change is a clean vertical slice — one domain class, one mapper, one repository, the two controllers, the DTOs, and the MCP tool — with no unrelated neighbourhood touched.",
+    "png": "assets/codecity.png",
+    "href": "../petclinic-backend/docs/generated/codecity/codecity.html",
+    "caption": "Click the image to open the live 3D city (Cmd/Ctrl-double-click a building there opens the file in VS Code)."
+  },
+  "extraCss": [
+    "assets/complexity.css"
+  ],
+  "sections": [
+    {
+      "id": "video",
+      "title": "See it work",
+      "body": "<p><b>Watch the captions:</b> this recording narrates what actually happens, including the moment the newly booked visit comes back with no vet (finding 1). The recorder asserts the row it just created rather than any row showing that name, so it cannot film a success the app did not deliver.</p><p>The whole tour, slowly, in a real browser: the owner's visit list, the Add Visit form and its new vet dropdown, the cross-owner visits page, and the Edit form with the vet coming back pre-selected. Recorded by <code>scripts/record-feature-video.sh</code>; the same flow is pinned by the Playwright scenario below.</p><p><b>Pages this change touches</b> — links open the running app:</p><table class=\"stat\"><tr><td><b>Owner detail</b></td><td><a href=\"http://localhost:4200/owners/2\"><code>/owners/2</code></a></td><td>the per-pet visit list — gained the <b>Vet</b> column</td></tr><tr><td><b>Add Visit</b></td><td><a href=\"http://localhost:4200/pets/2/visits/add\"><code>/pets/2/visits/add</code></a></td><td>gained the <b>Vet</b> dropdown, with <code>-- not assigned --</code> as the default</td></tr><tr><td><b>All visits</b></td><td><a href=\"http://localhost:4200/visits\"><code>/visits</code></a></td><td>the cross-owner list — gained the same <b>Vet</b> column</td></tr><tr><td><b>Edit Visit</b></td><td><a href=\"http://localhost:4200/visits/1/edit\"><code>/visits/1/edit</code></a></td><td>gained the <b>Vet</b> dropdown, pre-selected from the saved visit</td></tr></table>",
+      "video": "assets/add-visit-attended-by-a-vet.webm"
+    },
+    {
+      "id": "complexity",
+      "title": "Entry Point Complexity",
+      "body": "<p>Grey is what the entry point already cost; <span class=\"added\"><b>green</b></span> is what this branch added (red would be what it removed). Both snapshots come from the same extractor — the baseline was produced by re-running it against the merge-base source — so every row is a real before/after, including the MCP tools.</p><p>The shape is worth noticing: the <b>+1</b>s are the paths that now resolve or format a vet, while every <b>+3</b> is the same thing paid over and over — the vet block in <code>VisitMapperImpl</code>, on every entry point that maps a visit. <code>GET /api/owners</code> was already the most expensive flow in the app at 20 and this pushes it to 23, so the change makes the heaviest entry point heavier rather than creating a new hot spot. On the MCP side only <code>list_visits</code> moved (3 → 4); the other four tools are untouched.</p>",
+      "includeHtml": "assets/complexity.html"
+    },
+    {
+      "id": "logic",
+      "title": "Core business logic",
+      "body": "<p>Three decisions carry the feature; everything else is plumbing.</p><p><b>1. The vet is optional, by design.</b> Legacy rows and MCP-booked visits have none, so the column is nullable and the association un-required. This is what lets the change ship without a data migration for real clinics.</p>",
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:35-37",
+          "caption": "2. A visit points at its vet, not the other way round — Vet has no visits collection, which is why deleting a vet has no cascade to follow (see finding 1)."
+        },
+        {
+          "ref": "petclinic-frontend/src/app/visits/vet-name.pipe.ts:8-19",
+          "caption": "3. “No vet” is a first-class display state, not an empty cell. Extracted during this review from two templates that each spelled the rule out inline."
+        }
+      ]
+    },
+    {
+      "id": "tests",
+      "title": "Acceptance tests",
+      "body": "<p>The scenario below is the one carrying <code>@generate_sequence</code>: it is the only test that crosses every boundary this change touches, so its trace becomes the sequence diagram above. It is <b>red right now</b> — see finding 1.</p>",
+      "snippets": [
+        {
+          "ref": "petclinic-test/src/add-visit.spec.ts:38-53",
+          "caption": "The end-to-end contract — currently failing on its last assertion."
+        },
+        {
+          "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:276-291",
+          "caption": "The clearing behaviour that finding 3 asks you to confirm is intended — note the flushAndClear() I added, without which this assertion read back the controller's own in-memory instance and would have passed even with the save() deleted."
+        }
+      ]
+    },
+    {
+      "id": "notcovered",
+      "title": "What is not covered",
+      "body": "<ul><li><b>Deleting a vet that attended a visit</b> — no test at any level, and it is currently a 500 (finding 1).</li><li><b>An unknown <code>vetId</code></b> — no test pins the status code, which is why finding 4 is easy to get wrong either way.</li><li><b>The V9 backfill</b> — no test runs it against a database whose vet ids are not 1–6.</li><li>Three sequence diagrams changed only as regeneration artifacts (<code>add-a-follow-up-visit…</code>, <code>add-a-visit-to-an-existing-pet…</code>, <code>emptying-the-last-name-field…</code>): the red in them is Hibernate statement-label granularity, not behaviour. They are in <code>review/assets/diagrams/</code> if you want to check that claim.</li></ul>"
+    },
+    {
+      "id": "fixed",
+      "title": "Fixed for you",
+      "body": "<p>Everything below came out of <code>/code-review</code> and <code>/simplify</code> and had exactly one defensible answer, so I applied it rather than spending your attention on it. Backend tests are green after these. Anything needing a judgement call went to <a href=\"#first\">Look here first</a> instead.</p><h3>1. The vet lookup had two homes</h3><p><code>VisitRestController</code> carried a private <code>resolveVet</code> that both of its write paths called. The null rule — \"no vetId means no vet, an unknown one is rejected\" — is a property of looking a vet up, not of a controller, so it moved onto the repository. Spring Data enforces <code>@NonNullApi</code> on repository methods, so the parameter needed an explicit <code>@Nullable</code>: without it the call throws <em>before</em> it reaches the body, and three tests went red on the first run.</p>{{snippet:petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:18-29|The rule, now in one place.}}<h3>2. Three tests were green for the wrong reason</h3><p><code>VisitTest</code> is <code>@Transactional</code>, so the test and the MockMvc-invoked controller share one persistence context. Every vet test asserted against the very instance the controller had just mutated in memory — they would have stayed green with <code>visitRepository.save()</code> deleted outright. They now flush and clear first, so the assertion reads the database.</p>{{snippet:petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:293-303|Added, and called before every read-back.}}<h3>3. The vet dropdown opened blank</h3><p>Both forms started from <code>this.visit = {} as Visit</code>, leaving <code>vetId</code> <code>undefined</code>. The placeholder option binds to <code>null</code>, and <code>undefined !== null</code> for Angular's option lookup, so the select rendered with <code>selectedIndex = -1</code> — empty — until the user touched it.</p>{{snippet:petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:36|Same one-line change in visit-edit.}}<h3>4. The same em-dash rule, written out twice</h3><p><code>visit.vetFirstName ? visit.vetFirstName + ' ' + visit.vetLastName : '—'</code> was spelled out inline in both visit-list templates. \"No vet\" is a display decision the whole app should make the same way, so it became a pipe — which also gets a long ternary out of a template.</p>{{snippet:petclinic-frontend/src/app/visits/vet-name.pipe.ts:8-19|Declared and exported from VisitsModule; both templates now read {{ visit | vetName }}.}}<h3>5. The e2e vet picker depended on the placeholder's position</h3><p>It selected <code>option.nth(1)</code> — \"index 0 is the placeholder\" encoded as an incidental fact about the template. Reorder the options, or add a second placeholder, and an unrelated scenario fails confusingly. It now picks the first option that actually carries a vet id.</p>{{snippet:petclinic-test/src/add-visit.dsl.ts:44-57|}}<h3>6. A dead import</h3><p><code>VisitRestController</code> stopped naming the <code>Vet</code> type once the lookup moved to the repository. Removed.</p>",
+      "snippets": []
+    }
+  ],
+  "footer": "Generated by <code>/human-review</code>. <code>review/</code> is a throwaway artifact — delete it rather than commit it. Snippets were cut from the working tree at build time by <code>scripts/extract-snippet.py</code>; every <code>path:line</code> link opens VS Code at that line.",
+  "verdict": {
+    "score": 5,
+    "label": "not yet mergeable",
+    "bullets": [
+      "Feature design — sound. Nullable FK, one association, artifacts regenerated not hand-edited.",
+      "V9 — two defects that reach production behaviour.",
+      "<code>DELETE /api/vets/{id}</code> — HTTP 500 for all six seeded vets. A regression, not a gap.",
+      "Backfill on any DB whose vet ids aren't 1–6 — Flyway failure, backend won't boot.",
+      "Red e2e + vet-less video = an uncommitted local edit, not the branch. See finding 1."
+    ]
+  }
+}
