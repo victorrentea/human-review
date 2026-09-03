@@ -947,5 +947,235 @@ def test_the_panels_can_be_deep_linked_past_the_sticky_strip(tmp_path):
     assert "scroll-margin-top" in page
 
 
+def test_the_deep_link_offset_is_measured_from_the_strip_not_hardcoded(tmp_path):
+    """The strip wraps to a second row once the pills outgrow the track — it already has.
+    An offset written as a literal tall enough for one row clips the first heading of every
+    deep-linked panel, and a second literal only moves the bug to the next tab. So the
+    offset reads the strip's measured height, and the script publishes that measurement."""
+    page, _ = _build(tmp_path, BARE)
+    css = page[page.index("<style>"):page.index("</style>")]
+    offset = [l for l in css.splitlines() if "scroll-margin-top" in l]
+    assert offset, "no deep-link offset rule at all"
+    assert all("var(--strip-h" in l for l in offset), offset
+    # …and the target of a hash inside a panel gets it too, not only the panel itself.
+    assert any(".panel [id]" in l for l in offset), offset
+    # The measurement itself: taken from the strip, and re-taken when the strip resizes.
+    assert "setProperty('--strip-h'" in page
+    assert "strip.getBoundingClientRect().height" in page
+    assert "ResizeObserver" in page
+
+
+# ---------------------------------------------------------------------------
+# The masthead and the strip: how much of the viewport the page spends before
+# its first word, and whether the strip stays reachable once it is spent.
+
+
+def test_the_strip_is_pinned_to_the_top_of_the_viewport(tmp_path):
+    """A reviewer answers a dozen questions in whatever order their doubt takes them, from
+    wherever they are in a panel. `position:sticky; top:0` is the whole mechanism — a
+    `position:relative` here, or a `top` that is not 0, and the tabs sail off the screen
+    with the masthead and every jump back costs a scroll to the top first."""
+    page, _ = _build(tmp_path, BARE)
+    css = page[page.index("<style>"):page.index("</style>")]
+    rule = css[css.index(".tabstrip { position:"):]
+    rule = rule[:rule.index("}")]
+    assert "position:sticky" in rule, rule
+    assert "top:0" in rule, rule
+
+
+def test_the_pinned_state_is_observed_not_assumed(tmp_path):
+    """The strip earns an edge only while it is actually pinned over the text; in the
+    masthead it must look like part of the masthead. `position:sticky` exposes no state to
+    CSS, so the class is set from the strip's own rendered top — never from a scroll
+    threshold, which would be a second hardcoded copy of the masthead's height and would
+    go wrong the moment the masthead changes (it just did)."""
+    page, _ = _build(tmp_path, BARE)
+    assert ".tabstrip.pinned" in page
+    assert "classList.toggle('pinned'" in page
+    assert "strip.getBoundingClientRect().top" in page
+
+
+def test_shrinking_the_strip_did_not_turn_its_height_into_a_constant(tmp_path):
+    """The companion to `test_the_deep_link_offset_is_measured_from_the_strip_not_hardcoded`,
+    from the other side: the strip was made shorter by trimming padding, row gap and pill
+    line-height, and every one of those is a value the browser resolves. The instant anyone
+    "simplifies" this into `height:` or `--strip-h:` with a literal, the deep-link offset
+    stops tracking the second row and starts clipping headings again."""
+    page, _ = _build(tmp_path, BARE)
+    css = page[page.index("<style>"):page.index("</style>")]
+    strip = css[css.index(".tabstrip { position:"):]
+    strip = strip[:strip.index("}")]
+    assert "height:" not in strip, "the strip must be sized by its content, not set: " + strip
+    assert "--strip-h:" not in css, "the measurement belongs to the script, not the sheet"
+    assert "setProperty('--strip-h', h + 'px')" in page
+
+
+def test_the_masthead_does_not_reopen_its_vertical_gaps(tmp_path):
+    """Four stacked rows — title, subtitle, chips, strip — used to spend 281px before a
+    word of the review at 1280px. Every row carries facts and every one stayed; what went
+    was the air between them. These are the four cushions that were closed, pinned so a
+    later 'restore the breathing room' has to be a deliberate act rather than a merge."""
+    page, _ = _build(tmp_path, BARE)
+    css = page[page.index("<style>"):page.index("</style>")]
+
+    def decl(sel):
+        at = css.index(sel + " {")
+        return css[at:css.index("}", at)]
+
+    def bottom_margin(sel):
+        m = [t for t in decl(sel).split("margin:")[1].split(";")[0].split()]
+        return float(m[-1].rstrip("rem")) if m[-1].endswith("rem") else 0.0
+
+    assert float(decl(".wrap").split("padding:")[1].split()[0].rstrip("rem")) <= 1.5
+    assert float(decl("h1").split("font-size:")[1].split(";")[0].rstrip("rem")) <= 1.6
+    assert bottom_margin(".sub") <= 0.7
+    assert bottom_margin(".scopebar") <= 0.7
+    # The strip's own top margin is the fourth gap, and the largest of them.
+    assert float(decl(".tabstrip").split("margin:")[1].split()[0].rstrip("rem")) <= 0.7
+
+
+def test_a_page_link_the_film_never_showed_rides_in_the_transcript(tmp_path):
+    """An app link whose phrase appears in no caption is a statement about the coverage of
+    the film, so it belongs to the cue list rather than to a paragraph of page prose under
+    it. Two things have to hold or the fact is worse off than when it had its own block:
+    it must be inside the transcript, and it must be pinned to the floor of that scroller —
+    the cue list overflows at six captions, and a note about what was NOT filmed is the one
+    nobody scrolls down to look for."""
+    content = {
+        "title": "t", "summary": "<p>{{tabcount}}</p>",
+        "sections": [{"id": "vid", "title": "", "body": "",
+                      "video": "assets/f.webm",
+                      "appLinks": [{"href": "http://localhost:4200/visits",
+                                    "label": "all visits"}]}],
+        "tabs": [{"id": "vid", "label": "Demo",
+                  "blocks": [{"type": "section", "id": "vid"}]}],
+    }
+    (tmp_path / "assets").mkdir(exist_ok=True)
+    (tmp_path / "assets" / "f.cues.json").write_text(
+        json.dumps([{"t": 1.0, "text": "something else entirely"}]), encoding="utf-8")
+    page, _ = _build(tmp_path, content)
+
+    ol = page[page.index('<ol class="transcript">'):]
+    ol = ol[:ol.index("</ol>")]
+    assert "all visits" in ol, "the unplaced link left the transcript"
+    assert 'class="uncovered"' in ol
+    # Never a paragraph of its own again.
+    assert "Touched but not filmed" not in page
+    assert "http://localhost:4200/visits" not in page.split("</ol>")[1]
+
+    css = page[page.index("<style>"):page.index("</style>")]
+    pinned = css[css.index(".transcript li.uncovered {"):]
+    pinned = pinned[:pinned.index("}")]
+    assert "position:sticky" in pinned and "bottom:" in pinned, pinned
+
+
+def test_the_coverage_row_is_not_a_seek_target(tmp_path):
+    """It carries no `data-t`, because there is no frame to seek to. The caption handler
+    must therefore select on `data-t` and not on `li`: `parseFloat(undefined)` is NaN,
+    assigning NaN to `video.currentTime` throws, and a throw in that click handler kills
+    every script emitted after it — the tab strip included, which would leave every panel
+    on screen at once with no way to hide them."""
+    page, _ = _build(tmp_path, BARE)
+    assert ".transcript li[data-t]" in page
+    assert "querySelectorAll('.transcript li')" not in page
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+
+
+# ── the footer's /human-review mention carries the link to the toolset ───────────
+# A reader who wants to copy this toolset has one obvious place to look, and the
+# footer is it. Linking it in the builder rather than in content.json means no
+# author has to remember it on any run.
+def test_the_footer_mention_links_to_the_public_repo():
+    out = build._link_home("Built by /human-review against the running stack.")
+    assert '<a href="https://github.com/victorrentea/human-review">/human-review</a>' in out
+
+
+def test_only_the_first_mention_is_linked():
+    out = build._link_home("/human-review ran; see /human-review for the source.")
+    assert out.count("<a href=") == 1
+
+
+def test_an_already_linked_footer_is_left_alone():
+    already = 'Built by <a href="https://example.com/human-review">/human-review</a>.'
+    assert build._link_home(already) == already
+
+
+def test_a_footer_without_the_mention_is_untouched():
+    assert build._link_home("Measured by the step that produced it.") == \
+        "Measured by the step that produced it."
+    assert build._link_home("") == ""
+
+
+# --- what this branch added, per line -------------------------------------------------
+# The reviewer's first question about a quoted test is "is this new, or an old test with a
+# line in it?" These pin both answers, and the third case that must not regress: a file
+# git cannot be asked about renders exactly as it always did.
+
+def _tiny_repo(tmp_path, base_lines, head_lines):
+    """A two-commit repo: `main` holds base_lines, HEAD holds head_lines."""
+    def git(*a):
+        subprocess.run(["git", *a], cwd=tmp_path, check=True,
+                       capture_output=True, text=True)
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@t"); git("config", "user.name", "t")
+    f = tmp_path / "a.ts"
+    f.write_text("\n".join(base_lines) + "\n")
+    git("add", "-A"); git("commit", "-qm", "base")
+    git("branch", "-f", "origin/main", "main")      # the ref the renderer diffs against
+    f.write_text("\n".join(head_lines) + "\n")
+    git("add", "-A"); git("commit", "-qm", "head")
+    return f
+
+
+def test_added_lines_come_from_git_not_a_list(tmp_path):
+    """An old block with one line added is `changed`; a wholly new block is `new`."""
+    es = _extract_snippet()
+    es._diff_state.cache_clear()
+    old = ["const a = 1;", "const b = 2;"]
+    new = ["const a = 1;", "const b = 2;", "const c = 3;"]
+    _tiny_repo(tmp_path, old, new)
+    lines = new
+
+    assert es.added_lines("a.ts", tmp_path) == frozenset({3})
+
+    changed = es.block_status("a.ts", tmp_path, [(1, 3)], lines, "test")
+    assert changed["diff"] == "changed"
+    assert changed["label"] == "1 line changed", changed
+    assert changed["added"] == 1 and changed["total"] == 3
+
+    # The same window, restricted to the new line only, is not "one line of three" - it is
+    # the whole window, so it reads as new rather than as a change to something older.
+    whole = es.block_status("a.ts", tmp_path, [(3, 3)], lines, "test")
+    assert whole["diff"] == "new" and whole["label"] == "new test", whole
+
+
+def test_rendered_lines_carry_the_marker_and_the_badge(tmp_path):
+    """The marking is in a gutter column, never a background behind the code: green is
+    already spent on coverage one column to the left."""
+    es = _extract_snippet()
+    es._diff_state.cache_clear()
+    _tiny_repo(tmp_path, ["const a = 1;", "const b = 2;"],
+               ["const a = 1;", "const b = 2;", "const c = 3;"])
+    out = es.render("a.ts:1,3", None, tmp_path, exact=True)
+    assert '<span class="ln-row added">' in out
+    assert '<span class="dm">+</span>' in out
+    assert 'class="code-badge" data-diff="changed"' in out
+    assert "diff-changed" in out                      # unchanged lines recede
+    # the marker never becomes a background on the code itself
+    assert 'class="ln-row added" style' not in out
+
+
+def test_a_snippet_git_cannot_be_asked_about_is_unmarked(tmp_path):
+    """No repo, no ref, no marking - and no claim that the file is untouched."""
+    es = _extract_snippet()
+    es._diff_state.cache_clear()
+    (tmp_path / "a.ts").write_text("const a = 1;\nconst b = 2;\n")
+    out = es.render("a.ts:1-2", None, tmp_path, exact=True)
+    assert "code-badge" not in out
+    assert 'class="dm"' not in out
+    assert '<span class="ln">1</span>' in out          # everything else unchanged

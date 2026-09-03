@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -57,6 +58,15 @@ CSS = """
   --dgm-bg:#ffffff; --dgm-box:#f1f1f1; --dgm-frame:#eeeeee; --dgm-legend:#dddddd;
   --dgm-line:#181818; --dgm-fg:#000000; --dgm-icon:#add1b2; --dgm-activation:#e2e2f0;
   --dgm-muted:#888888; --dgm-link:#1a4fa0;
+  /* PlantUML's default palette is not the only one on the page: a hand-authored
+     .puml may carry its own `<style>` block, and packages.puml does — Material
+     blue-grey, chosen so the architecture diagram reads as a diagram of *layers*
+     rather than of classes. Those three literals get variables of their own for
+     the same reason as the twelve above, and for one more: the text inside those
+     boxes is plain #000000, so it follows --dgm-fg into near-white in dark mode.
+     A fill left un-themed there is not merely off-palette, it is the box that
+     swallows its own label. */
+  --dgm-box-accent:#eceff1; --dgm-line-accent:#546e7a; --dgm-arrow-accent:#78909c;
   /* The diff renderer's reds (puml_diff.py's `<color:red>` and seq_puml_diff.py's
      literal #D40000) are kept as their own variables rather than folded into --accent:
      they mark *added/removed*, a different signal than the page's own accent color, and
@@ -83,6 +93,13 @@ CSS = """
           --dgm-bg:#1d1d24; --dgm-box:#26262e; --dgm-frame:#202028; --dgm-legend:#2c2c36;
           --dgm-line:#8f8fa0; --dgm-fg:#e8e8ef; --dgm-activation:#2e2e42;
           --dgm-muted:#9a9aa8; --dgm-link:#8ab4f8;
+          /* The blue-grey trio, kept blue-grey: the hue is what tells the
+             architecture diagram apart from the class diagrams beside it, so it
+             is preserved and only the lightness is flipped. The fill lands a
+             touch cooler than --dgm-box for exactly that reason, and reads at
+             ~11:1 against --dgm-fg; both strokes clear 3:1 on --dgm-bg. */
+          --dgm-box-accent:#29323a; --dgm-line-accent:#93a9b5;
+          --dgm-arrow-accent:#7f97a6;
           --dgm-diff:#ff6b6b; --dgm-diff-seq:#ff6b6b;
           /* --view-diff is not repeated: it is `var(--dgm-diff)`, so it follows the
              line above on its own. These two are lifted to the same footing as the
@@ -92,16 +109,21 @@ CSS = """
 }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-.wrap { max-width:1080px; margin:0 auto; padding:2.5rem 1.25rem 5rem; }
-h1 { font-size:1.9rem; margin:0 0 .3rem; letter-spacing:-.02em; }
+/* The masthead used to spend 276px before a word of the review: a 2.5rem gutter, a
+   1.9rem headline, then three separated rows (subtitle, chips, strip) each holding a
+   1.4-1.6rem cushion. Every one of those rows carries facts and stays; what goes is the
+   air between them. The rhythm is now one tight stack -- title, subtitle, chips, tabs --
+   read as a single masthead rather than four independent bands. */
+.wrap { max-width:1080px; margin:0 auto; padding:1.4rem 1.25rem 5rem; }
+h1 { font-size:1.5rem; margin:0 0 .15rem; letter-spacing:-.02em; }
 h2 { font-size:1.3rem; margin:2.8rem 0 .8rem; padding-bottom:.4rem; border-bottom:1px solid var(--line); }
 h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
 p { margin:.6rem 0; }
 a { color:var(--link); }
-.sub { color:var(--muted); margin:0 0 1.4rem; font-size:.93rem; }
-.scopebar { display:flex; flex-wrap:wrap; gap:.5rem; margin:0 0 1.5rem; }
+.sub { color:var(--muted); margin:0 0 .55rem; font-size:.93rem; }
+.scopebar { display:flex; flex-wrap:wrap; gap:.45rem; margin:0 0 .55rem; }
 .chip { background:var(--card); border:1px solid var(--line); border-radius:999px;
-        padding:.2rem .7rem; font-size:.82rem; color:var(--muted); }
+        padding:.15rem .7rem; font-size:.82rem; color:var(--muted); }
 .chip b { color:var(--fg); font-weight:600; }
 a.chip-link { text-decoration:none; }
 a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
@@ -441,6 +463,20 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
                   padding:.4rem .5rem; border-radius:5px; cursor:pointer; font-size:.88rem; }
 .transcript li:hover { background:var(--accent-soft); }
 .transcript li.on { background:var(--accent-soft); font-weight:600; }
+/* The coverage row is not a cue: no frame to seek to, so no pointer and no hover
+   highlight, and a ruled edge above it to say the walkthrough has ended.
+   Stuck to the floor of the scroller rather than merely last in it. The cue list is a
+   fixed-height box that already overflows at six captions, so "last child" is another way
+   of saying "below the fold" — and a statement about what the film does NOT cover is
+   exactly the one a reader will never scroll to look for. Pinned, it is always the last
+   thing under the captions and still costs the page no height at all. */
+.transcript li.uncovered { position:sticky; bottom:-.3rem; z-index:1;
+                cursor:default; color:var(--muted); border-top:1px solid var(--line);
+                border-radius:0; margin-top:.3rem; padding:.55rem .5rem .4rem;
+                background:var(--card); }
+.transcript li.uncovered:hover { background:var(--card); }
+.transcript li.uncovered .ts { color:var(--muted); opacity:.6; }
+.transcript li.uncovered b { color:var(--fg); }
 .transcript .ts { font:600 11.5px/1.5 ui-monospace,Menlo,monospace; color:var(--link); }
 /* A caption is a seek target, so a link inside one has to read as a *different* affordance
     without shouting: the page's own link colour and the dotted underline it already uses
@@ -455,11 +491,16 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
     separate questions ("does the contract still hold?", "where did it land?"), and a
     reviewer answers them in whatever order their doubt takes them. Full-bleed and
     sticky, so the questions stay reachable from anywhere in an answer. */
-.tabstrip { position:sticky; top:0; z-index:30; margin:1.6rem 0 1.4rem;
+/* Two rows is the strip's normal state at 1280px and 1440px -- its inner track is pinned
+   at ~1140px by the padding formula and fifteen pills need ~1210px -- so the height that
+   matters is the height of a row, paid twice, every scroll. Trimmed at three points: the
+   strip's own vertical padding, the row gap, and the pill line-height below. Nothing here
+   is a fixed height: `--strip-h` is still measured off the rendered box. */
+.tabstrip { position:sticky; top:0; z-index:30; margin:.5rem 0 .85rem;
             margin-left:calc(50% - 50vw); width:100vw;
-            padding:.5rem max(1.25rem, calc(50vw - 540px + 1.25rem));
+            padding:.3rem max(1.25rem, calc(50vw - 540px + 1.25rem));
             background:var(--bg); border-bottom:1px solid var(--line);
-            display:flex; gap:.3rem; flex-wrap:wrap; align-items:center; }
+            display:flex; gap:.2rem .3rem; flex-wrap:wrap; align-items:center; }
 .tabstrip .grow { flex:1 1 1rem; }
 /* Ten tabs no longer fit the 1040px track the strip inherits from the text column:
    the tabs themselves still make one row, but `show all` dropped to a second, doubling
@@ -468,12 +509,16 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
    bleed. The left padding is untouched, so the first tab stays aligned with the body
    text exactly as before. */
 .tabstrip { padding-right: max(1.25rem, calc(50vw - 620px + 1.25rem)); }
+/* The strip is the top of the page once the masthead has scrolled away, so it carries
+   the edge that used to be the masthead's: a shadow under the border, only while it is
+   actually pinned, so content passing beneath it reads as passing *under* something. */
+.tabstrip.pinned { box-shadow:0 2px 6px rgba(0,0,0,.13); }
 /* Struck through, not hidden: the tab still holds the current state as context, and a
    reviewer who cannot see that it exists cannot tell it was considered. */
 button.tab.quiet { text-decoration:line-through; text-decoration-thickness:1px; opacity:.5; }
 button.tab.quiet:hover, button.tab.quiet[aria-selected="true"] { opacity:.85; }
 button.tab { border:1px solid transparent; background:none; color:var(--muted); border-radius:999px;
-             cursor:pointer; font:600 .87rem/2 inherit; padding:0 .85rem; white-space:nowrap;
+             cursor:pointer; font:600 .87rem/1.8 inherit; padding:0 .85rem; white-space:nowrap;
              display:inline-flex; align-items:center; gap:.42rem; }
 button.tab:hover { color:var(--fg); background:var(--card); border-color:var(--line); }
 button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
@@ -503,8 +548,16 @@ button.allbtn:hover { color:var(--fg); border-color:var(--link); }
 button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:#fff; }
 .panel[hidden] { display:none; }
 /* A hash lands the panel top flush against the viewport, where the sticky strip sits
-   on top of it and eats the first line. Push the scroll target down past the strip. */
-.panel { scroll-margin-top: 3.2rem; }
+   on top of it and eats the first line. Push the scroll target down past the strip.
+   The push is the strip's OWN measured height (TABS_JS keeps `--strip-h` in step with
+   it, on load and on every resize), not a constant: the strip wraps to a second row
+   whenever the pills outgrow the track, and a literal tall enough for one row clips
+   every deep-linked heading the moment a tab is added. The fallback in the calc() is
+   one row, for the instant before the script runs and if it never does.
+   It applies to anything addressable inside a panel, not just the panel: a hash may
+   name a heading halfway down one, and `scrollIntoView` honours the target's own
+   scroll-margin, not its ancestor's. */
+.panel, .panel [id] { scroll-margin-top: calc(var(--strip-h, 2.6rem) + .6rem); }
 .panel > h2:first-child, .panel > .paneltag + h2 { margin-top:.2rem; }
 /* Only meaningful once every panel is on screen at once, which is what "show all"
     (and printing) do — otherwise the heading names the tab you are already on. */
@@ -571,7 +624,7 @@ button.tab { padding:0 .6rem; }
 CAPTION_JS = """<script>
 document.querySelectorAll('.vidwrap').forEach(function (wrap) {
   var video = wrap.querySelector('video');
-  var items = Array.prototype.slice.call(wrap.querySelectorAll('.transcript li'));
+  var items = Array.prototype.slice.call(wrap.querySelectorAll('.transcript li[data-t]'));
   if (!items.length) return;
   // A run that failed to record still ships the transcript, with a notice where the player
   // would be. There is nothing to seek, so the captions stay plain text — and nothing here
@@ -807,6 +860,33 @@ TABS_JS = """<script>
   var showAll = strip.querySelector('button.allbtn');
   var active = 0;
 
+  // How far a deep link has to clear the sticky strip is the strip's rendered height,
+  // and that is not a constant: the pills wrap to a second row as soon as they outgrow
+  // the track, which happens on a narrow window and happened for good the day the
+  // thirteenth tab landed. Publish the measurement as `--strip-h` and let the CSS do
+  // the arithmetic, so one row, two rows and whatever the next tab does are all correct
+  // without anyone editing a number.
+  function syncStripHeight() {
+    var h = strip.getBoundingClientRect().height;
+    if (h > 0) document.documentElement.style.setProperty('--strip-h', h + 'px');
+  }
+  syncStripHeight();
+  if (window.ResizeObserver) new ResizeObserver(syncStripHeight).observe(strip);
+  else window.addEventListener('resize', syncStripHeight);
+
+  // `position:sticky` gives no state to style against: the strip looks identical whether
+  // it is sitting in the masthead or pinned over the text. Compare its rendered top with
+  // where it would sit unpinned -- offsetTop is relative to `.wrap`, which is static, so
+  // the difference IS the scroll the strip has absorbed. Marks the pinned state so the
+  // stylesheet can put an edge under it; nothing here measures or sets a height.
+  function syncPinned() {
+    var pinned = strip.getBoundingClientRect().top <= 0.5;
+    strip.classList.toggle('pinned', pinned);
+  }
+  syncPinned();
+  window.addEventListener('scroll', syncPinned, {passive: true});
+  window.addEventListener('resize', syncPinned);
+
   function paint() {
     var all = document.body.classList.contains('showall');
     tabs.forEach(function (t, i) {
@@ -993,6 +1073,12 @@ EDITOR_JS = r"""<script>
         .catch(function () { flash('The review server is no longer running'); });
       return;
     }
+    // Not served, and at top level: the extension's URI handler is the only channel left
+    // that can materialise a before-image out of git. It is emitted only where the build
+    // found that extension installed, so a portable guide never carries a URL that would
+    // dead-end instead of degrading.
+    var duri = link.getAttribute('data-diff-uri');
+    if (!SERVED && !EMBEDDED && duri) { window.location.href = duri; return; }
     var ref2 = SERVED && parse(link.getAttribute('href'));
     if (ref2) {
       fetch('/__open__?path=' + encodeURIComponent(ref2.path) + '&line=' + ref2.line)
@@ -1004,7 +1090,14 @@ EDITOR_JS = r"""<script>
         .catch(function () { flash('The review server is no longer running'); });
       return;
     }
-    if (!EMBEDDED) { window.location.href = link.getAttribute('href'); return; }
+    if (!EMBEDDED) {
+      // A diff link with no channel to open a diff through still opens the file, which is
+      // the right thing — but silently, it reads as the feature being broken rather than
+      // unavailable. That is exactly how this landed the first time, so it says so.
+      if (base) flash('No diff channel here \u2014 opening the file at the change.');
+      window.location.href = link.getAttribute('href');
+      return;
+    }
     // `path:line`, which is what Quick Open takes
     var ref = (link.textContent || '').trim().split('-')[0]
       || decodeURIComponent(link.getAttribute('href')).replace(/^vscode:\/\/file\/*/, '/').replace(/:\d+$/, '');
@@ -1182,9 +1275,18 @@ GENSEQ_JS = """<script>
   }
 
   document.querySelectorAll('.diagram').forEach(function (diagram) {
-    var carrier = diagram.querySelector('script.genseq-details');
-    if (!carrier) return;
-    var details = (JSON.parse(carrier.textContent) || {}).details || {};
+    // Every carrier, not the first: a diagram is now drawn three times in one card
+    // (Diff / New / Old), and each side's handles are keyed by ids derived from that
+    // side's payloads. One carrier covered one side, and the other panes' handles were
+    // dropped as dead. Merged work-tree-first; the ids are content-derived, so an id
+    // present on both sides carries the same payload either way.
+    var carriers = diagram.querySelectorAll('script.genseq-details');
+    if (!carriers.length) return;
+    var details = {};
+    for (var c = carriers.length - 1; c >= 0; c--) {
+      var part = (JSON.parse(carriers[c].textContent) || {}).details || {};
+      for (var key in part) details[key] = part[key];
+    }
     var href = sourceOf(diagram);
     var revealable = 0;
 
@@ -1241,7 +1343,10 @@ GENSEQ_JS = """<script>
       + 'or its JSON payload. Switching a statement to its bound values switches them all. '
       + 'Click a section header to open its scenario in the test; \u2318-click an arrow '
       + '(Ctrl elsewhere) to open the test file.';
-    diagram.querySelector('.svgbox').insertAdjacentElement('beforebegin', hint);
+    // Above the whole viewer where there is one, not above the first .svgbox — that one
+    // lives inside the Diff pane, so the instructions vanished on New and Old.
+    (diagram.querySelector('.dgmviews') || diagram.querySelector('.svgbox'))
+      .insertAdjacentElement('beforebegin', hint);
   });
 
   // The panel is placed in page coordinates, so a diagram scrolled sideways under it
@@ -1270,6 +1375,32 @@ SNIPPET_TOKEN = re.compile(
 # and not to "what did you do": the reader has to imagine the delta. This opens the real
 # before/after in the editor instead.
 DIFF_TOKEN = re.compile(r"\{\{difflink:(?P<path>[^|}@]+)@(?P<base>[0-9a-fA-F]{7,40})\}\}")
+
+
+def diff_uri_handler() -> str | None:
+    """The extension id that can open a diff for a guide read off disk, if it is installed.
+
+    A guide served over http asks its own origin for a diff. Read from `file://` — which is
+    how it is actually read — there is no origin to ask and no reach to loopback, so the
+    only channel left is a `vscode://<publisher>.<extension>/...` URL that VS Code routes
+    to an extension. That URL is *not* portable: on a machine without the extension it
+    dead-ends instead of degrading, which is worse than no diff at all.
+
+    So it is emitted only where it will work, and the check is for the thing itself rather
+    than for a flag someone has to remember to set. `HUMAN_REVIEW_DIFF_URI_HANDLER` forces
+    it either way — an id to use, or empty to suppress it — for building a guide meant to
+    be read on another machine."""
+    override = os.environ.get("HUMAN_REVIEW_DIFF_URI_HANDLER")
+    if override is not None:
+        return override.strip() or None
+    for store in (Path.home() / ".vscode" / "extensions",
+                  Path.home() / ".vscode-insiders" / "extensions"):
+        try:
+            if any(d.name.startswith("victorrentea.victor-vsc-") for d in store.iterdir()):
+                return "victorrentea.victor-vsc"
+        except OSError:
+            continue
+    return None
 
 
 def diff_link_html(rel: str, base: str, root: Path) -> str:
@@ -1311,8 +1442,15 @@ def diff_link_html(rel: str, base: str, root: Path) -> str:
     line = next((i + 1 for i, (x, y) in enumerate(zip(b_lines, a_lines)) if x != y),
                 min(len(b_lines), len(a_lines)) + 1)
     short = base[:8]
+    # The extra handle for the unserved case. The `href` stays the ordinary
+    # `vscode://file/...`, so dropping this attribute costs the diff and nothing else.
+    handler = diff_uri_handler()
+    uri = ""
+    if handler:
+        q = urllib.parse.urlencode({"file": str(src.resolve()), "base": base, "line": line})
+        uri = f' data-diff-uri="{html.escape(f"vscode://{handler}/diff?{q}")}"'
     return (
-        f'<a class="srcref diffref" href="vscode://file/{src.resolve()}:{line}:1"'
+        f'<a class="srcref diffref" href="vscode://file/{src.resolve()}:{line}:1"{uri}'
         f' data-diff-path="{html.escape(rel)}" data-diff-base="{html.escape(base)}"'
         f' data-tip="Open this fix as a diff — {short} on the left, the working tree on'
         f' the right">&#8646; diff vs {html.escape(short)}</a>'
@@ -1424,8 +1562,9 @@ def _scope_entity_links(svg: str) -> str:
 
 # PlantUML paints every diagram it draws for this repo (class, ER, sequence — none of
 # them set `!theme` or a colour skinparam beyond `hyperlinkColor`) in one fixed, hardcoded
-# palette. That is the whole of it: every fill/stroke/background literal below is one of
-# these twelve values, in every .svg this pipeline inlines. Mapping each to a `--dgm-*`
+# palette — plus, for a .puml that carries a `<style>` block of its own, whatever that
+# block names. Both kinds are enumerated below by exact literal, and between them they
+# cover every fill/stroke/background this pipeline inlines. Mapping each to a `--dgm-*`
 # custom property (declared in CSS, above) — rather than a blanket `filter:invert()` on
 # the diagram, which would flatten these into a wash and turn the diff renderer's
 # deliberate reds into cyans — lets dark mode restyle exactly these shapes and nothing
@@ -1439,6 +1578,10 @@ DIAGRAM_COLOR_VARS = {
     "#DDDDDD": "--dgm-legend", "#181818": "--dgm-line", "#000000": "--dgm-fg",
     "#ADD1B2": "--dgm-icon", "#E2E2F0": "--dgm-activation", "#888888": "--dgm-muted",
     "#1A4FA0": "--dgm-link", "#FF0000": "--dgm-diff", "#D40000": "--dgm-diff-seq",
+    # packages.puml's own <style> block (Material blue-grey): component fill,
+    # component border, arrow. Same treatment, different source — see the CSS.
+    "#ECEFF1": "--dgm-box-accent", "#546E7A": "--dgm-line-accent",
+    "#78909C": "--dgm-arrow-accent",
 }
 DIAGRAM_FILL_ATTR = re.compile(r'\bfill="(#[0-9A-Fa-f]{6})"')
 DIAGRAM_STYLE_COLOR = re.compile(r'\b(stroke|background):(#[0-9A-Fa-f]{6})\b')
@@ -1483,11 +1626,33 @@ def genseq_details(rel: str, root: Path) -> str:
     sidecar = root / (rel[: -len(".puml")] + ".json")
     if not sidecar.is_file():
         return ""
+    return _details_carrier(sidecar)
+
+
+def _details_carrier(sidecar: Path) -> str:
     # `<` is the only character that can end a <script> block early, and a JSON string
     # may legally spell it \\u003c — so the payload stays valid JSON and inert to the
     # HTML parser without any un-escaping step on the other side.
     payload = sidecar.read_text(encoding="utf-8").replace("<", "\\u003c")
     return f'<script type="application/json" class="genseq-details">{payload}</script>'
+
+
+def genseq_details_at_base(row, assets: Path) -> str:
+    """The same sidecar as of the base ref, for the diagram's `Old` pane.
+
+    The handles PlantUML draws are generation-time ids, and an id is derived from the
+    payload — so a request body that changed on this branch has a different id on each
+    side. With only the work tree's sidecar in the page, every such handle on the old
+    render resolved to nothing and `GENSEQ_JS` dropped it as a dead one: the pane looked
+    wired (cursor, hit area) and expanded nothing. The ids that happened to survive —
+    SQL whose statement did not change — kept working, which is what made the failure
+    read as "bodies are broken" rather than "the payloads for that side are missing".
+
+    Both carriers go into the page and the reader merges them, work tree first. Ids are
+    content-derived, so an id in both sides means the same payload on both.
+    """
+    name = (row.get("old_details") or "").strip()
+    return _details_carrier(assets / name) if name and (assets / name).is_file() else ""
 
 
 def read_manifest(path: Path):
@@ -1656,6 +1821,24 @@ def chapters(puml: Path):
     return found
 
 
+def _unquoted_note(test_rel: str, root: Path) -> str:
+    """What to say beside a diagram no snippet quotes.
+
+    Silence would read as "this diagram has no test", which is never true — the manifest
+    only knows about a diagram *because* a test generated it. The two things that are
+    true are said instead, and they are different: nobody chose an excerpt, or the file
+    the generator recorded is not in this checkout. The second one is the reader's cue
+    that the pairing is real but the source is not here to read."""
+    if (root / test_rel).is_file():
+        return (f'<p class="testlead"><span>Generated by '
+                f'<a class="srcref" href="vscode://file/{(root / test_rel).resolve()}:1:1" '
+                f'data-tip="Open in VS Code">{html.escape(test_rel)}</a>, '
+                f'not excerpted here.</span></p>')
+    return (f'<p class="testlead"><span>Generated by <code>{html.escape(test_rel)}</code>, '
+            f'which is not in this checkout — the diagram is the only record of it '
+            f'left.</span></p>')
+
+
 def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     """Each acceptance test next to the sequence its own run recorded.
 
@@ -1666,8 +1849,12 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     diagram's own chapter titles say which scenarios inside that file, at which lines. So it
     is derived, not authored.
 
-    A test with no diagram is never dropped and never given one it did not produce: it goes
-    to a trailing group that says exactly that."""
+    Neither side is ever dropped, and neither is ever given a partner it did not produce.
+    A test with no diagram goes to a trailing group that says exactly that — the more
+    interesting of the two absences, because a tagged test with no recorded trace is a
+    fact about the *evidence* rather than a gap in the page. A diagram whose test is not
+    quoted, or not in this checkout at all, says so under its own heading rather than
+    sitting there looking like it came from nowhere."""
     rows = [r for r in select_rows(manifest_rows, block) if r["kind"] == "sequence"]
     snippets = list(block.get("snippets", []))
     parts, used = [], set()
@@ -1690,7 +1877,8 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
             for path, line, title in chapters(root / r["source"])
         )
         pieces = ([f'<p class="testlead">{lead}</p>'] if lead else [""])
-        pieces += take(test_rel)
+        quoted = take(test_rel)
+        pieces += quoted or [_unquoted_note(test_rel, root)]
         pieces.append(render_diagrams(merged, root, out_dir, [r]))
         # Each piece already ends its own last tag; extract-snippet also ends with a
         # newline, and joining on one more turns the ruled block into a gappy list.
@@ -1772,6 +1960,7 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
             + (f"<p>{note}</p>" if note else "")
             + _provenance(r["source"], root)
             + genseq_details(r["source"], root)
+            + genseq_details_at_base(r, manifest.parent)
             + body + '</div>'
         )
     return "\n".join(parts)
@@ -1937,13 +2126,20 @@ def video_html(s, out_dir: Path) -> str:
               'was not produced by this run, so there is no player here — the narration '
               'below is what the recording would have shown, and it is the only part of '
               'this section that is not evidence.</p>')
-    out = f'<div class="vidwrap">{player}<ol class="transcript">{items}</ol></div>'
+    # A screen the branch touched and the film never showed is a fact about the *coverage
+    # of the film*, so it belongs to the transcript, not to the page under it. It used to
+    # be a paragraph of its own below the player — a full block of vertical space, in the
+    # page's own prose voice, for a footnote. As the transcript's last row it costs no
+    # height at all (the cue list is a fixed-height scroller) and it is read where the
+    # question it answers is actually asked: "is that everything the film covered?".
+    # No `data-t`: there is no frame to seek to, which is the whole point of the row.
     if unplaced:
-        out += ('\n<p class="sub"><b>Touched but not filmed</b> — opens the running app: '
-                + " · ".join(f'<a href="{html.escape(l["href"])}">'
-                             f'{html.escape(l.get("label") or l["href"])}</a>'
-                             for l in unplaced) + ".</p>")
-    return out
+        items += ('<li class="uncovered"><span class="ts">--:--</span><span>'
+                  '<b>Not filmed.</b> Touched by this change: '
+                  + " · ".join(f'<a href="{html.escape(l["href"])}">'
+                               f'{html.escape(l.get("label") or l["href"])}</a>'
+                               for l in unplaced) + ".</span></li>")
+    return f'<div class="vidwrap">{player}<ol class="transcript">{items}</ol></div>'
 
 
 def embed_html(s, out_dir: Path) -> str:
@@ -2998,6 +3194,24 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
                                 "which is not in 'sections'")
     return problems
 
+HOME_URL = "https://github.com/victorrentea/human-review"
+
+
+def _link_home(footer: str) -> str:
+    """Point the footer's `/human-review` at the repo the toolset lives in.
+
+    The footer is prose from content.json, so a hand-written link would have to be
+    remembered by every author on every run — and the one that matters most is the
+    one a reader follows to copy the toolset. Linking it here means the mention is
+    enough. Only the first occurrence, and never one already inside an <a>.
+    """
+    if not footer or "/human-review" not in footer or "human-review\"" in footer:
+        return footer
+    return footer.replace(
+        "/human-review",
+        f'<a href="{HOME_URL}">/human-review</a>', 1)
+
+
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
@@ -3092,7 +3306,7 @@ def main(argv=None) -> int:
     for c in scope:
         # The other chip that must never be typed. `{"auto": "autofixed"}` counts the two
         # lists this page actually renders — the open findings and the applied fixes — so
-        # the chip and the Auto-fixed tab can never disagree with each other. The reason
+        # the chip and the LLM Review tab can never disagree with each other. The reason
         # it exists is that they already did: the hand-typed `/code-review 8 findings`
         # outlived the ninth finding being added, and nothing caught it, because nothing
         # was looking. `href` (and any label or tip) still comes from the content file.
@@ -3100,11 +3314,13 @@ def main(argv=None) -> int:
             fixed = len(spec.get("autofixes", []))
             total = len(spec.get("findings", [])) + fixed
             computed = {
-                "label": "auto-fixed",
-                "value": str(total),
-                # The number is a count of *items the two automated passes raised*, not a
-                # count of repairs: say so on hover, because the label alone reads as if
-                # all of them were fixed and only `fixed` of them were.
+                "label": "LLM review",
+                # Both halves computed. The chip used to read `auto-fixed <n>`, and the
+                # label did the lying the tooltip then had to walk back: only three of the
+                # twelve were fixed, and a reader who never hovers was told all twelve
+                # were. Raised-and-open on the face states the two numbers a reviewer
+                # actually acts on, and neither can drift from the lists behind it.
+                "value": f"{total} raised &middot; {total - fixed} open",
                 "tip": f"{total} items raised by /code-review and /simplify — "
                        f"{fixed} applied for you, {total - fixed} left for your judgement. "
                        "Counted from the lists on the page, never typed.",
@@ -3462,7 +3678,7 @@ def main(argv=None) -> int:
 {verdict_html}
 
 {body_html}
-<footer>{spec.get('footer', '')}</footer>
+<footer>{_link_home(spec.get('footer', ''))}</footer>
 </div>
 {CAPTION_JS}
 {GENSEQ_JS}

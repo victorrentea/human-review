@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -173,7 +174,7 @@ def test_there_is_exactly_one_place_that_emits_the_control():
 
 def test_puml_diff_writes_the_two_extra_columns():
     sh = (HERE / "puml-diff.sh").read_text()
-    assert "\\tnew_svg\\told_svg\\n' > \"$MANIFEST\"" in sh
+    assert "\\tnew_svg\\told_svg\\told_details\\n' > \"$MANIFEST\"" in sh
     assert 'render_plain "$new" "$OUT_DIR/$name.new"' in sh
     assert 'render_plain "$old" "$OUT_DIR/$name.old"' in sh
 
@@ -193,3 +194,210 @@ def test_the_header_arrow_survived_python_before_it_reached_css():
     diagram header. Nothing in the stylesheet should contain a control character."""
     assert '.head b::after { content:"↔"' in build.CSS
     assert not [c for c in build.CSS if ord(c) < 32 and c != "\n"]
+
+
+# ── every pane must be as live as every other ─────────────────────────────────────
+#
+# The defect this guards is not "Old is broken", it is "wiring that assumes one copy".
+# A sequence diagram's expandable arrows carry generation-time ids, and the payloads for
+# those ids ride in `script.genseq-details` carriers inlined next to the picture. Draw the
+# diagram three times and only one side's payloads are in the page: the other panes look
+# wired — cursor, hit area — and expand nothing. These tests are written against however
+# many panes exist, so a fourth pane added and left inert fails them.
+
+import json as _json
+import re as _re
+
+
+def _handles(html: str) -> dict:
+    """pane name → the genseq ids its SVG draws a handle for."""
+    out, parts = {}, _re.split(r'<div class="dgmpane" data-view="', html)
+    for chunk in parts[1:]:
+        pane, _, body = chunk.partition('"')
+        out[pane] = set(_re.findall(r'href="genseq://([^"]+)"', body))
+    return out
+
+
+def _payload_ids(html: str) -> set:
+    ids = set()
+    for blob in _re.findall(
+            r'<script type="application/json" class="genseq-details">(.*?)</script>', html, _re.S):
+        ids |= set((_json.loads(blob.replace("\\u003c", "<")) or {}).get("details", {}))
+    return ids
+
+
+def _seq_page(tmp_path, *, base_details: bool):
+    """A two-sided sequence diagram whose sides use different payload ids — which is what
+    happens whenever a request or response body changed on the branch."""
+    def svg(path, ids):
+        path.write_text('<svg xmlns="http://www.w3.org/2000/svg">' + "".join(
+            f'<a href="genseq://{i}"><text>200</text></a>' for i in ids) + "</svg>")
+        return path.name
+
+    def sidecar(path, ids):
+        path.write_text(_json.dumps({"version": 1, "details": {
+            i: {"title": i, "steps": [{"text": "{}"}]} for i in ids}}))
+        return path.name
+
+    # the work tree's, which the page has always carried, and the base ref's, which it
+    # did not — both emitted by production code, from the two places they really live
+    sidecar(tmp_path / "t.genseq.json", ["new1"])
+    sidecar(tmp_path / "s.old.json", ["old1"])
+    row = {"name": "Seq", "source": "t.genseq.puml", "kind": "sequence",
+           "status": "modified", "diff_puml": "s.diff.puml", "focus": "",
+           "svg": svg(tmp_path / "s.svg", ["new1"]),
+           "new_svg": svg(tmp_path / "s.new.svg", ["new1"]),
+           "old_svg": svg(tmp_path / "s.old.svg", ["old1"]),
+           "old_details": "s.old.json" if base_details else ""}
+    return build.render_diagrams({"manifest": "M.tsv"}, tmp_path, tmp_path, rows=[row])
+
+
+def test_every_pane_has_a_payload_for_every_handle_it_draws(tmp_path):
+    """The invariant, stated over whatever panes exist. Add a fourth and forget its
+    payloads and this fails, naming the pane."""
+    page = _seq_page(tmp_path, base_details=True)
+    known = _payload_ids(page)
+    panes = _handles(page)
+    assert len(panes) >= 2, panes
+    for pane, ids in panes.items():
+        assert ids, f"{pane} draws no handles at all"
+        assert ids <= known, f"{pane} draws handles with no payload: {sorted(ids - known)}"
+
+
+def test_the_test_above_fails_when_a_side_brings_no_payloads(tmp_path):
+    """Proof the guard bites: this is the shipped bug, and it must not pass."""
+    page = _seq_page(tmp_path, base_details=False)
+    known = _payload_ids(page)
+    dead = {p: sorted(ids - known) for p, ids in _handles(page).items() if ids - known}
+    assert dead == {"old": ["old1"]}, dead
+
+
+def test_the_page_reads_every_payload_carrier_not_just_the_first():
+    """`querySelector` was right when a diagram appeared once. With three panes it means
+    two of them silently lose their payloads."""
+    js = build.GENSEQ_JS
+    assert "querySelectorAll('script.genseq-details')" in js
+    assert "querySelector('script.genseq-details')" not in js
+
+
+def test_nothing_in_the_expander_resolves_by_document_wide_id():
+    """The other way duplicated content breaks: an id lookup finds the first copy. The
+    handles are per-element listeners and `closest()` — keep it that way."""
+    js = build.GENSEQ_JS
+    assert "getElementById" not in js
+    assert not _re.search(r"""querySelector(?:All)?\(['"]#""", js)
+
+
+def test_the_instructions_sit_above_the_viewer_not_inside_one_pane(tmp_path):
+    """Inserted before the first `.svgbox`, the hint lands inside the Diff pane and
+    disappears on New and Old — the same one-copy assumption, in the prose."""
+    assert "querySelector('.dgmviews') || diagram.querySelector('.svgbox')" \
+        in build.GENSEQ_JS
+
+
+def test_puml_diff_carries_the_base_sidecar_for_the_old_render():
+    sh = (HERE / "puml-diff.sh").read_text()
+    assert 'git show "$MERGE_BASE:${rel%.puml}.json"' in sh
+    assert "\\told_details\\n' > \"$MANIFEST\"" in sh
+    assert '*.genseq.puml)' in sh, "only generated sequence diagrams have a sidecar"
+
+
+# ── testpairs: the test beside the sequence its own run recorded ───────────────────
+#
+# The gallery became pairs so the diagrams read as study material rather than a lookup
+# exercise. Two things must survive that restructure: the three-state viewer on each
+# diagram, and BOTH payload carriers — the work tree's and the base ref's — because the
+# panes are rendered through the same `render_diagrams` and losing a carrier is how the
+# Old pane went inert the first time.
+
+def _pairs_fixture(tmp_path, *, quote_test=True, test_on_disk=True):
+    # `extract-snippet.py` resolves the project from git, and refuses to guess: a snippet
+    # whose line numbers came from outside a repository could not be diffed against the
+    # base, and it would rather say so than render a badge it cannot stand behind.
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+
+    def svg(path, ids):
+        path.write_text('<svg xmlns="http://www.w3.org/2000/svg">' + "".join(
+            f'<a href="genseq://{i}"><text>200</text></a>' for i in ids) + "</svg>")
+        return path.name
+
+    def sidecar(path, ids):
+        path.write_text(_json.dumps({"version": 1, "details": {
+            i: {"title": i, "steps": [{"text": "{}"}]} for i in ids}}))
+        return path.name
+
+    src = tmp_path / "spec.ts.genseq.puml"
+    src.write_text("@startuml\n== [[src://spec.ts:2{Click to open the test} A scenario]] ==\n@enduml\n")
+    if test_on_disk:
+        (tmp_path / "spec.ts").write_text("// header\ntest('A scenario', () => {\n  ok();\n});\n")
+    sidecar(tmp_path / "spec.ts.genseq.json", ["new1"])
+    sidecar(tmp_path / "s.old.json", ["old1"])
+    row = {"name": "Spec", "source": "spec.ts.genseq.puml", "kind": "sequence",
+           "status": "modified", "diff_puml": "s.diff.puml", "focus": "",
+           "svg": svg(tmp_path / "s.svg", ["new1"]),
+           "new_svg": svg(tmp_path / "s.new.svg", ["new1"]),
+           "old_svg": svg(tmp_path / "s.old.svg", ["old1"]),
+           "old_details": "s.old.json"}
+    block = {"type": "testpairs", "id": "sequences", "kind": "sequence",
+             "snippets": ([{"ref": "spec.ts:2-4"}] if quote_test else [])}
+    html, weight, _ = build.render_testpairs(block, {"manifest": "M.tsv"}, [row],
+                                             tmp_path, tmp_path)
+    return html
+
+
+def test_a_pair_keeps_the_three_state_viewer(tmp_path):
+    html = _pairs_fixture(tmp_path)
+    assert 'class="dgmviews"' in html
+    assert html.count('<div class="dgmpane"') == 3
+    for view in ("diff", "new", "old"):
+        assert f'data-view="{view}"' in html
+
+
+def test_a_pair_carries_both_payload_sidecars(tmp_path):
+    """The regression that made the Old pane inert. Rendered inside a pair, the diagram
+    must still ship the base ref's payloads as well as the work tree's."""
+    html = _pairs_fixture(tmp_path)
+    known = _payload_ids(html)
+    assert known == {"new1", "old1"}, known
+    for pane, ids in _handles(html).items():
+        assert ids <= known, f"{pane} draws handles with no payload: {sorted(ids - known)}"
+
+
+def test_a_pair_leads_with_the_scenario_and_its_deep_link(tmp_path):
+    html = _pairs_fixture(tmp_path)
+    assert "A scenario" in html and "vscode://file/" in html and ":2:1" in html
+
+
+def test_a_diagram_nobody_quoted_says_so_instead_of_saying_nothing(tmp_path):
+    """Silence would read as "this diagram has no test", which is never true — the
+    manifest knows about it only because a test generated it."""
+    html = _pairs_fixture(tmp_path, quote_test=False)
+    assert "not excerpted here" in html
+    assert "spec.ts" in html
+
+
+def test_a_diagram_whose_test_left_the_checkout_says_that_instead(tmp_path):
+    html = _pairs_fixture(tmp_path, quote_test=False, test_on_disk=False)
+    assert "not in this checkout" in html
+    assert "not excerpted here" not in html
+
+
+def test_a_test_with_no_diagram_is_never_dropped(tmp_path):
+    """The more interesting absence: a tagged test whose trace never came back is a fact
+    about the evidence. It goes to a named group, not to the floor."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "orphan.ts").write_text("// x\ntest('untraced', () => {\n  ok();\n});\n")
+    src = tmp_path / "spec.ts.genseq.puml"
+    src.write_text("@startuml\n@enduml\n")
+    (tmp_path / "spec.ts.genseq.json").write_text('{"version":1,"details":{}}')
+    (tmp_path / "s.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    row = {"name": "Spec", "source": "spec.ts.genseq.puml", "kind": "sequence",
+           "status": "modified", "diff_puml": "s.diff.puml", "focus": "",
+           "svg": "s.svg", "new_svg": "", "old_svg": "", "old_details": ""}
+    block = {"type": "testpairs", "id": "sequences", "kind": "sequence",
+             "snippets": [{"ref": "orphan.ts:2-4"}],
+             "unpaired": {"id": "tests-nosequence", "title": "No diagram came back"}}
+    html, _, _ = build.render_testpairs(block, {"manifest": "M.tsv"}, [row],
+                                        tmp_path, tmp_path)
+    assert "No diagram came back" in html and "untraced" in html
+    assert 'id="tests-nosequence"' in html

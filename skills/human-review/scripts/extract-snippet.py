@@ -18,7 +18,9 @@ link, because VS Code resolves nothing itself.
 from __future__ import annotations
 
 import argparse
+import functools
 import html
+import os
 import re
 import subprocess
 import tempfile
@@ -91,7 +93,136 @@ def stylesheet() -> str:
         # `user-select:none` so copying the block out yields the real lines only.
         "pre.code .ln-gap { font-style:normal; }\n"
         "pre.code .code-gap { font-style:italic; opacity:.55; user-select:none; }\n"
+        # Lines this branch added are marked in a column of their own, never behind the
+        # code. Green already means "covered" on the Requirements tab, one column to the
+        # left, so a green band under source would be a genuine ambiguity; a `+` and a
+        # rule down the left edge are diff vocabulary instead, they sit outside the code,
+        # and they leave the syntax colours untouched.
+        "pre.code .dm { display:inline-block; width:1.05em; text-align:center;\n"
+        "  user-select:none; border-left:3px solid transparent; margin-right:.15em;\n"
+        "  color:transparent; }\n"
+        "pre.code .ln-row.added .dm { border-left-color:#2da44e; color:#2da44e;\n"
+        "  font-weight:700; }\n"
+        # In a window that is mostly old, the untouched lines are context. Letting them
+        # recede answers "what do I look at" better than making one line among twenty
+        # shout. Not done when the whole window is new - there is nothing to recede from.
+        "pre.code.diff-changed .ln-row:not(.added) { opacity:.55; }\n"
+        ".code-badge { display:inline-block; font:600 10.5px/1.6 ui-monospace,\n"
+        "  SFMono-Regular,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase;\n"
+        "  padding:0 7px; border-radius:999px; border:1px solid currentColor;\n"
+        "  color:#1a7f37; background:rgba(45,164,78,.09); }\n"
+        ".code-badge[data-diff=unchanged] { color:var(--muted,#6b6b6b);\n"
+        "  background:transparent; }\n"
+        "@media (prefers-color-scheme: dark) {\n"
+        "  pre.code .ln-row.added .dm { border-left-color:#3fb950; color:#3fb950; }\n"
+        "  pre.code.diff-changed .ln-row:not(.added) { opacity:.5; }\n"
+        "  .code-badge { color:#56d364; background:rgba(63,185,80,.12); }\n"
+        "  .code-badge[data-diff=unchanged] { color:var(--muted,#9a9aa2);\n"
+        "    background:transparent; }\n"
+        "}\n"
     )
+
+
+# --- what this branch added, per line -------------------------------------------------
+# The reviewer's first question about a quoted test is "is this new, or is it an old test
+# with a line in it?" - and until the answer is on the page they have to read the whole
+# block to find out. It comes from git against the same merge-base the rest of the report
+# diffs against (`origin/main...HEAD`), never from a hand-kept list. git models an edited
+# line as delete+add, so a rewritten line counts as added, which is what a reader wants:
+# it is a line this branch is responsible for.
+DIFF_BASE = os.environ.get("HUMAN_REVIEW_DIFF_BASE", "origin/main")
+HUNK_RE = re.compile(r"^@@ -\S+ \+(\d+)(?:,\d+)? @@")
+# Above this share of a window's non-blank lines being added, the window is not "changed",
+# it is new - and saying "15 of 16 lines changed" about a test that did not exist before
+# is a worse answer than "new test".
+NEW_BLOCK_RATIO = 0.8
+
+
+def _git(root: Path, *args: str) -> str | None:
+    """stdout, or None if git could not answer - no repo, no such ref, no git."""
+    try:
+        p = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+    except OSError:
+        return None
+    return p.stdout if p.returncode == 0 else None
+
+
+@functools.lru_cache(maxsize=None)
+def _diff_state(rel: str, root_s: str) -> tuple[frozenset[int], bool, bool]:
+    """(lines added on this branch, the file itself is new, git had an answer at all).
+
+    The third flag matters: "git said nothing changed" and "git could not be asked" must
+    not render the same, or a snippet from outside the repo would claim to be untouched.
+    """
+    root = Path(root_s)
+    if _git(root, "rev-parse", "--verify", "--quiet", DIFF_BASE) is None:
+        return frozenset(), False, False
+    status = _git(root, "diff", "--name-status", f"{DIFF_BASE}...HEAD", "--", rel)
+    if status is None:
+        return frozenset(), False, False
+    is_new = bool(status.strip()) and status.strip().split("\t")[0].startswith("A")
+    out = _git(root, "diff", "-U0", f"{DIFF_BASE}...HEAD", "--", rel)
+    if out is None:
+        return frozenset(), False, False
+    added, n = set(), None
+    for line in out.splitlines():
+        m = HUNK_RE.match(line)
+        if m:
+            n = int(m.group(1))
+            continue
+        if n is None or line.startswith("+++") or line.startswith("\\"):
+            continue
+        if line.startswith("+"):
+            added.add(n)
+            n += 1
+        elif not line.startswith("-"):
+            n += 1
+    return frozenset(added), is_new, True
+
+
+def added_lines(rel: str, root: Path) -> frozenset[int]:
+    return _diff_state(rel, str(root))[0]
+
+
+def block_status(rel: str, root: Path, spans, lines: list[str], noun: str = "code"):
+    """The one-line answer to "what am I looking at?", or None when git cannot say.
+
+    Counted over non-blank lines only: a window whose blank lines happen to be untouched
+    is not thereby "partly old".
+    """
+    added, is_new, known = _diff_state(rel, str(root))
+    if not known:
+        return None
+    nums = [n for s, e in spans for n in range(s, e + 1) if n <= len(lines)]
+    real = [n for n in nums if lines[n - 1].strip()]
+    hit = [n for n in real if n in added]
+    if is_new:
+        # A file that did not exist has no old lines to contrast with, so marking every
+        # row green says nothing the badge has not already said. Said once, not painted.
+        return {"diff": "new", "file_new": True, "label": f"new file",
+                "added": len(real), "total": len(real),
+                "tip": f"Every line here is new: {rel} does not exist before this branch."}
+    if not hit:
+        return {"diff": "unchanged", "label": "unchanged", "added": 0, "total": len(real),
+                "tip": f"No line in this window was touched on this branch "
+                       f"(diffed against {DIFF_BASE})."}
+    if real and len(hit) / len(real) >= NEW_BLOCK_RATIO:
+        return {"diff": "new", "label": f"new {noun}", "added": len(hit), "total": len(real),
+                "tip": f"{len(hit)} of {len(real)} lines in this window are new on this "
+                       f"branch - read it as newly written code."}
+    return {"diff": "changed", "label": f"{len(hit)} line{'' if len(hit) == 1 else 's'} changed",
+            "added": len(hit), "total": len(real),
+            "tip": f"{len(hit)} of {len(real)} lines were added or rewritten on this branch "
+                   f"(git counts a rewritten line as an addition); the rest is context and "
+                   f"is dimmed."}
+
+
+def diff_badge(status) -> str:
+    if not status:
+        return ""
+    return (f'<span class="code-badge" data-diff="{status["diff"]}" '
+            f'data-tip="{html.escape(status["tip"], quote=True)}">'
+            f'{html.escape(status["label"])}</span>')
 
 
 def repo_root() -> Path:
@@ -255,12 +386,24 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> st
 
     # Line numbers stay the file's own — never renumbered to look adjacent. The gap row
     # between two spans is what makes the jump readable instead of a silent lie.
+    status = block_status(rel, root, spans, lines)
+    added = added_lines(rel, root) if status else frozenset()
+    # No marker column at all when git could not be asked: a snippet from outside the
+    # repository must render exactly as it always has, not claim to be untouched.
+    # No marker column when git could not be asked (a snippet from outside the repo must
+    # render exactly as it always has), nor when the whole file is new (the badge said it).
+    show_marks = bool(status) and not status.get("file_new")
+    mark = '<span class="dm">+</span>' if show_marks else ""
+    blank = '<span class="dm"> </span>' if show_marks else ""
     rows, i = [], 0
     for k, (s, e) in enumerate(spans):
         if k:
-            rows.append(_gap_row(s - spans[k - 1][1] - 1))
+            rows.append(blank + _gap_row(s - spans[k - 1][1] - 1))
         for n in range(s, e + 1):
-            rows.append(f'<span class="ln">{n}</span>{rendered[i]}')
+            hit = show_marks and n in added
+            rows.append(f'<span class="ln-row{" added" if hit else ""}">'
+                        f'{mark if hit else blank}<span class="ln">{n}</span>'
+                        f'{rendered[i]}</span>')
             i += 1
     numbered = "\n".join(rows)
 
@@ -274,7 +417,10 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> st
         f'<figure class="snippet">\n'
         f"{cap}"
         f'<a class="srcref" href="{html.escape(link)}" data-tip="Open in VS Code">{html.escape(label)}</a>\n'
-        f'<pre class="code lang-{lang}"><code>{numbered}</code></pre>\n'
+        f'{diff_badge(status)}\n'
+        f'<pre class="code lang-{lang}'
+        f'{" diff-changed" if status and status["diff"] == "changed" else ""}">'
+        f'<code>{numbered}</code></pre>\n'
         f"</figure>\n"
     )
 

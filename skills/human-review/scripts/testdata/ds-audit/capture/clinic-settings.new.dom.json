@@ -1,0 +1,205 @@
+{
+ "url": "file:///Users/victorrentea/workspace/human-review/skills/human-review/scripts/testdata/ds-audit/settings-new.html",
+ "title": "Clinic settings",
+ "viewport": {
+  "w": 1200,
+  "h": 400
+ },
+ "page": {
+  "w": 1244,
+  "h": 400
+ },
+ "nodes": [
+  {
+   "sig": "h2:1",
+   "selector": "h2:1",
+   "tag": "h2",
+   "id": null,
+   "name": null,
+   "type": null,
+   "aria_role": null,
+   "cls": [],
+   "ds": null,
+   "ds_covers": null,
+   "ds_host": null,
+   "ds_host_sig": null,
+   "native": false,
+   "role": null,
+   "label": "",
+   "disabled": false,
+   "leaf": true,
+   "box": {
+    "x": 32,
+    "y": 24,
+    "w": 1180,
+    "h": 24
+   },
+   "text": "Clinic settings"
+  },
+  {
+   "sig": "form#settings",
+   "selector": "#settings",
+   "tag": "form",
+   "id": "settings",
+   "name": null,
+   "type": null,
+   "aria_role": null,
+   "cls": [],
+   "ds": null,
+   "ds_covers": null,
+   "ds_host": null,
+   "ds_host_sig": null,
+   "native": false,
+   "role": null,
+   "label": "",
+   "disabled": false,
+   "leaf": false,
+   "box": {
+    "x": 32,
+    "y": 66,
+    "w": 1180,
+    "h": 34
+   },
+   "text": ""
+  },
+  {
+   "sig": "form#settings>div.pc-field.row:1",
+   "selector": "form#settings>div.pc-field.row:1",
+   "tag": "div",
+   "id": null,
+   "name": null,
+   "type": null,
+   "aria_role": null,
+   "cls": [
+    "pc-field",
+    "row"
+   ],
+   "ds": null,
+   "ds_covers": null,
+   "ds_host": null,
+   "ds_host_sig": null,
+   "native": false,
+   "role": null,
+   "label": "",
+   "disabled": false,
+   "leaf": false,
+   "box": {
+    "x": 32,
+    "y": 66,
+    "w": 1180,
+    "h": 34
+   },
+   "text": ""
+  },
+  {
+   "sig": "form#settings>div.pc-field.row:1>label:1",
+   "selector": "form#settings>div.pc-field.row:1>label:1",
+   "tag": "label",
+   "id": null,
+   "name": null,
+   "type": null,
+   "aria_role": null,
+   "cls": [],
+   "ds": null,
+   "ds_covers": null,
+   "ds_host": null,
+   "ds_host_sig": null,
+   "native": false,
+   "role": null,
+   "label": "",
+   "disabled": false,
+   "leaf": true,
+   "box": {
+    "x": 32,
+    "y": 75,
+    "w": 150,
+    "h": 17
+   },
+   "text": "Time zone"
+  },
+  {
+   "sig": "form#settings>div.pc-field.row:1>div.control:1",
+   "selector": "form#settings>div.pc-field.row:1>div.control:1",
+   "tag": "div",
+   "id": null,
+   "name": null,
+   "type": null,
+   "aria_role": null,
+   "cls": [
+    "control"
+   ],
+   "ds": null,
+   "ds_covers": null,
+   "ds_host": null,
+   "ds_host_sig": null,
+   "native": false,
+   "role": null,
+   "label": "",
+   "disabled": false,
+   "leaf": false,
+   "box": {
+    "x": 194,
+    "y": 66,
+    "w": 420,
+    "h": 34
+   },
+   "text": ""
+  },
+  {
+   "sig": "form#settings>div.pc-field.row:1>div.control:1>div[data-ds=combo#timezone]",
+   "selector": "[data-ds=\"combo\"]:has(#timezone)",
+   "tag": "div",
+   "id": null,
+   "name": null,
+   "type": null,
+   "aria_role": null,
+   "cls": [
+    "pc-combo"
+   ],
+   "ds": "combo",
+   "ds_covers": null,
+   "ds_host": null,
+   "ds_host_sig": null,
+   "native": false,
+   "role": null,
+   "label": "Time zone",
+   "disabled": false,
+   "leaf": false,
+   "box": {
+    "x": 194,
+    "y": 66,
+    "w": 420,
+    "h": 34
+   },
+   "text": ""
+  },
+  {
+   "sig": "select#timezone",
+   "selector": "#timezone",
+   "tag": "select",
+   "id": "timezone",
+   "name": "timezone",
+   "type": null,
+   "aria_role": null,
+   "cls": [],
+   "ds": null,
+   "ds_covers": null,
+   "ds_host": "combo",
+   "ds_host_sig": "form#settings>div.pc-field.row:1>div.control:1>div[data-ds=combo#timezone]",
+   "native": true,
+   "role": "select",
+   "label": "Time zone",
+   "disabled": false,
+   "leaf": false,
+   "box": {
+    "x": 205,
+    "y": 73,
+    "w": 398,
+    "h": 20
+   },
+   "text": ""
+  }
+ ],
+ "settled": true,
+ "png": "/private/tmp/claude-501/-Users-victorrentea-workspace/f98b888f-e803-4421-bfe7-728cc9e38f40/scratchpad/fix/ds-audit-clinic-settings-new.png"
+}

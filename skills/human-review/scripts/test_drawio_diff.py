@@ -349,3 +349,152 @@ def test_repainting_leaves_the_rest_of_the_style_recipe_alone():
     assert out.startswith("rounded=0;whiteSpace=wrap;html=1;")
     assert "strokeColor=#E8760D" in out and "fontColor=#E8760D" in out
     assert dd._paint("text;html=1;fontSize=14;", "#E8760D").startswith("text;html=1;")
+
+
+# ── linking a concept box to the class it names ───────────────────────────────────
+
+DOMAIN_PUML = """@startuml
+title Domain Model
+class Owner [[src://backend/src/main/java/x/domain/Owner.java:32{Click to open in editor}]] {
+  id : Integer
+}
+class Pet [[src://backend/src/main/java/x/domain/Pet.java:33{Click to open in editor}]] {
+}
+class Vet [[src://backend/src/main/java/x/domain/Vet.java:15{Click to open in editor}]] {
+}
+class Visit [[src://backend/src/main/java/x/domain/Visit.java:15{Click to open in editor}]] {
+}
+Owner "1" -- "0..*" Pet
+@enduml
+"""
+
+
+@pytest.fixture
+def sources(tmp_path):
+    puml = tmp_path / "DomainModel.puml"
+    puml.write_text(DOMAIN_PUML)
+    return dd.concept_sources(puml)
+
+
+def test_the_mapping_is_read_off_the_generated_domain_model(sources):
+    """Not a second name-matching scheme: `DomainModelExtractor` decides what a domain
+    class is, `DomainModelExtractorTest` writes that out as this PlantUML, and
+    `ConceptualModelDiagramTest` checks the draw.io map against the same extractor. The
+    line each class is declared on comes along for free."""
+    assert sources == {"Owner": ("backend/src/main/java/x/domain/Owner.java", 32),
+                       "Pet": ("backend/src/main/java/x/domain/Pet.java", 33),
+                       "Vet": ("backend/src/main/java/x/domain/Vet.java", 15),
+                       "Visit": ("backend/src/main/java/x/domain/Visit.java", 15)}
+
+
+def test_a_missing_domain_model_is_no_links_rather_than_a_crash(tmp_path):
+    assert dd.concept_sources(tmp_path / "nope.puml") == {}
+    out, missing = dd.link_concepts(BRANCH, {}, tmp_path)
+    assert "link=" not in out
+    assert missing == ["Owner", "Pet", "Vet", "Visit"]
+
+
+def test_every_concept_box_points_at_its_class(sources, tmp_path):
+    out, missing = dd.link_concepts(BASE, sources, "/repo")
+    assert missing == []
+    cells = dd.parse_model(out)
+    assert cells["c-owner"].attrs["link"] == \
+        "vscode://file//repo/backend/src/main/java/x/domain/Owner.java:32:1"
+    assert cells["c-visit"].attrs["link"].endswith("Visit.java:15:1")
+
+
+def test_the_line_is_the_class_declaration_not_line_one(sources):
+    out, _ = dd.link_concepts(BASE, sources, "/repo")
+    assert ":32:1" in dd.parse_model(out)["c-owner"].attrs["link"]
+
+
+def test_nothing_but_a_concept_box_becomes_a_link(sources):
+    """The user made the same call on the class PlantUML: the class name is the handle,
+    a field is inert. Here: not the line, not its cardinality, not the sticky note."""
+    out, _ = dd.link_concepts(BRANCH, sources, "/repo")
+    cells = dd.parse_model(out)
+    assert cells["note"].kind == "annotation" and "link" not in cells["note"].attrs
+    assert "link" not in cells["e-vet-visit"].attrs
+    assert "link" not in cells["e-vet-visit-t"].attrs
+    assert sum(1 for c in cells.values() if c.attrs.get("link")) == 4
+
+
+def test_a_concept_with_no_class_is_left_unlinked_and_named(sources):
+    """Impossible while the guardrail passes — it refuses a box whose concept no longer
+    exists in the domain package. If it ever happens the test is right and the link is
+    wrong, so the box gets nothing and the caller is told which one."""
+    grown = model(BASE.split("<root>")[1].split("</root>")[0]
+                  + box("c-ghost", "Ghost", 700, 0))
+    out, missing = dd.link_concepts(grown, sources, "/repo")
+    assert missing == ["Ghost"]
+    cells = dd.parse_model(out)
+    assert "link" not in cells["c-ghost"].attrs
+    assert cells["c-owner"].attrs["link"].endswith("Owner.java:32:1")
+
+
+def test_the_old_pane_drops_a_link_the_working_tree_no_longer_has(sources):
+    """All three panes are linked from ONE map, taken from the working tree. That is what
+    makes `Old` behave: a concept this branch deleted is simply absent from it."""
+    retired = model(BASE.split("<root>")[1].split("</root>")[0]
+                    + box("c-visitor", "Visitor", 700, 0))   # deleted on this branch
+    out, missing = dd.link_concepts(retired, sources, "/repo")
+    assert missing == ["Visitor"]
+    assert "link" not in dd.parse_model(out)["c-visitor"].attrs
+    assert "vscode://" not in dd.parse_model(out)["c-visitor"].style
+
+
+# ── getting the anchor to work on this page ───────────────────────────────────────
+
+def test_an_xlink_only_anchor_gains_a_plain_href():
+    """draw.io exports SVG 1.1 anchors, which carry `xlink:href` alone. The report's one
+    delegated listener selects `a[href^="vscode:"]`, and an attribute selector matches the
+    attribute that is written — so xlink alone is inert. PlantUML needed both too."""
+    out = dd.dual_href('<a xlink:href="vscode://file//x.java:3:1"><rect/></a>')
+    assert 'href="vscode://file//x.java:3:1"' in out
+    assert 'xlink:href="vscode://file//x.java:3:1"' in out
+
+
+def test_an_anchor_that_already_has_href_is_left_alone():
+    same = '<a href="https://x" xlink:href="https://x"><rect/></a>'
+    assert dd.dual_href(same) == same
+
+
+def test_the_builtin_renderer_writes_both_spellings(tmp_path, sources):
+    xml, _ = dd.link_concepts(BASE, sources, "/repo")
+    out = tmp_path / "d.svg"
+    dd.render_builtin(xml, out)
+    svg = out.read_text()
+    assert svg.count('xlink:href="vscode://') == 4 and svg.count('href="vscode://') == 8
+    assert 'xmlns:xlink="http://www.w3.org/1999/xlink"' in svg
+    assert "cursor:pointer" in svg
+
+
+def test_slim_removes_the_offsite_link_drawio_signs_its_exports_with():
+    """A "Text is not SVG - cannot display" line pointing at drawio.com, shown only where
+    foreignObject is missing. Invisible here, but still an off-site link in a review page
+    that nothing on the page explains."""
+    tail = ('<g>kept</g><switch><g requiredFeatures="http://www.w3.org/TR/SVG11/feature'
+            '#Extensibility"/><a transform="translate(0,-5)" xlink:href='
+            '"https://www.drawio.com/doc/faq/svg-export-text-problems" target="_blank">'
+            '<text x="50%">Text is not SVG - cannot display</text></a></switch>')
+    out = dd.slim(tail)
+    assert out == "<g>kept</g>"
+
+
+def test_end_to_end_links_all_three_panes(tmp_path, branch_png):
+    base_png = tmp_path / "base.drawio.png"
+    base_png.write_bytes(png_with(BASE))
+    puml = tmp_path / "DomainModel.puml"
+    puml.write_text(DOMAIN_PUML)
+    out = tmp_path / "out"
+    proc = subprocess.run(
+        [sys.executable, str(HERE / "drawio-diff.py"), str(base_png), str(branch_png),
+         "--out-dir", str(out), "--name", "c", "--renderer", "builtin",
+         "--concepts", str(puml), "--repo-root", "/repo"],
+        capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    for view in ("original", "new", "diff"):
+        svg = (out / f"c-{view}.svg").read_text()
+        assert svg.count('href="vscode://file//repo/backend') == 8, view
+    assert "4 concept(s) linked to their class" in proc.stdout
+    assert json.loads((out / "c-diff.json").read_text())["unlinked_concepts"] == []

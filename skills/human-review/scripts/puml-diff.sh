@@ -18,6 +18,7 @@
 #   <name>.diff.focus<N>.svg   the same delta, pruned to N hops around what changed
 #   <name>.new.svg     the work-tree diagram, undiffed
 #   <name>.old.svg     the same diagram at the merge-base, undiffed
+#   <name>.old.json    the generator's sidecar AS OF THE MERGE-BASE, for the old render
 #   MANIFEST.tsv       name / source / kind / status / diff.puml / svg / focus / new / old
 #
 # The undiffed pair exists because the delta is not always trustworthy. A sequence
@@ -85,7 +86,7 @@ done < <(
 )
 
 MANIFEST="$OUT_DIR/MANIFEST.tsv"
-printf 'name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\n' > "$MANIFEST"
+printf 'name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\told_details\n' > "$MANIFEST"
 
 # Render one .puml as-is (no diff markup) to "$2.svg", echoing the basename on success.
 # PlantUML writes beside its input, so the source is copied in under the name we want
@@ -228,9 +229,27 @@ for rel in "${CHANGED[@]}"; do
   new_svg="$(render_plain "$new" "$OUT_DIR/$name.new" || true)"
   old_svg="$(render_plain "$old" "$OUT_DIR/$name.old" || true)"
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  # And the OLD side's payloads. A generated sequence diagram carries its SQL and its JSON
+  # bodies in a sidecar next to it, keyed by a generation-time id; the page inlines that
+  # sidecar so the arrows can be expanded. The work tree's sidecar only knows the work
+  # tree's ids, so on the old render every handle whose payload changed resolves to
+  # nothing and is dropped as dead — which is most of them, and looked exactly like an
+  # inert pane. The base commit has the matching sidecar; carry it along.
+  old_details=""
+  case "$rel" in
+    *.genseq.puml)
+      if git show "$MERGE_BASE:${rel%.puml}.json" > "$OUT_DIR/$name.old.json" 2>/dev/null \
+         && [ -s "$OUT_DIR/$name.old.json" ]; then
+        old_details="$(basename "$OUT_DIR/$name.old.json")"
+      else
+        rm -f "$OUT_DIR/$name.old.json"
+      fi
+      ;;
+  esac
+
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$label" "$rel" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" \
-    "$new_svg" "$old_svg" >> "$MANIFEST"
+    "$new_svg" "$old_svg" "$old_details" >> "$MANIFEST"
   echo "[puml-diff] $rel ($kind, $status) -> $diff_puml" >&2
   count=$((count + 1))
 done

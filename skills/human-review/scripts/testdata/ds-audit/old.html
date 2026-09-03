@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8"><title>Book a visit</title>
+<link rel="stylesheet" href="_shared.css">
+<!-- The base: every single-select on this screen already goes through the design
+     system's combo, which marks its host `data-ds="combo"` and wraps a native select. -->
+<h2>Book a visit</h2>
+<form id="visit">
+  <div class="row pc-field">
+    <label for="petType">Pet type</label>
+    <div class="control">
+      <div class="pc-combo" data-ds="combo">
+        <select id="petType" name="petType">
+          <option>cat</option><option>dog</option><option>lizard</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="row pc-field">
+    <label for="description">Description</label>
+    <div class="control">
+      <input id="description" name="description" type="text" class="form-control" value="annual check-up">
+    </div>
+  </div>
+  <div class="row pc-field">
+    <label for="clinic">Clinic</label>
+    <div class="control">
+      <div class="pc-combo" data-ds="combo">
+        <select id="clinic" name="clinic"><option>Central</option><option>Riverside</option></select>
+      </div>
+    </div>
+  </div>
+</form>
+<table><tr><th>Date</th><th>Vet</th></tr><tr><td>2026-08-14</td><td>Helen Leary</td></tr></table>

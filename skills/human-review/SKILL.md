@@ -61,6 +61,16 @@ assembled page is rewritten once at the end to catch what we do not own — Plan
 `[[url{hint}]]` into a `title` inside the SVG we inline. `scripts/test_tooltips.py` fails
 the day somebody adds a native one back.
 
+⚠️ **The rule stops at the edge of an embedded iframe, and there `data-tip` is dead.**
+`TIP_JS` lives in the host page and cannot reach into a cross-document frame, so a `data-tip`
+written inside one of the embedded reports (`openapi-visual-diff.html`, pb33f's) is an inert
+attribute that looks like a working tooltip in the source and does nothing on the page — the
+worst of both. A native `title=` there is what the house rule exists to keep out. So a
+control inside an embedded frame gets **neither**: make it self-explanatory, or explain it in
+the host page's prose where the tooltip component actually runs. `openapi-visual-diff.py`
+carries a comment at its one candidate saying exactly this; do not "fix" it by adding either
+kind of tooltip.
+
 One piece deliberately stays in the host project: a CI-facing diagram tool such as
 petclinic's `scripts/architecture-diff.sh`, which answers a narrower question and predates
 this skill. Point it at this skill's differs rather than keeping a second copy — a private
@@ -96,6 +106,7 @@ What each step actually needs:
 | 5 | ffmpeg, **Pillow**, and a TTF the captions can use | no `swiftc`/macOS → captioned but silent; no recording at all → notice + transcript, never a dead player |
 | 4, 6 | whatever your project's generators need | — |
 | 7c | `ast-grep` (Homebrew, or `pip install ast-grep-cli`) | not installed → no Logging tab, named under the strip |
+| 7d | **Playwright** (`pip install playwright && playwright install chromium`), **Pillow**, **numpy**, and both branches served | anything missing → no UX tab, named under the strip |
 
 Three of these are **optional Homebrew binaries**, not Python dependencies, so assume none
 of them and check before you use them:
@@ -123,6 +134,64 @@ commits that landed on the base after this branch started never show up as this 
 
 Print a one-line scope banner (mode, refs, `--stat`). Empty change set → "Nothing to
 review." and stop.
+
+### The gate: push, then wait for green — no green build, no review
+
+**Nothing below this line runs until the branch is pushed and the build for the exact commit
+you pushed has gone green.** A review of a branch that does not build is wasted work, and it
+fails in the way this whole page is built to prevent: it produces a confident-looking guide
+about code nobody has proven compiles, with every number on it measured from a tree of
+unknown status. This is a gate, not a warm-up — it comes before the wipe below, so a run that
+stops here leaves the previous guide intact instead of destroying it on the way out.
+
+It is also not hypothetical. The branch this skill was last exercised on sat **8 commits
+ahead of its remote** with a dirty work tree; a review started then would have been
+measuring, in detail and at length, a tree CI had never seen.
+
+```sh
+git status --porcelain                 # decide, deliberately, what belongs in the branch
+git push                               # -u origin HEAD the first time
+SHA="$(git rev-parse HEAD)"            # the commit under review, from here on
+```
+
+⚠️ **The gate is about the branch as pushed *now*, not the tree at the end of the run.**
+This skill deliberately leaves its own fixes uncommitted for a human to inspect (Step 1), so
+do **not** read this rule as "push the review's fixes too" — that would defeat the point of
+leaving them. Push what belongs to the *branch*, gate on that, and let the review's own edits
+stay in the working tree where the reviewer can see them. `$SHA` is the same answer Step 1's
+`--rev` records: *what state was this measured against.*
+
+**Bind the wait to `$SHA`, never to "the latest run on the branch."** A green run for a
+different commit is exactly the confidently-wrong signal this page exists to avoid — and it
+is the easy mistake, because a branch almost always has *some* green run on it.
+
+```sh
+gh run list --commit "$SHA" --limit 1 --json databaseId,status,conclusion,workflowName
+```
+
+Four outcomes, and the fourth is the one that passes silently if written carelessly:
+
+| what comes back | what it means | what to do |
+| --- | --- | --- |
+| a run, `status` not `completed` | the build is still going | `gh run watch <databaseId> --exit-status` and wait |
+| a run, `conclusion` = `success` | green for **this** commit | proceed |
+| a run, any other `conclusion` | it failed, was cancelled or timed out | **stop.** Name the workflow and the failing job in the report; fix that first |
+| **`[]` — no run at all** | GitHub has never built this commit | **stop.** Absence is not success |
+
+An empty list means the push has not registered a run yet (wait and re-ask), or nothing
+triggers on this branch. Treating `[]` as a pass is the whole failure mode: it is the state
+that looks quietest and proves least.
+
+**A repository with genuinely no CI is allowed through, but it must say so.** Check
+`gh workflow list` — if the repo has no workflows at all, do not block forever; continue, and
+put *"no build proved this — the repository has no CI configured"* in the guide. It must not
+read as a pass. "Nobody checked" and "it passed" are the same distinction the cost breakdown
+draws between *not measured* and `$0.00`, and it matters here for the same reason.
+
+**A long build is normal.** `gh run watch` prints progress every few seconds (`-i` changes
+the interval); on this reference project the suite takes several minutes. Give it up to
+**20 minutes** before treating a still-running build as stuck, and say in the terminal that
+you are waiting and on which SHA — a silent runner looks hung to the human watching it.
 
 **Then wipe `.human-review/assets/` and recreate it.** This is not tidiness. Every fragment
 producer below writes to a fixed path and the renderer inlines whatever it finds there, with
@@ -362,14 +431,40 @@ change: position belongs to the human.
 ```sh
 ${SKILL}/scripts/drawio-diff.py --base $BASE \
   --diagram petclinic-backend/docs/ConceptualModel.drawio.png \
+  --concepts petclinic-backend/docs/generated/DomainModel.puml \
   --out-dir .human-review/assets --name conceptual
 ```
+
+**`--concepts` is not optional in practice**, and the file it names is the load-bearing
+part. Every concept box in all three panes becomes a link into the class that declares it,
+and the name→class→line resolution is read straight out of `DomainModel.puml` — the file
+`DomainModelExtractorTest` regenerates — rather than out of a second name-matching scheme
+of this tool's own. That is deliberate: `ConceptualModelDiagramTest` already checks the
+hand-drawn map against that same extractor, so the links cannot drift away from the
+guardrail without the guardrail going red first. It also hands over the class declaration
+line for free (`Owner.java:32`, `Visit.java:15`), so a click lands on the class rather than
+on line 1 of the file. Omit the flag and the command still succeeds — it just quietly
+produces boxes that are not links, which is the failure nobody notices until they try to
+click one. (`--repo-root` defaults to `.`, so running from the repository root is enough.)
 
 It writes `conceptual-{original,new,diff}.svg` plus `conceptual-diff.json`, and prints
 what the branch adds, drops and reworks. Feed the three SVGs to a `Diff | New | Original`
 tab widget in the section body — inline the SVG rather than linking it, so `light-dark()`
 resolves against the reader's own theme. A diagram missing at `$BASE` is an empty one, so
 a branch that introduces the map renders as one big "added".
+
+⚠️ **draw.io exports SVG 1.1 anchors, which carry `xlink:href` and nothing else.** The
+report routes clicks through one delegated listener selecting `a[href^="vscode:"]`, and an
+attribute selector matches the attribute that is actually written — not some notional
+resolved value — so an xlink-only anchor is **silently inert**: it looks like a link, the
+cursor changes, and nothing happens. The renderer now writes both spellings on every
+anchor. Do not "tidy" one of them away.
+
+A concept the extractor cannot resolve gets **no anchor at all**, never a broken one, and is
+reported twice over: in `conceptual-diff.json` as `unlinked_concepts`, and on stderr as
+`! concept <Name> resolves to no class`. That is deliberately loud, because it should be
+impossible while `ConceptualModelDiagramTest` passes — it means the map and the guardrail
+disagree, which is a finding about the branch, not a rendering detail to paper over.
 
 **Two colours, two meanings, never conflated.** Red is the *diagram's* — the patch script
 paints an element red when it draws one to keep the guardrail test green, and it stays red
@@ -392,13 +487,13 @@ tag (or the scenario) — **the tag alone, with no comment explaining why you ad
 
 Then regenerate from real traces. **There are two runs, not one** — one per suite that
 produces diagrams — and naming only the first is how half the gallery goes stale. Everything
-from here to the end of this step lands on the **Behaviour** tab — the traced runs, the
+from here to the end of this step lands on the **Sequence** tab — the traced runs, the
 base-diagram regeneration below when it runs, and the manifest re-run — so one ledger record
 covers the whole step, opened now:
 
 ```sh
-${SKILL}/scripts/steps-ledger.py start behaviour --label "sequence diagrams from traces" \
-  > .human-review/.step-behaviour
+${SKILL}/scripts/steps-ledger.py start sequence --label "sequence diagrams from traces" \
+  > .human-review/.step-sequence
 cd petclinic-test && ./run-tests-with-tracing.sh      # the browser suites (Playwright, Cucumber)
 cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq   # the @SpringBootTest suites
 cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram    # render what the JVM run recorded
@@ -469,7 +564,7 @@ distinguish from a real change is worse than no diagram. Close the record once t
 diagrams (base regeneration included, whether or not you actually ran it) are in the manifest:
 
 ```sh
-${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-behaviour)"
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-sequence)"
 ```
 
 ⚠️ The DB arrows are labelled from Hibernate's own comment on each statement
@@ -492,10 +587,38 @@ the `== [[src://<file>:<line>{…} <title>]] ==` chapter dividers inside that fi
 say which scenarios, at which lines. Each pair renders as the scenario titles and their
 deep links, then whichever of the block's snippets quote that test file, then the diagram.
 
-A test with **no** diagram is neither dropped nor given one it did not produce: its
-snippets fall into a trailing "Tests that record no sequence" group that says exactly
-that. Both halves matter — a fabricated pairing is a lie about provenance, and a dropped
-one is the silent loss this pipeline exists to prevent.
+```json
+{"type":"testpairs","id":"sequences","kind":"sequence",
+ "title":"Each test, beside the sequence its own run recorded",
+ "body":"<p>…what the deltas amount to, in this page's own words…</p>",
+ "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
+ "unpaired":{"id":"tests-nosequence",
+             "title":"Tagged for tracing, and no diagram came back","body":"…"}}
+```
+
+Two keys carry the weight. **`snippets`** is the pool the pairing draws from — you quote the
+tests, and the block works out which diagram each one belongs to; you never name a diagram.
+**`unpaired`** names the group the leftovers land in, and omitting it does not turn the
+group off, it just accepts the defaults (`tests-nosequence`, "Tests that record no
+sequence") — so a run with leftovers still says so.
+
+**Both absences render, and they are different absences.** A test with **no** diagram is
+neither dropped nor given one it did not produce: its snippets fall into the trailing
+`unpaired` group. A diagram with **no** test used to render bare, which reads as *"this came
+from nowhere"* — and that is never true, because the manifest only knows about a diagram
+*because* a test generated it. It now says which of the two true things happened: *"Generated
+by `<path>`, not excerpted here"* with an editor link, or *"Generated by `<path>`, which is
+not in this checkout — the diagram is the only record of it left."* The second is the
+reader's cue that the pairing is real but the source is not here to read. A fabricated
+pairing is a lie about provenance; a silent one is the loss this pipeline exists to prevent.
+
+⚠️ **Do not write prose that names a specific artefact's absence.** The unpaired group's copy
+was once written as *"`add-visit.feature.genseq.puml` does not exist"*, and it stopped being
+true **while it was being written** — the Cucumber trace finally recorded, the file appeared,
+and the page then asserted the absence of something sitting right beside it. In a generated
+page, "X is missing" is a fact with a shelf life of minutes. Describe the **case** — what it
+means for a test to have no diagram — and let the renderer say which instances hit it. The
+same rule the counts follow: state the rule in prose, let the data supply the instances.
 
 ## Step 4 — Code City screenshot
 
@@ -560,6 +683,23 @@ the opening caption and its voice off the title card, and what lets a re-annotat
 right without re-filming. `TITLE_CARD=off` films without a card;
 `$HUMAN_REVIEW_VIDEO_TITLE` and `$HUMAN_REVIEW_VIDEO_SUBTITLE` override the two lines.
 
+**The opening caption reaches back, but only 2.5 s.** A cue is spoken about what is already
+on screen, so the first one is drawn from the first frame it is *allowed* on rather than from
+its own timestamp — otherwise the opening shot sits silent and unlabelled. Letting it reach
+all the way back was right until a **cold lazy-route compile put cue 0 at 13.52 s while its
+narration started at 3.45 s**, and the rule dutifully spoke the opening sentence over ten
+seconds of blank loading screen. It is now bounded by `OPENING_GRACE = 2.5` in
+`annotate-feature-video.py`: the opening cue may reach back from its own timestamp, at most
+that far, and never in front of the title card. `test_feature_video_lead.py` pins every edge
+of it, including that exact 13.5 s case.
+
+⚠️ **What caught it is the part worth keeping.** The film was *perfectly in sync with its own
+cue file* — the caption, the voice and the timestamps all agreed, and every check that reads
+the cue file therefore passed. What disagreed was the picture. So verify a film against
+**frames plus `silencedetect`**, not against its own metadata: pull a frame at the moment the
+narration starts and look at what is actually on it. A film can be internally consistent and
+still talk over a loading screen, and no amount of self-consistency will tell you.
+
 **The flow being filmed belongs to your project, not to this skill.** The skill owns the
 harness — launching, speaking each cue, timing the captions to the voice, spotlighting the
 element a cue is about, annotating the footage. You own the twenty lines that say what to
@@ -583,6 +723,39 @@ that the next update silently reverts), and the selectors were generic enough to
 resolving — so you got a polished, correctly captioned film of the **wrong feature**, under
 the one heading a reviewer trusts without reading.
 
+### Which screens the film must visit — derive them, never write them down
+
+This is the one substantial thing your feature script owes the guide, and it is a rule about
+*your* script: the harness films whatever you drive it through and has no opinion about
+which screens those are. **The film must pass through every screen the change touched, and
+that list has to be derived from the diff at film time.** A hand-written list is correct once
+and quietly incomplete the next time somebody adds a field — and the failure is the bad kind,
+because a screen that is missing from the film looks exactly like a screen the change did not
+affect.
+
+Derive it: changed components → the routes that render them, climbing template containment to
+**every** routed ancestor. Two details, each of which was a real bug rather than a
+precaution:
+
+- **Climb *past* a routed ancestor, do not stop at the first one.** The first version stopped
+  at the first routed ancestor it found, so a changed `pet-list` resolved to `/pets` and
+  missed `/owners/:id` entirely. A component can be both routed *and* embedded, and stopping
+  at the first hit is precisely how one of the two screens goes unfilmed — silently, since
+  the film still looks complete.
+- **Parse with the TypeScript compiler, not a regex.** It is already on the recorder's
+  `NODE_PATH`, so this costs nothing. A regex over routing modules returns an empty list
+  after somebody reformats them, and **an empty list is indistinguishable from "nothing
+  changed"** — so the film silently covers nothing at all and reports success.
+
+**A route the URL cannot fill is reported, never skipped.** An `@Input`-driven component in
+an app without `withComponentInputBinding()` has no URL that reaches it; say so in the run
+summary. A gap in the film's coverage is the one thing a reviewer cannot see for themselves
+— everything else on the page they can go and check.
+
+Give a screen a handler only to make its beat better: a screen with none is still filmed.
+The default has to be *filmed plainly*, because "no handler" must never quietly mean "not
+visited".
+
 **The exit code carries the verdict, and 3 is not a failure:**
 
 | code | meaning | what to do |
@@ -591,13 +764,13 @@ the one heading a reviewer trusts without reading.
 | 2 | no feature script, or the stack is down | skip the section and say why |
 | 3 | filmed, and **the feature did not hold** (`{ok:false}`) | **embed it and lead the review with what it shows** — this is the most valuable film the pipeline can make |
 
-**The film lives on the Behaviour tab — labelled *Demo* — and never emits a player for a
-file that is not there.** It had its own tab for a while, on the argument that burying it
-under the sequence diagrams meant nobody found it. That is now settled the other way: the
-demo *is* the behaviour question, so the film opens the Behaviour tab as its first section
-and the sequences follow it, and the tab is labelled for what a reader wants from it rather
-than for the artifact it happens to contain. The player must not autostart there — the tab
-is entered for the sequences as often as for the film. The
+**The film lives on the `behaviour` tab — labelled *Demo* — and never emits a player for a
+file that is not there.** That tab has moved twice: the film had a *Video* tab of its own,
+was folded in beside the sequence diagrams, and the diagrams then moved out again to their
+own **Sequence** tab. What survived both moves is the section id `video`, so `#video` still
+lands; keep it. Demo is now the film and nothing else, which is the cleanest the tab has
+been — one artifact, one question. Do not autostart the player anyway: a reader may arrive
+here by deep link from anywhere on the page, not only by clicking the tab. The
 very first thing this page got wrong was a `<video src="assets/….webm">` whose asset no
 step had written: a black rectangle stuck at 0:00 under a confident heading, with nothing
 to say the film was missing rather than broken. The builder now emits the player **only**
@@ -629,8 +802,8 @@ saying out loud.
 `panelhide` on each panel as it becomes the active one; the video starts on the first and
 pauses (never rewinds) on the second, so coming back resumes where the reader left off.
 `play()`'s rejection is swallowed, because audible playback is only granted off a user
-gesture — a click on the Behaviour tab is one, opening the page straight on `#video` (the
-film's section anchor, which outlived the tab that used to own it) is not.
+gesture — a click on the Demo tab is one, opening the page straight on `#video` (the film's
+section anchor, which has outlived two tab reshuffles) is not.
 **Do not answer that by muting.** The narration is the point of the film; a silent film
 here is worse than a paused one, so the reader gets the controls instead. `show all` starts
 nothing, since no panel is *the* active one there.
@@ -675,15 +848,18 @@ cd petclinic-backend && mvn -q test -Dtest=EndpointComplexityExtractorTest
 ```
 
 ⚠️ **Every fragment needs its stylesheet listed in the content file's `extraCss`.** The
-renderer pulls in the snippet and code-owners stylesheets by itself, but the OpenAPI and
-complexity fragments are inlined HTML and their CSS is not: forget one and the tab renders
-fully populated and completely unstyled — no bars, no green/red — so the authorship
-convention the lede explains in words is simply absent from the page.
+renderer pulls in the snippet and code-owners stylesheets by itself, but the OpenAPI,
+complexity and design-system fragments are inlined HTML and their CSS is not: forget one and
+the tab renders fully populated and completely unstyled — no bars, no green/red — so the
+authorship convention the lede explains in words is simply absent from the page.
 
 ```json
 "extraCss": ["assets/openapi-diff.css", "assets/openapi-compat.css",
-             "assets/complexity-delta.css"]
+             "assets/complexity-delta.css", "assets/ds-audit.css"]
 ```
+
+The one exception is `openapi-compat.py --panel`, which carries its own `<style>`; every
+other `--css` this skill emits has to be named here.
 
 Regenerates `docs/generated/endpoint-complexity.{html,json}` — the cyclomatic complexity of
 the *whole flow* behind each entry point, read from bytecode. An entry point is not only a
@@ -903,6 +1079,38 @@ finding. What it adds is the *placement* — nine changed operations scattered a
 controllers read as a list of nine lines in the tab above, and as four lit-up rows in a
 document of forty-three here.
 
+**It also answers *which field*, which is a step further than "where it lands".** Ticking
+**expand impacted** opens each impacted operation *and walks its schema down to every changed
+property*, marking the leaves. A reader who wanted to know whether the added field is on the
+visit or three levels down inside the owner no longer has to open the spec beside the page
+and count.
+
+**The path is resolved, never parsed.** oasdiff names the property as a slash path inside a
+rule sentence, and there are several hundred rule ids whose wording is not worth enumerating
+— so the walker interprets none of it. It takes **every backticked token in the rule text**,
+tries each against the already-inlined schema, and keeps whichever one walks cleanly; a token
+that does not walk cannot be the path. The honest consequence is the valuable part: a property
+that no longer exists in the rendered revision has nowhere to point, so it yields **no target
+at all** rather than a plausible wrong one. Guessing here would open the wrong branch and mark
+the wrong field, which is worse than marking nothing.
+
+⚠️ **Swagger UI has two schema renderers and the difference is invisible from outside.** A
+3.1 spec — petclinic is `openapi: 3.1.0` — draws the JSON-Schema-2020-12 tree of
+`<article>` elements; a **3.0 spec draws the older `<span class="model">` boxes**. Same page,
+same Swagger UI, entirely different DOM. The first implementation of this walk handled only
+the 2020-12 tree, so on a 3.0 spec it did **nothing at all** — silently, and invisibly on the
+project it was developed against. Both are handled now. Record it because the shape recurs:
+the next person extending that walker will also develop against 3.1, and will also ship a
+tool that quietly does nothing for half its users unless they know to check.
+
+**What the walk leaves shut is counted on the page.** The bounds are real — 12 steps down any
+one schema (`MAX_REVEAL_DEPTH`) and 12 leaves per operation (`MAX_REVEAL_PER_OP`, spent
+most-severe-first, because a reader who can only be shown twelve fields wants the breaking
+ones) — and whatever they cut is reported as `deepSkipped`, with a runtime line when a walk
+gives up. That count is not bookkeeping: **a tree that quietly opens 12 of 30 fields is the
+same lie as one that opens none, only harder to notice.** Silence there would read as "there
+is nothing deeper", which is precisely the belief this feature exists to correct.
+
 ```json
 {"id": "swaggerdiff", "title": "The same verdict, on the screen everyone already knows",
  "body": "<p>…what the blast radius looks like, in this page's own words…</p>",
@@ -1042,6 +1250,68 @@ after "nothing new") and **console output where a logger belongs**. Their snippe
 with `--exact` and their `path:line` link is aimed at the **statement**, not at the first
 line of the window — landing a reader on four lines of context and making them find the
 `log.warn` by eye defeats the point.
+
+## Step 7d — Did the frontend use the design system
+
+```sh
+${SKILL}/scripts/steps-ledger.py start dsaudit --label "design-system audit" \
+  > .human-review/.step-dsaudit
+${SKILL}/scripts/ds-audit.py \
+  --base-new http://localhost:4300 --base-old http://localhost:4301 \
+  --label-new "$(git rev-parse --abbrev-ref HEAD)" --label-old main \
+  --screen "Book a visit=pets/11/visits/add" \
+  --screen "Edit a pet=pets/11/edit" \
+  --source petclinic-frontend/src \
+  --assets .human-review/assets --asset-prefix assets \
+  --json .human-review/assets/ds-audit.json \
+  -o .human-review/assets/ds-audit.html
+${SKILL}/scripts/ds-audit.py --css > .human-review/assets/ds-audit.css
+${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-dsaudit)"
+```
+
+The question no other tab asks: **did the frontend use the company's standardised
+components where it should have?** It serves the branch and the base side by side, drives
+Playwright across every screen the change touches, and diffs them. Name several screens —
+a migration touches one control per form, and *"it flagged the bare one"* is a weak claim
+next to *"it flagged **only** the bare one, and called the other three right."*
+
+It writes `assets/ds-audit.json` — **the artefact** — and `assets/ds-audit.html`, the
+fragment the `ds-audit` section pulls in with `includeHtml`. `--css` writes
+`assets/ds-audit.css`, which **needs an `extraCss` entry** like every other inlined
+fragment. A reviewing agent should read the JSON and never have to OCR a PNG.
+
+**A green badge is context; the red one is the finding. An empty registry means no
+`data-ds` component was found, which is not a pass.**
+
+### Why it is built around the absence
+
+Labelling what *is* a design-system component proves nothing — the defect is an **absence**.
+Somebody copies an older template, ships a bare `<select>` where the standardised combo
+belongs, and it looks close enough that review slides past it. So the audit inverts the
+question: learn which *roles* the design system covers, then flag native controls filling
+one of those roles that sit **outside** any DS component.
+
+That only works if the role registry cannot rot, so it is **derived**, never written down,
+in four tiers of decreasing confidence:
+
+| tier | source | why it is trusted this much |
+| --- | --- | --- |
+| 1 | `data-ds-covers="select,input[type=date]"` | the component author said it out loud |
+| 2 | **runtime** — the control a rendered DS host actually wraps | the implementation is the honest answer to "what does it replace" |
+| 3 | **source** — the same reading off the template | for a component this screen does not happen to render |
+| 4 | **lexicon** — a guess from the component's name | and it is **labelled a guess** in the output |
+
+The registry is built from **both sides at once and applied to both**, which is what makes a
+migration read as an improvement and a straggler read as a gap. A hand-written role list
+would be correct on the day it was written and quietly wrong by the next component.
+
+⚠️ **Nothing else in this repository can catch this, including the tests that look like they
+should.** On the demonstration branch the Playwright spec **passes**, and it passes because
+it is structurally blind: the DS combo renders an inner `<select>` carrying the same id, so
+`page.locator('select#vetId')` matches either implementation and cannot tell them apart.
+Unit tests, ESLint, Cucumber and the pre-commit guardrails all say nothing either. The
+`data-ds` attribute is the only signal that separates the two, which is exactly why this
+step exists and why a green suite is not evidence against its findings.
 
 ## Step 8 — Who has to approve this
 
@@ -1324,13 +1594,14 @@ single column forces them past four answers to reach the one they wanted, so the
   {"id":"autofixed","label":"Auto-fixed",
    "blocks":[{"type":"section","id":"autofix-codereview"},
              {"type":"section","id":"autofix-simplify"}]},
-  {"id":"behaviour","label":"Demo",
-   "blocks":[{"type":"section","id":"video"},
-             {"type":"section","id":"sequences-note"},
-             {"type":"testpairs","id":"sequences","title":"Sequence deltas","kind":"sequence",
-              "body":"…","snippets":[{"ref":"…:41-56","caption":"…"}],
-              "unpaired":{"id":"tests-nosequence","title":"Tests that record no sequence","body":"…"}},
-             {"type":"section","id":"notcovered"}]},
+  {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
+  {"id":"sequence","label":"Sequence",
+   "blocks":[{"type":"section","id":"sequences-note"},
+             {"type":"testpairs","id":"sequences","kind":"sequence",
+              "title":"Each test, beside the sequence its own run recorded",
+              "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
+              "unpaired":{"id":"tests-nosequence",
+                          "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
   {"id":"requirements","label":"Requirements","blocks":[{"type":"section","id":"requirements"}]},
   {"id":"data","label":"Data",
    "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
@@ -1346,6 +1617,8 @@ single column forces them past four answers to reach the one they wanted, so the
               "id":"logging-added","title":"Logging this change set added","body":"<div class=\"lede\">…</div>",
               "existing":{"id":"logging-existing","title":"…","body":"…","snippets":[]},
               "console":{"id":"logging-console","title":"…","body":"…","snippets":[]}}]},
+  {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",
+   "blocks":[{"type":"section","id":"ds-audit"}]},
   {"id":"owners","label":"CODEOWNERS","blocks":[{"type":"codeowners"}]}
 ]
 
@@ -1363,8 +1636,9 @@ without touching the wrap and the step goes on stamping the old id: attribution 
 for it, its tokens fall into the residual, and the tab reports *not measured* — which reads
 as "we never instrumented that step", not as "these two files disagree". Splitting one tab
 into two (as *Cost & shape* was split into **Code City** and **Complexity**) means splitting
-its step wraps in the same edit; folding two into one (as the Video tab was folded into
-**Demo**) means pointing both wraps at the surviving id.
+its step wraps in the same edit — *Cost & shape* split into **Code City** and **Complexity**,
+and **Sequence** split out of Demo, taking Step 3's wrap with it. Folding two into one (the
+Video tab, folded into **Demo**) means pointing both wraps at the surviving id instead.
 
 **The tab list follows the user's decisions, and this vocabulary follows the tab list —
 never the reverse.** What tabs exist, what they are called, and which of them get merged or
@@ -1381,13 +1655,15 @@ This is the whole vocabulary, and the step that pays for each:
 | --- | --- | --- | --- |
 | `review` | 🤖 Review | Step 1 | `.step-review` |
 | `autofixed` | Auto-fixed | *nothing, deliberately* — see below | — |
-| `behaviour` | Demo | Steps 3 **and** 5 | `.step-behaviour`, `.step-video` |
+| `behaviour` | Demo | Step 5 | `.step-video` |
+| `sequence` | Sequence | Step 3 | `.step-sequence` |
 | `requirements` | Requirements | *no step yet* | — |
 | `data`, `packages` | Data, Structure | Step 2 | `.step-data` |
 | `api` | API | Step 7, its visual diff, and 7b | `.step-api`, `.step-api-visual`, `.step-specchanges` |
 | `city` | Code City | Step 4 | `.step-city` |
 | `complexity` | Complexity | Step 6 | `.step-complexity` |
 | `logging` | Logging | Step 7c | `.step-logging` |
+| `dsaudit` | UX | Step 7d | `.step-dsaudit` |
 | `owners` | CODEOWNERS | Step 8 | `.step-owners` |
 | `guide` | *(not a tab)* | Step 9 | `.step-guide` |
 
@@ -1398,6 +1674,17 @@ two tabs (`data,packages` come out of one diagram pass). `requirements` is a rea
 no step behind it yet — the map is honest about that rather than quietly leaving it out, and
 whoever builds that step wraps it with `start requirements`. Until then it reports *not
 measured*, which is true.
+
+**`sequence` took Step 3's stamp with it, rather than sharing `behaviour`'s.** When the
+sequence diagrams moved out of Demo, the obvious edit was to widen Step 3 to
+`start behaviour,sequence` — and that is the same trap as `autofixed` below, from the other
+direction: a step naming two tabs has its cost **split evenly**, so Demo would have been
+credited with half of a traced test run it no longer has anything to do with. Step 3's
+output *is* the Sequence tab now — the traced runs, the rendering, the base-diagram
+regeneration, the manifest — while the film that feeds Demo is Step 5's, stamped separately.
+So the stamp was **re-keyed, not widened**, and Demo is fed by Step 5 alone. The rule both
+cases share: **the stamp follows the work, not the surface.** A tab that takes the work with
+it takes the stamp too; a tab that only re-presents work already done gets none.
 
 ⚠️ **`autofixed` is deliberately fed by nothing, and this is the reasoning — do not
 re-litigate it.** The obvious move is to widen Step 1's wrap to `start review,autofixed`.
@@ -1431,7 +1718,8 @@ Block types: **`findings`** (the disputable calls), **`autofixes`** (the top-lev
 `autofixes` array — what you applied in step 1, same shape as a finding), **`diagrams`**
 (the delta gallery, narrowed by `kind` / `only` / `except`), **`testpairs`** (step 3 —
 each acceptance test beside the sequence its own run recorded, paired from the manifest and
-the `.puml` chapter titles, with the tests that record no sequence in a trailing group),
+the `.puml` chapter titles; both leftovers are named, a test with no diagram in a trailing
+group and a diagram no snippet quotes by the test that generated it),
 **`logging`** (step 7c — the structural logging scan: one reused `.snippet` box per
 statement it found on changed lines, each carrying its own GDPR verdict, and the two
 context registers under them), **`puml`** (a diagram this branch did *not* change, rendered
@@ -1500,32 +1788,92 @@ Rules the renderer enforces:
 ⚠️ **The strip has a budget, and it is not the window.** Its inner track is pinned by its
 own padding formula rather than by the viewport, so widening the browser buys almost
 nothing. Three rules at the very **end** of the stylesheet buy the room instead:
-`.tabstrip .grow { flex:1 1 0 }` (+16 px), `.tabstrip { padding-right:1.25rem }` (+20 px at
-1280, +100 at 1440 — the strip is full-bleed, so the right padding is decorative; the
-**left** padding is untouched, so the first tab still starts where the body text does), and
-`button.tab { padding:0 .6rem }` (about +8 px per pill). They must be emitted last or the
+`.tabstrip .grow { flex:1 1 0 }`, `.tabstrip { padding-right:1.25rem }` (the strip is
+full-bleed, so the right padding is decorative; the **left** padding is untouched, so the
+first tab still starts where the body text does), and `button.tab { padding:0 .6rem }`.
+Per-rule pixel gains used to be quoted here and have been removed: they were measured under
+an older layout and one of them ("+100 px at 1440") is flatly contradicted by the pinned
+track below. They must be emitted last or the
 base sheet's `button.tab { padding:0 .85rem }` wins the cascade and the strip silently wraps
 onto two rows — no error, nothing in the DOM to notice. `test_build_review.py` pins the
 ordering.
 
-**Measured, rather than asserted** (2026-09-03, reference page, Chrome, at 1280 / 1440 /
-1920 px): all **12 pills plus `show all` sit on one row at every width**, strip height
-**41 px** throughout, the pills summing to **984 px** of a **~1140 px** track. That is
-roughly 156 px of slack — call it two more average pills. An earlier version of this note
-claimed a twelfth tab would not fit; it was written before the shavings above landed and was
-simply wrong by the time anyone read it. **Re-measure before believing either number**: open
-the built page, and in the console compare `document.querySelector('.tabstrip').getBoundingClientRect().height`
-against a single row, and sum the pills' `offsetWidth` against the track's `clientWidth`. If
-a new tab does push it over, the remedies are unchanged — merge one, shorten a label, or
-accept two rows deliberately — but decide that from a measurement, not from this paragraph.
+**Measured, rather than asserted** (2026-09-03, reference page, headless Chromium, 14 pills
+plus `show all`). Two earlier readings in this note are superseded — one found a comfortable
+single row at 12 pills, the next found wrapping "below 1440" — and both were wrong for the
+same reason, which is worth more than the numbers:
+
+| viewport | track | Σ pills (spacer excluded) | gaps | needed | height | rows |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1280 / 1440 / 1920 | **1120 px** | 1203 px | 67 px | **1270 px** | 58 px | **2 everywhere** |
+
+One row in that table, not three, and that is the finding: **`.tabstrip` breaks out of
+`.wrap`** — `width:100vw` with symmetric `calc(50vw − …)` padding — so above about 1280 its
+content width is **pinned at 1120 px and does not grow with the viewport**. The strip
+therefore wraps to two rows *at every width*, and **widening the window does not help**.
+"It wraps on narrow screens" was the natural guess and it is false.
+
+⚠️ **Two ways to measure this wrongly, both of which produced a confident disagreement
+between two agents before the cause was found.**
+
+1. **`.tabstrip` contains a flexible spacer child** that soaks up whatever track is left
+   over. Sum `offsetWidth` across *all* children and you measure the leftover space as if it
+   were a pill: ~2124 px at 1280 and ~1226 px at 1440 **for the identical set of pills**. Any
+   spacer-inclusive figure is not comparable to anything, including to itself at another
+   width. **Exclude children with no text.**
+2. **Do not infer the track from the viewport.** It is pinned; read `clientWidth` off the
+   strip itself.
+
+So, to re-measure: sum `offsetWidth` over `.tabstrip` children whose `textContent` is
+non-empty, compare against the strip's own `clientWidth`, and read
+`getBoundingClientRect().height` for the row count.
+
+**What the two label changes bought, as an illustration of a budget that was already
+spent.** `Design system` → `UX` freed **69 px** (124 → 55) and, in isolation, pulled 1440
+back to one row. `Sequence` then cost **86 px** with its gap and put it straight back: net
+**+17 px**, row count unchanged. And without `Sequence` at all the pills still need 1184 px
+against a 1120 px track — **over regardless**. The rename was not wasted, but there was no
+headroom for it to save. If ~150 px is ever wanted back, the widest labels measured are
+`CODEOWNERS` 141 px (its emoji is part of that), `Requirements` 104 px, and the Review tab at
+102 px as `🤖 Review` or 95 px as `LLM Review`.
+
+**Given a pinned track, "accept two rows" is the only remedy that is not "delete a tab."**
+Shortening labels has just been shown to move single-digit percentages against a 150 px
+deficit, and widening the window does nothing at all. So this is not a menu of three equal
+options: two rows is the **normal, expected state** of this strip, and the thing to keep
+correct is everything measured *against* it — not the row count itself.
+
+⚠️ **The wrap was invisible until it clipped something, and that is the part worth
+remembering.** Nothing errors when the strip takes a second row; it simply gets taller. But
+`.panel { scroll-margin-top }` had been sized against a one-row strip, so on a deep link the
+panel's first heading came to rest **12 px underneath** the strip — surfacing as a report of
+"`/code-review — what breaks` is cut off" rather than as anything about the tab strip. Two
+rows is not a cosmetic matter: **anything sized against the strip's height silently goes
+wrong the moment it wraps**, which is why the offset below is derived and not a constant.
+Note what that derivation bought here: the strip's height is **unchanged at 58 px** across
+every change above — a tab added, two labels rewritten — and no deep-link offset needed
+touching. That is the whole return on refusing a second hardcoded constant.
 
 Deep links work both ways: `#<tab-id>` opens on that tab, and a link to any `id` inside a
-panel switches to it first. `⌘F` searches only the open tab, so the strip carries a **show
+panel switches to it first. The scroll offset that keeps the target clear of the sticky
+strip is **derived, never typed**: `scroll-margin-top: calc(var(--strip-h) + .6rem)`, where
+`--strip-h` is the strip's own `getBoundingClientRect().height`, published on load and kept
+in step by a `ResizeObserver`. One row, two rows and whatever the fourteenth tab does are
+all correct with no edit — which is exactly why a second hardcoded constant was refused
+after the first one clipped every deep-linked heading.
+
+The rule has to name **`.panel [id]` as well as `.panel`**, and that clause is load-bearing:
+`scrollIntoView` honours the **target's own** `scroll-margin`, not its ancestor's, and a hash
+like `#autofix-codereview` names an element *inside* a panel rather than the panel itself.
+Fixing only `.panel` looks fixed when you click a tab and stays broken on every in-panel
+anchor — the half-fix that passes a casual check. Verified across 10 deep links × 3 widths:
+30/30 headings fully clear of the strip, with the same ~9 px of breathing room at one row
+and at two. `⌘F` searches only the open tab, so the strip carries a **show
 all** toggle that reveals every panel at once — which is also what printing does.
 
 The order, as a default worth departing from only with a reason — **Overview, 🤖 Review,
-Auto-fixed, Demo, Requirements, Data, Structure, API, Code City, Complexity, Logging,
-CODEOWNERS** — with the panels in the same DOM order as the strip:
+Auto-fixed, Demo, Sequence, Requirements, Data, Structure, API, Code City, Complexity,
+Logging, UX, CODEOWNERS** — with the panels in the same DOM order as the strip:
 
 1. **Overview** (`overview`) — synthesised: the summary and the verdict, and the lede that
    walks the reader through the rest of the strip (see `{{tabcount}}` above). It is the one
@@ -1550,36 +1898,52 @@ CODEOWNERS** — with the panels in the same DOM order as the strip:
    the kind of work each pass does, not by recorded provenance** — see Step 1 on why the
    data cannot answer "which command produced this item". It re-presents Step 1's output
    rather than doing new work, which is why no step stamps it in the cost ledger.
-4. **Demo** (`behaviour`) — the film first, then each acceptance test with the sequence its
-   run recorded directly beneath it, then a plain statement of what is **not** covered. The
-   film had its own *Video* tab for a while; it is here now because *does it work?* is one
-   question, and a reader who came to watch and a reader who came to read the sequences are
-   answering the same doubt. The label says **Demo** rather than *Behaviour* because that is
+4. **Demo** (`behaviour`) — the film of the feature working, and now only that. It had its
+   own *Video* tab once, was folded in here beside the sequence diagrams, and the sequences
+   have since moved out again to the tab below — so Demo is back to one artifact and one
+   question, *does it work?* The label says **Demo** rather than *Behaviour* because that is
    what a reviewer is looking for. Keep the film's section id `video`, so `#video` still
-   lands even though the tab that used to own it is gone, and do not autostart it — this tab
-   is opened for the sequences at least as often as for the film.
-5. **Requirements** (`requirements`) — what this change set was supposed to do, against what
+   lands across both moves, and do not autostart it: a reader arrives here to watch, but they
+   also arrive by deep link from elsewhere on the page.
+5. **Sequence** (`sequence`) — the sequence diagrams the traced runs recorded: the
+   `sequences-note` section, then a `testpairs` block (`id: "sequences"`,
+   `kind: "sequence"`). It sits next to Demo on purpose: the two are the same subject at
+   different resolutions — the film is what the feature *looks like*, the diagrams are what
+   it *does* — and they were one tab until the diagrams turned out to be the half people
+   wanted to sit and study rather than watch. Fed by Step 3, which is the whole of that
+   step's output.
+
+   The block is **`testpairs`**, not a plain `diagrams` gallery: each acceptance test renders
+   beside the sequence *its own run* produced, and the two kinds of leftover are named rather
+   than dropped. The tab split carried the old block across unchanged first and the upgrade
+   followed separately, which is the right order — move a tab, then improve it, so a
+   regression has only one candidate cause.
+6. **Requirements** (`requirements`) — what this change set was supposed to do, against what
    it did. No step in this runbook produces it yet, so it will report *not measured* in the
    cost breakdown until one does; that is a true statement, not a defect.
-6. **Data** (`data`) — the DB and domain deltas, and the 2–5 core-logic bullets in domain
+7. **Data** (`data`) — the DB and domain deltas, and the 2–5 core-logic bullets in domain
    language, each backed by a snippet.
-7. **Structure** (`packages`) — the package delta, or the current package diagram as
+8. **Structure** (`packages`) — the package delta, or the current package diagram as
    context. The id stayed `packages` when the label changed, which is exactly the freedom
    the id/label split exists to give you.
-8. **API** (`api`) — step 7's two fragments, each a `section` with `includeHtml`: the
+9. **API** (`api`) — step 7's two fragments, each a `section` with `includeHtml`: the
    compatibility verdict first, because it is the one-word answer, then the classified
    change list underneath it, and the blast-radius view beside them. Step 7b's pb33f report
    belongs here too if you run it: it had a *Spec changes* tab of its own and lost it,
    because a fourth reading of the contract on a fourth surface reads as a fourth
    disagreement rather than as corroboration.
-9. **Code City** (`city`) — where the change set landed in the skyline. Its own tab: *where
-   did this land* is not the same question as *what did it cost to run*.
-10. **Complexity** (`complexity`) — the entry-point complexity increment. Split out from Code
-   City for the reason above; its section is `complexity-delta`, never `complexity`, which
-   the panel already owns.
-11. **Logging** (`logging`) — step 7c: what this change set will say for itself in
+10. **Code City** (`city`) — where the change set landed in the skyline. Its own tab: *where
+    did this land* is not the same question as *what did it cost to run*.
+11. **Complexity** (`complexity`) — the entry-point complexity increment. Split out from Code
+    City for the reason above; its section is `complexity-delta`, never `complexity`, which
+    the panel already owns.
+12. **Logging** (`logging`) — step 7c: what this change set will say for itself in
     production.
-12. **CODEOWNERS** (`owners`) — whether a named human has to approve this before it can
+13. **UX** (`dsaudit`) — step 7d: native controls sitting where a standardised
+    component belongs. It reads as the odd one out in this list because it is the only tab
+    whose finding is an **absence**, and the only one no other check in the repository can
+    produce — the Playwright suite passes on the very branch it flags.
+14. **CODEOWNERS** (`owners`) — whether a named human has to approve this before it can
     merge, and which files put them on the critical path.
 
 ### Close the ledger, check it, then build

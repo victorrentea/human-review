@@ -152,6 +152,123 @@ def inline_refs(spec: dict) -> dict:
     return out
 
 
+# ── from "this operation changed" to "this field, right here" ─────────────────
+# "expand impacted" used to stop at the operation. That is exactly half the job: the
+# fields this branch added live several levels inside a response schema, so the reader
+# still had to open the Schema tab and hand-expand four nodes to find them — and a tree
+# that opens to the operation and no further teaches the reader it is already showing
+# them everything, which is the one lie this page must not tell.
+#
+# oasdiff names the property it changed, as a slash path in its own prose:
+#     added the optional property `items/pets/items/visits/items/vetFirstName`
+# `items` is an array descent, anything else is an object property — which happens to be
+# exactly the two node kinds Swagger UI's JSON-Schema renderer draws. So the ancestor
+# chain is computed HERE, against the already-inlined schema, and handed to the page as
+# a list of steps to walk. Nothing is discovered by expanding and looking: Swagger UI
+# rebuilds a collapsed subtree from scratch, so anything read out of the rendered tree
+# is gone the moment it re-renders.
+#
+# Resolving against the real schema (rather than trusting the prose) is what keeps this
+# honest: a path that does not resolve produces no target at all, and the change stays
+# in the note list where it always was. A removed property is the everyday case — it is
+# absent from the spec being rendered, so the tree genuinely cannot point at it.
+MAX_REVEAL_DEPTH = 12    # steps down one schema; deeper is left closed and said so
+MAX_REVEAL_PER_OP = 12   # leaves opened per operation, most severe first
+
+BACKTICKED = re.compile(r"`([^`]+)`")
+RESPONSE_STATUS = re.compile(r"with the `(\d{3})` status")
+
+
+def first_media_schema(content) -> dict | None:
+    """The schema Swagger UI shows first — its media-type picker opens on the first."""
+    if not isinstance(content, dict):
+        return None
+    for media in content.values():
+        if isinstance(media, dict) and isinstance(media.get("schema"), dict):
+            return media["schema"]
+    return None
+
+
+def response_schema(op: dict, status: str) -> dict | None:
+    responses = op.get("responses")
+    if not isinstance(responses, dict):
+        return None
+    # YAML reads a bare `200:` as an int, a quoted `"200":` as a string. Both occur.
+    body = responses.get(status)
+    if body is None:
+        try:
+            body = responses.get(int(status))
+        except ValueError:
+            body = None
+    return first_media_schema(body.get("content")) if isinstance(body, dict) else None
+
+
+def request_schema(op: dict) -> dict | None:
+    body = op.get("requestBody")
+    return first_media_schema(body.get("content")) if isinstance(body, dict) else None
+
+
+def resolve_steps(schema, tokens: list) -> list | None:
+    """oasdiff's slash path -> the nodes Swagger UI actually draws, or None.
+
+    None on anything we cannot follow exactly: a composed schema (`allOf`), a property
+    that is not in the rendered spec because it was removed, or a chain that runs past
+    MAX_REVEAL_DEPTH. Guessing here would open the wrong branch and mark the wrong field.
+    """
+    node, steps = schema, []
+    for token in tokens:
+        if not isinstance(node, dict) or len(steps) >= MAX_REVEAL_DEPTH:
+            return None
+        items = node.get("items")
+        if token == "items" and isinstance(items, dict):
+            steps.append({"kind": "items"})
+            node = items
+            continue
+        props = node.get("properties")
+        if isinstance(props, dict) and token in props:
+            steps.append({"kind": "prop", "name": token})
+            node = props[token]
+            continue
+        return None
+    return steps or None
+
+
+def change_target(op: dict, change: dict) -> dict | None:
+    """Where in the rendered schema this one change landed, or None if we cannot say."""
+    cid, text = change.get("id") or "", change.get("text") or ""
+    if "request" in cid:
+        schema, where = request_schema(op), {"in": "request"}
+    elif "response" in cid:
+        found = RESPONSE_STATUS.search(text)
+        if not found:
+            return None
+        schema = response_schema(op, found.group(1))
+        where = {"in": "response", "status": found.group(1)}
+    else:
+        return None
+    if not isinstance(schema, dict):
+        return None
+    # The property path is whichever backticked token resolves. oasdiff writes several
+    # rule wordings and they are not worth enumerating; a token that walks the schema
+    # cleanly is the path, and one that does not cannot be.
+    for token in BACKTICKED.findall(text):
+        if re.fullmatch(r"\d{3}", token):
+            continue
+        steps = resolve_steps(schema, token.split("/"))
+        if steps:
+            return {**where, "steps": steps, "field": token.split("/")[-1]}
+    return None
+
+
+def change_mark(cid: str) -> str:
+    """The word that goes on the leaf, in the differ's own vocabulary."""
+    if "removed" in cid:
+        return "removed"
+    if "added" in cid or cid.startswith("new-"):
+        return "added"
+    return "changed"
+
+
 def build_model(old_spec: dict, new_spec: dict, changes: list):
     """Merge the two specs into one renderable spec + a per-operation diff map."""
     old_ops = {(m, p): op for m, p, op in operations(old_spec)}
@@ -176,6 +293,9 @@ def build_model(old_spec: dict, new_spec: dict, changes: list):
         merged["paths"].setdefault(p, {})[m.lower()] = copy.deepcopy(old_ops[(m, p)])
     merged = inline_refs(merged)
 
+    # Resolved against the *rendered* spec, which is `merged` — the one Swagger UI draws.
+    merged_ops = {(m, p): op for m, p, op in operations(merged)}
+
     entries = {}
     for (m, p) in sorted(set(new_ops) | removed):
         ch = merge_pairs(per_op.get((m, p), []))
@@ -189,14 +309,30 @@ def build_model(old_spec: dict, new_spec: dict, changes: list):
             state = "modified"
         else:
             state = "untouched"
+        op_obj = merged_ops.get((m, p)) or {}
+        listed = [
+            {"text": c["text"], "level": c["level"], "id": c["id"],
+             "mark": change_mark(c["id"]), "target": change_target(op_obj, c)}
+            for c in sorted(ch, key=lambda c: -c["level"])
+            # an added endpoint's only "change" is that it exists — no need to say it
+            if not (state == "added" and c["id"] == "endpoint-added")
+        ]
+        # The cap is spent on the most severe first (the list is already in that order),
+        # because a reader who can only be shown twelve fields wants the breaking ones.
+        budget, skipped = MAX_REVEAL_PER_OP, 0
+        for c in listed:
+            names_a_field = "propert" in c["id"]   # a change about a field, not a verb
+            if c["target"] and budget:
+                budget -= 1
+            elif names_a_field:
+                c["target"] = None
+                skipped += 1
         entries[f"{m} {p}"] = {
             "state": state,
-            "changes": [
-                {"text": c["text"], "level": c["level"], "id": c["id"]}
-                for c in sorted(ch, key=lambda c: -c["level"])
-                # an added endpoint's only "change" is that it exists — no need to say it
-                if not (state == "added" and c["id"] == "endpoint-added")
-            ],
+            "changes": listed,
+            # Said out loud on the page. A tree that quietly opens 12 of 30 fields is the
+            # same lie as one that opens none, only harder to notice.
+            "deepSkipped": skipped,
         }
     # Swagger UI groups operations by tag; a tag is "quiet" when the diff left
     # every one of its operations alone. Derived here rather than read back from
@@ -226,7 +362,6 @@ def render(model, entries, global_changes, tags, old_label, new_label) -> str:
                  "section": c.get("section", "")}
                 for c in sorted(global_changes, key=lambda c: -c["level"])
             ],
-            "tags": tags,
             "tags": tags,
             "counts": counts,
             "old": old_label,
@@ -349,6 +484,56 @@ TEMPLATE = r"""<!doctype html>
   .dv-badge.added    { background: var(--dv-added); }
   .dv-badge.removed  { background: var(--dv-removed); }
 
+  /* ---------- the trail down to a changed field ----------
+     Opening the tree is only half of it: once four levels are showing, the reader still
+     has to find which of the fields on screen is the new one. The trail is deliberately
+     quieter than the leaf — a hairline on every ancestor says "this is the way down",
+     the leaf says "here". Levels reuse the note list's l1/l2/l3 vocabulary rather than
+     inventing a third scale, and every colour comes from the theme vars so dark mode
+     needs no second set of rules. */
+  .swagger-ui .dv-hit-path { box-shadow: inset 2px 0 0 var(--dv-muted); }
+  /* The spine is drawn OUTSIDE the box, by a pseudo-element, rather than as an inset
+     shadow: the leaf article starts exactly at its property name, so an inset spine lands
+     on the first letter — "vetId" reads as "etId" with a green bar over the v. Nudging
+     the box left instead only fights Swagger UI's own padding rules. */
+  .swagger-ui article.dv-hit { position: relative; border-radius: 5px; }
+  .swagger-ui article.dv-hit::before {
+    content: ""; position: absolute; left: -7px; top: 1px; bottom: 1px; width: 3px;
+    border-radius: 2px; background: currentColor;
+  }
+  /* Swagger UI paints optional property names in a muted grey that its own light theme
+     was tuned for. On the one row we are sending the reader to, that is not good enough
+     in either theme — least of all sitting on a tinted background. */
+  .swagger-ui .dv-hit > .json-schema-2020-12-head .json-schema-2020-12__title,
+  .swagger-ui .dv-hit > .json-schema-2020-12-head .json-schema-2020-12-keyword__name {
+    color: var(--dv-fg); font-weight: 700;
+  }
+  /* The 3.0 renderer's leaf is a table row: no box to round off, and the field name is
+     in the first cell rather than inside the schema box. */
+  .swagger-ui tr.property-row.dv-hit > td:first-child {
+    box-shadow: inset 3px 0 0 currentColor; padding-left: 9px;
+    color: var(--dv-fg); font-weight: 700;
+  }
+  .swagger-ui .dv-hit.l1 { background: rgba(46,158,91,.10); color: var(--dv-added); }
+  .swagger-ui .dv-hit.l2 { background: rgba(217,130,24,.12); color: var(--dv-modified); }
+  .swagger-ui .dv-hit.l3 { background: rgba(215,38,61,.10); color: var(--dv-breaking); }
+  .swagger-ui tr.dv-hit.l1 > td { background: rgba(46,158,91,.10); }
+  .swagger-ui tr.dv-hit.l2 > td { background: rgba(217,130,24,.12); }
+  .swagger-ui tr.dv-hit.l3 > td { background: rgba(215,38,61,.10); }
+  .dv-fieldmark {
+    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 4px; margin-left: 8px; align-self: center;
+  }
+  .dv-fieldmark.l1 { background: rgba(46,158,91,.14); color: var(--dv-added); }
+  .dv-fieldmark.l2 { background: rgba(217,130,24,.16); color: var(--dv-modified); }
+  .dv-fieldmark.l3 { background: rgba(215,38,61,.14); color: var(--dv-breaking); }
+  /* Fields the auto-expand deliberately did not open. Saying nothing here would teach
+     the reader that what is open is everything — the exact failure this feature fixes. */
+  .dv-deepmore {
+    padding: 2px 14px 6px 12px; font-size: 12px; font-style: italic;
+    color: var(--dv-muted);
+  }
+
   /* ---------- the whole point: fade what nobody touched ---------- */
   .swagger-ui .opblock { transition: opacity .18s ease, filter .18s ease; }
   .swagger-ui .opblock.dv-untouched {
@@ -437,6 +622,10 @@ TEMPLATE = r"""<!doctype html>
   <span class="dv-vs"><b id="dv-new"></b> vs <b id="dv-old"></b></span>
   <span id="dv-chips"></span>
   <span class="dv-spacer"></span>
+  <!-- No tooltip here on purpose. The report's one tooltip component (TIP_JS, driven by
+       data-tip) lives in the host page and cannot reach into this frame, and a native
+       title= is the thing the house rule exists to keep out. The checkbox demonstrates
+       itself the moment it is ticked. -->
   <label class="dv-toggle"><input type="checkbox" id="dv-expand"> expand impacted</label>
 </div>
 <div id="dv-global"></div>
@@ -522,9 +711,10 @@ function decorate() {
     if (summary && info.changes.length && !op.querySelector('.dv-note')) {
       const note = document.createElement('div');
       note.className = 'dv-note';
+      const n = info.deepSkipped || 0;
       note.innerHTML = info.changes.map(c =>
         `<div class="dv-change l${c.level}"><span class="lvl">${c.level === 3 ? 'breaking' : c.level === 2 ? 'warn' : 'info'}</span><span>${md(c.text)}</span></div>`
-      ).join('');
+      ).join('') + (n ? `<div class="dv-deepmore">${n} more changed field${n > 1 ? 's are' : ' is'} not opened automatically — too deep, or gone from this revision. Use the schema's own “Expand all”.</div>` : '');
       summary.insertAdjacentElement('afterend', note);
     }
   });
@@ -581,13 +771,208 @@ function setOnlyTouched(on) {
 }
 if (location.hash.includes('only')) setOnlyTouched(true);
 
+// ---- walking down to the fields that changed ----
+// Swagger UI renders a collapsed subtree as an empty <div>: the children do not exist in
+// the DOM until their parent is open. So every step waits for the node it asked for
+// rather than assuming it is there, and ancestors are opened strictly in order.
+const STEP_WAIT = 1500;
+
+function waitFor(get, ms) {
+  return new Promise(done => {
+    const t0 = performance.now();
+    (function tick() {
+      const got = get();
+      if (got) return done(got);
+      if (performance.now() - t0 > ms) return done(null);
+      requestAnimationFrame(tick);
+    })();
+  });
+}
+
+// Swagger UI draws a schema with one of TWO renderers and the difference is invisible
+// from the outside: a 3.1 spec (or any `jsonSchemaDialect`) gets the JSON-Schema-2020-12
+// tree of <article>s, a 3.0 spec gets the older <span class="model"> boxes. Same page,
+// same version of Swagger UI, entirely different DOM. Walking only one of them would
+// leave every 3.0 spec silently un-expanded — the exact "nothing happened, so there must
+// be nothing there" this feature exists to kill. So each renderer gets a strategy, and
+// the root node decides which one is in play.
+const SCHEMA_2020 = {
+  root: host => host.querySelector('.model-container article.json-schema-2020-12'),
+  head: a => a.querySelector(':scope > .json-schema-2020-12-head'),
+  collapsed: a => !!a.querySelector(
+    ':scope > .json-schema-2020-12-head .json-schema-2020-12-accordion__icon--collapsed'),
+  toggle: a => a.querySelector(
+    ':scope > .json-schema-2020-12-head > .json-schema-2020-12-accordion'),
+  child(a, step) {
+    const body = a.querySelector(':scope > .json-schema-2020-12-body');
+    if (!body) return null;
+    // Told apart from grandchildren by which body they climb back to: the wrapper markup
+    // between a body and its articles is Swagger UI's business and has moved before.
+    const mine = sel => [...body.querySelectorAll(sel)]
+      .filter(el => el.parentElement.closest('.json-schema-2020-12-body') === body);
+    if (step.kind === 'items') {
+      return mine('.json-schema-2020-12-keyword--items > article')[0] || null;
+    }
+    return mine('.json-schema-2020-12-property > article').find(el =>
+      this.head(el)?.querySelector('.json-schema-2020-12__title')?.textContent.trim()
+        === step.name) || null;
+  },
+  // The 2020-12 leaf carries its own name, so the article is the thing to light up.
+  mark: a => a,
+};
+
+const SCHEMA_LEGACY = {
+  root: host => host.querySelector('.model-box > span.model'),
+  toggle: n => n.querySelector(':scope > span > button.model-box-control')
+            || n.querySelector(':scope > button.model-box-control'),
+  collapsed(n) {
+    const b = this.toggle(n);
+    return !!b && b.getAttribute('aria-expanded') !== 'true';
+  },
+  child(n, step) {
+    // Same "whose child am I" test, with span.model as the boundary. `table.model` is
+    // deliberately not a boundary — it is the property table, not a schema box.
+    const inside = (el, sel) => {
+      for (let e = el.parentElement; e && e !== n; e = e.parentElement) {
+        if (e.matches(sel)) return true;
+      }
+      return false;
+    };
+    const mine = sel => [...n.querySelectorAll(sel)]
+      .filter(el => el.parentElement.closest('span.model') === n);
+    if (step.kind === 'items') {
+      // An array renders as `[ <model> ]` with the item unnamed; the property table, if
+      // any, belongs to an object and is not it.
+      return mine('span.model').find(el => !inside(el, '.inner-object')) || null;
+    }
+    const row = mine('tr.property-row')
+      .find(tr => tr.children[0]?.textContent.trim() === step.name);
+    return row ? row.querySelector(':scope > td:nth-child(2) span.model') : null;
+  },
+  // A legacy property's NAME lives in the row's first cell, not in the model box, so
+  // lighting up the box alone would highlight the type and not the field.
+  mark: n => n.closest('tr.property-row') || n,
+};
+
+async function openNode(kit, n) {
+  if (!kit.collapsed(n)) return true;
+  kit.toggle(n)?.click();
+  return !!(await waitFor(() => !kit.collapsed(n), STEP_WAIT));
+}
+
+function schemaHost(op, t) {
+  if (t.in === 'request') return op.querySelector('.opblock-section-request-body');
+  return [...op.querySelectorAll('.responses-table .response')].find(r =>
+    r.querySelector('.response-col_status')?.textContent.trim() === t.status) || null;
+}
+
+// Swagger UI opens a response on "Example Value"; the tree lives behind "Schema". A spec
+// with no example has no tab strip at all and shows the model directly, so a missing
+// button is not a failure.
+async function openSchemaTree(host) {
+  const btn = [...host.querySelectorAll('.tab li button')]
+    .find(b => b.textContent.trim() === 'Schema');
+  if (btn && btn.getAttribute('aria-selected') !== 'true') btn.click();
+  return await waitFor(() => {
+    for (const kit of [SCHEMA_2020, SCHEMA_LEGACY]) {
+      const root = kit.root(host);
+      if (root) return { kit, root };
+    }
+    return null;
+  }, STEP_WAIT);
+}
+
+function markLeaf(kit, node, c) {
+  const target = kit.mark(node);
+  target.classList.add('dv-hit', 'l' + c.level);
+  const head = kit.head ? kit.head(node) : null;
+  const slot = head || target.querySelector(':scope > td:last-child') || target;
+  if (!slot.querySelector('.dv-fieldmark')) {
+    const chip = document.createElement('span');
+    chip.className = 'dv-fieldmark l' + c.level;
+    chip.textContent = c.mark;
+    slot.appendChild(chip);
+  }
+}
+
+// true when the reader can now see the field, false when we ran out of tree. The caller
+// counts the falses and puts the number on the page: a walk that quietly gives up is
+// indistinguishable from a field that was never there.
+async function revealTarget(op, c, run) {
+  // An opblock gets its <div class="opblock-body"> before it has a responses table, so
+  // asking for the response row the instant the operation opens finds nothing. Wait for
+  // the row itself, not for the box it will eventually appear in.
+  const host = await waitFor(() => schemaHost(op, c.target), STEP_WAIT);
+  if (!host) return false;
+  const found = await openSchemaTree(host);
+  if (!found) return false;
+  const { kit } = found;
+  let cur = found.root;
+  for (const step of c.target.steps) {
+    if (run !== revealRun) return false;        // the reader changed their mind
+    if (!await openNode(kit, cur)) return false;
+    const next = await waitFor(() => kit.child(cur, step), STEP_WAIT);
+    if (!next) return false;
+    (kit.mark(cur)).classList.add('dv-hit-path');
+    cur = next;
+  }
+  markLeaf(kit, cur, c);
+  return true;
+}
+
+// One run at a time. A second click supersedes the first rather than racing it.
+let revealRun = 0;
+
+async function revealImpacted() {
+  const run = ++revealRun;
+  const ops = [...document.querySelectorAll('.swagger-ui .opblock')].filter(op => {
+    const s = op.dataset.dvState;
+    return s && s !== 'untouched' && op.style.display !== 'none';
+  });
+  for (const op of ops) {
+    if (run !== revealRun) return;
+    const info = DATA.ops[keyOf(op)];
+    if (!info) continue;
+    if (!op.classList.contains('is-open')) {
+      op.querySelector('.opblock-summary-control')?.click();
+      await waitFor(() => op.querySelector('.opblock-body'), STEP_WAIT);
+    }
+    let missed = 0;
+    for (const c of info.changes) {
+      if (run !== revealRun) return;
+      if (c.target && !await revealTarget(op, c, run)) missed++;
+    }
+    reportMissed(op, missed);
+  }
+}
+
+// A walk that ran out of tree — an unfamiliar renderer, a node that never rendered —
+// has to say so where the reader is looking. Silence here reads as "there was nothing
+// deeper", which is the belief this whole feature exists to correct.
+function reportMissed(op, missed) {
+  op.querySelector('.dv-missed')?.remove();
+  if (!missed) return;
+  const note = op.querySelector('.dv-note');
+  if (!note) return;
+  const line = document.createElement('div');
+  line.className = 'dv-deepmore dv-missed';
+  line.textContent = `${missed} changed field${missed > 1 ? 's' : ''} could not be opened `
+    + 'in this schema view — open it by hand with the schema’s own “Expand all”.';
+  note.appendChild(line);
+}
+
+// "expand impacted" now means what the reader always assumed it meant: not "open the
+// operations that changed" but "show me what changed". Stopping at the operation left
+// the fields four levels down inside a collapsed schema, which is where this started.
 document.getElementById('dv-expand').onchange = e => {
+  revealRun++;                                   // cancel anything still walking
   document.querySelectorAll('.swagger-ui .opblock').forEach(op => {
     const s = op.dataset.dvState;
     if (!s || s === 'untouched') return;
     const open = op.classList.contains('is-open');
     if (open !== e.target.checked) op.querySelector('.opblock-summary-control')?.click();
   });
+  if (e.target.checked) revealImpacted();
 };
 
 window.ui = SwaggerUIBundle({

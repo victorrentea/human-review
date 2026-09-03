@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8"><title>Book a visit</title>
+<link rel="stylesheet" href="_shared.css">
+<!-- The branch: a Vet field was added by copying an older template. It is a bare
+     <select>, styled with the same border radius and height so it passes a glance. -->
+<h2>Book a visit</h2>
+<form id="visit">
+  <div class="row pc-field">
+    <label for="petType">Pet type</label>
+    <div class="control">
+      <div class="pc-combo" data-ds="combo">
+        <select id="petType" name="petType">
+          <option>cat</option><option>dog</option><option>lizard</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="row pc-field">
+    <label for="description">Description</label>
+    <div class="control">
+      <input id="description" name="description" type="text" class="form-control" value="annual check-up">
+    </div>
+  </div>
+  <div class="row pc-field">
+    <label for="vetId">Vet</label>
+    <div class="control">
+      <select id="vetId" name="vetId" class="form-control">
+        <option>-- not assigned --</option><option>Rafael Ortega</option><option>Helen Leary</option>
+      </select>
+      <div class="hint">who attended</div>
+    </div>
+  </div>
+  <div class="row pc-field">
+    <label for="clinic">Clinic</label>
+    <div class="control">
+      <div class="pc-combo" data-ds="combo">
+        <select id="clinic" name="clinic"><option>Central</option><option>Riverside</option></select>
+      </div>
+    </div>
+  </div>
+</form>
+<table><tr><th>Date</th><th>Vet</th></tr><tr><td>2026-08-14</td><td>Helen Leary</td></tr></table>

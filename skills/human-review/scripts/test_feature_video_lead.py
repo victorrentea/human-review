@@ -36,11 +36,23 @@ CUES = [{"t": 4.9}, {"t": 10.1}, {"t": 15.4}]
 
 def test_without_a_title_card_the_first_cue_still_opens_the_film():
     windows = annotate.cue_windows(CUES, duration=20.0)
-    assert windows[0] == (0.0, 10.1)
+    assert windows[0] == (4.9 - annotate.OPENING_GRACE, 10.1)
+
+
+def test_a_slow_first_page_load_cannot_drag_the_opening_line_over_a_blank_screen():
+    """A cold lazy-route compile once put the first cue 10s in; the opening sentence was then
+    spoken over ten seconds of loading screen."""
+    windows = annotate.cue_windows([{"t": 13.5}, {"t": 20.5}], duration=42.0, lead=3.4)
+    assert windows[0][0] == pytest.approx(13.5 - annotate.OPENING_GRACE)
+
+
+def test_a_cue_that_lands_inside_the_grace_still_opens_at_the_card():
+    windows = annotate.cue_windows([{"t": 4.0}, {"t": 9.0}], duration=20.0, lead=3.4)
+    assert windows[0][0] == 3.4, "never earlier than the title card"
 
 
 def test_a_title_card_holds_the_first_caption_and_its_voice_off_the_screen():
-    windows = annotate.cue_windows(CUES, duration=20.0, lead=3.4)
+    windows = annotate.cue_windows([{"t": 4.0}, {"t": 10.1}], duration=20.0, lead=3.4)
     assert windows[0][0] == 3.4, "the opening caption would be printed over the title"
 
 
@@ -57,6 +69,12 @@ def test_windows_never_run_backwards_or_past_the_footage():
 def test_a_lead_longer_than_the_footage_is_clamped_not_trusted():
     windows = annotate.cue_windows(CUES, duration=6.0, lead=99.0)
     assert all(start == 6.0 and end == 6.0 for start, end in windows)
+
+
+def test_the_opening_caption_never_precedes_the_title_card():
+    for t in (0.5, 3.0, 4.0, 12.0):
+        windows = annotate.cue_windows([{"t": t}, {"t": 30.0}], duration=40.0, lead=3.4)
+        assert windows[0][0] >= 3.4
 
 
 @pytest.mark.parametrize("lead", [0.0, -1.0])

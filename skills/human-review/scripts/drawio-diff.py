@@ -410,16 +410,88 @@ def paint_added(xml: str, verdict: dict) -> str:
     return ET.tostring(root, encoding="unicode")
 
 
+# ── linking a box to the class it names ───────────────────────────────────────────
+
+# `class Owner [[src://petclinic-backend/.../Owner.java:32{Click to open in editor}]] {`
+# — one line of the PlantUML that `DomainModelExtractorTest` regenerates from the code.
+CLASS_LINK = re.compile(
+    r"^\s*(?:abstract\s+|final\s+)?(?:class|entity|enum|interface)\s+(?P<name>\w+)\s*"
+    r"\[\[src://(?P<path>[^\s:\]]+)(?::(?P<line>\d+))?(?:\{[^}]*\})?[^\]]*\]\]",
+    re.M)
+
+
+def concept_sources(puml: Path) -> dict:
+    """concept name → (repo-relative path, line), read off the generated domain model.
+
+    Deliberately not a second name-matching scheme. `DomainModelExtractor` is the one
+    thing that decides what a domain class is, and its javadoc says so out loud: two
+    guardrails compare a drawing against it — `DomainModelExtractorTest`, which
+    regenerates this PlantUML, and `ConceptualModelDiagramTest`, which checks the
+    hand-laid-out draw.io map against the same extractor. So the PlantUML *is* that
+    resolution, already run, already carrying the line each class is declared on.
+
+    A concept the map declares and this file does not name therefore cannot happen while
+    the guardrail is green. If it ever does, the diagram and the test disagree and the
+    test is the one that is right — so the box loses its link and the caller says so,
+    rather than the page shipping an anchor pointing at a class that is not there.
+    """
+    if not puml or not Path(puml).is_file():
+        return {}
+    out = {}
+    for m in CLASS_LINK.finditer(Path(puml).read_text(encoding="utf-8")):
+        out[m["name"]] = (m["path"], int(m["line"] or 1))
+    return out
+
+
+def link_concepts(xml: str, sources: dict, root: Path):
+    """Point every concept box at its class. Returns the XML and the concepts it could
+    not resolve.
+
+    The links go in HERE, never into the `.drawio` file: that file is hand-edited, and
+    asking a human to keep a path and a line number correct by hand is asking for a link
+    that rots silently. The SVGs are generated, so they can carry what the source of
+    truth says today, every time they are rendered.
+
+    Only the concept boxes. An edge, an edge label and the "Please manually fix the
+    layout." annotation are not concepts — `parse_model` already separates the last one
+    out as `annotation`, so the distinction is data, not a naming guess here.
+    """
+    cells = parse_model(xml)
+    linked = {c.id: c.attrs["concept"] for c in cells.values()
+              if c.kind == "node" and c.attrs.get("concept")}
+    missing = sorted({name for name in linked.values() if name not in sources})
+    if not sources:
+        return xml, missing
+    root_at = Path(root).resolve()
+    tree = ET.fromstring(xml)
+    for node in tree.iter():
+        if node.tag not in ("object", "UserObject"):
+            continue
+        name = linked.get(node.get("id"))
+        where = sources.get(name) if name else None
+        if not where:
+            continue          # unresolved: no anchor at all, never a broken one
+        rel, line = where
+        node.set("link", f"vscode://file/{root_at / rel}:{line}:1")
+    return ET.tostring(tree, encoding="unicode"), missing
+
+
 # ── rendering ─────────────────────────────────────────────────────────────────────
 
 _SWITCH = re.compile(r"<switch>\s*(<foreignObject\b.*?</foreignObject>)\s*"
                      r"(?:<image\b[^>]*/>)?\s*</switch>", re.S)
 
 
+# The last thing draw.io writes: a "Text is not SVG - cannot display" line, shown only
+# where `foreignObject` is missing, linking to drawio.com. Invisible in a browser, but it
+# is still an off-site link inside a review page, and nothing in the page explains it.
+_NOT_SVG = re.compile(r"<switch>\s*<g requiredFeatures=[^>]*/>\s*<a\b.*?</a>\s*</switch>", re.S)
+
+
 def slim(svg: str) -> str:
     """Drop draw.io's `<switch>` fallbacks — a base64 PNG of every label, for renderers
     with no `foreignObject`. Every browser has one, and they are 80% of the bytes."""
-    return _SWITCH.sub(r"\1", svg)
+    return _NOT_SVG.sub("", _SWITCH.sub(r"\1", svg))
 
 
 def _rgb(hexcolor: str) -> str:
@@ -443,6 +515,25 @@ def pin_added_dark(svg: str) -> str:
     return svg
 
 
+# `(?:[^>]*\s)?href=` and not `[^>]*\shref=`: the optional branch is what catches an
+# anchor whose href is the FIRST attribute, where there is no preceding whitespace to
+# match — without it, every such anchor was given a second, duplicate href.
+_XLINK_ONLY = re.compile(r'<a (?!(?:[^>]*\s)?href=)([^>]*?)xlink:href="([^"]*)"')
+
+
+def dual_href(svg: str) -> str:
+    """Give every anchor a plain `href` beside draw.io's `xlink:href`.
+
+    draw.io exports SVG 1.1 anchors, which carry `xlink:href` alone. The report routes
+    editor links through one delegated listener selecting `a[href^="vscode:"]`, and an
+    attribute selector matches the attribute that is written, not the one the browser
+    resolves — so an xlink-only anchor is inert on this page. PlantUML's diagrams needed
+    both spellings for the same reason.
+    """
+    return _XLINK_ONLY.sub(lambda m: f'<a {m.group(1)}xlink:href="{m.group(2)}" '
+                                     f'href="{m.group(2)}"', svg)
+
+
 def render_with_drawio(xml: str, out: Path) -> bool:
     if not DRAWIO_APP.exists():
         return False
@@ -457,7 +548,7 @@ def render_with_drawio(xml: str, out: Path) -> bool:
         print(f"draw.io export failed, falling back to the built-in renderer:\n"
               f"{proc.stderr.strip()}", file=sys.stderr)
         return False
-    out.write_text(pin_added_dark(slim(out.read_text())))
+    out.write_text(dual_href(pin_added_dark(slim(out.read_text()))))
     return True
 
 
@@ -513,6 +604,11 @@ def render_builtin(xml: str, out: Path) -> None:
         styles = style_dict(cell.style)
         fill = styles.get("fillColor")
         size = styles.get("fontSize", "14")
+        # both spellings, for the same reason `dual_href` exists on the draw.io path
+        href = cell.attrs.get("link")
+        if href:
+            body.append(f'<a xlink:href="{_esc(href)}" href="{_esc(href)}" '
+                        f'style="cursor:pointer">')
         if fill and not styles.get("text"):
             body.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill}" '
                         f'stroke="{stroke_of(cell)}" stroke-width="'
@@ -521,6 +617,8 @@ def render_builtin(xml: str, out: Path) -> None:
             body.append(f'<text x="{x + w / 2}" y="{y + h / 2}" text-anchor="middle" '
                         f'dominant-baseline="central" font-family="Helvetica,sans-serif" '
                         f'font-size="{size}" fill="{font_of(cell)}">{_esc(cell.label)}</text>')
+        if href:
+            body.append("</a>")
     for cell in cells.values():
         if cell.kind != "label" or not cell.label:
             continue
@@ -540,7 +638,8 @@ def render_builtin(xml: str, out: Path) -> None:
                     f'font-weight="bold" fill="{font_of(cell)}">{_esc(cell.label)}</text>')
 
     out.write_text(
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}" height="{height}" '
         f'viewBox="{minx} {miny} {width} {height}" '
         f'style="color-scheme: light dark; background: transparent;">'
         + "".join(body) + "</svg>")
@@ -579,6 +678,12 @@ def main():
     ap.add_argument("--out-dir", default=".", help="where the three SVGs are written")
     ap.add_argument("--name", help="stem for the written files (default: the diagram's)")
     ap.add_argument("--renderer", choices=("auto", "drawio", "builtin"), default="auto")
+    ap.add_argument("--concepts", metavar="PUML",
+                    help="the generated domain-model PlantUML, whose class links say "
+                         "where each concept is declared; every concept box in every "
+                         "pane becomes a link into that class")
+    ap.add_argument("--repo-root", default=".",
+                    help="what the paths inside --concepts are relative to")
     ap.add_argument("--json", action="store_true",
                     help="print the verdict as JSON instead of a summary line")
     args = ap.parse_args()
@@ -599,12 +704,26 @@ def main():
 
     verdict = diff_models(old_xml, new_xml)
     out_dir = Path(args.out_dir)
+
+    # One map, from the WORKING TREE, applied to all three panes. That is what makes the
+    # "old" pane behave: a concept this branch deleted is simply not in it, so its box on
+    # the base diagram quietly loses its link instead of pointing at a file that is gone.
+    sources = concept_sources(Path(args.concepts)) if args.concepts else {}
+    unresolved = set()
+
+    def linked(xml):
+        out, missing = link_concepts(xml, sources, args.repo_root)
+        unresolved.update(missing)
+        return out
+
     written = {
-        "original": render(old_xml, out_dir / f"{stem}-original.svg", args.renderer),
-        "new": render(new_xml, out_dir / f"{stem}-new.svg", args.renderer),
-        "diff": render(paint_added(new_xml, verdict), out_dir / f"{stem}-diff.svg",
-                       args.renderer),
+        "original": render(linked(old_xml), out_dir / f"{stem}-original.svg", args.renderer),
+        "new": render(linked(new_xml), out_dir / f"{stem}-new.svg", args.renderer),
+        "diff": render(linked(paint_added(new_xml, verdict)),
+                       out_dir / f"{stem}-diff.svg", args.renderer),
     }
+    verdict["linked_concepts"] = sorted(sources)
+    verdict["unlinked_concepts"] = sorted(unresolved)
     verdict["renderer"] = written["diff"]
     verdict["added_color"] = ADDED_COLOR
     (out_dir / f"{stem}-diff.json").write_text(json.dumps(verdict, indent=2))
@@ -624,6 +743,14 @@ def main():
                 print(f"  - {item['kind']} {item['what']}")
         for item in verdict["changed"]:
             print(f"  ~ {item['kind']} {item['what']}: {'; '.join(item['changes'])}")
+        if args.concepts:
+            print(f"  {len(sources)} concept(s) linked to their class")
+        # Impossible while ConceptualModelDiagramTest passes — it refuses a box whose
+        # concept no longer exists. Loud, because it means the map and the guardrail
+        # disagree, and that is a finding about the branch rather than about this script.
+        for name in sorted(unresolved):
+            print(f"  ! concept {name} resolves to no class — left unlinked; the "
+                  f"conceptual-model guardrail and the diagram disagree", file=sys.stderr)
 
 
 if __name__ == "__main__":

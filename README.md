@@ -13,9 +13,33 @@ before it was made portable.
 
 ## Install
 
+Fork it first, and install from your own fork:
+
 ```sh
-/plugin marketplace add victorrentea/human-review
+gh repo fork victorrentea/human-review --clone=false   # or the Fork button on GitHub
+```
+
+```sh
+/plugin marketplace add <your-github-user>/human-review
 /plugin install human-review@human-review
+```
+
+`human-review@human-review` is the plugin name and the marketplace name, both declared
+inside the repository — they stay `human-review` in your fork, whoever owns it.
+
+The detour is worth one paragraph. Adding a marketplace tells Claude Code to run
+whatever that repository holds, and to keep doing so as the repository changes; this
+plugin drives a browser, a database and a Maven build, and reads your working tree, so
+that is a wide standing grant to hand to a branch someone else can push to. Nothing here
+is specific to this repo — it is simply how plugin marketplaces work, and it is the
+reason to point Claude Code at a copy whose contents change only when you change them.
+
+The trade is that fixes made upstream no longer arrive on their own. Pull them when you
+want them:
+
+```sh
+gh repo sync <your-github-user>/human-review --source victorrentea/human-review
+/plugin marketplace update human-review
 ```
 
 Then, from inside the repository you want reviewed:
@@ -26,20 +50,52 @@ Then, from inside the repository you want reviewed:
 /human-review 123          # a pull request
 ```
 
+## No green build, no review
+
+Before anything else runs, the skill pushes the branch and waits for CI. A review of a
+tree nobody has proved compiles is the exact failure the whole page exists to prevent: a
+confident-looking guide, every number on it measured from a working copy of unknown
+status. The wait binds to the **commit SHA that was just pushed**, never to "the latest
+run on the branch" — a branch almost always has *some* green run on it, and that is the
+easy way to end up reviewing one commit while quoting another's build.
+
+Three outcomes:
+
+- **green for that SHA** → the review proceeds, and the guide records what it was
+  measured against.
+- **red, cancelled, timed out — or no run for that commit at all** → it stops, and names
+  the workflow and job. An empty run list is a stop, not a pass: absence of a build is
+  not evidence of a passing one, and it is the state that looks quietest while proving
+  least.
+- **a repository with no CI configured at all** → it continues rather than blocking
+  forever, and the guide says *"no build proved this"* on its face, so the page never
+  reads as a pass it did not earn.
+
+Your own fixes are not part of the gate. The skill deliberately leaves what it changed
+uncommitted for you to inspect, so what gets pushed and gated is the *branch*, not the
+review's edits.
+
 ## What it builds
 
 `.human-review/review.html` — a throwaway artifact, regenerated, never committed. A review
-is not one argument read top to bottom but five or six separate questions, answered in
+is not one argument read top to bottom but a dozen separate questions, answered in
 whatever order the reviewer's doubt takes them, so the page is a strip of tabs:
 
 | tab | what it answers |
 | --- | --- |
-| Review | the findings that are genuinely a human's call, most critical first — and, beside them, the ones the agent already fixed |
-| Behaviour | sequence diagrams recorded from real traces, the tests that produced them, a Playwright recording of the feature, and what is *not* covered |
-| API contract | every operation and schema the branch moved, each classified breaking / additive / changed / cosmetic |
-| Data model | the DB and domain deltas — added in red, removed in red and struck — and the change in domain language |
-| Packages | the package delta, or the current package diagram as context |
-| Cost & shape | the before → after of every entry point, and the change lit up in a 3D Code City |
+| 🤖 Review | the findings that are genuinely a human's call, most critical first |
+| LLM Review | everything the two automated passes raised — what was applied, and what was left for you |
+| Demo | a Playwright recording of the feature, narrated |
+| Sequence | sequence diagrams recorded from real traces, each beside the test that produced it — and the tests tagged for tracing that came back without one |
+| Requirements | what the change set was supposed to do |
+| Data | the DB and domain deltas — added in red, removed in red and struck — and the change in domain language |
+| Structure | the package delta, or the current package diagram as context |
+| API | every operation and schema the branch moved, each classified breaking / additive / changed / cosmetic |
+| UX | native controls sitting where a design-system component belongs — a finding made of an *absence*, which the passing Playwright suite cannot produce |
+| Code City | the change lit up in a 3D Code City |
+| Complexity | the before → after of every entry point |
+| Logging | what the change set will say for itself in production — found by syntax, not by grep |
+| CODEOWNERS | who has to approve this, and whether the merge is blocked |
 
 Tabs are declared in the content file, so the layout is the guide's to choose: a tab with
 nothing to show is dropped and named, a changed diagram no tab claimed warns at build time,
@@ -48,14 +104,28 @@ and `show all` (or printing) reveals every panel at once so `⌘F` searches the 
 ## What it needs
 
 The skill drives tools that belong to your project, and degrades rather than fails when
-one is absent: a section with nothing to show is dropped, and says so.
+one is absent: a tab with nothing to show is dropped, and named under the strip.
 
-- **`plantuml`** on `PATH` — for the diagram deltas
-- **`python3`** — the page builder, the snippet extractor, the differs
-- **PyYAML** — only for the API contract diff
-- Diagrams to diff: any `.puml` your project generates and commits
-- Optional: a Playwright suite (the feature video), a Code City render, an
-  endpoint-complexity extractor
+Hard requirements — nothing runs without these:
+
+- **`python3`**, with **Pygments** and **Pillow** — the page builder cannot render at all
+  without them
+- **`git`**, **`plantuml`**, and the **`gh`** CLI against a GitHub remote: the run opens by
+  pushing the branch and waiting for CI to go green, and stops if it is not
+  (a repository with no CI is let through, and the guide says no build proved it)
+
+Everything else buys a tab, and its absence costs only that tab:
+
+- **PyYAML** plus a JVM or Docker — the API contract diff; `oasdiff` (Homebrew) resolves
+  `$ref`s the fallback cannot, and `openapi-changes` (pb33f) embeds a second opinion
+- **`ast-grep`** — the Logging tab, the only way to tell `log.info(x)` from `Math.log(x)`
+- **Playwright**, **numpy** and both branches served — the design-system audit
+- **ffmpeg** and a TTF the captions can use — the feature video
+- Diagrams to diff: any `.puml` your project generates and commits, and a hand-drawn
+  `.drawio.png` if you keep one
+- Your project's own hooks, substituted at five named points: a traced test run, a Code
+  City render, a filmable browser suite, an endpoint-complexity extractor, and a committed
+  OpenAPI spec
 
 ## The PlantUML differs
 
@@ -84,6 +154,40 @@ outwards, so the same delta can be read at whatever radius makes it legible.
 python3 -m pytest skills/human-review/puml-diff
 ```
 
+## The draw.io differ
+
+`skills/human-review/scripts/drawio-diff.py` answers the same question for the one
+diagram a human draws by hand — a `.drawio.png`, whose mxGraph XML rides along inside
+the PNG:
+
+```sh
+./drawio-diff.py old.drawio.png new.drawio.png --out-dir assets --name conceptual
+./drawio-diff.py --base origin/main --diagram docs/ConceptualModel.drawio.png \
+                 --out-dir .human-review/assets --name conceptual
+```
+
+It compares by the identity each element **declares** in that XML — `concept="Owner"` on
+a box, `assoc="Owner-Pet"` on a line, the mxCell id otherwise — and never by rendered
+pixels. Nudging a box does not make it a different box, and neither does rewording the
+label drawn on it, so a re-layout does not arrive as a page of phantom additions.
+
+The same reading is what stops it miscounting. A caption, a title, a sticky note and the
+"Please manually fix the layout." marker are all drawn as vertices, but they are parsed
+as **annotations**, not as concepts — the distinction is data off the file, not a guess
+from the wording. Counting a sticky note as a box is how a review page ends up announcing
+a new domain class nobody added.
+
+Two colours, and they must not be conflated: **red** is the diagram's own — the patch
+script paints an element red when it drew that element itself, and it stays red until a
+human lays it out by hand — while **orange** is this tool's mark for what the branch
+adds. An element that is both renders red, because the to-do is the louder fact; turn it
+black in draw.io and it goes orange, because it is still new.
+
+It writes three SVGs plus a machine-readable `<name>-diff.json`. Rendering goes through
+the draw.io desktop app when it is installed, which is the only faithful picture;
+without it, a built-in renderer walks the mxGeometry, which is enough for this class of
+diagram. It needs nothing installed either way.
+
 ## The OpenAPI contract differ
 
 `skills/human-review/scripts/openapi-diff.py` reads two revisions of an OpenAPI spec as
@@ -104,6 +208,46 @@ It reads the contract, not the handler, so it cannot see a semantic break that l
 spec additive — a `PUT` that starts *clearing* a field it was not sent looks like "an
 optional field appeared" to any structural differ. The unified diff rides along in a
 `<details>` for exactly that reason.
+
+## The design-system audit
+
+`skills/human-review/scripts/ds-audit.py` asks whether the frontend change actually used
+the design system — and it is built around the fact that **the defect is an absence**.
+Labelling the components that *are* right proves nothing. The bug is that somebody copied
+an older template and shipped a bare `<select>` where the standardised combo belongs, and
+it looks close enough that review slides straight past it. So the audit inverts the
+question: know which *roles* the design system covers, then flag native controls filling
+one of those roles that sit **outside** any DS component. Green is context; red is the
+product.
+
+```sh
+./ds-audit.py --base-new http://localhost:4300 --base-old http://localhost:4301 \
+              --screen "Book a visit=pets/11/visits/add" \
+              --screen "Edit a pet=pets/11/edit" \
+              --label-new my-branch --label-old main \
+              --source ../frontend/src \
+              --assets assets -o assets/ds-audit.html --json assets/ds-audit.json
+```
+
+The role registry is **derived, not listed**. A hand-written table of "roles the design
+system covers" is wrong the day the second component lands and nobody remembers the file
+exists, so it is read from four sources in descending authority — `data-ds-covers` where
+the component author said it out loud, then the control a rendered DS host actually
+wraps, then the same reading taken off a template for a component this screen does not
+happen to render, and last a guess from the name, marked in the output as a guess.
+Adding `data-ds="datepicker"` to a component needs no code here. The one thing the design
+system has to do is mark its host with `data-ds="<name>"`; nothing depends on its class
+names or its DOM shape.
+
+The registry is built from **both** revisions at once and applied to both, which is what
+makes a migration read as an improvement and a straggler read as a gap. Several screens
+per run, because a migration touches one control per form: *"it flagged the bare one"* is
+a weak claim, *"it flagged only the bare one, and called the other three right"* is the
+one worth making.
+
+The JSON is the artefact and the picture is its rendering — a reviewing agent reads
+`--json` rather than OCR-ing a PNG. Needs Playwright (`pip install playwright &&
+playwright install chromium`), Pillow and numpy, and both revisions served.
 
 ## Editing it in place
 

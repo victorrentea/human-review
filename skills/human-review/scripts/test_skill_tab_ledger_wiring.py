@@ -112,8 +112,8 @@ def test_schema_example_has_the_tabs_this_test_expects():
     # fails loudly instead of making both real tests vacuously pass.
     schema = _schema_tab_ids(_text())
     assert schema == {
-        "review", "autofixed", "behaviour", "requirements", "data", "packages",
-        "api", "city", "complexity", "logging", "owners",
+        "review", "autofixed", "behaviour", "sequence", "requirements", "data",
+        "packages", "api", "city", "complexity", "logging", "dsaudit", "owners",
     }
 
 

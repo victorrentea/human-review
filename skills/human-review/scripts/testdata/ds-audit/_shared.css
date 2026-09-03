@@ -1,0 +1,13 @@
+body{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:24px 32px;
+  background:#fff;color:#222;width:1180px}
+h2{margin:0 0 18px}
+.row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+label{width:150px;text-align:right;font-weight:600}
+.control{width:420px}
+/* the design system's look — a bare control is styled to pass casual inspection */
+.pc-combo,.form-control{display:block;width:100%;box-sizing:border-box;height:34px;padding:6px 10px;
+  border:1px solid #b9c2cc;border-radius:4px;background:#fff;font-size:14px;color:#222}
+.pc-combo select{all:unset;display:block;width:100%;height:100%;cursor:pointer}
+.pc-field .hint{font-size:12px;color:#6b7480;margin-top:4px}
+table{border-collapse:collapse;margin-top:20px;width:640px}
+th,td{border:1px solid #dde2e8;padding:6px 10px;text-align:left}

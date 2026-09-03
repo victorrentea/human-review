@@ -95,6 +95,11 @@ READ_FILL = 0.88
 # padded rect — so even the fattest step sits in the gutter rather than over the widget.
 BOX_PAD = 6
 # (duration, dim alpha of the surround, outline thickness, outline alpha)
+# How far the first caption may reach back from its own timestamp to cover the opening shot.
+# Long enough that a film opening on a ready page is never silent; short enough that a slow
+# first page load cannot drag the opening sentence out over a blank screen.
+OPENING_GRACE = 2.5
+
 PHASES = [
   (0.90, 0.24, 5, 1.00),
   (0.30, 0.17, 4, 0.78),
@@ -384,7 +389,17 @@ def cue_windows(cues: list[dict], duration: float, offset: float = 0.0,
   lead = min(max(0.0, lead), duration)
   windows = []
   for i, cue in enumerate(cues):
-    start = min(duration, lead if i == 0 else max(lead, cue["t"] + offset))
+    # The opening cue reaches BACK from its own timestamp, but only so far. Reaching all the way
+    # to `lead` was right while the first shot arrived a beat after the title; it stops being
+    # right the moment it does not. A cold lazy-route compile once put the first cue 10s in, and
+    # the rule dutifully spoke the opening sentence over ten seconds of empty loading screen —
+    # the exact desync this file exists to prevent, produced by the fix for the last one.
+    # So: open early, by at most OPENING_GRACE.
+    if i == 0:
+      earliest = max(lead, cue["t"] + offset - OPENING_GRACE)
+      start = min(duration, max(lead, min(earliest, cue["t"] + offset)))
+    else:
+      start = min(duration, max(lead, cue["t"] + offset))
     end = cues[i + 1]["t"] + offset if i + 1 < len(cues) else duration
     windows.append((start, max(start, min(end, duration))))
   return windows
