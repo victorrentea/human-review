@@ -75,6 +75,17 @@ def have(binary: str) -> bool:
     return shutil.which(binary) is not None
 
 
+def merge_base(ctx: Ctx) -> str:
+    """Where this branch forked, not where the base ref points now.
+
+    Every producer here reads the "before" side out of a commit object, so a base that has
+    moved on since the branch started would report commits that landed on the base as this
+    branch's work.
+    """
+    got = sh(f"git merge-base {ctx.base} HEAD", ctx, capture=True, check=False).stdout.strip()
+    return got or ctx.base
+
+
 # --------------------------------------------------------------------------- steps
 
 def _diagrams(ctx: Ctx):
@@ -159,7 +170,7 @@ def _api(ctx: Ctx):
 
 def _specchanges(ctx: Ctx):
     spec = ctx.cfg.get("spec", "openapi.yaml")
-    base = sh(f"git merge-base {ctx.base} HEAD", ctx, capture=True).stdout.strip() or ctx.base
+    base = merge_base(ctx)
     sh(f"openapi-changes html-report --no-logo --no-explorer "
        f"--report-file {ART}/openapi-changes.html '{base}:{spec}' ./{spec}", ctx)
 
@@ -168,7 +179,7 @@ def _logging(ctx: Ctx):
     paths = ctx.step_cfg("logging").get("paths") or []
     if not paths:
         raise LookupError("logging.paths not configured")
-    base = sh(f"git merge-base {ctx.base} HEAD", ctx, capture=True).stdout.strip() or ctx.base
+    base = merge_base(ctx)
     sh(f"{HERE}/logextract.py {' '.join(paths)} --repo . --since {base} "
        f"--json {ART}/logging.json", ctx)
 
@@ -179,7 +190,7 @@ def _dsaudit(ctx: Ctx):
     sources = " ".join(f"--source {s}" for s in (c.get("source") or []))
     if not (c.get("base-new") and c.get("base-old") and screens):
         raise LookupError("dsaudit needs base-new, base-old and at least one screen")
-    branch = sh("git rev-parse --abbrev-ref HEAD", ctx, capture=True).stdout.strip()
+    branch = sh("git rev-parse --abbrev-ref HEAD", ctx, capture=True).stdout.strip() or "HEAD"
     sh(f"{HERE}/ds-audit.py --base-new {c['base-new']} --base-old {c['base-old']} "
        f'--label-new "{branch}" --label-old {c.get("label-old", "main")} {screens} {sources} '
        f"--assets {ART} --asset-prefix assets --json {ART}/ds-audit.json "
