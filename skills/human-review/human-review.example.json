@@ -1,0 +1,49 @@
+{
+  "//": "Copy to `human-review.json` at your repo root. Every step this file does not",
+  "//2": "describe is skipped and named under the strip, which is the honest rendering of",
+  "//3": "'this project has no such thing'. Nothing here is required.",
+
+  "base": "origin/main",
+  "spec": "openapi.yaml",
+
+  "steps": {
+    "diagrams": {
+      "drawio": {
+        "diagram": "petclinic-backend/docs/ConceptualModel.drawio.png",
+        "concepts": "petclinic-backend/docs/generated/DomainModel.puml",
+        "name": "conceptual"
+      }
+    },
+    "sequence": {
+      "commands": [
+        "cd petclinic-test && ./run-tests-with-tracing.sh",
+        "cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq",
+        "cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram"
+      ]
+    },
+    "city": {
+      "regenerate": "petclinic-backend/docs/generate-codecity.sh"
+    },
+    "video": {
+      "out": ".human-review/assets/feature.webm"
+    },
+    "complexity": {
+      "extract": "cd petclinic-backend && mvn -q test -Dtest=EndpointComplexityExtractorTest",
+      "before": ".human-review/assets/complexity-before.json",
+      "after": "petclinic-backend/docs/generated/endpoint-complexity.json"
+    },
+    "logging": {
+      "paths": ["petclinic-backend"]
+    },
+    "dsaudit": {
+      "base-new": "http://localhost:4300",
+      "base-old": "http://localhost:4301",
+      "label-old": "main",
+      "source": ["petclinic-frontend/src"],
+      "screens": {
+        "Book a visit": "pets/11/visits/add",
+        "Edit a pet": "pets/11/edit"
+      }
+    }
+  }
+}

@@ -174,3 +174,91 @@ it and strikes the label through.
   derived from the strip's own height, never typed — the strip wraps to two rows at every
   width, which is its normal state.
 - Omit `tabs` entirely and you get the original single-column page.
+
+## The tab strip
+
+A review is five or six separate questions, answered in whatever order the reader's doubt
+takes them, so the page is a **tab strip over panels**, driven by a `tabs` array:
+
+```json
+"tabs": [
+  {"id":"review","label":"🤖 Review","count":true,
+   "intro":"<p class=\"sub\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
+   "blocks":[{"type":"findings","title":"Look here first","body":"…"},
+             {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
+  {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
+  {"id":"sequence","label":"Sequence",
+   "blocks":[{"type":"section","id":"sequences-note"},
+             {"type":"testpairs","id":"sequences","kind":"sequence",
+              "title":"Each test, beside the sequence its own run recorded",
+              "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
+              "unpaired":{"id":"tests-nosequence",
+                          "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
+  {"id":"requirements","label":"Requirements","blocks":[{"type":"section","id":"requirements"}]},
+  {"id":"data","label":"Data",
+   "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
+  {"id":"packages","label":"Structure",
+   "blocks":[{"type":"section","id":"packages-note"},
+             {"type":"diagrams","only":["Packages"],
+              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}}]},
+  {"id":"api","label":"API","badge":"+4","blocks":[{"type":"section","id":"swaggerdiff"}]},
+  {"id":"city","label":"Code City","blocks":[{"type":"codecity"}]},
+  {"id":"complexity","label":"Complexity","blocks":[{"type":"section","id":"complexity-delta"}]},
+  {"id":"logging","label":"Logging","tip":"Every logging statement the change set added — found by syntax, not by grep.",
+   "blocks":[{"type":"logging","base":"origin/main","paths":["petclinic-backend"],
+              "id":"logging-added","title":"Logging this change set added","body":"<div class=\"lede\">…</div>",
+              "existing":{"id":"logging-existing","title":"…","body":"…","snippets":[]},
+              "console":{"id":"logging-console","title":"…","body":"…","snippets":[]}}]},
+  {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",
+   "blocks":[{"type":"section","id":"ds-audit"}]},
+  {"id":"owners","label":"CODEOWNERS","blocks":[{"type":"codeowners"}]}
+]
+```
+
+A tab's `id` becomes the panel's DOM id, so the Review tab's `intro` must **not** also carry
+`id="review"`, and the Complexity tab's section is `complexity-delta`, not `complexity`.
+
+⚠️ **A tab's `id` is a contract with the step ledger; its `label` is not.** The two are
+joined by nothing but the string being identical, so relabel freely — *Packages* became
+*Structure* with no consequence — but re-key a tab and `run-steps.py` goes on stamping the
+old id: attribution finds no row, the tokens fall into the residual, and the tab reports
+*not measured*. The step that feeds each tab is declared in `scripts/run-steps.py`'s `STEPS`
+table, and `test_tab_ledger_wiring.py` fails until the two agree.
+
+| `id` | label on the reference page | produced by |
+| --- | --- | --- |
+| `review` | 🤖 Review | the harvested passes (Step 1) |
+| `behaviour` | Demo | `video` |
+| `sequence` | Sequence | `sequence` |
+| `requirements` | Requirements | *no step yet* |
+| `data`, `packages` | Data, Structure | `diagrams` |
+| `api` | API | `api`, `specchanges` |
+| `city` | Code City | `city` |
+| `complexity` | Complexity | `complexity` |
+| `logging` | Logging | `logging` |
+| `dsaudit` | UX | `dsaudit` |
+| `owners` | CODEOWNERS | `owners` |
+| `guide` | *(not a tab)* | Step 4, stamped by the model |
+
+A step naming two tabs has its cost **split evenly**, so never widen a step to a tab that did
+none of the work.
+
+Default order, worth departing from only with a reason — **Overview, 🤖 Review, Demo,
+Sequence, Requirements, Data, Structure, API, Code City, Complexity, Logging, UX,
+CODEOWNERS**. Four tabs need something said about how they are written:
+
+- **🤖 Review** — **one list**: the open calls first, most critical first, then the fixes
+  already applied, numbered straight through and greyed out. Two lists that both start at 1
+  make the reader do arithmetic. Its `intro` must name which passes ran, and in which order.
+- **Requirements** — lead with **what kinds of test the change set offers as acceptance
+  evidence**, as cards (`<div class="evidence">` holding one `<section class="evi
+  e2e|api|unit">` per level). A level **nothing** covers keeps its card and says so in
+  `class="evi none"` — "there is no unit test at this level" is a finding, and a paragraph
+  nobody wrote looks identical to one nobody thought to write. Each requirement carries a
+  `tests` list beneath its own text; **you attach, the diff classifies** (`test-changes.py`).
+  Say `new` and `modified` apart: a new test is evidence the requirement was pinned, an
+  edited one is evidence a pin moved and is worth reading for what it stopped asserting.
+- **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
+  backed by a snippet.
+- **UX** — the only tab whose finding is an absence, and the only one no other check in the
+  repository can produce.
