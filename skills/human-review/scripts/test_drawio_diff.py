@@ -320,10 +320,13 @@ def test_slim_keeps_the_label_and_drops_the_bitmap_fallback():
 def test_end_to_end_writes_three_svgs_and_a_verdict(tmp_path, branch_png):
     base_png = tmp_path / "base.drawio.png"
     base_png.write_bytes(png_with(BASE))
+    puml = tmp_path / "DomainModel.puml"
+    puml.write_text(DOMAIN_PUML)
     out = tmp_path / "out"
     proc = subprocess.run(
         [sys.executable, str(HERE / "drawio-diff.py"), str(base_png), str(branch_png),
-         "--out-dir", str(out), "--name", "conceptual", "--renderer", "builtin"],
+         "--out-dir", str(out), "--name", "conceptual", "--renderer", "builtin",
+         "--concepts", str(puml), "--repo-root", "/repo"],
         capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
     for view in ("original", "new", "diff"):
@@ -498,3 +501,15 @@ def test_end_to_end_links_all_three_panes(tmp_path, branch_png):
         assert svg.count('href="vscode://file//repo/backend') == 8, view
     assert "4 concept(s) linked to their class" in proc.stdout
     assert json.loads((out / "c-diff.json").read_text())["unlinked_concepts"] == []
+
+def test_concepts_is_required_so_unlinked_boxes_cannot_ship_silently(tmp_path, branch_png):
+    """Omitting --concepts used to succeed and quietly produce boxes that are not links —
+    the failure nobody notices until they try to click one. It is an argparse error now."""
+    base_png = tmp_path / "base.drawio.png"
+    base_png.write_bytes(png_with(BASE))
+    proc = subprocess.run(
+        [sys.executable, str(HERE / "drawio-diff.py"), str(base_png), str(branch_png),
+         "--out-dir", str(tmp_path / "out"), "--renderer", "builtin"],
+        capture_output=True, text=True)
+    assert proc.returncode != 0
+    assert "--concepts" in proc.stderr

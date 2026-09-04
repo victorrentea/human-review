@@ -678,10 +678,12 @@ def main():
     ap.add_argument("--out-dir", default=".", help="where the three SVGs are written")
     ap.add_argument("--name", help="stem for the written files (default: the diagram's)")
     ap.add_argument("--renderer", choices=("auto", "drawio", "builtin"), default="auto")
-    ap.add_argument("--concepts", metavar="PUML",
+    ap.add_argument("--concepts", metavar="PUML", required=True,
                     help="the generated domain-model PlantUML, whose class links say "
                          "where each concept is declared; every concept box in every "
-                         "pane becomes a link into that class")
+                         "pane becomes a link into that class. REQUIRED: without it the "
+                         "command still succeeds and quietly produces boxes that are not "
+                         "links, which is the failure nobody notices until they click one")
     ap.add_argument("--repo-root", default=".",
                     help="what the paths inside --concepts are relative to")
     ap.add_argument("--json", action="store_true",
@@ -708,7 +710,7 @@ def main():
     # One map, from the WORKING TREE, applied to all three panes. That is what makes the
     # "old" pane behave: a concept this branch deleted is simply not in it, so its box on
     # the base diagram quietly loses its link instead of pointing at a file that is gone.
-    sources = concept_sources(Path(args.concepts)) if args.concepts else {}
+    sources = concept_sources(Path(args.concepts))
     unresolved = set()
 
     def linked(xml):
