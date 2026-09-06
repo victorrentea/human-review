@@ -42,12 +42,44 @@ gh repo sync <your-github-user>/human-review --source victorrentea/human-review
 /plugin marketplace update human-review
 ```
 
-Then, from inside the repository you want reviewed:
+Then, from inside the repository you want reviewed — **after** you have run whatever
+review passes you trust:
 
 ```
+/code-review               # or /simplify, or your own adversarial pass, or all of them
 /human-review              # uncommitted work
 /human-review origin/main  # this branch vs a base
 /human-review 123          # a pull request
+```
+
+## It writes up a review; it does not perform one
+
+This is the one thing worth knowing before installing it. `/human-review` **does not run
+`/code-review` or `/simplify`.** It reads the conversation, finds the passes that already
+ran, and assembles a page out of what they found.
+
+If none ran, it stops and says so, and offers to run them for you — it never simply does it.
+That is deliberate. The passes are the expensive part of the pipeline and they are a
+judgement call about when the work is done, which is yours; the write-up is the cheap part
+and the one worth automating. It also means the findings on the page are the ones you
+watched happen, rather than a second opinion that quietly replaced them: two runs of the
+same pass over the same diff word and rank their findings differently, so re-running one
+does not confirm it — it produces a different review, and whichever ran last wins.
+
+Detection is exact rather than inferred. A slash command is a recorded `<command-name>` row
+in the transcript; a pass that ran forked (which is how `/code-review` runs by default) is a
+subagent whose metadata names its type and model; and where a pass reported through the
+`ReportFindings` tool, the findings are harvested as structured data instead of being read
+back out of prose. Anything harvested from prose is labelled as such, so nothing on the page
+claims more fidelity than it has.
+
+So your own pass counts too. A house checklist, a lint-derived reviewer, a multi-agent
+adversarial run — if it left its output in the conversation, it is picked up and attributed
+by name.
+
+```sh
+# what this conversation has actually reviewed, without building anything
+"$SKILL"/scripts/review-passes.py
 ```
 
 ## No green build, no review
@@ -83,8 +115,7 @@ whatever order the reviewer's doubt takes them, so the page is a strip of tabs:
 
 | tab | what it answers |
 | --- | --- |
-| 🤖 Review | the findings that are genuinely a human's call, most critical first |
-| LLM Review | everything the two automated passes raised — what was applied, and what was left for you |
+| 🤖 Review | one list: the calls that are genuinely a human's, most critical first, then the fixes already applied — each stamped with the pass that raised it |
 | Demo | a Playwright recording of the feature, narrated |
 | Sequence | sequence diagrams recorded from real traces, each beside the test that produced it — and the tests tagged for tracing that came back without one |
 | Requirements | what the change set was supposed to do |
@@ -123,9 +154,12 @@ Everything else buys a tab, and its absence costs only that tab:
 - **ffmpeg** and a TTF the captions can use — the feature video
 - Diagrams to diff: any `.puml` your project generates and commits, and a hand-drawn
   `.drawio.png` if you keep one
-- Your project's own hooks, substituted at five named points: a traced test run, a Code
-  City render, a filmable browser suite, an endpoint-complexity extractor, and a committed
-  OpenAPI spec
+- Your project's own commands, named in a **`human-review.json`** at its root: the traced
+  test run, the Code City render, the filmable browser suite, the endpoint-complexity
+  extractor, the OpenAPI spec, the screens the design-system audit visits. Copy
+  `skills/human-review/human-review.example.json` to start. Nothing in the skill knows
+  anything about your project, and a step this file does not describe is skipped and named
+  on the page rather than failing the run
 
 ## The PlantUML differs
 

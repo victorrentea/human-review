@@ -1,9 +1,10 @@
 name: tests
 
-# The three test files in this repository were, until now, documentation: nothing ran them.
-# SKILL.md leans on them ("a private fork of the review pipeline drifts in silence, which is
-# the exact failure the guardrail tests exist to catch") — a claim that only holds if
-# something actually executes them. They take about two seconds.
+# The tests in this repository were, for a while, documentation: nothing ran them. They are
+# load-bearing now in a way they were not then — the runbook used to carry its own
+# invariants as prose a reader was trusted to follow, and those invariants are code here
+# (the gate refuses before it wipes; a step whose prerequisite fails is never stamped; a
+# step that raises is still closed), so the tests are the only thing holding them.
 on:
   push:
   pull_request:
