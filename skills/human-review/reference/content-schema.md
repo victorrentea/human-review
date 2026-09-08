@@ -74,6 +74,9 @@ number. A chip whose number is typed by hand goes stale without anything noticin
 
 The footer names the toolset and when, and stops — a sentence about the page's own honesty
 is stripped by the build if it reappears. `/human-review` in it is replaced by the repo URL.
+Housekeeping ("`.human-review/` is a throwaway artifact — delete it rather than commit it")
+is not footer material either: it is an instruction to whoever ran the review, and the
+reviewer reading the page can do nothing with it. Say it to them in the wrap-up instead.
 
 ## Block types
 
@@ -258,7 +261,15 @@ CODEOWNERS**. Four tabs need something said about how they are written:
   linking to the issue**: it is the handle the work is quoted by everywhere else, and a
   page that shows the ticket's text without its number sends the reader hunting. Title the
   evidence panel by what it answers (**"covering tests"**), not by the category the
-  evidence falls into. *Then* say
+  evidence falls into, and list its tests **one per row, each carrying its own kind as a
+  badge** — `UI` (it clicks the screens; "e2e" names the technique, not what it drives)
+  and `API` — rather than grouping them under a header with a count of each. Nobody acts
+  on "×4 asserted"; the badge is what tells you, on the row you are reading, whether the
+  sentence is pinned through the browser or only under it. Keep the strength in the
+  badge's fill (solid asserts, outlined only runs through). **Partly covered is a hatch**,
+  not a paler green: two intensities of one colour only separate when both are on screen
+  at once. The legend is titled **"Legend"** and names each state without repeating its
+  colour — the swatch beside it is the colour. *Then* say
   **what kinds of test the change set offers as acceptance evidence**, as cards (`<div
   class="evidence">` holding one `<section class="evi e2e|api|unit">` per level) — the
   answer, read after the question. A level **nothing** covers keeps its card and says so in
