@@ -48,11 +48,16 @@ with Vet` and **`subtitle` does not render in the masthead at all** — keep `su
 `<title>` and for a page built without `pr`, and do not write the refs into it. `branch` and
 `base` render as the first two chips on the scope bar.
 
+`base` is resolved to `origin/<name>` when such a ref exists — the ref a pull request would
+actually merge into — and the base chip grows a **`!`** when the two refs have drifted: the
+base has moved ahead of the fork point, or the local branch named here is behind its own
+remote. The mark is recomputed on every build from the refs as they stand, so merging main
+in (or fetching) clears it by itself; there is nothing to reset.
+
 ```json
 "scope": [
   {"label":"commits","value":"2 (pushed to main)","href":"https://github.com/…/compare/…"},
-  {"label":"files","value":"25 (16 changed, 9 new)"},
-  {"label":"lines","value":"<span class=\"added\">+2256</span> / <span class=\"removed\">−34</span>"},
+  {"auto":"diffstat"},
   {"auto":"tests","href":"#requirements"},
   {"label":"diagrams","value":"3","href":"#diagrams"},
   {"auto":"autofixed","href":"#review"},
@@ -65,13 +70,35 @@ a per-chip choice: **`+` added, `−` removed, `±` changed** (`files <span clas
 / ±40`). Never `~` for the changed ones — a tilde reads as an approximation, and "about
 forty files were touched" is not what the number means.
 
-`value` is raw HTML on purpose; `href` makes the chip a link. The three `auto` chips are
-**computed, never typed** — `autofixed` counts the page's own two lists, `cost` runs
-`review-cost.py` over the run's transcript, `tests` reads the manifest `test-changes.py`
-already built for the tab below. All three drop themselves rather than print a wrong
-number. A chip whose number is typed by hand goes stale without anything noticing: the
-`tests` chip exists because `unit tests · 125 green (20 new)` used to be typed here, and
-was true until somebody wrote the next test.
+`value` is raw HTML on purpose; `href` makes the chip a link. The four `auto` chips are
+**computed, never typed** — `diffstat` measures the change set with `git diff`, `autofixed`
+counts the page's own two lists, `cost` runs `review-cost.py` over the run's transcript,
+`tests` reads the manifest `test-changes.py` already built for the tab below. All four drop
+themselves rather than print a wrong number. A chip whose number is typed by hand goes
+stale without anything noticing: the `tests` chip exists because `unit tests · 125 green
+(20 new)` used to be typed here, and was true until somebody wrote the next test.
+
+`diffstat` renders **two** chips from one measurement — `files` and `lines` — so the two can
+never end up describing different ranges. It exists because they did, and worse: a page
+carried `files +1 / ~40` and `lines +1198 / −863` for six days, and the line counts matched
+no range in the repository at all — not the branch against its base, not against the
+merge-base recorded three lines above them in the same content file, not against the stale
+local `main`. They had been typed once, from a branch state three commits and one `git
+reset` ago. **Do not write `files` or `lines` by hand.**
+
+It counts code and leaves generated files out — redrawn `.genseq.*` diagrams, anything under
+a `generated/` directory, lock files, minified bundles, images. Not to flatter the number
+but to keep it answering its question: on the branch it was written for, one regenerated
+`endpoint-complexity.json` was 1405 of 2896 added lines, and the redrawn diagrams supplied
+almost every deletion, so `−333` described a picture being redrawn rather than a line of
+logic being removed. `{"auto":"diffstat","exclude":["*.pb.go"]}` adds project-specific
+pathspecs; the built-in list cannot be switched off, and the tooltip states the unfiltered
+totals regardless — the generated files are ranked below the code, never hidden from it.
+
+`autofixed` names the model that did the reviewing, taken from the run's own transcript, so
+the chip reads `Opus 5 review  12 raised · 9 open` rather than needing a second, unverifiable
+`reviewed by` chip beside it. `{"by":"Opus 5"}` is the fallback for a page rebuilt outside
+the session that reviewed it.
 
 The `tests` chip is a **balance**, not a count — `+10 / −4 / ±4` — because the
 question it answers is whether the branch left fewer tests running than it found. The
@@ -282,7 +309,10 @@ CODEOWNERS**. Four tabs need something said about how they are written:
   linking to the issue**: it is the handle the work is quoted by everywhere else, and a
   page that shows the ticket's text without its number sends the reader hunting. Title the
   evidence panel by what it answers (**"covering tests"**), not by the category the
-  evidence falls into, and list its tests **one per row, each carrying its own kind as a
+  evidence falls into, and give it the ticket's own shape — **a heading in the page's
+  voice, then a framed card**, same border and radius: the two columns are a question
+  and its answer, and a small-caps label inside a frame does not read as the reply to a
+  heading. and list its tests **one per row, each carrying its own kind as a
   badge** — `UI` (it clicks the screens; "e2e" names the technique, not what it drives)
   and `API` — rather than grouping them under a header with a count of each. Nobody acts
   on "×4 asserted"; the badge is what tells you, on the row you are reading, whether the

@@ -48,6 +48,7 @@ CSS = """
 :root {
   --bg:#fbfbfd; --fg:#1c1c22; --muted:#6b6b78; --line:#e2e2ea; --card:#ffffff;
   --accent:#8a1c1c; --accent-soft:#fdeaea; --code-bg:#f6f6fa; --link:#1a4fa0;
+  --drift:#b5730a; --drift-fg:#ffffff;
   /* PlantUML's own fixed palette, named — not reused from --bg/--fg/etc above, because
      those are tuned for prose and would visibly change every diagram's light-mode look.
      Each one equals exactly what PlantUML already emits, so light mode is pixel-identical
@@ -88,6 +89,7 @@ CSS = """
 @media (prefers-color-scheme: dark) {
   :root { --bg:#15151a; --fg:#e8e8ef; --muted:#9a9aa8; --line:#2c2c36; --card:#1d1d24;
           --accent:#f08a8a; --accent-soft:#3a1f1f; --code-bg:#101015; --link:#8ab4f8;
+          --drift:#e0a33c; --drift-fg:#15151a;
           /* PlantUML draws these as flat, fully-opaque shapes, so each is picked to read
              the way its light counterpart does on white — not lifted from --bg/--card,
              whose contrast ratios were tuned for text, not a diagram's fills and hairline
@@ -606,6 +608,17 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .chip.refchip b.refname { font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
             font-size:.95em; }
 .chip.refchip b.refname.head { color:var(--link); }
+/* The `!` on the base chip: the pair of refs this page compares has drifted since it was
+   built. Amber and not the page's red — a stale base is not a finding about the code, it
+   is a caveat about the whole page, and dressing it in the same colour as a bug would
+   have it read as the thirteenth thing /code-review raised. It is a filled disc rather
+   than a bare glyph so it survives being skimmed past at the end of a row of chips, and
+   the chip it sits on keeps its border so the ref itself stays the thing being read. */
+.chip.refchip .drift { display:inline-flex; align-items:center; justify-content:center;
+            width:1.05em; height:1.05em; margin-left:.35rem; border-radius:50%;
+            background:var(--drift); color:var(--drift-fg); font-weight:700;
+            font-size:.78em; line-height:1; font-style:normal; cursor:help; }
+.chip.refchip.drifted { border-color:var(--drift); }
 h1 .prref { text-decoration:none; }
 h1 .prref:hover { text-decoration:underline; }
 .titlescore { display:inline-flex; align-items:baseline; gap:.35rem; padding:.3rem .8rem;
@@ -3870,6 +3883,265 @@ def tests_chip(doc: dict | None) -> dict | None:
     return {"label": "tests", "value": value, "tip": tip}
 
 
+# What a diffstat must never count. Every path below is written by a generator -- a
+# sequence diagram redrawn from a trace, an API client regenerated from a spec, a lock
+# file resolved by a package manager -- and none of it is code a reviewer reads.
+#
+# Counting them does not merely inflate the number, it inverts it. On the branch this was
+# written for, one regenerated `endpoint-complexity.json` supplied 1405 of 2896 added
+# lines, and the redrawn `.genseq.*` pairs supplied almost every deletion: a reviewer
+# reading `-333 lines` was reading a diagram being redrawn, not a line of logic being
+# removed. The chip is there to say how much there is to read, and a number dominated by
+# machine output answers a different question than the one being asked.
+#
+# `exclude` in the content file adds to this list; it never replaces it. There is no way
+# to switch the default off, because "count the generated files too" is not a reviewing
+# preference -- it is the mistake this exists to prevent. The tooltip states the
+# unfiltered totals anyway, so nothing is hidden, only ranked.
+GENERATED_PATHSPECS = [
+    "*/generated/*", "generated/*",
+    "*.genseq.json", "*.genseq.puml",
+    "*.min.js", "*.min.css", "*.snap",
+    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.ico", "*.pdf",
+    "package-lock.json", "*/package-lock.json",
+    "yarn.lock", "*/yarn.lock",
+    "pnpm-lock.yaml", "*/pnpm-lock.yaml",
+    "go.sum", "*/go.sum",
+    "Cargo.lock", "*/Cargo.lock",
+    "poetry.lock", "*/poetry.lock",
+    ".human-review/*",
+]
+
+
+def _git(root: Path, *args: str) -> str | None:
+    """A git command whose failure is an answer, not an exception.
+
+    Every caller here is asking a question that can legitimately have no answer -- a ref
+    that does not exist locally, a range that cannot be walked -- and each of them turns
+    `None` into a dropped chip or a dropped warning rather than a wrong one.
+    """
+    p = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+    return p.stdout.strip() if p.returncode == 0 else None
+
+
+def _resolve_base(root: Path, named: str) -> tuple[str, str] | None:
+    """Which ref the page should actually measure against, given the name it was told.
+
+    A content file says `"base": "main"`, and on the machine the review is built on that
+    is a *local* branch which may be days behind the remote it names. Comparing against it
+    charges the branch under review with every commit the local ref has not pulled yet:
+    on the branch this was written for, local `main` was 18 commits behind `origin/main`,
+    and diffing against it reported 142 files and 4099 deleted lines for a change set that
+    deletes 39. So a bare name resolves to `origin/<name>` when that exists -- the ref a
+    pull request would actually merge into -- and only falls back to the local branch when
+    there is no remote-tracking ref to prefer. A name that already carries a remote
+    (`origin/main`, `upstream/main`) is taken at its word.
+
+    Returns `(ref, sha)`, or None when nothing by that name resolves at all. Deliberately
+    never falls back to HEAD: a base that will not resolve must not silently become the
+    thing it is supposed to be compared against, or the page reports a change set of zero
+    and calls it a clean review.
+    """
+    candidates = [named] if "/" in named else [f"origin/{named}", named]
+    for ref in candidates:
+        sha = _git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+        if sha:
+            return ref, sha
+    return None
+
+
+def base_state(root: Path, named: str) -> dict | None:
+    """Where the base sits relative to the branch -- the two ways the comparison goes stale.
+
+    A review page is a claim about a *pair* of refs, and it keeps being rendered long after
+    one of them has moved. Two distinct things can be wrong, and they need saying
+    differently because the fix differs:
+
+    `ahead` -- commits on the base that are not on the branch. The branch forked from
+    behind and has stayed there, so every diagram, count and finding on the page describes
+    a merge that has not been rehearsed against what main actually contains now. Merging or
+    rebasing makes it zero, which is exactly why the warning disappears on its own: there
+    is no flag to clear and nothing to remember.
+
+    `localBehind` -- the *local* branch named as the base is behind its own remote. Nothing
+    is wrong with the branch under review here; what is stale is the yardstick. This one is
+    quieter and nastier than the first: the page looks current, the numbers look measured,
+    and they are measured against a main from last week.
+
+    Returns None when the base does not resolve, which drops the marker rather than
+    inventing a reassuring absence of one.
+    """
+    resolved = _resolve_base(root, named)
+    if not resolved:
+        return None
+    ref, sha = resolved
+    head = _git(root, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+    if not head:
+        return None
+    merge_base = _git(root, "merge-base", sha, head)
+
+    def count(rng: str) -> int | None:
+        n = _git(root, "rev-list", "--count", rng)
+        return int(n) if n and n.isdigit() else None
+
+    state = {
+        "named": named,
+        "ref": ref,
+        "sha": sha,
+        "head": head,
+        "mergeBase": merge_base,
+        # Commits the base has that the branch does not. Not `merge_base != sha`: the
+        # count is the number a reader acts on ("nine commits behind"), and the boolean
+        # falls out of it.
+        "ahead": count(f"{head}..{sha}"),
+        "localRef": None,
+        "localBehind": None,
+    }
+    # Only meaningful when a *local* branch of that name exists beside the remote one we
+    # preferred. `origin/main` given verbatim in the content file has no local twin to be
+    # behind, and neither does a repository with no remote at all.
+    if ref != named and _git(root, "rev-parse", "--verify", "--quiet", f"{named}^{{commit}}"):
+        state["localRef"] = named
+        state["localBehind"] = count(f"{named}..{ref}")
+    return state
+
+
+def base_warning(state: dict | None) -> str | None:
+    """The sentence behind the `!` on the base chip, or None when the pair is current.
+
+    Both conditions are reported in one tooltip when both hold, because they compound: a
+    branch forked from behind a base that is *itself* behind its remote is two hops from
+    the merge it claims to describe, and a reader told only about one of them will fix
+    that one and trust the rest.
+    """
+    if not state:
+        return None
+    parts = []
+    ahead = state.get("ahead")
+    if ahead:
+        parts.append(
+            f"{state['ref']} has moved {ahead} commit{'s' if ahead != 1 else ''} ahead of "
+            f"the point this branch forked from"
+            + (f" ({state['mergeBase'][:8]})" if state.get("mergeBase") else "")
+            + ". Nothing on this page has been measured against those commits — the "
+            "diagrams, the counts and the findings all describe a merge into an older "
+            "main. Merge or rebase and rebuild, and this mark goes away by itself."
+        )
+    behind = state.get("localBehind")
+    if behind:
+        parts.append(
+            f"The local branch {state['localRef']} is itself {behind} commit"
+            f"{'s' if behind != 1 else ''} behind {state['ref']}, so the name on this chip "
+            f"and the ref actually measured are not the same commit. The comparison used "
+            f"{state['ref']} ({state['sha'][:8]}), which is what a pull request would merge "
+            "into; `git fetch` keeps the two in step."
+        )
+    return " ".join(parts) or None
+
+
+def _numstat(root: Path, rng: str, pathspecs: list[str]) -> tuple[int, int, int, int, int]:
+    """`(files_added, files_edited, files_deleted, lines_added, lines_removed)` for a range.
+
+    Binary files report `-` for both line counts; they are counted as files touched and
+    contribute no lines, which is the only honest reading -- "a PNG changed by 14142 bytes"
+    is not a number that belongs beside a count of lines a human reads.
+    """
+    args = ["diff", "--numstat", rng, "--", ".", *pathspecs]
+    numstat = _git(root, *args) or ""
+    status = _git(root, "diff", "--name-status", rng, "--", ".", *pathspecs) or ""
+    adds = dels = 0
+    for line in numstat.splitlines():
+        cols = line.split("\t")
+        if len(cols) < 3:
+            continue
+        a, d = cols[0], cols[1]
+        adds += int(a) if a.isdigit() else 0
+        dels += int(d) if d.isdigit() else 0
+    added = edited = deleted = 0
+    for line in status.splitlines():
+        code = line.split("\t", 1)[0][:1]
+        if code == "A":
+            added += 1
+        elif code == "D":
+            deleted += 1
+        elif code:
+            # R (renamed) and C (copied) land here with M. A rename is a file edited from
+            # the reviewer's side of the desk, not one added and one removed.
+            edited += 1
+    return added, edited, deleted, adds, dels
+
+
+def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None) -> list[dict]:
+    """`{"auto": "diffstat"}` -- how much there is to read, measured rather than typed.
+
+    The fourth chip to be taken away from the author, and the one with the clearest reason
+    to be. `files` and `lines` outlived the `autofixed`, `cost` and `tests` chips being
+    computed because they *look* like facts: a number with a sign in front of it reads as
+    something a tool produced. On the branch this was written for, the page had said
+    `files +1 / ~40` and `lines +1198 / -863` for six days. The file count was roughly
+    right. The line counts matched no range in the repository at all -- not the branch
+    against its base (+2896 / -333), not against the merge-base recorded in the same
+    content file (+5089 / -4378), not against the stale local main (+4347 / -4099). They
+    had been typed once, from a branch state three commits and one `git reset` ago, and
+    nothing was ever going to catch them, because nothing was looking.
+
+    Two chips out of one measurement, so the file count and the line count can never
+    describe different ranges -- which is its own class of drift, and the one a reader is
+    least equipped to notice.
+
+    Returns [] when the base will not resolve: no base, no comparison, no chip. A page that
+    cannot say what it measured against must not print a number as though it could.
+    """
+    if not state or not state.get("mergeBase"):
+        return []
+    # `A...B` and `A..B` differ only when the base has moved ahead, and that is precisely
+    # the case the `!` on the ref chip is about. Three dots is the pull request's own
+    # reading -- what this branch did, not what has happened since it forked -- so the two
+    # marks stay independent: the numbers describe the branch, the warning describes the
+    # gap.
+    rng = f"{state['mergeBase']}...{state['head']}"
+    excludes = [f":(exclude){p}" for p in GENERATED_PATHSPECS + list(extra or [])]
+    a, e, d, adds, dels = _numstat(root, rng, excludes)
+    fa, fe, fd, fadds, fdels = _numstat(root, rng, [])
+    hidden = (fa + fe + fd) - (a + e + d)
+
+    where = f"against {state['ref']}"
+    if state.get("mergeBase"):
+        where += f" (merge-base {state['mergeBase'][:8]})"
+    # The signs are the page's, not this chip's: `+` added, `-` removed, `±` changed, and
+    # a zero is dropped rather than printed. A row of chips is read as a row of signed
+    # numbers, and `-0` is noise that costs a glance to dismiss.
+    files_value = " / ".join(piece for piece in (
+        f'<span class="added">+{a}</span>' if a else "",
+        f'<span class="removed">−{d}</span>' if d else "",
+        f"±{e}" if e else "",
+    ) if piece) or "none"
+    lines_value = " / ".join(piece for piece in (
+        f'<span class="added">+{adds}</span>' if adds else "",
+        f'<span class="removed">−{dels}</span>' if dels else "",
+    ) if piece) or "none"
+
+    if hidden:
+        skipped = (
+            f" {hidden} generated file{'s' if hidden != 1 else ''} left out — "
+            "redrawn diagrams, regenerated clients, lock files and images. Counting those "
+            f"too the change set is {fa + fe + fd} files, "
+            f"+{fadds} / −{fdels} lines; a diagram being redrawn is not a line written."
+        )
+    else:
+        skipped = " Nothing was left out: this change set touches no generated files."
+
+    return [
+        {"label": "files",
+         "value": files_value,
+         "tip": f"{a} added, {e} edited, {d} deleted, {where}.{skipped}"},
+        {"label": "lines",
+         "value": lines_value,
+         "tip": f"+{adds} / −{dels} in the code, {where}.{skipped} "
+                "Measured with git diff at build time, never typed."},
+    ]
+
+
 def tab_cost_report(root: Path, tab_ids: list[str]) -> dict | None:
     """What each tab cost, asked of the run itself — same discipline as `cost_chip`.
 
@@ -4188,7 +4460,7 @@ def page_title(spec: dict) -> str:
     return html.escape(spec.get("title", "Review guide"))
 
 
-def ref_badges(spec: dict) -> str:
+def ref_badges(spec: dict, state: dict | None = None) -> str:
     """`branch test-pr` `base main` — the two refs every number on this page is a
     comparison of, each one click from its own page on GitHub.
 
@@ -4202,9 +4474,19 @@ def ref_badges(spec: dict) -> str:
     They are chips, not parenthesised asides, because in that row `(test-pr)` beside
     `files +1 / ±40` reads as an unlabelled number. The label is what makes the pair
     legible in one pass, and it costs four characters.
+
+    The base chip carries a `!` when the two refs have drifted apart — the base has moved
+    ahead of the fork point, or the local branch named here is behind the remote actually
+    measured. It is on *this* chip and not in a banner because the question it answers is
+    "compared against what, exactly?", which is the question the chip already exists to
+    answer; a page-wide warning would be read once and dismissed, while a mark on the ref
+    is there every time a reader comes back to check the pair. It is computed on every
+    build from the refs as they stand, so it clears itself the moment main is merged in —
+    there is no state to reset and nothing to remember.
     """
     pr = spec.get("pr") or {}
     repo = (pr.get("repo") or "").rstrip("/")
+    warning = base_warning(state)
     out = []
     for key, label, cls, why in (("branch", "branch", "head", "the branch under review"),
                                  ("base", "base", "base", "the base it is compared against")):
@@ -4212,17 +4494,27 @@ def ref_badges(spec: dict) -> str:
         if not ref:
             continue
         inner = (f'{label} <b class="refname {cls}">{html.escape(ref)}</b>')
-        tip = html.escape(why + (" — open it on GitHub" if repo else ""))
+        tip = why + (" — open it on GitHub" if repo else "")
+        cls_extra = ""
+        if key == "base" and warning:
+            # The mark carries its own tooltip rather than extending the chip's: the chip
+            # says what the ref is, the mark says what is wrong with it, and a reader who
+            # hovers the `!` is asking the second question, not the first.
+            inner += (f'<span class="drift" role="img" aria-label="stale base" '
+                      f'data-tip="{html.escape(warning)}">!</span>')
+            cls_extra = " drifted"
+        tip = html.escape(tip)
         if repo:
             href = html.escape(f"{repo}/tree/{urllib.parse.quote(ref)}")
-            out.append(f'<a class="chip chip-link refchip" href="{href}" '
+            out.append(f'<a class="chip chip-link refchip{cls_extra}" href="{href}" '
                        f'data-tip="{tip}">{inner}</a>')
         else:
-            out.append(f'<span class="chip refchip" data-tip="{tip}">{inner}</span>')
+            out.append(f'<span class="chip refchip{cls_extra}" data-tip="{tip}">{inner}</span>')
     return "".join(out)
 
 
-def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str) -> str:
+def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str,
+                  base_st: dict | None = None) -> str:
     """Title, refs, note, scope chips and the tab strip — as one block that stays put.
 
     They used to be four bands that scrolled away, leaving the strip pinned alone over
@@ -4242,7 +4534,7 @@ def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str) -> 
         # on a sentence that is read once. `subtitle` is still in the content file and
         # still renders on a page with no `pr` block.
         rows = [f'<div class="titlerow oneline">{heading}{title_score}</div>']
-        chips = ref_badges(spec) + chips
+        chips = ref_badges(spec, base_st) + chips
     else:
         rows = [f'<div class="titlerow">{heading}{title_score}</div>',
                 f'<p class="sub">{spec.get("subtitle", "")}</p>']
@@ -4377,6 +4669,40 @@ def main(argv=None) -> int:
     chips = []
     cost_scope_chip = None      # resolved here, rendered once the tab list is final
     scope = spec.get("scope", [])
+
+    # Where the base actually is, asked once: the diffstat chip measures against it and
+    # the ref chip warns about it, and those two must never be talking about different
+    # commits. `origin/main` is the default because it is what a pull request merges into;
+    # a content file naming something else is taken at its word.
+    base_st = base_state(root, (spec.get("pr") or {}).get("base") or "origin/main")
+
+    # The cost of the run answers two chips now -- what it cost, and which model did the
+    # reviewing -- and they can appear in either order in the content file, so the answer
+    # is memoised rather than fetched where it happens to be needed first. A list, not a
+    # variable, so `None` (a real answer: no session to ask) is distinguishable from
+    # "not asked yet".
+    cost_memo: list = []
+
+    def resolved_cost() -> dict | None:
+        if not cost_memo:
+            cost_memo.append(cost_chip(root))
+        return cost_memo[0]
+
+    def emit(c: dict) -> None:
+        """Render one resolved chip. Shared so that a chip which expands into several --
+        `diffstat` becomes `files` and `lines` -- cannot pick up different markup than
+        the ones written by hand beside it."""
+        inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
+        if c.get("tip"):
+            inner = f'<span data-tip="{html.escape(c["tip"])}">{inner}</span>'
+        if c.get("href"):
+            chips.append(
+                f'<a class="chip chip-link" href="{html.escape(c["href"])}"'
+                f'{" target=_blank" if c["href"].startswith("http") else ""}>{inner}</a>'
+            )
+        else:
+            chips.append(f'<span class="chip">{inner}</span>')
+
     for c in scope:
         # The other chip that must never be typed. `{"auto": "autofixed"}` counts the two
         # lists this page actually renders — the open findings and the applied fixes — so
@@ -4387,17 +4713,35 @@ def main(argv=None) -> int:
         if c.get("auto") == "autofixed":
             fixed = len(spec.get("autofixes", []))
             total = len(spec.get("findings", [])) + fixed
+            # Who reviewed is half of what this chip says, and it used to sit in a
+            # second chip beside it (`reviewed by  Opus 5`) that nobody could check. The
+            # run knows: `review-cost.py` returns the models it spent money on, most
+            # expensive first. Two chips carrying one thought become one carrying it
+            # fully -- `Opus 5 review  12 raised · 9 open` -- and the name is now as
+            # measured as the numbers next to it. `by` in the content file is the fallback
+            # for a page rebuilt outside the session that reviewed it; "LLM review" is the
+            # last resort, and says exactly as much as it knows.
+            paid = resolved_cost() or {}
+            reviewer = next((m for m in paid.get("models") or [] if m and m != "synthetic"),
+                            None) or c.get("by")
             computed = {
-                "label": "LLM review",
+                "label": f"{reviewer} review" if reviewer else "LLM review",
                 # Both halves computed. The chip used to read `auto-fixed <n>`, and the
                 # label did the lying the tooltip then had to walk back: only three of the
                 # twelve were fixed, and a reader who never hovers was told all twelve
-                # were. Raised-and-open on the face states the two numbers a reviewer
-                # actually acts on, and neither can drift from the lists behind it.
-                "value": f"{total} raised &middot; {total - fixed} open",
-                "tip": f"{total} items raised by /code-review and /simplify — "
-                       f"{fixed} applied for you, {total - fixed} left for your judgement. "
-                       "Counted from the lists on the page, never typed.",
+                # were. Neither number here can drift from the lists behind it.
+                #
+                # Open leads, and the total is gone from the face: `12 raised` is the sum
+                # of the other two, so it is the one number on the chip nobody acts on,
+                # while `3 autofixed` is the fact a reader cannot get anywhere else
+                # without opening the tab. The order is the order of the work — what is
+                # left to do first, what was already done for you second. The total is
+                # still one hover away.
+                "value": f"{total - fixed} open &middot; {fixed} autofixed",
+                "tip": f"{total - fixed} left for your judgement, {fixed} applied for "
+                       f"you — {total} items in all, raised by /code-review and /simplify"
+                       + (f" running on {reviewer}" if reviewer else "")
+                       + ". Counted from the lists on the page, never typed.",
             }
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
         # A chip that has to be kept up to date by hand is a chip that will be wrong. The
@@ -4408,6 +4752,16 @@ def main(argv=None) -> int:
         # The same discipline for the test count: the page already parses every changed
         # test file to classify the rows under each requirement, so the number at the top
         # is read off that same manifest and cannot disagree with the list below it.
+        # `files` and `lines` -- one measurement, two chips, so they can never end up
+        # describing different ranges. `exclude` adds pathspecs to the generated-file list
+        # this always applies; there is no way to turn that list off, because a diffstat
+        # dominated by regenerated diagrams is not a stricter answer, it is a wrong one.
+        if c.get("auto") == "diffstat":
+            for computed in diffstat_chips(root, base_st, c.get("exclude")):
+                emit({**computed, **{k: v for k, v in c.items()
+                                     if k not in ("auto", "exclude")}})
+            continue
+
         if c.get("auto") == "tests":
             computed = tests_chip(test_doc)
             if computed is None:
@@ -4435,16 +4789,7 @@ def main(argv=None) -> int:
             cost_scope_chip = c
             chips.append(COST_CHIP_TOKEN)
             continue
-        inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
-        if c.get("tip"):
-            inner = f'<span data-tip="{html.escape(c["tip"])}">{inner}</span>'
-        if c.get("href"):
-            chips.append(
-                f'<a class="chip chip-link" href="{html.escape(c["href"])}"'
-                f'{" target=_blank" if c["href"].startswith("http") else ""}>{inner}</a>'
-            )
-        else:
-            chips.append(f'<span class="chip">{inner}</span>')
+        emit(c)
     chips = "".join(chips)
 
     # This used to require a chip per automated pass — /code-review hunts bugs, /simplify
@@ -4459,6 +4804,20 @@ def main(argv=None) -> int:
     # the finding, rather than in a parallel listing that can fall out of step with this one.
     # So two things are checked: that the chip's target exists, and that the stamps are
     # actually there. A merged count with nothing behind it is the real regression.
+    # The check that was missing for six days. `files` and `lines` are computed now, so a
+    # content file still typing them is not merely redundant — it is the exact failure this
+    # release exists to end, and it fails silently, because a number with a sign in front of
+    # it reads as something a tool produced. Loud, and not fatal: a page that still renders
+    # is better than a build that refuses, and the author sees this the moment they run it.
+    typed = [c.get("label") for c in scope
+             if not c.get("auto") and c.get("label") in ("files", "lines")]
+    if typed:
+        print(f"[review] WARNING: {' and '.join(typed)} typed by hand in 'scope' — replace "
+              'them with {"auto": "diffstat"}, which measures the change set at build time. '
+              "A typed diffstat is the one number on this page nothing can catch going "
+              "stale: it looks measured, and it outlives every commit made after it.",
+              file=sys.stderr)
+
     if any(c.get("auto") == "autofixed" for c in scope):
         target = next((c.get("href", "") for c in scope if c.get("auto") == "autofixed"), "")
         anchor = target.lstrip("#")
@@ -4814,7 +5173,7 @@ def main(argv=None) -> int:
 <style>{CSS}{extra_css.rstrip()}
 {LATE_CSS}</style></head>
 <body><div class="wrap">
-{masthead_html(spec, title_score, chips, strip_html)}
+{masthead_html(spec, title_score, chips, strip_html, base_st)}
 {lede_html}
 {verdict_html}
 

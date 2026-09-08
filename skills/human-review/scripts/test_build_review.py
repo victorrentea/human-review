@@ -1866,3 +1866,179 @@ def test_a_pinned_diff_drops_the_editor_link_that_would_show_something_else(tmp_
 def test_a_diff_with_no_before_state_is_dropped_rather_than_faked(tmp_path):
     r = _repo_with_two_commits(tmp_path)
     assert build.diff_html("nope.txt", "HEAD^", r) == ""
+
+
+# --------------------------------------------------------------------------- #
+# the two chips that say how much there is to read, and the mark on the ref
+# they are measured against
+# --------------------------------------------------------------------------- #
+def _drifting_repo(tmp_path, *, base_moves_ahead=False, local_base_stale=False,
+                   with_generated=True):
+    """A repository shaped like the one this was written for.
+
+    A fork point, a remote-tracking `origin/main` beside the local branch of that name,
+    and a feature branch that edits two source files and regenerates two machine-written
+    ones. The flags turn on the two ways the pair of refs goes stale, one at a time,
+    because the page has to tell them apart: a base that moved ahead is a fact about the
+    branch, a local ref behind its remote is a fact about the machine the page was built
+    on, and they are fixed by different commands.
+    """
+    import subprocess as sp
+    r = tmp_path / "repo"
+    r.mkdir()
+    run = lambda *a: sp.run(["git", "-C", str(r), *a], check=True,
+                            capture_output=True, text=True)
+    sp.run(["git", "init", "-q", "-b", "main", str(r)], check=True)
+    run("config", "user.email", "t@t")
+    run("config", "user.name", "t")
+    (r / "src").mkdir()
+    (r / "docs" / "generated").mkdir(parents=True)
+    (r / "src" / "Visit.java").write_text("class Visit {\n}\n")
+    (r / "docs" / "generated" / "model.json").write_text("[]\n")
+    (r / "src" / "flow.genseq.puml").write_text("@startuml\n@enduml\n")
+    run("add", "-A")
+    run("commit", "-qm", "base")
+    fork = run("rev-parse", "HEAD").stdout.strip()
+    run("update-ref", "refs/remotes/origin/main", fork)
+
+    if local_base_stale:
+        # The remote moves and the branch is built on top of where it moved to, so the
+        # branch is perfectly current — only the *local* ref named as the base is behind.
+        # This is the quiet case: nothing on the page looks wrong.
+        (r / "src" / "Owner.java").write_text("class Owner {\n}\n")
+        run("add", "-A")
+        run("commit", "-qm", "something else on main")
+        fork = run("rev-parse", "HEAD").stdout.strip()
+        run("update-ref", "refs/remotes/origin/main", fork)
+        run("update-ref", "refs/heads/main", fork + "^")
+
+    run("checkout", "-q", "-b", "feature", fork)
+    # Six lines of real code against seventy-odd of regenerated diagram and model: the
+    # shape that made the hand-typed chip unbelievable in the first place.
+    (r / "src" / "Visit.java").write_text("class Visit {\n  Vet vet;\n  Vet getVet() {\n"
+                                          "    return vet;\n  }\n}\n")
+    (r / "src" / "VetPicker.java").write_text("class VetPicker {\n}\n")
+    if with_generated:
+        (r / "docs" / "generated" / "model.json").write_text(
+            "[\n" + "".join(f'  "line {i}",\n' for i in range(40)) + "]\n")
+        (r / "src" / "flow.genseq.puml").write_text(
+            "@startuml\n" + "".join(f"a -> b : {i}\n" for i in range(30)) + "@enduml\n")
+    run("add", "-A")
+    run("commit", "-qm", "link a visit to its vet")
+
+    if base_moves_ahead:
+        run("checkout", "-q", "main")
+        (r / "src" / "Owner.java").write_text("class Owner {\n}\n")
+        run("add", "-A")
+        run("commit", "-qm", "something else on main")
+        run("update-ref", "refs/remotes/origin/main", run("rev-parse", "HEAD").stdout.strip())
+        run("checkout", "-q", "feature")
+    return r
+
+
+def test_the_diffstat_counts_the_code_and_leaves_the_generated_files_out(tmp_path):
+    """The whole reason the chip exists. Two source files moved, and two machine-written
+    ones were redrawn ten times as wide. A chip that counted both would report a change
+    set an order of magnitude bigger than the one there is to read."""
+    r = _drifting_repo(tmp_path)
+    files, lines = build.diffstat_chips(r, build.base_state(r, "main"), None)
+    assert files["label"] == "files" and lines["label"] == "lines"
+    assert '<span class="added">+1</span>' in files["value"]   # VetPicker.java, new
+    assert "±1" in files["value"]                         # Visit.java, edited
+    assert '<span class="added">+6</span>' in lines["value"]
+    assert "−" not in lines["value"], "a zero is dropped, not printed as −0"
+    assert "1 added, 1 edited, 0 deleted" in files["tip"]
+
+
+def test_the_tooltip_still_states_what_the_unfiltered_diff_would_have_said(tmp_path):
+    """Ranked, not hidden. A reviewer who wonders why the number looks small gets the
+    other number, and the reason, without having to re-run git."""
+    r = _drifting_repo(tmp_path)
+    _, lines = build.diffstat_chips(r, build.base_state(r, "main"), None)
+    assert "2 generated files left out" in lines["tip"]
+    assert "4 files" in lines["tip"]      # the two source files and the two generated
+    assert "a diagram being redrawn is not a line written" in lines["tip"]
+    assert "never typed" in lines["tip"]
+
+
+def test_a_change_set_with_no_generated_files_says_so_rather_than_going_quiet(tmp_path):
+    """Silence here reads as "the filter never ran", which is the one thing a page whose
+    numbers were once fiction must not leave ambiguous."""
+    r = _drifting_repo(tmp_path, with_generated=False)
+    _, lines = build.diffstat_chips(r, build.base_state(r, "main"), None)
+    assert "touches no generated files" in lines["tip"]
+
+
+def test_the_content_file_can_add_exclusions_but_never_drop_the_default_ones(tmp_path):
+    r = _drifting_repo(tmp_path)
+    files, _ = build.diffstat_chips(r, build.base_state(r, "main"), ["*/VetPicker.java"])
+    assert "+1" not in files["value"], "the extra pathspec was not applied"
+    assert "3 generated file" in files["tip"], \
+        "an `exclude` list must add to the built-in list, not replace it"
+
+
+def test_no_base_means_no_chip_rather_than_a_number_measured_against_nothing(tmp_path):
+    r = _drifting_repo(tmp_path)
+    assert build.base_state(r, "does-not-exist") is None
+    assert build.diffstat_chips(r, None, None) == []
+
+
+def test_the_base_resolves_to_the_remote_the_pull_request_would_merge_into(tmp_path):
+    """`"base": "main"` on a machine whose local main is days old measures the branch
+    against last week and charges it with every commit not yet pulled — on the branch this
+    was written for, 4099 deleted lines for a change set that deletes 39."""
+    r = _drifting_repo(tmp_path, local_base_stale=True)
+    st = build.base_state(r, "main")
+    assert st["ref"] == "origin/main"
+    assert st["localRef"] == "main" and st["localBehind"] == 1
+    assert st["ahead"] == 0, "the branch itself is current; only the local ref is not"
+
+
+def test_a_base_that_has_moved_ahead_is_reported_as_commits_not_as_a_boolean(tmp_path):
+    r = _drifting_repo(tmp_path, base_moves_ahead=True)
+    st = build.base_state(r, "main")
+    assert st["ahead"] == 1
+    warning = build.base_warning(st)
+    assert "moved 1 commit ahead" in warning
+    assert "Merge or rebase and rebuild" in warning
+
+
+def test_a_stale_local_ref_is_a_different_sentence_from_a_base_that_moved(tmp_path):
+    """Two failures, two fixes: one is `git merge main`, the other is `git fetch`. Told
+    the wrong one, a reader does the wrong thing and the mark stays."""
+    r = _drifting_repo(tmp_path, local_base_stale=True)
+    warning = build.base_warning(build.base_state(r, "main"))
+    assert "is itself 1 commit behind origin/main" in warning
+    assert "git fetch" in warning
+    assert "moved" not in warning, "the branch is not forked from behind in this one"
+
+
+def test_the_warning_clears_itself_once_the_base_is_merged_in(tmp_path):
+    """No flag to reset and nothing to remember: the mark is a fact about the two refs,
+    recomputed on every build."""
+    import subprocess as sp
+    r = _drifting_repo(tmp_path, base_moves_ahead=True)
+    assert build.base_warning(build.base_state(r, "main")) is not None
+    sp.run(["git", "-C", str(r), "merge", "-q", "--no-edit", "origin/main"],
+           check=True, capture_output=True, text=True)
+    assert build.base_warning(build.base_state(r, "main")) is None
+
+
+def test_a_current_pair_of_refs_carries_no_mark_at_all(tmp_path):
+    r = _drifting_repo(tmp_path)
+    out = build.ref_badges({"pr": {"branch": "feature", "base": "main"}},
+                           build.base_state(r, "main"))
+    assert "drift" not in out and ">!<" not in out
+
+
+def test_the_mark_lands_on_the_base_chip_alone_and_carries_its_own_tooltip(tmp_path):
+    r = _drifting_repo(tmp_path, base_moves_ahead=True)
+    out = build.ref_badges({"pr": {"branch": "feature", "base": "main"}},
+                           build.base_state(r, "main"))
+    branch_chip, base_chip = out.split('<span class="chip refchip')[1:]
+    assert "drift" not in branch_chip, "the branch is not the ref that went stale"
+    assert 'class="drift"' in base_chip and ">!<" in base_chip
+    assert "moved 1 commit ahead" in base_chip
+    # The chip's own tooltip still answers "which ref is this"; the mark answers "what is
+    # wrong with it". `closest('[data-tip]')` picks whichever the pointer is over.
+    assert "the base it is compared against" in base_chip

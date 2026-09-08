@@ -128,9 +128,12 @@ defect, it is the defect, quoted.
 - **An applied fix shows its diff.** A fix described in a sentence with no diff is a claim
   the reader has to take on trust; the build warns when it finds one.
 - **Never retype code** — `extract-snippet.py path:from-to` cuts it verbatim at build time.
-- **Never type a number the page computes** (the cost chip, the auto-fixed count, the test
-  balance, the Code City count, tab costs). A hand-typed number goes stale with nothing
-  noticing — `unit tests · 125 green (20 new)` was true until somebody wrote the next test.
+- **Never type a number the page computes** (the diffstat, the cost chip, the auto-fixed
+  count, the test balance, the Code City count, tab costs). A hand-typed number goes stale
+  with nothing noticing — `unit tests · 125 green (20 new)` was true until somebody wrote
+  the next test, and `lines +1198 / −863` sat on a page for six days matching no range in
+  the repository at all. `files` and `lines` come from `{"auto": "diffstat"}`, which
+  measures the change set and leaves generated files out of it.
 - **Never say a test's state yourself.** Name the test under the requirement it pins;
   `test-changes.py` reads the code for whether it is new, edited, deleted, commented out
   or sitting under an `@Disabled`. It is the one thing on the page you would have had to

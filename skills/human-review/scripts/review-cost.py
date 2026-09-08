@@ -541,6 +541,12 @@ def main(argv=None) -> int:
             "label": "this review cost",
             "value": f'{money(r["cost"])} <span class="sub">· {human(r["tokens"])} tok</span>',
             "tip": tip,
+            # Who actually did the reviewing, most expensive first. The page used to carry
+            # a separate `reviewed by Opus 5` chip, typed by hand beside a `LLM review`
+            # chip that was computed -- two chips, one of them unverifiable, saying one
+            # thing. The run already knows which models it spent its money on, so the name
+            # travels with the cost and the two chips become one.
+            "models": list(r["models"]),
         }))
         return 0
 
