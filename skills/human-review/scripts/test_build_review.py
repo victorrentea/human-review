@@ -991,6 +991,23 @@ def test_the_kinds_of_acceptance_evidence_are_cards_not_a_paragraph(tmp_path):
     assert '<section class="evi e2e">' in page
 
 
+def test_an_include_follows_the_prose_unless_the_section_asks_for_it_first(tmp_path):
+    """The Requirements tab is read ticket-first: what was asked for, then what the branch
+    wrote to pin it. Everywhere else the include is a generated fragment the prose
+    introduces, so the default stays prose-first and only `includeFirst` flips it."""
+    (tmp_path / "frag.html").write_text('<div class="reqmap">the ticket</div>', encoding="utf-8")
+    page, _ = _build(tmp_path, dict(BARE, sections=[
+        {"id": "one", "title": "One", "body": "<p>a</p>", "includeHtml": "frag.html",
+         "includeFirst": True},
+        {"id": "two", "title": "Two", "body": "<p>b</p>", "includeHtml": "frag.html"}]))
+    first, second = page.index('id="one"'), page.index('id="two"')
+    one, two = page[first:second], page[second:]
+    assert one.index("reqmap") < one.index("<p>a</p>")
+    assert two.index("<p>b</p>") < two.index("reqmap")
+    # And it is pasted once, not once at each end.
+    assert one.count("reqmap") == 1 and two.count("reqmap") == 1
+
+
 PR = dict(BARE, pr={"number": 37, "title": "Link Visit with Vet",
                     "url": "https://github.com/victorrentea/petclinic/pull/37",
                     "repo": "https://github.com/victorrentea/petclinic",

@@ -2308,15 +2308,16 @@ def _provenance(rel: str, root: Path) -> str:
     return ('<p class="prov">' + " ".join(links) + '</p>') if links else ''
 
 
-# Which radius a reviewer meets first — one hop of unchanged context around the change.
+# Which radius a reviewer meets first — the change and nothing else.
 #
 # It opened on the whole diagram for a while, on the reasoning that a pruned view is a
 # claim that the rest does not matter. In practice the whole DB and DomainModel deltas are
-# a wall of forty unchanged entities with the change somewhere inside, and every reviewer
-# who opened them did the same thing: clicked `1`. One hop already carries the
-# neighbourhood the "is this in the right place" question needs, and `all` is one click
-# away — a click the reader now makes only when the neighbourhood was not enough.
-DEFAULT_FOCUS = "1"
+# a wall of forty unchanged entities with the change somewhere inside, so it moved to one
+# hop of context, and then to none: the first question a delta has to answer is *what
+# changed*, and every element beside it is a candidate the eye still has to rule out. Zero
+# is the only level that cannot mislead about that. Each wider radius is one click away,
+# and the reader takes it the moment the change alone does not explain itself.
+DEFAULT_FOCUS = "0"
 
 
 def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:

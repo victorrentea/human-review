@@ -250,9 +250,13 @@ CODEOWNERS**. Four tabs need something said about how they are written:
 - **🤖 Review** — **one list**: the open calls first, most critical first, then the fixes
   already applied, numbered straight through and greyed out. Two lists that both start at 1
   make the reader do arithmetic. Its `intro` must name which passes ran, and in which order.
-- **Requirements** — lead with **what kinds of test the change set offers as acceptance
-  evidence**, as cards (`<div class="evidence">` holding one `<section class="evi
-  e2e|api|unit">` per level). A level **nothing** covers keeps its card and says so in
+- **Requirements** — open with **what was asked for**: the ticket the branch answers, with
+  its sentences coloured by coverage, pasted in as the section's `includeHtml` and hoisted
+  above the prose with **`"includeFirst": true`**. A reviewer arrives here to check the
+  branch against the request, so the request is what the tab must start on. *Then* say
+  **what kinds of test the change set offers as acceptance evidence**, as cards (`<div
+  class="evidence">` holding one `<section class="evi e2e|api|unit">` per level) — the
+  answer, read after the question. A level **nothing** covers keeps its card and says so in
   `class="evi none"` — "there is no unit test at this level" is a finding, and a paragraph
   nobody wrote looks identical to one nobody thought to write. Each requirement carries a
   `tests` list beneath its own text; **you attach, the diff classifies** (`test-changes.py`).
