@@ -132,9 +132,24 @@ def _city(ctx: Ctx):
         if r.returncode != 0:
             ctx.notes.append("the suite behind the city's coverage colours did not pass; "
                              "say so next to the CRAP reading")
-    regen = ctx.step_cfg("city").get("regenerate")
+    # Two ways to get the page. `regenerate` is a project's own command, for a project
+    # that has one; `out` hands the job to the script here, which is the arrangement to
+    # prefer — it leaves the analysed repo holding only the DATA (a committed
+    # codecity.html, a committed baseline) and none of the machinery that made it.
+    #
+    # `baseline` names the committed coverage numbers the page compares AGAINST. It is
+    # never written from here: this runs on a branch under review, and refreshing the
+    # baseline with the branch's own coverage would replace the very numbers the
+    # comparison needs. That belongs to a merge into the default branch
+    # (regenerate-codecity.sh --write-baseline), nowhere else.
+    city = ctx.step_cfg("city")
+    regen, out = city.get("regenerate"), city.get("out")
     if regen:
         sh(regen, ctx, check=False)
+    elif out:
+        baseline = f' --baseline "{city["baseline"]}"' if city.get("baseline") else ""
+        sh(f'{HERE}/regenerate-codecity.sh --out "{out}" '
+           f'--title "{city.get("title", "Code City")}"{baseline}', ctx, check=False)
     r = sh(f"{HERE}/capture-codecity.sh {ART}/codecity.png highlight", ctx, capture=True)
     lit = (r.stdout or "").strip().splitlines()
     if lit:
