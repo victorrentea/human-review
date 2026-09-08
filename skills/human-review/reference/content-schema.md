@@ -379,6 +379,12 @@ CODEOWNERS**. Four tabs need something said about how they are written:
     sentence — a page that lists a test somewhere else (the ledger's `new` / `edited`
     piles) and not here makes the reader hold two lists and diff them. Tests the manifest
     knows but the map has no excerpt for get their excerpt cut at build time.
+  - **Any code baked into the fragment is cut against the working tree, and its line
+    numbers are checked.** A snippet quoted from an older revision keeps text that still
+    looks right beside numbers that are two lines out, and every link into the editor
+    lands in the wrong place — worse than no quote, because nothing about it looks wrong.
+    Take the line a row links to from the test's own declaration, never from the first
+    line of the window quoted around it.
   - **Unpack identifier test names in the list** — `getById_exposesTheAttendingVet` reads
     as "Get by id exposes the attending vet". Scripted, not written: split on `_` and on
     the camel humps, lowercase everything that is not an acronym, capitalise the first
