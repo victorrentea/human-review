@@ -384,8 +384,9 @@ pre.code code { white-space:pre; }
     a field look and act like the class; `_scope_entity_links` (build-review-html.py)
     narrows it at inline time to the icon and the name, so only those two underline and
     only those two are clickable. A field is inert: no link, no underline. */
-.diagram svg a[href^="vscode:"] { cursor:pointer; }
-.diagram svg a[href^="vscode:"]:hover text { text-decoration:underline; }
+.diagram svg a[href^="vscode:"], .diagram svg a[href^="drawio:"] { cursor:pointer; }
+.diagram svg a[href^="vscode:"]:hover text,
+.diagram svg a[href^="drawio:"]:hover text { text-decoration:underline; }
 /* A removed element carries its strikethrough as a presentation attribute, which a CSS
     declaration would silently outrank — underlining it would erase the one mark that
     says it was deleted. Keep both. */
@@ -1762,8 +1763,10 @@ def _github_compare_link(rel: str, base: str, root: Path, head: str | None = Non
     # there. Without a path there is nothing to hash, and the bare compare URL stands.
     if rel:
         url += "#diff-" + hashlib.sha256(rel.encode()).hexdigest()
-    tip = ("Open this file's diff on github.com" if rel
-           else "Open the same comparison on github.com")
+    # The face already says "on GitHub" and the arrow already says it opens elsewhere, so
+    # a tooltip repeating either is a sentence the reader can see. What it cannot see is
+    # that the link lands on *one file* of a compare page that can be forty long.
+    tip = "Just this file, inside the compare page" if rel else "The whole compare page"
     return (f'<a class="srcref" target="_blank" rel="noopener" href="{html.escape(url)}"'
             f' data-tip="{tip}">&#8599; on GitHub</a>')
 

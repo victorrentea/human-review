@@ -2411,3 +2411,17 @@ def test_the_lede_is_counts_and_one_ordering_fact_and_nothing_else(tmp_path):
         tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
     assert '<p class="sub">1 open, worst first</p>' in page
     assert "stamped with" not in page
+
+
+def test_the_github_link_tooltip_says_only_what_its_label_cannot():
+    """The face is `\u2197 on GitHub`. A tooltip that opens with "Open" and closes with
+    "on github.com" spends its whole width restating that, and the one thing a reader
+    cannot see — that the link lands on a single file of a compare page that can be forty
+    long — was the clause in the middle."""
+    root = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=HERE,
+                               capture_output=True, text=True).stdout.strip())
+    link = build._github_compare_link("README.md", "HEAD~1", root, head="HEAD")
+    tip = re.search(r'data-tip="([^"]*)"', link).group(1)
+    assert "github" not in tip.lower(), "the label already says where it goes"
+    assert not tip.startswith("Open"), "every link opens something"
+    assert "compare page" in tip
