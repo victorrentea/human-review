@@ -244,6 +244,23 @@ span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
   .tsilenced { color:#e0a458; } .tback { color:#8fd39c; }
 }
 .tnote { color:var(--muted); font-size:.86rem; }
+/* The ledger: the same rows as the requirement lists, grouped by what happened instead
+   of by what they pin. One column, because the groups are wildly uneven — twenty-two new
+   beside one that stopped running — and a grid would give the one that matters most the
+   least room. The group that matters most is first and carries the amber edge the row
+   stamps already use, so it reads as a warning band rather than a fourth heading. */
+.tledger { display:grid; gap:1.4rem; margin:.9rem 0 1rem; }
+.tgroup h3 { margin:0; font-size:.98rem; letter-spacing:.01em; }
+.tgroup h3 b { margin-left:.3rem; color:var(--muted);
+        font:700 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+        font-variant-numeric:tabular-nums; }
+.tgroup > p.sub { margin:.15rem 0 .3rem; }
+.tgroup ul.req-tests { padding-left:0; }
+.tgroup-off { border-left:2px solid #b26a00; padding-left:.85rem; }
+.tgroup-off h3 { color:#b26a00; }
+@media (prefers-color-scheme: dark) {
+  .tgroup-off { border-left-color:#e0a458; } .tgroup-off h3 { color:#e0a458; }
+}
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
@@ -681,13 +698,12 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
             padding:.3rem max(1.25rem, calc(50vw - 540px + 1.25rem));
             background:var(--bg); border-bottom:1px solid var(--line);
             display:flex; gap:.2rem .3rem; flex-wrap:wrap; align-items:center; }
-.tabstrip .grow { flex:1 1 1rem; }
-/* Ten tabs no longer fit the 1040px track the strip inherits from the text column:
-   the tabs themselves still make one row, but `show all` dropped to a second, doubling
-   the strip from 34px to 56px. The strip is already full-bleed, so the room is there —
-   only the RIGHT padding is relaxed, which lets `show all` sit ~80px further into the
-   bleed. The left padding is untouched, so the first tab stays aligned with the body
-   text exactly as before. */
+/* The right padding is relaxed by ~80px into the full-bleed the strip already has, so
+   the pills get a track wider than the text column and stay on one row for one tab
+   longer. The left padding is untouched, so the first tab stays aligned with the body
+   text. It was relaxed originally to keep `show all` from dropping to a second row; that
+   button has since moved to the foot of the page, and the room it was making is now the
+   tabs' own — which is why there is no longer a `.grow` spacer pushing anything right. */
 .tabstrip { padding-right: max(1.25rem, calc(50vw - 620px + 1.25rem)); }
 /* The strip is the top of the page once the masthead has scrolled away, so it carries
    the edge that used to be the masthead's: a shadow under the border, only while it is
@@ -722,6 +738,12 @@ button.tab .n.dot-green { background:#2e9e5b; }
 button.tab .n.dot-amber { background:#d98218; }
 button.tab .n.dot-red   { background:#d7263d; }
 button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--accent); }
+/* This used to be the last pill on the tab strip, where it sat in the corner of every
+   screenful for the whole read and was pressed roughly never — a permanent control for an
+   occasional act. It lives at the foot of the page now, on the line after the footer's
+   sentence, which is where you arrive having finished reading and is the moment the thing
+   it offers ("show me all of it at once, so ⌘F works") is actually worth wanting. */
+footer .allbar { margin-top:.7rem; }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
                 border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
 button.allbtn:hover { color:var(--fg); border-color:var(--link); }
@@ -768,24 +790,26 @@ body.showall .panel:first-of-type { border-top:0; }
 LATE_CSS = """
 /* An eleventh tab does not fit, and no amount of window is going to help: the strip's
    inner track is pinned to 1120px at every viewport by its own padding formula, and the
-   ten tabs plus `show all` already need 1115.5px of it — 4.5px of slack. "Spec changes"
-   is 113.7px wide and needs 118.5px with its gap, so the strip wraps to two rows (34px
+   ten tabs plus `show all` already needed 1115.5px of it — 4.5px of slack. "Spec changes"
+   is 113.7px wide and needs 118.5px with its gap, so the strip wrapped to two rows (34px
    → 55.8px) at 1280px, 1440px and 1920px alike. Three shavings, cheapest first: the
-   spacer stops reserving a 1rem basis it never draws (+16px); the right padding drops to
+   spacer stopped reserving a 1rem basis it never drew (+16px); the right padding drops to
    its floor, which the strip's full bleed already covers (+20px at 1280, +100px at 1440);
    and every pill gives up .25rem of horizontal padding (+88px across eleven of them).
    Budget at 1280px, the narrowest width that has to hold: 1140px of track, 1130px used.
    The LEFT padding is deliberately untouched — the first tab still starts exactly where
-   the body text does. */
-.tabstrip .grow { flex:1 1 0; }
+   the body text does.
+   Two of those three are now free money: `show all` moved to the foot of the page and
+   took its ~72px and the spacer with it, so the strip is a row of tabs and nothing else.
+   The shavings stay — they are what buys the row back the next time a tab is added. */
 .tabstrip { padding-right:1.25rem; }
 button.tab { padding:0 .6rem; }
 /* A thirteenth tab, and the row the strip wraps onto is no longer paid once on the way
    past: the masthead keeps it on screen for the whole read. Nothing is abbreviated --
    a tab is named or it is not there -- so the last of the room comes out of the gap
-   between a label and its badge, a hair of the type, and the button beside them. */
+   between a label and its badge and a hair of the type. (There used to be a third
+   source, the `show all` button beside them; it is not in the strip any more.) */
 button.tab { padding:0 .5rem; font-size:.83rem; line-height:1.7; gap:.32rem; }
-button.allbtn { padding:0 .5rem; font-size:.72rem; line-height:1.85; }
 /* The last of the room is to the right of the text column, and the masthead is holding
    it: its padding keeps the title and the chips aligned with the body, which is right
    for a heading and pure waste for a strip of pills. So the strip alone gives that
@@ -1050,7 +1074,8 @@ TABS_JS = """<script>
   if (!strip) return;
   var tabs = Array.prototype.slice.call(strip.querySelectorAll('button.tab'));
   var panels = tabs.map(function (t) { return document.getElementById(t.getAttribute('aria-controls')); });
-  var showAll = strip.querySelector('button.allbtn');
+  // Outside the strip now — at the foot of the page — so it is looked up on the document.
+  var showAll = document.querySelector('button.allbtn');
   var active = 0;
   // What is actually stuck to the top of the viewport. The strip travels inside the
   // masthead, so the block that pins -- and whose height a deep link has to clear -- is
@@ -1094,7 +1119,11 @@ TABS_JS = """<script>
       t.tabIndex = i === active ? 0 : -1;
       if (panels[i]) panels[i].hidden = !all && i !== active;
     });
-    if (showAll) showAll.setAttribute('aria-pressed', String(all));
+    if (showAll) {
+      showAll.setAttribute('aria-pressed', String(all));
+      var label = showAll.getAttribute(all ? 'data-label-on' : 'data-label-off');
+      if (label) showAll.textContent = label;
+    }
   }
 
   // A panel holding live media has to know when it comes and when it goes — the Video
@@ -2635,6 +2664,10 @@ def render_autofixes(fixes) -> str:
 # existing added/removed vocabulary — the same green and red the diff gutters, the line
 # counts in the scope bar and the diagram deltas already use, dark mode included — because
 # a fourth palette for the fourth surface would read as a fourth meaning.
+# The tab the test ledger belongs to when no block asks for it by hand. It is the tab id
+# `run-steps.py` already attributes the `tests` step to; the label above it reads "Tests".
+LEDGER_TAB = "requirements"
+
 TEST_STATES = {
     "added":     ("added", "new"),
     "modified":  ("changed", "modified"),
@@ -2726,7 +2759,7 @@ def resolve_tests(entries, index: dict, root: Path) -> list[dict]:
     return out
 
 
-def render_tests(rows, root: Path) -> str:
+def render_tests(rows, root: Path, flags: bool = True) -> str:
     """The sub-list under one requirement: what pins it, and what the diff did to each.
 
     The link is the page's ordinary `vscode://file/…` reference, so it inherits the whole
@@ -2766,8 +2799,73 @@ def render_tests(rows, root: Path) -> str:
             state = ('<span class="tback" data-tip="This change set switched it back on: '
                      'it was disabled before, and runs now.">back on</span>')
         note = f' <span class="tnote">{r["note"]}</span>' if r.get("note") else ""
-        items.append(f'<li><span class="tflag {cls}">{label}</span>{body}{state}{note}</li>')
+        # Off inside the ledger below, where the group heading already says the word and
+        # a column repeating `NEW` twenty-two times is a column of noise. Kept everywhere
+        # else, and kept even in the ledger's one mixed group.
+        flag = f'<span class="tflag {cls}">{label}</span>' if flags else ""
+        items.append(f'<li>{flag}{body}{state}{note}</li>')
     return '<ul class="req-tests">' + "\n".join(items) + "</ul>"
+
+
+def render_test_ledger(rows, root: Path) -> tuple[str, int]:
+    """Every test the change set moved, as one list — `(html, how many it moved)`.
+
+    The requirement lists above answer "is *this* sentence pinned, and by what". They
+    cannot answer the question a reviewer asks next, which is the blunt one: *what did
+    this branch do to the tests?* A test that pins no requirement anybody wrote down —
+    and a deleted one, which by definition is no longer under any requirement — appears
+    in no list on the page otherwise. The chip at the top states the count; this is where
+    the count is spelled out into names you can click.
+
+    Each test appears exactly once, under the most consequential thing that happened to
+    it. Silenced comes first for that reason: a test that is *new* and `@Disabled` is not
+    news about coverage, it is news about a test that has never run, and filing it under
+    "new" would hide it among twenty-one that do run. The untouched rest are counted in a
+    sentence rather than listed — a reviewer scrolling past a hundred unchanged names to
+    find the two that went away is a reviewer who stops scrolling.
+    """
+    groups = [
+        ("stopped running", "Still written, and no longer part of any run — nothing "
+                            "under them is asserted on any build.", []),
+        ("new", "Tests this change set wrote.", []),
+        ("gone", "Tests the run has lost — deleted outright, or commented out in place.", []),
+        ("edited", "Tests whose body this change set moved: worth reading for what they "
+                   "stopped asserting, not only for what they now do.", []),
+    ]
+    untouched = 0
+    for r in rows:
+        if r.get("silenced") and r["status"] != "deleted":
+            groups[0][2].append(r)
+        elif r["status"] == "added":
+            groups[1][2].append(r)
+        elif r["status"] == "deleted":
+            groups[2][2].append(r)
+        elif r["status"] == "modified":
+            groups[3][2].append(r)
+        else:
+            untouched += 1
+
+    moved = sum(len(g[2]) for g in groups)
+    if not moved and not untouched:
+        return "", 0
+    blocks = []
+    for name, why, items in groups:
+        if not items:
+            continue
+        # The one group whose rows do not share a fate: a silenced test may be new,
+        # edited or untouched, and which it is changes what the reader does about it.
+        mixed = name == "stopped running"
+        blocks.append(
+            f'<section class="tgroup{" tgroup-off" if mixed else ""}">'
+            f'<h3>{html.escape(name)} <b>{len(items)}</b></h3>'
+            f'<p class="sub">{html.escape(why)}</p>'
+            + render_tests(items, root, flags=mixed)
+            + "</section>"
+        )
+    rest = (f'<p class="sub">{untouched} more test'
+            f'{"s" if untouched != 1 else ""} in the files this change set touched, '
+            "left exactly as they were.</p>") if untouched else ""
+    return '<div class="tledger">' + "".join(blocks) + "</div>" + rest, moved
 
 
 def render_requirements(items, index: dict, root: Path) -> str:
@@ -3746,8 +3844,12 @@ def tests_chip(doc: dict | None) -> dict | None:
             f'<span class="removed">\u2212{t["lost"]}</span>' if t["lost"] else "",
         ) if piece
     )
-    edited = f'{t["modified"]} edited' if t["modified"] else ""
-    value = " &middot; ".join(x for x in (balance, edited) if x) or "none touched"
+    # `±` for the edited ones, beside `+` and `−`, because the scope bar is read as a row
+    # of signed numbers and a third sign is read in the same glance a word is not. It also
+    # retires the `~` that used to be typed for the same thing one chip to the left: a
+    # tilde is an approximation, and "about forty files changed" is not what was meant.
+    edited = f'±{t["modified"]}' if t["modified"] else ""
+    value = " / ".join(x for x in (balance, edited) if x) or "none touched"
 
     gone = [f'{t["deleted"] - t["commented"]} deleted' if t["deleted"] - t["commented"] else "",
             f'{t["commented"]} commented out' if t["commented"] else "",
@@ -4098,7 +4200,7 @@ def ref_badges(spec: dict) -> str:
     is then free to be a title.
 
     They are chips, not parenthesised asides, because in that row `(test-pr)` beside
-    `files +1 / ~40` reads as an unlabelled number. The label is what makes the pair
+    `files +1 / ±40` reads as an unlabelled number. The label is what makes the pair
     legible in one pass, and it costs four characters.
     """
     pr = spec.get("pr") or {}
@@ -4439,6 +4541,11 @@ def main(argv=None) -> int:
 
     # A block can hang a badge on the tab that holds it — filled in per tab, below.
     auto_badge = {}
+    # Whether any tab asked for the test ledger. If none did and there is a manifest, the
+    # page appends it to the tab the manifest belongs to rather than dropping it: the
+    # whole point of computing what happened to the tests is that a reviewer sees it, and
+    # a content file written before this block existed must not silently lose it.
+    placed_ledger: list[bool] = []
 
     def render_block(block):
         """One block of a tab, as (html, weight, changes).
@@ -4509,6 +4616,14 @@ def main(argv=None) -> int:
                 auto_badge["label"] = "approval required"
             return (heading(block, "codeowners", block.get("title", "Code owners")) + frag,
                     1, len(owned))
+        if kind == "tests":
+            frag, moved = render_test_ledger(test_doc.get("tests", []), root)
+            placed_ledger.append(True)
+            if not frag:
+                return "", 0, 0
+            return (heading(block, "test-ledger",
+                            block.get("title", "What this change set did to the tests"))
+                    + frag, 1, moved)
         if kind == "codecity":
             return city_html, 1 if city_html else 0, 0
         if kind == "section":
@@ -4537,9 +4652,26 @@ def main(argv=None) -> int:
             tabs = [{"id": "overview", "label": "Overview", "keepEmpty": True,
                      "noStrike": True, "blocks": [{"type": "overview"}]}] + list(tabs)
             lede_html = verdict_html = ""
+    # The ledger is derived data, like the requirement lists it sits under: nobody writes
+    # it, and a content file that predates the block would otherwise leave the manifest
+    # computed and unread. So a page that has a manifest and no `tests` block gets one,
+    # appended to the tab the `tests` step feeds. Declaring the block explicitly is still
+    # how you put it somewhere else in the panel — this only fills a gap, it never moves
+    # a block the author placed.
+    if tabs and spec.get("testChanges") and not any(
+        b.get("type") == "tests" for tab in tabs for b in tab.get("blocks", [])
+    ):
+        host = next((tab for tab in tabs if tab.get("id") == LEDGER_TAB), None)
+        if host is None:
+            print(f'[review] WARNING: there is a test manifest and no tab carries a '
+                  f'"tests" block — and no tab is called {LEDGER_TAB!r} to append it to, '
+                  "so what the change set did to the tests is on no page.", file=sys.stderr)
+        else:
+            host["blocks"] = list(host.get("blocks", [])) + [{"type": "tests"}]
+
     # Only a tabbed page grows a masthead; the plain single-column guide keeps the
     # heading it always had.
-    strip_html = ""
+    strip_html = allbtn_html = ""
     if tabs:
         # Measured once, for every tab, before the loop: one subprocess and one transcript
         # scan rather than one per tab. `costs` is None only when review-cost.py itself
@@ -4618,17 +4750,21 @@ def main(argv=None) -> int:
         # The strip leaves the body: it belongs to the masthead now, and the masthead is
         # assembled around it below. `body_html` is the panels alone, which is what every
         # rewrite downstream of here (the tab count, the enumeration check) is about.
-        #
-        # The button says what it does *next*, not what mode you are in: pressed, it is
-        # the way back to one tab at a time.
         strip_html = (
             '<div class="tabstrip" role="tablist" aria-label="Review sections">'
-            + "".join(strip)
-            + '<span class="grow"></span>'
-            + '<button type="button" class="allbtn" aria-pressed="false" '
-            'data-tip="Reveal every tab at once — makes ⌘F search the whole guide. '
-            'Press it again to go back to one tab at a time.">'
-            "(single)</button></div>"
+            + "".join(strip) + "</div>"
+        )
+        # The show-everything toggle is not part of the strip any more (see the CSS): it
+        # is emitted at the foot of the page, after the footer's sentence. The label says
+        # what it does *next* and therefore has to change with the state, which is what
+        # the pressed styling alone could no longer carry once the button left the strip
+        # — down here there is nothing beside it to read the highlight against.
+        allbtn_html = (
+            '<div class="allbar"><button type="button" class="allbtn" aria-pressed="false" '
+            'data-label-off="show single page" data-label-on="back to one tab at a time" '
+            'data-tip="Put every tab on one long page — which is what makes ⌘F search the '
+            'whole guide, and what to press before printing it. Press it again to go back.">'
+            "show single page</button></div>"
         )
         body_html = "\n".join(panels)
         # These two facts used to be appended to the page as a `<p class="sub">` — and the
@@ -4683,7 +4819,7 @@ def main(argv=None) -> int:
 {verdict_html}
 
 {body_html}
-<footer>{_link_home(spec.get('footer', ''))}</footer>
+<footer>{_link_home(spec.get('footer', ''))}{allbtn_html}</footer>
 </div>
 {CAPTION_JS}
 {GENSEQ_JS}

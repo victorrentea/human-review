@@ -939,7 +939,8 @@ def test_the_capacity_rules_are_the_last_thing_in_the_stylesheet(tmp_path):
     page, _ = _build(tmp_path, BARE)
     css = page[page.index("<style>"):page.index("</style>")]
     assert css.rindex("button.tab { padding:0 .6rem; }") > css.rindex("padding:0 .85rem")
-    assert css.rindex(".tabstrip .grow { flex:1 1 0; }") > css.rindex("flex:1 1 1rem")
+    assert ".tabstrip .grow" not in css, \
+        "the spacer existed to push `show all` to the far end; the button left the strip"
 
 
 def test_the_panels_can_be_deep_linked_past_the_sticky_strip(tmp_path):
@@ -1097,13 +1098,26 @@ def test_a_page_with_no_tabs_grows_no_masthead(tmp_path):
     assert '<div class="titlerow">' in page
 
 
-def test_the_show_all_button_says_what_it_does_next(tmp_path):
-    """It is a toggle, and the reader pressing it is on their way to seeing every tab at
-    once; the way back — one tab at a time — is what the label has to name, because that
-    is the state the button is the only route out of."""
+def test_the_show_all_button_sits_after_the_footer_not_in_the_strip(tmp_path):
+    """A permanent control for an occasional act. In the strip it was in the corner of
+    every screenful for the whole read; at the foot of the page it is where the reader
+    arrives having finished, which is when "show me all of it at once" is worth wanting."""
     page, _ = _build(tmp_path, BARE)
-    assert "(single)</button>" in page
-    assert ">show all<" not in page
+    strip = page[page.index('class="tabstrip"'):]
+    assert "allbtn" not in strip[:strip.index("</div>")]
+    foot = page[page.index("<footer>"):page.index("</footer>")]
+    assert "allbtn" in foot and "show single page" in foot
+
+
+def test_the_show_all_button_says_what_it_does_next(tmp_path):
+    """It is a toggle, and both of its states need a name now: the pressed styling alone
+    carried the state while the button sat among the tabs, and at the foot of the page
+    there is nothing beside it to read a highlight against."""
+    page, _ = _build(tmp_path, BARE)
+    assert 'data-label-off="show single page"' in page
+    assert 'data-label-on="back to one tab at a time"' in page
+    assert ">show single page</button>" in page, "the unpressed label is also the markup"
+    assert "(single)" not in page
 
 
 def test_every_pill_still_has_to_fit_on_one_row(tmp_path):
@@ -1113,7 +1127,6 @@ def test_every_pill_still_has_to_fit_on_one_row(tmp_path):
     page, _ = _build(tmp_path, BARE)
     css = page[page.index("<style>"):page.index("</style>")]
     assert css.rindex("button.tab { padding:0 .5rem;") > css.rindex("padding:0 .85rem")
-    assert css.rindex("button.allbtn { padding:0 .5rem;") > css.rindex("padding:0 .7rem;")
 
 
 def test_the_masthead_is_pinned_to_the_top_of_the_viewport(tmp_path):
@@ -1565,6 +1578,78 @@ def test_an_untouched_test_that_does_not_run_still_says_so(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# the ledger: every test the change set moved, in one list
+# --------------------------------------------------------------------------- #
+LEDGER_ROWS = [
+    {"name": "create_withVet", "path": "src/test/VisitTest.java", "status": "added", "line": 10},
+    {"name": "arrives_off", "path": "src/test/VisitTest.java", "status": "added",
+     "line": 11, "silenced": "disabled"},
+    {"name": "update_ok", "path": "src/test/VisitTest.java", "status": "modified", "line": 12},
+    {"name": "parked", "path": "src/test/VisitTest.java", "status": "deleted",
+     "line": 14, "silenced": "commented"},
+    {"name": "obsolete", "path": "src/test/VisitTest.java", "status": "deleted", "line": 15},
+    {"name": "untouched", "path": "src/test/VisitTest.java", "status": "unchanged", "line": 16},
+]
+
+
+def test_the_ledger_lists_the_tests_no_requirement_happens_to_name():
+    """A deleted test is under no requirement by definition, and a test that pins nothing
+    anybody wrote down is under none either — so without this list they are counted in
+    the chip and named nowhere."""
+    out, moved = build.render_test_ledger(LEDGER_ROWS, Path("/repo"))
+    assert moved == 5, "everything but the untouched one"
+    for name in ("create_withVet", "arrives_off", "update_ok", "parked", "obsolete"):
+        assert f">{name} <" in out
+    assert ">untouched <" not in out
+
+
+def test_a_test_that_never_runs_is_filed_under_that_and_not_under_new():
+    """`new` and `@Disabled` is not news about coverage, it is news about a test that has
+    never run — and filing it under "new" hides it among the twenty-one that do run."""
+    out, _ = build.render_test_ledger(LEDGER_ROWS, Path("/repo"))
+    off = out[out.index("stopped running"):out.index("<h3>new")]
+    assert "arrives_off" in off and "create_withVet" not in off
+    assert '<span class="tflag added">new</span>' in off, \
+        "the one group whose rows do not share a fate keeps the flag saying which it is"
+
+
+def test_the_untouched_rest_are_counted_rather_than_listed():
+    """A reviewer scrolling past a hundred unchanged names to find the two that went away
+    is a reviewer who stops scrolling."""
+    out, _ = build.render_test_ledger(LEDGER_ROWS, Path("/repo"))
+    assert "1 more test in the files this change set touched" in out
+
+
+def test_a_group_heading_spares_its_rows_from_repeating_the_same_word():
+    out, _ = build.render_test_ledger(LEDGER_ROWS, Path("/repo"))
+    gone = out[out.index("<h3>gone"):]
+    assert "obsolete" in gone and '<span class="tflag' not in gone[:gone.index("</section>")]
+
+
+def test_a_page_with_a_manifest_and_no_tests_block_still_shows_the_ledger(tmp_path):
+    """The ledger is derived data, like the requirement lists it sits under: a content
+    file written before the block existed must not leave the manifest computed and
+    unread."""
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "tc.json").write_text(json.dumps(
+        {"totals": {k: 0 for k in ("added", "modified", "deleted", "unchanged", "commented",
+                                   "disabled", "reenabled", "runningBefore", "runningAfter",
+                                   "gained", "lost")} | {"added": 1, "gained": 1},
+         "tests": [{"name": "create_withVet", "path": "src/test/VisitTest.java",
+                    "status": "added", "line": 10}]}), encoding="utf-8")
+    page, _ = _build(tmp_path, dict(
+        BARE, testChanges="assets/tc.json",
+        summary="<p>{{tabcount}} tabs: <b>Tests</b>, <b>Two</b>.</p>",
+        sections=[{"id": "requirements", "title": "R", "body": "<p>a</p>"},
+                  {"id": "two", "title": "Two", "body": "<p>b</p>"}],
+        tabs=[{"id": "requirements", "label": "Tests",
+               "blocks": [{"type": "section", "id": "requirements"}]},
+              {"id": "two", "label": "Two", "blocks": [{"type": "section", "id": "two"}]}]))
+    panel = page[page.index('id="requirements"'):]
+    assert "create_withVet" in panel[:panel.index("</section>")]
+
+
+# --------------------------------------------------------------------------- #
 # the chip that states what the branch did to the test run
 # --------------------------------------------------------------------------- #
 TOTALS = {"added": 9, "modified": 4, "deleted": 3, "unchanged": 40, "commented": 1,
@@ -1577,7 +1662,8 @@ def test_the_chip_states_the_balance_of_the_run_not_just_what_was_added():
     assert chip["label"] == "tests"
     assert '<span class="added">+10</span>' in chip["value"]
     assert '<span class="removed">\u22124</span>' in chip["value"]
-    assert "4 edited" in chip["value"]
+    assert "\u00b14" in chip["value"], \
+        "the scope bar's third sign — `~` reads as an approximation, which is not the claim"
 
 
 def test_the_chip_splits_the_loss_only_in_the_tooltip():

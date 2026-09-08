@@ -60,6 +60,11 @@ with Vet` and **`subtitle` does not render in the masthead at all** — keep `su
 ]
 ```
 
+The scope bar is read as a row of signed numbers, so the signs are a convention and not
+a per-chip choice: **`+` added, `−` removed, `±` changed** (`files <span class="added">+1</span>
+/ ±40`). Never `~` for the changed ones — a tilde reads as an approximation, and "about
+forty files were touched" is not what the number means.
+
 `value` is raw HTML on purpose; `href` makes the chip a link. The three `auto` chips are
 **computed, never typed** — `autofixed` counts the page's own two lists, `cost` runs
 `review-cost.py` over the run's transcript, `tests` reads the manifest `test-changes.py`
@@ -68,7 +73,7 @@ number. A chip whose number is typed by hand goes stale without anything noticin
 `tests` chip exists because `unit tests · 125 green (20 new)` used to be typed here, and
 was true until somebody wrote the next test.
 
-The `tests` chip is a **balance**, not a count — `+10 / −4 · 4 edited` — because the
+The `tests` chip is a **balance**, not a count — `+10 / −4 / ±4` — because the
 question it answers is whether the branch left fewer tests running than it found. The
 loss is one number over three causes (deleted, commented out, left standing under an
 `@Disabled`), split only in its tooltip: all three cost the run the same test, only
@@ -92,9 +97,14 @@ reviewer reading the page can do nothing with it. Say it to them in the wrap-up 
 
 **`findings`** (the disputable calls) · **`autofixes`** (the top-level `autofixes` array,
 same shape as a finding) · **`diagrams`** (the delta gallery, narrowed by `kind` / `only` /
-`except`) · **`testpairs`** (Step 3) · **`logging`** (Step 7c) · **`puml`** (a diagram this
+`except`) · **`testpairs`** (Step 3) · **`tests`** (the ledger: every test the change set
+moved, grouped by what happened to it) · **`logging`** (Step 7c) · **`puml`** (a diagram this
 branch did not change, rendered from source as context) · **`codeowners`** (Step 8, run by
 the renderer) · **`codecity`** · **`section`** (one entry of `sections` by `id`) · **`html`**.
+
+**`tests`** takes no configuration — it renders `testChanges` — and you do not have to
+declare it: a page that has a manifest and no `tests` block gets one appended to the
+`requirements` tab. Declare it only to put it somewhere else in that panel.
 
 A tab may carry an **`intro`** (raw HTML before its first block, carrying no weight of its
 own) and a **`tip`** (hover sentence for a tab whose subject two words cannot carry).
@@ -207,7 +217,8 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
               "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
               "unpaired":{"id":"tests-nosequence",
                           "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
-  {"id":"requirements","label":"Tests","blocks":[{"type":"section","id":"requirements"}]},
+  {"id":"requirements","label":"Tests",
+   "blocks":[{"type":"section","id":"requirements"},{"type":"tests"}]},
   {"id":"data","label":"Data",
    "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
   {"id":"packages","label":"Structure",
@@ -295,6 +306,11 @@ CODEOWNERS**. Four tabs need something said about how they are written:
   branch never touched: a requirement pinned by a test somebody disabled months ago is not
   pinned, and this is the page where the reader finds that out. **Never write the state
   into the content file** — name the test, and let the script say what became of it.
+  Under the requirements sits the **`tests` ledger**: every test the branch moved, grouped
+  by what happened to it — stopped running first, then new, gone, edited, with the untouched
+  rest counted in a sentence rather than listed. It is there because the requirement lists
+  cannot hold the two cases that matter most: a deleted test is under no requirement by
+  definition, and a test that pins nothing anybody wrote down is under none either.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
   backed by a snippet.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the
