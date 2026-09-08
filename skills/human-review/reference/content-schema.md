@@ -363,8 +363,11 @@ CODEOWNERS**. Four tabs need something said about how they are written:
   - **Say what a model inferred.** A heading over inferred content carries a 🤖 superscript
     reading *as inferred by AI*; the logging tab's verdicts carry the same mark reading
     *LLM evaluated* — and the one verdict meaning "the model was never reached" carries
-    none. A hover explanation on a sentence is its badge counts (`UI ×2 · API ×3`) and
-    nothing more: prose in a tooltip is prose nobody can quote back.
+    none. A hover on a sentence carries **the badges themselves** (`data-tip-html`, so the
+    tip renders the same pill the list on the right does) with a count each, then what
+    clicking does — `click to highlight`. Naming the kinds in prose makes the reader
+    translate back into the badge they are already looking at, and nothing else on the
+    page announces that a sentence is clickable.
   - With that column on the page, **do not also write an evidence-cards section** listing
     what the branch wrote — it is the same list, in fewer words, further down.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
