@@ -178,8 +178,15 @@ table.costtab tr.costquiet td, table.costtab tr.costquiet td:last-child {
 table.costtab tfoot td { border-bottom:0; }
 table.costtab tfoot tr.costtotal td { border-top:1px solid var(--line);
              padding-top:.35rem; font-weight:700; }
-.added { color:#2e7d32; } .removed { color:#c62828; }
-@media (prefers-color-scheme: dark) { .added{color:#8fd39c} .removed{color:#f08a8a} }
+/* The page's diff vocabulary, and the only three colours a signed number is allowed to
+   take: green added, red removed, yellow changed. The third joined the other two once
+   the scope bar started stating `±` counts beside `+` and `−` — a number left the colour
+   of the text beside two coloured ones reads as a different KIND of number, not as the
+   third member of a set. */
+.added { color:#2e7d32; } .removed { color:#c62828; } .changed { color:#9a6700; }
+@media (prefers-color-scheme: dark) {
+  .added{color:#8fd39c} .removed{color:#f08a8a} .changed{color:#d29922}
+}
 /* The kinds of test a change set offers as acceptance evidence: e2e through the
    browser, at the API, unit. They were one run of prose with bold lead-ins, and the
    reader's question -- "is there anything at this level at all?" -- was answered only by
@@ -341,6 +348,14 @@ pre.code code { white-space:pre; }
   .privacy-verdict.removed b { color:#f08a8a; }
   .privacy-verdict.warn { color:#f0b558; }
 }
+/* Where a verdict was reached by asking a model, the mark says so on the verdict itself
+   -- one glyph, hover for the words. A page that mixes measured facts with inferred ones
+   and marks neither leaves the reader to guess which is which. */
+.ai-mark { font-size:.62em; vertical-align:super; margin-left:.28em; cursor:help;
+           text-decoration:none; }
+/* The footer row is `space-between`: without this the mark drifts into the middle of the
+   line, orphaned from the word it is about. `margin-right:auto` gives it the slack. */
+.log-footer .ai-mark { margin-right:auto; }
 .privacy-legend { margin:1rem 0 0; }
 .privacy-legend-title { margin:0 0 .35rem; font-weight:700; font-size:.85rem; }
 .privacy-legend-note { margin:0 0 .5rem; color:var(--muted); font-size:.78rem; line-height:1.6; }
@@ -521,7 +536,13 @@ ol.findings > li.fixed .f-title { font-weight:600; }
   ol.findings > li.n-low  { --num-bg:#3f68ad; }
   ol.findings > li.n-info { --num-bg:#33724a; }
   ol.findings > li.fixed  { --num-bg:#565e6b; }
+  ol.findings > li.n-assumed { --num-bg:#8b6fd4; border-left-color:#8b6fd4; }
 }
+ol.findings > li.n-assumed { --num-bg:#5b3fa8; border-left:3px solid #5b3fa8; }
+/* The road not taken, which is what makes an assumption checkable at a glance: the reader
+   recognises their own intent in one of the two readings without opening anything. */
+.f-alt { color:var(--muted); font-size:.9rem; margin:.35rem 0 0; }
+.f-alt b { color:var(--fg); font-weight:650; }
 /* Who raised it. Not a severity and not a link — a provenance stamp, so it is quiet and
    monospaced, and it sits after the badge where the eye is already looking. */
 .f-src { font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted);
@@ -534,10 +555,16 @@ ol.findings > li.fixed .f-title { font-weight:600; }
 .sev-low  { background:#eef3fb; color:#26518f; }
 .sev-info { background:#eef7ef; color:#245c30; }
 .sev-fixed { background:#eceef1; color:#4b5563; }
+/* An assumption is not a severity. The reviewer's job on one of these is to confirm an
+   intent, not to weigh a risk, so it must not borrow red/amber/blue/green — a reader who
+   sees an assumption in amber reads "medium bug". Violet is the one hue the page had left,
+   and the left edge marks the card as a different *kind* of item without taking it off the
+   shared list. */
+.sev-assumed { background:#f1ecfb; color:#4c3391; }
 @media (prefers-color-scheme: dark) {
   .sev-high{background:#3a1f1f;color:#f2a0a0}.sev-med{background:#3a3018;color:#e6c07b}
   .sev-low{background:#1c2738;color:#9dc0f5}.sev-info{background:#1b2c1f;color:#9ad3a5}
-  .sev-fixed{background:#24282e;color:#9aa3af}
+  .sev-fixed{background:#24282e;color:#9aa3af}.sev-assumed{background:#241f38;color:#c3b1f2}
 }
 /* A unified diff, drawn the way GitHub draws one: two gutters of line numbers, a colour
    band per side, and the +/- marker inside the code column rather than as a third gutter.
@@ -2576,27 +2603,56 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
     return "\n".join(parts)
 
 
-# The one list. Open calls first, applied fixes after them, numbered straight through,
-# because a reviewer asking "how much did the automated passes find?" should get one answer
-# and not two. What separates the halves is the card's colour and one badge — not a restart
-# of the counter, and not a second surface.
+# The one list. Everything the reviewer has to act on, numbered straight through, because
+# a reviewer asking "how much is there for me here?" should get one answer and not three.
+# What separates the piles is the card's colour and one badge — not a restart of the
+# counter, and not a second surface. There are three of them, in the order the reader can
+# act on them: what only they can answer (assumptions), what they have to judge (findings),
+# and what is already done (applied fixes).
 #
-# `render_findings` is called first and leaves where it stopped in this module-level offset,
-# which `render_autofixes` picks up. It is state, and state is a thing to justify: the
+# The list is rendered a pile at a time, and each pile has to know where the one before it
+# stopped. That is this counter. It is module state, and state is a thing to justify: the
 # alternative is threading a number through `render_block`, which renders blocks one at a
-# time by type and has no notion that two of them belong to the same list. The ordering
-# assumption is checked at build time rather than trusted.
-_FINDING_OFFSET = 0
+# time by type and has no notion that three of them belong to the same list. Reading the
+# offset here rather than hard-coding "fixes come after findings" also means the numbering
+# follows the order the content file puts the blocks in, whatever that order is.
+_LIST_OFFSET = 0
 
 
-def _finding_source(f) -> str:
+def reset_list() -> None:
+    """Start the numbering over, once per page.
+
+    The offset is module state, so without this the second page built in one process
+    continues the first one's numbering — which no build does, and every test that renders
+    a pile directly would otherwise have to know about."""
+    global _LIST_OFFSET
+    _LIST_OFFSET = 0
+
+
+def _open_list(n: int) -> str:
+    """The `<ol>` for the next pile, numbered on from wherever the last one stopped.
+
+    `counter-reset` sets the counter to N so the first `counter-increment` lands on N+1 —
+    the number straight after the last item already on the page."""
+    global _LIST_OFFSET
+    start = _LIST_OFFSET
+    _LIST_OFFSET += n
+    return (f'<ol class="findings" style="counter-reset:f {start}">' if start
+            else '<ol class="findings">')
+
+
+def _finding_source(f, default: str = "") -> str:
     """Which pass raised it, when the content file says so.
 
     Optional by design: nothing downstream of the two runs records provenance, so an item
     that does not claim a source renders without one rather than being attributed to a
     guess. See SKILL.md, step 1 — a `source` here has to be stamped while the pass that
-    produced it is the one running."""
-    src = (f.get("source") or "").strip()
+    produced it is the one running.
+
+    The `default` is for the one pile whose provenance is not a pass and never varies: an
+    assumption came from the agent that wrote the code, so it is stamped `assumption` where
+    a finding is stamped `/code-review`, and the stamp is not left to be remembered."""
+    src = (f.get("source") or default).strip()
     return f'<span class="f-src">{html.escape(src)}</span>' if src else ""
 
 
@@ -2615,8 +2671,6 @@ def _finding_refs(f) -> str:
 
 
 def render_findings(findings) -> str:
-    global _FINDING_OFFSET
-    _FINDING_OFFSET = len(findings)
     if not findings:
         return '<p class="sub">Nothing outstanding \u2014 the automated passes came back clean.</p>'
     items = []
@@ -2635,7 +2689,50 @@ def render_findings(findings) -> str:
             + (f.get("_diffs", "") or "")
             + "</li>"
         )
-    return '<ol class="findings">' + "\n".join(items) + "</ol>"
+    return _open_list(len(findings)) + "\n".join(items) + "</ol>"
+
+
+def render_assumptions(items, mode: str = "") -> str:
+    """What the agent that wrote the code decided without being told — and its alternative.
+
+    This is the one pile on the page no pass can produce. A finding is found by reading the
+    diff; an assumption is knowable only from the side that made it, and it lives in exactly
+    one place: the transcript of the conversation that did the work. `authoring-sessions.py`
+    says whether that conversation is the one running (mode A), an older one on disk whose
+    transcript a subagent reads verbatim (mode B), or gone (mode C).
+
+    An empty pile still renders, because the three ways of being empty are not the same
+    fact and a blank space would read as the friendliest of them. "Nothing was assumed" is
+    a claim; "nobody could be asked" is an admission; and the reviewer has to be able to
+    tell which one they are looking at."""
+    if not items:
+        return {
+            "A": '<p class="sub">The conversation that wrote this code was asked what it '
+                 'had to guess at, and named nothing.</p>',
+            "B": '<p class="sub">The transcript of the conversation that wrote this code '
+                 'was read back in full, and it recorded no open question.</p>',
+            "C": '<p class="sub">No transcript of the conversation that wrote this code '
+                 'survives, so it could not be asked. This is not the agent saying it was '
+                 'sure \u2014 it is nobody having been in a position to ask.</p>',
+        }.get(mode, '<p class="sub">Nothing was assumed.</p>')
+    out = []
+    for f in items:
+        refs = _finding_refs(f)
+        out.append(
+            '<li class="n-assumed">'
+            '<span class="badge sev-assumed">your call</span>'
+            + _finding_source(f, default="assumption")
+            + f' <span class="f-title">{f["title"]}</span>'
+            + (f'<p>{f["body"]}</p>' if f.get("body") else "")
+            + (f'<p class="f-alt"><b>Read the other way:</b> {f["alternative"]}</p>'
+               if f.get("alternative") else "")
+            + (f'<p class="f-why">{f["why"]}</p>' if f.get("why") else "")
+            + (f"<p>{refs}</p>" if refs else "")
+            + (f.get("_snippets", "") or "")
+            + (f.get("_diffs", "") or "")
+            + "</li>"
+        )
+    return _open_list(len(items)) + "\n".join(out) + "</ol>"
 
 
 def render_autofixes(fixes) -> str:
@@ -2667,10 +2764,7 @@ def render_autofixes(fixes) -> str:
             + (f.get("_snippets", "") or "")
             + "</li>"
         )
-    # `counter-reset` sets the counter to N so the first `counter-increment` lands on N+1 —
-    # the number straight after the last open finding.
-    return (f'<ol class="findings" style="counter-reset:f {_FINDING_OFFSET}">'
-            + "\n".join(items) + "</ol>")
+    return _open_list(len(fixes)) + "\n".join(items) + "</ol>"
 
 
 # What happened to a test, and what the page calls it. The colour classes are the page's
@@ -2792,8 +2886,7 @@ def render_tests(rows, root: Path, flags: bool = True) -> str:
             body = (f'<a class="srcref testref" href="vscode://file/{target}:{r["line"]}:1"'
                     f' data-tip="{html.escape(r["path"])}">{inner}</a>')
         else:
-            why = ("the file was deleted by this change set, so there is nothing left to open"
-                   if r.get("gone") else "this change set left no line to open it at")
+            why = ("the file is gone" if r.get("gone") else "no line left to open it at")
             body = (f'<span class="srcref testref tgone"'
                     f' data-tip="{html.escape(r["path"])} — {why}">{inner}</span>')
         # Said after the link rather than in front of it, and in a second vocabulary. The
@@ -2805,12 +2898,11 @@ def render_tests(rows, root: Path, flags: bool = True) -> str:
         # around it, and a flag that shoves its own row sideways costs more than it says.
         state = ""
         if r.get("silenced"):
-            state = (f'<span class="tsilenced" data-tip="It is still written, but it does '
-                     f'not run — so nothing below it is being asserted on any build.">'
+            state = (f'<span class="tsilenced" data-tip="Still written; never runs.">'
                      f'{SILENCED_LABEL.get(r["silenced"], r["silenced"])}</span>')
         elif r.get("wasSilenced") and r["status"] != "deleted":
-            state = ('<span class="tback" data-tip="This change set switched it back on: '
-                     'it was disabled before, and runs now.">back on</span>')
+            state = ('<span class="tback" data-tip="Was disabled; runs now.">'
+                     "back on</span>")
         note = f' <span class="tnote">{r["note"]}</span>' if r.get("note") else ""
         # Off inside the ledger below, where the group heading already says the word and
         # a column repeating `NEW` twenty-two times is a column of noise. Kept everywhere
@@ -3232,6 +3324,9 @@ def _logging_aside(part, found, what, root: Path, hits=()) -> str:
 # file and never the one line alone. `AI Evaluation` on the legend is therefore an
 # accurate label, not the aspirational one a word list would have made it.
 # --------------------------------------------------------------------------- #
+
+# One mark, one sentence, for every verdict a model produced.
+AI_MARK = '<sup class="ai-mark" data-tip="LLM evaluated">\U0001F916</sup>'
 
 PRIVACY_MARK = {
     "safe": ("✅", "SAFE", "added"),
@@ -3686,7 +3781,11 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
         footer = (
             f'<p class="log-footer">'
             f'<span class="{verdict_class}">{emoji} <b>{word}</b></span>'
-            f'<a class="srcref" href="{html.escape(href)}" data-tip="Open in VS Code">'
+            # Outside the span, deliberately: the verdict word ends at the word. This is a
+            # note about *how the verdict was reached*, and only where one actually was --
+            # NOT EVALUATED means the model was never successfully asked.
+            + (AI_MARK if verdict_key != "error" else "")
+            + f'<a class="srcref" href="{html.escape(href)}" data-tip="Open in VS Code">'
             f'{html.escape(label)}</a>'
             f'</p>'
         )
@@ -3802,6 +3901,7 @@ REQUIRED = {
     "sections": ("id", "title"),
     "tabs": ("id", "label"),
     "findings": ("title", "body"),
+    "assumptions": ("title", "body"),
     "autofixes": ("title",),
 }
 
@@ -3861,25 +3961,26 @@ def tests_chip(doc: dict | None) -> dict | None:
     # of signed numbers and a third sign is read in the same glance a word is not. It also
     # retires the `~` that used to be typed for the same thing one chip to the left: a
     # tilde is an approximation, and "about forty files changed" is not what was meant.
-    edited = f'±{t["modified"]}' if t["modified"] else ""
+    edited = f'<span class="changed">±{t["modified"]}</span>' if t["modified"] else ""
     value = " / ".join(x for x in (balance, edited) if x) or "none touched"
 
+    # A hover is read standing up, one glance, hand on the mouse. It gets the numbers the
+    # face could not fit and stops — the reasoning behind them is in this docstring, where
+    # whoever needs it is already reading. Three clauses at the outside.
     gone = [f'{t["deleted"] - t["commented"]} deleted' if t["deleted"] - t["commented"] else "",
             f'{t["commented"]} commented out' if t["commented"] else "",
-            f'{t["disabled"]} disabled where they stand' if t["disabled"] else ""]
+            f'{t["disabled"]} disabled' if t["disabled"] else ""]
     gone = ", ".join(x for x in gone if x) or "none lost"
     # A new test that arrives `@Disabled` is written but never ran, so it is in `added`
     # and not in `gained`. Without this the two numbers look like a bug — "22 new" over a
     # chip reading `+21` — when they are in fact the finding.
     inert = t["added"] - (t["gained"] - t["reenabled"])
     tip = (f'{t["added"]} new'
-           + (f' ({inert} of them disabled on arrival)' if inert else "")
+           + (f' ({inert} disabled on arrival)' if inert else "")
            + f', {t["modified"]} edited, {gone}'
-           + (f', {t["reenabled"]} switched back on' if t["reenabled"] else "")
-           + f'. The test files this change set touches ran {t["runningBefore"]} tests '
-             f'before it and run {t["runningAfter"]} after. Counted from the test '
-             'declarations in the code — a test that is still written but disabled, or '
-             'commented out, counts as lost, the same as a deleted one.')
+           # The one clause that has to survive the cut: it is why `+10` can stand over
+           # `9 new`, and without it the face looks like it cannot add up.
+           + (f', {t["reenabled"]} back on' if t["reenabled"] else ""))
     return {"label": "tests", "value": value, "tip": tip}
 
 
@@ -4016,26 +4117,20 @@ def base_warning(state: dict | None) -> str | None:
     """
     if not state:
         return None
+    # Short, like every other hover on the scope bar. Each clause names the gap and the
+    # one command that closes it -- which is all a reader standing over the page can act
+    # on. Why it matters (nothing here was measured against those commits; the page looks
+    # current while its yardstick is a week old) is in this function's docstring, for
+    # whoever is fixing the build rather than reading it.
     parts = []
     ahead = state.get("ahead")
     if ahead:
-        parts.append(
-            f"{state['ref']} has moved {ahead} commit{'s' if ahead != 1 else ''} ahead of "
-            f"the point this branch forked from"
-            + (f" ({state['mergeBase'][:8]})" if state.get("mergeBase") else "")
-            + ". Nothing on this page has been measured against those commits — the "
-            "diagrams, the counts and the findings all describe a merge into an older "
-            "main. Merge or rebase and rebuild, and this mark goes away by itself."
-        )
+        parts.append(f"{state['ref']} is {ahead} commit{'s' if ahead != 1 else ''} ahead of "
+                     "the fork point. Merge or rebase, then rebuild.")
     behind = state.get("localBehind")
     if behind:
-        parts.append(
-            f"The local branch {state['localRef']} is itself {behind} commit"
-            f"{'s' if behind != 1 else ''} behind {state['ref']}, so the name on this chip "
-            f"and the ref actually measured are not the same commit. The comparison used "
-            f"{state['ref']} ({state['sha'][:8]}), which is what a pull request would merge "
-            "into; `git fetch` keeps the two in step."
-        )
+        parts.append(f"Compared against {state['ref']} ({state['sha'][:8]}); local "
+                     f"{state['localRef']} is {behind} behind it. git fetch.")
     return " ".join(parts) or None
 
 
@@ -4105,40 +4200,41 @@ def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None) -> l
     fa, fe, fd, fadds, fdels = _numstat(root, rng, [])
     hidden = (fa + fe + fd) - (a + e + d)
 
-    where = f"against {state['ref']}"
-    if state.get("mergeBase"):
-        where += f" (merge-base {state['mergeBase'][:8]})"
+    where = f"vs {state['ref']}"
     # The signs are the page's, not this chip's: `+` added, `-` removed, `±` changed, and
     # a zero is dropped rather than printed. A row of chips is read as a row of signed
     # numbers, and `-0` is noise that costs a glance to dismiss.
     files_value = " / ".join(piece for piece in (
         f'<span class="added">+{a}</span>' if a else "",
         f'<span class="removed">−{d}</span>' if d else "",
-        f"±{e}" if e else "",
+        f'<span class="changed">±{e}</span>' if e else "",
     ) if piece) or "none"
     lines_value = " / ".join(piece for piece in (
         f'<span class="added">+{adds}</span>' if adds else "",
         f'<span class="removed">−{dels}</span>' if dels else "",
     ) if piece) or "none"
 
+    # The unfiltered totals stay in the hover; the prose explaining them does not. A
+    # filtered number with no way to see what was filtered leaves the reader taking the
+    # exclusion on trust, which is the position the typed chip left them in -- so the
+    # guarantee is that the generated files are *ranked below* the code, never hidden from
+    # it. What went is the argument for that: a redrawn diagram is not a line written, and
+    # everything here was measured with `git diff` at build time rather than typed. Both
+    # true, neither actionable, and a tooltip is read standing up in one glance. Whoever
+    # needs the reasoning is reading this function.
     if hidden:
-        skipped = (
-            f" {hidden} generated file{'s' if hidden != 1 else ''} left out — "
-            "redrawn diagrams, regenerated clients, lock files and images. Counting those "
-            f"too the change set is {fa + fe + fd} files, "
-            f"+{fadds} / −{fdels} lines; a diagram being redrawn is not a line written."
-        )
+        skipped = (f" {hidden} generated left out; with them {fa + fe + fd} files, "
+                   f"+{fadds} / −{fdels}.")
     else:
-        skipped = " Nothing was left out: this change set touches no generated files."
+        skipped = " No generated files to leave out."
 
     return [
         {"label": "files",
          "value": files_value,
-         "tip": f"{a} added, {e} edited, {d} deleted, {where}.{skipped}"},
+         "tip": f"{a} added, {e} edited, {d} deleted {where}.{skipped}"},
         {"label": "lines",
          "value": lines_value,
-         "tip": f"+{adds} / −{dels} in the code, {where}.{skipped} "
-                "Measured with git diff at build time, never typed."},
+         "tip": f"+{adds} / −{dels} {where}.{skipped}"},
     ]
 
 
@@ -4494,7 +4590,10 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
         if not ref:
             continue
         inner = (f'{label} <b class="refname {cls}">{html.escape(ref)}</b>')
-        tip = why + (" — open it on GitHub" if repo else "")
+        # The chip is a link, so the hover's job is to say where the click goes — not to
+        # re-describe a ref whose name is already the thing being read. A chip that does
+        # not link anywhere gets no bubble at all rather than a sentence about itself.
+        tip = "Open in GitHub" if repo else ""
         cls_extra = ""
         if key == "base" and warning:
             # The mark carries its own tooltip rather than extending the chip's: the chip
@@ -4509,7 +4608,7 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
             out.append(f'<a class="chip chip-link refchip{cls_extra}" href="{href}" '
                        f'data-tip="{tip}">{inner}</a>')
         else:
-            out.append(f'<span class="chip refchip{cls_extra}" data-tip="{tip}">{inner}</span>')
+            out.append(f'<span class="chip refchip{cls_extra}">{inner}</span>')
     return "".join(out)
 
 
@@ -4573,7 +4672,7 @@ def main(argv=None) -> int:
     # own: the rev the ledger recorded before the review pass touched anything. That is the
     # only left side that shows a fix on its own, and step 1 exists to record it.
     default_diff_base = review_step_rev(out_dir)
-    for f in spec.get("findings", []) + spec.get("autofixes", []):
+    for f in spec.get("findings", []) + spec.get("assumptions", []) + spec.get("autofixes", []):
         f["_refs"] = resolve_refs(f.get("refs", []), root)
         f["_snippets"] = "".join(
             snippet_html(s["ref"], s.get("caption"), root) for s in f.get("snippets", [])
@@ -4592,6 +4691,23 @@ def main(argv=None) -> int:
             for d in diffs
             if d.get("base") or default_diff_base
         )
+
+    # An assumption with no code under it is the one item on this page that cannot be
+    # checked at all. A finding without a snippet is at least a claim about a defect a
+    # reader can go and look for; "I assumed the tenant is always the caller's" points at
+    # nothing, and a model asked at the end of a long session what it was unsure about will
+    # produce fluent sentences of exactly that shape whether or not it ever hesitated. The
+    # anchor is what separates a recollection from a guess about a recollection, so an
+    # unanchored one is dropped rather than printed with a shrug.
+    floating = [a for a in spec.get("assumptions", [])
+                if not (a.get("_snippets") or a.get("_diffs") or a.get("_refs"))]
+    for a in floating:
+        print("[review] WARNING: assumption %r names no code — dropped. Give it a "
+              "'snippets' entry (or 'refs'/'diffs') pointing at the line the decision "
+              "landed on; an assumption a reader cannot go and look at is indistinguishable "
+              "from one that was never made." % (a.get("title", "")[:60]), file=sys.stderr)
+    if floating:
+        spec["assumptions"] = [a for a in spec["assumptions"] if a not in floating]
 
     # Every panel is `id="<tab id>"`, so a section that happens to share a tab's id puts the
     # same id on two elements — `id="api"` on the API contract panel and on the <h2> inside
@@ -4717,7 +4833,7 @@ def main(argv=None) -> int:
             # second chip beside it (`reviewed by  Opus 5`) that nobody could check. The
             # run knows: `review-cost.py` returns the models it spent money on, most
             # expensive first. Two chips carrying one thought become one carrying it
-            # fully -- `Opus 5 review  12 raised · 9 open` -- and the name is now as
+            # fully -- `Opus 5 review  9 open · 3 autofixed` -- and the name is now as
             # measured as the numbers next to it. `by` in the content file is the fallback
             # for a page rebuilt outside the session that reviewed it; "LLM review" is the
             # last resort, and says exactly as much as it knows.
@@ -4737,11 +4853,18 @@ def main(argv=None) -> int:
                 # without opening the tab. The order is the order of the work — what is
                 # left to do first, what was already done for you second. The total is
                 # still one hover away.
-                "value": f"{total - fixed} open &middot; {fixed} autofixed",
-                "tip": f"{total - fixed} left for your judgement, {fixed} applied for "
-                       f"you — {total} items in all, raised by /code-review and /simplify"
-                       + (f" running on {reviewer}" if reviewer else "")
-                       + ". Counted from the lists on the page, never typed.",
+                # The applied half is greyed: it is on the page so the reader can check
+                # it, not so they can act on it, and at full contrast it competes with the
+                # number that IS the work. Grey is the page's own "already handled" —
+                # the same treatment the fixes themselves get in the list below.
+                "value": f'{total - fixed} open &middot; '
+                         f'<span class="sub">{fixed} autofixed</span>',
+                # The total, which the face no longer carries, and who raised it. The
+                # sentence about the numbers being counted rather than typed is gone with
+                # the rest of the long-form hovers: it is a promise the build keeps, not
+                # one a reader can act on.
+                "tip": f"{total} raised by /code-review and /simplify"
+                       + (f" running on {reviewer}" if reviewer else ""),
             }
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
         # A chip that has to be kept up to date by hand is a chip that will be wrong. The
@@ -4833,17 +4956,18 @@ def main(argv=None) -> int:
                   "number and not one item carries a 'source' — the split the chip "
                   "summarises is nowhere on the page behind it", file=sys.stderr)
 
-    # The applied fixes continue the open findings' numbering, and `render_autofixes` learns
-    # where to start from the `findings` block having already run. That holds only while the
-    # two render in that order, so the order is checked rather than assumed: a content file
-    # with them the other way round numbers the fixes from 1 and the open calls after them,
-    # which looks deliberate and is not.
+    # The piles are one numbered list and each starts where the last stopped, so the order
+    # in this file is the order on the page — including the order of the numbers. That
+    # makes the ordering an editorial choice rather than a bug waiting to happen, and leaves
+    # one rule worth enforcing: work that is already done is the tail. An `autofixes` block
+    # anywhere but last opens the reviewer's list with items they have nothing to do about.
     _blocks = [b.get("type") for tb in (spec.get("tabs") or []) for b in (tb.get("blocks") or [])
-               if b.get("type") in ("findings", "autofixes")]
-    if _blocks[:1] == ["autofixes"] and "findings" in _blocks:
-        print("[review] WARNING: the autofixes block renders before the findings block, so "
-              "the applied fixes are numbered from 1 and the open calls continue after them "
-              "— put 'findings' first; the two are one list", file=sys.stderr)
+               if b.get("type") in ("findings", "assumptions", "autofixes")]
+    if "autofixes" in _blocks and _blocks[-1] != "autofixes":
+        after = _blocks[_blocks.index("autofixes") + 1]
+        print(f"[review] WARNING: the autofixes block renders before {after!r}, so the list "
+              "opens with work that is already done — the piles are one list, and "
+              "the applied fixes are its tail", file=sys.stderr)
 
     v = spec.get("verdict")
     verdict_html = ""
@@ -4905,6 +5029,7 @@ def main(argv=None) -> int:
     # whole point of computing what happened to the tests is that a reviewer sees it, and
     # a content file written before this block existed must not silently lose it.
     placed_ledger: list[bool] = []
+    reset_list()
 
     def render_block(block):
         """One block of a tab, as (html, weight, changes).
@@ -4919,8 +5044,35 @@ def main(argv=None) -> int:
             return overview_html, 1, 1
         if kind == "findings":
             items = spec.get("findings", [])
-            return (heading(block, "first", "Look here first") + render_findings(items),
-                    len(items), len(items))
+            fixed = len(spec.get("autofixes", []))
+            # Computed, and deliberately a line. What stood here was three sentences of
+            # prose restating the shape of the list directly beneath it ("They are one
+            # list: the nine that need your judgement first, then the three I applied,
+            # greyed out and numbered straight on"), which a reader can see. The reader is
+            # a developer who came for the findings; the counts are the only part of that
+            # paragraph they could not have got by looking.
+            lede = (f'<p class="sub">{len(items)} open, worst first'
+                    + (f' &middot; {fixed} already applied, greyed out' if fixed else "")
+                    + ' &middot; each stamped with the pass that raised it</p>')
+            # Between the heading and the block's own prose, not after it: the counts are
+            # what the heading is asking about, and anything authored here is a footnote
+            # to them. Appended after the body they read as an afterthought to a sentence
+            # nobody needed.
+            head = heading(block, "first", "Look here first")
+            body_at = head.find("<p>")
+            if body_at != -1:
+                head = head[:body_at] + lede + head[body_at:]
+            else:
+                head += lede
+            return (head + render_findings(items), len(items), len(items))
+        if kind == "assumptions":
+            items = spec.get("assumptions", [])
+            mode = block.get("mode", "")
+            # Weight 1 even with nothing in it: an empty pile still carries the sentence
+            # saying *which* kind of empty it is, and that sentence is the point.
+            return (heading(block, "assumed", "Decided without asking you")
+                    + render_assumptions(items, mode),
+                    1 if (items or mode) else 0, len(items))
         if kind == "autofixes":
             items = spec.get("autofixes", [])
             return (heading(block, "fixed", "Already fixed for you") + render_autofixes(items),
@@ -5121,8 +5273,7 @@ def main(argv=None) -> int:
         allbtn_html = (
             '<div class="allbar"><button type="button" class="allbtn" aria-pressed="false" '
             'data-label-off="show single page" data-label-on="back to one tab at a time" '
-            'data-tip="Put every tab on one long page — which is what makes ⌘F search the '
-            'whole guide, and what to press before printing it. Press it again to go back.">'
+            'data-tip="Every tab on one page. Makes \u2318F search all of it.">'
             "show single page</button></div>"
         )
         body_html = "\n".join(panels)

@@ -399,6 +399,19 @@ def test_the_verdict_sits_after_the_code_and_stands_alone_on_its_row(no_verdict_
     assert "data-tip" not in verdict_span             # nor hidden in a tooltip
     assert "a cache key, nothing personal" in out     # it is a bullet, in plain text
     assert out.index("</p>", verdict_at) < out.index("a cache key")   # below the verdict
+    # The verdict came from a model, and the page says so on the verdict itself - after
+    # the word, never inside it, so the word is still the word.
+    after = out[out.index("</span>", verdict_at) + len("</span>"):]
+    assert after.startswith('<sup class="ai-mark"'), "no AI mark after the verdict"
+    assert 'data-tip="LLM evaluated"' in out
+
+
+def test_a_verdict_the_model_never_gave_carries_no_ai_mark(no_verdict_disk):
+    """NOT EVALUATED is the state where the model could not be reached at all. Marking it
+    'LLM evaluated' would say the opposite of what it means."""
+    out = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=_fake_call(verdict="error"))
+    assert "NOT EVALUATED" in out
+    assert "ai-mark" not in out
 
 
 def test_one_bullet_per_logged_value_named_as_the_source_writes_it(no_verdict_disk):
@@ -828,15 +841,26 @@ def test_a_lede_that_matches_the_strip_is_silent(capsys):
 # what the whole page must never do
 # --------------------------------------------------------------------------- #
 
-def _build(tmp_path, content) -> str:
+def _build(tmp_path, content, env=None) -> str:
     src = tmp_path / "content.json"
     src.write_text(json.dumps(content), encoding="utf-8")
     out = tmp_path / "review.html"
     proc = subprocess.run(
         [sys.executable, str(HERE / "build-review-html.py"), str(src), "--out", str(out)],
-        capture_output=True, text=True)
+        capture_output=True, text=True, env=env)
     assert proc.returncode == 0, proc.stderr
     return out.read_text(encoding="utf-8"), proc.stderr
+
+
+def _sessionless_env():
+    """The environment of a page rebuilt outside the run that reviewed it.
+
+    Without this the suite's own answer depends on who is running it: inside a Claude Code
+    session `review-cost.py` finds a transcript and names a real model, so a test asserting
+    the fallback would pass on CI and fail on the machine the feature was written on.
+    """
+    import os
+    return {k: v for k, v in os.environ.items() if k != "CLAUDE_CODE_SESSION_ID"}
 
 
 BARE = {
@@ -1672,15 +1696,14 @@ def test_the_chip_splits_the_loss_only_in_the_tooltip():
     but a face carrying all three would invite reading one of them as the answer."""
     tip = build.tests_chip({"totals": TOTALS})["tip"]
     assert "2 deleted" in tip and "1 commented out" in tip
-    assert "2 disabled where they stand" in tip and "1 switched back on" in tip
-    assert "ran 46 tests before it and run 52 after" in tip
+    assert "2 disabled" in tip and "1 back on" in tip
 
 
 def test_a_new_test_that_arrives_disabled_is_named_rather_than_left_as_a_discrepancy():
     """`22 new` over a chip reading `+21` looks like an arithmetic bug. It is the finding:
     one of the new tests was committed with an `@Disabled` on it and has never run."""
     tip = build.tests_chip({"totals": dict(TOTALS, added=22, gained=22)})["tip"]
-    assert "22 new (1 of them disabled on arrival)" in tip
+    assert "22 new (1 disabled on arrival)" in tip
 
 
 def test_the_chip_drops_itself_rather_than_printing_a_zero_it_did_not_count():
@@ -1734,14 +1757,16 @@ def test_a_manifest_that_was_never_generated_is_named_before_anything_is_built(t
 def test_the_autofix_list_continues_the_findings_numbering():
     findings = [{"title": "a", "body": "x"}, {"title": "b", "body": "y"},
                 {"title": "c", "body": "z"}]
+    build.reset_list()
     build.render_findings(findings)
     out = build.render_autofixes([{"title": "d"}])
     assert 'counter-reset:f 3' in out
 
 
 def test_an_empty_findings_list_still_starts_the_fixes_at_one():
+    build.reset_list()
     build.render_findings([])
-    assert "counter-reset:f 0" in build.render_autofixes([{"title": "d"}])
+    assert "counter-reset" not in build.render_autofixes([{"title": "d"}])
 
 
 # ── the number bubble wears the severity's colour ───────────────────────────────
@@ -1955,10 +1980,11 @@ def test_the_tooltip_still_states_what_the_unfiltered_diff_would_have_said(tmp_p
     other number, and the reason, without having to re-run git."""
     r = _drifting_repo(tmp_path)
     _, lines = build.diffstat_chips(r, build.base_state(r, "main"), None)
-    assert "2 generated files left out" in lines["tip"]
+    assert "2 generated left out" in lines["tip"]
     assert "4 files" in lines["tip"]      # the two source files and the two generated
-    assert "a diagram being redrawn is not a line written" in lines["tip"]
-    assert "never typed" in lines["tip"]
+    # The rationale that used to follow ("a diagram being redrawn is not a line written",
+    # "measured, never typed") is gone from the bubble on purpose: a hover is read in one
+    # glance, and neither sentence is one a reader acts on. The numbers are the ranking.
 
 
 def test_a_change_set_with_no_generated_files_says_so_rather_than_going_quiet(tmp_path):
@@ -1966,14 +1992,14 @@ def test_a_change_set_with_no_generated_files_says_so_rather_than_going_quiet(tm
     numbers were once fiction must not leave ambiguous."""
     r = _drifting_repo(tmp_path, with_generated=False)
     _, lines = build.diffstat_chips(r, build.base_state(r, "main"), None)
-    assert "touches no generated files" in lines["tip"]
+    assert "No generated files to leave out." in lines["tip"]
 
 
 def test_the_content_file_can_add_exclusions_but_never_drop_the_default_ones(tmp_path):
     r = _drifting_repo(tmp_path)
     files, _ = build.diffstat_chips(r, build.base_state(r, "main"), ["*/VetPicker.java"])
     assert "+1" not in files["value"], "the extra pathspec was not applied"
-    assert "3 generated file" in files["tip"], \
+    assert "3 generated left out" in files["tip"], \
         "an `exclude` list must add to the built-in list, not replace it"
 
 
@@ -1999,8 +2025,9 @@ def test_a_base_that_has_moved_ahead_is_reported_as_commits_not_as_a_boolean(tmp
     st = build.base_state(r, "main")
     assert st["ahead"] == 1
     warning = build.base_warning(st)
-    assert "moved 1 commit ahead" in warning
-    assert "Merge or rebase and rebuild" in warning
+    assert "origin/main is 1 commit ahead of the fork point" in warning
+    assert "Merge or rebase, then rebuild." in warning
+    assert len(warning) < 90, "a tooltip is read standing up: the gap and the command"
 
 
 def test_a_stale_local_ref_is_a_different_sentence_from_a_base_that_moved(tmp_path):
@@ -2008,9 +2035,10 @@ def test_a_stale_local_ref_is_a_different_sentence_from_a_base_that_moved(tmp_pa
     the wrong one, a reader does the wrong thing and the mark stays."""
     r = _drifting_repo(tmp_path, local_base_stale=True)
     warning = build.base_warning(build.base_state(r, "main"))
-    assert "is itself 1 commit behind origin/main" in warning
+    assert "local main is 1 behind it" in warning
     assert "git fetch" in warning
-    assert "moved" not in warning, "the branch is not forked from behind in this one"
+    assert "ahead of the fork point" not in warning, \
+        "the branch is not forked from behind in this one"
 
 
 def test_the_warning_clears_itself_once_the_base_is_merged_in(tmp_path):
@@ -2038,7 +2066,180 @@ def test_the_mark_lands_on_the_base_chip_alone_and_carries_its_own_tooltip(tmp_p
     branch_chip, base_chip = out.split('<span class="chip refchip')[1:]
     assert "drift" not in branch_chip, "the branch is not the ref that went stale"
     assert 'class="drift"' in base_chip and ">!<" in base_chip
-    assert "moved 1 commit ahead" in base_chip
-    # The chip's own tooltip still answers "which ref is this"; the mark answers "what is
-    # wrong with it". `closest('[data-tip]')` picks whichever the pointer is over.
-    assert "the base it is compared against" in base_chip
+    assert "1 commit ahead of the fork point" in base_chip
+    # The chip's own tooltip is gone: this spec names no repo, so the chip links nowhere
+    # and has nothing to say that its own label does not. The mark keeps a tooltip of its
+    # own, which is now the only one on the chip — and the only one worth a hover.
+    assert base_chip.count("data-tip") == 1
+
+
+def test_the_review_chip_leads_with_what_is_left_to_do(tmp_path):
+    """`12 raised` is the sum of the other two numbers, so it is the one nobody acts on.
+    Open first, because that is the work; autofixed second, because it is the fact a
+    reader cannot get anywhere else without opening the tab."""
+    page, _ = _build(tmp_path, dict(
+        BARE, scope=[{"auto": "autofixed", "href": "#one"}],
+        findings=[{"title": f"f{i}", "body": "<p>b</p>", "source": "/code-review"}
+                  for i in range(9)],
+        autofixes=[{"title": f"a{i}", "source": "/simplify"} for i in range(3)]))
+    assert '9 open &middot; <span class="sub">3 autofixed</span>' in page, \
+        "the half that needs nothing from the reader is greyed, not equal-weight"
+    assert "12 raised by /code-review" in page, "the total is in the hover, not on the face"
+
+
+def test_the_review_chip_names_the_model_instead_of_a_second_chip_beside_it(tmp_path):
+    """`LLM review  …` next to a hand-typed `reviewed by  Opus 5` was two chips carrying
+    one thought, and only one of them was checkable."""
+    page, _ = _build(tmp_path, dict(
+        BARE, scope=[{"auto": "autofixed", "href": "#one", "by": "Opus 5"}],
+        findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
+        env=_sessionless_env())
+    assert "Opus 5 review" in page
+    assert "running on Opus 5" in page
+
+
+def test_a_page_rebuilt_with_no_idea_who_reviewed_it_says_exactly_that_much(tmp_path):
+    """No session, no `by`, no name — and the label says only what it knows rather than
+    guessing at the model that is most likely to have been used."""
+    page, _ = _build(tmp_path, dict(
+        BARE, scope=[{"auto": "autofixed", "href": "#one"}],
+        findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
+        env=_sessionless_env())
+    assert "LLM review" in page
+    assert "running on" not in page
+
+
+def test_a_hand_typed_diffstat_is_called_out_rather_than_silently_rendered(tmp_path):
+    """The check that was missing for six days. It does not fail the build — a page that
+    renders beats a build that refuses — but the author cannot now not see it."""
+    _, err = _build(tmp_path, dict(
+        BARE, scope=[{"label": "files", "value": "25"},
+                     {"label": "lines", "value": "+1198 / −863"}]))
+    assert "files and lines typed by hand" in err
+    assert '{"auto": "diffstat"}' in err
+
+
+def test_a_computed_diffstat_draws_no_such_warning(tmp_path):
+    _, err = _build(tmp_path, dict(BARE, scope=[{"auto": "diffstat"}]))
+    assert "typed by hand" not in err
+
+
+# --------------------------------------------------------------------------- #
+# The third pile: what the agent that wrote the code decided without being told
+# --------------------------------------------------------------------------- #
+
+REF = "skills/human-review/scripts/build-review-html.py:1"
+
+
+def _assumption(**kw):
+    base = {"title": "Visits inherit the owner's vet", "body": "<p>b</p>", "refs": [REF]}
+    base.update(kw)
+    return base
+
+
+def test_an_assumption_is_stamped_as_one_rather_than_borrowing_a_severity(tmp_path):
+    """`/code-review` is a provenance a pass earns by running. Nothing ran here — this came
+    from the side that wrote the code — so the stamp says so, and the badge asks for the one
+    thing the reader can supply that no pass can."""
+    page, _ = _build(tmp_path, dict(
+        BARE, assumptions=[_assumption()],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}]}]))
+    item = re.search(r'<li class="n-assumed">.*?</li>', page, re.S).group(0)
+    assert ">assumption<" in item
+    assert "your call" in item
+    assert "sev-high" not in item and "sev-med" not in item
+
+
+def test_the_three_piles_are_one_numbered_list(tmp_path):
+    """A reader shown three lists that all start at 1 has to add them up by hand. Each
+    pile opens where the last one stopped, in the order the content file puts them."""
+    page, _ = _build(tmp_path, dict(
+        BARE,
+        findings=[{"title": f"f{i}", "body": "<p>b</p>"} for i in range(2)],
+        assumptions=[_assumption(title=f"a{i}") for i in range(3)],
+        autofixes=[{"title": "fixed"}],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "findings"}, {"type": "assumptions", "mode": "A"},
+                          {"type": "autofixes"}]}]))
+    starts = re.findall(r"counter-reset:f (\d+)", page)
+    assert starts == ["2", "5"], "assumptions open at 3, the applied fix lands on 6"
+
+
+def test_the_order_in_the_content_file_is_the_order_of_the_numbers(tmp_path):
+    """The offset is read, not assumed: put the piles the other way round and the numbering
+    follows rather than the two of them both starting at 1."""
+    page, _ = _build(tmp_path, dict(
+        BARE,
+        findings=[{"title": "f", "body": "<p>b</p>"}],
+        assumptions=[_assumption(title=f"a{i}") for i in range(2)],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
+    assert re.findall(r"counter-reset:f (\d+)", page) == ["2"]
+
+
+def test_an_assumption_with_no_code_under_it_is_dropped_and_named(tmp_path):
+    """The one item on this page a reader cannot check. A model asked at the end of a long
+    session what it was unsure about will write fluent sentences of exactly this shape
+    whether or not it ever hesitated, so the anchor is what makes it evidence."""
+    page, err = _build(tmp_path, dict(
+        BARE, assumptions=[_assumption(refs=[]), _assumption(title="anchored")],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}]}]))
+    assert "names no code" in err
+    assert "Visits inherit" not in page
+    assert "anchored" in page
+
+
+def test_a_snippet_anchors_an_assumption_just_as_well_as_a_ref(tmp_path):
+    page, err = _build(tmp_path, dict(
+        BARE, assumptions=[_assumption(refs=[], snippets=[{"ref": REF + "-3",
+                                                           "caption": "the branch taken"}])],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}]}]))
+    assert "names no code" not in err
+    assert "the branch taken" in page
+
+
+def test_the_three_ways_of_having_no_assumptions_read_differently(tmp_path):
+    """"Nothing was assumed" is a claim; "nobody could be asked" is an admission. A blank
+    space would read as the friendlier of the two, which is the one that is not known."""
+    said = {}
+    for mode in ("A", "B", "C"):
+        page, _ = _build(tmp_path, dict(
+            BARE, tabs=[{"id": "review", "label": "Review",
+                         "blocks": [{"type": "assumptions", "mode": mode}]}]))
+        said[mode] = page
+    assert "named nothing" in said["A"]
+    assert "read back in full" in said["B"]
+    assert "nobody having been in a position to ask" in said["C"]
+    assert "was sure" not in said["A"]
+
+
+def test_the_alternative_reading_renders_beside_the_assumption(tmp_path):
+    """What makes one checkable at a glance: the reader recognises their own intent in one
+    of the two readings without opening anything."""
+    page, _ = _build(tmp_path, dict(
+        BARE, assumptions=[_assumption(alternative="that a visit carries its own vet")],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}]}]))
+    assert "Read the other way" in page
+    assert "carries its own vet" in page
+
+
+def test_applied_fixes_anywhere_but_last_are_called_out(tmp_path):
+    _, err = _build(tmp_path, dict(
+        BARE, autofixes=[{"title": "fixed"}], assumptions=[_assumption()],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "autofixes"}, {"type": "assumptions", "mode": "A"}]}]))
+    assert "already done" in err
+
+
+def test_an_assumptions_block_nobody_configured_a_mode_for_weighs_nothing(tmp_path):
+    """A content file that declares the block and fills in neither items nor mode has
+    nothing to say, and a tab built on it alone is dropped rather than kept and empty."""
+    page, err = _build(tmp_path, dict(
+        BARE, tabs=[*BARE["tabs"],
+                    {"id": "review", "label": "Review",
+                     "blocks": [{"type": "assumptions"}]}]))
+    assert ">Review<" not in page
