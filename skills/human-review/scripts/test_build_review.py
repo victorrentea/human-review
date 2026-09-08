@@ -2386,8 +2386,8 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
     assert "3 already applied" in page
     assert "greyed out" not in page, \
         "the applied fixes are visibly grey"
-    assert "stamped with the pass that raised it" not in page, \
-        "an assumption is stamped `assumption`, which is not a pass"
+    assert "stamped with" not in page, \
+        "every item carries its source beside its own title"
 
 
 def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path):
@@ -2402,8 +2402,12 @@ def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path
     assert page.index("1 assumed") < page.index("Look here first")
 
 
-def test_a_page_with_no_assumptions_keeps_the_sentence_it_had(tmp_path):
+def test_the_lede_is_counts_and_one_ordering_fact_and_nothing_else(tmp_path):
+    """The stamp clause was the last of the three that described how the list looks. Every
+    item carries its source beside its own title, so a line announcing that they do
+    describes the thing directly under it."""
     page, _ = _build(tmp_path, dict(
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
-    assert "1 open, worst first &middot; each stamped with the pass that raised it" in page
+    assert '<p class="sub">1 open, worst first</p>' in page
+    assert "stamped with" not in page

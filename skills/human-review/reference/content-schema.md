@@ -342,10 +342,11 @@ the one thing no amount of reading changes. Four tabs need something said about 
   arithmetic. The numbering follows the order the blocks appear in here, so that order is
   an editorial choice — with one rule the build enforces: work already done is the tail.
   Whichever pile opens the list writes its lede — `2 assumed · 9 open, worst first · 3
-  already applied · each stamped with the pass that raised it` — computed, so restate none
-  of it. It is counts and one ordering fact, and nothing about how the list *looks*: the
-  applied fixes are visibly grey and an assumption visibly says *your call*, so `greyed
-  out` and `yours to confirm` were both cut. Its `intro` names the passes **in the order
+  already applied` — computed, so restate none of it. It is counts and one ordering fact,
+  and nothing that describes what is directly under it: the applied fixes are visibly
+  grey, an assumption visibly says *your call*, and every item carries its source beside
+  its own title, so `greyed out`, `yours to confirm` and `each stamped with the pass that
+  raised it` were all cut, one at a time, from the line that replaced the paragraph. Its `intro` names the passes **in the order
   they ran, and stops on the last one** — `/code-review then /simplify.` A `then` is the
   order, so *"in that order"* says it twice, and *"in separate turns"* is how the review
   was operated, which is nothing the reader can act on. The paragraph that used to stand

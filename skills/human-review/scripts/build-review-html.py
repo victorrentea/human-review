@@ -2756,11 +2756,11 @@ def opening_lede(spec) -> str:
         parts.append(f"{len(spec['autofixes'])} already applied")
     if not parts:
         return ""
-    # An assumption is stamped `assumption`, which is not a pass — so the more specific
-    # sentence is kept for the case where it is still true, rather than being widened to
-    # cover a pile it was not written about.
-    parts.append("each stamped with where it came from" if assumed
-                 else "each stamped with the pass that raised it")
+    # The stamp clause went the same way as "greyed out" and "yours to confirm", and it
+    # was the last of them: every item carries its source beside its own title, so a line
+    # announcing that they do describes the thing directly under it. What is left is
+    # counts and one ordering fact — the two things counting the list yourself would not
+    # have told you.
     return '<p class="sub">' + " &middot; ".join(parts) + "</p>"
 
 
