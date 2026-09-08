@@ -56,42 +56,59 @@ def test_cardinality_dots_not_mistaken_for_connector():
     assert vet_rel[3] == "specialties"        # label
 
 
-# ── Added → red (solid) ─────────────────────────────────────────────────────
+# ── Added → green (solid) ───────────────────────────────────────────────────
+# Both sides used to be red, and which way a mark pointed had to be read off a
+# strikethrough. The colour carries the direction now; the strikethrough stays, because
+# a removal has to survive being printed, screenshotted or read by someone who cannot
+# separate the two hues.
 
-def test_added_member_red():
-    assert "<color:red>email : String</color>" in _diff()
+ADD = m.ADDED
+DEL = m.REMOVED
 
 
-def test_added_class_red_solid_header():
-    assert "class Invoice #line:red;text:red {" in _diff()
+def test_added_member_green():
+    assert f"<color:{ADD}>email : String</color>" in _diff()
 
 
-def test_added_relationship_and_label_red():
-    assert 'Owner "1" -[#red]- "0..*" Invoice : <color:red>invoices</color>' in _diff()
+def test_added_class_green_solid_header():
+    assert f"class Invoice #line:{ADD};text:{ADD} {{" in _diff()
+
+
+def test_added_relationship_and_label_green():
+    assert f'Owner "1" -[{ADD}]- "0..*" Invoice : <color:{ADD}>invoices</color>' in _diff()
 
 
 # ── Removed → red + struck-through ───────────────────────────────────────────
 
 def test_removed_member_struck():
-    assert "<color:red><s>time : LocalTime</s></color>" in _diff()
+    assert f"<color:{DEL}><s>time : LocalTime</s></color>" in _diff()
 
 
-def test_removed_class_title_struck():        # struck, not just red → distinct from added
+def test_removed_class_title_struck():        # struck *and* red → doubly distinct from added
     out = _diff()
-    assert 'class "<color:red><s>Role</s></color>" as Role #line:red;text:red {' in out
-    assert "<color:red><s>name : String</s></color>" in out   # its members struck too
+    assert f'class "<color:{DEL}><s>Role</s></color>" as Role #line:{DEL};text:{DEL} {{' in out
+    assert f"<color:{DEL}><s>name : String</s></color>" in out   # its members struck too
 
 
 def test_removed_relationship_label_struck():
-    assert 'User "1" -[#red]- "0..*" Role : <color:red><s>user</s></color>' in _diff()
+    assert f'User "1" -[{DEL}]- "0..*" Role : <color:{DEL}><s>user</s></color>' in _diff()
+
+
+# ── The two hues are the page's own added/removed pair ───────────────────────
+# Not a palette private to this file: the review page paints a code hunk, a line count
+# and a test-state flag with the same two, and a diagram that picked its own green would
+# be a second meaning for one colour on one page.
+
+def test_the_palette_is_green_for_added_and_red_for_removed():
+    assert (ADD, DEL) == ("#2E7D32", "#C62828")
 
 
 # ── Changed member = removed old + added new ─────────────────────────────────
 
 def test_changed_member_shows_both():
     out = _diff()
-    assert "<color:red>id : Long</color>" in out               # new type added
-    assert "<color:red><s>id : Integer</s></color>" in out     # old type struck
+    assert f"<color:{ADD}>id : Long</color>" in out             # new type added
+    assert f"<color:{DEL}><s>id : Integer</s></color>" in out   # old type struck
 
 
 # ── No-op: identical snapshots mark no element as changed ────────────────────
@@ -104,22 +121,25 @@ def test_identical_snapshots_have_no_diff_markup():
         ln for ln in out.splitlines()
         if not ln.startswith("caption") and not ln.lstrip().lower().startswith("title")
     )
-    assert "<color:red>" not in body
-    assert "#line:red" not in body
+    assert f"<color:{ADD}>" not in body and f"<color:{DEL}>" not in body
+    assert "#line:" not in body
     assert "<s>" not in body
 
 
-# ── The title says the picture is a delta ────────────────────────────────────
+# ── The title says the picture is a delta, and what its colours mean ─────────
+# It sits directly above the picture, which is where the reader already is; the bare
+# "- Diff" it replaces was written in the one colour that now means *removed*.
 
-def test_title_is_marked_as_a_diff():
+def test_the_title_carries_the_legend():
     out = m.diff(_parse(BEFORE), _parse(AFTER))
-    assert "title Domain Model - <color:red>Diff</color>" in out
+    assert (f"title Domain Model - <color:{ADD}>added</color> / "
+            f"<color:{DEL}><s>removed</s></color>") in out
 
 
 def test_title_marking_is_idempotent():
     once = m.diff(_parse(BEFORE), _parse(AFTER))
     twice = m.diff(m.parse(once), m.parse(once))
-    assert twice.count("<color:red>Diff</color>") == 1
+    assert twice.count(f"<color:{ADD}>added</color>") == 1
 
 
 if __name__ == "__main__":
@@ -162,8 +182,8 @@ def test_bracket_component_parsed_as_element_not_preamble():
     assert not any("[Domain]" in line for line in d.preamble)
 
 
-def test_added_bracket_component_gets_red_header():
-    assert "[Notification] <<..notification>> #line:red;text:red" in _pkg_diff()
+def test_added_bracket_component_gets_green_header():
+    assert f"[Notification] <<..notification>> #line:{ADD};text:{ADD}" in _pkg_diff()
 
 
 def test_unchanged_bracket_component_stays_plain():
@@ -173,7 +193,7 @@ def test_unchanged_bracket_component_stays_plain():
 def test_removed_bracket_component_struck_but_keeps_alias():
     # Aliased so relationships still pointing at [Repository] resolve to the
     # struck box instead of spawning a second, unstyled one.
-    assert 'component "<color:red><s>Repository</s></color>" as Repository' in _pkg_diff()
+    assert f'component "<color:{DEL}><s>Repository</s></color>" as Repository' in _pkg_diff()
 
 
 # ── Focus levels ─────────────────────────────────────────────────────────────
@@ -254,14 +274,15 @@ class Owner [[src://a/Owner.java:12{open Owner}]] {
 }
 @enduml""")
     out = m.diff(plain, linked)
-    assert "<color:red>" not in out.replace(
-        "caption <color:red>added</color> or <color:red><s>removed</s></color>", "")
+    body = "\n".join(ln for ln in out.splitlines()
+                     if not ln.lstrip().lower().startswith("title"))
+    assert f"<color:{ADD}>" not in body and f"<color:{DEL}>" not in body
     assert m._impacted(plain, linked) == set()
     # …and the link still renders, rewrapped around the member it points at
     assert "[[src://a/Owner.java:15{open id} id : Integer]]" in out
 
 
-# ── Sequence diagrams: a changed statement is one red arrow, not a pair ──────
+# ── Sequence diagrams: a changed statement is one marked arrow, not a pair ──
 # An arrow carries `[[genseq://<id>{…} label]]`, and the id is a fingerprint of what the
 # arrow reveals. When only that moves, the call is unchanged and the statement behind it
 # is not — telling the reviewer that twice, once struck and once red, is twice the red
@@ -277,21 +298,21 @@ def _seq(old_arrow, new_arrow):
 ARROW = 'Backend -> DB: [[genseq://%s{Click for the statement} select visits]]'
 
 
-def test_a_changed_statement_reddens_the_arrow_it_hides_behind():
+def test_a_changed_statement_marks_the_arrow_it_hides_behind():
     out = _seq(ARROW % "aaa1111", ARROW % "bbb2222")
     assert "<s>" not in out                       # not a removal
     assert out.count("select visits") == 1        # not a pair
     # The arrowhead carries the mark. The label cannot: PlantUML renders no markup inside
     # a link label — the tags print as literal text and the link comes apart — so a
     # coloured label would cost the click that the whole arrow exists to offer.
-    assert f"-[{sq.RED}]>" in out
+    assert f"-[{sq.ADDED}]>" in out
     assert "[[genseq://bbb2222{Click for the statement} select visits]]" in out
     assert "<color" not in out.split("participant DB")[1]
 
 
 def test_an_untouched_arrow_stays_plain():
     out = _seq(ARROW % "aaa1111", ARROW % "aaa1111")
-    assert f"<color:{sq.RED}>" not in out
+    assert f"<color:{sq.ADDED}>" not in out and f"<color:{sq.REMOVED}>" not in out
     assert "-[#" not in out
 
 
@@ -321,7 +342,7 @@ def test_a_section_header_that_gained_a_source_link_is_not_a_change():
     out = _sections("== Add a visit ==", LINKED_HEADER)
     assert "<s>" not in out                       # not a removal
     assert out.count("Add a visit") == 1          # not a pair
-    assert f"<color:{sq.RED}>" not in out         # not even a repaint
+    assert f"<color:{sq.ADDED}>" not in out      # not even a repaint
     assert LINKED_HEADER in out                   # …and the link still renders
 
 
@@ -329,7 +350,7 @@ def test_a_moved_test_does_not_move_the_conversation():
     """Only the line number differs — everything above the test shifted, that is all."""
     out = _sections(LINKED_HEADER, LINKED_HEADER.replace(":26{", ":43{"))
     assert "<s>" not in out
-    assert f"<color:{sq.RED}>" not in out
+    assert f"<color:{sq.ADDED}>" not in out
 
 
 def test_a_renamed_section_is_still_a_removal_and_an_addition():
@@ -346,7 +367,20 @@ def test_an_arrow_link_target_never_decides_identity():
     out = _seq(plain, linked)
     assert "<s>" not in out
     assert out.count("GET /api/vets") == 1
-    assert f"<color:{sq.RED}>" not in out
+    assert f"<color:{sq.ADDED}>" not in out
+
+
+def test_the_two_differs_paint_from_one_palette():
+    """A reviewer flips between a structural delta and a sequence delta on one page.
+    Two greens there would be two meanings, so the sequence differ takes its hues from
+    this module rather than declaring its own."""
+    assert (sq.ADDED, sq.REMOVED) == (ADD, DEL)
+
+
+def test_a_sequence_title_carries_the_same_legend():
+    out = sq.diff("@startuml\ntitle Flow\nparticipant A\n@enduml\n",
+                  "@startuml\ntitle Flow\nparticipant A\nA -> A: x\n@enduml\n")
+    assert f"title Flow - <color:{ADD}>added</color> / <color:{DEL}><s>removed</s></color>" in out
 
 
 # ── Member links: wrapping, whichever form the input used ────────────────────
@@ -384,8 +418,8 @@ def test_a_trailing_link_is_rewrapped_around_its_member():
 
 def test_the_diff_colour_goes_inside_the_link():
     out = m.diff(m.parse(OLD_FORM), m.parse(NEW_FORM))
-    assert "{open added} <color:red>added : String</color>]]" in out
-    assert "{open gone} <color:red><s>gone : String</s></color>]]" in out
+    assert f"{{open added}} <color:{ADD}>added : String</color>]]" in out
+    assert f"{{open gone}} <color:{DEL}><s>gone : String</s></color>]]" in out
 
 
 def test_a_member_with_no_link_is_untouched():

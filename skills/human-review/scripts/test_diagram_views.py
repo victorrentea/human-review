@@ -135,9 +135,9 @@ def test_all_three_colours_are_defined_and_none_is_another_one():
     light = dict(re.findall(r"--view-(\w+):([^;]+);", build.CSS))
     assert set(light) == {"diff", "new", "old"}
     assert len(set(light.values())) == 3
-    # red is the delta's own red by reference, so the frame and the strokes inside it
-    # cannot drift apart, and it follows the palette into dark mode for free
-    assert light["diff"] == "var(--dgm-diff)"
+    # red is the delta's own removal red by reference, so the frame and the strokes
+    # inside it cannot drift apart, and it follows the palette into dark mode for free
+    assert light["diff"] == "var(--dgm-diff-del)"
     # the other two are re-stated for dark, where #1a4fa0/#1f7a45 fall under 3:1
     dark = build.CSS.split("prefers-color-scheme: dark")[1]
     assert "--view-new:" in dark and "--view-old:" in dark

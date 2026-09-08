@@ -13,9 +13,9 @@ follows `--dgm-fg` into near-white whether or not the fill under it moved.
 either palette, to the matching `--dgm-*` CSS variable at inline time, so the diagram repaints
 along with the rest of the page. It is deliberately narrow — a fixed palette recognised
 by exact value, not a blanket filter — because the diff renderers (`puml_diff.py`,
-`seq_puml_diff.py`) paint added/removed elements a deliberate red, and a rule that is not
-precise about which literal it is touching risks fighting that signal instead of just
-carrying it into dark mode.
+`seq_puml_diff.py`) paint an addition a deliberate green and a removal a deliberate red,
+and a rule that is not precise about which literal it is touching risks fighting that
+signal — or, worse, swapping the two — instead of just carrying it into dark mode.
 
 Run with:  python3 -m pytest test_diagram_dark_mode.py
 """
@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -75,16 +76,34 @@ def test_stroke_and_background_are_rewritten_inside_style_but_not_other_props():
     assert 'width:10px;height:10px' in out    # untouched — not a colour
 
 
-def test_the_two_diff_reds_get_their_own_distinct_variables():
-    """puml_diff.py colours a changed class/ER element `<color:red>` (-> #FF0000);
-    seq_puml_diff.py colours a changed sequence arrow literally `#D40000`. Different
-    generators, different reds — collapsing them to one variable would mean picking one
-    literal's contrast check for both, so each keeps its own."""
-    out_class = build._theme_diagram_colors('<text fill="#FF0000">Diff</text>')
-    out_seq = build._theme_diagram_colors('<path style="stroke:#D40000;"/>')
-    assert 'var(--dgm-diff)"' in out_class
-    assert 'var(--dgm-diff-seq)' in out_seq
-    assert build.DIAGRAM_COLOR_VARS["#FF0000"] != build.DIAGRAM_COLOR_VARS["#D40000"]
+def test_added_and_removed_get_their_own_distinct_variables():
+    """Both differs paint an addition green and a removal red — one palette across the
+    structural delta and the sequence delta, so a reader flipping between them is not
+    told two things by one colour. The two hues stay two variables: the point of the
+    split is that they carry opposite meanings into dark mode, not one brightness."""
+    out_add = build._theme_diagram_colors('<text fill="#2E7D32">added</text>')
+    out_del = build._theme_diagram_colors('<path style="stroke:#C62828;"/>')
+    assert 'var(--dgm-diff-add)"' in out_add
+    assert 'var(--dgm-diff-del)' in out_del
+    assert build.DIAGRAM_COLOR_VARS["#2E7D32"] != build.DIAGRAM_COLOR_VARS["#C62828"]
+
+
+def test_the_map_holds_exactly_the_literals_the_differs_paint_with():
+    """The palette is declared in puml_diff.py and re-typed here as hex literals, because
+    the CSS is a string in this file and cannot import anything. Re-typed is not the same
+    as remembered: a hue changed in the differ and not here renders as an unthemed shape
+    that never follows the page into dark mode, and nothing else would say so."""
+    sys.path.insert(0, str(HERE.parent / "puml-diff"))
+    try:
+        import puml_diff as puml
+        import seq_puml_diff as seq
+    finally:
+        sys.path.pop(0)
+
+    assert build.DIAGRAM_COLOR_VARS[puml.ADDED] == "--dgm-diff-add"
+    assert build.DIAGRAM_COLOR_VARS[puml.REMOVED] == "--dgm-diff-del"
+    assert build.DIAGRAM_COLOR_VARS[seq.ADDED_TINT] == "--dgm-diff-add-bg"
+    assert build.DIAGRAM_COLOR_VARS[seq.REMOVED_TINT] == "--dgm-diff-del-bg"
 
 
 def test_the_hand_styled_puml_palette_is_covered_too():
@@ -151,7 +170,7 @@ def test_non_colour_fill_values_are_untouched():
     assert build._theme_diagram_colors(svg) == svg
 
 
-def test_both_diff_reds_read_at_at_least_aa_contrast_on_the_dark_diagram_canvas():
+def test_both_diff_hues_read_at_at_least_aa_contrast_on_the_dark_diagram_canvas():
     """The dark-mode values live only as literals inside the CSS string in
     build-review-html.py, so this pins the actual numbers rather than re-deriving them
     from the source — a change to either literal should have to walk through this
@@ -160,14 +179,23 @@ def test_both_diff_reds_read_at_at_least_aa_contrast_on_the_dark_diagram_canvas(
     css = build.CSS
     dark_block = css.split("@media (prefers-color-scheme: dark)", 1)[1]
     dgm_bg = re.search(r"--dgm-bg:(#[0-9a-fA-F]{6})", dark_block)[1]
-    dgm_diff = re.search(r"--dgm-diff:(#[0-9a-fA-F]{6})", dark_block)[1]
-    dgm_diff_seq = re.search(r"--dgm-diff-seq:(#[0-9a-fA-F]{6})", dark_block)[1]
+    for name, what in (("--dgm-diff-add", "added green"), ("--dgm-diff-del", "removed red")):
+        val = re.search(rf"{name}:(#[0-9a-fA-F]{{6}})", dark_block)[1]
+        assert contrast(val, dgm_bg) >= 4.5, f"the {what} is too dim against the dark diagram canvas"
 
-    assert contrast(dgm_diff, dgm_bg) >= 4.5, "class/ER diff red is too dim against the dark diagram canvas"
-    assert contrast(dgm_diff_seq, dgm_bg) >= 4.5, "sequence diff red is too dim against the dark diagram canvas"
+
+def test_the_diff_tints_still_hold_their_labels_in_dark_mode():
+    """A sequence delta fills an added or removed lifeline box — and a note — with a tint,
+    and PlantUML draws the name inside it in plain black, which the page rewrites to
+    --dgm-fg. In dark mode that is near-white, so a tint that stayed pale is a box that
+    reads as empty. Both must invert with the theme, not merely exist in it."""
+    dark = build.CSS.split("@media (prefers-color-scheme: dark)", 1)[1]
+    fg = re.search(r"--dgm-fg:(#[0-9a-fA-F]{6})", dark)[1]
+    for name in ("--dgm-diff-add-bg", "--dgm-diff-del-bg"):
+        tint = re.search(rf"{name}:(#[0-9a-fA-F]{{6}})", dark)[1]
+        assert contrast(fg, tint) >= 4.5, f"a label on {name} is too dim to read"
 
 
 if __name__ == "__main__":
-    import sys
     import pytest
     raise SystemExit(pytest.main([__file__, "-q"]))

@@ -5,7 +5,7 @@ Only when the generator in `petclinic-test/src/genseq/` has moved since the base
 **The base diagram must come from the same renderer as the new one.** A sequence diagram is a
 rendering choice as much as a recording: change what an arrow is labelled with, and every
 arrow in the committed base diagram reads as a deletion with its replacement added underneath
-— a wall of red that says nothing about the change under review.
+— a wall of red and green that says nothing about the change under review.
 
 ```sh
 git stash push --include-untracked          # your fixes are uncommitted; keep them
@@ -27,7 +27,7 @@ git checkout -b throwaway-base $BASE && git commit -am "base diagrams, same rend
 `npm run trace:diagram` re-renders from the cached spans in about a second, so the expensive
 part is the one traced run per side.
 
-If you skip it, say so in the guide next to the diagram: a red arrow the reviewer cannot
+If you skip it, say so in the guide next to the diagram: a marked arrow the reviewer cannot
 distinguish from a real change is worse than no diagram.
 
 ## The Hibernate SQL-comment gotcha

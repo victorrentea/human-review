@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Diff two PlantUML *sequence* diagrams and render the delta in red.
+"""Diff two PlantUML *sequence* diagrams and render the delta in green and red.
 
 The sibling `puml_diff.py` diffs diagrams whose meaning is a *set* of elements and
 relationships (class, ER, package) — order carries no information there. A
@@ -11,12 +11,17 @@ Given a previous snapshot (OLD) and a current one (NEW) — e.g. the diagram
 committed on the base branch vs the one this branch's test run just produced —
 emit a single merged diagram built on NEW, where:
 
-  * added message / note / separator   -> red arrow + red label
+  * added message / note / separator   -> green arrow + green label
   * removed message / note / separator -> red arrow + struck red label, re-inserted
                                           where it used to sit
-  * added participant                  -> red-tinted lifeline box
+  * added participant                  -> green-tinted lifeline box
   * removed participant                -> red-tinted box, struck name (kept, so the
                                           struck arrows still have something to point at)
+
+The two colours come from `puml_diff`, the structural differ beside this one, so the two
+deltas a reviewer flips between on the same page cannot mean different things by the same
+green. Painting both sides red said only "something here moved"; the direction had to be
+read off a strikethrough.
 
 `activate` / `deactivate` lines are the one thing deliberately *not* re-inserted
 on the removal side: they are a balanced bracket language, and splicing an old
@@ -36,7 +41,16 @@ import difflib
 import re
 import sys
 
-RED = "#D40000"
+# One palette and one title legend for both deltas — see the docstring. `_mark_title` is
+# shared rather than re-implemented because a reader flipping between a sequence delta and
+# a structural one on the same page must not have to re-learn the heading.
+from puml_diff import ADDED, REMOVED, _mark_title
+
+# The tint behind a lifeline box. A participant's name is drawn in plain black, which the
+# page rewrites to its foreground colour, so the box it sits in has to stay a tint and
+# never becomes the full-strength ADDED/REMOVED: those are for strokes and words.
+ADDED_TINT = "#EAF6EC"
+REMOVED_TINT = "#FFEBEB"
 
 # `Browser -> Backend: GET /api/vets`, `Backend --> Browser: 200`, `A <- B: x`.
 ARROW_RE = re.compile(
@@ -71,12 +85,12 @@ def _per_line(text: str, wrap) -> str:
     return NEWLINE.join(wrap(part) for part in text.split(NEWLINE))
 
 
-def _red(text: str) -> str:
-    return _per_line(text, lambda part: f"<color:{RED}>{part}</color>")
+def _added(text: str) -> str:
+    return _per_line(text, lambda part: f"<color:{ADDED}>{part}</color>")
 
 
 def _struck(text: str) -> str:
-    return _per_line(text, lambda part: f"<color:{RED}><s>{part}</s></color>")
+    return _per_line(text, lambda part: f"<color:{REMOVED}><s>{part}</s></color>")
 
 
 # `[[target{tooltip} label]]` — an arrow whose whole label is the handle a reader clicks.
@@ -91,13 +105,13 @@ def _paint(text: str, removed: bool):
     Wrapping the link from outside is no better, because the wrap is applied per rendered
     line and a two-line label then has `[[` on one line and `]]` on the next.
 
-    So an added arrow keeps its link and lets the red arrowhead carry the meaning, and a
+    So an added arrow keeps its link and lets the green arrowhead carry the meaning, and a
     removed one gives the link up — its detail was never recorded in this diagram's
     sidecar, so the handle is dead either way — and strikes the words instead.
     """
     m = LINK.match(text.strip())
     if not m:
-        return _struck(text) if removed else _red(text)
+        return _struck(text) if removed else _added(text)
     if removed:
         return _struck(m.group("label").rstrip().removesuffix(MARKER_GLYPH).rstrip())
     return text
@@ -106,12 +120,12 @@ def _paint(text: str, removed: bool):
 MARKER_GLYPH = "⊕"
 
 
-def _colorize_arrow(arrow: str) -> str:
-    """`->` -> `-[#red]>`, `-->` -> `-[#red]->`, `<-` -> `<[#red]-`."""
+def _colorize_arrow(arrow: str, colour: str) -> str:
+    """`->` -> `-[<colour>]>`, `-->` -> `-[<colour>]->`, `<-` -> `<[<colour>]-`."""
     if arrow.startswith("-"):
-        return f"-[{RED}]{arrow[1:]}"
+        return f"-[{colour}]{arrow[1:]}"
     if arrow.startswith("<"):
-        return f"<[{RED}]{arrow[1:]}"
+        return f"<[{colour}]{arrow[1:]}"
     return arrow
 
 
@@ -121,7 +135,9 @@ def _mark_line(line: str, removed: bool) -> str | None:
     Returns None for lines that must not be re-emitted on the removal side.
     """
     stripped = line.strip()
-    paint = _struck if removed else _red
+    paint = _struck if removed else _added
+    colour = REMOVED if removed else ADDED
+    tint = REMOVED_TINT if removed else ADDED_TINT
 
     if ACTIVATION_RE.match(stripped):
         # See the module docstring: never re-inject old activation brackets.
@@ -130,7 +146,7 @@ def _mark_line(line: str, removed: bool) -> str | None:
     m = ARROW_RE.match(stripped)
     if m:
         return (
-            f"{m['src'].strip()} {_colorize_arrow(m['arrow'])} "
+            f"{m['src'].strip()} {_colorize_arrow(m['arrow'], colour)} "
             f"{m['dst'].strip()}: {_paint(m['text'], removed)}"
         )
 
@@ -140,7 +156,9 @@ def _mark_line(line: str, removed: bool) -> str | None:
 
     m = NOTE_RE.match(stripped)
     if m:
-        return f"{m['head']} {RED}: {paint(m['text'])}"
+        # The colour after the head is the note's *background*, so it takes the tint:
+        # full-strength ADDED/REMOVED there is a slab with unreadable text on it.
+        return f"{m['head']} {tint}: {paint(m['text'])}"
 
     # group / alt / opt / loop / end and anything unrecognised: PlantUML offers no
     # inline colour for these, so an addition passes through and a removal is
@@ -163,8 +181,8 @@ def _mark_participant(line: str, removed: bool) -> str:
     rest = m["rest"].strip()
     alias = _participant_name(rest)
     label = rest.split(" as ")[0].strip().strip('"') if " as " in rest else alias
-    shown = _struck(label) if removed else _red(label)
-    return f'{m["kind"]} "{shown}" as {alias} #FFEBEB'
+    shown = _struck(label) if removed else _added(label)
+    return f'{m["kind"]} "{shown}" as {alias} {REMOVED_TINT if removed else ADDED_TINT}'
 
 
 # `[[<target>{<tooltip>} <label>]]` — anywhere on a line, arrow label or section header.
@@ -225,7 +243,7 @@ def diff(old: str, new: str) -> str:
     old_meta, old_parts, old_body = _split(old)
     new_meta, new_parts, new_body = _split(new)
 
-    out = [line for line in new_meta if line.strip().lower() != "@enduml"]
+    out = [_mark_title(line) for line in new_meta if line.strip().lower() != "@enduml"]
     if not out or not out[0].strip().lower().startswith("@startuml"):
         out.insert(0, "@startuml")
 

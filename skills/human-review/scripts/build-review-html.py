@@ -68,17 +68,22 @@ CSS = """
      A fill left un-themed there is not merely off-palette, it is the box that
      swallows its own label. */
   --dgm-box-accent:#eceff1; --dgm-line-accent:#546e7a; --dgm-arrow-accent:#78909c;
-  /* The diff renderer's reds (puml_diff.py's `<color:red>` and seq_puml_diff.py's
-     literal #D40000) are kept as their own variables rather than folded into --accent:
-     they mark *added/removed*, a different signal than the page's own accent color, and
-     must stay legible against whichever diagram surface they are drawn on. */
-  --dgm-diff:#ff0000; --dgm-diff-seq:#d40000;
+  /* The diff renderers' two hues — both puml_diff.py and seq_puml_diff.py paint an
+     addition ADDED and a removal REMOVED, one palette across both deltas. They equal the
+     page's own `.added`/`.removed` pair on purpose: a diagram and a code hunk on the same
+     page must not mean different things by the same green. Kept as their own variables
+     rather than folded into --accent because they mark a direction, not emphasis, and
+     must stay legible against whichever diagram surface they are drawn on. The two
+     tints are what a sequence delta fills a lifeline box or a note with — a full-strength
+     hue there is a slab that swallows the black label PlantUML draws on it. */
+  --dgm-diff-add:#2e7d32; --dgm-diff-del:#c62828;
+  --dgm-diff-add-bg:#eaf6ec; --dgm-diff-del-bg:#ffebeb;
   /* Which of the three pictures you are looking at, said by the frame around it rather
-     than by reading the buttons. Red is the delta's own red, taken by reference so the
-     border and the strokes inside it can never disagree; blue and green are the page's
-     link and "added" hues, which already mean "the current thing" and "the good side"
-     everywhere else on the page. */
-  --view-diff:var(--dgm-diff); --view-new:#1a4fa0; --view-old:#1f7a45;
+     than by reading the buttons. Red is the delta's own removal red, taken by reference
+     so the border and the strokes inside it can never disagree; blue and green are the
+     page's link and "added" hues, which already mean "the current thing" and "the good
+     side" everywhere else on the page. */
+  --view-diff:var(--dgm-diff-del); --view-new:#1a4fa0; --view-old:#1f7a45;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg:#15151a; --fg:#e8e8ef; --muted:#9a9aa8; --line:#2c2c36; --card:#1d1d24;
@@ -88,9 +93,12 @@ CSS = """
              whose contrast ratios were tuned for text, not a diagram's fills and hairline
              strokes. --dgm-icon is deliberately absent: the stereotype ellipse's pale
              green already sits at ~9:1 against a dark box, better than it does on white,
-             so it is left un-overridden. Both diff reds converge on one brighter red —
-             #ff0000/#d40000 sit at ~4.2:1 and worse against a near-black canvas, under
-             the 4.5:1 text minimum; #ff6b6b clears ~6:1 while still reading as "red". */
+             so it is left un-overridden. Both diff hues lift to the page's own dark
+             added/removed pair: #2e7d32 and #c62828 sit near 4:1 against a near-black
+             canvas, under the 4.5:1 text minimum, where #8fd39c and #f08a8a clear it
+             comfortably and still read as green and red. Their two tints invert
+             outright — a pale wash behind a near-white label is the box that swallows
+             its own name — landing beside --accent-soft on the removal side. */
           --dgm-bg:#1d1d24; --dgm-box:#26262e; --dgm-frame:#202028; --dgm-legend:#2c2c36;
           --dgm-line:#8f8fa0; --dgm-fg:#e8e8ef; --dgm-activation:#2e2e42;
           --dgm-muted:#9a9aa8; --dgm-link:#8ab4f8;
@@ -101,8 +109,9 @@ CSS = """
              ~11:1 against --dgm-fg; both strokes clear 3:1 on --dgm-bg. */
           --dgm-box-accent:#29323a; --dgm-line-accent:#93a9b5;
           --dgm-arrow-accent:#7f97a6;
-          --dgm-diff:#ff6b6b; --dgm-diff-seq:#ff6b6b;
-          /* --view-diff is not repeated: it is `var(--dgm-diff)`, so it follows the
+          --dgm-diff-add:#8fd39c; --dgm-diff-del:#f08a8a;
+          --dgm-diff-add-bg:#1f3329; --dgm-diff-del-bg:#3a1f1f;
+          /* --view-diff is not repeated: it is `var(--dgm-diff-del)`, so it follows the
              line above on its own. These two are lifted to the same footing as the
              page's dark link colour — #1a4fa0 and #1f7a45 are both under 3:1 on a
              near-black ground, and a border nobody can see is not a signal. */
@@ -330,7 +339,7 @@ pre.code code { white-space:pre; }
 .diagram svg a[href^="vscode:"]:hover text[text-decoration="line-through"] {
   text-decoration:line-through underline; }
 /* How much unchanged context to draw around what changed. DomainModel and DB are big
-    enough that the whole diagram is a wall to hunt for red in, and how much context
+    enough that the whole diagram is a wall to hunt the delta in, and how much context
     makes a given change legible is the reviewer's call, not the generator's. */
 .focus { display:flex; align-items:center; gap:.35rem; margin-top:.7rem; flex-wrap:wrap; }
 .focus .lbl { color:var(--muted); font-size:.78rem; margin-right:.15rem; }
@@ -391,8 +400,8 @@ pre.code code { white-space:pre; }
 /* The section header names the scenario the picture is of, so it is the reader's handle on
    the test behind it. Underlined because it is a link and nothing else on a sequence diagram
    is — dotted at rest so it reads as an offer rather than as emphasis, solid under the
-   pointer. The colour is PlantUML's own hyperlink colour, or the delta's red where the header
-   itself changed. */
+   pointer. The colour is PlantUML's own hyperlink colour, or the delta's green or red where
+   the header itself was added or removed. */
 .diagram svg a[href^="genseq-scenario:"] { cursor:pointer; }
 .diagram svg a[href^="genseq-scenario:"] text { text-decoration:underline;
                                                 text-decoration-style:dotted; }
@@ -1973,7 +1982,12 @@ DIAGRAM_COLOR_VARS = {
     "#FFFFFF": "--dgm-bg", "#F1F1F1": "--dgm-box", "#EEEEEE": "--dgm-frame",
     "#DDDDDD": "--dgm-legend", "#181818": "--dgm-line", "#000000": "--dgm-fg",
     "#ADD1B2": "--dgm-icon", "#E2E2F0": "--dgm-activation", "#888888": "--dgm-muted",
-    "#1A4FA0": "--dgm-link", "#FF0000": "--dgm-diff", "#D40000": "--dgm-diff-seq",
+    "#1A4FA0": "--dgm-link",
+    # The two differs' shared palette — puml_diff.ADDED / .REMOVED and the sequence
+    # differ's lifeline and note tints. Kept in step with those constants by
+    # test_diagram_dark_mode.py rather than by memory.
+    "#2E7D32": "--dgm-diff-add", "#C62828": "--dgm-diff-del",
+    "#EAF6EC": "--dgm-diff-add-bg", "#FFEBEB": "--dgm-diff-del-bg",
     # packages.puml's own <style> block (Material blue-grey): component fill,
     # component border, arrow. Same treatment, different source — see the CSS.
     "#ECEFF1": "--dgm-box-accent", "#546E7A": "--dgm-line-accent",
@@ -2230,7 +2244,8 @@ def dgm_views_html(panes) -> str:
     if not pair:
         return "".join(body for _, body in panes)
     buttons = ['<button type="button" class="dgm-diff" data-go="diff" aria-pressed="true" '
-               'data-tip="the delta &mdash; what this branch changed, marked in red">Diff</button>']
+               'data-tip="the delta &mdash; green for what this branch added, '
+               'red and struck through for what it removed">Diff</button>']
     if pair:
         buttons.append(
             '<button type="button" class="dgm-newold" data-go="newold" aria-pressed="false" '

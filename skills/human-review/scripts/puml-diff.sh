@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Red-annotated delta for *every* PlantUML diagram this branch touched.
+# Green/red-annotated delta for *every* PlantUML diagram this branch touched.
 #
 # `architecture-diff.sh` answers "what did this branch do to the three structural
 # diagrams?" — an explicit, curated list. This script answers the wider review
 # question: take every .puml that differs from the base (committed, modified or
 # brand new in the work tree), and render each one as a delta where additions are
-# red and removals are red + struck through.
+# green and removals are red + struck through — the same pair the review page uses
+# for a code hunk, so one colour never means two things on one page.
 #
 # Two diagram families need two algorithms, and the script dispatches between them:
 #
@@ -163,7 +164,7 @@ for rel in "${CHANGED[@]}"; do
 
   diff_puml="$OUT_DIR/$name.diff.puml"
   if [ "$status" = added ]; then
-    # Nothing to compare against, so nothing to mark: reddening every line of a diagram
+    # Nothing to compare against, so nothing to mark: painting every line of a diagram
     # that simply did not exist before says "all of this changed" when what happened is
     # "this is new". The manifest already carries the status.
     cp "$new" "$diff_puml"
@@ -193,7 +194,7 @@ for rel in "${CHANGED[@]}"; do
   fi
 
   # A structural diagram is drawn again at each focus level, so the reviewer picks the
-  # radius that makes the change legible instead of hunting for red across the whole
+  # radius that makes the change legible instead of hunting the delta across the whole
   # skyline. Rendering all of them up front costs a few seconds once; deciding at read
   # time costs nothing, and the guide has to survive being emailed as one file.
   focus=""

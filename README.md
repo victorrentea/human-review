@@ -119,7 +119,7 @@ whatever order the reviewer's doubt takes them, so the page is a strip of tabs:
 | Demo | a Playwright recording of the feature, narrated |
 | Sequence | sequence diagrams recorded from real traces, each beside the test that produced it — and the tests tagged for tracing that came back without one |
 | Requirements | what the change set was supposed to do |
-| Data | the DB and domain deltas — added in red, removed in red and struck — and the change in domain language |
+| Data | the DB and domain deltas — added in green, removed in red and struck — and the change in domain language |
 | Structure | the package delta, or the current package diagram as context |
 | API | every operation and schema the branch moved, each classified breaking / additive / changed / cosmetic |
 | UX | native controls sitting where a design-system component belongs — a finding made of an *absence*, which the passing Playwright suite cannot produce |
@@ -176,12 +176,16 @@ Two diagram families need two algorithms. A class diagram's meaning is a *set* o
 and relationships, where order carries nothing. A sequence diagram is the opposite: an
 ordered script of messages, where the same arrow twice is two different events.
 
-The delta is titled as one — `title Domain Model` renders as **Domain Model - <span
-style="color:red">Diff</span>** — so a picture that escapes its page still says it is a
-change rather than a snapshot.
+Additions are drawn **<span style="color:#2e7d32">green</span>**, removals **<span
+style="color:#c62828">red and struck through</span>** — the page's own added/removed pair,
+so a diagram and a code hunk beside it never mean two things by one colour. The title
+carries the legend: `title Domain Model` renders as **Domain Model - <span
+style="color:#2e7d32">added</span> / <span style="color:#c62828"><s>removed</s></span>**,
+so a picture that escapes its page still says it is a change rather than a snapshot, and
+says which way each mark points.
 
 `--focus 0|1|2|3|all` answers the problem every large diagram has — a two-line change
-arrives as a wall you have to search for red in. It keeps what changed plus N relationships
+arrives as a wall you have to search the delta out of. It keeps what changed plus N relationships
 outwards, so the same delta can be read at whatever radius makes it legible.
 
 ```sh

@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Diff two PlantUML class / package / ER diagrams and render the delta in red.
+"""Diff two PlantUML class / package / ER diagrams and render the delta in green and red.
 
 Given a previous snapshot (OLD) and a current one (NEW) — e.g. the last committed
 diagram vs the working copy at review time — emit a single merged diagram built on
 NEW, where:
 
-  * added element (class/enum/entity/package) -> red header
-  * added member / attribute                  -> red line
+  * added element (class/enum/entity/package) -> green header
+  * added member / attribute                  -> green line
   * removed member                            -> red struck-through line (kept in place)
   * removed element                           -> red header, all members struck
-  * added relationship                        -> red connector + red label
+  * added relationship                        -> green connector + green label
   * removed relationship                      -> red connector + struck red label (re-added)
+
+Direction is the whole point of the colour. Painting both sides red said only "something
+here moved" and left the reader to infer, from a strikethrough they had to look for,
+which way it went; green and red say it at a glance, the way the code diff on the same
+page already does.
 
 This is the review-time counterpart to the snapshot generators: the committed
 diagram stays a plain picture of current reality, and the *diff* is computed on
@@ -51,42 +56,64 @@ _QUOTED = re.compile(r'"[^"]*"')
 _BRACKET_COMPONENT = re.compile(r"^\[([^\]]+)\]")
 
 
+# The review page's own added/removed vocabulary — the same pair its diff gutters, its
+# line counts and its test-state flags use — rather than a palette private to this file:
+# a second green on a fourth surface would read as a second meaning. `seq_puml_diff`
+# imports these two names so the sequence delta beside this one cannot drift off them,
+# and `build-review-html.py` maps both literals to the `--dgm-diff-*` variables that
+# carry them into dark mode.
+ADDED = "#2E7D32"
+REMOVED = "#C62828"
+
+# An element header takes its colour as `#line:<c>;text:<c>`, not as inline creole.
+def _paint_header(colour: str) -> str:
+    return f" #line:{colour};text:{colour}"
+
+
 def _strip_markup(s: str) -> str:
     """Normalise a line to its plain content: drop any diff colouring/strikeout."""
     s = re.sub(r"</?color[^>]*>", "", s)
     s = s.replace("<s>", "").replace("</s>", "")
-    s = re.sub(r"\[#[0-9A-Za-z_]+\]", "", s)      # coloured connector: -[#red]-
-    s = s.replace("#line:red;text:red", "")        # coloured element header
+    s = re.sub(r"\[#[0-9A-Za-z_]+\]", "", s)      # coloured connector: -[#C62828]-
+    s = re.sub(r"\s*#line:[^;\s]+;text:\S+", "", s)  # coloured element header
     return s.strip()
 
 
-def _red(text: str) -> str:
-    return f"<color:red>{text}</color>"
+def _added(text: str) -> str:
+    return f"<color:{ADDED}>{text}</color>"
 
 
 def _struck(text: str) -> str:
-    return f"<color:red><s>{text}</s></color>"
+    return f"<color:{REMOVED}><s>{text}</s></color>"
 
 
 # `title Domain Model` — the single-line form. A bare `title` opens a multi-line block
 # instead, which this deliberately leaves alone rather than mangling.
 TITLE_RE = re.compile(r"^(\s*title\s+)(\S.*)$", re.I)
-DIFF_SUFFIX = "Diff"
+
+
+def _legend() -> str:
+    """The two words the picture is drawn in, in the colours it draws them."""
+    return f"{_added('added')} / {_struck('removed')}"
 
 
 def _mark_title(line: str) -> str:
-    """Say in the title that the picture is a delta, not a snapshot.
+    """Say in the title that the picture is a delta, and what its colours mean.
 
     A diff of DomainModel is still headed "Domain Model", and a reader who arrives at
-    it from a link — or finds it later in `.human-review/assets/` — has only the red to
-    tell them they are not looking at the model as it stands. The red says *what*
-    changed; the title has to say that the whole picture is a change.
+    it from a link — or finds it later in `.human-review/assets/` — has only the paint
+    to tell them they are not looking at the model as it stands. So the title carries
+    the legend itself: it sits directly above the picture, which is where the eye
+    already is, and a word in green beside a struck word in red says both things at
+    once — that this is a delta, and which way each mark points. It replaces a bare
+    "- Diff" written in red, which after the split says the wrong thing twice: red now
+    means *removed*, and the whole picture is not a removal.
 
     Idempotent, so re-diffing an already-diffed .puml does not stack suffixes."""
     m = TITLE_RE.match(line)
-    if not m or _red(DIFF_SUFFIX) in line:
+    if not m or _legend() in line:
         return line
-    return f"{m.group(1)}{m.group(2).rstrip()} - {_red(DIFF_SUFFIX)}"
+    return f"{m.group(1)}{m.group(2).rstrip()} - {_legend()}"
 
 
 def _struck_header(header: str) -> str:
@@ -209,14 +236,15 @@ def _split_relationship(clean: str):
     return left, conn, right, label
 
 
-def _colorize_connector(conn: str) -> str:
-    """Inject `[#red]` into a connector so PlantUML draws the line red.
+def _colorize_connector(conn: str, colour: str) -> str:
+    """Inject `[<colour>]` into a connector so PlantUML draws the line in it.
 
-    `--` -> `-[#red]-`, `-->` -> `-[#red]->`, `||--o{` -> `||-[#red]-o{`, `..>` -> `.[#red].>`.
+    With colour `#C62828`: `--` -> `-[#C62828]-`, `-->` -> `-[#C62828]->`,
+    `||--o{` -> `||-[#C62828]-o{`, `..>` -> `.[#C62828].>`.
     """
     for i, ch in enumerate(conn):
         if ch in "-.":
-            return conn[:i + 1] + "[#red]" + conn[i + 1:]
+            return conn[:i + 1] + f"[{colour}]" + conn[i + 1:]
     return conn
 
 
@@ -346,10 +374,10 @@ def _rel_key(rel) -> str:
 def _render_relationship(rel, mark) -> str:
     left, conn, right, label = rel
     if mark:
-        conn = _colorize_connector(conn)
+        conn = _colorize_connector(conn, ADDED if mark == "added" else REMOVED)
     line = f"{left} {conn} {right}"
     if mark == "added" and label:
-        line += f" : {_red(label)}"
+        line += f" : {_added(label)}"
     elif mark == "removed":                     # struck label; label-less lines get a marker
         line += f" : {_struck(label) if label else _struck('(removed)')}"
     elif label:
@@ -422,12 +450,15 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     names = set(old.elements) | set(new.elements)
     keep = names if focus == ALL else _within(old, new, int(focus))
 
-    caption = "caption <color:red>added</color> or <color:red><s>removed</s></color>"
+    # The legend used to live here and now lives in the title, above the picture rather
+    # than under it. What is left for the caption is the one thing the title cannot say:
+    # how much of the diagram is on screen at this focus level.
+    caption = "caption the whole diagram"
     if focus != ALL:
         hops = int(focus)
         scope = "the impacted elements only" if hops == 0 else (
             f"impacted + {hops} neighbour" + ("s" if hops > 1 else ""))
-        caption += f" — {scope} ({len(keep)} of {len(names)} shown)"
+        caption = f"caption {scope} ({len(keep)} of {len(names)} shown)"
 
     # The caption goes FIRST, not after the preamble. A source that opens a `<style>` block
     # ends its preamble on the `<style>` line itself — the block's body arrives later — so
@@ -448,7 +479,7 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
         current = {_identity(m) for m in el.members}
         removed = [m for m in old_members if _identity(m) not in current]
 
-        header = el.header + (" #line:red;text:red" if is_new else "")
+        header = el.header + (_paint_header(ADDED) if is_new else "")
         if not el.has_body and not removed:
             out.append(header)
             continue
@@ -457,7 +488,7 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
         old_set = {_identity(m) for m in old_members}
         for m in el.members:
             fresh = not is_new and _identity(m) not in old_set
-            out.append("  " + _member(m, _red if fresh else None))
+            out.append("  " + _member(m, _added if fresh else None))
         for m in removed:                            # gone in NEW → struck ghost
             out.append("  " + _member(m, _struck))
         out.append("}")
@@ -466,7 +497,7 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     for name, el in old.elements.items():
         if name in new.elements or name not in keep:
             continue
-        header = _struck_header(el.header) + " #line:red;text:red"
+        header = _struck_header(el.header) + _paint_header(REMOVED)
         if not el.members:
             out.append(header)
             continue
