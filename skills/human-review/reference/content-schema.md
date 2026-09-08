@@ -436,6 +436,21 @@ the one thing no amount of reading changes. Four tabs need something said about 
   - With that column on the page, **do not also write an evidence-cards section** listing
     what the branch wrote — it is the same list, in fewer words, further down.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
-  backed by a snippet.
+  backed by a snippet. It also carries the **conceptual model**, the one diagram on the
+  page a human drew, and three rules go with it:
+  - **Head it the way the file names itself** — `Conceptual Model`, both words capital.
+    It is the name of an artefact the team maintains, not a description of one.
+  - **Its legend names meanings, not colours** (the same rule the Tests tab's legend
+    follows): the swatch is already the colour, so a row reading *"orange — new on this
+    branch"* spends its bold on the one word the reader can see. Write `added by this PR`
+    and `still waiting for a hand-drawn layout`, and take the colour from
+    `var(--dgm-diff-add)` rather than a hex of its own — `drawio-diff.py` paints additions
+    in the report's shared *added* green, and a legend with a private palette drifts off it.
+    Repeat the to-do row under the **New** pane too: the red is drawn in the diagram
+    itself, so it is on screen there as well, with nothing to explain it.
+  - **Open it on `New` while the layout is still owed.** `data-state` is markup, so a
+    diagram may open on whichever pane answers first — and until someone has re-laid the
+    thing out by hand, the delta is a picture of automation's routing rather than of the
+    change. Once it is drawn, `diff` is the pane that earns the open.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the
   repository can produce.

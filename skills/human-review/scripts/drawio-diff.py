@@ -19,12 +19,19 @@ Two colours, two meanings, and they must not be conflated:
   * **red** is the diagram's own. The patch script paints an element red when it draws
     it to keep `ConceptualModelDiagramTest` green, and it stays red until a human
     re-lays it out by hand. It is a to-do, and it is read off the file, not inferred.
-  * **orange** is this tool's. It marks what the revision adds against the base.
+  * **green** is this tool's. It marks what the revision adds against the base — the
+    same green the rest of the report spends on "added", never a second one.
 
 An element that is both — automation drew it *and* it is new — renders red: the
 to-do is the louder fact, and it subsumes "new". Turn it black by hand in draw.io and
-this tool paints it orange, because it is still new. That transition is the whole
+this tool paints it green, because it is still new. That transition is the whole
 contract.
+
+The to-do also carries a link: every annotation the diagram draws (the "Please manually
+fix the layout." note is one) is anchored at `drawio://<absolute path>`, so the reader
+who has just been told to re-lay it out can open the file in the draw.io desktop app
+from the picture. macOS has no such scheme out of the box — `install-drawio-url-handler.sh`
+next to this file registers one.
 
 Rendering goes through the draw.io desktop app when it is installed, which is the only
 way to get a *faithful* picture (and, as a bonus, one that carries `light-dark()` for
@@ -47,13 +54,17 @@ import xml.etree.ElementTree as ET
 import zlib
 from pathlib import Path
 
-# The orange this tool owns: "new on this branch". Two halves, because the report is
-# read in both themes and the colour carries meaning in both. draw.io derives its own
-# dark variant (a muted #cd6b11) which is legible but dim next to the red's dark
-# variant; we pin a brighter amber instead, so orange-vs-red stays a glance apart on a
-# near-black ground the same way it is on a near-white one.
-ADDED_COLOR = "#E8760D"
-ADDED_COLOR_DARK = "#FFA53D"
+# The green this tool owns: "new on this branch". It is deliberately the same pair the
+# rest of the report spends on *added* — `puml_diff.ADDED` and the `--dgm-diff-add` it
+# maps to in dark mode — because a reader who has learnt green-is-added on the PlantUML
+# deltas two tabs over must not have to re-learn it here. It used to be an orange of its
+# own, which made this the only surface in the page where "added" was not green.
+#
+# Two halves, because the report is read in both themes and the colour carries meaning in
+# both: draw.io derives its own dark variant, which is right for the diagram's palette and
+# wrong for the one colour this tool means something by.
+ADDED_COLOR = "#2E7D32"
+ADDED_COLOR_DARK = "#8FD39C"
 
 DRAWIO_APP = Path("/Applications/draw.io.app/Contents/MacOS/draw.io")
 
@@ -169,7 +180,7 @@ def is_red(style: str) -> bool:
 
     Read off the drawn colour, never off `addedBy=…`: the marker outlives the fix,
     the colour does not. A human who re-routes the line and turns it black must stop
-    getting the red to-do, and start getting the orange "still new".
+    getting the red to-do, and start getting the green "still new".
     """
     styles = style_dict(style)
     for key in ("strokeColor", "fontColor"):
@@ -476,6 +487,63 @@ def link_concepts(xml: str, sources: dict, root: Path):
     return ET.tostring(tree, encoding="unicode"), missing
 
 
+def drawio_url(diagram: Path) -> str:
+    """`drawio://<absolute path>` — the click that opens the file in the desktop app.
+
+    macOS ships no handler for this: draw.io's bundle declares document types and no
+    `CFBundleURLTypes`, so nothing in a browser can hand it a file. The scheme is ours,
+    registered by `install-drawio-url-handler.sh`, and the shim it installs does the one
+    thing a `file://` link cannot — `open -a draw.io <path>` on the *original* file
+    rather than on a copy Chrome downloaded.
+    """
+    return "drawio://" + urllib.parse.quote(str(Path(diagram).resolve()))
+
+
+def link_annotations(xml: str, diagram: Path) -> str:
+    """Point every annotation at the diagram it is written on.
+
+    The annotations this diagram carries are the automation's to-dos — "Please manually
+    fix the layout." is the one that exists today — and a to-do the reader cannot act on
+    from where they are reading it is a caption. `parse_model` already tells an
+    annotation from a concept box, so this needs no guess about the text.
+
+    Every pane gets the link, the base pane included: "fix the layout" always means the
+    file on disk, whichever revision of it you happen to be looking at.
+
+    A note draw.io wrote as a bare `<mxCell>` — one nobody has ever attached an attribute
+    to — is wrapped in a `UserObject` on the way past, because `link` lives on the wrapper
+    and only on the wrapper. Setting it on the inner cell would produce no anchor and no
+    error, which is the failure nobody notices until they click one.
+    """
+    tree = ET.fromstring(xml)
+    notes = {c.id for c in parse_model(xml).values() if c.kind == "annotation"}
+    if not notes:
+        return xml
+    url = drawio_url(diagram)
+    # A snapshot, not a live walk: wrapping a cell puts a new element back into the tree
+    # holding the cell we just handled, and `iter()` walks the tree as it is — it would
+    # find that cell again, under its own wrapper, and wrap it forever.
+    for parent in list(tree.iter()):
+        if parent.tag in ("object", "UserObject"):
+            continue                          # its mxCell is already inside a wrapper
+        for i, child in enumerate(list(parent)):
+            if child.get("id") not in notes:
+                continue
+            if child.tag in ("object", "UserObject"):
+                child.set("link", url)
+            elif child.tag == "mxCell":
+                # id and label move to the wrapper, exactly the shape draw.io writes: an
+                # inner cell that kept its id is read as a second, plain cell with the
+                # same identity, and being the later one it wins — link and all lost.
+                holder = ET.Element("UserObject", {
+                    "id": child.get("id"), "label": child.get("value") or "", "link": url})
+                child.attrib.pop("value", None)
+                child.attrib.pop("id", None)
+                holder.append(child)
+                parent[i] = holder
+    return ET.tostring(tree, encoding="unicode")
+
+
 # ── rendering ─────────────────────────────────────────────────────────────────────
 
 _SWITCH = re.compile(r"<switch>\s*(<foreignObject\b.*?</foreignObject>)\s*"
@@ -500,7 +568,7 @@ def _rgb(hexcolor: str) -> str:
 
 
 def pin_added_dark(svg: str) -> str:
-    """Keep the dark half of our orange ours.
+    """Keep the dark half of our green ours.
 
     draw.io writes every colour as `light-dark(light, dark)` and picks the dark half
     itself. That is right for the diagram's own palette and wrong for the one colour
@@ -699,8 +767,9 @@ def main():
         old_xml, new_xml = read_at(args.base, args.diagram), extract_xml(source)
         stem = args.name or source.name.split(".")[0]
     elif args.old and args.new:
+        source = Path(args.new)
         old_xml, new_xml = extract_xml(args.old), extract_xml(args.new)
-        stem = args.name or Path(args.new).name.split(".")[0]
+        stem = args.name or source.name.split(".")[0]
     else:
         ap.error("give two diagrams, or --base REF --diagram PATH")
 
@@ -716,7 +785,7 @@ def main():
     def linked(xml):
         out, missing = link_concepts(xml, sources, args.repo_root)
         unresolved.update(missing)
-        return out
+        return link_annotations(out, source)
 
     written = {
         "original": render(linked(old_xml), out_dir / f"{stem}-original.svg", args.renderer),
@@ -738,7 +807,7 @@ def main():
         for item in verdict["added"]:
             if item["kind"] == "label":
                 continue
-            colour = "red (automation's to-do)" if item["already_red"] else "orange (new)"
+            colour = "red (automation's to-do)" if item["already_red"] else "green (new)"
             print(f"  + {item['kind']} {item['what']} — {colour}")
         for item in verdict["removed"]:
             if item["kind"] != "label":

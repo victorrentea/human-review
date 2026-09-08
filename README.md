@@ -218,9 +218,15 @@ a new domain class nobody added.
 
 Two colours, and they must not be conflated: **red** is the diagram's own — the patch
 script paints an element red when it drew that element itself, and it stays red until a
-human lays it out by hand — while **orange** is this tool's mark for what the branch
-adds. An element that is both renders red, because the to-do is the louder fact; turn it
-black in draw.io and it goes orange, because it is still new.
+human lays it out by hand — while **green** is this tool's mark for what the branch
+adds, the same green every other delta in the report spends on *added*. An element that
+is both renders red, because the to-do is the louder fact; turn it black in draw.io and
+it goes green, because it is still new.
+
+The to-do is also a link. Every annotation is anchored at `drawio://<absolute path>`, so
+the reader told to re-lay the diagram out can open the real file in the draw.io desktop
+app from the picture itself — draw.io registers no URL scheme of its own, so
+`install-drawio-url-handler.sh` installs a shim that answers one.
 
 It writes three SVGs plus a machine-readable `<name>-diff.json`. Rendering goes through
 the draw.io desktop app when it is installed, which is the only faithful picture;

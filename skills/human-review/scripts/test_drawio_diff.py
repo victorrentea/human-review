@@ -10,10 +10,11 @@ The two things worth guarding here are the two that are easy to get quietly wron
   and returns something that still parses. So the tests run against a real
   `.drawio.png` built here, and against both wrappings.
 * **the colour rule** — red is the diagram's own to-do ("automation drew this, a human
-  still has to re-lay it out"), orange is this tool's verdict ("new against the base").
-  An element that is both renders red. The moment a human turns that element black in
-  draw.io, it must render orange — still new — and that transition is the acceptance
-  test the whole feature is bought for.
+  still has to re-lay it out"), green is this tool's verdict ("new against the base",
+  the same green every other delta in the report uses for *added*). An element that is
+  both renders red. The moment a human turns that element black in draw.io, it must
+  render green — still new — and that transition is the acceptance test the whole
+  feature is bought for.
 
 Run with:  python3 -m pytest test_drawio_diff.py
 """
@@ -270,9 +271,9 @@ def test_an_element_automation_drew_red_stays_red_in_the_diff():
     assert "strokeColor=#FF0000" in painted
 
 
-def test_once_a_human_turns_it_black_the_diff_turns_it_orange():
+def test_once_a_human_turns_it_black_the_diff_turns_it_green():
     """The acceptance test for the whole feature: red is a to-do that the human clears,
-    orange is "new against main", which stays true after they clear it."""
+    green is "new against main", which stays true after they clear it."""
     v = dd.diff_models(BASE, BLACKENED)
     assert not any(a["already_red"] for a in v["added"])
     painted = dd.paint_added(BLACKENED, v)
@@ -291,7 +292,7 @@ def test_nothing_that_was_already_on_the_map_is_repainted():
         dd.style_dict(cells["c-owner"].style)["strokeColor"] == "#6c8ebf"
 
 
-def test_the_orange_keeps_its_own_dark_half():
+def test_the_added_green_keeps_its_own_dark_half():
     svg = f'<path style="stroke: light-dark({dd._rgb(dd.ADDED_COLOR)}, rgb(1, 2, 3));"/>'
     assert dd._rgb(dd.ADDED_COLOR_DARK) in dd.pin_added_dark(svg)
     untouched = '<path style="stroke: light-dark(#FF0000, #ff9090);"/>'
@@ -338,7 +339,7 @@ def test_end_to_end_writes_three_svgs_and_a_verdict(tmp_path, branch_png):
 
 def test_a_repainted_note_gets_a_colour_but_not_a_border():
     """draw.io reads `strokeColor` on a text shape as "draw a box around it". Painting
-    the note orange must not put it in a frame the diagram never had."""
+    the note green must not put it in a frame the diagram never had."""
     painted = dd.paint_added(BLACKENED, dd.diff_models(BASE, BLACKENED))
     note = dd.style_dict(dd.parse_model(painted)["note"].style)
     assert note["fontColor"] == dd.ADDED_COLOR
@@ -348,10 +349,10 @@ def test_a_repainted_note_gets_a_colour_but_not_a_border():
 def test_repainting_leaves_the_rest_of_the_style_recipe_alone():
     """A style is an ordered recipe, not a dict: draw.io's bare keys (`text`,
     `edgeLabel`, `rounded=0`) mean something and must survive the rewrite."""
-    out = dd._paint("rounded=0;whiteSpace=wrap;html=1;strokeColor=#333333;", "#E8760D")
+    out = dd._paint("rounded=0;whiteSpace=wrap;html=1;strokeColor=#333333;", "#123456")
     assert out.startswith("rounded=0;whiteSpace=wrap;html=1;")
-    assert "strokeColor=#E8760D" in out and "fontColor=#E8760D" in out
-    assert dd._paint("text;html=1;fontSize=14;", "#E8760D").startswith("text;html=1;")
+    assert "strokeColor=#123456" in out and "fontColor=#123456" in out
+    assert dd._paint("text;html=1;fontSize=14;", "#123456").startswith("text;html=1;")
 
 
 # ── linking a concept box to the class it names ───────────────────────────────────
@@ -513,3 +514,65 @@ def test_concepts_is_required_so_unlinked_boxes_cannot_ship_silently(tmp_path, b
         capture_output=True, text=True)
     assert proc.returncode != 0
     assert "--concepts" in proc.stderr
+
+
+# ── the to-do's link into draw.io ─────────────────────────────────────────────────
+
+def test_the_added_green_is_the_report_s_own_added_green():
+    """Not a palette private to this file. `puml_diff.ADDED` is the green every other
+    delta in the report paints an addition with, and `build-review-html.py` maps that
+    literal to `--dgm-diff-add` for dark mode — so a second green here would read as a
+    second meaning."""
+    puml_diff = (HERE.parent / "puml-diff" / "puml_diff.py").read_text()
+    assert f'ADDED = "{dd.ADDED_COLOR}"' in puml_diff
+    build = (HERE / "build-review-html.py").read_text()
+    assert f'"{dd.ADDED_COLOR}": "--dgm-diff-add"' in build
+    assert dd.ADDED_COLOR_DARK.lower() in build.lower()
+
+
+def test_the_note_becomes_a_link_into_the_desktop_app():
+    linked = dd.link_annotations(BRANCH, Path("/repo/docs/ConceptualModel.drawio.png"))
+    assert dd.parse_model(linked)["note"].attrs["link"] == \
+        "drawio:///repo/docs/ConceptualModel.drawio.png"
+
+
+def test_only_annotations_are_linked_to_the_file():
+    """A concept box already points at its class and an edge points at nothing. Linking
+    those to the diagram would replace the link a reader actually wants."""
+    cells = dd.parse_model(dd.link_annotations(BRANCH, Path("/repo/d.drawio.png")))
+    assert [c.id for c in cells.values() if c.attrs.get("link")] == ["note"]
+
+
+def test_a_note_drawn_as_a_bare_mxcell_still_gets_the_link():
+    """`link` lives on the `<object>` wrapper and only there. Setting it on the inner
+    cell produces no anchor and no error — so a note nobody ever tagged is wrapped."""
+    bare = model('<mxCell id="n2" value="Please manually fix the layout." '
+                 'style="text;fontColor=#FF0000;" vertex="1" parent="1">'
+                 '<mxGeometry x="0" y="0" width="200" height="20" as="geometry"/></mxCell>')
+    cells = dd.parse_model(dd.link_annotations(bare, Path("/repo/d.drawio.png")))
+    assert cells["n2"].kind == "annotation"
+    assert cells["n2"].attrs["link"] == "drawio:///repo/d.drawio.png"
+    assert cells["n2"].label == "Please manually fix the layout."
+
+
+def test_a_path_with_a_space_survives_the_url():
+    assert dd.drawio_url(Path("/repo/my docs/C.drawio.png")).endswith("my%20docs/C.drawio.png")
+
+
+def test_the_note_is_clickable_in_every_pane(tmp_path, branch_png):
+    """Including the base pane: "fix the layout" means the file on disk, whichever
+    revision of it is on screen."""
+    base_png = tmp_path / "base.drawio.png"
+    base_png.write_bytes(png_with(BRANCH))
+    puml = tmp_path / "DomainModel.puml"
+    puml.write_text(DOMAIN_PUML)
+    out = tmp_path / "out"
+    proc = subprocess.run(
+        [sys.executable, str(HERE / "drawio-diff.py"), str(base_png), str(branch_png),
+         "--out-dir", str(out), "--name", "c", "--renderer", "builtin",
+         "--concepts", str(puml), "--repo-root", "/repo"],
+        capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    want = f'href="{dd.drawio_url(branch_png)}"'
+    for view in ("original", "new", "diff"):
+        assert want in (out / f"c-{view}.svg").read_text(), view
