@@ -301,46 +301,34 @@ CODEOWNERS**. Four tabs need something said about how they are written:
 - **🤖 Review** — **one list**: the open calls first, most critical first, then the fixes
   already applied, numbered straight through and greyed out. Two lists that both start at 1
   make the reader do arithmetic. Its `intro` must name which passes ran, and in which order.
-- **Tests** — open with **what was asked for**: the ticket the branch answers, with
-  its sentences coloured by coverage, pasted in as the section's `includeHtml` and hoisted
-  above the prose with **`"includeFirst": true`**. A reviewer arrives here to check the
-  branch against the request, so the request is what the tab must start on. Head that
-  fragment the way the issue heads itself — **title, then `#number` beside it, the number
-  linking to the issue**: it is the handle the work is quoted by everywhere else, and a
-  page that shows the ticket's text without its number sends the reader hunting. Title the
-  evidence panel by what it answers (**"covering tests"**), not by the category the
-  evidence falls into, and give it the ticket's own shape — **a heading in the page's
-  voice, then a framed card**, same border and radius: the two columns are a question
-  and its answer, and a small-caps label inside a frame does not read as the reply to a
-  heading. and list its tests **one per row, each carrying its own kind as a
-  badge** — `UI` (it clicks the screens; "e2e" names the technique, not what it drives)
-  and `API` — rather than grouping them under a header with a count of each. Nobody acts
-  on "×4 asserted"; the badge is what tells you, on the row you are reading, whether the
-  sentence is pinned through the browser or only under it. Keep the strength in the
-  badge's fill (solid asserts, outlined only runs through). **Partly covered is a hatch**,
-  not a paler green: two intensities of one colour only separate when both are on screen
-  at once. The legend is titled **"Legend"** and names each state without repeating its
-  colour — the swatch beside it is the colour. *Then* say
-  **what kinds of test the change set offers as acceptance evidence**, as cards (`<div
-  class="evidence">` holding one `<section class="evi e2e|api|unit">` per level) — the
-  answer, read after the question. A level **nothing** covers keeps its card and says so in
-  `class="evi none"` — "there is no unit test at this level" is a finding, and a paragraph
-  nobody wrote looks identical to one nobody thought to write. Each requirement carries a
-  `tests` list beneath its own text; **you attach, the diff classifies** (`test-changes.py`).
-  Say `new` and `modified` apart: a new test is evidence the requirement was pinned, an
-  edited one is evidence a pin moved and is worth reading for what it stopped asserting.
-  A row also says whether the test **still runs**: `test-changes.py` reads `@Disabled`,
-  `it.skip`, `@pytest.mark.skip`, a `t.Skip()` in the body, a `@wip` tag — and finds the
-  declarations that survive only inside a comment, which are reported as deletions,
-  because that is what they cost the run. All of it is syntax, so it holds for a test the
-  branch never touched: a requirement pinned by a test somebody disabled months ago is not
-  pinned, and this is the page where the reader finds that out. **Never write the state
-  into the content file** — name the test, and let the script say what became of it.
-  Under the requirements sits the **`tests` ledger**: every test the branch moved, grouped
-  by what happened to it — stopped running first, then new, gone, edited, with the untouched
-  rest counted in a sentence rather than listed. It is there because the requirement lists
-  cannot hold the two cases that matter most: a deleted test is under no requirement by
-  definition, and a test that pins nothing anybody wrote down is under none either.
+- **Tests** — two columns that read as a question and its answer, both built the same way:
+  **a heading in the page's voice, then a framed card**.
+  - **Left, the question**: the ticket the branch answers, its sentences coloured by
+    coverage, pasted in as the section's `includeHtml` and hoisted above everything with
+    **`"includeFirst": true`**. Head it the way the issue heads itself — **title, then
+    `#number`, the number linking to the issue**: that is the handle the work is quoted by,
+    and a page showing the ticket's text without its number sends the reader hunting.
+  - **Right, the answer**: **every acceptance test the branch offers, listed always** —
+    not a slot that fills when something is clicked. One row each, badged with its kind
+    (`UI` — it clicks the screens; `API` — the contract under them), the location a link
+    into the editor, and the source on an **accordion** (one open at a time). Selecting a
+    sentence marks the rows that cover it and steps the rest back rather than hiding them:
+    *what did not get picked* is half of what the column is for. Counts per kind ("×4
+    asserted") head nothing — nobody acts on them.
+  - A **gap** is a criticism of the *requirement*, so it belongs on the requirement's side:
+    render it under the ticket as a **blind spot**, never under the code on the right where
+    it reads as a verdict on the test that happens to be open.
+  - **Colour legend**: one row under the ticket's frame — swatch, name, nothing else, the
+    sentence on hover. Name the states, not their colours (**Fully covered · Partial
+    coverage · Executed, not asserted · Missing · Not a claim**); the swatch is the colour.
+    The kinds get their own one-liner under the tests card.
+  - **Say what a model inferred.** A heading over inferred content carries a 🤖 superscript
+    reading *as inferred by AI*; the logging tab's verdicts carry the same mark reading
+    *LLM evaluated* — and the one verdict meaning "the model was never reached" carries
+    none. A hover explanation on a sentence is its badge counts (`UI ×2 · API ×3`) and
+    nothing more: prose in a tooltip is prose nobody can quote back.
+  - With that column on the page, **do not also write an evidence-cards section** listing
+    what the branch wrote — it is the same list, in fewer words, further down.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
   backed by a snippet.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the
