@@ -253,7 +253,12 @@ CODEOWNERS**. Four tabs need something said about how they are written:
 - **Requirements** — open with **what was asked for**: the ticket the branch answers, with
   its sentences coloured by coverage, pasted in as the section's `includeHtml` and hoisted
   above the prose with **`"includeFirst": true`**. A reviewer arrives here to check the
-  branch against the request, so the request is what the tab must start on. *Then* say
+  branch against the request, so the request is what the tab must start on. Head that
+  fragment the way the issue heads itself — **title, then `#number` beside it, the number
+  linking to the issue**: it is the handle the work is quoted by everywhere else, and a
+  page that shows the ticket's text without its number sends the reader hunting. Title the
+  evidence panel by what it answers (**"covering tests"**), not by the category the
+  evidence falls into. *Then* say
   **what kinds of test the change set offers as acceptance evidence**, as cards (`<div
   class="evidence">` holding one `<section class="evi e2e|api|unit">` per level) — the
   answer, read after the question. A level **nothing** covers keeps its card and says so in
