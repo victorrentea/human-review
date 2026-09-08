@@ -114,6 +114,24 @@ def _sequence(ctx: Ctx):
 
 
 def _city(ctx: Ctx):
+    # The city's CRAP and coverage colours are the only thing on this page that cannot be
+    # read off the sources and the git log: they need a coverage report, which needs the
+    # project's tests to have actually run. `city.tests` is where a project says how, and
+    # a project that does not say simply gets a city without those two metrics — the
+    # generator drops them rather than colouring every building "not measured".
+    #
+    # Failures do not stop it. A red suite is a finding for the review to carry, not a
+    # reason to lose the whole city tab, and the coverage of a run with one broken test
+    # is still the coverage of that run. The test command is expected to say so itself
+    # (Maven: -Dmaven.test.failure.ignore=true), because a build that aborts on the first
+    # failure never reaches its report goal and leaves LAST week's report on disk for the
+    # city to be coloured with, which is the one outcome worse than having no colours.
+    tests = ctx.step_cfg("city").get("tests")
+    if tests:
+        r = sh(tests, ctx, check=False)
+        if r.returncode != 0:
+            ctx.notes.append("the suite behind the city's coverage colours did not pass; "
+                             "say so next to the CRAP reading")
     regen = ctx.step_cfg("city").get("regenerate")
     if regen:
         sh(regen, ctx, check=False)

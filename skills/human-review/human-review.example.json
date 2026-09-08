@@ -22,6 +22,11 @@
       ]
     },
     "city": {
+      "//": "Run before regenerating: the city's CRAP and coverage colours need a JaCoCo",
+      "//2": "report, and -Dmaven.test.failure.ignore=true is what makes the report goal",
+      "//3": "run at all when a test fails. Without it Maven aborts in the test phase and",
+      "//4": "the city is coloured from whatever stale report was left on disk.",
+      "tests": "cd petclinic-backend && mvn -o test -Dmaven.test.failure.ignore=true",
       "regenerate": "petclinic-backend/docs/generate-codecity.sh"
     },
     "video": {
