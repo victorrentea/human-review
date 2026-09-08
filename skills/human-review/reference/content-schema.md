@@ -343,6 +343,11 @@ CODEOWNERS**. Four tabs need something said about how they are written:
     sentence marks the rows that cover it and steps the rest back rather than hiding them:
     *what did not get picked* is half of what the column is for. Counts per kind ("×4
     asserted") head nothing — nobody acts on them.
+  - **Stamp each row with what the branch did to that test** — `new`, `✎ edited`, and
+    *nothing at all* for one it left alone. A new test is evidence a requirement was
+    pinned; an edited one is evidence a pin moved, and is worth opening for what it
+    stopped asserting. Silence on the untouched rows is the point: a stamp on all of them
+    would say nothing, and this is the fact the old evidence cards carried in prose.
   - A **gap** is a criticism of the *requirement*, so it belongs on the requirement's side:
     render it under the ticket as a **blind spot**, never under the code on the right where
     it reads as a verdict on the test that happens to be open.
