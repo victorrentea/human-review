@@ -2464,3 +2464,45 @@ def test_a_file_at_the_repo_root_gets_no_tooltip_repeating_its_own_name(tmp_path
     head = build.diff_html("README.md", "HEAD^", r, head="HEAD").split("</div>")[0]
     assert ">README.md<" in head
     assert "data-tip" not in head
+
+
+def test_the_github_link_lands_on_the_line_the_change_is_on(tmp_path):
+    """A file in a compare page opens at its own first line, which for a long class is
+    nowhere near the four lines the review is about — so the reader arrives on github.com
+    and starts hunting a second time, having been sent there to stop hunting."""
+    r = _repo_with_a_buried_file(tmp_path)
+    subprocess.run(["git", "-C", str(r), "remote", "add", "origin",
+                    "https://github.com/victorrentea/petclinic.git"], check=True)
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
+    out = build.diff_html(rel, "HEAD^", r, head="HEAD")
+    href = re.search(r'href="([^"]*compare[^"]*)"', out).group(1)
+    assert re.search(r"#diff-[0-9a-f]{64}R2$", href), href
+    assert "This change, in the compare page" in out
+
+
+def test_a_pure_deletion_lands_on_the_left_side(tmp_path):
+    """The one case with no right side to land on."""
+    import subprocess as sp
+    r = tmp_path / "repo"
+    r.mkdir()
+    sp.run(["git", "init", "-q", "-b", "main", str(r)], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.email", "t@t"], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.name", "t"], check=True)
+    sp.run(["git", "-C", str(r), "remote", "add", "origin",
+            "https://github.com/victorrentea/petclinic.git"], check=True)
+    (r / "a.txt").write_text("one\ntwo\nthree\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "base"], check=True)
+    (r / "a.txt").write_text("one\nthree\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "drop a line"], check=True)
+    out = build.diff_html("a.txt", "HEAD^", r, head="HEAD")
+    href = re.search(r'href="([^"]*compare[^"]*)"', out).group(1)
+    assert href.endswith("L2"), href
+
+
+def test_the_review_tab_label_is_the_word_alone():
+    """The 🤖 announced that the tab was machine-produced, which the source stamp on every
+    item inside it already says, one item at a time."""
+    schema = (HERE.parent / "reference" / "content-schema.md").read_text(encoding="utf-8")
+    assert "🤖 Review" not in schema

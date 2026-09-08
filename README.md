@@ -115,7 +115,7 @@ whatever order the reviewer's doubt takes them, so the page is a strip of tabs:
 
 | tab | what it answers |
 | --- | --- |
-| 🤖 Review | one list: the calls that are genuinely a human's, most critical first, then the fixes already applied — each stamped with the pass that raised it |
+| Review | one list: the calls that are genuinely a human's, most critical first, then the fixes already applied — each stamped with the pass that raised it |
 | Demo | a Playwright recording of the feature, narrated |
 | Sequence | sequence diagrams recorded from real traces, each beside the test that produced it — and the tests tagged for tracing that came back without one |
 | Tests | what the change set was supposed to do, the tests that pin each sentence of it, and what the branch did to the test run — including the tests it stopped running without deleting |

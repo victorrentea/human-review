@@ -266,7 +266,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
 
 ```json
 "tabs": [
-  {"id":"review","label":"🤖 Review","count":true,
+  {"id":"review","label":"Review","count":true,
    "intro":"<p class=\"sub\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
    "blocks":[{"type":"findings","title":"Look here first","body":"…"},
              {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
@@ -312,7 +312,7 @@ table, and `test_tab_ledger_wiring.py` fails until the two agree.
 
 | `id` | label on the reference page | produced by |
 | --- | --- | --- |
-| `review` | 🤖 Review | the harvested passes (Step 1) |
+| `review` | Review | the harvested passes (Step 1) |
 | `behaviour` | Demo | `video` |
 | `sequence` | Sequence | `sequence` |
 | `requirements` | Tests | `tests` |
@@ -328,7 +328,7 @@ table, and `test_tab_ledger_wiring.py` fails until the two agree.
 A step naming two tabs has its cost **split evenly**, so never widen a step to a tab that did
 none of the work.
 
-Default order, worth departing from only with a reason — **🤖 Review, Demo, API, Data,
+Default order, worth departing from only with a reason — **Review, Demo, API, Data,
 Tests, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
 order a review actually goes: what the passes raised, then the feature as a user meets it
 (the film, then the contract and the shape behind it), then what pins it — the tests, then
@@ -336,7 +336,9 @@ the traces those runs recorded — then the code's own shape, where *Structure* 
 City* are one question asked twice and stay adjacent, and CODEOWNERS last, because it is
 the one thing no amount of reading changes. Four tabs need something said about how they are written:
 
-- **🤖 Review** — **one list** of three piles, numbered straight through: what only the
+- **Review** — the label is the word alone. The 🤖 it used to carry announced that
+  the tab was machine-produced, which the `source` stamp on every item inside it already
+  says, one item at a time. **One list** of three piles, numbered straight through: what only the
   reader can answer (`assumptions`), then the open calls, most critical first, then the
   fixes already applied, greyed out. Lists that each start at 1 make the reader do
   arithmetic. The numbering follows the order the blocks appear in here, so that order is

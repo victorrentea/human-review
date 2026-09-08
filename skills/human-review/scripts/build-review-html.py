@@ -1735,7 +1735,8 @@ def github_blob_base(root: Path) -> str | None:
     return f"https://github.com/{m['slug']}" if m else None
 
 
-def _github_compare_link(rel: str, base: str, root: Path, head: str | None = None) -> str:
+def _github_compare_link(rel: str, base: str, root: Path, head: str | None = None,
+                         line: int | None = None, side: str = "R") -> str:
     """The same comparison on github.com — the link a reviewer forwards to somebody else.
 
     Only emitted when the *after* side is something GitHub can be expected to have. A fix
@@ -1763,12 +1764,37 @@ def _github_compare_link(rel: str, base: str, root: Path, head: str | None = Non
     # there. Without a path there is nothing to hash, and the bare compare URL stands.
     if rel:
         url += "#diff-" + hashlib.sha256(rel.encode()).hexdigest()
+        # And then the line. A file in a compare page opens at its own first line, which
+        # for a five-hundred-line class is nowhere near the four lines the review is
+        # about — so the reader arrives on github.com and starts hunting a second time,
+        # having already been sent there to stop hunting. GitHub numbers the two sides
+        # separately inside the file anchor: `R<n>` is the right side, `L<n>` the left,
+        # which is the only landing a pure deletion has.
+        if line:
+            url += f"{side}{line}"
     # The face already says "on GitHub" and the arrow already says it opens elsewhere, so
     # a tooltip repeating either is a sentence the reader can see. What it cannot see is
-    # that the link lands on *one file* of a compare page that can be forty long.
-    tip = "Just this file, inside the compare page" if rel else "The whole compare page"
+    # where in a forty-file compare page it lands.
+    tip = ("This change, in the compare page" if line else
+           "Just this file, inside the compare page") if rel else "The whole compare page"
     return (f'<a class="srcref" target="_blank" rel="noopener" href="{html.escape(url)}"'
             f' data-tip="{tip}">&#8599; on GitHub</a>')
+
+
+def _first_changed(rows) -> tuple[int | None, str]:
+    """The line a reader of this diff is actually looking at, and which side it is on.
+
+    The first added line, because that is what the change *did*; a pure deletion has no
+    right side to land on, so it falls back to the first removed line on the left. Context
+    lines are never it — landing three lines above the change is the same hunt in miniature.
+    """
+    for kind, old_no, new_no, _ in rows:
+        if kind == "add":
+            return new_no, "R"
+    for kind, old_no, new_no, _ in rows:
+        if kind == "del":
+            return old_no, "L"
+    return None, "R"
 
 
 def _parse_unified(diff_text: str):
@@ -1877,7 +1903,7 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     link = ("" if head else
             diff_link_html(rel, base, root).replace('class="srcref diffref"',
                                                     'class="srcref diffref inhead"'))
-    gh = _github_compare_link(rel, base, root, head)
+    gh = _github_compare_link(rel, base, root, head, *_first_changed(rows))
     # The name, and the path on hover. A repo-relative Java path spends five segments on
     # ceremony -- module, `src/main/java`, the org package -- before it reaches the one
     # word that says which file this is, and the header is where a reader looks to answer
