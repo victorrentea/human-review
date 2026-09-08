@@ -370,6 +370,12 @@ CODEOWNERS**. Four tabs need something said about how they are written:
     sentence — a page that lists a test somewhere else (the ledger's `new` / `edited`
     piles) and not here makes the reader hold two lists and diff them. Tests the manifest
     knows but the map has no excerpt for get their excerpt cut at build time.
+  - **Unpack identifier test names in the list** — `getById_exposesTheAttendingVet` reads
+    as "Get by id exposes the attending vet". Scripted, not written: split on `_` and on
+    the camel humps, lowercase everything that is not an acronym, capitalise the first
+    word. A name that already contains a space is a sentence someone wrote (a Gherkin
+    scenario, a Playwright title) and is left exactly as it is — including whatever
+    `{placeholders}` or paths it carries.
   - A **blind spot** says *whose* hole it is — `in the tests` (orange: a claim the ticket
     makes and nothing reaches) or `in the requirement` (violet: the ticket never said, and
     no test can be written for a sentence nobody wrote). They are different findings, go
