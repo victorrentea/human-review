@@ -366,11 +366,21 @@ CODEOWNERS**. Four tabs need something said about how they are written:
   - **One cursor convention, page-wide**: a mark that only explains itself on hover gets
     `cursor:help` — the question mark says both "there is something to read" and "clicking
     does nothing". Anything actionable keeps the hand.
+  - The list is **every test the change set touched**, not only the ones that cover a
+    sentence — a page that lists a test somewhere else (the ledger's `new` / `edited`
+    piles) and not here makes the reader hold two lists and diff them. Tests the manifest
+    knows but the map has no excerpt for get their excerpt cut at build time.
+  - A **blind spot** says *whose* hole it is — `in the tests` (orange: a claim the ticket
+    makes and nothing reaches) or `in the requirement` (violet: the ticket never said, and
+    no test can be written for a sentence nobody wrote). They are different findings, go
+    to different people, and "blind spot" alone leaves the reader deciding which.
   - **Stamp each row with what the branch did to that test** — `new`, `✎ edited`, and
     *nothing at all* for one it left alone. A new test is evidence a requirement was
     pinned; an edited one is evidence a pin moved, and is worth opening for what it
     stopped asserting. Silence on the untouched rows is the point: a stamp on all of them
-    would say nothing, and this is the fact the old evidence cards carried in prose.
+    would say nothing, and this is the fact the old evidence cards carried in prose. The
+    stamp reads from the **manifest**, never from the diff of the quoted lines: a test
+    edited three lines above its excerpt is edited, and a pencil is the whole word.
   - A **gap** is a criticism of the *requirement*, so it belongs on the requirement's side:
     render it under the ticket as a **blind spot**, never under the code on the right where
     it reads as a verdict on the test that happens to be open.
