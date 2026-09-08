@@ -53,17 +53,27 @@ with Vet` and **`subtitle` does not render in the masthead at all** — keep `su
   {"label":"commits","value":"2 (pushed to main)","href":"https://github.com/…/compare/…"},
   {"label":"files","value":"25 (16 changed, 9 new)"},
   {"label":"lines","value":"<span class=\"added\">+2256</span> / <span class=\"removed\">−34</span>"},
-  {"label":"unit tests","value":"125 green (20 new)"},
+  {"auto":"tests","href":"#requirements"},
   {"label":"diagrams","value":"3","href":"#diagrams"},
   {"auto":"autofixed","href":"#review"},
   {"auto":"cost"}
 ]
 ```
 
-`value` is raw HTML on purpose; `href` makes the chip a link. The two `auto` chips are
+`value` is raw HTML on purpose; `href` makes the chip a link. The three `auto` chips are
 **computed, never typed** — `autofixed` counts the page's own two lists, `cost` runs
-`review-cost.py` over the run's transcript. Both drop themselves rather than print a wrong
-number. A chip whose number is typed by hand goes stale without anything noticing.
+`review-cost.py` over the run's transcript, `tests` reads the manifest `test-changes.py`
+already built for the tab below. All three drop themselves rather than print a wrong
+number. A chip whose number is typed by hand goes stale without anything noticing: the
+`tests` chip exists because `unit tests · 125 green (20 new)` used to be typed here, and
+was true until somebody wrote the next test.
+
+The `tests` chip is a **balance**, not a count — `+10 / −4 · 4 edited` — because the
+question it answers is whether the branch left fewer tests running than it found. The
+loss is one number over three causes (deleted, commented out, left standing under an
+`@Disabled`), split only in its tooltip: all three cost the run the same test, only
+deletion is visible in a diff, and a face carrying all three would invite reading the
+smallest of them as the answer.
 
 ```json
 "extraCss": ["assets/openapi-diff.css", "assets/openapi-compat.css",
@@ -197,7 +207,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
               "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
               "unpaired":{"id":"tests-nosequence",
                           "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
-  {"id":"requirements","label":"Requirements","blocks":[{"type":"section","id":"requirements"}]},
+  {"id":"requirements","label":"Tests","blocks":[{"type":"section","id":"requirements"}]},
   {"id":"data","label":"Data",
    "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
   {"id":"packages","label":"Structure",
@@ -233,7 +243,7 @@ table, and `test_tab_ledger_wiring.py` fails until the two agree.
 | `review` | 🤖 Review | the harvested passes (Step 1) |
 | `behaviour` | Demo | `video` |
 | `sequence` | Sequence | `sequence` |
-| `requirements` | Requirements | *no step yet* |
+| `requirements` | Tests | `tests` |
 | `data`, `packages` | Data, Structure | `diagrams` |
 | `api` | API | `api`, `specchanges` |
 | `city` | Code City | `city` |
@@ -247,13 +257,13 @@ A step naming two tabs has its cost **split evenly**, so never widen a step to a
 none of the work.
 
 Default order, worth departing from only with a reason — **Overview, 🤖 Review, Demo,
-Sequence, Requirements, Data, Structure, API, Code City, Complexity, Logging, UX,
+Sequence, Tests, Data, Structure, API, Code City, Complexity, Logging, UX,
 CODEOWNERS**. Four tabs need something said about how they are written:
 
 - **🤖 Review** — **one list**: the open calls first, most critical first, then the fixes
   already applied, numbered straight through and greyed out. Two lists that both start at 1
   make the reader do arithmetic. Its `intro` must name which passes ran, and in which order.
-- **Requirements** — open with **what was asked for**: the ticket the branch answers, with
+- **Tests** — open with **what was asked for**: the ticket the branch answers, with
   its sentences coloured by coverage, pasted in as the section's `includeHtml` and hoisted
   above the prose with **`"includeFirst": true`**. A reviewer arrives here to check the
   branch against the request, so the request is what the tab must start on. Head that
@@ -278,6 +288,13 @@ CODEOWNERS**. Four tabs need something said about how they are written:
   `tests` list beneath its own text; **you attach, the diff classifies** (`test-changes.py`).
   Say `new` and `modified` apart: a new test is evidence the requirement was pinned, an
   edited one is evidence a pin moved and is worth reading for what it stopped asserting.
+  A row also says whether the test **still runs**: `test-changes.py` reads `@Disabled`,
+  `it.skip`, `@pytest.mark.skip`, a `t.Skip()` in the body, a `@wip` tag — and finds the
+  declarations that survive only inside a comment, which are reported as deletions,
+  because that is what they cost the run. All of it is syntax, so it holds for a test the
+  branch never touched: a requirement pinned by a test somebody disabled months ago is not
+  pinned, and this is the page where the reader finds that out. **Never write the state
+  into the content file** — name the test, and let the script say what became of it.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
   backed by a snippet.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the

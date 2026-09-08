@@ -94,7 +94,7 @@ def stylesheet() -> str:
         "pre.code .ln-gap { font-style:normal; }\n"
         "pre.code .code-gap { font-style:italic; opacity:.55; user-select:none; }\n"
         # Lines this branch added are marked in a column of their own, never behind the
-        # code. Green already means "covered" on the Requirements tab, one column to the
+        # code. Green already means "covered" on the Tests tab, one column to the
         # left, so a green band under source would be a genuine ambiguity; a `+` and a
         # rule down the left edge are diff vocabulary instead, they sit outside the code,
         # and they leave the syntax colours untouched.

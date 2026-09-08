@@ -253,3 +253,177 @@ def test_the_cli_writes_the_manifest_the_page_reads(tmp_path, monkeypatch):
     doc = json.loads(out.read_text())
     assert doc["base"] == "HEAD"
     assert {t["name"]: t["status"] for t in doc["tests"]} == {"one": "unchanged", "two": "added"}
+
+
+# --------------------------------------------------------------------------- #
+# the tests that are still written and no longer run
+# --------------------------------------------------------------------------- #
+# Deletion is the loud way to lose a test and the only one a diff makes obvious. These
+# pin the two quiet ways, in every language the script claims to read, because a chip
+# that says "2 lost" while three more sit under an @Disabled is worse than no chip.
+SILENCED = {
+    "VisitTest.java": ("""class VisitTest {
+  @Test
+  void runs() {}
+
+  @Disabled("flaky on CI")
+  @Test
+  void off() {}
+
+  @Nested
+  @Disabled
+  class Inner {
+    @Test
+    void nested_off() {}
+  }
+
+  @Test
+  void still_runs() {}
+}
+""", {"off", "nested_off"}, {"runs", "still_runs"}),
+    "visits.spec.ts": ("""describe('visits', () => {
+  it('adds one', () => {});
+  it.skip('is skipped', () => {});
+  xit('is x-skipped', () => {});
+});
+describe.skip('vets', () => {
+  it('sits in a skipped suite', () => {});
+});
+""", {"is skipped", "is x-skipped", "sits in a skipped suite"}, {"adds one"}),
+    "test_visits.py": ("""@pytest.mark.skip(reason="flaky")
+def test_off(): pass
+
+def test_on(): pass
+
+@pytest.mark.skipif(SLOW, reason="slow")
+class TestGroup:
+    def test_in_a_skipped_class(self): pass
+""", {"test_off", "test_in_a_skipped_class"}, {"test_on"}),
+    "store_test.go": ("""func TestOff(t *testing.T) {
+\tt.Skip("needs docker")
+}
+func TestOn(t *testing.T) {
+\tok()
+}
+""", {"TestOff"}, {"TestOn"}),
+    "add-visit.feature": ("""Feature: visits
+
+  @wip
+  Scenario: parked
+    Given a
+
+  Scenario: live
+    Given b
+""", {"parked"}, {"live"}),
+}
+
+
+@pytest.mark.parametrize("rel", sorted(SILENCED))
+def test_a_test_that_is_still_written_but_switched_off_says_so(rel):
+    text, off, on = SILENCED[rel]
+    scanned = tc.scan_cases(rel, text)
+    assert {n for n, (_, why) in scanned.items() if why} == off
+    assert {n for n, (_, why) in scanned.items() if not why} == on
+
+
+def test_a_tag_on_the_feature_reaches_every_scenario_under_it():
+    """Feature-level is the case worth pinning: one `@wip` at the top of the file turns
+    off scenarios that carry no marker of their own anywhere near them."""
+    scanned = tc.scan_cases("x.feature", "@wip\nFeature: x\n\n  Scenario: a\n    Given b\n")
+    assert scanned["a"][1] == "disabled"
+
+
+@pytest.mark.parametrize("rel, text, name, line", [
+    ("VisitTest.java", "class T {\n//  @Test\n//  void parked() {\n//  }\n}\n", "parked", 3),
+    ("visits.spec.ts", "describe('x', () => {\n// it('parked', () => {});\n});\n", "parked", 2),
+    ("test_visits.py", "# def test_parked():\n#     pass\n", "test_parked", 1),
+])
+def test_a_test_that_exists_only_inside_a_comment_is_found(rel, text, name, line):
+    """Commenting a test out costs the run exactly as much as deleting it, and costs the
+    diff nothing — the body is still there, so it reads as kept. The line is the one it
+    occupies on disk, so the row stays clickable straight to the comment."""
+    assert tc.commented_cases(rel, text) == {name: line}
+    assert name not in tc.scan_cases(rel, text)
+
+
+def test_live_code_is_not_reported_as_commented_out():
+    assert tc.commented_cases("T.java", "class T {\n  @Test\n  void runs() {}\n}\n") == {}
+
+
+# --------------------------------------------------------------------------- #
+# what the diff did to the run, not just to the file
+# --------------------------------------------------------------------------- #
+RUNNING = """class VisitTest {
+  @Test
+  void kept() {}
+
+  @Test
+  void about_to_be_disabled() {}
+
+  @Test
+  void about_to_be_commented() {}
+
+  @Disabled
+  @Test
+  void about_to_come_back() {}
+}
+"""
+
+SILENT = """class VisitTest {
+  @Test
+  void kept() {}
+
+  @Disabled
+  @Test
+  void about_to_be_disabled() {}
+
+//  @Test
+//  void about_to_be_commented() {}
+
+  @Test
+  void about_to_come_back() {}
+}
+"""
+
+
+def _silenced_rows():
+    return {r["name"]: r for r in
+            tc.classify_file("VisitTest.java", "M", RUNNING, SILENT, set(), {})}
+
+
+def test_a_test_left_in_place_under_a_disabled_is_flagged_where_it_stands():
+    row = _silenced_rows()["about_to_be_disabled"]
+    assert row["silenced"] == "disabled" and not row.get("wasSilenced")
+    assert row["status"] != "deleted", "it is still declared; it just does not run"
+
+
+def test_a_commented_out_test_is_a_deletion_that_can_still_be_opened():
+    row = _silenced_rows()["about_to_be_commented"]
+    assert row["status"] == "deleted" and row["silenced"] == "commented"
+    assert row["line"] == 10, "the comment itself — the thing the reviewer has to judge"
+
+
+def test_a_test_switched_back_on_says_where_it_came_from():
+    row = _silenced_rows()["about_to_come_back"]
+    assert row["wasSilenced"] == "disabled" and not row.get("silenced")
+
+
+def test_the_totals_reconcile_with_the_rows_behind_them():
+    """The chip states `+gained / −lost`, and a reader is entitled to assume those two
+    numbers are the difference between the run before and the run after. They are, by
+    construction — this is the arithmetic that says so."""
+    t = tc.totals(list(_silenced_rows().values()))
+    assert t["runningBefore"] == 3 and t["runningAfter"] == 2
+    assert t["gained"] == 1 and t["lost"] == 2
+    assert t["runningAfter"] - t["runningBefore"] == t["gained"] - t["lost"]
+    assert t["disabled"] == 1 and t["commented"] == 1 and t["reenabled"] == 1
+
+
+def test_deleting_a_test_nobody_was_running_moves_nothing():
+    """A `@Disabled` test that this change set finally removes is housekeeping, not a
+    loss: the run did not have it before and does not have it now."""
+    t = tc.totals(tc.classify_file(
+        "T.java", "M", "class T {\n  @Disabled\n  @Test\n  void dead() {}\n}\n",
+        "class T {\n}\n", set(), {2: 2, 3: 2, 4: 2}))
+    assert t["deleted"] == 1 and t["lost"] == 0
+    assert t["runningBefore"] == 0 and t["runningAfter"] == 0

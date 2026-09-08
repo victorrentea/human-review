@@ -267,7 +267,7 @@ STEPS = [
     ("dsaudit",     "dsaudit",       "design-system audit",
      lambda c: bool(c.step_cfg("dsaudit")) or "dsaudit not configured", _dsaudit),
     ("owners",      "owners",        "codeowners check",          None,              _owners),
-    ("tests",       None,            "test change manifest",      None,              _tests),
+    ("tests",       "requirements",  "test change manifest",      None,              _tests),
 ]
 
 

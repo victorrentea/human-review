@@ -230,6 +230,19 @@ a.srcref.testref, span.srcref.testref { margin-bottom:0; font-size:11.5px; }
 span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
         text-decoration-thickness:1px; cursor:default; }
 .tloc { color:var(--muted); font-weight:400; }
+/* "does it still run" — amber, because it is neither a gain nor a removal but a warning:
+   the test is right there in the file, fully written, asserting nothing. Outlined rather
+   than filled so it reads as a stamp on the row instead of competing with the flag that
+   opens it. */
+.tsilenced, .tback { display:inline-block; margin-left:.45rem; padding:0 .34rem;
+        border:1px solid currentColor; border-radius:3px;
+        font:700 .62rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+        letter-spacing:.07em; text-transform:uppercase; vertical-align:baseline; }
+.tsilenced { color:#b26a00; }
+.tback { color:#2e7d32; }
+@media (prefers-color-scheme: dark) {
+  .tsilenced { color:#e0a458; } .tback { color:#8fd39c; }
+}
 .tnote { color:var(--muted); font-size:.86rem; }
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
@@ -2628,6 +2641,15 @@ TEST_STATES = {
     "deleted":   ("removed", "deleted"),
     "unchanged": ("same", "unchanged"),
 }
+# A test that is still written but no longer runs. It keeps its diff state — a disabled
+# test that was also edited is both — because the two answer different questions: what
+# the branch did to the code, and whether the code still holds anything up. A commented-out
+# test is flagged `deleted`, which is what it costs the run, and stamped `commented out`,
+# which is what it costs to undo.
+SILENCED_LABEL = {
+    "disabled":  "disabled",
+    "commented": "commented out",
+}
 
 
 def _test_changes_module():
@@ -2686,14 +2708,20 @@ def resolve_tests(entries, index: dict, root: Path) -> list[dict]:
             f = root / rel
             if not f.is_file():
                 raise SystemExit(f"[review] test {name!r} names a file that does not exist: {rel}")
-            line = _test_changes_module().test_cases(
+            found = _test_changes_module().scan_cases(
                 rel, f.read_text(encoding="utf-8", errors="replace")).get(name)
-            if line is None:
+            if found is None:
                 raise SystemExit(
                     f"[review] no test called {name!r} in {rel} — the change set did not touch "
                     "it and the file does not declare it either. Fix the name, or the path."
                 )
+            # Untouched by this branch, but the page still has to say whether it runs: a
+            # requirement pinned by a test somebody `@Disabled`d last month is not pinned,
+            # and the branch that inherits the claim is where a reader will see it.
+            line, silenced = found
             row = {"name": name, "path": rel, "status": "unchanged", "line": line}
+            if silenced:
+                row["silenced"] = silenced
         out.append(dict(row, note=e.get("note", "")))
     return out
 
@@ -2722,8 +2750,23 @@ def render_tests(rows, root: Path) -> str:
                    if r.get("gone") else "this change set left no line to open it at")
             body = (f'<span class="srcref testref tgone"'
                     f' data-tip="{html.escape(r["path"])} — {why}">{inner}</span>')
+        # Said after the link rather than in front of it, and in a second vocabulary. The
+        # flag column answers "what did the branch do to this test"; the stamp answers
+        # "does it still run", which is a different question and can contradict the first
+        # — a row flagged `new` and stamped `disabled` is the loudest case on this page,
+        # and the one a single fixed-width column would have had to choose between. It
+        # also keeps that column aligned: "commented out" is twice the width of the words
+        # around it, and a flag that shoves its own row sideways costs more than it says.
+        state = ""
+        if r.get("silenced"):
+            state = (f'<span class="tsilenced" data-tip="It is still written, but it does '
+                     f'not run — so nothing below it is being asserted on any build.">'
+                     f'{SILENCED_LABEL.get(r["silenced"], r["silenced"])}</span>')
+        elif r.get("wasSilenced") and r["status"] != "deleted":
+            state = ('<span class="tback" data-tip="This change set switched it back on: '
+                     'it was disabled before, and runs now.">back on</span>')
         note = f' <span class="tnote">{r["note"]}</span>' if r.get("note") else ""
-        items.append(f'<li><span class="tflag {cls}">{label}</span>{body}{note}</li>')
+        items.append(f'<li><span class="tflag {cls}">{label}</span>{body}{state}{note}</li>')
     return '<ul class="req-tests">' + "\n".join(items) + "</ul>"
 
 
@@ -3674,6 +3717,57 @@ def cost_chip(root: Path) -> dict | None:
         return None
 
 
+def tests_chip(doc: dict | None) -> dict | None:
+    """`{"auto":"tests"}` — what the branch did to the test run, counted off the test
+    code itself by `test-changes.py`.
+
+    It replaces a chip that used to be typed by hand (`unit tests · 125 green (20 new)`),
+    which could only ever be true for as long as nobody wrote another test. This one
+    states the number a reviewer acts on, and states it as a balance: how many tests
+    entered the run, how many left it. Both halves matter, and the second is the reason
+    the chip exists — a branch that adds nine tests and quietly `@Disabled`s three has
+    not added nine.
+
+    The loss is deliberately one number over three causes. Deleting a test, commenting it
+    out and disabling it cost the run the same test, and only deletion is visible to
+    someone skimming a diff; splitting them on the chip's face would invite reading the
+    smallest one as the answer. The split is in the tooltip, where it belongs.
+
+    Returns None when there is no manifest — dropping the chip rather than printing a
+    zero, which would read as "this branch touched no tests" when the truth is "nobody
+    counted".
+    """
+    t = (doc or {}).get("totals")
+    if not t:
+        return None
+    balance = " / ".join(
+        piece for piece in (
+            f'<span class="added">+{t["gained"]}</span>' if t["gained"] else "",
+            f'<span class="removed">\u2212{t["lost"]}</span>' if t["lost"] else "",
+        ) if piece
+    )
+    edited = f'{t["modified"]} edited' if t["modified"] else ""
+    value = " &middot; ".join(x for x in (balance, edited) if x) or "none touched"
+
+    gone = [f'{t["deleted"] - t["commented"]} deleted' if t["deleted"] - t["commented"] else "",
+            f'{t["commented"]} commented out' if t["commented"] else "",
+            f'{t["disabled"]} disabled where they stand' if t["disabled"] else ""]
+    gone = ", ".join(x for x in gone if x) or "none lost"
+    # A new test that arrives `@Disabled` is written but never ran, so it is in `added`
+    # and not in `gained`. Without this the two numbers look like a bug — "22 new" over a
+    # chip reading `+21` — when they are in fact the finding.
+    inert = t["added"] - (t["gained"] - t["reenabled"])
+    tip = (f'{t["added"]} new'
+           + (f' ({inert} of them disabled on arrival)' if inert else "")
+           + f', {t["modified"]} edited, {gone}'
+           + (f', {t["reenabled"]} switched back on' if t["reenabled"] else "")
+           + f'. The test files this change set touches ran {t["runningBefore"]} tests '
+             f'before it and run {t["runningAfter"]} after. Counted from the test '
+             'declarations in the code — a test that is still written but disabled, or '
+             'commented out, counts as lost, the same as a deleted one.')
+    return {"label": "tests", "value": value, "tip": tip}
+
+
 def tab_cost_report(root: Path, tab_ids: list[str]) -> dict | None:
     """What each tab cost, asked of the run itself — same discipline as `cost_chip`.
 
@@ -4116,10 +4210,9 @@ def main(argv=None) -> int:
 
     # What the change set did to each test, computed by `test-changes.py` from the diff
     # itself. Loaded once: the content file only says which requirement a test belongs to.
-    tests_idx = test_index(
-        json.loads((out_dir / spec["testChanges"]).read_text(encoding="utf-8")).get("tests", [])
-        if spec.get("testChanges") else []
-    )
+    test_doc = (json.loads((out_dir / spec["testChanges"]).read_text(encoding="utf-8"))
+                if spec.get("testChanges") else {})
+    tests_idx = test_index(test_doc.get("tests", []))
 
     sections, by_id, unchanged_ids = [], {}, {}
     for s in spec.get("sections", []):
@@ -4134,7 +4227,7 @@ def main(argv=None) -> int:
             inc = (out_dir / s["includeHtml"]).read_text(encoding="utf-8")
         # Usually the include is commentary on the prose, so it follows it. `includeFirst`
         # is for the one shape where it is the other way round: the fragment *is* what the
-        # section is about — the Requirements tab opens on the ticket the branch answers —
+        # section is about — the Tests tab opens on the ticket the branch answers —
         # and the prose reads as the reply to it. Off by default: every other tab wants a
         # sentence of its own before a generated fragment lands.
         include_first = bool(s.get("includeFirst"))
@@ -4210,6 +4303,15 @@ def main(argv=None) -> int:
         # written, so it is computed here, at build time, and never typed into the content
         # file. `{"auto": "cost"}` is the whole declaration; label, value and tooltip all
         # come back from the script.
+        # The same discipline for the test count: the page already parses every changed
+        # test file to classify the rows under each requirement, so the number at the top
+        # is read off that same manifest and cannot disagree with the list below it.
+        if c.get("auto") == "tests":
+            computed = tests_chip(test_doc)
+            if computed is None:
+                continue
+            c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
+
         if c.get("auto") == "cost":
             computed = cost_chip(root)
             if computed is None:

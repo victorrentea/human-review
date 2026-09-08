@@ -973,7 +973,7 @@ def test_the_deep_link_offset_is_measured_from_the_strip_not_hardcoded(tmp_path)
 
 
 def test_the_kinds_of_acceptance_evidence_are_cards_not_a_paragraph(tmp_path):
-    """"Is there anything at this level at all?" is the question the Requirements tab is
+    """"Is there anything at this level at all?" is the question the Tests tab is
     read with, and a run of prose with bold lead-ins answers it only for whoever reads
     every sentence. One card per kind answers it by looking — including the kind nothing
     covers, which keeps its card and says so."""
@@ -992,7 +992,7 @@ def test_the_kinds_of_acceptance_evidence_are_cards_not_a_paragraph(tmp_path):
 
 
 def test_an_include_follows_the_prose_unless_the_section_asks_for_it_first(tmp_path):
-    """The Requirements tab is read ticket-first: what was asked for, then what the branch
+    """The Tests tab is read ticket-first: what was asked for, then what the branch
     wrote to pin it. Everywhere else the include is a generated fragment the prose
     introduces, so the default stays prose-first and only `includeFirst` flips it."""
     (tmp_path / "frag.html").write_text('<div class="reqmap">the ticket</div>', encoding="utf-8")
@@ -1516,6 +1516,97 @@ def test_a_test_whose_file_is_gone_gets_no_link_rather_than_a_dead_one():
     out = build.render_tests([MANIFEST[3]], Path("/repo"))
     assert "vscode://" not in out
     assert 'class="srcref testref tgone"' in out
+
+
+# --------------------------------------------------------------------------- #
+# tests that are still written and no longer run
+# --------------------------------------------------------------------------- #
+
+def test_a_test_that_no_longer_runs_says_so_beside_its_own_row():
+    """The flag column answers "what did the branch do to this test"; this answers "does
+    it still run". A test that arrives `new` and `@Disabled` needs both said at once, and
+    saying only the first is the failure this exists to prevent."""
+    out = build.render_tests(
+        [{"name": "flaky", "path": "src/test/VisitTest.java", "status": "added",
+          "line": 12, "silenced": "disabled"}], Path("/repo"))
+    assert '<span class="tflag added">new</span>' in out
+    assert ">disabled</span>" in out and 'class="tsilenced"' in out
+
+
+def test_a_commented_out_test_is_not_reported_as_a_plain_deletion():
+    out = build.render_tests(
+        [{"name": "parked", "path": "src/test/VisitTest.java", "status": "deleted",
+          "line": 40, "silenced": "commented"}], Path("/repo"))
+    assert '<span class="tflag removed">deleted</span>' in out, \
+        "what it costs the run is a deletion, and that is the flag column's question"
+    assert 'class="tsilenced"' in out and ">commented out</span>" in out, \
+        "how it was done is the stamp's question, and only one of the two is a git revert"
+    assert 'href="vscode://file//repo/src/test/VisitTest.java:40:1"' in out, \
+        "the body is still in the file, so the row still has somewhere to go"
+
+
+def test_a_test_switched_back_on_is_credited_for_it():
+    out = build.render_tests(
+        [{"name": "revived", "path": "src/test/VisitTest.java", "status": "modified",
+          "line": 12, "wasSilenced": "disabled"}], Path("/repo"))
+    assert 'class="tback"' in out and ">back on</span>" in out
+
+
+def test_an_untouched_test_that_does_not_run_still_says_so(tmp_path):
+    """The worst case for a coverage claim: the requirement names a test, the test is
+    real, the branch never touched it — and somebody disabled it months ago. Nothing in
+    the diff can catch that, so the declaration is read off the working tree."""
+    f = tmp_path / "src" / "test" / "OldTest.java"
+    f.parent.mkdir(parents=True)
+    f.write_text("class OldTest {\n  @Disabled\n  @Test\n  void alreadyThere() {\n  }\n}\n")
+    rows = build.resolve_tests(
+        [{"name": "alreadyThere", "path": "src/test/OldTest.java"}], _idx(), tmp_path)
+    assert rows[0]["status"] == "unchanged" and rows[0]["silenced"] == "disabled"
+
+
+# --------------------------------------------------------------------------- #
+# the chip that states what the branch did to the test run
+# --------------------------------------------------------------------------- #
+TOTALS = {"added": 9, "modified": 4, "deleted": 3, "unchanged": 40, "commented": 1,
+          "disabled": 2, "reenabled": 1, "runningBefore": 46, "runningAfter": 52,
+          "gained": 10, "lost": 4}
+
+
+def test_the_chip_states_the_balance_of_the_run_not_just_what_was_added():
+    chip = build.tests_chip({"totals": TOTALS})
+    assert chip["label"] == "tests"
+    assert '<span class="added">+10</span>' in chip["value"]
+    assert '<span class="removed">\u22124</span>' in chip["value"]
+    assert "4 edited" in chip["value"]
+
+
+def test_the_chip_splits_the_loss_only_in_the_tooltip():
+    """One number on the face, three causes behind it. A reviewer shown "2 deleted" and
+    not shown the three `@Disabled`d has been handed the smallest of the three truths —
+    but a face carrying all three would invite reading one of them as the answer."""
+    tip = build.tests_chip({"totals": TOTALS})["tip"]
+    assert "2 deleted" in tip and "1 commented out" in tip
+    assert "2 disabled where they stand" in tip and "1 switched back on" in tip
+    assert "ran 46 tests before it and run 52 after" in tip
+
+
+def test_a_new_test_that_arrives_disabled_is_named_rather_than_left_as_a_discrepancy():
+    """`22 new` over a chip reading `+21` looks like an arithmetic bug. It is the finding:
+    one of the new tests was committed with an `@Disabled` on it and has never run."""
+    tip = build.tests_chip({"totals": dict(TOTALS, added=22, gained=22)})["tip"]
+    assert "22 new (1 of them disabled on arrival)" in tip
+
+
+def test_the_chip_drops_itself_rather_than_printing_a_zero_it_did_not_count():
+    """`tests none` on a page built without the manifest reads as "this branch wrote no
+    tests", which is a finding — and would be a lie."""
+    assert build.tests_chip({}) is None
+    assert build.tests_chip(None) is None
+
+
+def test_a_branch_that_touched_no_test_file_says_so_rather_than_showing_nothing():
+    chip = build.tests_chip({"totals": dict.fromkeys(TOTALS, 0)})
+    assert chip["value"] == "none touched"
 
 
 def test_the_tests_are_nested_under_the_requirement_they_belong_to():

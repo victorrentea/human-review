@@ -32,13 +32,13 @@ rs = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rs)
 
 GUIDE = "guide"
-# Tabs no step produces, for three different reasons worth keeping apart:
-#   overview     — synthesised from the others; never will have a step.
-#   requirements — a real tab whose step has not been built yet; will get one.
-# Both honestly report "not measured", so they are exempt — but only by being named here, so
-# that building the missing step forces a deliberate edit rather than quietly satisfying a
-# test that had stopped looking.
-UNFED_BY_DESIGN = {"overview", "requirements"}
+# Tabs no step produces. Only one is left: `overview`, which is synthesised from the others
+# and never will have a step of its own. It honestly reports "not measured", so it is
+# exempt — but only by being named here, so that a tab arriving without a step forces a
+# deliberate edit rather than quietly satisfying a test that had stopped looking. The
+# `requirements` tab used to sit in this set for the other reason ("a step will come"); the
+# step came (`tests`, the manifest behind the Tests tab), and this is where that was noticed.
+UNFED_BY_DESIGN = {"overview"}
 
 
 def _schema_tab_ids() -> set[str]:
