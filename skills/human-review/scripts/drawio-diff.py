@@ -30,8 +30,9 @@ contract.
 The to-do also carries a link: every annotation the diagram draws (the "Please manually
 fix the layout." note is one) is anchored at `drawio://<absolute path>`, so the reader
 who has just been told to re-lay it out can open the file in the draw.io desktop app
-from the picture. macOS has no such scheme out of the box — `install-drawio-url-handler.sh`
-next to this file registers one.
+from the picture, and the red ones carry an underlined "Click here to open draw.io ↗"
+saying so, because a picture cannot show a cursor. macOS has no such scheme out of the
+box — `install-drawio-url-handler.sh` next to this file registers one.
 
 Rendering goes through the draw.io desktop app when it is installed, which is the only
 way to get a *faithful* picture (and, as a bonus, one that carries `light-dark()` for
@@ -499,6 +500,37 @@ def drawio_url(diagram: Path) -> str:
     return "drawio://" + urllib.parse.quote(str(Path(diagram).resolve()))
 
 
+INVITE = "Click here to open draw.io ↗"
+
+
+def invited(label: str) -> str:
+    """The to-do, with the click it is asking for spelled out.
+
+    Underlined, because the whole note is the anchor and a rendered diagram has no other
+    way to say so, and arrowed, because the click leaves the page for a desktop app.
+    Appended on the way to the SVG only — the `.drawio` file keeps the sentence a human
+    wrote there, the way the concept links are never written back either.
+
+    On a line of its own: draw.io sizes the export from the shapes, and a note's label
+    is `nowrap` and overflows the shape, so a one-line invitation runs off the right of
+    the picture and is cut by the SVG viewport. A second line has room.
+    """
+    if INVITE in label:
+        return label
+    return f"{label}<br><u>{INVITE}</u>" if label else f"<u>{INVITE}</u>"
+
+
+def html_label(style: str) -> str:
+    """`html=1`, so draw.io reads the `<u>` as markup instead of drawing the tag.
+
+    Every note in the diagram already carries it; a note written without it would show
+    the four characters `<u>` to the reader, which is the whole invitation wasted.
+    """
+    if style_dict(style).get("html") == "1":
+        return style
+    return f"{style};html=1;" if style and not style.endswith(";") else f"{style}html=1;"
+
+
 def link_annotations(xml: str, diagram: Path) -> str:
     """Point every annotation at the diagram it is written on.
 
@@ -514,9 +546,15 @@ def link_annotations(xml: str, diagram: Path) -> str:
     to — is wrapped in a `UserObject` on the way past, because `link` lives on the wrapper
     and only on the wrapper. Setting it on the inner cell would produce no anchor and no
     error, which is the failure nobody notices until they click one.
+
+    The red ones — the to-dos — also say so in words: nothing on a rendered diagram tells
+    a reader that a note is clickable, so the invitation is appended to the label on the
+    way to the SVG. The title and the captions keep their wording; they are anchored too,
+    but they are not asking for anything.
     """
     tree = ET.fromstring(xml)
-    notes = {c.id for c in parse_model(xml).values() if c.kind == "annotation"}
+    notes = {c.id: is_red(c.style) for c in parse_model(xml).values()
+             if c.kind == "annotation"}
     if not notes:
         return xml
     url = drawio_url(diagram)
@@ -529,14 +567,24 @@ def link_annotations(xml: str, diagram: Path) -> str:
         for i, child in enumerate(list(parent)):
             if child.get("id") not in notes:
                 continue
+            todo = notes[child.get("id")]
             if child.tag in ("object", "UserObject"):
                 child.set("link", url)
+                if todo:
+                    child.set("label", invited(child.get("label") or ""))
+                    inner = child.find("mxCell")
+                    if inner is not None:
+                        inner.set("style", html_label(inner.get("style") or ""))
             elif child.tag == "mxCell":
                 # id and label move to the wrapper, exactly the shape draw.io writes: an
                 # inner cell that kept its id is read as a second, plain cell with the
                 # same identity, and being the later one it wins — link and all lost.
+                label = child.get("value") or ""
                 holder = ET.Element("UserObject", {
-                    "id": child.get("id"), "label": child.get("value") or "", "link": url})
+                    "id": child.get("id"), "link": url,
+                    "label": invited(label) if todo else label})
+                if todo:
+                    child.set("style", html_label(child.get("style") or ""))
                 child.attrib.pop("value", None)
                 child.attrib.pop("id", None)
                 holder.append(child)
@@ -624,6 +672,19 @@ def _esc(text: str) -> str:
     return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+_TAG = re.compile(r"<[^>]+>")
+
+
+def _plain(label: str) -> str:
+    """A label with draw.io's HTML taken out of it.
+
+    draw.io labels are HTML — `<br>`, `<u>`, `<b>` — and draw.io renders them. This
+    renderer draws one run of SVG text, and a literal `<u>` in the picture is worse
+    than a missing underline.
+    """
+    return _TAG.sub("", re.sub(r"<br\s*/?>", " ", label))
+
+
 def render_builtin(xml: str, out: Path) -> None:
     """A faithful-enough SVG from the mxGeometry alone: boxes, straight edges clipped
     to the boxes they join, and labels. Used when the draw.io app is not installed."""
@@ -684,7 +745,7 @@ def render_builtin(xml: str, out: Path) -> None:
         if cell.label:
             body.append(f'<text x="{x + w / 2}" y="{y + h / 2}" text-anchor="middle" '
                         f'dominant-baseline="central" font-family="Helvetica,sans-serif" '
-                        f'font-size="{size}" fill="{font_of(cell)}">{_esc(cell.label)}</text>')
+                        f'font-size="{size}" fill="{font_of(cell)}">{_esc(_plain(cell.label))}</text>')
         if href:
             body.append("</a>")
     for cell in cells.values():
@@ -703,7 +764,7 @@ def render_builtin(xml: str, out: Path) -> None:
         body.append(f'<text x="{ax + (bx - ax) * t}" y="{ay + (by - ay) * t}" '
                     f'text-anchor="middle" dominant-baseline="central" '
                     f'font-family="Helvetica,sans-serif" font-size="{size}" '
-                    f'font-weight="bold" fill="{font_of(cell)}">{_esc(cell.label)}</text>')
+                    f'font-weight="bold" fill="{font_of(cell)}">{_esc(_plain(cell.label))}</text>')
 
     out.write_text(
         f'<svg xmlns="http://www.w3.org/2000/svg" '

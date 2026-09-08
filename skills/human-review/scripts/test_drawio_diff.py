@@ -552,7 +552,47 @@ def test_a_note_drawn_as_a_bare_mxcell_still_gets_the_link():
     cells = dd.parse_model(dd.link_annotations(bare, Path("/repo/d.drawio.png")))
     assert cells["n2"].kind == "annotation"
     assert cells["n2"].attrs["link"] == "drawio:///repo/d.drawio.png"
-    assert cells["n2"].label == "Please manually fix the layout."
+    assert cells["n2"].label.startswith("Please manually fix the layout.")
+
+
+def test_the_to_do_spells_out_the_click_it_is_asking_for():
+    """A rendered diagram has no other way to say a note is clickable, so the note says
+    it — underlined, and on a second line, where the export has room to draw it."""
+    cells = dd.parse_model(dd.link_annotations(BRANCH, Path("/repo/d.drawio.png")))
+    assert cells["note"].label == ("Please manually fix the layout."
+                                   "<br><u>Click here to open draw.io ↗</u>")
+
+
+def test_a_note_written_without_html_is_given_it():
+    """`html=0` draws the four characters `<u>` at the reader instead of underlining."""
+    bare = model('<mxCell id="n2" value="Please manually fix the layout." '
+                 'style="text;fontColor=#FF0000" vertex="1" parent="1">'
+                 '<mxGeometry x="0" y="0" width="200" height="20" as="geometry"/></mxCell>')
+    cells = dd.parse_model(dd.link_annotations(bare, Path("/repo/d.drawio.png")))
+    assert dd.style_dict(cells["n2"].style)["html"] == "1"
+
+
+def test_a_black_caption_is_linked_but_left_as_written():
+    """The title is anchored too — it is just not asking the reader for anything, so it
+    does not get an invitation appended to it."""
+    title = ('<object label="Conceptual Model" id="title">'
+             '<mxCell style="text;html=1;fontSize=20;" vertex="1" parent="1">'
+             '<mxGeometry x="0" y="-60" width="200" height="30" as="geometry"/>'
+             "</mxCell></object>")
+    xml = model(BRANCH.split("<root>")[1].split("</root>")[0] + title)
+    cells = dd.parse_model(dd.link_annotations(xml, Path("/repo/d.drawio.png")))
+    assert cells["title"].attrs["link"] == "drawio:///repo/d.drawio.png"
+    assert cells["title"].label == "Conceptual Model"
+
+
+def test_the_builtin_renderer_draws_the_invitation_as_words_not_markup(tmp_path):
+    """It writes one run of SVG text, where draw.io's label HTML is not markup at all —
+    a literal `<u>` in the picture is worse than a missing underline."""
+    out = tmp_path / "c.svg"
+    dd.render_builtin(dd.link_annotations(BRANCH, tmp_path / "d.drawio.png"), out)
+    svg = out.read_text()
+    assert "Please manually fix the layout. Click here to open draw.io ↗" in svg
+    assert "&lt;u&gt;" not in svg and "&lt;br&gt;" not in svg
 
 
 def test_a_path_with_a_space_survives_the_url():

@@ -226,7 +226,11 @@ it goes green, because it is still new.
 The to-do is also a link. Every annotation is anchored at `drawio://<absolute path>`, so
 the reader told to re-lay the diagram out can open the real file in the draw.io desktop
 app from the picture itself — draw.io registers no URL scheme of its own, so
-`install-drawio-url-handler.sh` installs a shim that answers one.
+`install-drawio-url-handler.sh` installs a shim that answers one. The red ones say so in
+words, too: an underlined "Click here to open draw.io ↗" is appended to the note on the
+way to the SVG, because a picture has no other way to show that something in it is
+clickable. The title and the captions are anchored just as silently — they are not
+asking the reader for anything.
 
 It writes three SVGs plus a machine-readable `<name>-diff.json`. Rendering goes through
 the draw.io desktop app when it is installed, which is the only faithful picture;
