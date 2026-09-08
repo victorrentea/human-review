@@ -324,11 +324,16 @@ CODEOWNERS**. Four tabs need something said about how they are written:
   fixes already applied, greyed out. Lists that each start at 1 make the reader do
   arithmetic. The numbering follows the order the blocks appear in here, so that order is
   an editorial choice — with one rule the build enforces: work already done is the tail.
-  The open pile writes its own lede — `9 open, worst first · 3 already applied, greyed out
-  · each stamped with the pass that raised it` — computed, so restate none of it. Its
-  `intro` names which passes ran and in which order, in a line, and stops there. The
-  paragraph that used to stand above the list ("Twelve items came back. They are one list:
-  the nine that need your judgement first…") described the list it was standing on.
+  Whichever pile opens the list writes its lede — `2 assumed · 9 open, worst first · 3
+  already applied · each stamped with the pass that raised it` — computed, so restate none
+  of it. It is counts and one ordering fact, and nothing about how the list *looks*: the
+  applied fixes are visibly grey and an assumption visibly says *your call*, so `greyed
+  out` and `yours to confirm` were both cut. Its `intro` names the passes **in the order
+  they ran, and stops on the last one** — `/code-review then /simplify.` A `then` is the
+  order, so *"in that order"* says it twice, and *"in separate turns"* is how the review
+  was operated, which is nothing the reader can act on. The paragraph that used to stand
+  above the list ("Twelve items came back. They are one list: the nine that need your
+  judgement first…") described the list it was standing on.
 - **Tests** — two columns that read as a question and its answer, both built the same way:
   **a heading in the page's voice, then a framed card**.
   - **Left, the question**: the ticket the branch answers, its sentences coloured by

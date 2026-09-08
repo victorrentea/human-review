@@ -1033,10 +1033,14 @@ TIP_JS = """<script>
   }
 
   function show(el) {
-    var text = el.getAttribute('data-tip');
-    if (!text) return;                       // data-tip="" shows nothing, by design
+    // `data-tip-html` is for a tip that has to SHOW a component rather than name it -- a
+    // coverage badge, say, where "UI x2" in prose makes the reader translate back to the
+    // badge they are looking at. The markup is the page's own; nothing user-supplied
+    // reaches here. Plain `data-tip` stays the default and stays escaped.
+    var html = el.getAttribute('data-tip-html'), text = el.getAttribute('data-tip');
+    if (!html && !text) return;              // data-tip="" shows nothing, by design
     current = el;
-    bubble.textContent = text;
+    if (html) bubble.innerHTML = html; else bubble.textContent = text;
     bubble.classList.remove('visible');
     place(el);
     timer = setTimeout(function () {
@@ -1047,7 +1051,7 @@ TIP_JS = """<script>
   }
 
   function trigger(ev) {
-    var el = ev.target.closest && ev.target.closest('[data-tip]');
+    var el = ev.target.closest && ev.target.closest('[data-tip],[data-tip-html]');
     if (!el || el === current) return;
     hide();
     show(el);
@@ -2687,14 +2691,19 @@ def opening_lede(spec) -> str:
     """
     if _LIST_OFFSET:
         return ""
+    # Counts, and the one ordering fact that counting cannot give. Every clause that
+    # described how the list *looks* has been cut: the applied fixes are visibly grey and
+    # an assumption visibly says "your call", so "greyed out" and "yours to confirm" were
+    # the paragraph-the-reader-can-see rule reappearing one clause at a time, inside the
+    # line that replaced the paragraph.
     assumed = len(spec.get("assumptions", []))
     parts = []
     if assumed:
-        parts.append(f"{assumed} assumed, yours to confirm")
+        parts.append(f"{assumed} assumed")
     if spec.get("findings"):
         parts.append(f"{len(spec['findings'])} open, worst first")
     if spec.get("autofixes"):
-        parts.append(f"{len(spec['autofixes'])} already applied, greyed out")
+        parts.append(f"{len(spec['autofixes'])} already applied")
     if not parts:
         return ""
     # An assumption is stamped `assumption`, which is not a pass — so the more specific

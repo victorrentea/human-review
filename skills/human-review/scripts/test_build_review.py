@@ -2255,9 +2255,13 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"},
                           {"type": "autofixes"}]}]))
-    assert "2 assumed, yours to confirm" in page
+    assert "2 assumed" in page
+    assert "yours to confirm" not in page, \
+        "the badge already says `your call`"
     assert "9 open, worst first" in page
-    assert "3 already applied, greyed out" in page
+    assert "3 already applied" in page
+    assert "greyed out" not in page, \
+        "the applied fixes are visibly grey"
     assert "stamped with the pass that raised it" not in page, \
         "an assumption is stamped `assumption`, which is not a pass"
 
@@ -2270,7 +2274,7 @@ def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path
         assumptions=[_assumption()],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert page.count("1 assumed, yours to confirm") == 1, "said once, not once per pile"
+    assert page.count("1 assumed") == 1, "said once, not once per pile"
     assert page.index("1 assumed") < page.index("Look here first")
 
 
