@@ -116,6 +116,50 @@ Split every harvested finding in two, and say out loud which pile each landed in
 
 Never argue a finding away silently. If you skip one, it goes in the list with a reason.
 
+### The third pile — what the agent that wrote the code assumed
+
+Both piles above are found by reading the diff. This one cannot be. Where the coding agent
+guessed at an intent, took one of two readings of a requirement, or left something *for
+now*, that is knowable only from the side that made the call — and it exists in exactly one
+place, the transcript of the conversation that wrote the code. It is the only thing on this
+page no pass, script or reviewer can derive, and the reason it is worth the trouble.
+
+```sh
+${SKILL}/scripts/authoring-sessions.py --base "$BASE"
+```
+
+Its exit code says who can be asked, and there is no fourth answer:
+
+- **0 — mode A. This conversation wrote the code.** Read back over your own working turns
+  and name the calls you made without being told to. Not the ones you asked about and got
+  an answer to — the ones you settled yourself and moved on.
+- **4 — mode B. An earlier conversation wrote it.** `--paths` prints the transcripts, best
+  author first. Fork a subagent per transcript and have it read the file **verbatim, end to
+  end**: hedges are the first thing a summary loses, and a summary of a summary contains
+  none. Ask it for the decisions, not the story — *"list every point where the agent chose
+  between two readings, guessed at intent, deferred something, or said it was unsure; quote
+  the turn and name the file and line the decision landed on; return nothing you cannot
+  anchor."*
+- **5 — mode C. Nothing on disk wrote these files.** Somebody else's PR, or transcripts long
+  since swept. Declare the block with `"mode": "C"` and no items, and the page says the
+  conversation could not be asked — which is a different fact from it having had nothing to
+  say, and the reader must be able to tell the two apart.
+
+Three rules make the difference between a recollection and a plausible sentence about one:
+
+- **Anchor every one of them.** A `snippets` entry (or `refs`/`diffs`) pointing at the line
+  the decision landed on. Asked at the end of a long session what it was unsure about, a
+  model will write fluent, believable prose whether or not it ever hesitated; the anchor is
+  what a reader checks in five seconds. The build drops an unanchored one and says so.
+- **Name the reading you did not take**, in `alternative`. That is what lets the human
+  recognise their own intent without opening anything.
+- **Do not resolve them yourself.** An assumption is not a finding to be triaged into the
+  fix-it pile: the whole point is that the answer is not in the code. Leave every one of
+  them open, however small.
+
+Keep them to decisions with a consequence — a business rule guessed at, a contract invented,
+an edge case handled quietly, a `TODO` in all but name. Not the naming of a local variable.
+
 **The writing rule: show the code, do not narrate it.** A finding is not a story about a
 defect, it is the defect, quoted.
 
@@ -141,6 +185,16 @@ defect, it is the defect, quoted.
 - **Never name a specific artefact's absence.** *"`add-visit.genseq.puml` does not exist"*
   stopped being true while it was being written. Describe the **case**; let the renderer say
   which instances hit it.
+- **Never write a paragraph the reader can see.** *"Twelve items came back. They are one
+  list: the nine that need your judgement first, then the three I applied, greyed out and
+  numbered straight on."* — every clause of that is on screen underneath it. The reader is
+  an experienced developer who came for the finding, not for a description of the list the
+  finding is in. Say only what looking cannot tell them, in a line, and let the page do the
+  rest. Where the counts are the whole content, they are computed and you write nothing.
+- **A tooltip is a few words.** It is read standing up, in one glance, with a hand on the
+  mouse. Numbers the face could not fit, or where a click goes — then stop. Rationale is
+  not tooltip material even when it is true: it goes in the code comment beside the thing,
+  where whoever needs it is already reading.
 
 Write `.human-review/content.json` against **`reference/content-schema.md`** — every shape,
 every block type, the tab vocabulary, and everything the renderer already enforces so you do

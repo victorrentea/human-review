@@ -34,6 +34,25 @@ not resolve, a file that did not exist in it, or an empty diff. **No diff beats 
 `{{diff:…}}` and the `diffs` array are the same renderer; the array is the way to write it
 on a finding, the token the way to write it mid-paragraph.
 
+## An assumption
+
+```json
+{"source":"assumption", "title":"…", "body":"…", "alternative":"…", "why":"…",
+ "refs":["path:line"], "snippets":[{"ref":"path:12-30","caption":"…"}]}
+```
+
+Same shape as a finding minus `severity` — an assumption is not a defect and must not be
+ranked as one. It renders with its own violet card, a `your call` badge and the stamp
+`assumption` where a finding carries `/code-review`, because it did not come from a pass:
+it came from the agent that wrote the code, via one of the three modes in SKILL.md's *third
+pile*. `alternative` is the reading that was not taken, and it is what makes the item
+checkable at a glance.
+
+**An assumption with no `snippets`, `refs` or `diffs` is dropped**, with a warning naming
+it. It is the one item on the page a reader cannot go and verify: a model asked at the end
+of a long session what it was unsure about will produce fluent sentences of exactly this
+shape whether or not it ever hesitated, and the anchor is the whole difference.
+
 ## Top level
 
 ```json
@@ -122,8 +141,10 @@ reviewer reading the page can do nothing with it. Say it to them in the wrap-up 
 
 ## Block types
 
-**`findings`** (the disputable calls) · **`autofixes`** (the top-level `autofixes` array,
-same shape as a finding) · **`diagrams`** (the delta gallery, narrowed by `kind` / `only` /
+**`findings`** (the disputable calls) · **`assumptions`** (the top-level `assumptions`
+array; the block carries `"mode": "A"|"B"|"C"` so an empty pile can say *which* kind of
+empty it is — asked and had nothing, read back and found nothing, or nobody left to ask) ·
+**`autofixes`** (the top-level `autofixes` array, same shape as a finding) · **`diagrams`** (the delta gallery, narrowed by `kind` / `only` /
 `except`) · **`testpairs`** (Step 3) · **`tests`** (the ledger: every test the change set
 moved, grouped by what happened to it) · **`logging`** (Step 7c) · **`puml`** (a diagram this
 branch did not change, rendered from source as context) · **`codeowners`** (Step 8, run by
@@ -298,9 +319,16 @@ Default order, worth departing from only with a reason — **Overview, 🤖 Revi
 Sequence, Tests, Data, Structure, API, Code City, Complexity, Logging, UX,
 CODEOWNERS**. Four tabs need something said about how they are written:
 
-- **🤖 Review** — **one list**: the open calls first, most critical first, then the fixes
-  already applied, numbered straight through and greyed out. Two lists that both start at 1
-  make the reader do arithmetic. Its `intro` must name which passes ran, and in which order.
+- **🤖 Review** — **one list** of three piles, numbered straight through: what only the
+  reader can answer (`assumptions`), then the open calls, most critical first, then the
+  fixes already applied, greyed out. Lists that each start at 1 make the reader do
+  arithmetic. The numbering follows the order the blocks appear in here, so that order is
+  an editorial choice — with one rule the build enforces: work already done is the tail.
+  The open pile writes its own lede — `9 open, worst first · 3 already applied, greyed out
+  · each stamped with the pass that raised it` — computed, so restate none of it. Its
+  `intro` names which passes ran and in which order, in a line, and stops there. The
+  paragraph that used to stand above the list ("Twelve items came back. They are one list:
+  the nine that need your judgement first…") described the list it was standing on.
 - **Tests** — two columns that read as a question and its answer, both built the same way:
   **a heading in the page's voice, then a framed card**.
   - **Left, the question**: the ticket the branch answers, its sentences coloured by
