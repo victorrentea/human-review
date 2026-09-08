@@ -126,6 +126,13 @@ def test_each_state_paints_the_frame_a_different_colour():
         assert rule in build.CSS, rule
 
 
+def test_the_delta_opens_on_the_change_alone():
+    """A product choice, not an implementation detail: the level a reader meets first
+    decides what they think the change *is*. Zero shows the impacted elements and nothing
+    else, so no unchanged neighbour has to be ruled out by eye first."""
+    assert build.DEFAULT_FOCUS == "0"
+
+
 def test_the_frame_is_thick_enough_to_read_without_looking_at_it():
     width = re.search(r"\.dgmpane \{[^}]*border:(\d+)px", build.CSS)
     assert width and int(width.group(1)) >= 4
