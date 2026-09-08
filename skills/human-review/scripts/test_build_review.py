@@ -252,6 +252,28 @@ def _extract_snippet():
     return mod
 
 
+def test_a_snippet_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
+    """A snippet header answers one question — which file is this? — and a repo-relative
+    Java path spends five segments on module, `src/main/java` and the org package before
+    it gets there. The path is not dropped, it moves to the tooltip."""
+    deep = tmp_path / "petclinic-backend/src/main/java/victor/training/petclinic/rest"
+    deep.mkdir(parents=True)
+    (deep / "VetRestController.java").write_text("one\ntwo\nthree\n", encoding="utf-8")
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java"
+    out = _extract_snippet().render(f"{rel}:1-2", None, tmp_path, exact=True)
+    assert ">VetRestController.java:1-2</a>" in out
+    assert f'data-tip="{rel} — open in VS Code"' in out
+    assert f">{rel}:1-2<" not in out, "the ceremony is on hover, not in the face"
+
+
+def test_a_snippet_of_a_file_at_the_repo_root_says_only_that_it_opens(tmp_path):
+    """A tooltip repeating the name is a tooltip saying nothing."""
+    (tmp_path / "README.md").write_text("one\ntwo\n", encoding="utf-8")
+    out = _extract_snippet().render("README.md:1-2", None, tmp_path, exact=True)
+    assert '>README.md:1-2</a>' in out
+    assert 'data-tip="Open in VS Code"' in out
+
+
 def test_origin_lines_join_the_statement_in_one_reference():
     h = {"file": "a/A.java", "line": 93, "end_line": 93,
          "origins": [{"line": 89, "name": "vetId", "kind": "param", "text": ""}]}
@@ -1915,8 +1937,27 @@ def test_applied_fixes_render_greyed_out_on_the_same_list():
 # that does not claim a source renders without one rather than being attributed to a
 # guess.
 def test_the_source_is_shown_when_the_content_file_names_one():
+    """A documented pass is stamped *and* linked: the stamp is the question a reader who
+    has never run it asks, so it is where the answer belongs."""
     out = build.render_findings([{"title": "a", "body": "x", "source": "/code-review"}])
-    assert '<span class="f-src">/code-review</span>' in out
+    assert 'class="f-src" href="' + build.PASS_DOCS["/code-review"] + '"' in out
+    assert ">/code-review</a>" in out
+
+
+def test_a_source_with_no_documentation_stays_a_plain_stamp():
+    """`assumption` is not a command anyone can go and read about, and a stamp linked to
+    something that does not describe it is worse than a stamp that stays quiet."""
+    out = build.render_findings([{"title": "a", "body": "x", "source": "assumption"}])
+    assert '<span class="f-src">assumption</span>' in out
+
+
+def test_a_bare_ref_shows_the_name_and_keeps_the_path_on_hover():
+    """The same trade the diff header makes. Three references on one line, each spelling
+    out `src/main/java/victor/training/petclinic/...`, is a wall nobody reads."""
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java"
+    out = build._ref_link({"label": f"{rel}:96-100", "abs": "/tmp/x:96:1"})
+    assert ">VetRestController.java:96-100</a>" in out
+    assert f'data-tip="{rel}"' in out
 
 
 def test_no_source_stamp_when_none_was_recorded():
@@ -2462,8 +2503,41 @@ def test_the_diff_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
 def test_a_file_at_the_repo_root_gets_no_tooltip_repeating_its_own_name(tmp_path):
     r = _repo_with_a_buried_file(tmp_path)
     head = build.diff_html("README.md", "HEAD^", r, head="HEAD").split("</div>")[0]
-    assert ">README.md<" in head
-    assert "data-tip" not in head
+    assert '<span class="path">README.md</span>' in head
+
+
+def test_a_diff_carries_both_ways_out_in_its_own_header(tmp_path):
+    """The reader who wants this diff somewhere they can scroll it wants it before reading
+    the excerpt, not after — a link under forty lines of diff is one they have to come
+    back up from. Both destinations named, in the header's corner, and nothing left in a
+    footer row underneath."""
+    import subprocess as sp
+    r = _repo_with_a_buried_file(tmp_path)
+    sp.run(["git", "-C", str(r), "remote", "add", "origin",
+            "https://github.com/victorrentea/petclinic.git"], check=True)
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
+    out = build.diff_html(rel, "HEAD^", r, head="HEAD")
+    corner = out.split('<div class="ghdiff-scroll">')[0]
+    assert "&#8646; VSC" in corner and "&#8646; GH" in corner
+    assert "ghdiff-corner" in corner
+    assert "srcref" not in out.split('</table></div>')[-1], \
+        "the links moved into the header; nothing links from a footer under the diff"
+
+
+def test_a_pinned_fix_the_file_has_moved_off_gets_no_editor_link(tmp_path):
+    """The editor can only compare a ref against the file on disk. Pinned to a commit the
+    file has since moved off, `base -> disk` is a different comparison than the one the
+    block is showing — so that link is dropped rather than pointed at it, and github.com,
+    which can show the pinned pair, is left to stand alone."""
+    import subprocess as sp
+    r = _repo_with_a_buried_file(tmp_path)
+    sp.run(["git", "-C", str(r), "remote", "add", "origin",
+            "https://github.com/victorrentea/petclinic.git"], check=True)
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
+    (r / rel).write_text("one\nTWO\nand something later\n")
+    out = build.diff_html(rel, "HEAD^", r, head="HEAD")
+    assert "&#8646; VSC" not in out
+    assert "&#8646; GH" in out
 
 
 def test_the_github_link_lands_on_the_line_the_change_is_on(tmp_path):
@@ -2477,7 +2551,8 @@ def test_the_github_link_lands_on_the_line_the_change_is_on(tmp_path):
     out = build.diff_html(rel, "HEAD^", r, head="HEAD")
     href = re.search(r'href="([^"]*compare[^"]*)"', out).group(1)
     assert re.search(r"#diff-[0-9a-f]{64}R2$", href), href
-    assert "This change, in the compare page" in out
+    # Short-faced in a diff header, the label no longer says github.com, so the tooltip does.
+    assert "On github.com — this change, in the compare page" in out
 
 
 def test_a_pure_deletion_lands_on_the_left_side(tmp_path):

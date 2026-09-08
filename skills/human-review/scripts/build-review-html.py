@@ -550,11 +550,17 @@ ol.findings > li.n-assumed { --num-bg:#5b3fa8; border-left:3px solid #5b3fa8; }
    recognises their own intent in one of the two readings without opening anything. */
 .f-alt { color:var(--muted); font-size:.9rem; margin:.35rem 0 0; }
 .f-alt b { color:var(--fg); font-weight:650; }
-/* Who raised it. Not a severity and not a link — a provenance stamp, so it is quiet and
-   monospaced, and it sits after the badge where the eye is already looking. */
+/* Who raised it: a provenance stamp, so it is quiet and monospaced, and it sits after the
+   badge where the eye is already looking. It is a link where the pass has documentation —
+   the page names two slash commands a reader may never have run, and the alternative was a
+   line of prose under the verdict explaining them, which every reader after the first has
+   to scroll past. The stamp is the thing being asked about, so it is the thing that
+   answers. Same face either way; only the hover and the cursor say it opens. */
 .f-src { font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted);
           border:1px solid var(--line); border-radius:4px; padding:.05rem .35rem; margin-left:.35rem;
           vertical-align:.05em; }
+a.f-src { text-decoration:none; }
+a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--link); }
 .f-title { font-weight:650; }
 .f-why { color:var(--muted); font-size:.9rem; margin:.35rem 0 0; }
 .sev-high { background:#fdeaea; color:#8a1c1c; }
@@ -589,7 +595,16 @@ ol.findings > li.n-assumed { --num-bg:#5b3fa8; border-left:3px solid #5b3fa8; }
                gap:.5rem; padding:.45rem .7rem; border-bottom:1px solid var(--line);
                background:var(--code-bg); font:600 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .ghdiff-head .path { color:var(--fg); overflow-wrap:anywhere; }
+/* Name on the left, and everything that is *about* the change on the right: the two ways
+   to open it, then how big it is. One group, so the middle item cannot drift into the
+   centre when the header wraps on a narrow screen. */
+.ghdiff-corner { display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap; }
 .ghdiff-head .stat { font-weight:700; white-space:nowrap; }
+.ghdiff-head a.srcref.inhead { margin:0; font-size:10px; font-weight:700; letter-spacing:.04em;
+          line-height:1.5; padding:.05rem .35rem; border:1px solid var(--line); border-radius:5px;
+          background:transparent; text-decoration:none; white-space:nowrap; }
+.ghdiff-head a.srcref.inhead:hover, .ghdiff-head a.srcref.inhead:focus-visible {
+          border-color:var(--link); }
 .ghdiff-scroll { overflow-x:auto; }
 table.ghdiff-body { border-collapse:collapse; width:100%;
                     font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -1736,8 +1751,13 @@ def github_blob_base(root: Path) -> str | None:
 
 
 def _github_compare_link(rel: str, base: str, root: Path, head: str | None = None,
-                         line: int | None = None, side: str = "R") -> str:
+                         line: int | None = None, side: str = "R",
+                         face: str | None = None) -> str:
     """The same comparison on github.com — the link a reviewer forwards to somebody else.
+
+    `face` shortens the label for somewhere there is no room for a sentence — a diff
+    header, beside the editor link that opens the same comparison. It moves what the label
+    stops saying into the tooltip rather than dropping it.
 
     Only emitted when the *after* side is something GitHub can be expected to have. A fix
     still sitting uncommitted in the working tree has no URL there at all, and inventing
@@ -1777,8 +1797,13 @@ def _github_compare_link(rel: str, base: str, root: Path, head: str | None = Non
     # where in a forty-file compare page it lands.
     tip = ("This change, in the compare page" if line else
            "Just this file, inside the compare page") if rel else "The whole compare page"
-    return (f'<a class="srcref" target="_blank" rel="noopener" href="{html.escape(url)}"'
-            f' data-tip="{tip}">&#8599; on GitHub</a>')
+    # A face of "GH" no longer says github.com, so the tooltip has to — the one thing it
+    # was free to leave out while the label spelled it.
+    if face:
+        tip = f"On github.com — {tip[0].lower()}{tip[1:]}"
+    return (f'<a class="srcref{" diffref inhead" if face else ""}" target="_blank"'
+            f' rel="noopener" href="{html.escape(url)}"'
+            f' data-tip="{tip}">{face or "&#8599; on GitHub"}</a>')
 
 
 def _first_changed(rows) -> tuple[int | None, str]:
@@ -1850,6 +1875,18 @@ def review_step_rev(out_dir: Path) -> str | None:
     return None
 
 
+def _unmoved_since(rel: str, rev: str, root: Path) -> bool:
+    """Is the working tree's copy of `rel` still byte-for-byte the one at `rev`?
+
+    The question a pinned diff has to answer before it may also offer an editor link: the
+    editor can only compare a ref against the file on disk, so `base -> rev` and
+    `base -> disk` are the same comparison exactly while the file has not moved since
+    `rev`. Asked of git rather than of the clock, because "the fix was the last commit" is
+    not the same claim as "nobody has touched it since"."""
+    proc = subprocess.run(["git", "-C", str(root), "diff", "--quiet", rev, "--", rel])
+    return proc.returncode == 0
+
+
 def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
               head: str | None = None) -> str:
     """One file's change, rendered as a GitHub-style two-gutter table.
@@ -1895,15 +1932,20 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
             f'<tr class="{kind}">'
             f'<td class="gln">{old_no or ""}</td><td class="gln">{new_no or ""}</td>'
             f'<td class="code">{html.escape(marker + code)}</td></tr>')
-    # `diff_link_html` styles itself as a card footer that pulls up under a snippet; here
-    # it sits in a note row of its own, so the offset margin has to go.
-    # The editor link diffs against the working tree, so it is only the same comparison
-    # when `head` is the working tree. Pinned to a commit, the GitHub link is the honest
-    # one and the editor link is dropped rather than pointed somewhere else.
-    link = ("" if head else
-            diff_link_html(rel, base, root).replace('class="srcref diffref"',
-                                                    'class="srcref diffref inhead"'))
-    gh = _github_compare_link(rel, base, root, head, *_first_changed(rows))
+    # Two ways out of this block, in the header's own corner rather than in a footer under
+    # it: the reader who wants the diff somewhere they can scroll it wants that *before*
+    # reading the excerpt, not after, and a link below a forty-line diff is a link they
+    # have to come back up from. Named rather than left to an arrow — the editor, and the
+    # pull request — and short, because the corner is shared with the file's stat.
+    # The editor link diffs against the working tree, so it is the same comparison when
+    # `head` is the working tree — and also when `head` is a commit the file has not moved
+    # off since, which is the ordinary state of a fix applied and left alone. Checked
+    # rather than assumed: a file edited after the commit it is pinned to would open in the
+    # editor showing that later edit too, which is a different diff wearing this one's
+    # label. Then, and only then, the GitHub link stands alone.
+    link = ("" if head and not _unmoved_since(rel, head, root)
+            else diff_link_html(rel, base, root, face="&#8646; VSC"))
+    gh = _github_compare_link(rel, base, root, head, *_first_changed(rows), face="&#8646; GH")
     # The name, and the path on hover. A repo-relative Java path spends five segments on
     # ceremony -- module, `src/main/java`, the org package -- before it reaches the one
     # word that says which file this is, and the header is where a reader looks to answer
@@ -1916,12 +1958,12 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     return (
         '<div class="ghdiff">'
         f'<div class="ghdiff-head">{head_path}'
+        f'<span class="ghdiff-corner">{link}{gh}'
         f'<span class="stat"><span class="added">+{adds}</span> '
         f'<span class="removed">&minus;{dels}</span> vs <code>{html.escape(base[:8])}</code>'
-        '</span></div>'
+        '</span></span></div>'
         f'<div class="ghdiff-scroll"><table class="ghdiff-body"><tbody>{"".join(body)}</tbody></table></div>'
         + (f'<p class="ghdiff-note">{caption}</p>' if caption else "")
-        + (f'<p class="ghdiff-note">{link}{gh}</p>' if (link or gh) else "")
         + '</div>'
     )
 
@@ -1953,9 +1995,13 @@ def diff_uri_handler() -> str | None:
     return None
 
 
-def diff_link_html(rel: str, base: str, root: Path) -> str:
+def diff_link_html(rel: str, base: str, root: Path, face: str | None = None) -> str:
     """A link that opens `<rel>` as a diff: the file at `base` on the left, the working
     tree on the right.
+
+    `face` shortens the label to a pill for a diff header, where the sentence it renders in
+    prose ("diff vs 5acf2472") would fight the file name beside it. The tooltip already
+    carried the whole comparison, so nothing is lost by the shorter face.
 
     **Emitted only when the before-side is real.** The ref has to resolve, the file has to
     exist in it, and the two sides have to actually differ. A diff whose left half is a
@@ -2000,10 +2046,11 @@ def diff_link_html(rel: str, base: str, root: Path) -> str:
         q = urllib.parse.urlencode({"file": str(src.resolve()), "base": base, "line": line})
         uri = f' data-diff-uri="{html.escape(f"vscode://{handler}/diff?{q}")}"'
     return (
-        f'<a class="srcref diffref" href="vscode://file/{src.resolve()}:{line}:1"{uri}'
+        f'<a class="srcref diffref{" inhead" if face else ""}"'
+        f' href="vscode://file/{src.resolve()}:{line}:1"{uri}'
         f' data-diff-path="{html.escape(rel)}" data-diff-base="{html.escape(base)}"'
-        f' data-tip="Open this fix as a diff — {short} on the left, the working tree on'
-        f' the right">&#8646; diff vs {html.escape(short)}</a>'
+        f' data-tip="Open this fix as a diff in VS Code — {short} on the left, the working'
+        f' tree on the right">{face or f"&#8646; diff vs {html.escape(short)}"}</a>'
     )
 
 
@@ -2709,6 +2756,16 @@ def _open_list(n: int) -> str:
             else '<ol class="findings">')
 
 
+#: Where a reader can go to find out what a pass actually does. Only the two commands this
+#: skill runs are in it, because those are the two it stamps — a source it does not
+#: recognise (`assumption`, a human name, a linter) renders as the plain stamp it always
+#: was rather than being sent somewhere that does not describe it.
+PASS_DOCS = {
+    "/code-review": "https://code.claude.com/docs/en/code-review#review-a-diff-locally",
+    "/simplify": "https://code.claude.com/docs/en/commands#all-commands",
+}
+
+
 def _finding_source(f, default: str = "") -> str:
     """Which pass raised it, when the content file says so.
 
@@ -2719,9 +2776,23 @@ def _finding_source(f, default: str = "") -> str:
 
     The `default` is for the one pile whose provenance is not a pass and never varies: an
     assumption came from the agent that wrote the code, so it is stamped `assumption` where
-    a finding is stamped `/code-review`, and the stamp is not left to be remembered."""
+    a finding is stamped `/code-review`, and the stamp is not left to be remembered.
+
+    A stamp naming a documented pass is the link to that documentation. The stamp already
+    is the question — *what is `/code-review`?* — and answering it in place costs the page
+    nothing, where answering it in prose costs a line under the verdict that every reader
+    who already knows has to read past."""
     src = (f.get("source") or default).strip()
-    return f'<span class="f-src">{html.escape(src)}</span>' if src else ""
+    if not src:
+        return ""
+    href = PASS_DOCS.get(src)
+    if not href:
+        return f'<span class="f-src">{html.escape(src)}</span>'
+    # The face is the command, which says nothing about where the link goes; the tooltip
+    # spends itself on that half, as every other tooltip on this page does.
+    return (f'<a class="f-src" href="{html.escape(href)}" target="_blank" rel="noopener"'
+            f' data-tip="What {html.escape(src)} does, in the Claude Code docs">'
+            f'{html.escape(src)}</a>')
 
 
 def _raised_by(items, total: int) -> str:
@@ -2756,10 +2827,23 @@ def _finding_refs(f) -> str:
     twice and worse."""
     if f.get("_snippets") or f.get("_diffs"):
         return ""
-    return "".join(
-        f'<a class="srcref" href="vscode://file/{r["abs"]}">{html.escape(r["label"])}</a> '
-        for r in f.get("_refs", [])
-    )
+    return "".join(_ref_link(r) for r in f.get("_refs", []))
+
+
+def _ref_link(r) -> str:
+    """`VetRestController.java:96-100`, with the path it came from on hover.
+
+    The same trade a diff header makes: a repo-relative Java path spends five segments on
+    module, `src/main/java` and the org package before it reaches the one word that says
+    which file this is, and a line of three such references is a wall no reader parses.
+    The path is not dropped, it is moved to the tooltip — and a file at the repo root has
+    no path to move, so it gets no tooltip repeating its own name."""
+    label = r["label"]
+    rel, _, lines = label.rpartition(":")
+    name = f"{Path(rel).name}:{lines}" if rel else label
+    tip = f' data-tip="{html.escape(rel)}"' if "/" in rel else ""
+    return (f'<a class="srcref" href="vscode://file/{r["abs"]}"{tip}>'
+            f'{html.escape(name)}</a> ')
 
 
 def opening_lede(spec) -> str:
@@ -5210,9 +5294,12 @@ def main(argv=None) -> int:
             f'<div class="score"><b>{n}<small style="font-size:.42em;opacity:.5">/10</small></b>'
             f'<span>{html.escape(v.get("label", ""))}</span>'
             f'<div class="scale">{pips}</div></div>'
-            + "<ul>"
-            + "".join(f"<li>{b}</li>" for b in v.get("bullets", []))
-            + "</ul></div>"
+            # The bullets are optional, and a verdict that has none is the ordinary case
+            # once the findings below say it better: an empty <ul> would still draw the
+            # list's own margins around nothing.
+            + ("<ul>" + "".join(f"<li>{b}</li>" for b in v["bullets"]) + "</ul>"
+               if v.get("bullets") else "")
+            + "</div>"
         )
 
     extra_css = "".join((out_dir / c).read_text(encoding="utf-8") for c in spec.get("extraCss", []))
@@ -5357,6 +5444,7 @@ def main(argv=None) -> int:
     tabs = spec.get("tabs")
     cost_panel_html = ""    # stays empty for the tabless single-column layout
     lede_html =f'<div class="lede">{spec.get("summary", "")}</div>' if spec.get("summary") else ""
+    summary_html = lede_html
     overview_html = ""
     if tabs:
         # The summary and the verdict used to sit above the strip, which pushed the
@@ -5375,6 +5463,7 @@ def main(argv=None) -> int:
         # every intro, carries no weight: the panel it opens is kept alive by its own
         # content, never by the page's lede leaning on it.
         overview_html = lede_html + verdict_html
+        summary_html = lede_html
         if overview_html:
             first, *rest = tabs
             tabs = [{**first, "intro": overview_html + first.get("intro", "")}, *rest]
@@ -5513,7 +5602,11 @@ def main(argv=None) -> int:
         # nothing to show must not turn up in the ledger claiming to have cost something.
         cost_panel_html = cost_breakdown_html(costs, emitted)
         body_html = body_html.replace(TAB_COUNT_TOKEN, spelled(len(tab_labels)))
-        check_tab_enumeration(overview_html, tab_labels)
+        # The summary alone, not the whole overview: the walk-through is prose, and the
+        # verdict beside it is a score and a label. Handed both, a page that dropped its
+        # summary still arrives here with a non-empty string and gets warned that its
+        # score dial forgot to name twelve tabs.
+        check_tab_enumeration(summary_html, tab_labels)
     else:
         # No tab layout in the content file: the original single-column guide, unchanged.
         body_html = (

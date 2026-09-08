@@ -361,8 +361,15 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> st
     shift = min(indents) if indents else 0
 
     start, end = spans[0][0], spans[-1][1]
-    label = ",".join(f"{s}-{e}" if e != s else f"{s}" for s, e in spans)
-    label = f"{rel}:{label}"
+    lineref = ",".join(f"{s}-{e}" if e != s else f"{s}" for s, e in spans)
+    # The name, and the path on hover. A snippet header answers one question — *which file
+    # is this?* — and a repo-relative Java path spends five segments on module,
+    # `src/main/java` and the org package before it gets there, on a line narrow enough
+    # that the answer wraps. The path is not lost, it moves to the tooltip, which is where
+    # this page puts everything a face has no room for. A file at the repo root has no
+    # path to move, and a tooltip repeating the name is a tooltip saying nothing.
+    label = f"{Path(rel).name}:{lineref}"
+    tip = f"{rel} — open in VS Code" if "/" in rel else "Open in VS Code"
     link = f"vscode://file/{path}:{start}:1"
     lang = LANG_BY_SUFFIX.get(path.suffix, "")
 
@@ -416,7 +423,8 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> st
     return (
         f'<figure class="snippet">\n'
         f"{cap}"
-        f'<a class="srcref" href="{html.escape(link)}" data-tip="Open in VS Code">{html.escape(label)}</a>\n'
+        f'<a class="srcref" href="{html.escape(link)}" data-tip="{html.escape(tip)}">'
+        f'{html.escape(label)}</a>\n'
         f'{diff_badge(status)}\n'
         f'<pre class="code lang-{lang}'
         f'{" diff-changed" if status and status["diff"] == "changed" else ""}">'
