@@ -126,20 +126,21 @@ def test_identical_snapshots_have_no_diff_markup():
     assert "<s>" not in body
 
 
-# ── The title says the picture is a delta, and what its colours mean ─────────
-# It sits directly above the picture, which is where the reader already is; the bare
-# "- Diff" it replaces was written in the one colour that now means *removed*.
+# ── The title says the picture is a delta ────────────────────────────────────
+# Only that. What the colours in it mean is the caption's job, in the footer band under
+# the picture; an unpainted suffix, because red is half the delta's vocabulary now and a
+# title written in it would read as a removal.
 
-def test_the_title_carries_the_legend():
+def test_title_is_marked_as_a_diff():
     out = m.diff(_parse(BEFORE), _parse(AFTER))
-    assert (f"title Domain Model - <color:{ADD}>added</color> / "
-            f"<color:{DEL}><s>removed</s></color>") in out
+    assert "title Domain Model - Diff" in out
+    assert f"<color:{DEL}>Diff" not in out
 
 
 def test_title_marking_is_idempotent():
     once = m.diff(_parse(BEFORE), _parse(AFTER))
     twice = m.diff(m.parse(once), m.parse(once))
-    assert twice.count(f"<color:{ADD}>added</color>") == 1
+    assert twice.count("- Diff") == 1
 
 
 if __name__ == "__main__":
@@ -244,6 +245,13 @@ def test_a_pruned_end_takes_its_relationship_with_it():
             assert "PetType" not in (left, right)
 
 
+def test_the_caption_spells_the_two_colours_out_in_words():
+    """A colour is only a legend once something says so in words, and the caption is
+    where a reader already looks to ask what they are being shown. The title says it too,
+    for a picture met on its own — linked to, or found later in the assets directory."""
+    assert f"caption <color:{ADD}>added</color> or <color:{DEL}><s>removed</s></color>" in _diff()
+
+
 def test_the_caption_says_what_is_being_shown():
     assert "the impacted elements only (6 of 9 shown)" in _focused("0")
     assert "impacted + 1 neighbour" in _focused("1")
@@ -274,8 +282,7 @@ class Owner [[src://a/Owner.java:12{open Owner}]] {
 }
 @enduml""")
     out = m.diff(plain, linked)
-    body = "\n".join(ln for ln in out.splitlines()
-                     if not ln.lstrip().lower().startswith("title"))
+    body = "\n".join(ln for ln in out.splitlines() if not ln.startswith("caption"))
     assert f"<color:{ADD}>" not in body and f"<color:{DEL}>" not in body
     assert m._impacted(plain, linked) == set()
     # …and the link still renders, rewrapped around the member it points at
@@ -290,9 +297,16 @@ class Owner [[src://a/Owner.java:12{open Owner}]] {
 import seq_puml_diff as sq
 
 
+def _no_caption(out):
+    """The delta minus its legend line. Every assertion below is about the conversation,
+    and the legend is a fixed line that carries the very markup they check the absence
+    of — `<s>removed</s>` in the delta's own red."""
+    return "\n".join(ln for ln in out.splitlines() if not ln.startswith("caption"))
+
+
 def _seq(old_arrow, new_arrow):
     frame = "@startuml\nparticipant Backend\nparticipant DB\n%s\n@enduml\n"
-    return sq.diff(frame % old_arrow, frame % new_arrow)
+    return _no_caption(sq.diff(frame % old_arrow, frame % new_arrow))
 
 
 ARROW = 'Backend -> DB: [[genseq://%s{Click for the statement} select visits]]'
@@ -332,7 +346,7 @@ def test_a_changed_label_is_still_a_removal_and_an_addition():
 
 def _sections(old_header, new_header):
     frame = "@startuml\nparticipant Backend\n%s\nBackend -> Backend: x\n@enduml\n"
-    return sq.diff(frame % old_header, frame % new_header)
+    return _no_caption(sq.diff(frame % old_header, frame % new_header))
 
 
 LINKED_HEADER = "== [[src://petclinic-test/src/add-visit.spec.ts:26{Click to open the test} Add a visit]] =="
@@ -377,10 +391,24 @@ def test_the_two_differs_paint_from_one_palette():
     assert (sq.ADDED, sq.REMOVED) == (ADD, DEL)
 
 
-def test_a_sequence_title_carries_the_same_legend():
+def test_a_sequence_delta_prints_the_same_legend_under_the_same_heading():
+    """The legend goes in the footer band on both diagrams, worded and coloured the same:
+    a sequence delta is the taller of the two and the one a reader scrolls, so the words
+    have to ride on the picture rather than only in the page framing it."""
     out = sq.diff("@startuml\ntitle Flow\nparticipant A\n@enduml\n",
                   "@startuml\ntitle Flow\nparticipant A\nA -> A: x\n@enduml\n")
-    assert f"title Flow - <color:{ADD}>added</color> / <color:{DEL}><s>removed</s></color>" in out
+    assert f"caption <color:{ADD}>added</color> or <color:{DEL}><s>removed</s></color>" in out
+    assert "title Flow - Diff" in out
+
+
+def test_a_caption_already_in_the_source_is_not_read_as_a_message():
+    """`caption` was not in the sequence differ's meta pattern, so a source carrying one
+    dropped into the body — where it reads as a line of the conversation and the delta
+    reports it as added or removed."""
+    out = sq.diff("@startuml\nparticipant A\ncaption from the generator\n@enduml\n",
+                  "@startuml\nparticipant A\ncaption from the generator\nA -> A: x\n@enduml\n")
+    assert "from the generator" not in out
+    assert out.count("caption ") == 1
 
 
 # ── Member links: wrapping, whichever form the input used ────────────────────

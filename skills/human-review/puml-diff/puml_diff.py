@@ -92,28 +92,32 @@ def _struck(text: str) -> str:
 TITLE_RE = re.compile(r"^(\s*title\s+)(\S.*)$", re.I)
 
 
-def _legend() -> str:
-    """The two words the picture is drawn in, in the colours it draws them."""
-    return f"{_added('added')} / {_struck('removed')}"
+DIFF_SUFFIX = "Diff"
+
+
+def legend() -> str:
+    """The two words the picture is drawn in, in the colours it draws them.
+
+    Shared with the sequence differ, which prints the same line under its own delta: one
+    legend, one wording, whichever diagram the reader happens to be looking at."""
+    return f"{_added('added')} or {_struck('removed')}"
 
 
 def _mark_title(line: str) -> str:
-    """Say in the title that the picture is a delta, and what its colours mean.
+    """Say in the title that the picture is a delta, not a snapshot.
 
     A diff of DomainModel is still headed "Domain Model", and a reader who arrives at
     it from a link — or finds it later in `.human-review/assets/` — has only the paint
-    to tell them they are not looking at the model as it stands. So the title carries
-    the legend itself: it sits directly above the picture, which is where the eye
-    already is, and a word in green beside a struck word in red says both things at
-    once — that this is a delta, and which way each mark points. It replaces a bare
-    "- Diff" written in red, which after the split says the wrong thing twice: red now
-    means *removed*, and the whole picture is not a removal.
+    to tell them they are not looking at the model as it stands. So the title says the
+    whole picture is a change; what the colours in it mean is the caption's job, under
+    the picture, and the suffix is deliberately left unpainted: red is one half of the
+    delta's vocabulary now, and a title in it would read as a removal.
 
     Idempotent, so re-diffing an already-diffed .puml does not stack suffixes."""
     m = TITLE_RE.match(line)
-    if not m or _legend() in line:
+    if not m or m.group(2).rstrip().endswith(f"- {DIFF_SUFFIX}"):
         return line
-    return f"{m.group(1)}{m.group(2).rstrip()} - {_legend()}"
+    return f"{m.group(1)}{m.group(2).rstrip()} - {DIFF_SUFFIX}"
 
 
 def _struck_header(header: str) -> str:
@@ -450,15 +454,17 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     names = set(old.elements) | set(new.elements)
     keep = names if focus == ALL else _within(old, new, int(focus))
 
-    # The legend used to live here and now lives in the title, above the picture rather
-    # than under it. What is left for the caption is the one thing the title cannot say:
-    # how much of the diagram is on screen at this focus level.
-    caption = "caption the whole diagram"
+    # Under the picture, not in the title above it: this is the footer band where a
+    # reader already looks to ask "what am I being shown?", and a legend belongs where
+    # it is read rather than where it is loudest. A colour is only a legend once
+    # something says so in words. The scope rides along, because it answers the same
+    # question at the same moment.
+    caption = f"caption {legend()}"
     if focus != ALL:
         hops = int(focus)
         scope = "the impacted elements only" if hops == 0 else (
             f"impacted + {hops} neighbour" + ("s" if hops > 1 else ""))
-        caption = f"caption {scope} ({len(keep)} of {len(names)} shown)"
+        caption += f" — {scope} ({len(keep)} of {len(names)} shown)"
 
     # The caption goes FIRST, not after the preamble. A source that opens a `<style>` block
     # ends its preamble on the `<style>` line itself — the block's body arrives later — so

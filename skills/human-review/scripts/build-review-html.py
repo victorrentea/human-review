@@ -4131,6 +4131,12 @@ def main(argv=None) -> int:
         inc = ""
         if s.get("includeHtml"):
             inc = (out_dir / s["includeHtml"]).read_text(encoding="utf-8")
+        # Usually the include is commentary on the prose, so it follows it. `includeFirst`
+        # is for the one shape where it is the other way round: the fragment *is* what the
+        # section is about — the Requirements tab opens on the ticket the branch answers —
+        # and the prose reads as the reply to it. Off by default: every other tab wants a
+        # sentence of its own before a generated fragment lands.
+        include_first = bool(s.get("includeFirst"))
         vid = ""
         if s.get("video"):
             vid = video_html(s, out_dir)
@@ -4145,6 +4151,7 @@ def main(argv=None) -> int:
             # An empty title means the section speaks for itself; emit no heading rather
             # than an empty one, which would still take the vertical space of a heading.
             (f'<h2{h2_id}>{html.escape(s["title"])}</h2>\n' if s.get("title") else "")
+            + (f"{inc}\n" if include_first and inc else "")
             # A section with no prose of its own — the video tab is one — must not open with
             # a blank line where the paragraph would have been.
             + (f"{body}\n" if body else "")
@@ -4152,7 +4159,7 @@ def main(argv=None) -> int:
             # carries: it *is* the section's answer, and a snippet or an include is
             # commentary on it.
             + render_requirements(s.get("requirements") or [], tests_idx, root)
-            + f'{inc}{vid}{snips}{embed_html(s, out_dir)}'
+            + f'{"" if include_first else inc}{vid}{snips}{embed_html(s, out_dir)}'
         )
         sections.append(rendered)
         by_id[s["id"]] = rendered

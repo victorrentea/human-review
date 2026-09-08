@@ -178,11 +178,12 @@ ordered script of messages, where the same arrow twice is two different events.
 
 Additions are drawn **<span style="color:#2e7d32">green</span>**, removals **<span
 style="color:#c62828">red and struck through</span>** — the page's own added/removed pair,
-so a diagram and a code hunk beside it never mean two things by one colour. The title
-carries the legend: `title Domain Model` renders as **Domain Model - <span
-style="color:#2e7d32">added</span> / <span style="color:#c62828"><s>removed</s></span>**,
-so a picture that escapes its page still says it is a change rather than a snapshot, and
-says which way each mark points.
+so a diagram and a code hunk beside it never mean two things by one colour. Both differs
+print the legend in words under the picture — **<span style="color:#2e7d32">added</span>
+or <span style="color:#c62828"><s>removed</s></span>** — and title the delta as one:
+`title Domain Model` renders as **Domain Model - Diff**, so a picture that escapes its
+page still says it is a change rather than a snapshot, and still says which colour means
+which.
 
 `--focus 0|1|2|3|all` answers the problem every large diagram has — a two-line change
 arrives as a wall you have to search the delta out of. It keeps what changed plus N relationships

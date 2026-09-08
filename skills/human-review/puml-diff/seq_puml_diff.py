@@ -41,10 +41,10 @@ import difflib
 import re
 import sys
 
-# One palette and one title legend for both deltas — see the docstring. `_mark_title` is
-# shared rather than re-implemented because a reader flipping between a sequence delta and
-# a structural one on the same page must not have to re-learn the heading.
-from puml_diff import ADDED, REMOVED, _mark_title
+# One palette, one heading and one legend for both deltas — see the docstring. Shared
+# rather than re-implemented because a reader flipping between a sequence delta and a
+# structural one on the same page must not have to re-learn either.
+from puml_diff import ADDED, REMOVED, legend, _mark_title
 
 # The tint behind a lifeline box. A participant's name is drawn in plain black, which the
 # page rewrites to its foreground colour, so the box it sits in has to stay a tint and
@@ -68,8 +68,11 @@ PARTICIPANT_RE = re.compile(
 )
 ACTIVATION_RE = re.compile(r"^(?:activate|deactivate|return|destroy)\b", re.I)
 # Lines that describe the diagram rather than the conversation.
+# `caption` is in here for one reason: this differ writes one of its own, and a source
+# that already carries a caption would otherwise land it in the *body*, where it reads as
+# a message and the delta reports it as one.
 META_RE = re.compile(
-    r"^(?:@startuml|@enduml|title\b|header\b|footer\b|hide\b|show\b|skinparam\b|"
+    r"^(?:@startuml|@enduml|title\b|caption\b|header\b|footer\b|hide\b|show\b|skinparam\b|"
     r"autonumber\b|scale\b|!.*)",
     re.I,
 )
@@ -243,9 +246,16 @@ def diff(old: str, new: str) -> str:
     old_meta, old_parts, old_body = _split(old)
     new_meta, new_parts, new_body = _split(new)
 
-    out = [_mark_title(line) for line in new_meta if line.strip().lower() != "@enduml"]
+    out = [_mark_title(line) for line in new_meta
+           if line.strip().lower() != "@enduml"
+           and not line.strip().lower().startswith("caption")]
     if not out or not out[0].strip().lower().startswith("@startuml"):
         out.insert(0, "@startuml")
+    # The same legend the structural delta prints, in the same place: under the picture,
+    # in the footer band. A sequence delta is the taller of the two and the one a reader
+    # scrolls through, so the words that say which colour means which have to be on the
+    # picture itself — not only in the page that happens to be framing it today.
+    out.insert(1, f"caption {legend()}")
 
     # ── participants: NEW's order, then the ones this change dropped ──────────
     new_by_alias = {
