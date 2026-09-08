@@ -126,12 +126,18 @@ def _city(ctx: Ctx):
     # (Maven: -Dmaven.test.failure.ignore=true), because a build that aborts on the first
     # failure never reaches its report goal and leaves LAST week's report on disk for the
     # city to be coloured with, which is the one outcome worse than having no colours.
+    # A list, because measuring two suites is several commands that must run in order:
+    # the unit run, the acceptance run against a separately started application, and the
+    # merge that turns their two .exec files into the reports the city reads. A single
+    # string still works for a project with only one of them.
     tests = ctx.step_cfg("city").get("tests")
-    if tests:
-        r = sh(tests, ctx, check=False)
+    if isinstance(tests, str):
+        tests = [tests]
+    for cmd in tests or []:
+        r = sh(cmd, ctx, check=False)
         if r.returncode != 0:
-            ctx.notes.append("the suite behind the city's coverage colours did not pass; "
-                             "say so next to the CRAP reading")
+            ctx.notes.append(f"a suite behind the city's coverage colours did not pass "
+                             f"({cmd}); say so next to the CRAP reading")
     # Two ways to get the page. `regenerate` is a project's own command, for a project
     # that has one; `out` hands the job to the script here, which is the arrangement to
     # prefer — it leaves the analysed repo holding only the DATA (a committed
@@ -148,8 +154,9 @@ def _city(ctx: Ctx):
         sh(regen, ctx, check=False)
     elif out:
         baseline = f' --baseline "{city["baseline"]}"' if city.get("baseline") else ""
+        acceptance = f' --acceptance "{city["acceptance"]}"' if city.get("acceptance") else ""
         sh(f'{HERE}/regenerate-codecity.sh --out "{out}" '
-           f'--title "{city.get("title", "Code City")}"{baseline}', ctx, check=False)
+           f'--title "{city.get("title", "Code City")}"{baseline}{acceptance}', ctx, check=False)
     r = sh(f"{HERE}/capture-codecity.sh {ART}/codecity.png highlight", ctx, capture=True)
     lit = (r.stdout or "").strip().splitlines()
     if lit:

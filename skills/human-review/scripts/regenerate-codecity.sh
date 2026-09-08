@@ -17,6 +17,9 @@
 #   --title TEXT          page heading; pinned by the caller, never derived from the
 #                         folder name, so a contributor whose checkout is called
 #                         something else still regenerates a byte-identical page
+#   --acceptance PATH     repo-relative jacoco.xml covering ONLY the acceptance suite,
+#                         which gives the page its "acceptance coverage %" colour beside
+#                         the merged one. Optional; without it that metric is absent
 #   --baseline PATH       repo-relative coverage baseline to COMPARE against: the page
 #                         reads it out of git at the diff's base ref and draws the
 #                         before/after of coverage and CRAP
@@ -28,12 +31,13 @@
 #   --no-pull             keep the vendored tool as it is (offline, or pinned)
 set -euo pipefail
 
-REPO="" ; OUT="" ; TITLE="Code City" ; BASELINE="" ; WRITE_BASELINE="" ; NO_PULL=""
+REPO="" ; OUT="" ; TITLE="Code City" ; BASELINE="" ; WRITE_BASELINE="" ; NO_PULL="" ; ACCEPTANCE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --repo)           REPO="$2"; shift 2 ;;
     --out)            OUT="$2"; shift 2 ;;
     --title)          TITLE="$2"; shift 2 ;;
+    --acceptance)     ACCEPTANCE="$2"; shift 2 ;;
     --baseline)       BASELINE="$2"; shift 2 ;;
     --write-baseline) WRITE_BASELINE=1; shift ;;
     --no-pull)        NO_PULL=1; shift ;;
@@ -64,6 +68,7 @@ mkdir -p "$ABS_OUT"
 # there is none rather than colouring every building "not measured".
 CODECITY_TITLE="$TITLE" \
 CODECITY_COVERAGE_BASELINE="$BASELINE" \
+CODECITY_JACOCO_ACCEPTANCE="$ACCEPTANCE" \
   "$TOOL_DIR/generate.sh" "$REPO" "$ABS_OUT"
 
 # The baseline is this run's coverage, kept so the NEXT branch off here can draw its
