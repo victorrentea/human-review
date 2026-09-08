@@ -71,11 +71,21 @@ CODECITY_COVERAGE_BASELINE="$BASELINE" \
 # the cleanup below and put in place after, because the natural place to commit it is
 # inside that same folder — where the cleanup would otherwise eat the file this script
 # had just written, which is exactly what it did the first time it ran.
+#
+# It is stashed whenever --baseline is given, not only when writing one: the file the
+# branch is comparing AGAINST also lives there, and the cleanup would delete it just as
+# happily. That is a far worse bug than the first, because it does not fail — it removes
+# main's committed baseline from the branch, and every later diff quietly loses its
+# before side with nothing to explain why.
 STASHED=""
+if [ -n "$BASELINE" ] && [ -f "$REPO/$BASELINE" ]; then
+  STASHED="$(mktemp)"
+  cp "$REPO/$BASELINE" "$STASHED"
+fi
 if [ -n "$WRITE_BASELINE" ]; then
   [ -n "$BASELINE" ] || { echo "--write-baseline needs --baseline" >&2; exit 2; }
   if [ -f "$ABS_OUT/crap-per-file.tsv" ]; then
-    STASHED="$(mktemp)"
+    STASHED="${STASHED:-$(mktemp)}"
     cp "$ABS_OUT/crap-per-file.tsv" "$STASHED"
   else
     # Loud: the page renders either way, and every PR off this branch then silently has
@@ -93,7 +103,12 @@ if [ -n "$STASHED" ]; then
   mkdir -p "$(dirname "$REPO/$BASELINE")"
   mv "$STASHED" "$REPO/$BASELINE"
   chmod 644 "$REPO/$BASELINE"        # mktemp is 0600; this file is committed and read by all
-  echo "coverage baseline -> $BASELINE"
+  # Only a REFRESH is worth announcing; putting back the one we were comparing against is
+  # housekeeping. (An `&& echo` here would be the last command under `set -e`, and would
+  # end the script with status 1 on every run that did not write one.)
+  if [ -n "$WRITE_BASELINE" ]; then
+    echo "coverage baseline -> $BASELINE"
+  fi
 fi
 
 echo
