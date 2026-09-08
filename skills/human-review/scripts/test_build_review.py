@@ -2243,3 +2243,39 @@ def test_an_assumptions_block_nobody_configured_a_mode_for_weighs_nothing(tmp_pa
                     {"id": "review", "label": "Review",
                      "blocks": [{"type": "assumptions"}]}]))
     assert ">Review<" not in page
+
+
+def test_the_list_lede_counts_all_three_piles(tmp_path):
+    """It described two piles and the page grew a third. Every number in it is counted."""
+    page, _ = _build(tmp_path, dict(
+        BARE,
+        findings=[{"title": f"f{i}", "body": "<p>b</p>"} for i in range(9)],
+        assumptions=[_assumption(title=f"a{i}") for i in range(2)],
+        autofixes=[{"title": "x"} for _ in range(3)],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"},
+                          {"type": "autofixes"}]}]))
+    assert "2 assumed, yours to confirm" in page
+    assert "9 open, worst first" in page
+    assert "3 already applied, greyed out" in page
+    assert "stamped with the pass that raised it" not in page, \
+        "an assumption is stamped `assumption`, which is not a pass"
+
+
+def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path):
+    """Pinned to `findings`, a lede describing three piles renders underneath one the
+    reader has already walked past."""
+    page, _ = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
+        assumptions=[_assumption()],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
+    assert page.count("1 assumed, yours to confirm") == 1, "said once, not once per pile"
+    assert page.index("1 assumed") < page.index("Look here first")
+
+
+def test_a_page_with_no_assumptions_keeps_the_sentence_it_had(tmp_path):
+    page, _ = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
+        tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
+    assert "1 open, worst first &middot; each stamped with the pass that raised it" in page

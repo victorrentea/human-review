@@ -2670,6 +2670,53 @@ def _finding_refs(f) -> str:
     )
 
 
+def opening_lede(spec) -> str:
+    """The shape of the whole list, for whichever pile opens it — and only for that one.
+
+    Computed, and deliberately a line. What stood here was three sentences of prose
+    restating the shape of the list directly beneath it ("They are one list: the nine that
+    need your judgement first, then the three I applied, greyed out and numbered straight
+    on"), which a reader can see. The reader is a developer who came for the findings; the
+    counts are the only part of that paragraph they could not have got by looking.
+
+    It is asked for by all three piles and answers only the first, because the piles are
+    one list and their order is the content file's to choose. Pinned to `findings`, a lede
+    describing three piles renders underneath one the reader has already walked past.
+    `_LIST_OFFSET` is still zero exactly until the first pile renders, so the question
+    "am I the top of the list?" is already answered and does not need a second flag.
+    """
+    if _LIST_OFFSET:
+        return ""
+    assumed = len(spec.get("assumptions", []))
+    parts = []
+    if assumed:
+        parts.append(f"{assumed} assumed, yours to confirm")
+    if spec.get("findings"):
+        parts.append(f"{len(spec['findings'])} open, worst first")
+    if spec.get("autofixes"):
+        parts.append(f"{len(spec['autofixes'])} already applied, greyed out")
+    if not parts:
+        return ""
+    # An assumption is stamped `assumption`, which is not a pass — so the more specific
+    # sentence is kept for the case where it is still true, rather than being widened to
+    # cover a pile it was not written about.
+    parts.append("each stamped with where it came from" if assumed
+                 else "each stamped with the pass that raised it")
+    return '<p class="sub">' + " &middot; ".join(parts) + "</p>"
+
+
+def _lede_into(head: str, lede: str) -> str:
+    """Between the heading and the block's own prose, not after it.
+
+    The counts are what the heading is asking about, and anything authored here is a
+    footnote to them. Appended after the body they read as an afterthought to a sentence
+    nobody needed."""
+    if not lede:
+        return head
+    at = head.find("<p>")
+    return head[:at] + lede + head[at:] if at != -1 else head + lede
+
+
 def render_findings(findings) -> str:
     if not findings:
         return '<p class="sub">Nothing outstanding \u2014 the automated passes came back clean.</p>'
@@ -5044,39 +5091,22 @@ def main(argv=None) -> int:
             return overview_html, 1, 1
         if kind == "findings":
             items = spec.get("findings", [])
-            fixed = len(spec.get("autofixes", []))
-            # Computed, and deliberately a line. What stood here was three sentences of
-            # prose restating the shape of the list directly beneath it ("They are one
-            # list: the nine that need your judgement first, then the three I applied,
-            # greyed out and numbered straight on"), which a reader can see. The reader is
-            # a developer who came for the findings; the counts are the only part of that
-            # paragraph they could not have got by looking.
-            lede = (f'<p class="sub">{len(items)} open, worst first'
-                    + (f' &middot; {fixed} already applied, greyed out' if fixed else "")
-                    + ' &middot; each stamped with the pass that raised it</p>')
-            # Between the heading and the block's own prose, not after it: the counts are
-            # what the heading is asking about, and anything authored here is a footnote
-            # to them. Appended after the body they read as an afterthought to a sentence
-            # nobody needed.
-            head = heading(block, "first", "Look here first")
-            body_at = head.find("<p>")
-            if body_at != -1:
-                head = head[:body_at] + lede + head[body_at:]
-            else:
-                head += lede
+            head = _lede_into(heading(block, "first", "Look here first"), opening_lede(spec))
             return (head + render_findings(items), len(items), len(items))
         if kind == "assumptions":
             items = spec.get("assumptions", [])
             mode = block.get("mode", "")
+            head = _lede_into(heading(block, "assumed", "Decided without asking you"),
+                              opening_lede(spec))
             # Weight 1 even with nothing in it: an empty pile still carries the sentence
             # saying *which* kind of empty it is, and that sentence is the point.
-            return (heading(block, "assumed", "Decided without asking you")
-                    + render_assumptions(items, mode),
+            return (head + render_assumptions(items, mode),
                     1 if (items or mode) else 0, len(items))
         if kind == "autofixes":
             items = spec.get("autofixes", [])
-            return (heading(block, "fixed", "Already fixed for you") + render_autofixes(items),
-                    len(items), len(items))
+            head = _lede_into(heading(block, "fixed", "Already fixed for you"),
+                              opening_lede(spec))
+            return (head + render_autofixes(items), len(items), len(items))
         if kind == "diagrams":
             rows = select_rows(manifest_rows, block)
             placed.update(r["name"] for r in rows)
