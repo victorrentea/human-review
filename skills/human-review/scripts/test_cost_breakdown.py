@@ -132,13 +132,17 @@ def test_the_residual_and_the_total_are_both_shown():
     assert "costtotal" in html
 
 
-def test_overview_is_left_out_because_no_step_ever_stamps_it():
+def test_no_tab_is_exempt_from_the_ledger_by_name_any_more():
+    """`overview` used to be skipped here: it was synthesised from the other tabs, so a
+    permanent "not measured" row for it was noise about a tab with no step by design. The
+    tab is gone — the summary and the verdict open the first tab now — and with it the
+    exemption, so an unmeasured tab is reported like any other whatever it is called."""
     html = build.cost_breakdown_html(
         _report({"overview": _row(measured=False), "review": _row(cost=1.0, tokens=1000)}),
         [_tab("overview", "Overview"), _tab("review", "Review")],
     )
-    assert "Overview" not in html
-    assert "not measured" not in html
+    assert "Overview" in html
+    assert "1 tab not measured" in html
 
 
 def test_no_report_means_no_panel():

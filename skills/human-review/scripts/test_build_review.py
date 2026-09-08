@@ -921,8 +921,30 @@ BARE = {
 
 def test_the_tab_count_token_is_filled_in_from_the_tabs_that_were_emitted(tmp_path):
     page, _ = _build(tmp_path, BARE)
-    assert "Three tabs" in page, "two declared tabs plus the synthesised Overview"
+    assert "Two tabs" in page, "the two declared tabs, and no synthesised Overview"
     assert "{{tabcount}}" not in page
+
+
+def test_the_summary_and_verdict_open_the_first_tab_instead_of_owning_one(tmp_path):
+    """A tab is a question the reader chooses. "What is this change, and is it mergeable"
+    is not chosen — it is what the page opens with, so it cost a pill in the strip, a
+    click to leave and a click to come back. It is the first panel's lede now, above that
+    tab's own intro, and it brings no tab of its own."""
+    page, _ = _build(tmp_path, dict(
+        BARE, verdict={"score": 5, "label": "not yet mergeable", "bullets": ["<b>why</b>"]},
+        tabs=[{"id": "one", "label": "One", "intro": "<p class=sub>about this tab</p>",
+               "blocks": [{"type": "section", "id": "one"}]},
+              {"id": "two", "label": "Two", "blocks": [{"type": "section", "id": "two"}]}]))
+    assert ">Overview<" not in page and 'id="overview"' not in page
+    panel = page[page.index('<section class="panel" id="one"'):]
+    panel = panel[:panel.index("</section>")]
+    assert panel.index('class="lede"') < panel.index("about this tab"), \
+        "the summary is about the change; an intro is about the tab"
+    assert panel.index("about this tab") < panel.index("<h2"), "then the tab's own blocks"
+    assert 'class="verdict' in panel and "why" in panel
+    # Outside every panel is where it used to sit, above the strip, pushing the questions
+    # below the fold — and that is the one place it must not come back to.
+    assert 'class="lede"' not in page[:page.index('<section class="panel"')]
 
 
 def test_no_element_sits_outside_every_panel(tmp_path):
@@ -1104,6 +1126,35 @@ def test_the_pr_number_says_on_hover_that_it_leaves_for_github(tmp_path):
     page, _ = _build(tmp_path, PR)
     head = page[page.index("<h1>"):page.index("</h1>")]
     assert 'data-tip="Open #37 on GitHub"' in head
+
+
+def test_the_score_opens_the_tab_that_holds_the_findings_behind_it(tmp_path):
+    """`5/10 not yet mergeable` states a conclusion and shows none of the reasoning, so
+    the click a reader tries on it has to land on the findings. The target is found by
+    which tab renders them, not by its id, so a page that arranges its tabs differently
+    still sends the score where its reasons are."""
+    page, _ = _build(tmp_path, dict(
+        BARE, verdict={"score": 5, "label": "not yet mergeable", "bullets": ["why"]},
+        findings=[{"title": "f", "body": "<p>b</p>"}],
+        tabs=[{"id": "one", "label": "One", "blocks": [{"type": "section", "id": "one"}]},
+              {"id": "verdicts", "label": "🤖 Review",
+               "blocks": [{"type": "findings"}]}]))
+    row = page[page.index('<div class="titlerow'):page.index("</div>")]
+    assert '<a class="titlescore v-mid" href="#verdicts"' in row
+    assert 'data-tip="Open the Review tab"' in row, "the hover says where the click goes"
+    assert "🤖" not in row.split("data-tip=")[1][:40], "and says it without the emoji"
+
+
+def test_a_score_on_a_page_with_no_findings_tab_stays_a_plain_pill(tmp_path):
+    """The fallback is the first tab — the panel the page already opens on — and with no
+    tabs at all the score links nowhere rather than to a dead anchor."""
+    page, _ = _build(tmp_path, dict(
+        {k: v for k, v in BARE.items() if k != "tabs"},
+        summary="<p>no tabs here</p>",
+        verdict={"score": 9, "label": "ship it", "bullets": ["why"]}))
+    assert '<span class="titlescore v-good">' in page
+    assert "titlescore" in page and 'href="#' not in page[page.index("titlescore"):
+                                                          page.index("</h1>") + 200]
 
 
 def test_without_a_pr_block_the_title_is_the_one_the_content_file_wrote(tmp_path):

@@ -32,13 +32,13 @@ rs = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rs)
 
 GUIDE = "guide"
-# Tabs no step produces. Only one is left: `overview`, which is synthesised from the others
-# and never will have a step of its own. It honestly reports "not measured", so it is
-# exempt — but only by being named here, so that a tab arriving without a step forces a
-# deliberate edit rather than quietly satisfying a test that had stopped looking. The
-# `requirements` tab used to sit in this set for the other reason ("a step will come"); the
-# step came (`tests`, the manifest behind the Tests tab), and this is where that was noticed.
-UNFED_BY_DESIGN = {"overview"}
+# Tabs no step produces. Empty, and that is the point: it is the exemption list, so a tab
+# arriving without a step has to be named here deliberately rather than quietly satisfying
+# a test that had stopped looking. Two entries have left it. `requirements` left when its
+# step arrived (`tests`, the manifest behind the Tests tab). `overview` left when the tab
+# did: the summary and the verdict open the first tab now instead of owning one, so there
+# is no longer a pill in the strip with no step behind it.
+UNFED_BY_DESIGN: set[str] = set()
 
 
 def _schema_tab_ids() -> set[str]:

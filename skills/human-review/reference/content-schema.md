@@ -29,7 +29,7 @@ not resolve, a file that did not exist in it, or an empty diff. **No diff beats 
 | `{{snippet:path:12-30\|caption}}` | the lines, verbatim, as a captioned card |
 | `{{diff:path@<sha>\|caption}}` | the file's change since `<sha>`, GitHub-style: two line-number gutters, green and red bands, three lines of context, a link under it that opens the same comparison in the editor — and on github.com when the change is committed and `origin` is a GitHub repo |
 | `{{difflink:path@<sha>}}` | only the link, for when the diff itself is not the point |
-| `{{tabcount}}` | the number of tabs actually emitted (Overview lede) |
+| `{{tabcount}}` | the number of tabs actually emitted (for the summary's walk-through) |
 
 `{{diff:…}}` and the `diffs` array are the same renderer; the array is the way to write it
 on a finding, the token the way to write it mid-paragraph.
@@ -239,8 +239,12 @@ it and strikes the label through.
 
 ## Rules the renderer enforces (so you do not have to)
 
-- An **Overview** tab is synthesised first and the page opens on it; declare `id: "overview"`
-  yourself to take it over.
+- `summary` and `verdict` **open the first tab**, above that tab's own `intro`. They are
+  not a tab of their own: a tab is a question the reader chooses, and *what is this change,
+  and is it mergeable* is not chosen — it is what the page opens with. So do not declare an
+  Overview tab, and do not repeat the summary in the first tab's `intro`.
+- The score beside the title **links to the tab that renders `findings`** — the reasons
+  behind `5/10 not yet mergeable` — so keep the findings in one tab.
 - A tab whose every block came back empty is **dropped** and named in the build log.
 - A tab with content but **no delta** is kept and its label **struck through**, with a
   tooltip saying so. `noStrike: true` opts out. `puml`/`codecity` blocks never carry a delta;
@@ -248,8 +252,8 @@ it and strikes the label through.
 - A changed diagram no tab claimed prints a **warning**.
 - `count: true` puts the item count on the tab, `badge: "…"` a literal, `badgeClass: "alarm"`
   makes it a red `!` (the phrase moves to `aria-label` and `data-tip`); `badgeLabel` sets it.
-- The Overview lede is checked against the strip: `{{tabcount}}` is filled in, and the build
-  warns when the lede fails to name a tab or names them out of order.
+- The summary's walk-through is checked against the strip: `{{tabcount}}` is filled in, and
+  the build warns when it fails to name a tab or names them out of order.
 - Deep links work both ways (`#<tab-id>`, or any `id` inside a panel). The scroll offset is
   derived from the strip's own height, never typed — the strip wraps to two rows at every
   width, which is its normal state.
@@ -267,6 +271,11 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
    "blocks":[{"type":"findings","title":"Look here first","body":"…"},
              {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
   {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
+  {"id":"api","label":"API","badge":"+4","blocks":[{"type":"section","id":"swaggerdiff"}]},
+  {"id":"data","label":"Data",
+   "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
+  {"id":"requirements","label":"Tests",
+   "blocks":[{"type":"section","id":"requirements"},{"type":"tests"}]},
   {"id":"sequence","label":"Sequence",
    "blocks":[{"type":"section","id":"sequences-note"},
              {"type":"testpairs","id":"sequences","kind":"sequence",
@@ -274,24 +283,19 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
               "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
               "unpaired":{"id":"tests-nosequence",
                           "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
-  {"id":"requirements","label":"Tests",
-   "blocks":[{"type":"section","id":"requirements"},{"type":"tests"}]},
-  {"id":"data","label":"Data",
-   "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
   {"id":"packages","label":"Structure",
    "blocks":[{"type":"section","id":"packages-note"},
              {"type":"diagrams","only":["Packages"],
               "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}}]},
-  {"id":"api","label":"API","badge":"+4","blocks":[{"type":"section","id":"swaggerdiff"}]},
   {"id":"city","label":"Code City","blocks":[{"type":"codecity"}]},
+  {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",
+   "blocks":[{"type":"section","id":"ds-audit"}]},
   {"id":"complexity","label":"Complexity","blocks":[{"type":"section","id":"complexity-delta"}]},
   {"id":"logging","label":"Logging","tip":"Every logging statement the change set added — found by syntax, not by grep.",
    "blocks":[{"type":"logging","base":"origin/main","paths":["petclinic-backend"],
               "id":"logging-added",
               "existing":{"id":"logging-existing","title":"…","body":"…","snippets":[]},
               "console":{"id":"logging-console","title":"…","body":"…","snippets":[]}}]},
-  {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",
-   "blocks":[{"type":"section","id":"ds-audit"}]},
   {"id":"owners","label":"CODEOWNERS","blocks":[{"type":"codeowners"}]}
 ]
 ```
@@ -324,9 +328,13 @@ table, and `test_tab_ledger_wiring.py` fails until the two agree.
 A step naming two tabs has its cost **split evenly**, so never widen a step to a tab that did
 none of the work.
 
-Default order, worth departing from only with a reason — **Overview, 🤖 Review, Demo,
-Sequence, Tests, Data, Structure, API, Code City, Complexity, Logging, UX,
-CODEOWNERS**. Four tabs need something said about how they are written:
+Default order, worth departing from only with a reason — **🤖 Review, Demo, API, Data,
+Tests, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
+order a review actually goes: what the passes raised, then the feature as a user meets it
+(the film, then the contract and the shape behind it), then what pins it — the tests, then
+the traces those runs recorded — then the code's own shape, where *Structure* and *Code
+City* are one question asked twice and stay adjacent, and CODEOWNERS last, because it is
+the one thing no amount of reading changes. Four tabs need something said about how they are written:
 
 - **🤖 Review** — **one list** of three piles, numbered straight through: what only the
   reader can answer (`assumptions`), then the open calls, most critical first, then the

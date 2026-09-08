@@ -659,6 +659,13 @@ h1 .prref:hover { text-decoration:underline; }
 .titlescore b { font-size:1.5rem; line-height:1; letter-spacing:-.02em; }
 .titlescore small { font-size:.8rem; opacity:.6; }
 .titlescore i { font-style:normal; font-size:.82rem; opacity:.85; margin-left:.25rem; }
+/* The score is a link now — to the tab holding the findings that produced it, which is
+   the next thing anyone reading `5/10 not yet mergeable` wants. It keeps every colour it
+   had: an underline or a link colour on a pill that is already coloured by its verdict
+   would read as a second state, not as an affordance. The cursor and a hover lift say it
+   is clickable, and the tooltip says where it goes. */
+a.titlescore { text-decoration:none; cursor:pointer; }
+a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor inset; }
 .titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }
 .titlescore.v-mid  { background:rgba(217,130,24,.18); color:#9a5b06; }
 .titlescore.v-bad  { background:rgba(215,38,61,.16); color:#d7263d; }
@@ -3323,12 +3330,12 @@ def codeowners_fragment(block, root: Path, out_dir: Path):
     return dest.read_text(encoding="utf-8"), json.loads(proc.stdout)
 
 
-# The Overview lede walks the reader through the strip — "Eleven tabs, one question each,
-# start on Autoreview, then …". Written by hand it is a second copy of the strip, and the
-# second copy is the one that rots: a tab added at the end of `tabs` leaves the sentence
-# saying "Ten" and skipping the newcomer, and nothing anywhere complains. So the number is
-# a token the build fills in from the tabs it actually emitted, and the names are checked
-# against the same list.
+# The summary walks the reader through the strip — "Eleven tabs, one question each, start
+# on Review, then …". Written by hand it is a second copy of the strip, and the second copy
+# is the one that rots: a tab added at the end of `tabs` leaves the sentence saying "Ten"
+# and skipping the newcomer, and nothing anywhere complains. So the number is a token the
+# build fills in from the tabs it actually emitted, and the names are checked against the
+# same list.
 TAB_COUNT_TOKEN = "{{tabcount}}"
 NUMBER_WORDS = ("Zero One Two Three Four Five Six Seven Eight Nine Ten Eleven Twelve "
                 "Thirteen Fourteen Fifteen Sixteen Seventeen Eighteen Nineteen Twenty").split()
@@ -3354,14 +3361,14 @@ def check_tab_enumeration(lede: str, labels: list[str]) -> None:
         at = lede.find(html.escape(words or label))
         (seen if at >= 0 else missing).append((at, label))
     if missing:
-        print("[review] WARNING: the Overview lede never names these tabs: "
+        print("[review] WARNING: the summary never names these tabs: "
               + ", ".join(l for _, l in missing)
-              + f" — the strip has {len(labels) + 1} of them and the lede walks "
+              + f" — the strip has {len(labels)} of them and the summary walks "
                 f"through {len(seen)}.",
               file=sys.stderr)
     out_of_order = [l for (a, l), (b, _) in zip(seen[1:], seen) if a < b]
     if out_of_order:
-        print("[review] WARNING: the Overview lede names tabs in a different order than the "
+        print("[review] WARNING: the summary names tabs in a different order than the "
               "strip does, from: " + ", ".join(out_of_order), file=sys.stderr)
 
 
@@ -4468,11 +4475,6 @@ def cost_breakdown_html(costs: dict | None, tabs: list[dict]) -> str:
     rows = costs.get("tabs") or {}
     entries = []
     for tab in tabs:
-        # Overview is synthesised from the other tabs and is deliberately never stamped
-        # (see test_skill_tab_ledger_wiring); a permanent "not measured" row for it would
-        # be noise about a tab that has no step of its own by design.
-        if tab.get("id") == "overview":
-            continue
         row = rows.get(tab.get("id"))
         if row:
             entries.append((tab.get("label") or tab.get("id"), row))
@@ -4760,6 +4762,26 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
     return "".join(out)
 
 
+def _score_target(spec) -> tuple[str, str]:
+    """`("review", "Review")` — the tab the verdict's reasons live in, for the score to
+    link to, and the name to say in the hover.
+
+    Found by what a tab renders, not by its id: `findings` is the block that holds the
+    calls behind a score, wherever the content file puts it. The first tab is the fallback
+    — it is the panel the page opens on, so a score linking there at worst goes where the
+    reader already was. The emoji a label may lead with is dropped from the hover: `Open
+    the 🤖 Review tab` reads as a glyph the sentence has to step over, and the pill in the
+    strip is recognisable by its word.
+    """
+    tabs = spec.get("tabs") or []
+    for tab in tabs:
+        if any(b.get("type") == "findings" for b in tab.get("blocks") or []):
+            return tab.get("id", ""), (tab.get("label") or tab.get("id", "")).lstrip("🤖 ")
+    if tabs:
+        return tabs[0].get("id", ""), (tabs[0].get("label") or "").lstrip("🤖 ")
+    return "", ""
+
+
 def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str,
                   base_st: dict | None = None) -> str:
     """Title, refs, note, scope chips and the tab strip — as one block that stays put.
@@ -4777,7 +4799,7 @@ def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str,
         # One line, and only the two things a reader navigates by: which change this is,
         # and how it scored. The refs moved down to the scope bar (`ref_badges`), and the
         # sentence describing the change is gone from here entirely — it is the first
-        # thing the Overview says, and a block that never scrolls cannot spend its width
+        # thing the summary says, and a block that never scrolls cannot spend its width
         # on a sentence that is read once. `subtitle` is still in the content file and
         # still renders on a page with no `pr` block.
         rows = [f'<div class="titlerow oneline">{heading}{title_score}</div>']
@@ -4864,7 +4886,7 @@ def main(argv=None) -> int:
     # where `#api` should land anyway. It is still invalid HTML and still a trap for the
     # next person. The panel's id is not negotiable (the strip's aria-controls points at
     # it), so the duplicate is resolved on the heading, which loses nothing.
-    tab_ids = {t.get("id") for t in (spec.get("tabs") or [])} | {"overview"}
+    tab_ids = {t.get("id") for t in (spec.get("tabs") or [])}
 
     # What the change set did to each test, computed by `test-changes.py` from the diff
     # itself. Loaded once: the content file only says which requirement a test belongs to.
@@ -5130,9 +5152,19 @@ def main(argv=None) -> int:
         n = int(v["score"])
         # The score belongs beside the title: it is the one thing a reader wants before
         # they have decided whether to read anything. The band below keeps the reasons.
-        title_score = (f'<span class="titlescore {"v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")}">'
-                       f'<b>{n}</b><small>/10</small>'
-                       f'<i>{html.escape(v.get("label", ""))}</i></span>')
+        band = "v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")
+        face = (f'<b>{n}</b><small>/10</small>'
+                f'<i>{html.escape(v.get("label", ""))}</i>')
+        # `5/10 not yet mergeable` states a conclusion and shows none of the reasoning, so
+        # the click every reader tries on it is the one that goes to the findings. It is
+        # not a decoration with a link bolted on: the tab it opens is found by *content* —
+        # whichever tab renders the findings — so a page that arranges its tabs
+        # differently still sends the score where its reasons actually are.
+        target, target_label = _score_target(spec)
+        title_score = (
+            f'<a class="titlescore {band}" href="#{html.escape(target, quote=True)}" '
+            f'data-tip="Open the {html.escape(target_label, quote=True)} tab">{face}</a>'
+            if target else f'<span class="titlescore {band}">{face}</span>')
         cls = "v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")
         pips = "".join(f'<i class="{"on" if i < n else ""}"></i>' for i in range(10))
         verdict_html = (
@@ -5194,8 +5226,6 @@ def main(argv=None) -> int:
         through on the strip. A picture of the current state is not a change; that is
         why `puml` and `codecity` carry weight but no changes."""
         kind = block.get("type", "section")
-        if kind == "overview":
-            return overview_html, 1, 1
         if kind == "findings":
             items = spec.get("findings", [])
             head = _lede_into(heading(block, "first", "Look here first"), opening_lede(spec))
@@ -5290,15 +5320,26 @@ def main(argv=None) -> int:
     cost_panel_html = ""    # stays empty for the tabless single-column layout
     lede_html =f'<div class="lede">{spec.get("summary", "")}</div>' if spec.get("summary") else ""
     overview_html = ""
-    if tabs and not any(tab.get("id") == "overview" for tab in tabs):
+    if tabs:
         # The summary and the verdict used to sit above the strip, which pushed the
         # questions below the fold on a laptop — a reviewer scrolled past the answers to
-        # find out what the answers were. They are a tab now: the first one, so the page
-        # opens on them, and the strip lands in the first screenful.
+        # find out what the answers were. So they became a tab, and that was one move too
+        # far: a tab is a question a reader chooses, and *"what is this change, and is it
+        # mergeable"* is not chosen — it is what the page opens with. It bought a pill in
+        # the strip, a click to leave, and a second click to come back for a summary
+        # nobody returns to twice.
+        #
+        # They open the first tab instead, as its lede. The strip still lands in the first
+        # screenful, the reader still reads the summary before anything else — and the tab
+        # they are standing in when they finish it is the one they were going to open
+        # next. It rides on `intro` rather than as a block, so it sits above the tab's own
+        # preamble (the summary is about the change; an intro is about the tab) and, like
+        # every intro, carries no weight: the panel it opens is kept alive by its own
+        # content, never by the page's lede leaning on it.
         overview_html = lede_html + verdict_html
         if overview_html:
-            tabs = [{"id": "overview", "label": "Overview", "keepEmpty": True,
-                     "noStrike": True, "blocks": [{"type": "overview"}]}] + list(tabs)
+            first, *rest = tabs
+            tabs = [{**first, "intro": overview_html + first.get("intro", "")}, *rest]
             lede_html = verdict_html = ""
     # The ledger is derived data, like the requirement lists it sits under: nobody writes
     # it, and a content file that predates the block would otherwise leave the manifest
@@ -5434,7 +5475,7 @@ def main(argv=None) -> int:
         # nothing to show must not turn up in the ledger claiming to have cost something.
         cost_panel_html = cost_breakdown_html(costs, emitted)
         body_html = body_html.replace(TAB_COUNT_TOKEN, spelled(len(tab_labels)))
-        check_tab_enumeration(overview_html, [l for l in tab_labels if l != "Overview"])
+        check_tab_enumeration(overview_html, tab_labels)
     else:
         # No tab layout in the content file: the original single-column guide, unchanged.
         body_html = (
