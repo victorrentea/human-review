@@ -150,6 +150,15 @@ moved, grouped by what happened to it) · **`logging`** (Step 7c) · **`puml`** 
 branch did not change, rendered from source as context) · **`codeowners`** (Step 8, run by
 the renderer) · **`codecity`** · **`section`** (one entry of `sections` by `id`) · **`html`**.
 
+**`logging`**'s own lede is written by the renderer, not by you: `title` and `body` on
+that block are ignored. The tab is called *Logging* and the panel opens with it, so a
+heading repeating the word is the tab's label said twice; and the methodology paragraph
+that used to sit under it (grep vs. `ast-grep`, `Math.log(x)`, walking the tree) described
+what every block below already shows. What is left is one line naming what was searched
+for, with the package list itself on hover — read out of `logextract.py`'s own rule, so it
+cannot go stale. The nested `existing` and `console` asides still take a `title` and
+`body`.
+
 **`tests`** takes no configuration — it renders `testChanges` — and you do not have to
 declare it: a page that has a manifest and no `tests` block gets one appended to the
 `requirements` tab. Declare it only to put it somewhere else in that panel.
@@ -278,7 +287,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
   {"id":"complexity","label":"Complexity","blocks":[{"type":"section","id":"complexity-delta"}]},
   {"id":"logging","label":"Logging","tip":"Every logging statement the change set added — found by syntax, not by grep.",
    "blocks":[{"type":"logging","base":"origin/main","paths":["petclinic-backend"],
-              "id":"logging-added","title":"Logging this change set added","body":"<div class=\"lede\">…</div>",
+              "id":"logging-added",
               "existing":{"id":"logging-existing","title":"…","body":"…","snippets":[]},
               "console":{"id":"logging-console","title":"…","body":"…","snippets":[]}}]},
   {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",

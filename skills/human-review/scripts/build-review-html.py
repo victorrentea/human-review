@@ -275,6 +275,12 @@ ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
 .lede { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--accent);
         border-radius:6px; padding:.9rem 1.1rem; }
+/* A phrase that is short because the long version is one hover away. It has to *look*
+   hoverable or the short version is simply less information: dotted underline, the help
+   cursor, and the page's own link colour on hover — the same vocabulary `.srcref` uses,
+   without pretending to be a link, because nothing navigates. */
+.dfn { border-bottom:1px dotted currentColor; cursor:help; }
+.dfn:hover { color:var(--link); }
 figure { margin:1rem 0; }
 figcaption { color:var(--muted); font-size:.86rem; }
 .snippet { background:var(--card); border:1px solid var(--line); border-radius:8px;
@@ -780,10 +786,17 @@ button.tab .n.dot-red   { background:#d7263d; }
 button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--accent); }
 /* This used to be the last pill on the tab strip, where it sat in the corner of every
    screenful for the whole read and was pressed roughly never — a permanent control for an
-   occasional act. It lives at the foot of the page now, on the line after the footer's
-   sentence, which is where you arrive having finished reading and is the moment the thing
-   it offers ("show me all of it at once, so ⌘F works") is actually worth wanting. */
-footer .allbar { margin-top:.7rem; }
+   occasional act. It lives at the foot of the page now, which is where you arrive having
+   finished reading and is the moment the thing it offers ("show me all of it at once, so
+   ⌘F works") is actually worth wanting.
+   On the footer's own line, not under it: a button alone on the last line of the page
+   reads as the page's conclusion, which it is not — it is a control, and the far end of
+   the line the footer already occupies is where a page puts one. `margin-left:auto` does
+   the aligning, so the sentence keeps its natural width and the button keeps the right
+   edge at every width; `flex-wrap` drops it under the sentence on a narrow screen rather
+   than squeezing either. */
+footer .footrow { display:flex; align-items:baseline; gap:.6rem 1.2rem; flex-wrap:wrap; }
+footer .allbar { margin-left:auto; }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
                 border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
 button.allbtn:hover { color:var(--fg); border-color:var(--link); }
@@ -2666,6 +2679,30 @@ def _finding_source(f, default: str = "") -> str:
     return f'<span class="f-src">{html.escape(src)}</span>' if src else ""
 
 
+def _raised_by(items, total: int) -> str:
+    """`12 raised — 9 by /code-review, 3 by /simplify`: the review chip's hover.
+
+    Counted off each item's own `source`, the same string the stamp beside it renders, so
+    a reader who hovers the chip and then counts the stamps gets the same answer twice.
+    Passes appear in the order the content file first mentions them.
+
+    `source` is optional (see `_finding_source`), and an item without one is counted as
+    itself rather than folded into whichever pass happens to be first — an unattributed
+    finding is a real state, and a hover that hides it is a hover that lies by rounding.
+    With nothing attributed at all the breakdown is dropped entirely: `12 raised, 12 of
+    them unattributed` is the total said twice."""
+    counts: dict[str, int] = {}
+    for it in items:
+        src = (it.get("source") or "").strip()
+        counts[src] = counts.get(src, 0) + 1
+    named = [f"{n} by {src}" for src, n in counts.items() if src]
+    if not named:
+        return f"{total} raised"
+    if counts.get(""):
+        named.append(f'{counts[""]} with no pass named')
+    return f"{total} raised — " + ", ".join(named)
+
+
 def _finding_refs(f) -> str:
     """The bare `file:line` links — only when nothing else already carries them.
 
@@ -3745,6 +3782,34 @@ def _logextract():
     return mod
 
 
+# The alternation inside `log-import`'s constraint: `(org\.slf4j|org\.apache…|ch\.qos\.logback)`.
+# Two or more dotted, lower-case package roots between one pair of parentheses is the only
+# group in that rule shaped like this — the `(static\s+)?` before it is neither dotted nor
+# an alternation — so the rule can be rewritten freely without this having to be told.
+_LOG_PKGS_RE = re.compile(r"\(([a-z][\w\\.]*(?:\|[a-z][\w\\.]*)+)\)")
+
+
+@functools.lru_cache(maxsize=1)
+def logging_libraries() -> str:
+    """The packages the scan actually searches for, as one line for a hover.
+
+    Read out of `logextract.py`'s own `log-import` rule rather than typed here. A list of
+    library names on a page is a claim about what a scan looked for, and the only version
+    of that claim worth showing is the one that cannot go stale: add a logging API to the
+    rule and this sentence gains it on the next build; nobody has to remember the page.
+
+    The escaping is undone (`org\\.slf4j` is a regex, not a package) and the order is the
+    rule's own. Falls back to naming the rule when the regex cannot be found at all —
+    saying where to look beats inventing a list."""
+    rule = _logextract().RULES.get("log-import", "")
+    for alt in _LOG_PKGS_RE.findall(rule):
+        pkgs = [p.replace("\\", "") for p in alt.split("|")]
+        if any("." in p for p in pkgs):
+            return "Imports of " + ", ".join(pkgs) + " — plus loggers declared by type, " \
+                   "built by a logger factory, or injected by a Lombok annotation."
+    return "The packages named by logextract.py's log-import rule."
+
+
 def _value_bullets_html(rows: list) -> str:
     """The bullets under the verdict: one per logged value, `name — what it is`.
 
@@ -3792,8 +3857,14 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
     fields_by_file = fields_by_file or {}
     cache = _load_verdict_cache(cache_root)
     boxes = []
-    total_cost, live_calls, cached_hits = 0.0, 0, 0
     ANCHOR_RE = re.compile(r'<a class="srcref" href="([^"]+)"[^>]*>[^<]*</a>\n')
+    # `new code` / `2 lines changed` — dropped on this tab only. Everywhere else the badge
+    # answers "is this quoted block new, or an old one with a line in it?", which is a real
+    # question about a snippet a reviewer did not choose. Here it is not: the gutter beside
+    # the statement already marks the added lines with `+`, and every block on this tab is
+    # here *because* the branch added or rewrote that logging line. A badge repeating the
+    # tab's own entry condition on every box is a word the eye has to skip.
+    BADGE_RE = re.compile(r'<span class="code-badge"[^>]*>[^<]*</span>\n')
     for h in added:
         ref = _logging_ref(h)
         # Just the location. The level used to be prefixed here (`WARN · Class:93`), but
@@ -3803,9 +3874,6 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
         label = f'{Path(h["file"]).stem}:{h["line"]}'
         h = {**h, "_fields": fields_by_file.get(h["file"])}
         result = privacy_verdict(h, cache_root, cache, call=call)
-        total_cost += result.get("cost_usd") or 0.0
-        cached_hits += 1 if result.get("cached") else 0
-        live_calls += 0 if result.get("cached") else 1
         # The rows come from the code (`logextract.py`'s argument list), the clauses from
         # the model, and the headline verdict from the worst of everything below it — a
         # value the model skipped counts as unassessed, not as fine.
@@ -3829,6 +3897,7 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
         # first, since it is first in the markup — rather than truncating either one.
         snippet = snippet_html(ref, None, root, exact=True)
         snippet = ANCHOR_RE.sub("", snippet, count=1)
+        snippet = BADGE_RE.sub("", snippet, count=1)
         # The link is built from the hit, not scraped back out of the snippet's own
         # anchor: with origin lines pulled in, that anchor now opens at the *first* line
         # of the window (the origin), and the label next to it says `:93`. Aiming it at
@@ -3859,20 +3928,17 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
         snippet = snippet.replace("</figure>", f"{footer}{body}</figure>", 1)
         boxes.append(snippet)
     # "The page marks tabs by what produced them" — this legend is the disclosure for a
-    # tab whose verdicts are now a model's reading, not a program's, plus what that
-    # reading cost this run: a re-run on unchanged code pays nothing (cache hits), so
-    # the number here is honest about *this* build, not a standing per-run price.
-    cost_note = (f' A live model call per statement this run cost ${total_cost:.4f}'
-                if live_calls else ' Every verdict this run came from the cache (no charge).')
-    if cached_hits and live_calls:
-        cost_note = cost_note[:-1] + f' ({cached_hits} more reused from the cache).'
+    # tab whose verdicts are a model's reading, not a program's. What it no longer carries
+    # is the machinery behind that reading: which half of the box is a live call, how many
+    # calls it took, and what they cost. That was a paragraph about the build, on a tab a
+    # reviewer opened to read about *their diff*, and the 🤖 on every verdict already says
+    # the only part of it they can act on — that a model, not a program, decided this one.
     legend = (
         '<div class="privacy-legend"><p class="privacy-legend-title">🤖 AI Evaluation:'
         f'</p><p class="privacy-legend-note">The code block is the evidence: alongside '
         f'each statement it quotes the lines its logged values came from, walked back '
         f'structurally by <code>ast-grep</code> and cut from the working tree with their '
-        f'real line numbers. Only the verdicts are a live <code>claude</code> call — one '
-        f'per logged value, and the headline is the worst of them.{cost_note}</p>'
+        f'real line numbers.</p>'
         '<ul class="privacy-legend-list">'
         '<li>✅ <b>SAFE</b> — nothing traced reads as personal data</li>'
         '<li>🤔 <b>DOUBT</b> — could not trace it with confidence, and an unresolved '
@@ -4621,12 +4687,19 @@ def page_title(spec: dict) -> str:
     matches what is in their tabs, their notifications and their `gh pr` output is
     `GH#37 <the PR’s own title>`. So when the content file names a PR, that wins, and
     the number is the link to it. With no `pr` block nothing changes.
+
+    `GH#37` is the only link on this page a reader cannot recognise as one by where it
+    sits: it is the first word of the `<h1>`, so it wears the page's heading weight, not
+    a link's. The hover says where it goes — the one thing a reader wants before clicking
+    away from the review they just opened.
     """
     pr = spec.get("pr") or {}
     if pr.get("number") and pr.get("title"):
         num = f'GH#{html.escape(str(pr["number"]))}'
         if pr.get("url"):
-            num = f'<a class="prref" href="{html.escape(pr["url"])}">{num}</a>'
+            num = (f'<a class="prref" href="{html.escape(pr["url"])}" '
+                   f'data-tip="Open #{html.escape(str(pr["number"]), quote=True)} '
+                   f'on GitHub">{num}</a>')
         return f'{num} {html.escape(pr["title"])}'
     return html.escape(spec.get("title", "Review guide"))
 
@@ -4934,12 +5007,18 @@ def main(argv=None) -> int:
                 # the same treatment the fixes themselves get in the list below.
                 "value": f'{total - fixed} open &middot; '
                          f'<span class="sub">{fixed} autofixed</span>',
-                # The total, which the face no longer carries, and who raised it. The
-                # sentence about the numbers being counted rather than typed is gone with
-                # the rest of the long-form hovers: it is a promise the build keeps, not
-                # one a reader can act on.
-                "tip": f"{total} raised by /code-review and /simplify"
-                       + (f" running on {reviewer}" if reviewer else ""),
+                # The total, which the face no longer carries, split by the pass that
+                # raised each item. `by /code-review and /simplify` named the two passes
+                # and left the reader to guess the split — which is the only thing the
+                # hover could add, since the chip is already about a number. It is counted
+                # off each item's own `source`, so the breakdown cannot disagree with the
+                # stamps in the list below it.
+                #
+                # What is not here any more: `running on <model>`. The chip's own face
+                # reads `Opus 5 review` — a hover restating the word next to it is a hover
+                # that taught the reader not to bother with the next one.
+                "tip": _raised_by(spec.get("findings", []) + spec.get("autofixes", []),
+                                  total),
             }
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
         # A chip that has to be kept up to date by hand is a chip that will be wrong. The
@@ -5324,10 +5403,11 @@ def main(argv=None) -> int:
             + "".join(strip) + "</div>"
         )
         # The show-everything toggle is not part of the strip any more (see the CSS): it
-        # is emitted at the foot of the page, after the footer's sentence. The label says
-        # what it does *next* and therefore has to change with the state, which is what
-        # the pressed styling alone could no longer carry once the button left the strip
-        # — down here there is nothing beside it to read the highlight against.
+        # is emitted at the foot of the page, on the footer's own line and at the far
+        # right of it. The label says what it does *next* and therefore has to change with
+        # the state, which is what the pressed styling alone could no longer carry once the
+        # button left the strip — down here there is nothing beside it to read the
+        # highlight against.
         allbtn_html = (
             '<div class="allbar"><button type="button" class="allbtn" aria-pressed="false" '
             'data-label-off="show single page" data-label-on="back to one tab at a time" '
@@ -5387,7 +5467,7 @@ def main(argv=None) -> int:
 {verdict_html}
 
 {body_html}
-<footer>{_link_home(spec.get('footer', ''))}{allbtn_html}</footer>
+<footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{allbtn_html}</div></footer>
 </div>
 {CAPTION_JS}
 {GENSEQ_JS}

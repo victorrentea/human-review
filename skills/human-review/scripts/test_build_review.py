@@ -537,16 +537,21 @@ def test_a_cache_hit_never_calls_the_model_again(tmp_path):
     assert (tmp_path / ".human-review" / ".privacy-verdicts.json").is_file()
 
 
-def test_the_cost_note_names_a_live_call_and_reused_cache_hits(tmp_path):
+def test_the_legend_prices_nothing_and_explains_no_machinery(tmp_path):
+    """What the run cost, how many calls it took and which half of the box is a live one
+    are all gone from the legend. They were a paragraph about the build on a tab opened to
+    read about the diff, and the ai-mark on each verdict already carries the part a reader
+    can act on. Pinned on the path that used to print a price: a real, paid cache miss."""
     hit_a = {**DEBUG_HIT, "line": 8, "text": 'LOG.debug("cache miss A")'}
     hit_b = {**DEBUG_HIT, "line": 9, "text": 'LOG.debug("cache miss B")'}
     fake = _fake_call(cost=0.0037)
     out = build._logging_listing([hit_a], REPO_ROOT, call=fake, cache_root=tmp_path)
-    assert "$0.0037" in out
-    # A second, distinct statement is a fresh cache miss (its own line differs, so its
-    # cache key differs) — the first is now a hit.
+    assert "$" not in out
+    assert "live" not in out and "cost" not in out
     out = build._logging_listing([hit_a, hit_b], REPO_ROOT, call=fake, cache_root=tmp_path)
-    assert "more reused from the cache" in out
+    legend = out[out.index("privacy-legend-note"):]
+    assert "cache" not in legend       # neither the price nor the bookkeeping behind it
+    assert "AI Evaluation" in out      # the disclosure itself still stands
 
 
 def test_privacy_verdict_never_reads_a_raised_error_as_a_verdict(tmp_path):
@@ -794,6 +799,48 @@ def test_logging_fragment_keeps_its_weight_with_no_header_or_card(tmp_path, monk
     assert "bad id" in frag          # the statement's own text, verbatim in the snippet
     assert "SAFE" in frag            # the verdict, visible below the code
     assert "an int parameter" in frag  # the value's clause, from the (mocked) model
+
+
+def test_the_logging_tab_opens_on_one_computed_line_and_no_heading(tmp_path, monkeypatch):
+    """Two things the content file used to write and no longer can: a `<h2>` repeating the
+    tab's own label, and three sentences of methodology under it. What is left is one line
+    naming what the scan looked for, with the package list on hover — and the list is read
+    out of `logextract.py`'s own rule, so a library added there turns up here with nobody
+    remembering the page. The anchor the heading carried moves onto the line."""
+    monkeypatch.setattr(build, "_call_privacy_model",
+                        lambda prompt: {"verdict": "safe", "cost_usd": 0.0,
+                                        "values": [{"name": "id", "verdict": "safe",
+                                                    "note": "an int parameter"}]})
+    repo, src = _tiny_java_repo(tmp_path, FOO_BASE)
+    src.write_text(FOO_WITH_WARN, encoding="utf-8")
+    frag, _, _ = build.logging_fragment(
+        {"paths": ["."], "base": "base", "id": "logging-added",
+         "title": "Logging added/updated", "body": "<p>Found structurally with ast-grep…</p>"},
+        repo)
+    assert "<h2" not in frag, "the tab is called Logging; a heading says it twice"
+    assert "Logging added/updated" not in frag and "not by grepping" not in frag, \
+        "title and body on the logging block are the renderer's now, not the author's"
+    assert 'id="logging-added"' in frag, "the deep link the heading carried still lands"
+    assert "Found structurally searching for" in frag
+    assert ">common logging libraries</span>." in frag
+    # The hover, and the fact that it is read rather than typed.
+    assert "org.slf4j" in frag and "ch.qos.logback" in frag
+    assert r"org\.slf4j" in build._logextract().RULES["log-import"]  # escaped there
+
+
+def test_a_logging_box_does_not_badge_what_its_own_gutter_already_marks(tmp_path, monkeypatch):
+    """`new code` on every box restates the tab's entry condition: a block is here because
+    the branch added or rewrote that logging line, and the `+` in the gutter marks exactly
+    which lines. The badge stays everywhere else, where the reader did not choose the
+    snippet and "is this new?" is a real question."""
+    monkeypatch.setattr(build, "_call_privacy_model",
+                        lambda prompt: {"verdict": "safe", "cost_usd": 0.0, "values": []})
+    repo, src = _tiny_java_repo(tmp_path, FOO_BASE)
+    src.write_text(FOO_WITH_WARN, encoding="utf-8")
+    frag, _, _ = build.logging_fragment({"paths": ["."], "base": "base"}, repo)
+    assert "code-badge" not in frag
+    assert "new code" not in frag
+    assert '<figure class="snippet">' in frag  # and the snippet itself is untouched
 
 
 def test_logging_fragment_keeps_its_weight_on_a_genuine_zero_too(tmp_path, monkeypatch):
@@ -1050,6 +1097,15 @@ def test_the_page_is_named_the_way_the_reviewer_s_other_tabs_name_it(tmp_path):
     assert "https://github.com/victorrentea/petclinic/pull/37" in head
 
 
+def test_the_pr_number_says_on_hover_that_it_leaves_for_github(tmp_path):
+    """The one link on the page a reader cannot spot by where it sits: it is the first
+    word of the `<h1>`, wearing heading weight rather than a link's. So it says where it
+    goes before it is clicked."""
+    page, _ = _build(tmp_path, PR)
+    head = page[page.index("<h1>"):page.index("</h1>")]
+    assert 'data-tip="Open #37 on GitHub"' in head
+
+
 def test_without_a_pr_block_the_title_is_the_one_the_content_file_wrote(tmp_path):
     page, _ = _build(tmp_path, BARE)
     assert "<h1>t</h1>" in page
@@ -1131,6 +1187,18 @@ def test_the_show_all_button_sits_after_the_footer_not_in_the_strip(tmp_path):
     assert "allbtn" not in strip[:strip.index("</div>")]
     foot = page[page.index("<footer>"):page.index("</footer>")]
     assert "allbtn" in foot and "show single page" in foot
+
+
+def test_the_show_all_button_shares_the_footer_s_line_at_its_far_end(tmp_path):
+    """A button alone on the last line of the page reads as the page's conclusion, which
+    it is not — it is a control, and a control belongs at the far end of a line the page
+    already has. Both halves are in one flex row; the alignment is `margin-left:auto` in
+    the CSS, so the sentence keeps its own width."""
+    page, _ = _build(tmp_path, BARE)
+    foot = page[page.index("<footer>"):page.index("</footer>")]
+    assert '<div class="footrow">' in foot
+    assert foot.index("footrow") < foot.index("allbar"), "one row, sentence first"
+    assert "footer .allbar { margin-left:auto; }" in page
 
 
 def test_the_show_all_button_says_what_it_does_next(tmp_path):
@@ -2084,7 +2152,9 @@ def test_the_review_chip_leads_with_what_is_left_to_do(tmp_path):
         autofixes=[{"title": f"a{i}", "source": "/simplify"} for i in range(3)]))
     assert '9 open &middot; <span class="sub">3 autofixed</span>' in page, \
         "the half that needs nothing from the reader is greyed, not equal-weight"
-    assert "12 raised by /code-review" in page, "the total is in the hover, not on the face"
+    assert "12 raised" in page, "the total is in the hover, not on the face"
+    assert "9 by /code-review, 3 by /simplify" in page, \
+        "the hover splits the total by the pass that raised each item"
 
 
 def test_the_review_chip_names_the_model_instead_of_a_second_chip_beside_it(tmp_path):
@@ -2095,7 +2165,10 @@ def test_the_review_chip_names_the_model_instead_of_a_second_chip_beside_it(tmp_
         findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
         env=_sessionless_env())
     assert "Opus 5 review" in page
-    assert "running on Opus 5" in page
+    # And nowhere else: the chip's face already reads `Opus 5 review`, so the hover
+    # restating it taught the reader that hovers here are not worth the trouble.
+    assert "running on Opus 5" not in page
+    assert page.count("Opus 5") == 1
 
 
 def test_a_page_rebuilt_with_no_idea_who_reviewed_it_says_exactly_that_much(tmp_path):
