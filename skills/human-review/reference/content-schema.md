@@ -387,6 +387,13 @@ the one thing no amount of reading changes. Four tabs need something said about 
     sentence — a page that lists a test somewhere else (the ledger's `new` / `edited`
     piles) and not here makes the reader hold two lists and diff them. Tests the manifest
     knows but the map has no excerpt for get their excerpt cut at build time.
+  - **Every quoted file offers its diff, and names where it opens** — `⇆ VSC` (the base on
+    the left, the working tree on the right, through the served page or the editor's URI
+    handler) and `⇆ GH` (the same file inside the open pull request, anchored by the
+    sha-256 of its path). Two arrows and no words make the reader click to find out. Each
+    is emitted only where that side can really show it: no editor diff for a file with no
+    before-state, and no github.com link for work github.com has not seen — the file dirty
+    at HEAD, the branch unpushed, or no pull request open on it.
   - **Any code baked into the fragment is cut against the working tree, and its line
     numbers are checked.** A snippet quoted from an older revision keeps text that still
     looks right beside numbers that are two lines out, and every link into the editor
