@@ -977,6 +977,9 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
                          + (f' #{f["element"]["id"]}' if f["element"]["id"] else ""),
                 "tip": f'the DOM says {st["dom"]}; pixels differ over {churn_txt} '
                        "of the element\u2019s own box"})
+    # Order is the control's, not the reader's: Diff is always the first button. Which
+    # one *opens* is a separate question, and here the answer is New — see the call to
+    # `dgm_views_html` at the bottom of this function.
     panes = [("diff", DIFF_LEGEND + shot_html(f"{stem}-delta.png", pages["new"], delta_marks)),
              ("new", annotated("new")), ("old", annotated("old"))]
 
@@ -1043,7 +1046,7 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     return (f'<div class="dsa">{head}'
             f'<details class="dsa-screen"{" open" if touched else ""}>'
             f'<summary>{label}</summary>'
-            f'{build.dgm_views_html(panes)}{table}{considered}</details></div>')
+            f'{build.dgm_views_html(panes, initial="new")}{table}{considered}</details></div>')
 
 
 def render(result: dict, assets_prefix: str) -> str:

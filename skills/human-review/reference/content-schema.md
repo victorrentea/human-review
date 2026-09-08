@@ -12,7 +12,9 @@ Loaded on demand from Step 9. The runbook names the keys; this file says what go
 
 `source` is the pass that raised it, stamped while that pass is running — the only moment
 the information exists. An item with no `source` renders without the stamp rather than
-being attributed to a guess.
+being attributed to a guess. `/code-review` and `/simplify` render as **links to their own
+documentation** (`PASS_DOCS` in the renderer), so the page never needs a line of prose
+introducing the two commands; anything else is a plain stamp.
 
 `diffs` entries are `{"path": "…"}` and nothing more in the ordinary case — `base` defaults
 to the rev Step 1 recorded in the ledger, which is the only left side that shows a fix *on
@@ -243,6 +245,13 @@ it and strikes the label through.
   not a tab of their own: a tab is a question the reader chooses, and *what is this change,
   and is it mergeable* is not chosen — it is what the page opens with. So do not declare an
   Overview tab, and do not repeat the summary in the first tab's `intro`.
+- **Both `summary` and `verdict.bullets` are optional, and leaving them out is the normal
+  case once the findings say it better.** A lede that restates the first finding, and
+  bullets that restate the next three, are the same page twice — and the copy on top is
+  the one the reader has to get past to reach the list they came for. Write a summary only
+  for what the findings cannot say: what the change *is*, in a sentence. `{{tabcount}}` and
+  the walk-through check apply to a summary that exists; a page without one is not warned
+  about tabs it never promised to name.
 - The score beside the title **links to the tab that renders `findings`** — the reasons
   behind `5/10 not yet mergeable` — so keep the findings in one tab.
 - A tab whose every block came back empty is **dropped** and named in the build log.
