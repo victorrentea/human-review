@@ -348,6 +348,24 @@ CODEOWNERS**. Four tabs need something said about how they are written:
     sentence marks the rows that cover it and steps the rest back rather than hiding them:
     *what did not get picked* is half of what the column is for. Counts per kind ("×4
     asserted") head nothing — nobody acts on them.
+  - **Head the tests card the way the ticket heads itself** — one strip, an icon and a
+    name — and give the ticket no title of its own: the masthead already carries `GH#37
+    <title>`, and repeating it above the card pushed the ticket a screen down. In the
+    avatar's place goes the 🤖: the whole column is inference.
+  - **An open test outlines the sentences it covers**, in the same green as its own
+    border. The relation is many-to-many in both directions — a sentence has several
+    tests, a test pins several sentences — and drawing only one direction hides half of
+    it. Opening animates (a height transition); a pane that appears by snapping makes the
+    rows below look like they moved somewhere else.
+  - The **disclosure arrow leads the title**, between the badge and the name: at the far
+    right of a variable-width row it is a control nobody finds. A **diff badge** on a
+    quoted file (`new file`, `2 lines changed`) is small and sits immediately before the
+    path it describes, not left-aligned as a banner of its own. Every line of a part the
+    branch **added** carries its `+`, including a whole new file: the marks answer "what
+    is new here", and a new file where nothing is marked reads as a file nothing touched.
+  - **One cursor convention, page-wide**: a mark that only explains itself on hover gets
+    `cursor:help` — the question mark says both "there is something to read" and "clicking
+    does nothing". Anything actionable keeps the hand.
   - **Stamp each row with what the branch did to that test** — `new`, `✎ edited`, and
     *nothing at all* for one it left alone. A new test is evidence a requirement was
     pinned; an edited one is evidence a pin moved, and is worth opening for what it

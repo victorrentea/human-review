@@ -1006,7 +1006,13 @@ TIP_JS = """<script>
     'color:#fff;font:600 1.05rem/1.25 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;' +
     'padding:.6rem .9rem;border-radius:.6rem;max-width:22rem;box-shadow:0 10px 30px rgba(0,0,0,.35);' +
     'opacity:0;transform:translateY(4px);transition:opacity 120ms ease,transform 120ms ease}' +
-    '.tip.visible{opacity:1;transform:translateY(0)}';
+    '.tip.visible{opacity:1;transform:translateY(0)}' +
+    // One convention for the pointer: a mark that only explains itself gets the question
+    // mark, so hovering tells you there is something to read AND that clicking does
+    // nothing. Anything you can act on -- a link, a button, a row that opens -- keeps
+    // the hand it already had.
+    '[data-tip]:not(a):not(button):not([role=button]):not(summary):not(label)' +
+    '{cursor:help}';
   document.head.appendChild(css);
 
   var bubble = document.createElement('div');
@@ -3918,11 +3924,24 @@ def logging_fragment(block, root: Path):
         payload = json.loads(report.read_text(encoding="utf-8"))
 
     added = payload.get("changed", payload["all"])["logging"]
-    head = (f'<h2 id="{html.escape(block.get("id", "logging-added"))}">'
-            f'{html.escape(block.get("title", "Logging this change set added"))}</h2>')
-    # Raw, not wrapped in a <p>: the lede here is several paragraphs — what was found, why
-    # it is a finding, and how it was measured — and it is the author's prose, not ours.
-    body = block.get("body", "")
+    # No heading: the tab is called Logging and the panel opens with it — a `<h2>Logging
+    # added/updated` under a selected `Logging` pill is the tab's own label, said twice.
+    # The anchor it used to carry rides on the lede instead, so `#logging-added` still
+    # lands where it always did.
+    #
+    # No authored lede either. What stood here was three sentences of methodology (grep
+    # vs. ast-grep, `Math.log(x)`, walking the syntax tree) that a reader can see for
+    # themselves in the blocks below: every one of them quotes the lines it traced. What
+    # they cannot see is *which* libraries were looked for — so that is the one fact left
+    # standing, in a line, with the list itself one hover away rather than spent on the
+    # page. It is computed, never typed: `logging_libraries` reads the packages back out
+    # of the very rule `logextract.py` runs, so the hover cannot claim a library the scan
+    # does not actually search for.
+    head = (f'<p class="lede" id="{html.escape(block.get("id", "logging-added"))}">'
+            f'Found structurally searching for '
+            f'<span class="dfn" data-tip="{html.escape(logging_libraries(), quote=True)}">'
+            f'common logging libraries</span>.</p>')
+    body = ""
     # No header bar and no surrounding card any more: no heading repeating "logging", no
     # count pill, no `path, base…HEAD` provenance line — the tab's own title already says
     # "logging", and the snippets below say what they are without a caption restating it.
