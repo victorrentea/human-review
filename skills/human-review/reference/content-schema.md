@@ -69,7 +69,7 @@ number. A chip whose number is typed by hand goes stale without anything noticin
 "extraCss": ["assets/openapi-diff.css", "assets/openapi-compat.css",
              "assets/complexity-delta.css", "assets/ds-audit.css"],
 "testChanges": "assets/test-changes.json",
-"footer": "Built by /human-review against the running stack on 2 Sep 2026. <code>.human-review/</code> is a throwaway artifact — delete it rather than commit it."
+"footer": "Built by /human-review against the running stack on 2 Sep 2026."
 ```
 
 The footer names the toolset and when, and stops — a sentence about the page's own honesty
