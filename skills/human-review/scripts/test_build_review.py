@@ -2425,3 +2425,42 @@ def test_the_github_link_tooltip_says_only_what_its_label_cannot():
     assert "github" not in tip.lower(), "the label already says where it goes"
     assert not tip.startswith("Open"), "every link opens something"
     assert "compare page" in tip
+
+
+def _repo_with_a_buried_file(tmp_path):
+    """One commit deep inside a Java-shaped path, which is where the ceremony lives."""
+    import subprocess as sp
+    r = tmp_path / "repo"
+    deep = r / "petclinic-backend/src/main/java/victor/training/petclinic/repository"
+    deep.mkdir(parents=True)
+    sp.run(["git", "init", "-q", "-b", "main", str(r)], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.email", "t@t"], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.name", "t"], check=True)
+    (deep / "VetRepository.java").write_text("one\ntwo\n")
+    (r / "README.md").write_text("one\ntwo\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "base"], check=True)
+    (deep / "VetRepository.java").write_text("one\nTWO\n")
+    (r / "README.md").write_text("one\nTWO\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "the change"], check=True)
+    return r
+
+
+def test_the_diff_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
+    """A repo-relative Java path spends five segments on ceremony before it reaches the
+    one word that says which file this is, and the header is where a reader looks to
+    answer exactly that."""
+    r = _repo_with_a_buried_file(tmp_path)
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
+    head = build.diff_html(rel, "HEAD^", r, head="HEAD").split("</div>")[0]
+    assert ">VetRepository.java<" in head
+    assert f'data-tip="{rel}"' in head
+    assert f">{rel}<" not in head, "the ceremony is on hover, not in the face"
+
+
+def test_a_file_at_the_repo_root_gets_no_tooltip_repeating_its_own_name(tmp_path):
+    r = _repo_with_a_buried_file(tmp_path)
+    head = build.diff_html("README.md", "HEAD^", r, head="HEAD").split("</div>")[0]
+    assert ">README.md<" in head
+    assert "data-tip" not in head

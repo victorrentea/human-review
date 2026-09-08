@@ -1878,9 +1878,18 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
             diff_link_html(rel, base, root).replace('class="srcref diffref"',
                                                     'class="srcref diffref inhead"'))
     gh = _github_compare_link(rel, base, root, head)
+    # The name, and the path on hover. A repo-relative Java path spends five segments on
+    # ceremony -- module, `src/main/java`, the org package -- before it reaches the one
+    # word that says which file this is, and the header is where a reader looks to answer
+    # exactly that. The full path is not lost, it is moved to where the face could not fit
+    # it, which is what this page's tooltips are for. A file at the repo root has no path
+    # to move, and a tooltip repeating the name is a tooltip saying nothing.
+    name = html.escape(Path(rel).name)
+    head_path = (f'<span class="path" data-tip="{html.escape(rel)}">{name}</span>'
+                 if "/" in rel else f'<span class="path">{name}</span>')
     return (
         '<div class="ghdiff">'
-        f'<div class="ghdiff-head"><span class="path">{html.escape(rel)}</span>'
+        f'<div class="ghdiff-head">{head_path}'
         f'<span class="stat"><span class="added">+{adds}</span> '
         f'<span class="removed">&minus;{dels}</span> vs <code>{html.escape(base[:8])}</code>'
         '</span></div>'
