@@ -610,6 +610,14 @@ TEMPLATE = r"""<!doctype html>
   .swagger-ui .highlight-code > .microlight {
     background: var(--dv-code); color: var(--dv-fg);
   }
+  /* The constraint pills next to a type — `[1, 255] characters`, `≥ 0`,
+     `matches ^[0-9]+$`, `int32` — ship as saturated purple and amber chips, which
+     in both themes shout louder than the field names they qualify. They are
+     footnotes on a type, not findings, so paint them as footnotes. */
+  .swagger-ui .json-schema-2020-12__constraint,
+  .swagger-ui .json-schema-2020-12__constraint--string {
+    background: var(--dv-code); color: var(--dv-muted);
+  }
   .swagger-ui .opblock.opblock-deprecated { opacity: .7; }
   .dv-count-hidden { font-size: 12px; opacity: .6; }
 </style>

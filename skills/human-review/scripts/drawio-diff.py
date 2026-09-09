@@ -352,12 +352,20 @@ def diff_models(old_xml: str, new_xml: str) -> dict:
             moved.append({"key": key, "id": cell.id, "kind": cell.kind,
                           "what": describe(cell, new_cells)})
 
+    # Everything the file itself draws red, new or not. `already_red` on an *added*
+    # element only answers "is this addition automation's", and a red element inherited
+    # from the base is just as much a layout still owed — the reader looking at the
+    # picture cannot tell the two apart, so the page must not either.
+    red = [{"key": key, "id": cell.id, "kind": cell.kind,
+            "what": describe(cell, new_cells)}
+           for key, cell in new_idx.items() if is_red(cell.style)]
+
     def order(items):
         rank = {"node": 0, "edge": 1, "annotation": 2, "label": 3}
         return sorted(items, key=lambda i: (rank[i["kind"]], i["key"]))
 
     return {"added": order(added), "removed": order(removed),
-            "changed": order(changed), "moved": order(moved)}
+            "changed": order(changed), "moved": order(moved), "red": order(red)}
 
 
 def counted(verdict: dict) -> str:
