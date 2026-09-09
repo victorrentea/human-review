@@ -566,17 +566,21 @@ the one thing no amount of reading changes. Four tabs need something said about 
     makes and nothing reaches) or `in the requirement` (violet: the ticket never said, and
     no test can be written for a sentence nobody wrote). They are different findings, go
     to different people, and "blind spot" alone leaves the reader deciding which.
-  - **Stamp each row with what the branch did to that test** — a **file glyph with a green
-    plus** for one this branch wrote, the **same glyph with a yellow pencil** for one it
-    changed, **the same glyph with a red cross** for one it deleted, and *nothing at all*
-    for one it left alone. **The whole glyph takes the colour**, not only the badge in its
-    corner: a grey file with a 4px coloured plus puts the entire distinction on the smallest
-    part of the mark, and the row reads as grey furniture. Colour says *what happened*, the
-    badge says *which* — two readings that agree — and the cross is the plus turned 45°,
-    because it is the same fact with the sign flipped. Icons, not words: `NEW` in a pill
-    was a label loud enough to be read before the test's own name, on a row whose subject
-    is the test. The glyph is VS Code's `new-file` body, whose corner is already cut for a
-    badge; the words survive as the `aria-label` and the hover. A new test is evidence a requirement was
+  - **Stamp each row with what the branch did to that test** — a **big green plus** for one
+    this branch wrote, a **yellow pencil** for one it changed, a **red cross** for one it
+    deleted, and *nothing at all* for one it left alone. **The mark stands alone here: no
+    page around it.** The subject of the row is a test, and wrapping the plus in VS Code's
+    `new-file` page said *this branch added a file* — false for one test among nine in a
+    file that already existed, and the `aria-label` said it out loud too (`new file`, on a
+    test). The page shape belongs one level down, on the excerpt's own badge, where the
+    subject really is a file; the three badges are shared between the two so a reader learns
+    plus/pencil/cross once. **The whole mark takes the colour** — this started out grey with
+    only a 4px badge coloured, which put the entire distinction on the smallest part of the
+    glyph and left the row reading as grey furniture. Colour says *what happened*, the shape
+    says the same thing again, and the cross is the plus turned 45° because it is that fact
+    with the sign flipped. Icons, not words: `NEW` in a pill was a label loud enough to be
+    read before the test's own name, on a row whose subject is the test. The words survive
+    as the `aria-label` (`new test`, not `new file`) and the hover. A new test is evidence a requirement was
     pinned; an edited one is evidence a pin moved, and is worth opening for what it
     stopped asserting. Silence on the untouched rows is the point: a stamp on all of them
     would say nothing, and this is the fact the old evidence cards carried in prose. The
