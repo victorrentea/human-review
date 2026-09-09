@@ -4954,8 +4954,13 @@ FOOTER_BOILERPLATE = re.compile(
 # leaves goes to the one sentence a stranger holding this page can act on.
 RUNNING_STACK = re.compile(r"\s+against the running stack", re.I)
 
-# `&amp;` and not `&`: the footer is emitted as HTML, not escaped on the way out.
-INVITATION = "Fork, Clone and Port with your Agent to your environment &amp; needs."
+# A sentence, not a title-cased list of verbs. "Fork, Clone and Port with your Agent" read
+# as a feature name and left the reader to work out who does which of the three; naming the
+# agent as the one doing the work is the whole point — this is a page you hand to your own
+# agent, not a repository you sit down and re-implement.
+# Whatever it says, it is emitted as HTML and not escaped on the way out, so any `&` put
+# back into it has to be written `&amp;`.
+INVITATION = "Tell your agent to clone and port this to your environment and needs."
 
 
 def _link_home(footer: str) -> str:

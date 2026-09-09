@@ -1473,8 +1473,10 @@ def test_the_methodology_boilerplate_is_stripped_from_the_footer():
 # says it the moment it is rebuilt.
 def test_the_footer_invites_the_reader_to_take_the_toolset():
     out = build._link_home("Built by /human-review against the running stack on 2 Sep 2026.")
-    assert out.endswith("Fork, Clone and Port with your Agent to your environment &amp; needs.")
-    assert "&amp;" in out and " & " not in out
+    assert out.endswith("Tell your agent to clone and port this to your environment and needs.")
+    # The footer is emitted as HTML and not escaped on the way out, so a bare `&` in the
+    # invitation would be a lone ampersand in the markup.
+    assert " & " not in out
 
 
 # "against the running stack" describes the build, not anything the reader can act on,
@@ -1490,7 +1492,10 @@ def test_the_running_stack_phrase_is_dropped():
 # in it must not end in it twice.
 def test_the_invitation_is_not_doubled():
     out = build._link_home(f"Built by /human-review on 2 Sep 2026. {build.INVITATION}")
-    assert out.count("Fork, Clone") == 1
+    # Against the constant, not against a copy of today's wording: the sentence is meant to
+    # be rewritten, and a test that pins its words fails on the rewrite instead of on the
+    # doubling it exists to catch.
+    assert out.count(build.INVITATION) == 1
 
 
 def test_only_the_first_mention_is_linked():
