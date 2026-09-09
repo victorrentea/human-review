@@ -510,7 +510,27 @@ the one thing no amount of reading changes. Four tabs need something said about 
     than inferred: the build cannot read a hand-authored fragment and know what is in it,
     so with the flag off it prints a reminder that every moved test, deleted ones included,
     now has to be listed some other way.
-  - **Head every quoted block with the page's source bar — do not author your own.** It is
+  - **The excerpts link to each other, and the build draws the links — do not author them.**
+    `code_xref.py` runs over the assembled page, reads every quoted window there is (the
+    snippets `extract-snippet.py` cut *and* the `parts` this fragment carries as JSON), and
+    writes the cross-references back into both. A Gherkin sentence becomes a link to the step
+    definition that matches it; any identifier one window *defines* becomes a link from every
+    window that *mentions* it. A plain click unfolds the window it points at, flashes the
+    line and stays on the page; ⌘-click opens it in the editor, which is the gesture the rest
+    of the page already uses. Nothing is invented: a name no quoted window defines stays plain
+    text, so what is underlined is exactly what is followable.
+    - **A part something links to is folded, and the first part of a test never is.** The
+      reader opened the row to read the test; the glue and the helpers under it are what they
+      reach *through* the test, and expanded they are three screens of Playwright standing
+      between the row and the four sentences it was opened for. A folded part keeps its source
+      bar and shows its own first line, so it says what it is without being unfolded.
+    - The wiring needs two things from the markup, and they are both things this fragment
+      already emits: each excerpt in a `.rm-part`, and inside it the editor link from the
+      source bar (`a.srcref` that is not a `.rm-diff`) carrying the same `href` as the part's
+      `href` in the JSON. That link is how a part rendered in the browser says which window it
+      is. Rename either and the excerpts render exactly as before, silently unlinked.
+
+- **Head every quoted block with the page's source bar — do not author your own.** It is
     one component, `.srcbar`, and its rules ship in the snippet stylesheet the page already
     injects, so a fragment gets it by using the class names:
 
