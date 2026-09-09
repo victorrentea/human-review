@@ -342,7 +342,9 @@ diagrams, the feature video, the complexity report, the snippets and the live 3D
 behind the skyline picture are all inside the folder, so it reads offline, off disk, with no
 server. The caveat above is the only thing that does not travel.
 
-`.github/workflows/demo-zip.yml` does it, on every push to `main` that touches `demo/**`.
+`.github/workflows/demo-zip.yml` does it, on every push to `main` — no path filter, so the
+release notes always name the commit the download is standing on rather than the last one
+that happened to touch `demo/`.
 Nothing is uploaded from the authoring machine and nothing is regenerated in the cloud — the
 snapshots are committed verbatim, so the checkout already holds everything the zip needs.
 Before zipping, the job resolves every relative `src`/`href` in `review.html` against the

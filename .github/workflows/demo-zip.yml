@@ -10,13 +10,21 @@ name: demo zip
 # It runs here rather than in a local git hook on purpose. The snapshots are committed
 # verbatim (publish-demo.sh), so everything the zip needs is already in the checkout —
 # there is nothing to upload from Victor's machine, nothing to wait for, and no model in
-# the loop. Pushing demo/** is the whole trigger.
+# the loop. Pushing is the whole trigger.
+#
+# Every push to main, with no path filter. A filter on demo/** would be the tighter rule
+# and the wrong one: what goes into the zip is decided by more than the snapshot bytes —
+# the packaging rules and the OPEN-ME note live in this file, and the commit named in the
+# release notes is meant to be the commit the download is actually standing on. Under a
+# filter, a push that changed neither would leave the release quoting a commit from weeks
+# ago. The run is under a minute on a 2 MB zip and the assets are clobbered in place, so
+# republishing an unchanged snapshot costs nothing and keeps that claim honest.
+#
+# Only main. A push on a branch must not overwrite the public download with work in
+# progress.
 on:
   push:
     branches: [main]
-    paths:
-      - "demo/**"
-      - ".github/workflows/demo-zip.yml"
   workflow_dispatch:
 
 permissions:
