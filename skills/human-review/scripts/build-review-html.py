@@ -1599,7 +1599,13 @@ EDITOR_JS = r"""<script>
     var base = link.getAttribute('data-diff-base');
     var dpath = link.getAttribute('data-diff-path');
     if (SERVED && base && dpath) {
-      fetch('/__open_diff__?path=' + encodeURIComponent(dpath) + '&base=' + encodeURIComponent(base))
+      // The line travels too. The href already carries it — it is the same line the face
+      // beside this handle names — and a diff that opens scrolled to the top of a
+      // five-hundred-line class leaves the reader hunting for the four lines the box is
+      // about, which is the hunt this button exists to end.
+      var aim = parse(link.getAttribute('href'));
+      fetch('/__open_diff__?path=' + encodeURIComponent(dpath) + '&base=' + encodeURIComponent(base)
+            + (aim ? '&line=' + encodeURIComponent(aim.line) : ''))
         .then(function (r) {
           if (!r.ok) return r.text().then(function (t) { flash(t || 'Could not open the diff'); });
         })
@@ -2220,7 +2226,8 @@ def diff_uri_handler() -> str | None:
     return None
 
 
-def diff_link_html(rel: str, base: str, root: Path, face: str | None = None) -> str:
+def diff_link_html(rel: str, base: str, root: Path, face: str | None = None,
+                   line: int | None = None) -> str:
     """A link that opens `<rel>` as a diff: the file at `base` on the left, the working
     tree on the right.
 
@@ -2259,9 +2266,16 @@ def diff_link_html(rel: str, base: str, root: Path, face: str | None = None) -> 
         return ""
     # The first line that differs, so the fallback (and the diff itself) opens where the
     # change is instead of at the top of a file the reader then has to scan.
-    b_lines, a_lines = before.split(b"\n"), after.split(b"\n")
-    line = next((i + 1 for i, (x, y) in enumerate(zip(b_lines, a_lines)) if x != y),
-                min(len(b_lines), len(a_lines)) + 1)
+    #
+    # `line` overrides it, and a snippet's bar always passes one. "The first line that
+    # differs" is the right answer for a link standing for the *whole file* — a prose
+    # `diff vs 5acf2472` — and the wrong one for a handle sitting against
+    # `VisitRestController.java:102`, where it opened the file at its first changed import
+    # while the face beside it said 102. One bar, one line.
+    if line is None:
+        b_lines, a_lines = before.split(b"\n"), after.split(b"\n")
+        line = next((i + 1 for i, (x, y) in enumerate(zip(b_lines, a_lines)) if x != y),
+                    min(len(b_lines), len(a_lines)) + 1)
     short = base[:8]
     # The extra handle for the unserved case. The `href` stays the ordinary
     # `vscode://file/...`, so dropping this attribute costs the diff and nothing else.
@@ -2329,7 +2343,29 @@ def _icon(which: str) -> str:
     return getattr(_extract_module(), f"ICON_{which}")
 
 
-def _snippet_links(rel: str, root: Path) -> str:
+@functools.lru_cache(maxsize=None)
+def _shown_in_compare(rel: str, base: str, root: str, line: int) -> bool:
+    """Would github.com's compare page have a row — and therefore an `R<line>` anchor — here?
+
+    Asked because an anchor is a promise, and a fragment that matches no id does not fall
+    back to the file anchor it was appended to: the browser simply does not scroll, and the
+    reader lands at the top of a forty-file compare page. A snippet quotes whatever window
+    its author chose, most of whose lines are untouched context nowhere near the change, so
+    unlike the diff blocks — which aim at a line they just rendered as added — this one has
+    to be checked before it is offered.
+
+    `-U3` and three dots, because that is exactly what the compare page renders unexpanded
+    and exactly what a compare URL compares. Anything wider vouches for a row that is
+    behind an "expand" button over there. A base this checkout cannot resolve answers no,
+    which costs the line and keeps the file."""
+    proc = subprocess.run(["git", "-C", root, "diff", "-U3", "--no-color",
+                           f"{base}...HEAD", "--", rel], capture_output=True, text=True)
+    if proc.returncode != 0:
+        return False
+    return any(new_no == line for _, _, new_no, _ in _parse_unified(proc.stdout))
+
+
+def _snippet_links(rel: str, root: Path, line: int | None = None) -> str:
     """The VS Code and github.com handles for a quoted block, against the review's own base.
 
     Both are optional and for the same reason: each is emitted only where that side can
@@ -2340,18 +2376,34 @@ def _snippet_links(rel: str, root: Path) -> str:
     one handle, or none, is the honest rendering — a dead button is worse than no button.
 
     `origin/` is stripped for github.com only: it is a name for a ref in *this* checkout,
-    and a compare URL spelling it 404s."""
-    vsc = diff_link_html(rel, SNIPPET_BASE, root, face=_icon("VSC"))
+    and a compare URL spelling it 404s.
+
+    `line` is the line the bar's own face names, and both handles are aimed at it. Without
+    it each side picked its own landing — the editor the file's first changed line, github
+    the top of the file inside the compare page — so a bar reading `:102` carried three
+    buttons that went to three different places, and the two that were there to open the
+    change went nowhere near the statement the box was about."""
+    vsc = diff_link_html(rel, SNIPPET_BASE, root, face=_icon("VSC"), line=line)
+    # The editor can open any line of the file; github.com can only anchor one it draws.
+    # Checked against the ref as *this* checkout spells it (`origin/main`), which is the
+    # thing github calls `main` — the stripped spelling below is for the URL alone, and
+    # asking git about it would compare against a local branch that may be days behind.
+    at = line if line and _shown_in_compare(rel, SNIPPET_BASE, str(root), line) else None
     gh = _github_compare_link(rel, SNIPPET_BASE.removeprefix("origin/"), root,
-                              face=_icon("GH"))
+                              line=at, face=_icon("GH"))
     return vsc + gh
 
 
 def snippet_html(ref: str, caption: str | None, root: Path, exact: bool = False,
                  link_at: tuple[int, int] | None = None) -> str:
     rel = ref.rsplit(":", 1)[0] if ":" in ref else ref
-    return _extract_module().render(ref, caption, root, exact,
-                                    links=_snippet_links(rel, root), link_at=link_at)
+    # Deferred, not built here: the line this snippet actually opens at is settled inside
+    # `render` — the window may snap past a leading comment, and `link_at` replaces it
+    # outright — so the handles are built once that answer exists rather than from the
+    # reference as it was typed.
+    return _extract_module().render(
+        ref, caption, root, exact,
+        links=functools.partial(_snippet_links, rel, root), link_at=link_at)
 
 
 # `src://<repo-relative path>[:line]` — the handle the diagram generators leave on a

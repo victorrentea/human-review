@@ -458,11 +458,19 @@ def _gap_row(hidden: int) -> str:
 
 
 def render(ref: str, caption: str | None, root: Path, exact: bool = False,
-           links: str = "", link_at: tuple[int, int] | None = None) -> str:
+           links="", link_at: tuple[int, int] | None = None) -> str:
     """`links` is the pre-rendered VSC/GH handles for the source bar, when the caller knows
     what this snippet is being compared against. The CLI does not — a snippet lifted by
     hand has no base ref in the argument list — so it renders the bar without them, which
     is the same bar minus two buttons rather than a different header.
+
+    It may also be a **callable**, and that is how the report passes it: the two handles
+    have to open where the bar's own link opens, and only this function knows where that
+    is. The window a caller asks for is not the line the bar lands on — `--exact` off
+    snaps past a leading comment, `link_at` overrides the window entirely — so a caller
+    that built the handles from the reference it typed would aim them somewhere the face
+    beside them does not say. Given a callable, it is called with the resolved line, once
+    that line is settled, and all three parts of the bar answer the same question.
 
     `link_at` re-aims the bar at one (line, column) instead of at the window. The logging
     tab needs it: its windows pull in the lines a logged value came *from*, so the window
@@ -505,6 +513,8 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False,
         lineref = str(link_at[0])
     else:
         link = f"vscode://file/{path}:{start}:1"
+    if callable(links):
+        links = links(link_at[0] if link_at else start)
     lang = LANG_BY_SUFFIX.get(path.suffix, "")
 
     dedented = [l[shift:] if l.strip() else "" for l in body]

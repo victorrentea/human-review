@@ -171,6 +171,36 @@ def open_in_editor(path, line):
     return "os"
 
 
+def bridge_diff(target: Path, sha: str, line: int) -> bool:
+    """Ask the VS Code window that owns `target` to open the diff *and* put the caret on
+    `line`. True when one took it.
+
+    `code --diff` cannot do the second half: the CLI has no way to say where in a diff to
+    land, so a fix five hundred lines down opens scrolled to the top and the reader hunts
+    for it — which is the hunt the handle they clicked exists to end. The extension bridge
+    can, because it opens the diff from inside the editor and then reveals the range.
+
+    The ref goes over as the resolved sha, not the name that was clicked: the bridge takes
+    a sha and this side has already resolved one, so the two ends cannot disagree about
+    what `origin/main` meant between one click and the next."""
+    for candidate in {target, target.resolve()}:
+        for entry, _info in owning_windows(candidate):
+            try:
+                payload = json.dumps({"file": str(target), "base": sha,
+                                      "line": line, "focus": True}).encode()
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{entry['port']}/open-diff", method="POST",
+                    data=payload,
+                    headers={"x-relay-token": entry["token"],
+                             "Content-Type": "application/json"})
+                body = json.loads(urllib.request.urlopen(req, timeout=5).read() or b"{}")
+                if body.get("ok"):
+                    return True
+            except Exception:
+                continue
+    return False
+
+
 def code_cli():
     """The `code` launcher, which is not on PATH in a GUI-launched terminal on macOS."""
     found = shutil.which("code")
@@ -180,8 +210,9 @@ def code_cli():
     return str(mac) if mac.is_file() else None
 
 
-def open_diff(rel, base, served_root):
-    """Open `rel` as a diff — the file at `base` on the left, the working tree on the right.
+def open_diff(rel, base, served_root, line=None):
+    """Open `rel` as a diff — the file at `base` on the left, the working tree on the right,
+    scrolled to `line` where anything on this machine can do that.
 
     Returns None on success, or the sentence to show the reader.
 
@@ -220,11 +251,17 @@ def open_diff(rel, base, served_root):
     before = Path(served_root) / ".diffbase" / short / Path(rel).parent / f"{stem}@{short}{ext}"
     before.parent.mkdir(parents=True, exist_ok=True)
     before.write_bytes(show.stdout)
+    # The bridge first, and only when there is a line to land on — it is the one route
+    # that can place the caret inside a diff. Every other case keeps `code --diff`, which
+    # is measured and known to pick the right window; swapping it out for a route with
+    # nothing extra to offer would be churn.
+    if line and bridge_diff(target, sha, line):
+        return None
     cli = code_cli()
     if not cli:
         # No VS Code launcher: fall back to what every other reference on the page does
         # rather than leaving the click silent. The reader loses the diff, not the file.
-        subprocess.run(["open", f"vscode://file/{target}:1:1"], capture_output=True)
+        subprocess.run(["open", f"vscode://file/{target}:{line or 1}:1"], capture_output=True)
         return None
     # Measured across four windows on three checkouts: with a *different* window raised
     # first, `--diff` still opened in the one owning this checkout and brought it to the
@@ -276,7 +313,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         if self.path.split("?")[0] == OPEN_DIFF:
             q = urllib.parse.parse_qs(self.path.partition("?")[2])
-            problem = open_diff(q.get("path", [""])[0], q.get("base", [""])[0], Handler.root)
+            # `isdigit` rather than a try/except int(): the query string is whatever a
+            # page asked for, and a line number is the one thing here with no reason ever
+            # to be negative, empty or a word.
+            aim = q.get("line", [""])[0]
+            problem = open_diff(q.get("path", [""])[0], q.get("base", [""])[0], Handler.root,
+                                int(aim) if aim.isdigit() and aim != "0" else None)
             if problem is None:
                 Handler.opens += 1
                 self.send_response(204)

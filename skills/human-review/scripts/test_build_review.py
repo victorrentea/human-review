@@ -2764,6 +2764,89 @@ def test_a_quoted_snippet_offers_the_same_two_ways_out_a_diff_does(tmp_path, mon
     assert 'class="srcref diffref srcbar-diff"' in bar   # the pill face, not the prose one
 
 
+def _repo_whose_change_is_far_from_the_quote(tmp_path):
+    """A file changed at the top *and* in the middle — the shape that made this wrong.
+
+    Line 2 is an import; line 10 is the statement a snippet would quote. Anything that
+    aims at "the first line that differs" lands on the import."""
+    import subprocess as sp
+    r = tmp_path / "repo"
+    r.mkdir()
+    sp.run(["git", "init", "-q", "-b", "main", str(r)], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.email", "t@t"], check=True)
+    sp.run(["git", "-C", str(r), "config", "user.name", "t"], check=True)
+    sp.run(["git", "-C", str(r), "remote", "add", "origin",
+            "https://github.com/victorrentea/petclinic.git"], check=True)
+    body = ["package p;", "import a.B;"] + [f"  int f{n}() {{ return {n}; }}" for n in range(3, 13)]
+    (r / "A.java").write_text("\n".join(body) + "\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "base"], check=True)
+    body[1] = "import a.C;"                                  # line 2 — the decoy
+    body[9] = "  int f10() { return 999; }"                  # line 10 — what a box quotes
+    (r / "A.java").write_text("\n".join(body) + "\n")
+    sp.run(["git", "-C", str(r), "add", "-A"], check=True)
+    sp.run(["git", "-C", str(r), "commit", "-qm", "the change"], check=True)
+    return r
+
+
+def test_a_snippets_handles_open_where_its_own_face_says(tmp_path, monkeypatch):
+    """The bug this fixes: a bar reading `A.java:10` whose two buttons went to line 2.
+
+    Each handle used to pick its own landing — the editor "the first line that differs",
+    which in a real class is an import fifty lines above the finding; github.com the top
+    of the file inside a compare page. Both are now the line the face names, because the
+    three parts of one bar may not be three answers to one question."""
+    r = _repo_whose_change_is_far_from_the_quote(tmp_path)
+    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    monkeypatch.setenv("HUMAN_REVIEW_DIFF_URI_HANDLER", "victorrentea.victor-vsc")
+    build.diff_uri_handler.cache_clear()
+    out = build.snippet_html("A.java:10", None, r, exact=True)
+    bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
+    assert ">A.java:10</a>" in bar
+    assert "/A.java:2:1" not in bar, "the decoy import, which is where this used to land"
+    assert bar.count("/A.java:10:1") == 2, "the editor handle and the bar's own link"
+    assert "line=10" in bar, "and the URI the extension gets, for the diff itself"
+    assert re.search(r"#diff-[0-9a-f]{64}R10", bar), "github.com anchors the same line"
+    build.diff_uri_handler.cache_clear()
+
+
+def test_a_quoted_line_the_compare_page_never_draws_keeps_the_file_anchor(tmp_path,
+                                                                          monkeypatch):
+    """`#diff-<sha>R7` on a line github.com does not render is worse than no line at all.
+
+    A fragment that matches no id does not fall back to the file anchor it was appended
+    to — the browser simply does not scroll, and the reader lands at the top of a compare
+    page that can be forty files long. So an untouched line far from any hunk keeps the
+    file anchor and gives up the line."""
+    r = _repo_whose_change_is_far_from_the_quote(tmp_path)
+    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    build._shown_in_compare.cache_clear()
+    out = build.snippet_html("A.java:6", None, r, exact=True)
+    href = re.search(r'href="(https://[^"]*/compare/[^"]*)"', out).group(1)
+    assert re.search(r"#diff-[0-9a-f]{64}$", href), href
+    # …and the editor, which can open any line of a file, still goes to the quoted one.
+    assert "/A.java:6:1" in out
+    build._shown_in_compare.cache_clear()
+
+
+def test_the_logging_boxs_handles_follow_it_to_the_statement(tmp_path, monkeypatch):
+    """`link_at` moves the whole bar, not just its face.
+
+    A logging window pulls in the lines a logged value came *from*, so the window opens
+    above the statement the box is about. The face already said `:10`; the two handles
+    beside it were still aiming at the file's first change."""
+    r = _repo_whose_change_is_far_from_the_quote(tmp_path)
+    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    build._shown_in_compare.cache_clear()
+    out = build.snippet_html("A.java:8-11", None, r, exact=True, link_at=(10, 5))
+    bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
+    assert ">A.java:10</a>" in bar
+    assert "/A.java:8:1" not in bar, "the window's first line is not what the box is about"
+    assert "/A.java:10:1" in bar and "/A.java:10:5" in bar
+    assert re.search(r"#diff-[0-9a-f]{64}R10", bar)
+    build._shown_in_compare.cache_clear()
+
+
 def test_a_snippet_whose_base_is_not_there_still_gets_its_bar(tmp_path, monkeypatch):
     """Each handle is emitted only where that side can really open what it promises — a
     base that does not resolve has no diff to show, and a dead button is worse than no
