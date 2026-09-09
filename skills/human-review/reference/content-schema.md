@@ -508,9 +508,11 @@ the one thing no amount of reading changes. Four tabs need something said about 
   - **Stamp each row with what the branch did to that test** — a **file glyph with a green
     plus** for one this branch wrote, the **same glyph with a yellow pencil** for one it
     changed, **the same glyph with a red cross** for one it deleted, and *nothing at all*
-    for one it left alone. One glyph, one badge, three colours: the badge is the whole
-    difference, and the cross is the plus turned 45° because it is the same fact with the
-    sign flipped. Icons, not words: `NEW` in a pill
+    for one it left alone. **The whole glyph takes the colour**, not only the badge in its
+    corner: a grey file with a 4px coloured plus puts the entire distinction on the smallest
+    part of the mark, and the row reads as grey furniture. Colour says *what happened*, the
+    badge says *which* — two readings that agree — and the cross is the plus turned 45°,
+    because it is the same fact with the sign flipped. Icons, not words: `NEW` in a pill
     was a label loud enough to be read before the test's own name, on a row whose subject
     is the test. The glyph is VS Code's `new-file` body, whose corner is already cut for a
     badge; the words survive as the `aria-label` and the hover. A new test is evidence a requirement was
