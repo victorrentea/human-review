@@ -152,7 +152,7 @@
     "title": "Where it landed in the city",
     "body": "Every building is a class, sized by file size, coloured by churn; the branch's change set is lit and the rest of the skyline recedes. The change is a clean vertical slice — one domain class, one mapper, one repository, the two controllers, the DTOs, and the MCP tool — with no unrelated neighbourhood touched.",
     "png": "assets/codecity.png",
-    "href": "../petclinic-backend/docs/generated/codecity/codecity.html",
+    "href": "assets/codecity/codecity.html",
     "caption": "Click the image to open the live 3D city (Cmd/Ctrl-double-click a building there opens the file in VS Code)."
   },
   "extraCss": [

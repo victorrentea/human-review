@@ -339,8 +339,9 @@ file, so every snapshot is also published as a zip attached to a rolling release
 The download URL is fixed and quotable — `.../releases/download/demo/human-review-<slug>.zip`
 — and its contents track the last push to `main`. Unzip it and open `review.html`: the
 diagrams, the feature video, the complexity report, the snippets and the live 3D Code City
-behind the skyline picture are all inside the folder, so it reads offline, off disk, with no
-server. The caveat above is the only thing that does not travel.
+behind the skyline picture are all inside the folder, so it reads off disk with no server.
+The caveat above is the only thing that does not travel — plus the city itself, which pulls
+three.js and d3 from a CDN and so is the one click that wants a connection.
 
 `.github/workflows/demo-zip.yml` does it, on every push to `main` — no path filter, so the
 release notes always name the commit the download is standing on rather than the last one

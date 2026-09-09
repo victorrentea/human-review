@@ -116,12 +116,17 @@ jobs:
 
           Open review.html in a browser. Everything the page draws is in this folder:
           diagrams, the feature video, the complexity report, the code snippets, and the
-          live 3D Code City behind the skyline picture.
+          live 3D Code City behind the skyline picture. No install, no server, nothing to
+          run — it reads straight off disk.
 
-          One thing does not travel. Every code reference on the page is a vscode://file/...
-          deep link holding an absolute path on the machine that produced the review, so
-          clicking one on your machine opens nothing, or the wrong file. Everything else
-          works offline, from disk, with no server.
+          Two things to know.
+
+          Every code reference on the page is a vscode://file/... deep link holding an
+          absolute path on the machine that produced the review, so clicking one on your
+          machine opens nothing, or the wrong file.
+
+          The page itself is offline, but the 3D city behind the skyline picture is not:
+          it pulls three.js and d3 from jsDelivr, so that one click needs a connection.
 
           Built from https://github.com/victorrentea/human-review at commit $GITHUB_SHA.
           TXT
@@ -147,7 +152,8 @@ jobs:
           set -euo pipefail
           {
             echo "Review pages produced by \`/human-review\`, zipped whole. Unzip one and open"
-            echo "\`review.html\` — no install, no server, no network."
+            echo "\`review.html\` — no install, no server, and offline but for the 3D Code City,"
+            echo "which pulls three.js and d3 from a CDN."
             echo
             echo "Or click through the same snapshots without downloading:"
             echo "<https://victorrentea.github.io/human-review/>"
