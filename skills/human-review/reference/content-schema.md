@@ -442,9 +442,21 @@ the one thing no amount of reading changes. Four tabs need something said about 
     `cursor:help` — the question mark says both "there is something to read" and "clicking
     does nothing". Anything actionable keeps the hand.
   - The list is **every test the change set touched**, not only the ones that cover a
-    sentence — a page that lists a test somewhere else (the ledger's `new` / `edited`
-    piles) and not here makes the reader hold two lists and diff them. Tests the manifest
-    knows but the map has no excerpt for get their excerpt cut at build time.
+    sentence, and **the deleted ones belong in it too** — a page that lists a test
+    somewhere else and not here makes the reader hold two lists and diff them. Tests the
+    manifest knows but the map has no excerpt for get their excerpt cut at build time.
+  - A **deleted** row is listed and inert: this checkout has no source to quote, so it does
+    not open (no disclosure arrow, no tab stop, no `role="button"`), its name is struck
+    through the way the run struck it, and its location keeps the words but loses the link
+    — a dead `vscode://` URL is the one thing this page never emits.
+  - Once the card carries all four states, **the ledger at the foot of the tab is the same
+    rows a second time**, grouped by a question the stamps already answer. Turn it off with
+    **`"testLedger": false`** at the top level of the content file, and move the one fact it
+    carried that no row can — how many tests the branch left alone — into the card's header
+    strip (*every test this change set touched · 24 more left alone*). Said out loud rather
+    than inferred: the build cannot read a hand-authored fragment and know what is in it,
+    so with the flag off it prints a reminder that every moved test, deleted ones included,
+    now has to be listed some other way.
   - **Head every quoted block with the page's source bar — do not author your own.** It is
     one component, `.srcbar`, and its rules ship in the snippet stylesheet the page already
     injects, so a fragment gets it by using the class names:
@@ -495,7 +507,10 @@ the one thing no amount of reading changes. Four tabs need something said about 
     to different people, and "blind spot" alone leaves the reader deciding which.
   - **Stamp each row with what the branch did to that test** — a **file glyph with a green
     plus** for one this branch wrote, the **same glyph with a yellow pencil** for one it
-    changed, and *nothing at all* for one it left alone. Icons, not words: `NEW` in a pill
+    changed, **the same glyph with a red cross** for one it deleted, and *nothing at all*
+    for one it left alone. One glyph, one badge, three colours: the badge is the whole
+    difference, and the cross is the plus turned 45° because it is the same fact with the
+    sign flipped. Icons, not words: `NEW` in a pill
     was a label loud enough to be read before the test's own name, on a row whose subject
     is the test. The glyph is VS Code's `new-file` body, whose corner is already cut for a
     badge; the words survive as the `aria-label` and the hover. A new test is evidence a requirement was
