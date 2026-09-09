@@ -58,6 +58,28 @@ def test_the_delta_is_what_opens_and_the_other_two_are_inert():
         assert f'<div class="dgmpane" data-view="{view}" hidden>' in out
 
 
+def test_the_caller_can_say_which_state_opens():
+    """The UX audit opens on New: its delta is a pixel mask over a screenshot, not a
+    two-colour drawing, so the annotated shot is the one that reads at a glance. The
+    control is the same one — only which pane starts visible changes."""
+    out = build.dgm_views_html(PANES, initial="new")
+    assert 'data-state="new"' in out
+    assert '<div class="dgmpane" data-view="new">' in out
+    assert '<div class="dgmpane" data-view="diff" hidden>' in out
+    # the button states have to agree with the pane, or the widget opens lying
+    assert '<u data-view="new" class="on">New</u>' in out
+    assert 'data-go="diff" aria-pressed="false"' in out
+    assert 'data-go="newold" aria-pressed="true"' in out
+
+
+def test_opening_on_a_side_that_never_rendered_falls_back_to_the_delta():
+    """A diagram this branch added has no "old" pane. Honouring the request would open
+    the widget on nothing at all."""
+    out = build.dgm_views_html([("diff", "<i>D</i>"), ("new", "<i>N</i>")], initial="old")
+    assert 'data-state="diff"' in out
+    assert '<div class="dgmpane" data-view="diff">' in out
+
+
 def test_a_lone_side_still_gets_a_button_with_one_word():
     """A diagram this branch added has no "old" side, and one this branch deleted has no
     "new" one. Neither is an error; the button simply offers the word that exists."""

@@ -522,10 +522,16 @@ def audit_side(snapshot: dict, registry: dict, side: str) -> list[dict]:
                                 f'inside the <b>{n["ds_host"]}</b> component — its own control'))
             continue
         owners = " or ".join(f"<b>{d}</b>" for d in role["covered_by"])
+        # Spelled out rather than implied. The finding is not "a select is in a covered
+        # role" — that is the evidence; the finding is "this is not the design-system
+        # component", and a reader looking at a red box on a screenshot has to be told
+        # that in words, not left to infer it from an arrow between two nouns.
         out.append(_finding(
             side, n, "bare", role,
-            f'native <code>&lt;{n["tag"]}&gt;</code> in a role the design system covers '
-            f'({owners}), and it is not inside any <code>[data-ds]</code> host'))
+            f'not the design-system component — a plain '
+            f'<code>&lt;{n["tag"]}&gt;</code> where {owners} belongs. Nothing above it '
+            f'carries a <code>[data-ds]</code> marker, so the screen renders the '
+            "browser’s own control instead of the one the design system ships"))
     return out
 
 
@@ -884,6 +890,17 @@ def shot_html(png_rel: str, page: dict, marks: list[dict]) -> str:
     return "".join(out)
 
 
+def _plain(message: str) -> str:
+    """A finding’s message as text, for a `data-tip` the tooltip sets as textContent.
+
+    Stripping the tags is not enough: the message is HTML, so its `<select>` is written
+    `&lt;select&gt;`, and `html.escape` on the way into the attribute turned the ampersand
+    into `&amp;lt;` — the bubble read the literal characters `&lt;select&gt;` out loud
+    for as long as this shipped. Unescape after stripping and the tag reads as a tag.
+    """
+    return html.unescape(re.sub("<[^>]+>", "", message))
+
+
 def _marks_for(findings, side):
     marks = []
     for f in findings:
@@ -898,20 +915,25 @@ def _marks_for(findings, side):
         if f["verdict"] == "ds":
             marks.append({"id": f["id"], "cls": "ok", "box": f["box"],
                           "badge": f'✓ {f["ds"]}{note}',
-                          "tip": re.sub("<[^>]+>", "", f["message"])})
+                          "tip": _plain(f["message"])})
         else:
-            expect = "/".join(f["expected_ds"]) or "a design-system component"
+            # "select → combo" was an arrow between two words the reader had to
+            # already know to decode. The badge now says the verdict itself, and names
+            # the component that is missing rather than the role it fills.
+            expect = "/".join(f["expected_ds"])
+            expect = f"not the {expect} component" if expect else \
+                "not a design-system component"
             marks.append({"id": f["id"], "cls": "bad", "box": f["box"],
-                          "badge": f'✗ {f["role"]} → {expect}{note}',
-                          "tip": re.sub("<[^>]+>", "", f["message"])})
+                          "badge": f'✗ plain <{f["element"]["tag"]}>, {expect}{note}',
+                          "tip": _plain(f["message"])})
     return marks
 
 
 LEGEND = (
     '<div class="dsa-legend">'
     '<span class="k-ok"><i></i>is a design-system component</span>'
-    '<span class="k-bad"><i></i>native control in a role the DS covers, outside any '
-    '<code>[data-ds]</code></span>'
+    '<span class="k-bad"><i></i>not the design-system component &mdash; a native '
+    'control where one belongs, outside any <code>[data-ds]</code></span>'
     '<span class="k-new"><i></i>new or changed on this branch</span>'
     '<span class="dsa-prov">everything else is deliberately unmarked</span>'
     "</div>")

@@ -1951,6 +1951,19 @@ def test_a_source_with_no_documentation_stays_a_plain_stamp():
     assert '<span class="f-src">assumption</span>' in out
 
 
+def test_a_verdict_with_no_reasons_draws_no_band():
+    """The band exists to hold the reasons. With none, all it renders is the pill beside
+    the title said again, one screenful lower, inside two rules and a viewport of empty
+    grid — so the score stays in the masthead and the band does not open."""
+    assert build.verdict_band_html({"score": 5, "label": "not yet mergeable"}, 5, "v-mid") == ""
+
+
+def test_a_verdict_with_reasons_still_draws_them():
+    out = build.verdict_band_html({"score": 5, "label": "l", "bullets": ["because"]}, 5, "v-mid")
+    assert 'class="verdict v-mid"' in out and "<li>because</li>" in out
+    assert out.count('<i class="on">') == 5, "the dial still counts the score"
+
+
 def test_a_bare_ref_shows_the_name_and_keeps_the_path_on_hover():
     """The same trade the diff header makes. Three references on one line, each spelling
     out `src/main/java/victor/training/petclinic/...`, is a wall nobody reads."""

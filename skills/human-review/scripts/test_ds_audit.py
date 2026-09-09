@@ -273,7 +273,9 @@ def test_the_bare_one_beside_it_is():
     bare, = [f for f in findings if f["verdict"] == "bare"]
     assert bare["element"]["id"] == "vetId"
     assert bare["expected_ds"] == ["combo"]
-    assert "not inside any" in bare["message"]
+    # The verdict in words, not left to be inferred from the evidence for it.
+    assert bare["message"].startswith("not the design-system component")
+    assert "[data-ds]" in bare["message"]
 
 
 def test_a_control_in_a_role_nobody_claims_is_recorded_and_never_drawn():
@@ -778,7 +780,7 @@ def test_the_three_state_viewer_is_the_page_s_own_and_not_a_second_one():
     """A second viewer with different ergonomics in the same report would be the mistake.
     The Diff / New-Old control was built for exactly this shape of content."""
     source = (HERE / "ds-audit.py").read_text()
-    assert "build.dgm_views_html(panes)" in source
+    assert "build.dgm_views_html(panes" in source
     assert 'class="dgmviews"' not in source, "emitting the control by hand is the drift"
     frag = ds.render(_result_from_capture(), "")
     assert frag.count("<button") == 2
@@ -786,11 +788,41 @@ def test_the_three_state_viewer_is_the_page_s_own_and_not_a_second_one():
         assert f'data-view="{view}"' in frag
 
 
-def test_the_delta_opens_and_the_two_annotated_shots_are_behind_the_second_button():
+def test_the_annotated_new_screen_opens_and_the_delta_is_one_click_away():
+    """The audit’s delta is a pixel mask over a photo of a form: half-ghosted, and a
+    picture the reader has to decode before it says anything. The annotated new screen
+    is the one that reads at a glance, so that is what opening the screen shows. Diff
+    keeps its button — it is still the answer to "what moved".
+    """
     frag = ds.render(_result_from_capture(), "")
-    assert 'data-state="diff"' in frag
-    assert '<div class="dgmpane" data-view="new" hidden>' in frag
+    assert 'data-state="new"' in frag
+    assert '<div class="dgmpane" data-view="new">' in frag
+    assert '<div class="dgmpane" data-view="diff" hidden>' in frag
     assert '<div class="dgmpane" data-view="old" hidden>' in frag
+
+
+def test_the_badge_names_the_verdict_and_not_an_arrow_between_two_words():
+    """"select → combo" needed the reader to already know what it meant. The red box
+    on the screenshot has to say what it is claiming: this is not the component."""
+    nodes = [node("h", "div", ds="combo"), control("h>s", ds_host="combo", ds_host_sig="h"),
+             control("loose", id="vetId")]
+    findings = ds.audit_side(snap(*nodes), registry_of(nodes), "new")
+    bad, = [m for m in ds._marks_for(findings, "new") if m["cls"] == "bad"]
+    assert bad["badge"] == "✗ plain <select>, not the combo component"
+    assert "→" not in bad["badge"]
+
+
+def test_the_tip_shows_a_tag_and_not_the_letters_of_its_escape():
+    """The message is HTML, the tip is text. Strip the tags and the entities are still
+    there; escape that into the attribute and the bubble reads "&lt;select&gt;" out
+    loud — which is what it did until someone hovered one."""
+    nodes = [node("h", "div", ds="combo"), control("h>s", ds_host="combo", ds_host_sig="h"),
+             control("loose", id="vetId")]
+    findings = ds.audit_side(snap(*nodes), registry_of(nodes), "new")
+    bad, = [m for m in ds._marks_for(findings, "new") if m["cls"] == "bad"]
+    assert "<select>" in bad["tip"]
+    assert "&lt;" not in bad["tip"] and "&amp;" not in bad["tip"]
+    assert "<code>" not in bad["tip"], "tags stripped, entities resolved"
 
 
 def test_only_the_two_verdicts_worth_drawing_are_drawn():

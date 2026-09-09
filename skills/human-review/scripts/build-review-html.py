@@ -273,7 +273,12 @@ span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
-.lede { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--accent);
+/* The edge is --link, not --accent. --accent is this page's red, and red is spent
+   everywhere else on something being wrong — a removed line, a failing test, a level
+   nothing covers. A lede states what the tab found; stamping it with the same red made
+   every tab open on what read as a warning. Blue is the page's other structural colour
+   and carries no verdict. */
+.lede { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--link);
         border-radius:6px; padding:.9rem 1.1rem; }
 /* A phrase that is short because the long version is one hover away. It has to *look*
    hoverable or the short version is simply less information: dotted underline, the help
@@ -1038,11 +1043,23 @@ TIP_JS = """<script>
 (function () {
   var css = document.createElement('style');
   css.textContent =
+    // 15px, the page's own body size, at normal weight. It was 1.05rem/600 -- a hint
+    // set LARGER and heavier than the sentence it explains, which reads as the page
+    // shouting an aside.
     '.tip{position:fixed;z-index:9999;pointer-events:none;background:rgba(20,20,22,.96);' +
-    'color:#fff;font:600 1.05rem/1.25 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;' +
+    'color:#fff;font:400 15px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;' +
     'padding:.6rem .9rem;border-radius:.6rem;max-width:22rem;box-shadow:0 10px 30px rgba(0,0,0,.35);' +
     'opacity:0;transform:translateY(4px);transition:opacity 120ms ease,transform 120ms ease}' +
     '.tip.visible{opacity:1;transform:translateY(0)}' +
+    // A tip that lists identifiers lists them: one per line, in code type, with a marker
+    // -- not welded into a comma-separated sentence the reader has to parse to find out
+    // whether their own library is in it. `.tipfoot` is for the sentence that genuinely
+    // is one, set apart and quieter so the list stays the thing being read.
+    '.tip ul.tiplist{margin:0;padding-left:1.1rem;list-style:disc;' +
+    'font:400 13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}' +
+    '.tip ul.tiplist li{margin:0}' +
+    '.tip p.tipfoot{margin:.5rem 0 0;font-size:13px;opacity:.72}' +
+    '.tip p.tipfoot:first-child{margin:0;opacity:1}' +
     // One convention for the pointer: a mark that only explains itself gets the question
     // mark, so hovering tells you there is something to read AND that clicking does
     // nothing. Anything you can act on -- a link, a button, a row that opens -- keeps
@@ -1064,12 +1081,23 @@ TIP_JS = """<script>
   }
 
   function place(el) {
-    var r = el.getBoundingClientRect(), b = bubble.getBoundingClientRect();
-    var left = r.left + r.width / 2 - b.width / 2;
+    var r = el.getBoundingClientRect(), b = bubble.getBoundingClientRect(), left, top;
+    // `data-tip-side="right"` is for a tip tall enough to be a panel rather than a
+    // label: a stack of bullets floated above the phrase covers the sentence the reader
+    // is in the middle of, and pushes the page's own content out of view. Beside it, the
+    // sentence stays readable. Flips to the left margin when the right one is too narrow.
+    if (el.getAttribute('data-tip-side') === 'right') {
+      left = r.right + 12;
+      if (left + b.width > window.innerWidth - 8) left = r.left - b.width - 12;
+      top = r.top + r.height / 2 - b.height / 2;
+    } else {
+      left = r.left + r.width / 2 - b.width / 2;
+      // Above by default; below when the top of the viewport is in the way.
+      top = r.top - b.height - 10;
+      if (top < 8) top = r.bottom + 10;
+    }
     left = Math.max(8, Math.min(left, window.innerWidth - b.width - 8));
-    // Above by default; below when the top of the viewport is in the way.
-    var top = r.top - b.height - 10;
-    if (top < 8) top = r.bottom + 10;
+    top = Math.max(8, Math.min(top, window.innerHeight - b.height - 8));
     bubble.style.left = left + 'px';
     bubble.style.top = top + 'px';
   }
@@ -3933,24 +3961,39 @@ _LOG_PKGS_RE = re.compile(r"\(([a-z][\w\\.]*(?:\|[a-z][\w\\.]*)+)\)")
 
 
 @functools.lru_cache(maxsize=1)
-def logging_libraries() -> str:
-    """The packages the scan actually searches for, as one line for a hover.
+def logging_libraries() -> tuple[str, ...]:
+    """The packages the scan actually searches for, in the rule's own order.
 
     Read out of `logextract.py`'s own `log-import` rule rather than typed here. A list of
     library names on a page is a claim about what a scan looked for, and the only version
     of that claim worth showing is the one that cannot go stale: add a logging API to the
-    rule and this sentence gains it on the next build; nobody has to remember the page.
+    rule and this list gains it on the next build; nobody has to remember the page.
 
-    The escaping is undone (`org\\.slf4j` is a regex, not a package) and the order is the
-    rule's own. Falls back to naming the rule when the regex cannot be found at all —
-    saying where to look beats inventing a list."""
+    The escaping is undone (`org\\.slf4j` is a regex, not a package). Returns empty when
+    the regex cannot be found at all — the caller says where to look instead, because
+    naming the rule beats inventing a list."""
     rule = _logextract().RULES.get("log-import", "")
     for alt in _LOG_PKGS_RE.findall(rule):
         pkgs = [p.replace("\\", "") for p in alt.split("|")]
         if any("." in p for p in pkgs):
-            return "Imports of " + ", ".join(pkgs) + " — plus loggers declared by type, " \
-                   "built by a logger factory, or injected by a Lombok annotation."
-    return "The packages named by logextract.py's log-import rule."
+            return tuple(pkgs)
+    return ()
+
+
+def logging_libraries_tip() -> str:
+    """The same packages as the hover panel's markup: one per line, in code type.
+
+    Eight dotted package roots welded into a sentence is a list pretending to be prose —
+    the reader's question is "is mine in there", and answering it meant reading a
+    comma-separated run to the end. One bullet per package, monospace because these are
+    identifiers and not words, and the two-line tail says the part that is genuinely
+    prose: a logger reached without an import still counts."""
+    pkgs = logging_libraries()
+    if not pkgs:
+        return "<p class=\"tipfoot\">The packages named by logextract.py's log-import rule.</p>"
+    items = "".join(f"<li>{html.escape(p)}</li>" for p in pkgs)
+    return (f'<ul class="tiplist">{items}</ul>'
+            f'<p class="tipfoot">&hellip;plus loggers reached by type, factory or Lombok.</p>')
 
 
 def _value_bullets_html(rows: list) -> str:
@@ -4148,7 +4191,8 @@ def logging_fragment(block, root: Path):
     # does not actually search for.
     head = (f'<p class="lede" id="{html.escape(block.get("id", "logging-added"))}">'
             f'Found structurally searching for '
-            f'<span class="dfn" data-tip="{html.escape(logging_libraries(), quote=True)}">'
+            f'<span class="dfn" data-tip-side="right"'
+            f' data-tip-html="{html.escape(logging_libraries_tip(), quote=True)}">'
             f'common logging libraries</span>.</p>')
     body = ""
     # No header bar and no surrounding card any more: no heading repeating "logging", no
@@ -4898,6 +4942,27 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
     return "".join(out)
 
 
+def verdict_band_html(v: dict, n: int, cls: str) -> str:
+    """The full-bleed band under the masthead: the score, and the reasons for it.
+
+    **No reasons, no band.** The bullets are the reasons, and without them all the band
+    renders is `5/10 not yet mergeable` — the pill beside the title said a second time, one
+    screenful lower, inside two rules and beside a viewport of empty grid. The score is not
+    lost by dropping it: it is in the masthead, where it is the first thing on the page and
+    already links to the findings the band would have summarised."""
+    if not v.get("bullets"):
+        return ""
+    pips = "".join(f'<i class="{"on" if i < n else ""}"></i>' for i in range(10))
+    return (
+        f'<div class="verdict {cls}">'
+        f'<div class="score"><b>{n}<small style="font-size:.42em;opacity:.5">/10</small></b>'
+        f'<span>{html.escape(v.get("label", ""))}</span>'
+        f'<div class="scale">{pips}</div></div>'
+        + "<ul>" + "".join(f"<li>{b}</li>" for b in v["bullets"]) + "</ul>"
+        + "</div>"
+    )
+
+
 def _score_target(spec) -> tuple[str, str]:
     """`("review", "Review")` — the tab the verdict's reasons live in, for the score to
     link to, and the name to say in the hover.
@@ -5301,20 +5366,7 @@ def main(argv=None) -> int:
             f'<a class="titlescore {band}" href="#{html.escape(target, quote=True)}" '
             f'data-tip="Open the {html.escape(target_label, quote=True)} tab">{face}</a>'
             if target else f'<span class="titlescore {band}">{face}</span>')
-        cls = "v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")
-        pips = "".join(f'<i class="{"on" if i < n else ""}"></i>' for i in range(10))
-        verdict_html = (
-            f'<div class="verdict {cls}">'
-            f'<div class="score"><b>{n}<small style="font-size:.42em;opacity:.5">/10</small></b>'
-            f'<span>{html.escape(v.get("label", ""))}</span>'
-            f'<div class="scale">{pips}</div></div>'
-            # The bullets are optional, and a verdict that has none is the ordinary case
-            # once the findings below say it better: an empty <ul> would still draw the
-            # list's own margins around nothing.
-            + ("<ul>" + "".join(f"<li>{b}</li>" for b in v["bullets"]) + "</ul>"
-               if v.get("bullets") else "")
-            + "</div>"
-        )
+        verdict_html = verdict_band_html(v, n, band)
 
     extra_css = "".join((out_dir / c).read_text(encoding="utf-8") for c in spec.get("extraCss", []))
     # The snippet extractor owns its own token colours, so the page asks it for them
