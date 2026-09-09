@@ -198,6 +198,11 @@ and struck through.
              "title":"Tagged for tracing, and no diagram came back","body":"…"}}
 ```
 
+**`title: ""`** drops the heading altogether, and the block opens straight on the first
+pair. Worth reaching for: each pair already names its scenarios and prints its own source
+path, so a heading over them restates the tab label in the one place the first diagram
+should be. Omitting `title` is not the same thing — that still gets the default.
+
 **`snippets`** is the pool the pairing draws from — you quote the tests, the block works out
 which diagram each belongs to, and you never name a diagram. **`unpaired`** names the group
 the leftovers land in; omitting it accepts the defaults rather than turning the group off.

@@ -3378,10 +3378,17 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
 
     if not parts:
         return "", 0, 0
-    head = (f'<h3 id="{html.escape(block.get("id", "sequences"))}">'
-            f'{html.escape(block.get("title", "Sequence deltas"))}</h3>'
-            + (f'<p>{block["body"]}</p>' if block.get("body") else ""))
-    return "\n".join([head] + parts) + "\n", len(rows) + len(orphaned), len(rows)
+    # `"title": ""` means no heading at all, and is worth having: every pair below already
+    # names its own scenarios and carries its own source path, so a heading over them can
+    # only restate what the tab label said — and it does it above the fold, where the
+    # first picture should be. An absent title still gets the default; only an author who
+    # typed an empty one is asking for the space back.
+    title = block.get("title", "Sequence deltas")
+    head = ((f'<h3 id="{html.escape(block.get("id", "sequences"))}">'
+             f'{html.escape(title)}</h3>') if title else "")
+    head += f'<p>{block["body"]}</p>' if block.get("body") else ""
+    return ("\n".join(([head] if head else []) + parts) + "\n",
+            len(rows) + len(orphaned), len(rows))
 
 
 def select_rows(rows, block) -> list:

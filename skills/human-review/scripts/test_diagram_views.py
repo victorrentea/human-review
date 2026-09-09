@@ -174,6 +174,31 @@ def test_a_sequence_diagram_whose_new_side_did_not_render_falls_back_to_the_delt
     assert 'class="dgmviews" data-state="diff"' in out
 
 
+def test_an_empty_title_drops_the_heading_instead_of_printing_a_blank_one(tmp_path):
+    """A pair names its own scenarios and prints its own source path, so the heading over
+    them can only repeat the tab label — above the fold, where the first picture goes."""
+    src = "\n".join([
+        "name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg",
+        f"P\tp.puml\tsequence\tmodified\tp.diff.puml\t{_svg(tmp_path / 'p.svg', 'd')}\t\t"
+        f"{_svg(tmp_path / 'p.new.svg', 'n')}\t{_svg(tmp_path / 'p.old.svg', 'o')}",
+    ])
+    (tmp_path / "MANIFEST.tsv").write_text(src + "\n")
+    rows = build.read_manifest(tmp_path / "MANIFEST.tsv")
+
+    block = {"type": "testpairs", "id": "sequences", "kind": "sequence", "title": ""}
+    out, _, _ = build.render_testpairs(block, {"manifest": "MANIFEST.tsv"}, rows,
+                                       tmp_path, tmp_path)
+    assert "<h3" not in out, out
+    assert "dgmviews" in out                     # the pairs themselves are untouched
+
+    # An absent title is not an empty one: it still gets the default heading.
+    kept, _, _ = build.render_testpairs({"type": "testpairs", "id": "sequences",
+                                         "kind": "sequence"},
+                                        {"manifest": "MANIFEST.tsv"}, rows,
+                                        tmp_path, tmp_path)
+    assert "<h3" in kept and "Sequence deltas" in kept
+
+
 # ── the frame that says which picture you are on ──────────────────────────────────
 
 def test_each_state_paints_the_frame_a_different_colour():
