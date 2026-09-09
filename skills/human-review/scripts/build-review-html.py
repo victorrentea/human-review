@@ -3524,6 +3524,14 @@ def opening_lede(spec) -> str:
     # line that replaced the paragraph.
     block = _assumptions_block(spec)
     parts = []
+    if spec.get("findings"):
+        parts.append(f"{len(spec['findings'])} open, worst first")
+    if spec.get("autofixes"):
+        parts.append(f"{len(spec['autofixes'])} auto-applied")
+    # Last, because the first two clauses count what a review pass produced and this one
+    # counts what it could not: a reader who has just been told how many items are open
+    # and how many were applied is at exactly the point where "and here is what nobody
+    # checked" lands. Leading with it puts the softest pile in front of the defects.
     if block is not None:
         # Zero is a number the reader came for, so this clause renders at zero too. A pile
         # that appears only when it is non-empty disappears exactly where it matters most:
@@ -3535,10 +3543,6 @@ def opening_lede(spec) -> str:
         parts.append("coder could not be asked"
                      if block.get("mode") == "C" and not assumed
                      else f"{assumed} assumed by the coder")
-    if spec.get("findings"):
-        parts.append(f"{len(spec['findings'])} open, worst first")
-    if spec.get("autofixes"):
-        parts.append(f"{len(spec['autofixes'])} auto-applied")
     if not parts:
         return ""
     # The stamp clause went the same way as "greyed out" and "yours to confirm", and it

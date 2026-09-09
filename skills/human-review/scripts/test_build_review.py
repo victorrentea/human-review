@@ -2540,6 +2540,8 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         "the badge already says `your call`"
     assert "9 open, worst first" in page
     assert "3 auto-applied" in page
+    assert "9 open, worst first &middot; 3 auto-applied &middot; 2 assumed by the coder" in page, \
+        "what a pass found comes first; what no pass could find comes after it"
     assert "greyed out" not in page, \
         "the applied fixes are visibly grey"
     assert "stamped with" not in page, \
