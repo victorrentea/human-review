@@ -514,10 +514,18 @@ the one thing no amount of reading changes. Four tabs need something said about 
     file inside the open pull request, anchored by the sha-256 of its path). A logo, not
     initials: `⇆ VSC` and `⇆ GH` were three monospace letters the width of a short file
     name, so a row whose whole job is to say *which file is this?* read as three words of
-    equal weight, two of which had to be decoded first. The marks are 14px, the octocat in
-    `currentColor` and the ribbon in its own blue (it is only recognisable as VS Code while
-    it is that blue), and **the sentence moves to the hover** — the mark says github.com to
-    the eye but not to a screen reader, so the `aria-label` and the tooltip still spell it.
+    equal weight, two of which had to be decoded first. The marks are 14px, **grey at rest
+    and lit under the cursor** — two logos in full colour beside a file name are the
+    brightest thing in the row and the least of what it says, so at rest they sit at the
+    weight of furniture and the name reads first; on hover the octocat comes up in the
+    page's own ink (its mark is monochrome by its own brand — never the link blue it would
+    otherwise inherit, which reads as a decorated arrow) and the ribbon in its blue, which
+    is the only thing that makes it VS Code. **No underline** under either: the dotted rule
+    was there to keep three letters from reading as prose. They sit at **two thirds of the
+    row's gap** from what follows them — a mark is a smaller thing than the words around it
+    and floats off the name given the same air. And **the sentence moves to the hover** —
+    the mark says github.com to the eye but not to a screen reader, so the `aria-label` and
+    the tooltip still spell it.
     Each is emitted only where that side can really show it: no editor diff for a file with no
     before-state, and no github.com link for work github.com has not seen — the file dirty
     at HEAD, the branch unpushed, or no pull request open on it. **Take the pull request
@@ -554,7 +562,11 @@ the one thing no amount of reading changes. Four tabs need something said about 
     stopped asserting. Silence on the untouched rows is the point: a stamp on all of them
     would say nothing, and this is the fact the old evidence cards carried in prose. The
     stamp reads from the **manifest**, never from the diff of the quoted lines: a test
-    edited three lines above its excerpt is edited, and a pencil is the whole word.
+    edited three lines above its excerpt is edited, and a pencil is the whole word. **It
+    closes the row, to the right of the location** — the same order the source bar inside
+    the row reads in, and the same reason: `new` is a fact *about* a file, so it comes after
+    the file has been named. Between the title and the location it sat between two things
+    that belong together and read as part of the sentence naming the test.
   - A **gap** is a criticism of the *requirement*, so it belongs on the requirement's side:
     render it under the ticket as a **blind spot**, never under the code on the right where
     it reads as a verdict on the test that happens to be open.
@@ -567,7 +579,10 @@ the one thing no amount of reading changes. Four tabs need something said about 
     darker in the small one, and the hatch for `partial` had barely two bands to show.
     **Spread the row edge to edge** (`justify-content:space-between`) under the frame, so
     the five words sit under the width of text they explain instead of bunching at the
-    left. Name the states, not their colours. **The hover is one short sentence** — *Only
+    left. **A thin grey frame around all five**, so the row reads as five badges rather
+    than five words that happen to be coloured — on all of them and not only the filled
+    ones, because `N/A`'s state *is* no fill and without an edge it is a bare word the
+    reader cannot tell is the same kind of thing as `full`. Name the states, not their colours. **The hover is one short sentence** — *Only
     part of this claim is covered by tests* — not a phrase-and-em-dash restating the word
     the reader just hovered. The kinds get their own one-liner under the tests card.
   - **Nothing repeats the fill.** `partial` and `executed` used to carry a dashed underline

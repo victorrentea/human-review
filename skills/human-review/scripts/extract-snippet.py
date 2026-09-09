@@ -147,22 +147,32 @@ def stylesheet() -> str:
         # A logo needs no dotted underline to say it is a link — the underline was there to
         # mark three letters that could otherwise be read as a label, and under a mark it
         # is just a line. What is left is a hit area big enough to click at 14px.
+        # ...and they sit closer than the row's own 7px: a mark is a smaller thing than
+        # the words around it, and given the same air it floats off the name it belongs
+        # to. Two thirds of the gap, taken back with a negative margin so the hover box
+        # keeps its full hit area.
         ".srcbar a.srcref.srcbar-diff { border-bottom:0; padding:1px 3px;\n"
-        "  border-radius:5px; line-height:0; }\n"
+        "  border-radius:5px; line-height:0; margin-right:-2.33px; }\n"
         # The marks themselves, wherever a `.srcref` carries one: at the size of the text
         # beside them, sitting on its baseline rather than on the box's.
-        # Each mark in the colour it is recognised in, not in the link colour it inherits:
-        # a blue octocat reads as a decorated arrow, and the ribbon is only recognisable as
-        # VS Code while it is that blue.
+        # Grey at rest, lit on hover — and never the link colour it would otherwise
+        # inherit, because a blue octocat reads as a decorated arrow. Two logos in full
+        # colour beside a file name are the brightest thing in the row and the least of
+        # what it says; grey, they sit at the weight of furniture and the name reads
+        # first. Under the cursor each comes up in the colour it is recognised by: the
+        # octocat in the page's own ink (its mark is monochrome by its own brand) and the
+        # ribbon in its blue, which is the only thing that makes it VS Code.
         ".srcref svg.ico { display:inline-block; width:14px; height:14px;\n"
-        "  vertical-align:-.2em; fill:var(--fg,#1c1c1c); }\n"
-        ".srcref svg.ico-vsc { fill:#0098ff; }\n"
+        "  vertical-align:-.2em; fill:var(--muted,#6b6b6b);\n"
+        "  transition:fill .12s ease; }\n"
+        "a.srcref:hover svg.ico, a.srcref:focus-visible svg.ico { fill:var(--fg,#1c1c1c); }\n"
+        "a.srcref:hover svg.ico-vsc, a.srcref:focus-visible svg.ico-vsc { fill:#0098ff; }\n"
         # A Java test path is longer than this column is wide. `anywhere` lets it wrap, and
         # the <wbr> after each slash keeps every fragment a readable path segment;
         # `break-word` alone would split `victor` down the middle.
         ".srcbar .srcref { margin-bottom:0; overflow-wrap:anywhere; }\n"
         "@media (prefers-color-scheme: dark) {\n"
-        "  .srcref svg.ico { fill:var(--fg,#e6e6e6); }\n"
+        "  a.srcref:hover svg.ico, a.srcref:focus-visible svg.ico { fill:var(--fg,#e6e6e6); }\n"
         "  pre.code .ln-row.added .dm { border-left-color:#3fb950; color:#3fb950; }\n"
         "  pre.code.diff-changed .ln-row:not(.added) { opacity:.5; }\n"
         "  .code-badge { color:#56d364; background:rgba(63,185,80,.12); }\n"
