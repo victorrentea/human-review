@@ -152,6 +152,28 @@ def test_a_name_nothing_on_the_page_defines_stays_plain_text():
     assert "xref" not in doc
 
 
+def test_a_name_does_not_resolve_across_languages():
+    """`bookVisit` is a local helper in the TypeScript glue and a `private int
+    bookVisit(VisitDto)` in a Spring controller quoted three tabs away. The glue's call
+    linked to the controller, and the link read exactly like the true ones beside it."""
+    doc = xref.cross_link(page(
+        figure("vscode://file//r/glue.ts:78:1", 78, ["    await bookVisit(this, vetName);"]),
+        figure("vscode://file//r/VisitRestController.java:81:1", 81,
+               ["    private int bookVisit(VisitDto visitDto) {", "    }"])))
+    assert "xref" not in doc
+
+
+def test_the_definition_in_the_file_being_read_wins():
+    """Two windows declare `visitRow`. The call is in a third, cut from the same file as one
+    of them, and that is the one it means."""
+    doc = xref.cross_link(page(
+        figure("vscode://file//r/dsl.ts:10:1", 10, ["export function visitRow(page) {", "}"]),
+        figure("vscode://file//r/other.ts:40:1", 40, ["export function visitRow(page) {", "}"]),
+        figure("vscode://file//r/dsl.ts:50:1", 50, ["  return visitRow(page).first();"])))
+    link, = re.findall(r'<a class="xref"[^>]*href="([^"]*)"', doc)
+    assert link.endswith("dsl.ts:10:1"), link
+
+
 def test_a_document_with_nothing_to_link_comes_back_untouched():
     plain_page = page("<p>no code here</p>")
     assert xref.cross_link(plain_page) == plain_page

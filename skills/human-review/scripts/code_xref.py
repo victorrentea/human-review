@@ -140,6 +140,18 @@ MIN_NAME = 3
 
 BRACE_LANGS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".java", ".kt", ".cs", ".go"}
 
+# Which suffixes are the same language for the purpose of resolving a name. Nothing on this
+# page calls across one of these boundaries, and a name that appears on both sides of one is
+# a coincidence: the TypeScript glue's local `bookVisit` helper resolved to a `private int
+# bookVisit(VisitDto)` quoted from a Spring controller three tabs away, and the link read
+# exactly like the true ones beside it. A missed link costs the reader a search they were
+# already going to do; a confident wrong one costs them the wrong answer.
+FAMILY = {".ts": "js", ".tsx": "js", ".js": "js", ".jsx": "js", ".mjs": "js"}
+
+
+def family(suffix: str) -> str:
+    return FAMILY.get(suffix, suffix)
+
 
 def defined_names(suffix: str, lines: list[str]) -> dict[str, int]:
     """`{name: 1-based index within `lines`}` for everything this window declares."""
@@ -372,14 +384,18 @@ def _collect_parts(doc: str) -> tuple[list[tuple], list[Window]]:
 def _pick(candidates, here: Window):
     """Which quoted definition a mention resolves to.
 
-    A test's own accordion first: the parts of one test are the file the reader has open,
-    and a name defined in two of the page's windows means the *near* one. Only then the
-    rest of the page, which is how a step in one test reaches glue quoted under another."""
-    near = [c for c in candidates if c[0] is not here and c[0].group == here.group
-            and here.group is not None]
-    far = [c for c in candidates if c[0] is not here]
-    pool = near or far
-    return pool[0] if pool else None
+    Never across languages, and then near before far: the same file first, because a name
+    declared in the file being read is the one meant; then the test's own accordion, whose
+    parts are what the reader has open; and only then the rest of the page, which is how a
+    step in one test reaches glue quoted under another."""
+    same_lang = [c for c in candidates
+                 if c[0] is not here and family(c[0].suffix) == family(here.suffix)]
+    for pool in ([c for c in same_lang if c[0].rel == here.rel],
+                 [c for c in same_lang if here.group is not None and c[0].group == here.group],
+                 same_lang):
+        if pool:
+            return pool[0]
+    return None
 
 
 def _anchor(target: Window, line: int, tip: str) -> str:
