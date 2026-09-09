@@ -5652,7 +5652,9 @@ def main(argv=None) -> int:
             f'<a class="city" href="{html.escape(city["href"])}" target="_blank" rel="noopener"'
             f' data-tip="Open the interactive Code City in a new tab">'
             f'<img src="{html.escape(city["png"])}" alt="Code City with the branch change set highlighted"></a>\n'
-            f'<p class="sub">{city.get("caption", "")}</p>'
+            # Only when there is one: the empty <p> still took a paragraph's margin under
+            # the picture, on every page that never wrote a caption.
+            + (f'<p class="sub">{city["caption"]}</p>' if city.get("caption") else "")
         )
 
     # Chips carry HTML on purpose: a chip is often a link (to the branch on GitHub, to a
@@ -5987,7 +5989,11 @@ def main(argv=None) -> int:
             if state == "approval_required":
                 auto_badge["badge"], auto_badge["class"] = "!", "alarm"
                 auto_badge["label"] = "approval required"
-            return (heading(block, "codeowners", block.get("title", "Code owners")) + frag,
+            # No default heading, for the reason `codecity` has none: the tab pill says
+            # CODEOWNERS, its badge says "Code owners approval required", and the seal
+            # under it says APPROVAL REQUIRED. A fourth `Code owners` above the first
+            # filename is the label said again. An explicit `title` still renders.
+            return (heading(block, "codeowners", "") + frag,
                     1, len(owned))
         if kind == "tests":
             frag, moved = render_test_ledger(test_doc.get("tests", []), root)

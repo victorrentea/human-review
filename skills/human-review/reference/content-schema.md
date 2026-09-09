@@ -170,7 +170,10 @@ tab says *Code City* and the picture is the first thing under it. What is left i
 and it is **one line** — the measured count and what the lit slice is. The panel and the
 hover card are inside the shot, in the renderer's own words, so a paragraph explaining
 what a building, its height or its colour mean is the picture read aloud to someone who
-is already looking at it.
+is already looking at it. **`codeowners`** has no default heading either: the pill says
+*CODEOWNERS*, its badge says *Code owners approval required* and the seal under it says
+*APPROVAL REQUIRED*, so a fourth `Code owners` above the first filename is the label said
+again. It still renders a `title` you write on purpose.
 
 **`tests`** takes no configuration — it renders `testChanges` — and you do not have to
 declare it: a page that has a manifest and no `tests` block gets one appended to the
