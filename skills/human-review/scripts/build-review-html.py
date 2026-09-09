@@ -930,13 +930,6 @@ body.showall .panel:first-of-type { border-top:0; }
 .testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
 .testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
 .testlead { margin:0; }
-.testlead b { display:block; font-size:1.02rem; margin:.5rem 0 .25rem; }
-.testlead b:first-child { margin-top:0; }
-/* The heading *is* the deep link, so it must look openable without turning into a
-   second srcref — the dotted underline `.dfn` and `.srcref` share, the page's link
-   colour only on hover. */
-.testlead b a { color:inherit; text-decoration:none; border-bottom:1px dotted var(--line); }
-.testlead b a:hover { color:var(--link); border-bottom-color:currentColor; }
 @media print {
   .tabstrip { display:none; }
   .panel[hidden] { display:block !important; }
@@ -3275,28 +3268,6 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
     )
 
 
-# `== <creole> [[src://<rel>:<line>{hint} <title>]] <creole> ==` — a chapter divider in a
-# generated sequence diagram. The generator writes one per scenario, carrying the test file
-# and the line the scenario starts at, so the diagram already knows which test produced
-# which stretch of itself. The delta .puml colours and strikes these; the committed .puml
-# next to the test does not, which is why the titles are read from the committed one.
-CHAPTER = re.compile(
-    r"^==.*?\[\[src://(?P<path>[^\s:\]]+):(?P<line>\d+)(?:\{[^}]*\})?\s+(?P<title>[^\]]*)\]\]"
-)
-
-
-def chapters(puml: Path):
-    """The scenarios a generated sequence diagram is made of, in the order it draws them."""
-    if not puml.is_file():
-        return []
-    found = []
-    for line in puml.read_text(encoding="utf-8").splitlines():
-        m = CHAPTER.match(line.strip())
-        if m:
-            found.append((m["path"], int(m["line"]), m["title"].strip()))
-    return found
-
-
 def _unquoted_note(test_rel: str, root: Path) -> str:
     """What to say beside a diagram no snippet quotes.
 
@@ -3346,16 +3317,12 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     for r in rows:
         test_rel = r["source"][: -len(".genseq.puml")] if r["source"].endswith(".genseq.puml") \
             else r["source"]
-        # The scenario name carries its own deep link rather than trailing a
-        # `path:line` line under it: every snippet below already prints that path and
-        # its line range in its own header bar, so the pair used to say the same file
-        # twice, three lines apart.
-        lead = "".join(
-            f'<b><a href="vscode://file/{(root / path).resolve()}:{line}:1" '
-            f'data-tip="Open in VS Code">{html.escape(title)}</a></b>'
-            for path, line, title in chapters(root / r["source"])
-        )
-        pieces = ([f'<p class="testlead">{lead}</p>'] if lead else [""])
+        # No lead. The scenario names used to be printed here as deep links, and every
+        # one of them was said again a few hundred pixels lower: the diagram's own
+        # section headers are those same titles, linked to those same lines, drawn by
+        # the generator. Two copies of one list, and the one on the picture is the one
+        # that sits where the reader is already looking.
+        pieces = [""]
         quoted = take(test_rel)
         pieces += quoted or [_unquoted_note(test_rel, root)]
         pieces.append(render_diagrams(merged, root, out_dir, [r]))

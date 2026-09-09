@@ -197,44 +197,6 @@ def test_no_embed_declared_emits_nothing(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# pairing a test with the sequence its run recorded
-# --------------------------------------------------------------------------- #
-
-PUML = """@startuml
-participant Browser
-== <color:#D40000><s>An old scenario this branch removed</s></color> ==
-== [[src://petclinic-test/src/add-visit.spec.ts:26{Click to open the test} Add a visit]] ==
-Browser -> Backend: listVets
-== <color:#D40000>[[src://petclinic-test/src/add-visit.spec.ts:43{hint} Add a visit with a vet]]</color> ==
-@enduml
-"""
-
-
-def test_chapters_are_read_in_the_order_the_diagram_draws_them(tmp_path):
-    p = tmp_path / "d.puml"
-    p.write_text(PUML, encoding="utf-8")
-    assert build.chapters(p) == [
-        ("petclinic-test/src/add-visit.spec.ts", 26, "Add a visit"),
-        ("petclinic-test/src/add-visit.spec.ts", 43, "Add a visit with a vet"),
-    ]
-
-
-def test_a_struck_out_chapter_carries_no_handle_and_is_not_paired(tmp_path):
-    """A scenario the branch deleted is redrawn from the base diagram without a src link.
-    Pairing it with a line number would point the reader at a test that is not there."""
-    p = tmp_path / "d.puml"
-    p.write_text(PUML, encoding="utf-8")
-    assert not any("old scenario" in title for _, _, title in build.chapters(p))
-
-
-def test_a_diagram_with_no_chapters_at_all_is_not_an_error(tmp_path):
-    p = tmp_path / "d.puml"
-    p.write_text("@startuml\nA -> B: x\n@enduml\n", encoding="utf-8")
-    assert build.chapters(p) == []
-    assert build.chapters(tmp_path / "absent.puml") == []
-
-
-# --------------------------------------------------------------------------- #
 # the logging tab
 # --------------------------------------------------------------------------- #
 

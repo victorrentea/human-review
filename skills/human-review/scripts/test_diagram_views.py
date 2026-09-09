@@ -452,18 +452,13 @@ def test_a_pair_carries_both_payload_sidecars(tmp_path):
         assert ids <= known, f"{pane} draws handles with no payload: {sorted(ids - known)}"
 
 
-def test_a_pair_leads_with_the_scenario_and_its_deep_link(tmp_path):
+def test_a_pair_does_not_list_the_scenarios_the_diagram_already_titles(tmp_path):
+    """The scenario names were printed above the snippet as deep links, and the diagram
+    below prints the same titles, linked to the same lines, as its own section headers.
+    One list, on the picture, where the reader is already looking."""
     html = _pairs_fixture(tmp_path)
-    assert "A scenario" in html and "vscode://file/" in html and ":2:1" in html
-
-
-def test_the_lead_does_not_repeat_the_path_the_snippet_header_prints(tmp_path):
-    """The scenario name is the link. A `spec.ts:2` line under it said the same file the
-    snippet's own header bar says three lines lower down."""
-    html = _pairs_fixture(tmp_path)
-    lead = html[html.index('<p class="testlead">'):html.index("</p>")]
-    assert ">A scenario<" in lead
-    assert "spec.ts:2" not in re.sub(r"<[^>]+>", "", lead), "the path is the href, not text"
+    assert '<p class="testlead">' not in html
+    assert "dgmviews" in html and "snippet" in html      # the pair itself is intact
 
 
 def test_a_diagram_nobody_quoted_says_so_instead_of_saying_nothing(tmp_path):
