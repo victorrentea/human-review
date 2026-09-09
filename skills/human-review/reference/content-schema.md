@@ -381,13 +381,28 @@ the one thing no amount of reading changes. Four tabs need something said about 
     name — and give the ticket no title of its own: the masthead already carries `GH#37
     <title>`, and repeating it above the card pushed the ticket a screen down. In the
     avatar's place goes the 🤖: the whole column is inference.
-  - **An open test outlines the sentences it covers**, in the same green as its own
-    border. The relation is many-to-many in both directions — a sentence has several
-    tests, a test pins several sentences — and drawing only one direction hides half of
-    it. Opening animates (a height transition); a pane that appears by snapping makes the
-    rows below look like they moved somewhere else.
-  - The **disclosure arrow leads the title**, between the badge and the name: at the far
-    right of a variable-width row it is a control nobody finds. A **diff badge** on a
+  - **A test draws the sentences it pins only when asked to**, through a control of its
+    own: a **◀ arrowhead leading the row**, pointing across the gap at the ticket it draws
+    into. The relation is many-to-many in both directions — a sentence has several tests,
+    a test pins several sentences — so it has to be drawable from this side too; but
+    *opening* a test is a request to read its source, not a claim about coverage, and
+    hanging the outline on that click left the reader looking at three lit sentences they
+    never asked for. Opening is now only opening. Pressing the arrow outlines the
+    sentences in the same green the row itself wears, pressing it again releases them, and
+    only one row draws at a time.
+  - **The two directions are exclusive.** Selecting a sentence releases whatever a row had
+    drawn, and pressing a row's arrow releases the sentence — "these tests cover that
+    sentence" and "that test pins these sentences" are two different relations, and both
+    on screen in the same green leaves the reader working out which is which. On the
+    ticket's side the sentence *is* the control, so it needs no arrow of its own.
+  - A row whose test pins nothing renders the arrow **hidden, not merely faded** — the
+    badges behind it stay in one column, and a control that would do nothing is worse than
+    no control.
+  - The **disclosure arrow leads the title**, after the ◀ and the badge: at the far
+    right of a variable-width row it is a control nobody finds. It points *down* into the
+    row's own body while the ◀ points *left* at the ticket, so the two say which way they
+    act before they say anything else. Opening animates (a height transition); a pane that
+    appears by snapping makes the rows below look like they moved somewhere else. A **diff badge** on a
     quoted file (`new file`, `2 lines changed`) is small and sits immediately before the
     path it describes, not left-aligned as a banner of its own. Every line of a part the
     branch **added** carries its `+`, including a whole new file: the marks answer "what
