@@ -402,11 +402,18 @@ the one thing no amount of reading changes. Four tabs need something said about 
   - **The relation is drawn in the gutter, not only implied by colour.** An outline says
     *which* sentences a test pins; on a ticket four screens long it never says which of
     them belong together, and with the card sticky the row that pinned them is usually
-    beside none of them. So a pressed row draws a **brace** at the ticket's edge around
-    each sentence it pins — around the whole wrapped block of it, not the last line — and a
-    **wire** from each brace's tip across the gutter to the row itself. That is what the
-    46px gutter is for; it was 20px of nothing, and the left column pays about three
-    characters a line for it.
+    beside none of them. So a pressed row draws one **wire** per sentence it pins, from a
+    **dot on the ticket's own border** — on the line the sentence sits on, at the middle of
+    the whole wrapped block of it — across the gutter to a matching dot on the card's edge.
+    That is what the 46px gutter is for; it was 20px of nothing, and the left column pays
+    about three characters a line for it. Both ends are the same mark, so the drawing says
+    *this row, those places* and claims nothing else: a brace tried to claim a vertical
+    extent as well, and two sentences sharing a line of prose overlapped into a tangle no
+    reader could read a span out of.
+  - The wire hangs off the row's **title**, never off the row. An open row is its header
+    plus however many screens of source it quotes, and the middle of that is somewhere down
+    in the code — the wire has to land on the name of the test, which is the part that
+    stays put and the part the reader is looking at.
   - The wires are **geometry, not state**: they redraw from wherever the two columns
     currently are, on page scroll, on the card's own scroll (which does not bubble — listen
     in the capture phase), on resize, and when a row opens and moves the rows under it. The
@@ -486,8 +493,12 @@ the one thing no amount of reading changes. Four tabs need something said about 
     makes and nothing reaches) or `in the requirement` (violet: the ticket never said, and
     no test can be written for a sentence nobody wrote). They are different findings, go
     to different people, and "blind spot" alone leaves the reader deciding which.
-  - **Stamp each row with what the branch did to that test** — `new`, `✎ edited`, and
-    *nothing at all* for one it left alone. A new test is evidence a requirement was
+  - **Stamp each row with what the branch did to that test** — a **file glyph with a green
+    plus** for one this branch wrote, the **same glyph with a yellow pencil** for one it
+    changed, and *nothing at all* for one it left alone. Icons, not words: `NEW` in a pill
+    was a label loud enough to be read before the test's own name, on a row whose subject
+    is the test. The glyph is VS Code's `new-file` body, whose corner is already cut for a
+    badge; the words survive as the `aria-label` and the hover. A new test is evidence a requirement was
     pinned; an edited one is evidence a pin moved, and is worth opening for what it
     stopped asserting. Silence on the untouched rows is the point: a stamp on all of them
     would say nothing, and this is the fact the old evidence cards carried in prose. The
@@ -497,8 +508,10 @@ the one thing no amount of reading changes. Four tabs need something said about 
     render it under the ticket as a **blind spot**, never under the code on the right where
     it reads as a verdict on the test that happens to be open.
   - **Colour legend**: one row under the ticket's frame — swatch, name, nothing else, the
-    sentence on hover. Name the states, not their colours (**Fully covered · Partial
-    coverage · Executed, not asserted · Missing · Not a claim**); the swatch is the colour.
+    sentence on hover. Name the states, not their colours; the swatch is the colour. One
+    **word** each (**full · partial · executed · missing · N/A**), with the state's real
+    name leading its hover: five phrases was still a line to be read left to right, where
+    five words is a row of swatches to match against the text above.
     The kinds get their own one-liner under the tests card.
   - **Say what a model inferred.** A heading over inferred content carries a 🤖 superscript
     reading *as inferred by AI*; the logging tab's verdicts carry the same mark reading
