@@ -192,9 +192,14 @@ def _complexity(ctx: Ctx):
 def _api(ctx: Ctx):
     spec = ctx.cfg.get("spec", "openapi.yaml")
     for cmd in (
-        f"{HERE}/openapi-diff.py   --base {ctx.base} --spec {spec} --out {ART}/openapi-diff.html",
+        # `--report` is the openable twin of each fragment, written in the same run so the
+        # two cannot drift. The verdict band links to them by name, and only links to the
+        # ones it can see on disk — so these have to be written before the --panel call.
+        f"{HERE}/openapi-diff.py   --base {ctx.base} --spec {spec} --out {ART}/openapi-diff.html"
+        f" --report {ART}/openapi-diff-report.html",
         f"{HERE}/openapi-diff.py   --css  >  {ART}/openapi-diff.css",
-        f"{HERE}/openapi-compat.py --base {ctx.base} --spec {spec} --out {ART}/openapi-compat.html",
+        f"{HERE}/openapi-compat.py --base {ctx.base} --spec {spec} --out {ART}/openapi-compat.html"
+        f" --report {ART}/openapi-compat-report.html",
         f"{HERE}/openapi-compat.py --css  >  {ART}/openapi-compat.css",
         f"{HERE}/openapi-compat.py --base {ctx.base} --spec {spec} --panel "
         f"--out {ART}/openapi-verdict.html",

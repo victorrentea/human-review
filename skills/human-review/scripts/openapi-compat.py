@@ -65,6 +65,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import report_page  # noqa: E402 - resolved from next to this file, not from site-packages
 import schema_tree  # noqa: E402 - resolved from next to this file, not from the project
 
 try:
@@ -567,6 +568,10 @@ JAVA_DIFF_URL = "https://github.com/OpenAPITools/openapi-diff"
 # would credit a check that did not happen. The cross-check's other half is our sibling
 # script, and it is named as one.
 OURS_LABEL = "<code>openapi-diff.py</code>"
+# The openable copies of the two full reports, written by `--report` in the same runs that
+# write the fragments. Naming a differ in the band and giving the reader nowhere to check
+# it is half an answer: the counts are a summary, and the working is on disk either way.
+REPORTS = {"engine": "openapi-compat-report.html", "ours": "openapi-diff-report.html"}
 
 PANEL_CSS = """<style>
 .apiverdict{display:flex;align-items:center;gap:.6rem;width:100%;box-sizing:border-box;
@@ -575,6 +580,10 @@ PANEL_CSS = """<style>
 .apiverdict .dot{width:.7rem;height:.7rem;border-radius:50%;background:currentColor;flex:none}
 .apiverdict .n{font-weight:400;opacity:.85;font-size:.94rem}
 .apiverdict a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+/* Smaller and quieter than the name it follows: the verdict is what this band says, and
+   the report is where to go and check it. Same colour, so it still reads as one clause. */
+.apiverdict a.rep{font-size:.85em;opacity:.8}
+.apiverdict a.rep:hover,.apiverdict a.rep:focus-visible{opacity:1}
 .apiverdict code{font:600 .86em/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
 /* The same two treatments as the score chip beside the page title (.titlescore v-good /
    v-bad) and the tab dots — one palette on the page, not five. */
@@ -618,10 +627,36 @@ def engine_link(result: dict) -> str:
     return f'<a href="{JAVA_DIFF_URL}">OpenAPITools/openapi-diff</a>'
 
 
-def panel(result: dict, ours: dict | None) -> str:
+def report_link(which: str, assets: Path | None, prefix: str) -> str:
+    """`(report ↗)` after a differ's name, when that differ's report is really on disk.
+
+    Two paths, on purpose. `assets` is the real directory — right next to where this panel
+    is being written — and exists only to check the file is there; `prefix` is how
+    review.html, a directory above, will have to spell the href once the panel is inlined
+    into it. Deriving the href from the filesystem path would produce a link that resolves
+    from the wrong page.
+
+    Emitted only when the file is present, which is the honest rendering: run standalone,
+    or with the report step skipped, this would otherwise send a reader to a 404 and call
+    it a report. `build-review-html.py` stamps `target="_blank"` on every anchor it does
+    not recognise as page-local, so the arrow is a promise the build keeps — and the
+    parentheses stay outside the anchor so only the word underlines."""
+    if assets is None or not (assets / REPORTS[which]).is_file():
+        return ""
+    return (f' (<a class="rep" href="{html.escape(prefix + REPORTS[which])}"'
+            f' data-tip="Open this differ&#39;s full report in a new tab">'
+            f'report&nbsp;&#8599;</a>)')
+
+
+def panel(result: dict, ours: dict | None,
+          assets: Path | None = None, prefix: str = "assets/") -> str:
     """The verdict, the counts, and who checked it — in that order, on one line."""
     state = result["state"]
-    engine = engine_link(result)
+    # Built once, with its report already attached, because the name is used in three
+    # different sentences below — credited, disputed, or standing alone — and a reader
+    # who can open the working in one of them should be able to in all three.
+    engine = engine_link(result) + report_link("engine", assets, prefix)
+    ours_label = OURS_LABEL + report_link("ours", assets, prefix)
     total = change_count(result)
     n_break = breaking_count(result)
     s = "" if total == 1 else "s"
@@ -634,14 +669,14 @@ def panel(result: dict, ours: dict | None) -> str:
     # number on this line, and our sibling only re-read the same specs to see whether it
     # would say something different. "double-checked by ours" is that arrangement said out
     # loud — the verdict is the tool's, the second opinion is the house's.
-    checked = (f"checked by {engine}, double-checked by our {OURS_LABEL}"
+    checked = (f"checked by {engine}, double-checked by our {ours_label}"
                if ours is not None else
                f"checked by {engine} alone — the cross-check did not run")
 
     if disputed:
         cls, verdict = "red", "Verdict disputed"
-        flagged, quiet = ((len(ours["breaking"]), OURS_LABEL), engine) if we_break \
-            else ((n_break, engine), OURS_LABEL)
+        flagged, quiet = ((len(ours["breaking"]), ours_label), engine) if we_break \
+            else ((n_break, engine), ours_label)
         counts = (f"{total} change{s}, {flagged[0]} breaking by {flagged[1]}, "
                   f"none by {quiet}")
         # The counts clause just named both tools; repeating them here only buys a
@@ -826,6 +861,12 @@ def main(argv=None) -> int:
                     help="emit only the one-line verdict panel for the top of the API tab "
                          "(carries its own <style>, so it needs no extraCss entry)")
     ap.add_argument("--css", action="store_true", help="print the stylesheet this fragment needs")
+    ap.add_argument("--report", metavar="PATH",
+                    help="also write a self-contained, openable copy here — same body, "
+                         "wrapped in a document that carries the stylesheet with it")
+    ap.add_argument("--asset-prefix", default="assets/",
+                    help="how review.html spells the assets directory, for the "
+                         "(report) links the --panel band puts after each differ")
     ap.add_argument("--jar", help="path to openapi-diff-cli-*-all.jar (default: fetch & cache)")
     ap.add_argument("--docker", action="store_true", help=f"run {DOCKER_IMAGE} instead of java")
     ap.add_argument("--no-cross-check", action="store_true",
@@ -838,6 +879,11 @@ def main(argv=None) -> int:
         print(CSS)
         print(schema_tree.CSS)
         return 0
+
+    # Where the sibling reports land: right next to this panel, because the API step writes
+    # all three into the same assets directory. Without `--out` there is no directory to
+    # look in, and `report_link` then emits nothing rather than guessing.
+    assets = Path(args.out).parent if args.out else None
 
     sibling_args, spec_rel = [], args.spec
     with tempfile.TemporaryDirectory(prefix="openapi-compat-") as tmp:
@@ -863,7 +909,8 @@ def main(argv=None) -> int:
                 # No spec at the base means no client compiled against one. Nothing to break.
                 fresh = {"state": NO_CHANGES, "breaks": [], "additive": [],
                          "deprecated": [], "elsewhere": [], "complete": True}
-                frag = (panel(fresh, None) if args.panel else render(
+                frag = (panel(fresh, None, assets, args.asset_prefix) if args.panel
+                        else render(
                     fresh, None,
                     pair + ". The spec did not exist at the merge-base, so there is "
                     "no prior contract to break.", ""))
@@ -915,8 +962,18 @@ def main(argv=None) -> int:
         return 0
 
     ours = None if args.no_cross_check else our_verdict(sibling_args)
-    frag = (panel(result, ours) if args.panel
+    frag = (panel(result, ours, assets, args.asset_prefix) if args.panel
             else render(result, ours, provenance, changelog, before_spec, after_spec))
+    if args.report and not args.panel:
+        # Same body, second file — never a second run of oasdiff. See the twin comment in
+        # openapi-diff.py: a report that disagrees with the fragment it came from is the
+        # one failure this cross-checking page cannot afford to ship.
+        rep = Path(args.report)
+        rep.parent.mkdir(parents=True, exist_ok=True)
+        rep.write_text(report_page.wrap(
+            f"REST contract compatibility — {spec_rel}",
+            CSS + "\n" + schema_tree.CSS, frag, provenance), encoding="utf-8")
+        print(f"[openapi-compat] wrote {rep} — standalone", file=sys.stderr)
     return emit(args, frag, result)
 
 

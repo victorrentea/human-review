@@ -35,6 +35,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import report_page  # noqa: E402 - resolved from next to this file, not from site-packages
+
 try:
     import yaml
 except ImportError:  # pragma: no cover - the message is the whole handling
@@ -684,6 +687,9 @@ def main(argv=None) -> int:
     ap.add_argument("--out", help="write the HTML fragment here instead of stdout")
     ap.add_argument("--json", action="store_true", help="emit the classified changes as JSON")
     ap.add_argument("--css", action="store_true", help="print the stylesheet this fragment needs")
+    ap.add_argument("--report", metavar="PATH",
+                    help="also write a self-contained, openable copy here — same body, "
+                         "wrapped in a document that carries the stylesheet with it")
     args = ap.parse_args(argv)
 
     if args.css:
@@ -733,6 +739,20 @@ def main(argv=None) -> int:
         moved = {s.name for s in subjects if s.group == "schemas"}
         served = len(operations_touching(after, moved) | operations_touching(before, moved))
         body = render(subjects, raw, spec_abs, spec_rel, served)
+
+    # The same body twice, never a second comparison: `--report` is a second *file*, not a
+    # second run. Re-invoking the script to get an openable copy would re-read both specs
+    # and re-classify every change, for a document that must agree with the fragment
+    # line for line — and two runs are exactly how they would come to disagree.
+    if args.report and not args.json:
+        rep = Path(args.report)
+        rep.parent.mkdir(parents=True, exist_ok=True)
+        rep.write_text(report_page.wrap(
+            f"REST contract diff — {spec_rel}", CSS, body,
+            f"Read as a structure by <code>openapi-diff.py</code>, the review's own "
+            f"classifier — the second opinion behind the verdict band, not the tool that "
+            f"produced its counts."), encoding="utf-8")
+        print(f"[openapi-diff] wrote {rep} — standalone", file=sys.stderr)
 
     if args.out:
         out = Path(args.out)
