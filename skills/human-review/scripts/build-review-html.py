@@ -786,6 +786,28 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
 .transcript li.uncovered .ts { color:var(--muted); opacity:.6; }
 .transcript li.uncovered b { color:var(--fg); }
 .transcript .ts { font:600 11.5px/1.5 ui-monospace,Menlo,monospace; color:var(--link); }
+/* The bar that turns a static page into a live one. It sits above the player rather
+    than inside .vidwrap, which is a two-column grid the video and the transcript own. */
+.appenv { border:1px solid var(--line); border-radius:var(--r); background:var(--card);
+    padding:.55rem .7rem; margin:0 0 .7rem; display:flex; flex-wrap:wrap;
+    gap:.5rem .8rem; align-items:center; font-size:12.5px; }
+.appenv code { font:12px/1.6 ui-monospace,Menlo,monospace; background:var(--accent-soft);
+    border-radius:4px; padding:.15rem .4rem; user-select:all; }
+.appenv .appenv-cmd { display:flex; gap:.4rem; align-items:center; flex:1 1 22rem; min-width:0; }
+.appenv .appenv-cmd code { overflow-x:auto; white-space:nowrap; flex:1; }
+.appenv button { font:inherit; cursor:pointer; border:1px solid var(--line); border-radius:4px;
+    background:var(--bg); color:var(--fg); padding:.2rem .55rem; white-space:nowrap; }
+.appenv button:hover { background:var(--accent-soft); }
+.appenv input { font:12px/1.6 ui-monospace,Menlo,monospace; padding:.2rem .4rem; width:12rem;
+    border:1px solid var(--line); border-radius:4px; background:var(--bg); color:var(--fg); }
+/* Three states, and the page must never claim the third without having asked: unknown
+    until the probe answers, then live or down. */
+.appenv .appenv-state { font-weight:600; }
+.appenv .appenv-state[data-state="live"] { color:var(--ok,#1a7f37); }
+.appenv .appenv-state[data-state="down"] { color:var(--muted); }
+/* A link the running app can answer looks like the caption links around it; one that has
+    nowhere to point yet must not look clickable, because it is not. */
+.transcript a[data-app].dead { color:var(--muted); text-decoration:none; cursor:default; }
 /* A caption is a seek target, so a link inside one has to read as a *different* affordance
     without shouting: the page's own link colour and the dotted underline it already uses
     for .srcref, solid on hover. The click separation is in the script, not here. */
@@ -1086,6 +1108,92 @@ DGM_VIEWS_JS = """<script>
 })();
 </script>"""
 
+
+APP_ENV_JS = """<script>
+// Turns the transcript's app links into links that actually go somewhere.
+//
+// The page is static and was built before the environment existed, so it cannot know the
+// port: the host allocates one per instance precisely so several branches can run at
+// once. The reviewer pastes the URL the start command printed, this remembers it, and
+// every [data-app] path is resolved against it from then on.
+(function () {
+  var bar = document.querySelector('.appenv');
+  if (!bar) return;
+  var input = bar.querySelector('.appenv-base');
+  var state = bar.querySelector('.appenv-state');
+  var links = Array.prototype.slice.call(document.querySelectorAll('a[data-app]'));
+  // Per page, not per machine: two review pages describe two branches, and each branch
+  // gets its own instance on its own port.
+  var KEY = 'human-review:appbase:' + location.pathname;
+
+  function stored() {
+    // A browser with site data blocked throws on read; the page must still work.
+    try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+  }
+  function remember(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+
+  function base() {
+    return (input.value || stored() || bar.dataset.fallback || '').replace(/\\/+$/, '');
+  }
+
+  function apply() {
+    var b = base();
+    links.forEach(function (a) {
+      var path = a.dataset.app;
+      if (b) { a.href = b + path; a.classList.remove('dead'); }
+      // No base and no fallback: the link has nowhere to point, and saying so by going
+      // grey is honest where a live-looking link that 404s is not.
+      else { a.removeAttribute('href'); a.classList.add('dead'); }
+    });
+  }
+
+  function probe() {
+    var b = base();
+    if (!b) { state.dataset.state = 'down'; state.textContent = 'not started'; return; }
+    state.dataset.state = 'unknown'; state.textContent = 'checking\u2026';
+    // /healthz answers with CORS open, so this works from a file:// page too. A failure
+    // here means "nothing is listening", which is the normal case for an old report.
+    fetch(b + '/healthz', {cache: 'no-store'}).then(function (r) {
+      if (!r.ok) throw 0;
+      state.dataset.state = 'live'; state.textContent = 'live';
+    }).catch(function () {
+      state.dataset.state = 'down'; state.textContent = 'not running';
+    });
+  }
+
+  input.value = stored();
+  apply(); probe();
+
+  input.addEventListener('change', function () {
+    input.value = input.value.trim().replace(/\\/+$/, '');
+    remember(input.value); apply(); probe();
+  });
+
+  var copy = bar.querySelector('.appenv-copy');
+  if (copy) copy.addEventListener('click', function () {
+    var cmd = bar.querySelector('.appenv-cmd code').textContent;
+    navigator.clipboard.writeText(cmd).then(function () {
+      copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy'; }, 1200);
+    }).catch(function () { copy.textContent = 'Copy failed'; });
+  });
+
+  // Explicit, never automatic. Resetting on every link click would throw away work the
+  // reviewer was in the middle of; the duplicate rows and unique-constraint collisions it
+  // exists to prevent are the reviewer's own repeated form submissions, and they know
+  // when they have made a mess.
+  var reset = bar.querySelector('.appenv-reset');
+  if (reset) reset.addEventListener('click', function () {
+    var b = base();
+    if (!b) return;
+    reset.disabled = true; reset.textContent = 'Resetting\u2026';
+    fetch(b + bar.dataset.reset, {method: 'POST', cache: 'no-store'}).then(function (r) {
+      reset.textContent = r.ok ? 'Reset' : 'Reset failed';
+    }).catch(function () { reset.textContent = 'Reset failed'; }).then(function () {
+      setTimeout(function () { reset.textContent = 'Reset data'; reset.disabled = false; }, 1400);
+    });
+  });
+})();
+</script>"""
 
 TIP_JS = """<script>
 // One tooltip for the whole page. The native `title` is unstyleable, unresizable and
@@ -3565,6 +3673,44 @@ FAVICON_SVG = (
 FAVICON = "data:image/svg+xml;base64," + base64.b64encode(FAVICON_SVG.encode()).decode()
 
 
+def _app_anchor(href: str) -> str:
+    """The opening tag for a link into the running app.
+
+    A root-relative href is a *path into whatever instance is up right now*, and the port
+    that instance got is not knowable when this page is built — the host picks it, so that
+    several branches can be running at once. So the path is kept verbatim in `data-app` and
+    the `href` is only ever a best guess, rewritten by the script once a base URL is known.
+    An absolute href is left exactly as written: it names a specific server on purpose."""
+    if not href.startswith("/"):
+        return f'<a href="{html.escape(href)}">'
+    return f'<a data-app="{html.escape(href)}" href="{html.escape(href)}">'
+
+
+def runtime_html(rt) -> str:
+    """The command that starts the app, and the box that remembers where it answered.
+
+    This page is a file on disk that outlives the branch it describes, so it cannot hold a
+    live URL: by the time anyone opens it the environment is long gone, and the next one
+    will come up on a different port. What it can hold is the command that brings the
+    environment back, and a place to paste the URL that command prints — after which every
+    link in the transcript points into a running app instead of nowhere."""
+    if not rt:
+        return ""
+    cmd = rt.get("command", "")
+    fallback = rt.get("base", "")
+    reset = ('<button type="button" class="appenv-reset">Reset data</button>'
+             if rt.get("reset") else "")
+    cmdbox = (f'<span class="appenv-cmd"><code>{html.escape(cmd)}</code>'
+              f'<button type="button" class="appenv-copy">Copy</button></span>') if cmd else ""
+    return (f'<div class="appenv" data-fallback="{html.escape(fallback)}"'
+            f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}>'
+            + cmdbox
+            + '<label>running at <input type="url" class="appenv-base" spellcheck="false"'
+              f' placeholder="{html.escape(fallback or "http://localhost:4200")}"></label>'
+            + '<span class="appenv-state" data-state="unknown">checking\u2026</span>'
+            + reset + '</div>')
+
+
 def _link_captions(cues, links):
     """Put the app links *inside* the narration, on the words that already name the page.
 
@@ -3593,7 +3739,7 @@ def _link_captions(cues, links):
             # match is exactly "we are inside one".
             if at < 0 or cell[:at].count("<a ") != cell[:at].count("</a>"):
                 continue
-            cells[i] = (cell[:at] + f'<a href="{html.escape(href)}">' + phrase + "</a>"
+            cells[i] = (cell[:at] + _app_anchor(href) + phrase + "</a>"
                         + cell[at + len(phrase):])
             break
         else:
@@ -3635,10 +3781,11 @@ def video_html(s, out_dir: Path) -> str:
     if unplaced:
         items += ('<li class="uncovered"><span class="ts">--:--</span><span>'
                   '<b>Not filmed.</b> Touched by this change: '
-                  + " · ".join(f'<a href="{html.escape(l["href"])}">'
-                               f'{html.escape(l.get("label") or l["href"])}</a>'
+                  + " · ".join(_app_anchor(l["href"])
+                               + f'{html.escape(l.get("label") or l["href"])}</a>'
                                for l in unplaced) + ".</span></li>")
-    return f'<div class="vidwrap">{player}<ol class="transcript">{items}</ol></div>'
+    return (runtime_html(s.get("runtime"))
+            + f'<div class="vidwrap">{player}<ol class="transcript">{items}</ol></div>')
 
 
 def embed_html(s, out_dir: Path) -> str:
@@ -6077,6 +6224,7 @@ def main(argv=None) -> int:
 <footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{allbtn_html}</div></footer>
 </div>
 {CAPTION_JS}
+{APP_ENV_JS}
 {GENSEQ_JS}
 {FOCUS_JS}
 {DGM_VIEWS_JS}

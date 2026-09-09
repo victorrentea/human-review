@@ -213,6 +213,34 @@ inside a link already placed. A link whose phrase is nowhere in the narration �
 no `anchor` — is **not dropped**: it prints after the transcript as *"Touched but not
 filmed"*, which is a fact about the film's coverage.
 
+An `href` that starts with `/` is a **path into whichever instance is running**, not a URL.
+The port cannot be known when the page is built — the host picks one per instance so that
+several branches can be up at once — so the path is kept in `data-app` and resolved at
+click time. An absolute `href` is left exactly as written: it names one specific server on
+purpose.
+
+```json
+"runtime": {
+  "command": "cd ~/workspace/petclinic && ./start-docker.sh up --ref 9f3c1ab",
+  "base": "http://localhost:4200",
+  "reset": "/__reset"
+}
+```
+
+`runtime` puts a bar above the player: the command that brings the environment back, and a
+box for the URL that command prints. Paste it once and every relative `appLinks` href
+points into the running app; it is remembered per page, so a reload keeps it. `base` is the
+fallback the links use before anything is pasted — with neither, they render grey and
+unclickable rather than pretending to lead somewhere.
+
+The bar asks `GET <base>/healthz` whether anything is listening, so an environment that
+wants the live/not-running pill must answer it with CORS open. `reset` is **optional and
+opt-in**: give it a path the environment answers on `POST` to put the data back to its
+starting point, and a "Reset data" button appears. Omit it and no button is drawn — which
+is the right thing whenever nothing is there to answer, since a button that always fails is
+worse than no button. Resetting is never automatic: doing it on every link click would
+throw away work the reviewer was in the middle of.
+
 Keep the film's section id `video` (it has outlived two tab reshuffles, so `#video` still
 lands). The builder emits the player only for a file on disk; with none it emits a notice
 naming the absent file and keeps the transcript.

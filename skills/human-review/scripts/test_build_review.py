@@ -109,6 +109,56 @@ def _video_dir(tmp_path, *, filmed: bool):
     return {"video": "assets/f.webm"}
 
 
+def test_an_absolute_app_link_is_left_exactly_as_written():
+    """An absolute href names one specific server on purpose — a colleague's box, a staging
+    deploy — and must not be re-pointed at whatever happens to be running locally."""
+    items, _ = build._link_captions(
+        CUES, [{"href": "http://app/owners/2", "anchor": "visit list"}])
+    assert '<a href="http://app/owners/2">visit list</a>' in items
+    assert "data-app" not in items
+
+
+def test_a_relative_app_link_carries_its_path_for_the_runtime_to_resolve():
+    """The port is picked by the host when the instance starts, so it cannot be in the page.
+    The path survives in data-app; the href is only the best guess until one is pasted in."""
+    items, _ = build._link_captions(
+        CUES, [{"href": "/petclinic/owners/2", "anchor": "visit list"}])
+    assert '<a data-app="/petclinic/owners/2" href="/petclinic/owners/2">visit list</a>' in items
+
+
+def test_a_relative_link_that_found_no_caption_is_still_resolvable():
+    """The "Touched but not filmed" row is a link like any other — it went dead once because
+    that row built its anchor by hand instead of going through the same helper."""
+    _, unplaced = build._link_captions(CUES, [{"href": "/petclinic/vets", "label": "vets"}])
+    assert unplaced
+    out = build.video_html({"video": "assets/none.webm",
+                            "appLinks": [{"href": "/petclinic/vets", "label": "vets"}]},
+                           Path("/nonexistent"))
+    assert 'data-app="/petclinic/vets"' in out
+
+
+def test_a_section_with_no_runtime_gets_no_bar(tmp_path):
+    assert "appenv" not in build.video_html(_video_dir(tmp_path, filmed=True), tmp_path)
+
+
+def test_the_runtime_bar_carries_the_command_and_the_fallback(tmp_path):
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "./start-docker.sh up --ref abc123",
+                    "base": "http://localhost:4200"}
+    out = build.video_html(s, tmp_path)
+    assert '<div class="appenv" data-fallback="http://localhost:4200"' in out
+    assert "./start-docker.sh up --ref abc123" in out
+    # The reset control is opt-in: the environment has to actually offer an endpoint.
+    assert "appenv-reset" not in out and "data-reset" not in out
+
+
+def test_the_reset_control_appears_only_when_an_endpoint_is_declared(tmp_path):
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "x", "base": "http://localhost:4200", "reset": "/__reset"}
+    out = build.video_html(s, tmp_path)
+    assert 'data-reset="/__reset"' in out and "appenv-reset" in out
+
+
 def test_a_recorded_video_gets_a_player(tmp_path):
     out = build.video_html(_video_dir(tmp_path, filmed=True), tmp_path)
     assert '<video controls preload="metadata" src="assets/f.webm">' in out
