@@ -461,6 +461,25 @@ def test_a_pair_does_not_list_the_scenarios_the_diagram_already_titles(tmp_path)
     assert "dgmviews" in html and "snippet" in html      # the pair itself is intact
 
 
+def test_the_quoted_test_folds_away_and_starts_open(tmp_path):
+    """Open, because the test is what the reader came for. Foldable, because the tab's
+    argument is made by comparing diagrams, and then the source is what is in the way."""
+    html_out = _pairs_fixture(tmp_path)
+    assert '<details class="testcode" open>' in html_out
+    assert "</details>" in html_out
+
+
+def test_the_fold_is_labelled_with_the_file_and_not_the_path_again(tmp_path):
+    """The panel it opens prints the path and line range in its own header bar, and the
+    diagram under it prints the path too. A third copy in the summary is the habit this
+    tab was just pruned of."""
+    html_out = _pairs_fixture(tmp_path)
+    summary = html_out[html_out.index("<summary>") + len("<summary>"):
+                       html_out.index("</summary>")]
+    assert summary == "spec.ts", summary
+    assert "/" not in summary
+
+
 def test_a_diagram_nobody_quoted_says_so_instead_of_saying_nothing(tmp_path):
     """Silence would read as "this diagram has no test", which is never true — the
     manifest knows about it only because a test generated it."""

@@ -930,6 +930,17 @@ body.showall .panel:first-of-type { border-top:0; }
 .testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
 .testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
 .testlead { margin:0; }
+/* The fold over a pair's quoted test. Quiet on purpose: it is a control for getting the
+   source out of the way while comparing two diagrams, not a heading competing with the
+   diagram's own. */
+.testcode { margin:0; }
+.testcode > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.35rem;
+  align-items:center; color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace;
+  padding:.2rem 0; }
+.testcode > summary::-webkit-details-marker { display:none; }
+.testcode > summary::before { content:"▾"; font-size:.75rem; }
+.testcode:not([open]) > summary::before { content:"▸"; }
+.testcode > summary:hover { color:var(--link); }
 @media print {
   .tabstrip { display:none; }
   .panel[hidden] { display:block !important; }
@@ -3268,6 +3279,27 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
     )
 
 
+def _folded_test(test_rel: str, quoted: list[str]) -> str:
+    """The quoted test, foldable, and open.
+
+    Open, because the test is the half of the pair a reader came to read, and a tab that
+    opens on nothing but summaries makes them click before it says anything. Foldable,
+    because this tab's argument is made by putting several diagrams beside each other —
+    and once a reader is comparing two pictures, the source between them is the thing in
+    the way. The two states are wanted at different moments by the same person.
+
+    The summary is the file's basename and nothing more: the panel it opens already prints
+    the path and the line ranges in its own header bar, and the diagram below prints the
+    path again. A summary repeating either would be the third place on one screen to say
+    one thing, which is the habit this tab has just been pruned of.
+    """
+    name = html.escape(test_rel.rsplit("/", 1)[-1])
+    return ('<details class="testcode" open>'
+            f'<summary>{name}</summary>'
+            + "\n".join(x.strip("\n") for x in quoted)
+            + "</details>")
+
+
 def _unquoted_note(test_rel: str, root: Path) -> str:
     """What to say beside a diagram no snippet quotes.
 
@@ -3324,7 +3356,8 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
         # that sits where the reader is already looking.
         pieces = [""]
         quoted = take(test_rel)
-        pieces += quoted or [_unquoted_note(test_rel, root)]
+        pieces.append(_folded_test(test_rel, quoted) if quoted
+                      else _unquoted_note(test_rel, root))
         pieces.append(render_diagrams(merged, root, out_dir, [r]))
         # Each piece already ends its own last tag; extract-snippet also ends with a
         # newline, and joining on one more turns the ruled block into a gappy list.
