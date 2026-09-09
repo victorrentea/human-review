@@ -2540,8 +2540,11 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         "the badge already says `your call`"
     assert "9 open, worst first" in page
     assert "3 auto-applied" in page
-    assert "9 open, worst first &middot; 3 auto-applied &middot; 2 coder assumptions to check" in page, \
-        "what a pass found comes first; what no pass could find comes after it"
+    assert ('<a href="#first">9 open, worst first</a> &middot; '
+            '<a href="#fixed">3 auto-applied</a> &middot; '
+            '<a href="#assumed">2 coder assumptions to check</a>') in page, \
+        "what a pass found comes first; what no pass could find comes after it — and every "\
+        "clause is the jump to the chapter it counts"
     assert "greyed out" not in page, \
         "the applied fixes are visibly grey"
     assert "stamped with" not in page, \
@@ -2599,8 +2602,20 @@ def test_the_lede_is_counts_and_one_ordering_fact_and_nothing_else(tmp_path):
     page, _ = _build(tmp_path, dict(
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
-    assert '<p class="sub counts">1 open, worst first</p>' in page
+    assert '<p class="sub counts"><a href="#first">1 open, worst first</a></p>' in page
     assert "stamped with" not in page
+
+
+def test_a_count_with_no_chapter_to_jump_to_is_not_a_link(tmp_path):
+    """The lede counts `autofixes` from the spec, but the jump belongs to the block. A page
+    that carries applied fixes and never lays them out has nothing to scroll to, and a dead
+    anchor is worse than a number that never claimed to be clickable."""
+    page, _ = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
+        autofixes=[{"title": "x"}],
+        tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
+    assert '<a href="#first">1 open, worst first</a>' in page
+    assert "1 auto-applied" in page and '<a href="#fixed">' not in page
 
 
 def test_the_github_link_tooltip_says_only_what_its_label_cannot():

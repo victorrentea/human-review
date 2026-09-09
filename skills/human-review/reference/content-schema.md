@@ -410,7 +410,10 @@ the one thing no amount of reading changes. Four tabs need something said about 
   arithmetic. The numbering follows the order the blocks appear in here, so that order is
   an editorial choice — with one rule the build enforces: work already done is the tail.
   Whichever pile opens the list writes its lede — `9 open, worst first · 3
-  auto-applied · 2 coder assumptions to check` — computed, so restate none of it. The coder's clause is the one
+  auto-applied · 2 coder assumptions to check` — computed, so restate none of it. Each
+  clause links to the chapter it counts (`#first`, `#fixed`, `#assumed`, or the block's own
+  `id`), so the line doubles as the tab's contents; a pile the layout never lays out keeps
+  its count as plain text rather than offering a dead anchor. The coder's clause is the one
   that renders at zero (`0 coder assumptions to check`), because that zero is a result: it says
   the authoring conversation was asked. Mode C prints `coder could not be asked` instead,
   the one case where a zero would be claiming an answer nobody was there to give. It is counts and one ordering fact,

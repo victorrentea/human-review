@@ -3500,6 +3500,18 @@ def _assumptions_block(spec):
     return None
 
 
+def _pile_anchor(spec, kind, fallback):
+    """The id the pile's own heading will carry, or None when no such block is laid out.
+
+    Read from the layout rather than assumed: a block may name itself, and a lede whose
+    links point at ids no heading has is worse than a lede with no links at all."""
+    for t in spec.get("tabs") or []:
+        for b in t.get("blocks", []):
+            if b.get("type") == kind:
+                return b.get("id", fallback)
+    return None
+
+
 def opening_lede(spec) -> str:
     """The shape of the whole list, for whichever pile opens it — and only for that one.
 
@@ -3524,10 +3536,24 @@ def opening_lede(spec) -> str:
     # line that replaced the paragraph.
     block = _assumptions_block(spec)
     parts = []
+
+    def clause(text, kind, fallback):
+        """A count, and the way to the pile it counts.
+
+        The line is the first thing read in the tab and names three chapters further down
+        it, so every clause is the jump to its own — the reader was going to scroll looking
+        for them anyway. A pile with no block laid out keeps its count as plain text: a
+        dead anchor that silently does nothing is worse than a number that never claimed
+        to be clickable."""
+        at = _pile_anchor(spec, kind, fallback)
+        return f'<a href="#{html.escape(at)}">{text}</a>' if at else text
+
     if spec.get("findings"):
-        parts.append(f"{len(spec['findings'])} open, worst first")
+        parts.append(clause(f"{len(spec['findings'])} open, worst first",
+                            "findings", "first"))
     if spec.get("autofixes"):
-        parts.append(f"{len(spec['autofixes'])} auto-applied")
+        parts.append(clause(f"{len(spec['autofixes'])} auto-applied",
+                            "autofixes", "fixed"))
     # Last, because the first two clauses count what a review pass produced and this one
     # counts what it could not: a reader who has just been told how many items are open
     # and how many were applied is at exactly the point where "and here is what nobody
@@ -3545,9 +3571,11 @@ def opening_lede(spec) -> str:
         # after who produced it described its provenance, which the `your call` badge on
         # every card already does; naming it after what is left to do says why it is in a
         # line the reader skims on the way to the list.
-        parts.append("coder could not be asked"
-                     if block.get("mode") == "C" and not assumed
-                     else f"{assumed} coder assumption{'' if assumed == 1 else 's'} to check")
+        parts.append(clause(
+            "coder could not be asked"
+            if block.get("mode") == "C" and not assumed
+            else f"{assumed} coder assumption{'' if assumed == 1 else 's'} to check",
+            "assumptions", "assumed"))
     if not parts:
         return ""
     # The stamp clause went the same way as "greyed out" and "yours to confirm", and it
