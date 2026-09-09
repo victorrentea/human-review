@@ -414,13 +414,38 @@ the one thing no amount of reading changes. Four tabs need something said about 
     sentence — a page that lists a test somewhere else (the ledger's `new` / `edited`
     piles) and not here makes the reader hold two lists and diff them. Tests the manifest
     knows but the map has no excerpt for get their excerpt cut at build time.
+  - **Head every quoted block with the page's source bar — do not author your own.** It is
+    one component, `.srcbar`, and its rules ship in the snippet stylesheet the page already
+    injects, so a fragment gets it by using the class names:
+
+    ```html
+    <div class="srcbar">
+      <span class="code-badge" data-diff="new" data-tip="…">new file</span>
+      <a class="srcref srcbar-diff" …>⇆ VSC</a>
+      <a class="srcref srcbar-diff" …>⇆ GH</a>
+      <a class="srcref srcbar-path" href="vscode://file/…" data-tip="<repo-relative path> — open in VS Code">Name.java:76-79</a>
+    </div>
+    ```
+
+    Read left to right: what the block *is*, the handles that open the change, and the file
+    it came from, pushed to the far end. **The face is the file's name and the full path is
+    on hover** — "which file is this?" is the only question the row exists to answer, and a
+    repo-relative Java path spends five segments on module, `src/main/java` and the org
+    package before it gets there. A file at the repo root has no path to move and gets no
+    tooltip repeating its own name.
+
+    A fragment that rolls its own version of this row is a fourth header the reader has to
+    learn and the one place a fix to the other three will not reach. The Tests, Review and
+    Logging tabs all emit this exact markup; a hand-authored map is not the exception.
   - **Every quoted file offers its diff, and names where it opens** — `⇆ VSC` (the base on
     the left, the working tree on the right, through the served page or the editor's URI
     handler) and `⇆ GH` (the same file inside the open pull request, anchored by the
     sha-256 of its path). Two arrows and no words make the reader click to find out. Each
     is emitted only where that side can really show it: no editor diff for a file with no
     before-state, and no github.com link for work github.com has not seen — the file dirty
-    at HEAD, the branch unpushed, or no pull request open on it.
+    at HEAD, the branch unpushed, or no pull request open on it. **Take the pull request
+    number from `content.json`'s `pr` block**, never from whatever number was in the last
+    map you copied — a link to somebody else's pull request looks exactly like a working one.
   - **Any code baked into the fragment is cut against the working tree, and its line
     numbers are checked.** A snippet quoted from an older revision keeps text that still
     looks right beside numbers that are two lines out, and every link into the editor
