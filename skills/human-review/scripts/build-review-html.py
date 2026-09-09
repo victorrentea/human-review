@@ -1835,13 +1835,14 @@ def _github_compare_link(rel: str, base: str, root: Path, head: str | None = Non
     # where in a forty-file compare page it lands.
     tip = ("This change, in the compare page" if line else
            "Just this file, inside the compare page") if rel else "The whole compare page"
-    # A face of "GH" no longer says github.com, so the tooltip has to — the one thing it
-    # was free to leave out while the label spelled it.
+    # A mark in place of the words says github.com to the eye but not to a screen reader,
+    # so the tooltip has to — the one thing it was free to leave out while the label
+    # spelled it.
     if face:
         tip = f"On github.com — {tip[0].lower()}{tip[1:]}"
     return (f'<a class="srcref{" diffref srcbar-diff" if face else ""}" target="_blank"'
             f' rel="noopener" href="{html.escape(url)}"'
-            f' data-tip="{tip}">{face or "&#8599; on GitHub"}</a>')
+            f' data-tip="{tip}">{face or (_icon("GH") + " on GitHub")}</a>')
 
 
 def _first_changed(rows) -> tuple[int | None, str]:
@@ -1973,8 +1974,9 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     # Two ways out of this block, in the header's own corner rather than in a footer under
     # it: the reader who wants the diff somewhere they can scroll it wants that *before*
     # reading the excerpt, not after, and a link below a forty-line diff is a link they
-    # have to come back up from. Named rather than left to an arrow — the editor, and the
-    # pull request — and short, because the corner is shared with the file's stat.
+    # have to come back up from. Each wears the mark of what it opens — VS Code, and
+    # github.com — rather than initials for it, because the corner is shared with the
+    # file's stat and a logo is recognised in less room than a word is read.
     # The editor link diffs against the working tree, so it is the same comparison when
     # `head` is the working tree — and also when `head` is a commit the file has not moved
     # off since, which is the ordinary state of a fix applied and left alone. Checked
@@ -1982,8 +1984,8 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     # editor showing that later edit too, which is a different diff wearing this one's
     # label. Then, and only then, the GitHub link stands alone.
     link = ("" if head and not _unmoved_since(rel, head, root)
-            else diff_link_html(rel, base, root, face="&#8646; VSC"))
-    gh = _github_compare_link(rel, base, root, head, *_first_changed(rows), face="&#8646; GH")
+            else diff_link_html(rel, base, root, face=_icon("VSC")))
+    gh = _github_compare_link(rel, base, root, head, *_first_changed(rows), face=_icon("GH"))
     # The name, and the path on hover. A repo-relative Java path spends five segments on
     # ceremony -- module, `src/main/java`, the org package -- before it reaches the one
     # word that says which file this is, and the header is where a reader looks to answer
@@ -1991,8 +1993,8 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     # it, which is what this page's tooltips are for. A file at the repo root has no path
     # to move, and a tooltip repeating the name is a tooltip saying nothing.
     # The same source bar every other quoted block on this page wears, built by the same
-    # function: the stat is this block's badge — `+8 -4 vs 5acf2472` is exactly the "what
-    # am I looking at" a snippet's `new code` answers — then the two handles, then the file.
+    # function: the two handles, the file they open, then the stat as this block's badge —
+    # `+8 -4 vs 5acf2472` is exactly the "what changed in it" a snippet's `new code` answers.
     stat = (f'<span class="stat"><span class="added">+{adds}</span> '
             f'<span class="removed">&minus;{dels}</span> vs '
             f'<code>{html.escape(base[:8])}</code></span>')
@@ -2090,7 +2092,7 @@ def diff_link_html(rel: str, base: str, root: Path, face: str | None = None) -> 
         f' href="vscode://file/{src.resolve()}:{line}:1"{uri}'
         f' data-diff-path="{html.escape(rel)}" data-diff-base="{html.escape(base)}"'
         f' data-tip="Open this fix as a diff in VS Code — {short} on the left, the working'
-        f' tree on the right">{face or f"&#8646; diff vs {html.escape(short)}"}</a>'
+        f' tree on the right">{face or _icon("VSC") + f" diff vs {html.escape(short)}"}</a>'
     )
 
 
@@ -2134,8 +2136,18 @@ def _extract_module():
     return mod
 
 
+def _icon(which: str) -> str:
+    """The github.com / VS Code mark, from the module that also ships the CSS sizing it.
+
+    Both halves of an icon are a unit — the `<svg>` and the rule that gives it 14px and a
+    baseline — and the rule lives in the snippet stylesheet, because that is the sheet
+    every page carrying a source bar already loads. Keeping the markup next to it means
+    the two cannot drift into a mark rendered at whatever the browser guesses."""
+    return getattr(_extract_module(), f"ICON_{which}")
+
+
 def _snippet_links(rel: str, root: Path) -> str:
-    """The `VSC` and `GH` handles for a quoted block, against the review's own base.
+    """The VS Code and github.com handles for a quoted block, against the review's own base.
 
     Both are optional and for the same reason: each is emitted only where that side can
     really open what it promises. `diff_link_html` drops itself when the base does not
@@ -2146,9 +2158,9 @@ def _snippet_links(rel: str, root: Path) -> str:
 
     `origin/` is stripped for github.com only: it is a name for a ref in *this* checkout,
     and a compare URL spelling it 404s."""
-    vsc = diff_link_html(rel, SNIPPET_BASE, root, face="&#8646; VSC")
+    vsc = diff_link_html(rel, SNIPPET_BASE, root, face=_icon("VSC"))
     gh = _github_compare_link(rel, SNIPPET_BASE.removeprefix("origin/"), root,
-                              face="&#8646; GH")
+                              face=_icon("GH"))
     return vsc + gh
 
 

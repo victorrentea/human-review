@@ -2554,7 +2554,7 @@ def test_a_diff_carries_both_ways_out_in_its_own_header(tmp_path):
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
     out = build.diff_html(rel, "HEAD^", r, head="HEAD")
     corner = out.split('<div class="ghdiff-scroll">')[0]
-    assert "&#8646; VSC" in corner and "&#8646; GH" in corner
+    assert "ico-vsc" in corner and "ico-gh" in corner
     # And it is the page's one source bar doing it, not a header private to this block.
     assert corner.startswith('<div class="ghdiff"><div class="srcbar">')
     assert "srcref" not in out.split('</table></div>')[-1], \
@@ -2585,6 +2585,36 @@ def test_the_three_tabs_head_a_quoted_block_with_the_same_bar(tmp_path, monkeypa
         assert f'data-tip="Open in VS Code: {rel}"' in bar, "the path is the hover"
 
 
+def test_the_bar_reads_handles_then_file_then_badge(tmp_path, monkeypatch):
+    """One order, top to bottom of the page: how to open it, which file, what changed.
+
+    The handles sit against the name because the name is what they open — parked at the
+    other end of the row they were a bar's width from the only word saying what they would
+    open. The badge trails for the opposite reason: "new file" is a fact *about* a file,
+    and leading with it makes the reader hold it in mind until the bar finally says which
+    file is new. Asserted on both producers, because a bar that only the Tests tab obeys
+    is the three-headers problem coming back."""
+    r = _repo_with_a_buried_file(tmp_path)
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
+    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    subprocess.run(["git", "-C", str(r), "remote", "add", "origin",
+                    "https://github.com/victorrentea/petclinic.git"], check=True)
+    badged = 0
+    for out in (build.diff_html(rel, "HEAD^", r, head="HEAD"),
+                build.snippet_html(f"{rel}:1-2", None, r, exact=True)):
+        bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
+        handles, name = bar.index("ico-vsc"), bar.index("srcbar-path")
+        assert handles < name, bar
+        # A bar without a badge is a legal bar — the block is simply not claiming to be
+        # new or changed. Where there is one, it trails; and one of the two producers here
+        # always has one, so the assertion cannot pass by never running.
+        mark = next((m for m in ("code-badge", 'class="stat"') if m in bar), None)
+        if mark:
+            badged += 1
+            assert name < bar.index(mark), bar
+    assert badged, "neither producer emitted a badge — the order went untested"
+
+
 def test_a_quoted_snippet_offers_the_same_two_ways_out_a_diff_does(tmp_path, monkeypatch):
     """A snippet used to be a dead end: it showed what the code says now and left "what
     changed?" to the reader's imagination. It carries the same two handles the Review
@@ -2598,7 +2628,7 @@ def test_a_quoted_snippet_offers_the_same_two_ways_out_a_diff_does(tmp_path, mon
     monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
     out = build.snippet_html(f"{rel}:1-2", None, r, exact=True)
     bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
-    assert "&#8646; VSC" in bar and "&#8646; GH" in bar
+    assert "ico-vsc" in bar and "ico-gh" in bar
     assert 'class="srcref diffref srcbar-diff"' in bar   # the pill face, not the prose one
 
 
@@ -2611,7 +2641,7 @@ def test_a_snippet_whose_base_is_not_there_still_gets_its_bar(tmp_path, monkeypa
     monkeypatch.setattr(build, "SNIPPET_BASE", "no/such/ref")
     out = build.snippet_html("README.md:1-2", None, r, exact=True)
     assert '<div class="srcbar">' in out
-    assert "&#8646; VSC" not in out and "&#8646; GH" not in out
+    assert "ico-vsc" not in out and "ico-gh" not in out
     assert ">README.md:1-2</a>" in out
 
 
@@ -2627,8 +2657,8 @@ def test_a_pinned_fix_the_file_has_moved_off_gets_no_editor_link(tmp_path):
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
     (r / rel).write_text("one\nTWO\nand something later\n")
     out = build.diff_html(rel, "HEAD^", r, head="HEAD")
-    assert "&#8646; VSC" not in out
-    assert "&#8646; GH" in out
+    assert "ico-vsc" not in out
+    assert "ico-gh" in out
 
 
 def test_the_github_link_lands_on_the_line_the_change_is_on(tmp_path):
