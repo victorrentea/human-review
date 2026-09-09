@@ -127,6 +127,16 @@ def stylesheet() -> str:
         # to the far end rather than centred, so the badge stays where the eye starts and
         # the path stays where it can wrap without moving anything else.
         ".srcbar .srcbar-path { margin:0 0 0 auto; text-align:right; }\n"
+        # The handles travel with the path, not with the badge. Both of them open *this
+        # file*, and the file is named at the far end of the row — parked back by the
+        # badge they sat a whole bar's width away from the only word that says what they
+        # would open, with the reader's eye crossing the gap twice to pair them up. The
+        # break goes on the first handle instead, so the right end reads as one group:
+        # the two ways in, then what you are going in to. A bar with no handles is
+        # unchanged — the auto margin is still on the path, which is then the only thing
+        # there is to push.
+        ".srcbar a.srcref.diffref:first-of-type { margin-left:auto; }\n"
+        ".srcbar a.srcref.diffref ~ .srcbar-path { margin-left:0; }\n"
         ".srcbar .code-badge { flex:0 0 auto; font-size:9px; padding:1px 6px; }\n"
         # The two handles sit between the badge and the path because what the badge says
         # happened is what they open. Each is emitted only where that side can really show
@@ -271,9 +281,10 @@ def srcbar_html(href: str, rel: str, lineref: str = "", badge: str = "",
 
     `badge` is what the block *is* (`new file`, `2 lines changed`, a diff's `+8 -4`), and
     it leads because it is the part that is read rather than clicked. `links` are the
-    handles that open the change — the editor and github.com — and they sit next to the
-    badge because what the badge says happened is exactly what they open; each caller
-    passes only the ones its side can really show, so a missing handle is an honest
+    handles that open the change — the editor and github.com — and they close the row
+    beside the file name, because the file is what each of them opens and a handle a bar's
+    width away from the word naming its target is a pairing the reader has to make; each
+    caller passes only the ones its side can really show, so a missing handle is an honest
     absence rather than a link that 404s.
 
     The face is the file's **name** and the full path is on hover. A repo-relative Java
