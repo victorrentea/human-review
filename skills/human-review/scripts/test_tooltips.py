@@ -50,8 +50,12 @@ def offences() -> list:
     return found
 
 
-def build_minimal_page(tmp_path):
-    """Render a page that exercises every tooltip-emitting code path we own."""
+def build_minimal_page(tmp_path, badge: bool = False):
+    """Render a page that exercises every tooltip-emitting code path we own.
+
+    `badge` adds the one tooltip that is *nested* inside a clickable element rather than
+    being one — the tab strip's own badge — which is a different code path and a different
+    cursor question from every other mark on the page."""
     content = {
         "title": "tooltip guard",
         "summary": "<p>x</p>",
@@ -62,7 +66,12 @@ def build_minimal_page(tmp_path):
         "sections": [{"id": "s", "title": "S", "body": "<p>b</p>"}],
         "tabs": [{"id": "review", "label": "Review", "count": True,
                   "blocks": [{"type": "findings"}, {"type": "autofixes"},
-                             {"type": "section", "id": "s"}]}],
+                             {"type": "section", "id": "s"}]}]
+                # A second tab, because a strip of one is not a strip: the builder drops it
+                # and there is then no badge anywhere to check.
+                + ([{"id": "requirements", "label": "Tests", "badge": "1",
+                     "badgeLabel": "one requirement has no test",
+                     "blocks": [{"type": "section", "id": "s"}]}] if badge else []),
     }
     src = tmp_path / "content.json"
     src.write_text(json.dumps(content), encoding="utf-8")
@@ -88,6 +97,31 @@ def test_built_page_has_no_native_tooltips(tmp_path):
     assert "data-tip=" in page, (
         "The built page has no data-tip attributes at all — the tooltip component is not "
         "being exercised, so this test would pass no matter what.")
+
+
+def test_tab_badge_keeps_its_button_cursor(tmp_path):
+    """A tooltip *inside* something clickable must not turn the hand into a question mark.
+
+    The rule that dresses an explain-only mark with `cursor:help` lists the actionable
+    elements it exempts — `a`, `button`, `[role=button]`, `summary`, `label` — and for a
+    long time it could only see the element carrying the tooltip, never what it sat in.
+    The tab strip's badges are exactly that shape: `Tests 1` is a <span role=img> with its
+    own `data-tip`, nested in the tab <button>. The cursor became a question mark over the
+    badge and a hand a pixel to its left, while a click anywhere in the tab — badge very
+    much included — opens the tab.
+
+    Both halves are asserted, because either alone goes vacuous: the markup, so the case
+    still exists, and the exclusion, so the rule still covers it. `cursor` is inherited, so
+    excluding the badge is the whole fix — it keeps the pointer the button already set."""
+    page = build_minimal_page(tmp_path, badge=True)
+    assert re.search(r'<button[^>]*class="tab[^"]*"[^>]*>[^<]*<span[^>]*data-tip=', page), (
+        "No tab badge with a tooltip in the built page — this test can no longer see the "
+        "case it guards, so the assertion below would pass no matter what the rule says.")
+    rule = re.search(r"'\[data-tip\](.*?)\{cursor:help\}", page, re.S)
+    assert rule, "The help-cursor rule is gone from the page's tooltip script."
+    assert ":not(:is(a,button,[role=button],summary,label) *)" in rule.group(1), (
+        "The help-cursor rule no longer exempts marks nested inside something actionable, "
+        "so a tab badge shows '?' where its button shows a hand:\n  " + rule.group(1))
 
 
 def test_no_native_tooltips():

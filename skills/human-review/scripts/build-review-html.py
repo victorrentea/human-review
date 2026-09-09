@@ -1052,7 +1052,16 @@ TIP_JS = """<script>
     // mark, so hovering tells you there is something to read AND that clicking does
     // nothing. Anything you can act on -- a link, a button, a row that opens -- keeps
     // the hand it already had.
+    //
+    // The last clause is about marks that live *inside* something actionable, which the
+    // element-level list above cannot see. The tab strip's badges are the case that found
+    // it: `Tests 1` is a <span role=img> with its own tooltip sitting inside the tab
+    // <button>, so the cursor turned into a question mark over the badge and back into a
+    // hand a pixel to its left -- while a click anywhere in there, badge included, opens
+    // the tab. Excluding them is the whole fix: `cursor` inherits, so a badge that gets no
+    // rule of its own simply keeps the pointer its button already set.
     '[data-tip]:not(a):not(button):not([role=button]):not(summary):not(label)' +
+    ':not(:is(a,button,[role=button],summary,label) *)' +
     '{cursor:help}';
   document.head.appendChild(css);
 
