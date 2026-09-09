@@ -303,6 +303,21 @@ it and strikes the label through.
 - A changed diagram no tab claimed prints a **warning**.
 - `count: true` puts the item count on the tab, `badge: "…"` a literal, `badgeClass: "alarm"`
   makes it a red `!` (the phrase moves to `aria-label` and `data-tip`); `badgeLabel` sets it.
+- **A coloured dot on a tab is a verdict, and only a computed verdict may wear one.**
+  `badgeClass: "dot-green" | "dot-amber" | "dot-red"` paints the badge as a traffic light,
+  which is the strongest claim anything on this page makes: it is read before the tab's own
+  name, from across the room, by someone who will not open the tab to check it. So it is
+  reserved for a verdict some tool reached and the tab itself shows its working for — the
+  API tab's green comes from `oasdiff` and the UX tab's red from `ds-audit.py`'s own
+  `summary.new.bare`, and in both cases the reader can open the tab and find the report the
+  dot is quoting.
+  A conclusion **you** reached by reading is not one of those, however sure you are of it,
+  and it does not become one by being written into `badgeClass`. The Tests tab wore a red
+  dot saying *one requirement has no test* — true, arguably, and entirely a judgement about
+  which sentence of a ticket counts as a requirement and which test counts as covering it.
+  Beside a green dot that oasdiff computed, it read as the same kind of fact, which is what
+  made it worth removing rather than rewording. Say it where a claim can carry its
+  reasoning: in the tab, in the findings, in the requirements map's own colours.
 - The summary's walk-through is checked against the strip: `{{tabcount}}` is filled in, and
   the build warns when it fails to name a tab or names them out of order.
 - Deep links work both ways (`#<tab-id>`, or any `id` inside a panel). The scroll offset is
