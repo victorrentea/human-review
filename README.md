@@ -329,6 +329,29 @@ stranger's machine. Diagrams, video, complexity and snippets are self-contained 
 anywhere, so a published snapshot is a faithful tour of everything except the click-into-
 your-editor part.
 
+## Downloading a snapshot as a zip
+
+Clicking through a snapshot on Pages needs a browser and a connection. Keeping one needs a
+file, so every snapshot is also published as a zip attached to a rolling release:
+
+<https://github.com/victorrentea/human-review/releases/tag/demo>
+
+The download URL is fixed and quotable — `.../releases/download/demo/human-review-<slug>.zip`
+— and its contents track the last push to `main`. Unzip it and open `review.html`: the
+diagrams, the feature video, the complexity report, the snippets and the live 3D Code City
+behind the skyline picture are all inside the folder, so it reads offline, off disk, with no
+server. The caveat above is the only thing that does not travel.
+
+`.github/workflows/demo-zip.yml` does it, on every push to `main` that touches `demo/**`.
+Nothing is uploaded from the authoring machine and nothing is regenerated in the cloud — the
+snapshots are committed verbatim, so the checkout already holds everything the zip needs.
+Before zipping, the job resolves every relative `src`/`href` in `review.html` against the
+snapshot directory and annotates the run with any link that escapes it or names a file the
+snapshot does not carry; that is a warning and not a failure, because a stale link is a
+reason to fix the snapshot and never a reason to withhold the download. `*.raw.webm` — the
+un-narrated capture, which nothing on the page plays — is dropped, and an `OPEN-ME.txt`
+naming the source commit is added.
+
 ## Editing it in place
 
 The skill is developed by symlinking it into a project rather than reinstalling it:

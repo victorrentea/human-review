@@ -1,0 +1,152 @@
+name: demo zip
+
+# The review page is expensive to produce — a dozen steps, Playwright, a WebGL screenshot,
+# a narrated video — and none of that is something a stranger can be asked to run before
+# deciding whether the skill is worth installing. Pages already lets them *click* a
+# snapshot; this lets them *keep* one: every snapshot under demo/ is zipped and attached
+# to a rolling release, so the download URL never changes and the assets always match the
+# last push to main.
+#
+# It runs here rather than in a local git hook on purpose. The snapshots are committed
+# verbatim (publish-demo.sh), so everything the zip needs is already in the checkout —
+# there is nothing to upload from Victor's machine, nothing to wait for, and no model in
+# the loop. Pushing demo/** is the whole trigger.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "demo/**"
+      - ".github/workflows/demo-zip.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Assets are clobbered in place, so two runs racing on the same release could interleave
+# uploads. Queue them; never cancel one mid-upload, which would leave a half-written asset
+# under a name that claims to be complete.
+concurrency:
+  group: demo-zip
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # A snapshot is only worth downloading if it is whole. Every relative src/href in
+      # review.html has to resolve to a file inside the snapshot directory — a link that
+      # escapes with `..`, or points at a file that was never copied in, works on the
+      # machine that built the page and dead-ends for everybody else. That is precisely
+      # the failure this download exists to avoid, so it is checked rather than assumed.
+      #
+      # It warns instead of failing: a stale link is a reason to fix the snapshot, never a
+      # reason to withhold the rest of the page from someone waiting to download it.
+      # `vscode://` links are counted, not flagged — they are known to resolve only on the
+      # authoring machine, and the page says so itself.
+      - name: Every relative link resolves inside its snapshot
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          from urllib.parse import unquote, urlsplit
+
+          ATTR = re.compile(r'(?:src|href|poster|data-src)="([^"]*)"')
+          SCHEME = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.-]*:')
+
+          for slug in sorted(os.listdir("demo")):
+              snap = os.path.join("demo", slug)
+              page = os.path.join(snap, "review.html")
+              if not os.path.isfile(page):
+                  continue
+              root = os.path.realpath(snap)
+              html = open(page, encoding="utf-8").read()
+              broken, escaping, editor = set(), set(), 0
+              for raw in ATTR.findall(html):
+                  if not raw or raw.startswith("#"):
+                      continue
+                  if SCHEME.match(raw):
+                      editor += raw.startswith("vscode:")
+                      continue
+                  rel = unquote(urlsplit(raw).path)
+                  if not rel:
+                      continue
+                  target = os.path.realpath(os.path.join(root, rel))
+                  if os.path.commonpath([root, target]) != root:
+                      escaping.add(raw)
+                  elif not os.path.exists(target):
+                      broken.add(raw)
+              for ref in sorted(escaping):
+                  print(f"::warning file={page}::{slug}: link leaves the snapshot, so it "
+                        f"cannot survive the zip: {ref}")
+              for ref in sorted(broken):
+                  print(f"::warning file={page}::{slug}: link points at a file the snapshot "
+                        f"does not carry: {ref}")
+              print(f"{slug}: {len(escaping)} escaping, {len(broken)} missing, "
+                    f"{editor} vscode:// links (those resolve only where the page was built)")
+          PY
+
+      - name: Zip each snapshot
+        id: zip
+        run: |
+          set -euo pipefail
+          mkdir -p dist stage
+          names=""
+          for snap in demo/*/; do
+            slug="$(basename "$snap")"
+            [ -f "$snap/review.html" ] || continue
+            rm -rf "stage/$slug"
+            mkdir -p "stage/$slug"
+            # Trailing dot copies the contents, so the zip has exactly one top-level
+            # directory and never explodes over the downloader's Downloads folder.
+            cp -R "$snap." "stage/$slug/"
+            # The un-narrated capture is a build intermediate nothing on the page plays;
+            # it is a third of the download for no reader.
+            find "stage/$slug" -name '*.raw.webm' -delete
+            cat > "stage/$slug/OPEN-ME.txt" <<TXT
+          /human-review — $slug
+
+          Open review.html in a browser. Everything the page draws is in this folder:
+          diagrams, the feature video, the complexity report, the code snippets, and the
+          live 3D Code City behind the skyline picture.
+
+          One thing does not travel. Every code reference on the page is a vscode://file/...
+          deep link holding an absolute path on the machine that produced the review, so
+          clicking one on your machine opens nothing, or the wrong file. Everything else
+          works offline, from disk, with no server.
+
+          Built from https://github.com/victorrentea/human-review at commit $GITHUB_SHA.
+          TXT
+            (cd stage && zip -qr "../dist/human-review-$slug.zip" "$slug")
+            names="$names $slug"
+          done
+          if [ -z "$names" ]; then
+            echo "No snapshot under demo/ carries a review.html — nothing to publish." >&2
+            exit 1
+          fi
+          echo "slugs=$names" >> "$GITHUB_OUTPUT"
+          ls -lh dist
+
+      # A fixed tag, so the download URL is quotable and stays quoted:
+      #   .../releases/download/demo/human-review-<slug>.zip
+      # The tag is created once and left where it was; the notes name the commit the
+      # current assets were actually built from, which is the fact a downloader needs.
+      - name: Attach them to the rolling `demo` release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          {
+            echo "Review pages produced by \`/human-review\`, zipped whole. Unzip one and open"
+            echo "\`review.html\` — no install, no server, no network."
+            echo
+            echo "Or click through the same snapshots without downloading:"
+            echo "<https://victorrentea.github.io/human-review/>"
+            echo
+            echo "Built from \`${GITHUB_SHA:0:7}\` on $(date -u '+%Y-%m-%d %H:%M UTC')."
+          } > notes.md
+          gh release view demo >/dev/null 2>&1 \
+            || gh release create demo --title "Sample review pages" --notes-file notes.md
+          gh release edit demo --notes-file notes.md
+          gh release upload demo dist/*.zip --clobber
