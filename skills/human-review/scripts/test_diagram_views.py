@@ -399,6 +399,15 @@ def test_a_pair_leads_with_the_scenario_and_its_deep_link(tmp_path):
     assert "A scenario" in html and "vscode://file/" in html and ":2:1" in html
 
 
+def test_the_lead_does_not_repeat_the_path_the_snippet_header_prints(tmp_path):
+    """The scenario name is the link. A `spec.ts:2` line under it said the same file the
+    snippet's own header bar says three lines lower down."""
+    html = _pairs_fixture(tmp_path)
+    lead = html[html.index('<p class="testlead">'):html.index("</p>")]
+    assert ">A scenario<" in lead
+    assert "spec.ts:2" not in re.sub(r"<[^>]+>", "", lead), "the path is the href, not text"
+
+
 def test_a_diagram_nobody_quoted_says_so_instead_of_saying_nothing(tmp_path):
     """Silence would read as "this diagram has no test", which is never true — the
     manifest knows about it only because a test generated it."""

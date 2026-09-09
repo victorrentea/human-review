@@ -915,6 +915,11 @@ body.showall .panel:first-of-type { border-top:0; }
 .testlead { margin:0; }
 .testlead b { display:block; font-size:1.02rem; margin:.5rem 0 .25rem; }
 .testlead b:first-child { margin-top:0; }
+/* The heading *is* the deep link, so it must look openable without turning into a
+   second srcref — the dotted underline `.dfn` and `.srcref` share, the page's link
+   colour only on hover. */
+.testlead b a { color:inherit; text-decoration:none; border-bottom:1px dotted var(--line); }
+.testlead b a:hover { color:var(--link); border-bottom-color:currentColor; }
 @media print {
   .tabstrip { display:none; }
   .panel[hidden] { display:block !important; }
@@ -3008,10 +3013,13 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     for r in rows:
         test_rel = r["source"][: -len(".genseq.puml")] if r["source"].endswith(".genseq.puml") \
             else r["source"]
+        # The scenario name carries its own deep link rather than trailing a
+        # `path:line` line under it: every snippet below already prints that path and
+        # its line range in its own header bar, so the pair used to say the same file
+        # twice, three lines apart.
         lead = "".join(
-            f'<b>{html.escape(title)}</b>'
-            f'<a class="srcref" href="vscode://file/{(root / path).resolve()}:{line}:1" '
-            f'data-tip="Open in VS Code">{html.escape(path)}:{line}</a>'
+            f'<b><a href="vscode://file/{(root / path).resolve()}:{line}:1" '
+            f'data-tip="Open in VS Code">{html.escape(title)}</a></b>'
             for path, line, title in chapters(root / r["source"])
         )
         pieces = ([f'<p class="testlead">{lead}</p>'] if lead else [""])
