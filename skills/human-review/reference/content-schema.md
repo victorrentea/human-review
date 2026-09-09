@@ -522,9 +522,10 @@ the one thing no amount of reading changes. Four tabs need something said about 
     — a dead `vscode://` URL is the one thing this page never emits.
   - Once the card carries all four states, **the ledger at the foot of the tab is the same
     rows a second time**, grouped by a question the stamps already answer. Turn it off with
-    **`"testLedger": false`** at the top level of the content file, and move the one fact it
-    carried that no row can — how many tests the branch left alone — into the card's header
-    strip (*every test this change set touched · 24 more left alone*). Said out loud rather
+    **`"testLedger": false`** at the top level of the content file. The header strip then
+    reads *every test this change set touched*, and nothing else: it used to close with how
+    many tests the branch **left alone**, and a count of the tests a change set did not
+    touch is not a fact about that change set — it is the size of the suite. Said out loud rather
     than inferred: the build cannot read a hand-authored fragment and know what is in it,
     so with the flag off it prints a reminder that every moved test, deleted ones included,
     now has to be listed some other way.
@@ -680,12 +681,12 @@ the one thing no amount of reading changes. Four tabs need something said about 
     render it under the ticket as a **blind spot**, never under the code on the right where
     it reads as a verdict on the test that happens to be open.
   - **Colour legend: the word *is* the swatch.** One row under the ticket's frame, one
-    **word** per state (**full · partial · executed · missing · N/A**), each set at the
+    **word** per state (**full · partially · executed · missing · N/A**), each set at the
     ticket's own font size and wearing the **exact fill that state wears up in the prose** —
     same declaration, written once for both (`.rm-f[data-cov=x], .rm-lg[data-cov=x]`), so
     the legend cannot drift into a colour the ticket does not use. No chip beside the word:
     a 15×9 swatch and a highlighted phrase are different surfaces, the same gradient reads
-    darker in the small one, and the hatch for `partial` had barely two bands to show.
+    darker in the small one, and the hatch for `partially` had barely two bands to show.
     Lead the row with a muted **`Legend:`** — five framed words under a ticket are five
     things the reader has to recognise as a key before they can use it as one.
     **Spread the row edge to edge** (`justify-content:space-between`) under the frame, so
