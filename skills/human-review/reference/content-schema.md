@@ -539,6 +539,17 @@ the one thing no amount of reading changes. Four tabs need something said about 
     reader lands wherever the page happened to be, several files away, which is
     indistinguishable from a broken link. With `R<line>` the same URL scrolls to the hunk.
     `L<line>` is the left side, and the only landing a pure deletion has.
+  - **Quote the whole test method, always.** A window that stops at the last assertion and
+    never shows the closing brace is a method the reviewer cannot see the end of — and they
+    cannot tell whether that is the range or the code, having no file open to count
+    against. Cut with `extract-snippet.py`'s own snapping (`_first_code_line` then
+    `_closing_line`), which skips the previous construct's trailing brace at the top and
+    extends the bottom until whatever the range opened is closed. **The line count must
+    equal the label's span**: `a.ts:27-43` is seventeen entries, not sixteen. A whole map's
+    excerpts were once cut `lines[a-1:b-1]`, one line short each, and every method on the
+    tab lost its closing brace — invisibly, because a short window looks exactly like a
+    complete one. The build now says so on stderr (`check_baked_excerpts`); it warns rather
+    than refuses, so **read the build's output**.
   - **Any code baked into the fragment is cut against the working tree, and its line
     numbers are checked.** A snippet quoted from an older revision keeps text that still
     looks right beside numbers that are two lines out, and every link into the editor

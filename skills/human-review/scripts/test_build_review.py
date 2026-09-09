@@ -2610,6 +2610,26 @@ def test_the_three_tabs_head_a_quoted_block_with_the_same_bar(tmp_path, monkeypa
         assert f'data-tip="Open in VS Code: {rel}"' in bar, "the path is the hover"
 
 
+def test_an_excerpt_short_of_its_own_label_is_called_out(capsys):
+    """A window that stops early looks exactly like one that does not.
+
+    The lines a fragment bakes in and the label saying which lines they are can disagree,
+    and when they do the page shows a test method with no closing brace — which the reader
+    cannot tell from a method that has none, having no file open to count against. Every
+    excerpt in one map was cut a line short and shipped that way. The arithmetic is
+    something the build can do and the author cannot."""
+    short = json.dumps({"tests": {"t": {"parts": [
+        {"label": "src/a.ts:10-14", "html": ["a", "b", "c", "d"]}]}}})
+    build.check_baked_excerpts(f'<script class="rm-data">{short}</script>')
+    err = capsys.readouterr().err
+    assert "src/a.ts:10-14" in err and "labelled 5 lines but quotes 4" in err
+
+    whole = json.dumps({"tests": {"t": {"parts": [
+        {"label": "src/a.ts:10-14", "html": ["a", "b", "c", "d", "e"]}]}}})
+    build.check_baked_excerpts(f'<script class="rm-data">{whole}</script>')
+    assert capsys.readouterr().err == "", "a excerpt that adds up says nothing"
+
+
 def test_the_bar_reads_handles_then_file_then_badge(tmp_path, monkeypatch):
     """One order, top to bottom of the page: how to open it, which file, what changed.
 
