@@ -630,7 +630,12 @@ def panel(result: dict, ours: dict | None) -> str:
     we_break = bool(ours and ours["breaking"])
     disputed = ours is not None and we_break != they_break
 
-    checked = (f"checked by {engine} and {OURS_LABEL}" if ours is not None else
+    # "and" put the two on one footing; they are not on one. oasdiff produced every
+    # number on this line, and our sibling only re-read the same specs to see whether it
+    # would say something different. "double-checked by ours" is that arrangement said out
+    # loud — the verdict is the tool's, the second opinion is the house's.
+    checked = (f"checked by {engine}, double-checked by our {OURS_LABEL}"
+               if ours is not None else
                f"checked by {engine} alone — the cross-check did not run")
 
     if disputed:
