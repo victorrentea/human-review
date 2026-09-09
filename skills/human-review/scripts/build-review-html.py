@@ -892,6 +892,18 @@ button.tab { padding:0 .5rem; font-size:.83rem; line-height:1.7; gap:.32rem; }
    first tab still starts exactly where the body text does. */
 .masthead .tabstrip { margin-right:calc(1.25rem - max(1.25rem, 50vw - 540px + 1.25rem)); }
 
+/* The strip runs to the edge of the window; the tabs only ever needed ~1130px of it. So
+   on anything wider than 1280px the row trailed off into a stretch of nothing to the
+   right of the last tab -- a header row that stops halfway reads as one that broke, next
+   to a title and a scope bar that both run the full width. Growing every pill shares the
+   slack out instead: ~19px per tab at 1728px, ~10px at 1512px, and nothing at all at
+   1280px, where there is none to give. Grown from each pill's own text width (`auto`
+   basis), so the labels keep their relative sizes rather than being squared off into
+   equal columns, and a wrapped row fills itself the same way -- which
+   `justify-content:space-between` could not do without flinging a short last row's two
+   tabs to opposite edges of the page. */
+button.tab { flex:1 1 auto; justify-content:center; }
+
 /* pb33f's report is a whole application in one file — its own tabs, its own diff view,
    its own theme — so it is embedded as a document rather than picked apart and re-drawn
    in this page's styles. A document is also a fence: the frame is a separate origin off
@@ -4893,6 +4905,16 @@ FOOTER_BOILERPLATE = re.compile(
 )
 
 
+# "against the running stack" says how the page was built. That was worth saying while the
+# alternative was a report written from memory; it is now what the build always does, and a
+# reader who cannot run the thing has no use for the distinction. Out, and the room it
+# leaves goes to the one sentence a stranger holding this page can act on.
+RUNNING_STACK = re.compile(r"\s+against the running stack", re.I)
+
+# `&amp;` and not `&`: the footer is emitted as HTML, not escaped on the way out.
+INVITATION = "Fork, Clone and Port with your Agent to your environment &amp; needs."
+
+
 def _link_home(footer: str) -> str:
     """Turn the footer's `/human-review` into the repository it names.
 
@@ -4902,13 +4924,20 @@ def _link_home(footer: str) -> str:
     and it survives the page being printed, pasted or mailed on.
 
     Only the first occurrence, and never one already inside an <a>.
+
+    The URL alone says where the page came from but not what a reader is meant to do with
+    it, and a GitHub link in a footer is read as provenance and skipped. So the address
+    is followed by the invitation: this page is a thing you take and re-point at your own
+    code, not a credit you note. Appended here rather than asked of every author, for the
+    same reason the boilerplate is stripped here.
     """
-    footer = FOOTER_BOILERPLATE.sub("", footer or "").strip()
+    footer = RUNNING_STACK.sub("", FOOTER_BOILERPLATE.sub("", footer or "")).strip()
     if not footer or "/human-review" not in footer or 'human-review"' in footer:
         return footer
-    return footer.replace(
+    linked = footer.replace(
         "/human-review",
         f'<a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a>', 1)
+    return f"{linked} {INVITATION}" if INVITATION not in linked else linked
 
 
 def page_title(spec: dict) -> str:

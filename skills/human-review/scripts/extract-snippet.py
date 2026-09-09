@@ -151,14 +151,18 @@ def stylesheet() -> str:
         "  border-radius:5px; line-height:0; }\n"
         # The marks themselves, wherever a `.srcref` carries one: at the size of the text
         # beside them, sitting on its baseline rather than on the box's.
+        # Each mark in the colour it is recognised in, not in the link colour it inherits:
+        # a blue octocat reads as a decorated arrow, and the ribbon is only recognisable as
+        # VS Code while it is that blue.
         ".srcref svg.ico { display:inline-block; width:14px; height:14px;\n"
-        "  vertical-align:-.2em; fill:currentColor; }\n"
+        "  vertical-align:-.2em; fill:var(--fg,#1c1c1c); }\n"
         ".srcref svg.ico-vsc { fill:#0098ff; }\n"
         # A Java test path is longer than this column is wide. `anywhere` lets it wrap, and
         # the <wbr> after each slash keeps every fragment a readable path segment;
         # `break-word` alone would split `victor` down the middle.
         ".srcbar .srcref { margin-bottom:0; overflow-wrap:anywhere; }\n"
         "@media (prefers-color-scheme: dark) {\n"
+        "  .srcref svg.ico { fill:var(--fg,#e6e6e6); }\n"
         "  pre.code .ln-row.added .dm { border-left-color:#3fb950; color:#3fb950; }\n"
         "  pre.code.diff-changed .ln-row:not(.added) { opacity:.5; }\n"
         "  .code-badge { color:#56d364; background:rgba(63,185,80,.12); }\n"

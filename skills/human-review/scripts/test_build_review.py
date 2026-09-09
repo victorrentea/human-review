@@ -1468,6 +1468,14 @@ def test_the_methodology_boilerplate_is_stripped_from_the_footer():
     assert "Built by" in out
 
 
+# The link is an invitation, not a credit line — a reader who never hovers still gets
+# the address, and one who does is told what to do with it.
+def test_the_home_link_says_what_it_is_for():
+    out = build._link_home("Built by /human-review against the running stack.")
+    assert "data-tip=\"Clone it, fork it, or point your agent at it," in out
+    assert "title=" not in out
+
+
 def test_only_the_first_mention_is_linked():
     out = build._link_home("/human-review ran; see /human-review for the source.")
     assert out.count("<a href=") == 1

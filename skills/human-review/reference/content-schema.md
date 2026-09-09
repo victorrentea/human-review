@@ -415,12 +415,20 @@ the one thing no amount of reading changes. Four tabs need something said about 
     in the code — the wire has to land on the name of the test, which is the part that
     stays put and the part the reader is looking at.
   - The wires are **geometry, not state**: they redraw from wherever the two columns
-    currently are, on page scroll, on the card's own scroll (which does not bubble — listen
-    in the capture phase), on resize, and when a row opens and moves the rows under it. The
-    card scrolls inside itself, so a row can sit outside what it shows: **clamp the wire's
-    landing point to the card's visible edge** rather than letting it point off into
-    nothing — where it lands is then the direction the reader has to scroll. Under 900px
-    the columns stack, there is no gutter, and nothing is drawn.
+    currently are, on page scroll, on resize, and when a row opens and moves the rows under
+    it. A wire's landing point is still **clamped to the card's visible edge** rather than
+    left pointing off into nothing — where it lands is then the direction the reader has to
+    scroll. Under 900px the columns stack, there is no gutter, and nothing is drawn.
+  - **The card has no scrollbar of its own.** Capped at the viewport it grew one, a few
+    pixels in from the window's own, and the two bars moved different things: reading forty
+    lines of an opened test meant scrolling the inner one while the page stayed put, then
+    finding the outer one again to leave. No `max-height`, no `overflow-y` — the card grows
+    to whatever it holds and the window scrolls it, which is the one bar the reader already
+    knows. (`overflow:hidden` stays, to keep the corners round; there is no height left for
+    it to clip against. Wide code still scrolls inside its own block.) The column's
+    `position:sticky` goes with it **while a row is open** — `:has(.rm-t[data-open=yes])` —
+    because a sticky element taller than the window pins its top and puts its own bottom
+    permanently out of reach.
   - The control's face is **the picture of what pressing it draws**: one trunk on the right,
     where the test is, fanning into three branches reaching left at the ticket. An
     arrowhead only said *that way*. Drawn as inline SVG rather than borrowed from a font —
@@ -463,16 +471,20 @@ the one thing no amount of reading changes. Four tabs need something said about 
 
     ```html
     <div class="srcbar">
-      <span class="code-badge" data-diff="new" data-tip="…">new file</span>
-      <a class="srcref srcbar-diff" …>⇆ VSC</a>
-      <a class="srcref srcbar-diff" …>⇆ GH</a>
+      <a class="srcref srcbar-diff" …><svg class="ico ico-vsc" …></a>
+      <a class="srcref srcbar-diff" …><svg class="ico ico-gh" …></a>
       <a class="srcref srcbar-path" href="vscode://file/…" data-tip="<repo-relative path> — open in VS Code">Name.java:76-79</a>
+      <span class="code-badge" data-diff="new" data-tip="…">new file</span>
     </div>
     ```
 
-    Read left to right: what the block *is*, the handles that open the change, and the file
-    it came from, pushed to the far end. **The face is the file's name and the full path is
-    on hover** — "which file is this?" is the only question the row exists to answer, and a
+    Read left to right, as one group at the right end: the two ways to open it, the file
+    they open, then what changed in it. **The handles lead and touch the name**, because
+    the name is what each of them opens — a handle a bar's width from the only word saying
+    what it would open is a pairing the reader has to make. **The badge trails**, because
+    `new file` is a fact *about* a file and leading with it makes the reader hold it in
+    mind across the whole row before the row says which file is new. **The face is the
+    file's name and the full path is on hover** — "which file is this?" is the only question the row exists to answer, and a
     repo-relative Java path spends five segments on module, `src/main/java` and the org
     package before it gets there. A file at the repo root has no path to move and gets no
     tooltip repeating its own name.
@@ -496,11 +508,17 @@ the one thing no amount of reading changes. Four tabs need something said about 
     unbreakable token as far as line breaking goes — no spaces, and a slash is not a break
     opportunity — so the longest tip on the page overflowed its own `max-width` and was
     clipped at the edge, which reads as the page running off the screen.
-  - **Every quoted file offers its diff, and names where it opens** — `⇆ VSC` (the base on
-    the left, the working tree on the right, through the served page or the editor's URI
-    handler) and `⇆ GH` (the same file inside the open pull request, anchored by the
-    sha-256 of its path). Two arrows and no words make the reader click to find out. Each
-    is emitted only where that side can really show it: no editor diff for a file with no
+  - **Every quoted file offers its diff, and each handle wears the mark of where it
+    opens** — the VS Code ribbon (the base on the left, the working tree on the right,
+    through the served page or the editor's URI handler) and the GitHub octocat (the same
+    file inside the open pull request, anchored by the sha-256 of its path). A logo, not
+    initials: `⇆ VSC` and `⇆ GH` were three monospace letters the width of a short file
+    name, so a row whose whole job is to say *which file is this?* read as three words of
+    equal weight, two of which had to be decoded first. The marks are 14px, the octocat in
+    `currentColor` and the ribbon in its own blue (it is only recognisable as VS Code while
+    it is that blue), and **the sentence moves to the hover** — the mark says github.com to
+    the eye but not to a screen reader, so the `aria-label` and the tooltip still spell it.
+    Each is emitted only where that side can really show it: no editor diff for a file with no
     before-state, and no github.com link for work github.com has not seen — the file dirty
     at HEAD, the branch unpushed, or no pull request open on it. **Take the pull request
     number from `content.json`'s `pr` block**, never from whatever number was in the last
@@ -540,12 +558,22 @@ the one thing no amount of reading changes. Four tabs need something said about 
   - A **gap** is a criticism of the *requirement*, so it belongs on the requirement's side:
     render it under the ticket as a **blind spot**, never under the code on the right where
     it reads as a verdict on the test that happens to be open.
-  - **Colour legend**: one row under the ticket's frame — swatch, name, nothing else, the
-    sentence on hover. Name the states, not their colours; the swatch is the colour. One
-    **word** each (**full · partial · executed · missing · N/A**), with the state's real
-    name leading its hover: five phrases was still a line to be read left to right, where
-    five words is a row of swatches to match against the text above.
-    The kinds get their own one-liner under the tests card.
+  - **Colour legend: the word *is* the swatch.** One row under the ticket's frame, one
+    **word** per state (**full · partial · executed · missing · N/A**), each set at the
+    ticket's own font size and wearing the **exact fill that state wears up in the prose** —
+    same declaration, written once for both (`.rm-f[data-cov=x], .rm-lg[data-cov=x]`), so
+    the legend cannot drift into a colour the ticket does not use. No chip beside the word:
+    a 15×9 swatch and a highlighted phrase are different surfaces, the same gradient reads
+    darker in the small one, and the hatch for `partial` had barely two bands to show.
+    **Spread the row edge to edge** (`justify-content:space-between`) under the frame, so
+    the five words sit under the width of text they explain instead of bunching at the
+    left. Name the states, not their colours. **The hover is one short sentence** — *Only
+    part of this claim is covered by tests* — not a phrase-and-em-dash restating the word
+    the reader just hovered. The kinds get their own one-liner under the tests card.
+  - **Nothing repeats the fill.** `partial` and `executed` used to carry a dashed underline
+    as well, repeating "incomplete" for anyone reading the shade wrong. The hatch and the
+    orange are already a different *kind* of fill; the second mark only made two of the
+    five states look like a vocabulary of their own. Background alone, in both places.
   - **Say what a model inferred.** A heading over inferred content carries a 🤖 superscript
     reading *as inferred by AI*; the logging tab's verdicts carry the same mark reading
     *LLM evaluated* — and the one verdict meaning "the model was never reached" carries
