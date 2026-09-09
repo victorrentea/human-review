@@ -296,9 +296,10 @@ def test_once_a_human_turns_it_black_the_diff_turns_it_green():
     painted = dd.paint_added(BLACKENED, v)
     cells = dd.parse_model(painted)
     assert dd.style_dict(cells["e-vet-visit"].style)["strokeColor"] == dd.ADDED_COLOR
-    assert dd.style_dict(cells["note"].style)["fontColor"] == dd.ADDED_COLOR
-    # the cardinality label rides along with the edge it belongs to
-    assert dd.style_dict(cells["e-vet-visit-t"].style)["fontColor"] == dd.ADDED_COLOR
+    # the words stay the colour the diagram writes them in — the line says "new"
+    assert dd.style_dict(cells["note"].style)["fontColor"] == "#333333"
+    label = dd.style_dict(cells["e-vet-visit-t"].style)
+    assert label["fontColor"] == "#333333" and label["labelBackgroundColor"] == "none"
 
 
 def test_nothing_that_was_already_on_the_map_is_repainted():
@@ -354,12 +355,14 @@ def test_end_to_end_writes_three_svgs_and_a_verdict(tmp_path, branch_png):
     assert "red (automation's to-do)" in proc.stdout
 
 
-def test_a_repainted_note_gets_a_colour_but_not_a_border():
-    """draw.io reads `strokeColor` on a text shape as "draw a box around it". Painting
-    the note green must not put it in a frame the diagram never had."""
+def test_a_repainted_note_keeps_its_own_ink_and_gains_no_border():
+    """Only strokes carry the mark. A text shape has none to carry it — and painting it
+    would be worse than nothing twice over: draw.io reads `strokeColor` on a text shape
+    as "draw a box around it", and green words say in ink what the drawing already
+    says with the line the note sits next to."""
     painted = dd.paint_added(BLACKENED, dd.diff_models(BASE, BLACKENED))
     note = dd.style_dict(dd.parse_model(painted)["note"].style)
-    assert note["fontColor"] == dd.ADDED_COLOR
+    assert "fontColor" not in note or note["fontColor"] != dd.ADDED_COLOR
     assert "strokeColor" not in note
 
 
@@ -368,8 +371,19 @@ def test_repainting_leaves_the_rest_of_the_style_recipe_alone():
     `edgeLabel`, `rounded=0`) mean something and must survive the rewrite."""
     out = dd._paint("rounded=0;whiteSpace=wrap;html=1;strokeColor=#333333;", "#123456")
     assert out.startswith("rounded=0;whiteSpace=wrap;html=1;")
-    assert "strokeColor=#123456" in out and "fontColor=#123456" in out
+    assert "strokeColor=#123456" in out and "fontColor" not in out
     assert dd._paint("text;html=1;fontSize=14;", "#123456").startswith("text;html=1;")
+
+
+def test_a_painted_label_loses_its_background_and_nothing_else():
+    """draw.io defaults a label background to white, and the dark theme inverts white to
+    a black slab — a chip behind the `*` that nobody drew. Painting is the moment to take
+    it off, and it is the only thing painting does to a label."""
+    out = dd._paint("edgeLabel;html=1;fontSize=24;", "#123456")
+    assert "labelBackgroundColor=none" in out
+    assert "fontColor" not in out and "strokeColor" not in out
+    kept = dd._paint("edgeLabel;html=1;labelBackgroundColor=#ffffff;", "#123456")
+    assert "labelBackgroundColor=none" in kept and "#ffffff" not in kept
 
 
 # ── linking a concept box to the class it names ───────────────────────────────────
@@ -572,26 +586,17 @@ def test_a_note_drawn_as_a_bare_mxcell_still_gets_the_link():
     assert cells["n2"].label.startswith("Please manually fix the layout.")
 
 
-def test_the_to_do_spells_out_the_click_it_is_asking_for():
-    """A rendered diagram has no other way to say a note is clickable, so the note says
-    it — underlined, and on a second line, where the export has room to draw it."""
+def test_the_note_is_left_exactly_as_the_diagram_wrote_it():
+    """The invitation to click used to be appended here, which put a sentence about
+    tooling on top of the map. It lives under the picture in HTML now, so the note in
+    the drawing says only what a human wrote in it."""
     cells = dd.parse_model(dd.link_annotations(BRANCH, Path("/repo/d.drawio.png")))
-    assert cells["note"].label == ("Please manually fix the layout."
-                                   "<br><u>Click here to open draw.io ↗</u>")
-
-
-def test_a_note_written_without_html_is_given_it():
-    """`html=0` draws the four characters `<u>` at the reader instead of underlining."""
-    bare = model('<mxCell id="n2" value="Please manually fix the layout." '
-                 'style="text;fontColor=#FF0000" vertex="1" parent="1">'
-                 '<mxGeometry x="0" y="0" width="200" height="20" as="geometry"/></mxCell>')
-    cells = dd.parse_model(dd.link_annotations(bare, Path("/repo/d.drawio.png")))
-    assert dd.style_dict(cells["n2"].style)["html"] == "1"
+    assert cells["note"].label == "Please manually fix the layout."
+    assert "draw.io ↗" not in cells["note"].label
 
 
 def test_a_black_caption_is_linked_but_left_as_written():
-    """The title is anchored too — it is just not asking the reader for anything, so it
-    does not get an invitation appended to it."""
+    """Every annotation is anchored, the title included — none of them is rewritten."""
     title = ('<object label="Conceptual Model" id="title">'
              '<mxCell style="text;html=1;fontSize=20;" vertex="1" parent="1">'
              '<mxGeometry x="0" y="-60" width="200" height="30" as="geometry"/>'
@@ -602,14 +607,14 @@ def test_a_black_caption_is_linked_but_left_as_written():
     assert cells["title"].label == "Conceptual Model"
 
 
-def test_the_builtin_renderer_draws_the_invitation_as_words_not_markup(tmp_path):
-    """It writes one run of SVG text, where draw.io's label HTML is not markup at all —
-    a literal `<u>` in the picture is worse than a missing underline."""
+def test_the_picture_carries_no_invitation_to_click(tmp_path):
+    """The link is HTML under the drawing, so no renderer has to draw a sentence about
+    tooling — and neither renderer may smuggle one back in."""
     out = tmp_path / "c.svg"
     dd.render_builtin(dd.link_annotations(BRANCH, tmp_path / "d.drawio.png"), out)
     svg = out.read_text()
-    assert "Please manually fix the layout. Click here to open draw.io ↗" in svg
-    assert "&lt;u&gt;" not in svg and "&lt;br&gt;" not in svg
+    assert "Please manually fix the layout." in svg
+    assert "draw.io ↗" not in svg and "&lt;u&gt;" not in svg
 
 
 def test_a_path_with_a_space_survives_the_url():

@@ -474,6 +474,13 @@ pre.code code { white-space:pre; }
 .cmlegend .todo { color:#d7263d; }
 .cmlegend b { color:var(--fg); font-weight:600; }
 @media (prefers-color-scheme:dark) { .cmlegend .todo { color:#ff9090; } }
+/* "Open it in draw.io": under the drawing, never on it. The invitation used to be
+   painted into the picture itself, which put a sentence about tooling on top of the map
+   and made the reader read it again on every look. In HTML it is a link — it looks like
+   one, the cursor says so, and it stays out of the diagram's way. */
+.dgm-open { margin:.35rem .6rem .1rem; font-size:.78rem; color:var(--muted); }
+.dgm-open a { color:inherit; text-decoration:underline; text-underline-offset:2px; }
+.dgm-open a:hover { color:var(--fg); }
 /* The command that re-draws the picture above. It sits under the diagram rather than in
    a README because the reader who needs it is the reader who has just been told, inside
    the picture, to go and re-lay the thing out by hand — and a rebuild step they have to
@@ -2694,7 +2701,24 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
         return (f'<p class="sub">not rendered — run the <code>diagrams</code> step to '
                 f'write <code>{html.escape(name)}-diff.svg</code></p>')
     return (dgm_views_html(panes, initial="new" if red else "diff")
+            + drawio_open_html(verdict.get("drawio_url") or "",
+                               verdict.get("diagram") or "")
             + rerun_html(verdict.get("rerun"), rebuild))
+
+
+def drawio_open_html(url: str, diagram: str = "") -> str:
+    """The one click the drawing asks for, rendered as a link under it.
+
+    It is here and not inside the SVG on purpose: a rendered diagram cannot show a
+    cursor, so an invitation painted into the picture has to spell out that it is
+    clickable — and then it is a sentence about tooling sitting on the map, re-read
+    every time the reader looks at the boxes. Under the picture it is just a link.
+    """
+    if not url:
+        return ""
+    what = html.escape(Path(diagram).name) if diagram else "the diagram"
+    return (f'<p class="dgm-open"><a href="{html.escape(url, quote=True)}">'
+            f'Open {what} in draw.io ↗</a></p>')
 
 
 def rerun_html(rerun: dict | None, rebuild: str) -> str:

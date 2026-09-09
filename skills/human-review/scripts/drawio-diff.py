@@ -27,12 +27,10 @@ to-do is the louder fact, and it subsumes "new". Turn it black by hand in draw.i
 this tool paints it green, because it is still new. That transition is the whole
 contract.
 
-The to-do also carries a link: every annotation the diagram draws (the "Please manually
-fix the layout." note is one) is anchored at `drawio://<absolute path>`, so the reader
-who has just been told to re-lay it out can open the file in the draw.io desktop app
-from the picture, and the red ones carry an underlined "Click here to open draw.io ↗"
-saying so, because a picture cannot show a cursor. macOS has no such scheme out of the
-box — `install-drawio-url-handler.sh` next to this file registers one.
+The to-do is meant to be acted on, so the verdict carries `drawio_url` — a
+`drawio://<absolute path>` the report renders as a link *under* the drawing, in HTML,
+where a link can look like one. Nothing is painted onto the picture to say so. macOS
+ships no such scheme — `install-drawio-url-handler.sh` next to this file registers one.
 
 Rendering goes through the draw.io desktop app when it is installed, which is the only
 way to get a *faithful* picture (and, as a bonus, one that carries `light-dark()` for
@@ -46,6 +44,7 @@ import base64
 import binascii
 import json
 import re
+import shlex
 import struct
 import subprocess
 import sys
@@ -386,15 +385,24 @@ def counted(verdict: dict) -> str:
 def _paint(style: str, color: str) -> str:
     """Recolour one element's mxGraph style.
 
-    A text shape and an edge label are painted by their font alone: draw.io reads a
-    `strokeColor` on them as "draw a border", so colouring the stroke would frame the
-    note in a box that the diagram never had.
+    Only the strokes carry the mark — the border of a box, the line of an edge. Words
+    stay the colour the diagram writes them in: a new box already says it is new with
+    its border, and colouring its label too says the same thing twice, in ink the
+    reader then has to stop and read as meaning. Text is text.
+
+    So a text shape and an edge label change in exactly one way here, and it is not a
+    colour: whatever label background they carried is dropped. draw.io's default is
+    white, and a white chip behind a label inverts to a black slab in the dark theme —
+    the one thing on the picture that nobody drew.
     """
     styles = style_dict(style)
-    updates = {"fontColor": color}
-    if "text" not in styles and "edgeLabel" not in styles:
-        updates["strokeColor"] = color
-        updates["strokeWidth"] = str(max(2, int(float(styles.get("strokeWidth") or 1))))
+    if "text" in styles or "edgeLabel" in styles:
+        updates = {"labelBackgroundColor": "none"}
+    else:
+        updates = {
+            "strokeColor": color,
+            "strokeWidth": str(max(2, int(float(styles.get("strokeWidth") or 1)))),
+        }
     # rebuilt in place, so draw.io's own bare keys (`text`, `rounded=0`, `edgeLabel`)
     # and their order survive: a style is not a dict to draw.io, it is a recipe
     out = []
@@ -508,37 +516,6 @@ def drawio_url(diagram: Path) -> str:
     return "drawio://" + urllib.parse.quote(str(Path(diagram).resolve()))
 
 
-INVITE = "Click here to open draw.io ↗"
-
-
-def invited(label: str) -> str:
-    """The to-do, with the click it is asking for spelled out.
-
-    Underlined, because the whole note is the anchor and a rendered diagram has no other
-    way to say so, and arrowed, because the click leaves the page for a desktop app.
-    Appended on the way to the SVG only — the `.drawio` file keeps the sentence a human
-    wrote there, the way the concept links are never written back either.
-
-    On a line of its own: draw.io sizes the export from the shapes, and a note's label
-    is `nowrap` and overflows the shape, so a one-line invitation runs off the right of
-    the picture and is cut by the SVG viewport. A second line has room.
-    """
-    if INVITE in label:
-        return label
-    return f"{label}<br><u>{INVITE}</u>" if label else f"<u>{INVITE}</u>"
-
-
-def html_label(style: str) -> str:
-    """`html=1`, so draw.io reads the `<u>` as markup instead of drawing the tag.
-
-    Every note in the diagram already carries it; a note written without it would show
-    the four characters `<u>` to the reader, which is the whole invitation wasted.
-    """
-    if style_dict(style).get("html") == "1":
-        return style
-    return f"{style};html=1;" if style and not style.endswith(";") else f"{style}html=1;"
-
-
 def link_annotations(xml: str, diagram: Path) -> str:
     """Point every annotation at the diagram it is written on.
 
@@ -555,14 +532,14 @@ def link_annotations(xml: str, diagram: Path) -> str:
     and only on the wrapper. Setting it on the inner cell would produce no anchor and no
     error, which is the failure nobody notices until they click one.
 
-    The red ones — the to-dos — also say so in words: nothing on a rendered diagram tells
-    a reader that a note is clickable, so the invitation is appended to the label on the
-    way to the SVG. The title and the captions keep their wording; they are anchored too,
-    but they are not asking for anything.
+    Nothing is written *into* the picture to advertise the click. The page carries an
+    "open it in draw.io" link in HTML under the drawing, where a link can look like one
+    and a cursor can change over it; a sentence painted onto the diagram to say the same
+    thing sat on top of the drawing and had to be re-read every time the reader looked
+    at the map, to find out it was still only an invitation.
     """
     tree = ET.fromstring(xml)
-    notes = {c.id: is_red(c.style) for c in parse_model(xml).values()
-             if c.kind == "annotation"}
+    notes = {c.id for c in parse_model(xml).values() if c.kind == "annotation"}
     if not notes:
         return xml
     url = drawio_url(diagram)
@@ -575,24 +552,15 @@ def link_annotations(xml: str, diagram: Path) -> str:
         for i, child in enumerate(list(parent)):
             if child.get("id") not in notes:
                 continue
-            todo = notes[child.get("id")]
             if child.tag in ("object", "UserObject"):
                 child.set("link", url)
-                if todo:
-                    child.set("label", invited(child.get("label") or ""))
-                    inner = child.find("mxCell")
-                    if inner is not None:
-                        inner.set("style", html_label(inner.get("style") or ""))
             elif child.tag == "mxCell":
                 # id and label move to the wrapper, exactly the shape draw.io writes: an
                 # inner cell that kept its id is read as a second, plain cell with the
                 # same identity, and being the later one it wins — link and all lost.
-                label = child.get("value") or ""
                 holder = ET.Element("UserObject", {
                     "id": child.get("id"), "link": url,
-                    "label": invited(label) if todo else label})
-                if todo:
-                    child.set("style", html_label(child.get("style") or ""))
+                    "label": child.get("value") or ""})
                 child.attrib.pop("value", None)
                 child.attrib.pop("id", None)
                 holder.append(child)
@@ -866,6 +834,20 @@ def main():
     verdict["unlinked_concepts"] = sorted(unresolved)
     verdict["renderer"] = written["diff"]
     verdict["added_color"] = ADDED_COLOR
+    # The click the report offers under the picture. Recorded here rather than rebuilt by
+    # the page, because only this run knows which file on disk was actually diffed.
+    verdict["drawio_url"] = drawio_url(source)
+    verdict["diagram"] = str(source)
+    # How to run this again, recorded by the run itself. The report inlines these SVGs at
+    # build time — it has to, or the links drawn inside them go inert — so a reader who
+    # has just re-laid the diagram out by hand needs a command, and the reader is not the
+    # person who knows this tool's flags. Nothing else on the machine knows the arguments
+    # this invocation used; this line does, because it *is* this invocation.
+    verdict["rerun"] = {
+        "cwd": str(Path.cwd()),
+        "command": " ".join(shlex.quote(a) for a in
+                            [str(Path(__file__).resolve()), *sys.argv[1:]]),
+    }
     (out_dir / f"{stem}-diff.json").write_text(json.dumps(verdict, indent=2))
 
     if args.json:
