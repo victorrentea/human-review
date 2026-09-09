@@ -156,6 +156,11 @@ Three rules make the difference between a recollection and a plausible sentence 
 - **Do not resolve them yourself.** An assumption is not a finding to be triaged into the
   fix-it pile: the whole point is that the answer is not in the code. Leave every one of
   them open, however small.
+- **Declare the block even when the pile is empty**, with its mode. The lede then counts it
+  at zero — `0 assumed by the coder`, or `coder could not be asked` in mode C — and that
+  zero is a result the reader came for: it says the authoring conversation *was* asked. A
+  page that simply omits the pile is indistinguishable from one whose coder guessed at
+  nothing, so the build warns when no tab declares the block.
 
 Keep them to decisions with a consequence — a business rule guessed at, a contract invented,
 an edge case handled quietly, a `TODO` in all but name. Not the naming of a local variable.

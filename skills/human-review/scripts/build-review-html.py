@@ -25,6 +25,7 @@ import html
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -473,6 +474,20 @@ pre.code code { white-space:pre; }
 .cmlegend .todo { color:#d7263d; }
 .cmlegend b { color:var(--fg); font-weight:600; }
 @media (prefers-color-scheme:dark) { .cmlegend .todo { color:#ff9090; } }
+/* The command that re-draws the picture above. It sits under the diagram rather than in
+   a README because the reader who needs it is the reader who has just been told, inside
+   the picture, to go and re-lay the thing out by hand — and a rebuild step they have to
+   go and look up is a rebuild step that does not happen. One line, selectable, with the
+   button that puts it on the clipboard. */
+.rerun { margin:.6rem .6rem .1rem; font-size:.78rem; color:var(--muted); line-height:1.6; }
+.rerun .cmdline { display:flex; align-items:flex-start; gap:.5rem; margin-top:.35rem; }
+.rerun code { flex:1; min-width:0; overflow-x:auto; white-space:pre; display:block;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:5px;
+              padding:.4rem .55rem; font-size:.94em; }
+.rerun button { flex:none; cursor:pointer; font:inherit; color:var(--muted);
+                background:var(--code-bg); border:1px solid var(--rule); border-radius:5px;
+                padding:.4rem .6rem; }
+.rerun button:hover { color:var(--fg); border-color:var(--muted); }
 /* Progressive disclosure: the diagram arrives simplified, and an arrow that has more
     to say is clickable. The hit area is a transparent rect the script lays under each
     such arrow, so the whole band — label, line, marker — answers to one click. */
@@ -1439,6 +1454,17 @@ EDITOR_JS = r"""<script>
     var m = /^vscode:\/\/file\/*(\/[^:]*?)(?::(\d+))?(?::\d+)?$/.exec(decodeURIComponent(href));
     return m ? { path: m[1], line: m[2] || '1' } : null;
   }
+
+  // The one button on the page that copies something that is not a source reference:
+  // the command that re-renders the hand-drawn diagram. It lives in this handler because
+  // `copy` and `flash` do, and a second clipboard-and-toast implementation for one button
+  // is how two of them end up behaving differently.
+  document.addEventListener('click', function (ev) {
+    var cmd = ev.target.closest && ev.target.closest('button.copycmd');
+    if (!cmd) return;
+    copy(cmd.getAttribute('data-copy') || '')
+      .then(function () { flash('Copied \u2014 run it in a terminal, then reload this page'); });
+  });
 
   document.addEventListener('click', function (ev) {
     var link = ev.target.closest && ev.target.closest('a[href^="vscode:"]');
@@ -2628,13 +2654,12 @@ DRAWIO_TOKEN = re.compile(r"\{\{drawio:(?P<name>[A-Za-z0-9_.-]+)\}\}")
 
 # Meanings, not colours: the swatch is already the colour, so the bold goes on the one
 # thing the reader cannot see.
-CM_LEGEND_NEW = ('<span class="new"><i></i><b>added by this PR</b> — against the draw.io '
-                 "on the base branch</span>")
+CM_LEGEND_NEW = '<span class="new"><i></i><b>added by this PR</b></span>'
 CM_LEGEND_TODO = ('<span class="todo"><i></i><b>still waiting for a hand-drawn layout</b> '
                   "— drawn by automation to keep the guardrail green</span>")
 
 
-def drawio_widget_html(name: str, assets: Path, root: Path) -> str:
+def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -> str:
     """The Diff / New / Old widget for one `drawio-diff.py` output set.
 
     Which pane it opens on is not a style choice, it is a reading of the verdict: while
@@ -2668,12 +2693,38 @@ def drawio_widget_html(name: str, assets: Path, root: Path) -> str:
               file=sys.stderr)
         return (f'<p class="sub">not rendered — run the <code>diagrams</code> step to '
                 f'write <code>{html.escape(name)}-diff.svg</code></p>')
-    return dgm_views_html(panes, initial="new" if red else "diff")
+    return (dgm_views_html(panes, initial="new" if red else "diff")
+            + rerun_html(verdict.get("rerun"), rebuild))
 
 
-def expand_drawio(text: str, out_dir: Path, root: Path) -> str:
+def rerun_html(rerun: dict | None, rebuild: str) -> str:
+    """The command that re-renders this diagram and rebuilds this page, ready to paste.
+
+    Not a convenience. The picture above is inlined into the HTML, and it has to be: the
+    boxes are links into the classes they name and the to-do note is a link into draw.io,
+    and an SVG loaded through `<img src>` renders those as decoration — the reader can see
+    them and cannot click them. So the file on disk and the picture in the page are two
+    artefacts, and reloading the browser only ever refreshes the second one. That is a
+    thing the page owes the reader an answer to, at the moment they need it, in the form
+    of something they can run — not a paragraph explaining that they are out of luck.
+
+    `rerun` is what `drawio-diff.py` recorded about its own invocation; `rebuild` is how
+    this build was started. Neither is reconstructed here — a guessed command that does
+    not work is worse than no command, because it is tried first.
+    """
+    if not rerun or not rerun.get("command"):
+        return ""
+    line = f'cd {shlex.quote(rerun["cwd"])} \\\n  && {rerun["command"]} \\\n  && {rebuild}'
+    return ('<div class="rerun">Re-drawn it in draw.io? This picture is inlined into the '
+            'page at build time, so reloading cannot pick it up — run this, then reload:'
+            f'<div class="cmdline"><code>{html.escape(line)}</code>'
+            f'<button type="button" class="copycmd" data-copy="{html.escape(line, quote=True)}" '
+            'data-tip="Copy the command">Copy</button></div></div>')
+
+
+def expand_drawio(text: str, out_dir: Path, root: Path, rebuild: str) -> str:
     return DRAWIO_TOKEN.sub(
-        lambda m: drawio_widget_html(m["name"], out_dir / "assets", root), text)
+        lambda m: drawio_widget_html(m["name"], out_dir / "assets", root, rebuild), text)
 
 
 def _pretty(name: str) -> str:
@@ -3049,6 +3100,19 @@ def _ref_link(r) -> str:
             f'{html.escape(name)}</a> ')
 
 
+def _assumptions_block(spec):
+    """The `assumptions` block as the layout declared it, or None if the page declares none.
+
+    The lede counts the coder's pile even when it is empty, and the only sentence it can
+    honestly print about an empty one depends on the mode — so it has to find the block
+    itself, not infer the pile from the items that happen to be in it."""
+    for t in spec.get("tabs") or []:
+        for b in t.get("blocks", []):
+            if b.get("type") == "assumptions":
+                return b
+    return None
+
+
 def opening_lede(spec) -> str:
     """The shape of the whole list, for whichever pile opens it — and only for that one.
 
@@ -3071,10 +3135,19 @@ def opening_lede(spec) -> str:
     # an assumption visibly says "your call", so "greyed out" and "yours to confirm" were
     # the paragraph-the-reader-can-see rule reappearing one clause at a time, inside the
     # line that replaced the paragraph.
-    assumed = len(spec.get("assumptions", []))
+    block = _assumptions_block(spec)
     parts = []
-    if assumed:
-        parts.append(f"{assumed} assumed")
+    if block is not None:
+        # Zero is a number the reader came for, so this clause renders at zero too. A pile
+        # that appears only when it is non-empty disappears exactly where it matters most:
+        # "the page says nothing about what the coder guessed at" and "the coder was asked
+        # and guessed at nothing" are the same blank line, and only one of them is good
+        # news. Mode C is the case where a zero would be the lie instead — nobody was in a
+        # position to be asked — so it says that rather than counting an empty pile.
+        assumed = len(spec.get("assumptions", []))
+        parts.append("coder could not be asked"
+                     if block.get("mode") == "C" and not assumed
+                     else f"{assumed} assumed by the coder")
     if spec.get("findings"):
         parts.append(f"{len(spec['findings'])} open, worst first")
     if spec.get("autofixes"):
@@ -5236,6 +5309,12 @@ def main(argv=None) -> int:
     out_path = Path(args.out).resolve()
     out_dir = out_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
+    # How this build was started, so the page can tell a reader how to start it again.
+    # Recorded rather than reconstructed, for the same reason `drawio-diff.py` records
+    # its own: the interpreter that has Pygments is not always the one called `python3`.
+    rebuild_cmd = " ".join(shlex.quote(a) for a in
+                           [sys.executable, str(Path(__file__).resolve()),
+                            args.content, "--out", args.out])
 
     problems = validate(spec, out_dir)
     if problems:
@@ -5285,6 +5364,18 @@ def main(argv=None) -> int:
     if floating:
         spec["assumptions"] = [a for a in spec["assumptions"] if a not in floating]
 
+    # A page that never declares the block says nothing at all about the third pile, and
+    # nothing reads as "there was nothing to say". The pile is the one part of this page no
+    # pass can reconstruct afterwards, so its absence has to be noisy at build time rather
+    # than silent on the page — declare it with its mode (`authoring-sessions.py` says
+    # which) and the lede prints the count, zero included.
+    if _assumptions_block(spec) is None:
+        print("[review] WARNING: no 'assumptions' block in any tab — the page will say "
+              "nothing about what the agent that wrote the code had to guess at, which a "
+              "reader cannot tell from it having guessed at nothing. Declare the block "
+              "with its mode (authoring-sessions.py --base ... says A, B or C) even when "
+              "the pile is empty.", file=sys.stderr)
+
     # Every panel is `id="<tab id>"`, so a section that happens to share a tab's id puts the
     # same id on two elements — `id="api"` on the API contract panel and on the <h2> inside
     # it, which is what this page shipped for months. Nothing looked broken, because
@@ -5320,7 +5411,8 @@ def main(argv=None) -> int:
         vid = ""
         if s.get("video"):
             vid = video_html(s, out_dir)
-        body = expand_drawio(expand_snippets(s.get("body", ""), root), out_dir, root)
+        body = expand_drawio(expand_snippets(s.get("body", ""), root), out_dir, root,
+                             rebuild_cmd)
         collides = s["id"] in tab_ids
         if collides:
             print(f'[review] section {s["id"]!r} shares its id with a tab: the heading drops '

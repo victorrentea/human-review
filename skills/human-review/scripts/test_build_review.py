@@ -2496,6 +2496,38 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         "every item carries its source beside its own title"
 
 
+def test_the_lede_counts_the_coder_pile_at_zero_too(tmp_path):
+    """A pile that renders only when it is non-empty disappears exactly where the reader
+    needs it: a page silent about what the coder guessed at and a coder who guessed at
+    nothing look identical."""
+    page, _ = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
+    assert "0 assumed by the coder" in page
+    assert "1 open, worst first" in page
+
+
+def test_the_lede_does_not_count_a_pile_nobody_could_be_asked_for(tmp_path):
+    """Mode C is the one case where the zero would be the lie: no transcript survived, so
+    nothing was asked and `0 assumed` would be the page claiming an answer it never got."""
+    page, _ = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "C"}, {"type": "findings"}]}]))
+    assert "coder could not be asked" in page
+    assert "0 assumed" not in page
+
+
+def test_a_page_that_declares_no_assumptions_block_is_told_so(tmp_path):
+    """The third pile is the one part of the page no later pass can reconstruct, so its
+    absence is noisy at build time rather than silent on the page."""
+    _, err = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
+        tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
+    assert "no 'assumptions' block" in err
+
+
 def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path):
     """Pinned to `findings`, a lede describing three piles renders underneath one the
     reader has already walked past."""

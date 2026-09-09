@@ -146,7 +146,10 @@ reviewer reading the page can do nothing with it. Say it to them in the wrap-up 
 
 **`findings`** (the disputable calls) · **`assumptions`** (the top-level `assumptions`
 array; the block carries `"mode": "A"|"B"|"C"` so an empty pile can say *which* kind of
-empty it is — asked and had nothing, read back and found nothing, or nobody left to ask) ·
+empty it is — asked and had nothing, read back and found nothing, or nobody left to ask.
+**Declare it on every page, empty or not**: the lede counts this pile at zero as readily
+as at nine, and the build warns when no tab declares the block, because a page that never
+mentions the coder's guesses and a coder who made none look the same from the outside) ·
 **`autofixes`** (the top-level `autofixes` array, same shape as a finding) · **`diagrams`** (the delta gallery, narrowed by `kind` / `only` /
 `except`) · **`testpairs`** (Step 3) · **`tests`** (the ledger: every test the change set
 moved, grouped by what happened to it) · **`logging`** (Step 7c) · **`puml`** (a diagram this
@@ -353,8 +356,11 @@ the one thing no amount of reading changes. Four tabs need something said about 
   fixes already applied, greyed out. Lists that each start at 1 make the reader do
   arithmetic. The numbering follows the order the blocks appear in here, so that order is
   an editorial choice — with one rule the build enforces: work already done is the tail.
-  Whichever pile opens the list writes its lede — `2 assumed · 9 open, worst first · 3
-  auto-applied` — computed, so restate none of it. It is counts and one ordering fact,
+  Whichever pile opens the list writes its lede — `2 assumed by the coder · 9 open, worst
+  first · 3 auto-applied` — computed, so restate none of it. The coder's clause is the one
+  that renders at zero (`0 assumed by the coder`), because that zero is a result: it says
+  the authoring conversation was asked. Mode C prints `coder could not be asked` instead,
+  the one case where a zero would be claiming an answer nobody was there to give. It is counts and one ordering fact,
   and nothing that describes what is directly under it: the applied fixes are visibly
   grey, an assumption visibly says *your call*, and every item carries its source beside
   its own title, so `greyed out`, `yours to confirm` and `each stamped with the pass that
