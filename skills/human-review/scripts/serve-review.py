@@ -33,8 +33,31 @@ OPEN_DIFF = "/__open_diff__"
 
 # A ref, and nothing that could be a flag or a second argument. `git show` is invoked
 # without a shell, so this is not about quoting — it is about `--upload-pack=…` and
-# friends arriving from a query string.
-REF_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
+# friends arriving from a query string. Hence the first character: a ref may not open with
+# `-`, which is the whole of the attack this guards.
+#
+# It used to be `[0-9a-fA-F]{7,40}` — a raw sha and nothing else. But the base every
+# snippet on the page is written against is `origin/main` (HUMAN_REVIEW_DIFF_BASE), so
+# every editor handle in the report hit this and came back "Not a usable git ref": the
+# page's most-clicked button, refused by the one check that was supposed to let it
+# through. A name is not less safe than a sha here — it is resolved through git before it
+# reaches anything, and a name git cannot resolve is refused exactly as before.
+REF_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._/+^~{}-]{0,100}$")
+
+
+def resolve_ref(base):
+    """`origin/main`, `HEAD^`, a sha — to the commit it names, or None.
+
+    Asked of git rather than pattern-matched, because "does this ref exist in this
+    checkout?" is not a question a regex can answer, and the answer is what the rest of
+    the diff is built from: the resolved sha names the before-image on disk, so a name
+    that moved between two clicks cannot leave two different files wearing one label."""
+    if ROOT is None or not REF_RE.match(base or ""):
+        return None
+    out = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"],
+        capture_output=True, text=True)
+    return out.stdout.strip() or None
 
 # Everything the server will open must live under here — the repository the guide is
 # about. A loopback endpoint that opens any path in the editor is a wider door than this
@@ -176,8 +199,9 @@ def open_diff(rel, base, served_root):
     `packages@cb0988f5.puml ↔ packages.puml`, which says what is being compared."""
     if ROOT is None:
         return "This server is not attached to a repository"
-    if not REF_RE.match(base or ""):
-        return "Not a usable git ref"
+    sha = resolve_ref(base)
+    if sha is None:
+        return f"{base or 'that ref'} is not a ref this checkout knows"
     target = (ROOT / rel).resolve()
     try:
         target.relative_to(ROOT.resolve())
@@ -185,13 +209,13 @@ def open_diff(rel, base, served_root):
         return "That file is outside the repository"
     if not target.is_file():
         return f"{Path(rel).name} is no longer in the working tree"
-    show = subprocess.run(["git", "-C", str(ROOT), "show", f"{base}:{rel}"],
+    show = subprocess.run(["git", "-C", str(ROOT), "show", f"{sha}:{rel}"],
                           capture_output=True)
+    short = sha[:8]
     if show.returncode != 0:
-        return f"{Path(rel).name} does not exist at {base[:8]}"
+        return f"{Path(rel).name} does not exist at {short}"
     if show.stdout == target.read_bytes():
-        return f"{Path(rel).name} is unchanged since {base[:8]}"
-    short = base[:8]
+        return f"{Path(rel).name} is unchanged since {short}"
     stem, ext = Path(rel).stem, Path(rel).suffix
     before = Path(served_root) / ".diffbase" / short / Path(rel).parent / f"{stem}@{short}{ext}"
     before.parent.mkdir(parents=True, exist_ok=True)

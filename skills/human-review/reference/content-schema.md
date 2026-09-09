@@ -523,14 +523,22 @@ the one thing no amount of reading changes. Four tabs need something said about 
     is the only thing that makes it VS Code. **No underline** under either: the dotted rule
     was there to keep three letters from reading as prose. They sit at **two thirds of the
     row's gap** from what follows them — a mark is a smaller thing than the words around it
-    and floats off the name given the same air. And **the sentence moves to the hover** —
-    the mark says github.com to the eye but not to a screen reader, so the `aria-label` and
-    the tooltip still spell it.
+    and floats off the name given the same air. The `aria-label` still spells out what each
+    opens, for a reader who cannot see the mark; the **tooltip is two or three words**
+    (`Open Diff in VSC`, `GitHub`), because a mark in a row of three is hovered to answer
+    *what is this?*, and the sentence a prose link can afford is a paragraph in a corner.
     Each is emitted only where that side can really show it: no editor diff for a file with no
     before-state, and no github.com link for work github.com has not seen — the file dirty
     at HEAD, the branch unpushed, or no pull request open on it. **Take the pull request
     number from `content.json`'s `pr` block**, never from whatever number was in the last
     map you copied — a link to somebody else's pull request looks exactly like a working one.
+  - **A github.com link ends in a line, never in a bare file anchor** — `#diff-<sha256 of
+    the path>R<line>`, aimed at the first line the branch added in that window (the top of
+    the window when it added none). Not a nicety: github.com's Files-changed view renders
+    lazily, so `#diff-<sha>` alone **does not scroll at all** on a large pull request — the
+    reader lands wherever the page happened to be, several files away, which is
+    indistinguishable from a broken link. With `R<line>` the same URL scrolls to the hunk.
+    `L<line>` is the left side, and the only landing a pure deletion has.
   - **Any code baked into the fragment is cut against the working tree, and its line
     numbers are checked.** A snippet quoted from an older revision keeps text that still
     looks right beside numbers that are two lines out, and every link into the editor
@@ -577,6 +585,8 @@ the one thing no amount of reading changes. Four tabs need something said about 
     the legend cannot drift into a colour the ticket does not use. No chip beside the word:
     a 15×9 swatch and a highlighted phrase are different surfaces, the same gradient reads
     darker in the small one, and the hatch for `partial` had barely two bands to show.
+    Lead the row with a muted **`Legend:`** — five framed words under a ticket are five
+    things the reader has to recognise as a key before they can use it as one.
     **Spread the row edge to edge** (`justify-content:space-between`) under the frame, so
     the five words sit under the width of text they explain instead of bunching at the
     left. **A thin grey frame around all five**, so the row reads as five badges rather

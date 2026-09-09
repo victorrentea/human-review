@@ -2697,8 +2697,12 @@ def test_the_github_link_lands_on_the_line_the_change_is_on(tmp_path):
     out = build.diff_html(rel, "HEAD^", r, head="HEAD")
     href = re.search(r'href="([^"]*compare[^"]*)"', out).group(1)
     assert re.search(r"#diff-[0-9a-f]{64}R2$", href), href
-    # Short-faced in a diff header, the label no longer says github.com, so the tooltip does.
-    assert "On github.com — this change, in the compare page" in out
+    # Short-faced in a diff header, the tip is short too: the mark is hovered to ask what
+    # it is, not for a sentence about where in a forty-file compare page it lands. That
+    # sentence still stands on the prose link, which has room for it.
+    assert 'data-tip="GitHub"' in out
+    prose = build._github_compare_link(rel, "HEAD^", r, "HEAD", 2, "R")
+    assert "This change, in the compare page" in prose
 
 
 def test_a_pure_deletion_lands_on_the_left_side(tmp_path):

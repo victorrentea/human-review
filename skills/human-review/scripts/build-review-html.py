@@ -46,6 +46,12 @@ SEVERITIES = {
 
 CSS = """
 :root {
+  /* The one declaration that tells the browser this page has two skins, so everything it
+     paints itself follows them: scrollbars first of all. Without it a code block that
+     scrolls sideways on a dark page gets the light grey bar Chrome paints by default —
+     a white stripe across the middle of a dark card, which reads as a rendering fault
+     rather than as a control. Form controls and the caret come along for free. */
+  color-scheme: light dark;
   --bg:#fbfbfd; --fg:#1c1c22; --muted:#6b6b78; --line:#e2e2ea; --card:#ffffff;
   --accent:#8a1c1c; --accent-soft:#fdeaea; --code-bg:#f6f6fa; --link:#1a4fa0;
   --drift:#b5730a; --drift-fg:#ffffff;
@@ -1850,11 +1856,11 @@ def _github_compare_link(rel: str, base: str, root: Path, head: str | None = Non
     # where in a forty-file compare page it lands.
     tip = ("This change, in the compare page" if line else
            "Just this file, inside the compare page") if rel else "The whole compare page"
-    # A mark in place of the words says github.com to the eye but not to a screen reader,
-    # so the tooltip has to — the one thing it was free to leave out while the label
-    # spelled it.
+    # Short-faced in a bar, the tip is short too. The prose link can afford a sentence
+    # about where in a forty-file compare page it lands; a mark in a row of three is
+    # hovered to answer "what is this?", and a sentence there is a paragraph in a corner.
     if face:
-        tip = f"On github.com — {tip[0].lower()}{tip[1:]}"
+        tip = "GitHub"
     return (f'<a class="srcref{" diffref srcbar-diff" if face else ""}" target="_blank"'
             f' rel="noopener" href="{html.escape(url)}"'
             f' data-tip="{tip}">{face or (_icon("GH") + " on GitHub")}</a>')
@@ -2106,8 +2112,8 @@ def diff_link_html(rel: str, base: str, root: Path, face: str | None = None) -> 
         f'<a class="srcref diffref{" srcbar-diff" if face else ""}"'
         f' href="vscode://file/{src.resolve()}:{line}:1"{uri}'
         f' data-diff-path="{html.escape(rel)}" data-diff-base="{html.escape(base)}"'
-        f' data-tip="Open this fix as a diff in VS Code — {short} on the left, the working'
-        f' tree on the right">{face or _icon("VSC") + f" diff vs {html.escape(short)}"}</a>'
+        f' data-tip="{"Open Diff in VSC" if face else html.escape(f"Open this fix as a diff in VS Code — {short} on the left, the working tree on the right")}"'
+        f'>{face or _icon("VSC") + f" diff vs {html.escape(short)}"}</a>'
     )
 
 
