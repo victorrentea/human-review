@@ -884,24 +884,27 @@ button.tab { padding:0 .6rem; }
    between a label and its badge and a hair of the type. (There used to be a third
    source, the `show all` button beside them; it is not in the strip any more.) */
 button.tab { padding:0 .5rem; font-size:.83rem; line-height:1.7; gap:.32rem; }
-/* The last of the room is to the right of the text column, and the masthead is holding
-   it: its padding keeps the title and the chips aligned with the body, which is right
-   for a heading and pure waste for a strip of pills. So the strip alone gives that
-   padding back and runs to 1.25rem from the viewport edge — the same relaxation the
-   strip used to do for itself when it was the full-bleed element. Left untouched: the
-   first tab still starts exactly where the body text does. */
-.masthead .tabstrip { margin-right:calc(1.25rem - max(1.25rem, 50vw - 540px + 1.25rem)); }
+/* The strip is the masthead's third row, so it ends where the other two do: at the right
+   edge of the text column, in line with the score pill above it and with the panels the
+   whole page is made of. It used to be let out to 1.25rem from the window edge -- room
+   borrowed when fifteen pills would not fit the column -- and once the pills grew to fill
+   their track (below) that borrowed width stopped being invisible: the tab row alone ran
+   on past the right edge of everything else on the page. The room is not needed any more.
+   Measured at 1280/1385/1512/1728/1920px, the text column is 1040px at every one of them
+   (`.wrap` is capped at 1080px) and the twelve tabs measure 931px, so they fit the column
+   itself with 109px to spare -- about one more tab's worth of headroom before the strip
+   wraps to a second row. Left untouched, as ever: the first tab starts exactly where the
+   body text does. */
+.masthead .tabstrip { margin-right:0; }
 
-/* The strip runs to the edge of the window; the tabs only ever needed ~1130px of it. So
-   on anything wider than 1280px the row trailed off into a stretch of nothing to the
-   right of the last tab -- a header row that stops halfway reads as one that broke, next
-   to a title and a scope bar that both run the full width. Growing every pill shares the
-   slack out instead: ~19px per tab at 1728px, ~10px at 1512px, and nothing at all at
-   1280px, where there is none to give. Grown from each pill's own text width (`auto`
-   basis), so the labels keep their relative sizes rather than being squared off into
-   equal columns, and a wrapped row fills itself the same way -- which
-   `justify-content:space-between` could not do without flinging a short last row's two
-   tabs to opposite edges of the page. */
+/* The 109px is the growth. A row of pills that stops short of the column's right edge
+   reads as a row that broke, next to a title and a scope bar that both run the full
+   width, so the slack is shared out over the tabs instead of left in a gap at the end:
+   ~9px a pill, at every window width, since the column does not change. Grown from each
+   pill's own text width (`auto` basis), so the labels keep their relative sizes rather
+   than being squared off into equal columns, and a row that does wrap fills itself the
+   same way -- which `justify-content:space-between` could not do without flinging a short
+   last row's two tabs to opposite edges of the page. */
 button.tab { flex:1 1 auto; justify-content:center; }
 
 /* pb33f's report is a whole application in one file — its own tabs, its own diff view,

@@ -1468,12 +1468,29 @@ def test_the_methodology_boilerplate_is_stripped_from_the_footer():
     assert "Built by" in out
 
 
-# The link is an invitation, not a credit line — a reader who never hovers still gets
-# the address, and one who does is told what to do with it.
-def test_the_home_link_says_what_it_is_for():
-    out = build._link_home("Built by /human-review against the running stack.")
-    assert "data-tip=\"Clone it, fork it, or point your agent at it," in out
-    assert "title=" not in out
+# The address is a credit line until something tells the reader what to do with it. The
+# builder says it, so no author has to remember to — and every page already published
+# says it the moment it is rebuilt.
+def test_the_footer_invites_the_reader_to_take_the_toolset():
+    out = build._link_home("Built by /human-review against the running stack on 2 Sep 2026.")
+    assert out.endswith("Fork, Clone and Port with your Agent to your environment &amp; needs.")
+    assert "&amp;" in out and " & " not in out
+
+
+# "against the running stack" describes the build, not anything the reader can act on,
+# and it is what every build does now. Out of the footer wherever a content file still
+# carries it.
+def test_the_running_stack_phrase_is_dropped():
+    out = build._link_home("Built by /human-review against the running stack on 2 Sep 2026.")
+    assert "running stack" not in out
+    assert "Built by" in out and "on 2 Sep 2026." in out
+
+
+# The sentence is appended once. A footer rebuilt from a content file that already ends
+# in it must not end in it twice.
+def test_the_invitation_is_not_doubled():
+    out = build._link_home(f"Built by /human-review on 2 Sep 2026. {build.INVITATION}")
+    assert out.count("Fork, Clone") == 1
 
 
 def test_only_the_first_mention_is_linked():
