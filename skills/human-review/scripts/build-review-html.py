@@ -812,6 +812,14 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
 /* A link the running app can answer looks like the caption links around it; one that has
     nowhere to point yet must not look clickable, because it is not. */
 .transcript a[data-app].dead { color:var(--muted); text-decoration:none; cursor:default; }
+/* The way into the app at this exact moment. Quiet until the row is hovered: the reader
+    is here to read the narration, and six play glyphs down the margin would compete with
+    the timestamps for the same job. */
+.cue-drive { float:right; margin-left:.4rem; border:1px solid var(--line); border-radius:3px;
+    background:var(--bg); color:var(--muted); cursor:pointer; line-height:1;
+    padding:.05rem .3rem; font-size:11px; opacity:0; transition:opacity .12s; }
+.transcript li:hover .cue-drive, .cue-drive:focus, .cue-drive.copied { opacity:1; }
+.cue-drive:hover, .cue-drive.copied { color:var(--link); border-color:var(--link); }
 /* A caption is a seek target, so a link inside one has to read as a *different* affordance
     without shouting: the page's own link colour and the dotted underline it already uses
     for .srcref, solid on hover. The click separation is in the script, not here. */
@@ -1016,9 +1024,15 @@ document.querySelectorAll('.vidwrap').forEach(function (wrap) {
       // Captions carry links to the pages they describe. A click on one opens that page
       // and nothing else — seeking as well would yank the video out from under a reader
       // who was only following the link.
-      if (ev.target.closest && ev.target.closest('a')) return;
+      if (ev.target.closest && ev.target.closest('a, .cue-drive')) return;
+      // Seek, and stop there. Clicking a caption is how a reader *finds* a moment — often
+      // one they want to look at, or read around, before watching. Starting playback on
+      // that click takes the decision away from them and starts talking; the same rule
+      // that keeps the film paused when the tab opens applies to every click after it.
+      // The play button is right there, and the frame they asked for is now under it.
+      // Seeking alone keeps whatever state the video was in: paused stays paused, and a
+      // film already running keeps running from the new point.
       video.currentTime = parseFloat(li.dataset.t);
-      video.play();
     });
   });
 
@@ -1184,6 +1198,22 @@ APP_ENV_JS = """<script>
     navigator.clipboard.writeText(cmd).then(function () {
       copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy'; }, 1200);
     }).catch(function () { copy.textContent = 'Copy failed'; });
+  });
+
+  // One command per caption, copied rather than run: this page is a file on disk and
+  // cannot drive a browser on your machine. What it can do is hand you the exact line,
+  // already carrying the port the environment came up on and the number of the caption
+  // you clicked.
+  var tmpl = bar.dataset.drive;
+  if (tmpl) document.querySelectorAll('.cue-drive').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var cmd = tmpl.replace(/\\{n\\}/g, btn.dataset.n).replace(/\\{base\\}/g, base());
+      navigator.clipboard.writeText(cmd).then(function () {
+        var was = btn.innerHTML;
+        btn.classList.add('copied'); btn.innerHTML = '&#10003;';
+        setTimeout(function () { btn.classList.remove('copied'); btn.innerHTML = was; }, 1400);
+      }).catch(function () { btn.title = 'could not copy'; });
+    });
   });
 
   // Explicit, never automatic. Resetting on every link click would throw away work the
@@ -4006,7 +4036,8 @@ def runtime_html(rt) -> str:
     cmdbox = (f'<span class="appenv-cmd"><code>{html.escape(cmd)}</code>'
               f'<button type="button" class="appenv-copy">Copy</button></span>') if cmd else ""
     return (f'<div class="appenv" data-fallback="{html.escape(fallback)}"'
-            f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}>'
+            f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}'
+            f'{f' data-drive="{html.escape(rt["drive"])}"' if rt.get("drive") else ""}>'
             + cmdbox
             + '<label>running at <input type="url" class="appenv-base" spellcheck="false"'
               f' placeholder="{html.escape(fallback or "http://localhost:4200")}"></label>'
@@ -4014,7 +4045,7 @@ def runtime_html(rt) -> str:
             + reset + '</div>')
 
 
-def _link_captions(cues, links):
+def _link_captions(cues, links, drive=False):
     """Put the app links *inside* the narration, on the words that already name the page.
 
     They used to sit in a paragraph of their own — "Pages this change touches: owner detail
@@ -4047,10 +4078,15 @@ def _link_captions(cues, links):
             break
         else:
             unplaced.append(link)
+    # 1-based, and the same numbering the reader is looking at: the driver replays the
+    # walkthrough and stops after the nth caption, so "cue 3" has to mean the third row.
+    drive_btn = (lambda n: f'<button type="button" class="cue-drive" data-n="{n}" '
+                           f'data-tip="Drive the app to this point">&#9656;</button>') \
+        if drive else (lambda n: "")
     items = "".join(
         f'<li data-t="{c["t"]:.2f}"><span class="ts">{int(c["t"]) // 60}:'
-        f'{int(c["t"]) % 60:02d}</span><span>{cell}</span></li>'
-        for c, cell in zip(cues, cells)
+        f'{int(c["t"]) % 60:02d}</span><span>{cell}{drive_btn(i)}</span></li>'
+        for i, (c, cell) in enumerate(zip(cues, cells), 1)
     )
     return items, unplaced
 
@@ -4067,7 +4103,8 @@ def video_html(s, out_dir: Path) -> str:
     rel = s["video"]
     cues_path = out_dir / rel.replace(".webm", ".cues.json")
     cues = json.loads(cues_path.read_text(encoding="utf-8")) if cues_path.is_file() else []
-    items, unplaced = _link_captions(cues, s.get("appLinks", []))
+    rt = s.get("runtime") or {}
+    items, unplaced = _link_captions(cues, s.get("appLinks", []), bool(rt.get("drive")))
     player = (f'<video controls preload="metadata" src="{html.escape(rel)}"></video>'
               if (out_dir / rel).is_file() else
               f'<p class="embedded-note"><b>Not filmed.</b> <code>{html.escape(rel)}</code> '
@@ -4087,7 +4124,7 @@ def video_html(s, out_dir: Path) -> str:
                   + " · ".join(_app_anchor(l["href"])
                                + f'{html.escape(l.get("label") or l["href"])}</a>'
                                for l in unplaced) + ".</span></li>")
-    return (runtime_html(s.get("runtime"))
+    return (runtime_html(rt)
             + f'<div class="vidwrap">{player}<ol class="transcript">{items}</ol></div>')
 
 

@@ -237,6 +237,13 @@ purpose.
 }
 ```
 
+`drive` is optional and turns each caption into a way *into* the app at that moment: a
+`▸` on the row copies this command with `{n}` set to the caption's number (1-based, as
+shown) and `{base}` to the URL in the bar. `drive-to-cue.js` replays the project's own
+`feature-script.js` — the same file that filmed the walkthrough, under the same harness —
+and stops after the nth `say()`, leaving a headed browser on that screen for you to take
+over. Nothing describes the journey twice, so nothing can drift.
+
 `runtime` puts a bar above the player: the command that brings the environment back, and a
 box for the URL that command prints. Paste it once and every relative `appLinks` href
 points into the running app; it is remembered per page, so a reload keeps it. `base` is the
