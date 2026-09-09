@@ -394,7 +394,31 @@ the one thing no amount of reading changes. Four tabs need something said about 
     drawn, and pressing a row's arrow releases the sentence — "these tests cover that
     sentence" and "that test pins these sentences" are two different relations, and both
     on screen in the same green leaves the reader working out which is which. On the
-    ticket's side the sentence *is* the control, so it needs no arrow of its own.
+    ticket's side the sentence *is* the control, so it needs no arrow of its own — and
+    **clicking it a second time puts the ticket back**: there was no way out of a selection
+    except by making another one, so the column stayed sorted into "these prove it" and a
+    dimmed rest long after the reader had stopped asking. The dimming is an answer, not a
+    resting state.
+  - **The relation is drawn in the gutter, not only implied by colour.** An outline says
+    *which* sentences a test pins; on a ticket four screens long it never says which of
+    them belong together, and with the card sticky the row that pinned them is usually
+    beside none of them. So a pressed row draws a **brace** at the ticket's edge around
+    each sentence it pins — around the whole wrapped block of it, not the last line — and a
+    **wire** from each brace's tip across the gutter to the row itself. That is what the
+    46px gutter is for; it was 20px of nothing, and the left column pays about three
+    characters a line for it.
+  - The wires are **geometry, not state**: they redraw from wherever the two columns
+    currently are, on page scroll, on the card's own scroll (which does not bubble — listen
+    in the capture phase), on resize, and when a row opens and moves the rows under it. The
+    card scrolls inside itself, so a row can sit outside what it shows: **clamp the wire's
+    landing point to the card's visible edge** rather than letting it point off into
+    nothing — where it lands is then the direction the reader has to scroll. Under 900px
+    the columns stack, there is no gutter, and nothing is drawn.
+  - The control's face is **the picture of what pressing it draws**: one trunk on the right,
+    where the test is, fanning into three branches reaching left at the ticket. An
+    arrowhead only said *that way*. Drawn as inline SVG rather than borrowed from a font —
+    nothing in any stack is this shape, and the glyphs that come close are a different
+    picture at 12px.
   - A row whose test pins nothing renders the arrow **hidden, not merely faded** — the
     badges behind it stay in one column, and a control that would do nothing is worse than
     no control.
