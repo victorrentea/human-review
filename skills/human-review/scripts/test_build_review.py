@@ -262,7 +262,7 @@ def test_a_snippet_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java"
     out = _extract_snippet().render(f"{rel}:1-2", None, tmp_path, exact=True)
     assert ">VetRestController.java:1-2</a>" in out
-    assert f'data-tip="{rel} — open in VS Code"' in out
+    assert f'data-tip="Open in VS Code: {rel}"' in out
     assert f">{rel}:1-2<" not in out, "the ceremony is on hover, not in the face"
 
 
@@ -2531,7 +2531,7 @@ def test_the_diff_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
     head = build.diff_html(rel, "HEAD^", r, head="HEAD").split("</div>")[0]
     assert ">VetRepository.java<" in head
-    assert f'data-tip="{rel} \u2014 open in VS Code"' in head
+    assert f'data-tip="Open in VS Code: {rel}"' in head
     assert f">{rel}<" not in head, "the ceremony is on hover, not in the face"
 
 
@@ -2582,7 +2582,7 @@ def test_the_three_tabs_head_a_quoted_block_with_the_same_bar(tmp_path, monkeypa
         bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
         assert 'class="srcref srcbar-path"' in bar
         assert ">VetRepository.java" in bar, "the name is the face"
-        assert f'data-tip="{rel} \u2014 open in VS Code"' in bar, "the path is the hover"
+        assert f'data-tip="Open in VS Code: {rel}"' in bar, "the path is the hover"
 
 
 def test_a_quoted_snippet_offers_the_same_two_ways_out_a_diff_does(tmp_path, monkeypatch):

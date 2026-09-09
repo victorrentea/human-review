@@ -480,6 +480,22 @@ the one thing no amount of reading changes. Four tabs need something said about 
     A fragment that rolls its own version of this row is a fourth header the reader has to
     learn and the one place a fix to the other three will not reach. The Tests, Review and
     Logging tabs all emit this exact markup; a hand-authored map is not the exception.
+  - **The badge over a quoted block is the same file glyph, one level down.** The row's
+    stamp says what the branch did to the *test*; this says what it did to the *window of
+    code* under it — green file-and-plus for a whole new file, orange file-and-pencil for
+    new or rewritten lines inside an older one, a plain grey file for a window nothing
+    touched. `new file` / `new code` / `2 lines changed` / `unchanged` were four widths of
+    shouty caps stacked down the left edge of every excerpt, and the reader read them
+    instead of the code. Nothing is lost: the words lead the hover, and the `+` marks in
+    the gutter give the count line by line.
+  - **A tooltip says what it does before it says what it opens** — `Open in VS Code:
+    <path>`, never `<path> — open in VS Code`. A tip that opens with a sixty-character
+    path makes the reader parse the path to find out whether the sentence at the end is
+    worth reading, and the four words that never change are cheaper to skip than to hunt
+    for. The bubble also needs `overflow-wrap:anywhere`: a repo-relative path is one
+    unbreakable token as far as line breaking goes — no spaces, and a slash is not a break
+    opportunity — so the longest tip on the page overflowed its own `max-width` and was
+    clipped at the edge, which reads as the page running off the screen.
   - **Every quoted file offers its diff, and names where it opens** — `⇆ VSC` (the base on
     the left, the working tree on the right, through the served page or the editor's URI
     handler) and `⇆ GH` (the same file inside the open pull request, anchored by the

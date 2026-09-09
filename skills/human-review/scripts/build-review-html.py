@@ -1042,6 +1042,13 @@ TIP_JS = """<script>
     '.tip{position:fixed;z-index:9999;pointer-events:none;background:rgba(20,20,22,.96);' +
     'color:#fff;font:400 15px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;' +
     'padding:.6rem .9rem;border-radius:.6rem;max-width:22rem;box-shadow:0 10px 30px rgba(0,0,0,.35);' +
+    // A repo-relative path is one long token as far as line breaking is concerned: no
+    // spaces, and a slash is not a break opportunity. So the longest tip on the page --
+    // the one naming a Java file five packages deep -- overflowed the bubble and was
+    // clipped at its edge, which reads as the page running off the screen. `anywhere`
+    // gives the browser leave to break inside the token; the max-width then holds, and
+    // `place()` can keep a box it has correctly measured on screen.
+    'overflow-wrap:anywhere;' +
     'opacity:0;transform:translateY(4px);transition:opacity 120ms ease,transform 120ms ease}' +
     '.tip.visible{opacity:1;transform:translateY(0)}' +
     // A tip that lists identifiers lists them: one per line, in code type, with a marker

@@ -294,7 +294,10 @@ def srcbar_html(href: str, rel: str, lineref: str = "", badge: str = "",
     repeating the name is a tooltip saying nothing."""
     name = Path(rel).name
     label = f"{name}:{lineref}" if lineref else name
-    tip = (f"{rel} — open in VS Code" if "/" in rel else "Open in VS Code")
+    # What it does first, what it opens second. A tip that opens with a sixty-character
+    # path makes the reader parse the path to find out whether the sentence at the end is
+    # worth reading; the four words that never change are cheaper to skip than to hunt for.
+    tip = (f"Open in VS Code: {rel}" if "/" in rel else "Open in VS Code")
     # Break the path at its own slashes: a <wbr> after each one gives the browser a legal
     # place to wrap, so a long name folds into readable pieces instead of snapping wherever
     # the box happens to end.
