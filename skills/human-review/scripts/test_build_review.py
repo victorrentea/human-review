@@ -2545,6 +2545,8 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
             '<a href="#assumed">2 coder assumptions to check</a>') in page, \
         "what a pass found comes first; what no pass could find comes after it — and every "\
         "clause is the jump to the chapter it counts"
+    assert page.index('class="sub counts"') < page.index("Requires human review"), \
+        "the line counts all three piles, so it cannot sit under the heading of one"
     assert "greyed out" not in page, \
         "the applied fixes are visibly grey"
     assert "stamped with" not in page, \

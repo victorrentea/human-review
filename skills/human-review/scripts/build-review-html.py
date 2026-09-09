@@ -3586,16 +3586,15 @@ def opening_lede(spec) -> str:
     return '<p class="sub counts">' + " &middot; ".join(parts) + "</p>"
 
 
-def _lede_into(head: str, lede: str) -> str:
-    """Between the heading and the block's own prose, not after it.
+def _lede_above(head: str, lede: str) -> str:
+    """Above the first pile's heading, not tucked under it.
 
-    The counts are what the heading is asking about, and anything authored here is a
-    footnote to them. Appended after the body they read as an afterthought to a sentence
-    nobody needed."""
-    if not lede:
-        return head
-    at = head.find("<p>")
-    return head[:at] + lede + head[at:] if at != -1 else head + lede
+    The line counts all three piles, so under `Requires human review` it reads as a
+    description of the findings and the reader meets `4 coder assumptions to check` as a
+    footnote to a heading that has nothing to do with them. Hoisted above, it is what it
+    is: the shape of the whole list, before the list starts. Which pile happens to open
+    the list is then an editorial choice that cannot move the line."""
+    return lede + head if lede else head
 
 
 def render_findings(findings) -> str:
@@ -6217,12 +6216,12 @@ def main(argv=None) -> int:
         kind = block.get("type", "section")
         if kind == "findings":
             items = spec.get("findings", [])
-            head = _lede_into(heading(block, "first", "Requires human review"), opening_lede(spec))
+            head = _lede_above(heading(block, "first", "Requires human review"), opening_lede(spec))
             return (head + render_findings(items), len(items), len(items))
         if kind == "assumptions":
             items = spec.get("assumptions", [])
             mode = block.get("mode", "")
-            head = _lede_into(heading(block, "assumed", "Decided without asking you"),
+            head = _lede_above(heading(block, "assumed", "Decided without asking you"),
                               opening_lede(spec))
             # Weight 1 even with nothing in it: an empty pile still carries the sentence
             # saying *which* kind of empty it is, and that sentence is the point.
@@ -6230,7 +6229,7 @@ def main(argv=None) -> int:
                     1 if (items or mode) else 0, len(items))
         if kind == "autofixes":
             items = spec.get("autofixes", [])
-            head = _lede_into(heading(block, "fixed", "Auto-fixed"),
+            head = _lede_above(heading(block, "fixed", "Auto-fixed"),
                               opening_lede(spec))
             return (head + render_autofixes(items), len(items), len(items))
         if kind == "diagrams":
