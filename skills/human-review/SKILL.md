@@ -108,7 +108,7 @@ Split every harvested finding in two, and say out loud which pile each landed in
 - **Non-disputable → fix it now.** One obvious right answer, no behaviour change, no product
   call: a duplicated helper, a test that passes vacuously, a shared persistence context
   hiding a missing `save()`, an uninitialised model field, a positional selector, a dead
-  import. Fix, then re-run the affected tests. These become **Already fixed for you**.
+  import. Fix, then re-run the affected tests. These become **Auto-fixed**.
 - **Disputable → hand it to the human.** Anything that changes an API contract, a migration
   already applied somewhere, a data-integrity trade-off, a performance/correctness tension,
   or where two reasonable engineers would pick differently. These become **Requires human review**,

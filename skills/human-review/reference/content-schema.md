@@ -278,7 +278,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
   {"id":"review","label":"Review","count":true,
    "intro":"<p class=\"sub\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
    "blocks":[{"type":"findings","title":"Requires human review","body":"…"},
-             {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
+             {"type":"autofixes","title":"Auto-fixed","body":"…"}]},
   {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
   {"id":"api","label":"API","badge":"+4","blocks":[{"type":"section","id":"swaggerdiff"}]},
   {"id":"data","label":"Data",

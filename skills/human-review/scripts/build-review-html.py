@@ -5637,7 +5637,7 @@ def main(argv=None) -> int:
                     1 if (items or mode) else 0, len(items))
         if kind == "autofixes":
             items = spec.get("autofixes", [])
-            head = _lede_into(heading(block, "fixed", "Already fixed for you"),
+            head = _lede_into(heading(block, "fixed", "Auto-fixed"),
                               opening_lede(spec))
             return (head + render_autofixes(items), len(items), len(items))
         if kind == "diagrams":

@@ -252,7 +252,24 @@ def test_rerouting_an_edge_to_another_box_is_a_change():
 
 def test_an_unchanged_diagram_diffs_to_nothing():
     v = dd.diff_models(BRANCH, BRANCH)
-    assert v == {"added": [], "removed": [], "changed": [], "moved": []}
+    # `red` is not part of the delta — it is what the file draws red right now, on either
+    # side of it — so a diagram compared with itself still reports its outstanding to-do.
+    assert {k: v[k] for k in ("added", "removed", "changed", "moved")} == \
+        {"added": [], "removed": [], "changed": [], "moved": []}
+
+
+def test_red_is_reported_whether_or_not_the_element_is_new():
+    """The page opens on `New` while a layout is owed, and "owed" is not "added".
+
+    A red element inherited from the base is just as much a layout still owed as one this
+    branch's automation drew: the reader looking at the picture cannot tell them apart.
+    `already_red` only answers the first question, so the verdict carries both."""
+    v = dd.diff_models(BRANCH, BRANCH)          # nothing added, and the edge is still red
+    assert [r["what"] for r in v["red"]] == \
+        ["Vet-Visit", "Please manually fix the layout.", "label on Vet-Visit"]
+    assert v["added"] == []
+
+    assert dd.diff_models(BLACKENED, BLACKENED)["red"] == []
 
 
 # ── the colour rule ───────────────────────────────────────────────────────────────
