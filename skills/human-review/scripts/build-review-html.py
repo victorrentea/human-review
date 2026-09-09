@@ -5643,9 +5643,12 @@ def main(argv=None) -> int:
     city = spec.get("codecity")
     city_html = ""
     if city:
+        # No heading, and `title` on the block is ignored — same reason `logging` has none.
+        # The tab is called *Code City* and the picture is the first thing under it, so a
+        # heading above it is the tab's label said a second time. The anchor moves to the
+        # line under it so `#codecity` still lands here.
         city_html = (
-            f'<h2 id="codecity">{html.escape(city.get("title", "Where it landed in the city"))}</h2>\n'
-            f'<p>{city.get("body", "")}</p>\n'
+            f'<p id="codecity">{city.get("body", "")}</p>\n'
             f'<a class="city" href="{html.escape(city["href"])}" target="_blank" rel="noopener"'
             f' data-tip="Open the interactive Code City in a new tab">'
             f'<img src="{html.escape(city["png"])}" alt="Code City with the branch change set highlighted"></a>\n'

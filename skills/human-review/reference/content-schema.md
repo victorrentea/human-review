@@ -165,6 +165,13 @@ for, with the package list itself on hover — read out of `logextract.py`'s own
 cannot go stale. The nested `existing` and `console` asides still take a `title` and
 `body`.
 
+**`codecity`** has no heading either, and its `title` is ignored for the same reason: the
+tab says *Code City* and the picture is the first thing under it. What is left is `body`,
+and it is **one line** — the measured count and what the lit slice is. The panel and the
+hover card are inside the shot, in the renderer's own words, so a paragraph explaining
+what a building, its height or its colour mean is the picture read aloud to someone who
+is already looking at it.
+
 **`tests`** takes no configuration — it renders `testChanges` — and you do not have to
 declare it: a page that has a manifest and no `tests` block gets one appended to the
 `requirements` tab. Declare it only to put it somewhere else in that panel.
