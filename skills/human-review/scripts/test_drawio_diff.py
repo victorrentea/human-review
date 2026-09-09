@@ -355,6 +355,34 @@ def test_end_to_end_writes_three_svgs_and_a_verdict(tmp_path, branch_png):
     assert "red (automation's to-do)" in proc.stdout
 
 
+def test_the_verdict_records_how_to_run_this_again(tmp_path, branch_png):
+    """The report inlines these SVGs, so a reader who re-draws the diagram by hand needs a
+    command — and the reader is not the person who knows this tool's flags. Nothing else
+    on the machine knows the arguments an invocation used, so the invocation records them.
+    Paths are left exactly as they were typed, which is why the cwd goes with them."""
+    puml = tmp_path / "DomainModel.puml"
+    puml.write_text(DOMAIN_PUML)
+    base_png = tmp_path / "base.drawio.png"
+    base_png.write_bytes(png_with(BASE))
+    out = tmp_path / "out"
+    proc = subprocess.run(
+        [sys.executable, str(HERE / "drawio-diff.py"), "base.drawio.png", branch_png.name,
+         "--out-dir", "out", "--name", "conceptual", "--renderer", "builtin",
+         "--concepts", "DomainModel.puml"],
+        capture_output=True, text=True, cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    rerun = json.loads((out / "conceptual-diff.json").read_text())["rerun"]
+    assert Path(rerun["cwd"]).resolve() == tmp_path.resolve()
+    assert rerun["command"].startswith(str(HERE / "drawio-diff.py"))
+    assert "--name conceptual" in rerun["command"]
+
+    # and it has to be runnable, not merely descriptive
+    (out / "conceptual-diff.svg").unlink()
+    assert subprocess.run(rerun["command"], shell=True, cwd=rerun["cwd"],
+                          capture_output=True).returncode == 0
+    assert (out / "conceptual-diff.svg").is_file()
+
+
 def test_a_repainted_note_keeps_its_own_ink_and_gains_no_border():
     """Only strokes carry the mark. A text shape has none to carry it — and painting it
     would be worse than nothing twice over: draw.io reads `strokeColor` on a text shape

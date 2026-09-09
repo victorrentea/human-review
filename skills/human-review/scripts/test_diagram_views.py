@@ -511,7 +511,7 @@ def test_the_to_do_row_is_repeated_under_the_undiffed_new_pane(tmp_path):
 def test_a_section_body_expands_the_token(tmp_path):
     out_dir = tmp_path / ".human-review"
     _drawio_set(out_dir / "assets")
-    body = build.expand_drawio("<p>prose</p>{{drawio:conceptual}}", out_dir, tmp_path)
+    body = build.expand_drawio("<p>prose</p>{{drawio:conceptual}}", out_dir, tmp_path, "")
     assert "<p>prose</p>" in body and "delta" in body
 
 
@@ -526,3 +526,70 @@ def test_the_legend_takes_its_green_from_the_report_s_added_colour(tmp_path):
     """A private hex here would be the one place on the page where "added" is a second
     green. `drawio-diff.py` paints the strokes with the same one."""
     assert "color:var(--dgm-diff-add)" in build.CSS
+
+
+# ── the command under the picture ─────────────────────────────────────────────────
+#
+# The panes are inlined into the HTML, and they have to be: the boxes are links into the
+# classes they name and the to-do note is a link into draw.io, and an SVG loaded through
+# `<img src>` renders both as decoration. So the file on disk and the picture in the page
+# are two artefacts, a reload only ever refreshes the second, and the page owes the reader
+# the command that refreshes the first — at the moment they need it, in a form they can run.
+
+RERUN = {"cwd": "/repo", "command": "/tools/drawio-diff.py --name conceptual"}
+REBUILD = "python3 /tools/build-review-html.py content.json --out review.html"
+
+
+def test_the_command_names_every_step_the_reader_has_to_take(tmp_path):
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    assert "cd /repo" in out and RERUN["command"] in out and REBUILD in out
+
+
+def test_the_button_copies_exactly_what_the_page_shows(tmp_path):
+    """Two renderings of one command is how the copied one quietly stops matching the read
+    one — and the copied one is the only one that gets run."""
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    shown = re.search(r'<code>(.*?)</code>', out, re.S).group(1)
+    copied = re.search(r'data-copy="(.*?)" data-tip', out, re.S).group(1)
+    assert shown == copied
+
+
+def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
+    """`rerun` is written by `drawio-diff.py`; a verdict from before it did carries none.
+    A command assembled from guesses is worse than no command — it is tried first."""
+    out = build.drawio_widget_html("conceptual", _drawio_set(tmp_path / "assets"),
+                                   tmp_path, REBUILD)
+    assert "cmdline" not in out
+
+
+def test_the_page_says_why_a_reload_is_not_enough(tmp_path):
+    """Without the reason, the block reads as a chore. With it, it reads as the answer to
+    the question the reader has just asked by pressing F5."""
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    assert "inlined" in out and "reload" in out
+
+
+def test_the_copy_button_reuses_the_one_clipboard_and_the_one_toast():
+    """A second clipboard-and-toast implementation for one button is how two of them end
+    up behaving differently."""
+    js = build.EDITOR_JS
+    assert "button.copycmd" in js
+    assert js.count("function copy(") == 1
+    assert js.count("toast.id = 'copy-toast'") == 1
+
+
+def test_the_rebuild_command_is_never_an_interpreter_that_is_about_to_vanish():
+    """`sys.executable` under `uv run` is a build directory uv deletes on exit: the one
+    command guaranteed to have worked would be the one guaranteed not to work again."""
+    got = build.rebuild_interpreter()
+    assert "/.cache/uv/builds" not in got
+    assert got.startswith("python3") or got.startswith("uv run") or Path(got).exists()

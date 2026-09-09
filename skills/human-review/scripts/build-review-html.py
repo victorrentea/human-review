@@ -5316,6 +5316,42 @@ def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str,
     return '<header class="masthead">\n' + "\n".join(rows + [strip_html]) + "\n</header>"
 
 
+def rebuild_interpreter() -> str:
+    """How to say "python, with Pygments" on *this* machine, in a command a reader pastes.
+
+    Not `sys.executable`. Under `uv run --with pygments` that is a path inside a build
+    directory uv deletes on exit, so the one command guaranteed to have worked is also the
+    one guaranteed not to work again — and a command that fails when pasted is worse than
+    no command, because it is tried first and believed second.
+
+    So: plain `python3` when it can already import Pygments, which is the legible answer
+    and the portable one; `uv run --with pygments python` when it cannot and uv is here,
+    which installs nothing permanently and is ~100ms warm; and only then the interpreter
+    running this build, which at least names something real.
+    """
+    # The probe has to ask what `python3` means *in the reader's terminal*, not in this
+    # process. Under `uv run` the front of PATH is two throwaway directories — the
+    # interpreter's own, and the one holding the packages `--with` installed — and both
+    # answer to `python3` with Pygments importable, so a naive probe cheerfully reports
+    # that `python3` works about interpreters that are deleted on exit. Dropping every
+    # ephemeral directory is what asks the right question; if nothing outside them answers
+    # to `python3`, that is an answer too, and the uv line below is the honest one.
+    env = dict(os.environ)
+    throwaway = [str(Path(sys.prefix)), env.get("VIRTUAL_ENV") or "",
+                 os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv")]
+    env["PATH"] = os.pathsep.join(
+        d for d in env.get("PATH", "").split(os.pathsep)
+        if d and not any(t and (d == t or d.startswith(t + os.sep)) for t in throwaway))
+    env.pop("VIRTUAL_ENV", None)
+    outside = shutil.which("python3", path=env["PATH"])
+    if outside and subprocess.run([outside, "-c", "import pygments"],
+                                  capture_output=True, env=env).returncode == 0:
+        return "python3"
+    if shutil.which("uv", path=env["PATH"]) or shutil.which("uv"):
+        return "uv run --with pygments python"
+    return shlex.quote(sys.executable)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -5333,12 +5369,9 @@ def main(argv=None) -> int:
     out_path = Path(args.out).resolve()
     out_dir = out_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
-    # How this build was started, so the page can tell a reader how to start it again.
-    # Recorded rather than reconstructed, for the same reason `drawio-diff.py` records
-    # its own: the interpreter that has Pygments is not always the one called `python3`.
-    rebuild_cmd = " ".join(shlex.quote(a) for a in
-                           [sys.executable, str(Path(__file__).resolve()),
-                            args.content, "--out", args.out])
+    # How to start this build again, for the copy button under the hand-drawn diagram.
+    rebuild_cmd = " ".join([rebuild_interpreter(), shlex.quote(str(Path(__file__).resolve())),
+                            shlex.quote(args.content), "--out", shlex.quote(args.out)])
 
     problems = validate(spec, out_dir)
     if problems:
