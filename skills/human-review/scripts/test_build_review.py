@@ -1623,6 +1623,56 @@ def test_rendered_lines_carry_the_marker_and_the_badge(tmp_path):
     assert 'class="ln-row added" style' not in out
 
 
+def test_work_tree_edits_count_as_this_branch_s_changes(tmp_path):
+    """The lines are read off the work tree, so the diff has to be too.
+
+    A review is written *while* the branch is being worked on: the test it quotes is
+    routinely still uncommitted when the page is built. Diffing to HEAD described a text
+    nobody was looking at and badged a minutes-old @SpringBootTest `UNCHANGED`."""
+    es = _extract_snippet()
+    es._diff_state.cache_clear()
+    f = _tiny_repo(tmp_path, ["const a = 1;"], ["const a = 1;", "const b = 2;"])
+    f.write_text("const a = 1;\nconst b = 2;\nconst c = 3;\n")   # never committed
+
+    assert es.added_lines("a.ts", tmp_path) == frozenset({2, 3})
+    whole = es.block_status("a.ts", tmp_path, [(3, 3)], f.read_text().splitlines(), "test")
+    assert whole["diff"] == "new", whole
+
+
+def test_an_untracked_file_is_new_rather_than_untouched(tmp_path):
+    """`git diff` cannot see an untracked file at either end, so asking it alone reports
+    the one file that is certainly new as the one file that certainly did not change."""
+    es = _extract_snippet()
+    es._diff_state.cache_clear()
+    _tiny_repo(tmp_path, ["const a = 1;"], ["const a = 1;", "const z = 9;"])
+    (tmp_path / "b.ts").write_text("const b = 2;\nconst c = 3;\n")
+
+    assert es.added_lines("b.ts", tmp_path) == frozenset({1, 2})
+    out = es.render("b.ts:1-2", None, tmp_path, exact=True)
+    assert 'data-diff="new"' in out, out
+
+
+def test_a_file_the_branch_really_did_not_touch_still_reads_unchanged(tmp_path):
+    """The point of the badge is that it can say no. Moving the comparison to the work
+    tree must not turn every snippet green."""
+    es = _extract_snippet()
+    es._diff_state.cache_clear()
+    _tiny_repo(tmp_path, ["const a = 1;"], ["const a = 1;", "const z = 9;"])
+    # committed on the base and never touched since — a.ts moved, this did not
+    stable = tmp_path / "stable.ts"
+    stable.write_text("const s = 1;\n")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "stable"], cwd=tmp_path, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "branch", "-f", "origin/main", "HEAD"], cwd=tmp_path,
+                   check=True, capture_output=True)
+    stable.write_text("const s = 1;\n")            # rewritten, byte-identical
+
+    assert es.added_lines("stable.ts", tmp_path) == frozenset()
+    status = es.block_status("stable.ts", tmp_path, [(1, 1)], ["const s = 1;"], "test")
+    assert status["diff"] == "unchanged", status
+
+
 def test_a_snippet_git_cannot_be_asked_about_is_unmarked(tmp_path):
     """No repo, no ref, no marking - and no claim that the file is untouched."""
     es = _extract_snippet()
