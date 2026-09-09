@@ -848,6 +848,24 @@ def test_the_logging_tab_opens_on_one_computed_line_and_no_heading(tmp_path, mon
     # The hover, and the fact that it is read rather than typed.
     assert "org.slf4j" in frag and "ch.qos.logback" in frag
     assert r"org\.slf4j" in build._logextract().RULES["log-import"]  # escaped there
+    # A panel of bullets floated over the line would cover the sentence being read.
+    assert 'data-tip-side="right"' in frag
+
+
+def test_the_library_hover_is_a_list_beside_the_line_not_a_sentence_over_it():
+    """Eight dotted package roots are a list, and a reader's question is "is mine there".
+
+    Welded into one comma-separated sentence that question is answered only by reading to
+    the end, and floated above the phrase the panel covers the sentence being read. So:
+    one `<li>` per package in code type, and `data-tip-side="right"` so it opens beside
+    the line. The tail stays prose, because a logger reached without an import — by type,
+    by factory, by Lombok — is genuinely a sentence and not a ninth package."""
+    tip = build.logging_libraries_tip()
+    assert tip.startswith('<ul class="tiplist">')
+    assert tip.count("<li>") == len(build.logging_libraries()) >= 2
+    assert "<li>org.slf4j</li>" in tip
+    assert ", " not in tip.split("</ul>")[0], "the packages are bullets, never a run-on"
+    assert '<p class="tipfoot">' in tip and "Lombok" in tip
 
 
 def test_a_logging_box_does_not_badge_what_its_own_gutter_already_marks(tmp_path, monkeypatch):
