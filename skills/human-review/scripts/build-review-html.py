@@ -481,9 +481,10 @@ pre.code code { white-space:pre; }
    painted into the picture itself, which put a sentence about tooling on top of the map
    and made the reader read it again on every look. In HTML it is a link — it looks like
    one, the cursor says so, and it stays out of the diagram's way. */
-.dgm-open { margin:.35rem .6rem .1rem; font-size:.78rem; color:var(--muted); }
-.dgm-open a { color:inherit; text-decoration:underline; text-underline-offset:2px; }
-.dgm-open a:hover { color:var(--fg); }
+.dgm-open { margin:.35rem .6rem .1rem; font-size:.82rem; color:var(--fg); }
+.dgm-open a { color:var(--fg); font-weight:600; text-decoration:underline;
+              text-underline-offset:2px; }
+.dgm-open a:hover { text-decoration-thickness:2px; }
 /* The command that re-draws the picture above. It sits under the diagram rather than in
    a README because the reader who needs it is the reader who has just been told, inside
    the picture, to go and re-lay the thing out by hand — and a rebuild step they have to
@@ -3062,23 +3063,34 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
                 f'write <code>{html.escape(name)}-diff.svg</code></p>')
     return (dgm_views_html(panes, initial="new" if red else "diff")
             + drawio_open_html(verdict.get("drawio_url") or "",
-                               verdict.get("diagram") or "")
+                               verdict.get("drawio_web_url") or "")
             + rerun_html(verdict.get("rerun"), rebuild))
 
 
-def drawio_open_html(url: str, diagram: str = "") -> str:
-    """The one click the drawing asks for, rendered as a link under it.
+def drawio_open_html(app_url: str, web_url: str = "") -> str:
+    """The two ways to edit the drawing, rendered as links under it.
 
-    It is here and not inside the SVG on purpose: a rendered diagram cannot show a
-    cursor, so an invitation painted into the picture has to spell out that it is
-    clickable — and then it is a sentence about tooling sitting on the map, re-read
-    every time the reader looks at the boxes. Under the picture it is just a link.
+    Under the picture and not inside it: a rendered diagram cannot show a cursor, so an
+    invitation painted onto the map has to spell out in words that it is clickable — and
+    then it is a sentence about tooling sitting on the drawing, re-read every time the
+    reader looks at the boxes. In HTML it is just a link, and it can afford to be two.
+
+    They are not the same offer, which is why both are named rather than one being "the"
+    link. The **App** opens the file on disk, so an edit lands where the rerun command
+    below can pick it up. The **Web** editor opens a copy carried in the URL — nothing is
+    uploaded, and nothing it saves reaches the repository either. It is the answer when
+    draw.io is not installed on this machine, and the reader can tell which is which
+    before clicking rather than after.
     """
-    if not url:
+    if not app_url and not web_url:
         return ""
-    what = html.escape(Path(diagram).name) if diagram else "the diagram"
-    return (f'<p class="dgm-open"><a href="{html.escape(url, quote=True)}">'
-            f'Open {what} in draw.io ↗</a></p>')
+    links = []
+    if app_url:
+        links.append(f'<a href="{html.escape(app_url, quote=True)}">draw.io App ↗</a>')
+    if web_url:
+        links.append(f'<a href="{html.escape(web_url, quote=True)}" '
+                     'target="_blank" rel="noopener">draw.io Web ↗</a>')
+    return f'<p class="dgm-open">Edit this diagram in {" or ".join(links)}</p>'
 
 
 def rerun_html(rerun: dict | None, rebuild: str) -> str:
@@ -3099,8 +3111,8 @@ def rerun_html(rerun: dict | None, rebuild: str) -> str:
     if not rerun or not rerun.get("command"):
         return ""
     line = f'cd {shlex.quote(rerun["cwd"])} \\\n  && {rerun["command"]} \\\n  && {rebuild}'
-    return ('<div class="rerun">Re-drawn it in draw.io? This picture is inlined into the '
-            'page at build time, so reloading cannot pick it up — run this, then reload:'
+    return ('<div class="rerun">For this report to pick your edit up, run this in the '
+            'terminal:'
             f'<div class="cmdline"><code>{html.escape(line)}</code>'
             f'<button type="button" class="copycmd" data-copy="{html.escape(line, quote=True)}" '
             'data-tip="Copy the command">Copy</button></div></div>')

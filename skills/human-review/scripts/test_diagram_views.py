@@ -577,14 +577,40 @@ def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
     assert "cmdline" not in out
 
 
-def test_the_page_says_why_a_reload_is_not_enough(tmp_path):
-    """Without the reason, the block reads as a chore. With it, it reads as the answer to
-    the question the reader has just asked by pressing F5."""
+def test_the_command_says_what_it_is_for(tmp_path):
+    """It sits directly under the two edit links, so it is read as the third step of the
+    same sentence: edit the drawing, then run this for the report to see it."""
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert "inlined" in out and "reload" in out
+    assert "For this report to pick your edit up, run this in the terminal:" in out
+
+
+def test_both_editors_are_offered_and_named(tmp_path):
+    """Two links, not one: the app edits the file on disk, the web editor edits a copy in
+    the URL. A reader has to be able to tell which is which before clicking."""
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [],
+        "drawio_url": "drawio:///repo/C.drawio.png",
+        "drawio_web_url": "https://app.diagrams.net/?splash=0&title=C#R%3Cmx%3E"}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    assert "Edit this diagram in" in out
+    assert ">draw.io App ↗</a>" in out and ">draw.io Web ↗</a>" in out
+    assert "drawio:///repo/C.drawio.png" in out and "app.diagrams.net" in out
+
+
+def test_the_web_link_is_dropped_when_the_verdict_has_none(tmp_path):
+    """An older verdict, written before the web link existed, still gets the app link —
+    and no half-rendered "or" hanging off the end of the sentence."""
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [],
+        "drawio_url": "drawio:///repo/C.drawio.png"}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    assert ">draw.io App ↗</a>" in out
+    assert "draw.io Web" not in out and " or " not in out
 
 
 def test_the_copy_button_reuses_the_one_clipboard_and_the_one_toast():

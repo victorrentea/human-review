@@ -519,6 +519,31 @@ def drawio_url(diagram: Path) -> str:
     return "drawio://" + urllib.parse.quote(str(Path(diagram).resolve()))
 
 
+# draw.io's web editor takes a whole drawing in the URL fragment: `#R<data>`, where the
+# data is one `<diagram>` body, which it wraps back into an `<mxfile>` on the way in. So
+# the picture travels in the link itself — no server has to be able to reach the file, and
+# nothing is uploaded anywhere. Sent uncompressed on purpose: draw.io also accepts the
+# deflated+base64 body and it is eight times smaller, but a compression mismatch fails by
+# opening an empty canvas, which reads as "the link is broken" rather than as an encoding
+# bug, and a few kilobytes of fragment is the cheaper half of that trade.
+DRAWIO_WEB = "https://app.diagrams.net/?splash=0&title={name}#R{data}"
+
+
+def drawio_web_url(xml: str, diagram: Path) -> str:
+    """The same drawing, opened in the browser editor.
+
+    The desktop link edits the file on disk; this one edits a copy that lives in the URL.
+    That is the honest difference between them and the reason both are offered: the app
+    saves where the repository can see it, the web editor cannot, so it is the one to
+    reach for when draw.io is not installed on this machine.
+    """
+    model = re.search(r"<mxGraphModel.*</mxGraphModel>", xml, re.S)
+    if not model:
+        return ""
+    return DRAWIO_WEB.format(name=urllib.parse.quote(Path(diagram).name),
+                             data=urllib.parse.quote(model.group(0), safe=""))
+
+
 def link_annotations(xml: str, diagram: Path) -> str:
     """Point every annotation at the diagram it is written on.
 
@@ -841,6 +866,7 @@ def main():
     # the page, because only this run knows which file on disk was actually diffed.
     verdict["drawio_url"] = drawio_url(source)
     verdict["diagram"] = str(source)
+    verdict["drawio_web_url"] = drawio_web_url(new_xml, source)
     # How to run this again, recorded by the run itself. The report inlines these SVGs at
     # build time — it has to, or the links drawn inside them go inert — so a reader who
     # has just re-laid the diagram out by hand needs a command, and the reader is not the
