@@ -66,6 +66,31 @@ mkdir -p "$ABS_OUT"
 # is the caller's business (human-review.json's `city.tests`, or your own hands) — the
 # generators only read whatever report is already on disk, and drop both metrics when
 # there is none rather than colouring every building "not measured".
+# The tool vendors tree-sitter into .pylibs on its first run, as a COMPILED extension
+# built for whichever python3 was on PATH that day (_binding.cpython-312-darwin.so). Its
+# generate.sh then calls a bare `python3` forever after. Upgrade the default python — a
+# brew install is enough — and the import dies as `ModuleNotFoundError: No module named
+# 'tree_sitter._binding'`, which names neither the version nor the file and reads like a
+# broken checkout. So: find the interpreter the vendored binding was actually built for
+# and put it first on PATH, for the generate.sh call only.
+BINDING="$(ls "$TOOL_DIR/.pylibs"/tree_sitter/_binding.cpython-*.so 2>/dev/null | head -1 || true)"
+# The import has to be tried through .pylibs, the way generate.sh will do it. A bare
+# `import tree_sitter` fails on every interpreter alive, vendored copy or not, and would
+# make this branch fire always.
+if [ -n "$BINDING" ] && ! PYTHONPATH="$TOOL_DIR/.pylibs" python3 -c 'import tree_sitter' 2>/dev/null; then
+  TAG="${BINDING##*cpython-}"; TAG="${TAG%%-*}"      # "312"
+  WANT="python${TAG:0:1}.${TAG:1}"                   # "python3.12"
+  HAVE="$(python3 -V 2>&1)"                          # before the shim shadows it
+  if SHIM_SRC="$(command -v "$WANT")"; then
+    SHIM="$(mktemp -d)"; ln -s "$SHIM_SRC" "$SHIM/python3"; PATH="$SHIM:$PATH"
+    echo "using $SHIM_SRC for the generators — .pylibs was vendored for $WANT, not for $HAVE"
+  else
+    echo "WARNING: .pylibs holds a $WANT extension and no $WANT is on PATH; the" >&2
+    echo "         complexity pass will fail. Install it, or delete" >&2
+    echo "         $TOOL_DIR/.pylibs to re-vendor for $HAVE." >&2
+  fi
+fi
+
 CODECITY_TITLE="$TITLE" \
 CODECITY_COVERAGE_BASELINE="$BASELINE" \
 CODECITY_JACOCO_ACCEPTANCE="$ACCEPTANCE" \
