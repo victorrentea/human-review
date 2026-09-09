@@ -141,6 +141,39 @@ def test_only_a_diagram_that_toggles_advertises_its_header(tmp_path):
     assert out.count('class="diagram"') == 1
 
 
+def test_a_sequence_diagram_opens_on_the_recording_not_on_the_delta(tmp_path):
+    """A sequence delta is the difference between two RECORDINGS, and a run that reorders
+    two concurrent calls produces marks nobody made. The reader meets the picture that is
+    simply true, and reaches for the delta deliberately."""
+    row = {"name": "add-visit.spec.ts.genseq", "kind": "sequence", "focus": "",
+           "svg": _svg(tmp_path / "d.svg", "delta"),
+           "new_svg": _svg(tmp_path / "n.svg", "after"),
+           "old_svg": _svg(tmp_path / "o.svg", "before")}
+    out, _ = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
+    assert 'class="dgmviews" data-state="new"' in out
+    assert '<div class="dgmpane" data-view="diff" hidden>' in out
+
+
+def test_a_structural_diagram_still_opens_on_the_delta(tmp_path):
+    """DB and DomainModel are diffed from two files a human wrote: every mark in that
+    delta is a change somebody made, so it is the answer rather than a caveat."""
+    row = {"name": "DB", "kind": "structural", "focus": "",
+           "svg": _svg(tmp_path / "d.svg", "delta"),
+           "new_svg": _svg(tmp_path / "n.svg", "after"),
+           "old_svg": _svg(tmp_path / "o.svg", "before")}
+    out, _ = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
+    assert 'class="dgmviews" data-state="diff"' in out
+
+
+def test_a_sequence_diagram_whose_new_side_did_not_render_falls_back_to_the_delta(tmp_path):
+    """Opening on a side plantuml never wrote would open on nothing at all."""
+    row = {"name": "gone.genseq", "kind": "sequence", "focus": "",
+           "svg": _svg(tmp_path / "d.svg", "delta"),
+           "old_svg": _svg(tmp_path / "o.svg", "before")}
+    out, _ = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
+    assert 'class="dgmviews" data-state="diff"' in out
+
+
 # ── the frame that says which picture you are on ──────────────────────────────────
 
 def test_each_state_paints_the_frame_a_different_colour():

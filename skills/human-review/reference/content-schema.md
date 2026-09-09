@@ -208,6 +208,14 @@ excerpted here"* or *"…which is not in this checkout — the diagram is the on
 left."* A fabricated pairing is a lie about provenance; a silent one is the loss this
 pipeline exists to prevent.
 
+Each pair's diagram **opens on `New`**, not on the delta — the one place the two diagram
+families are treated differently. A structural delta is the difference between two files a
+human wrote, so every mark in it is a change somebody made; a sequence delta is the
+difference between two *recordings*, and a run that reorders concurrent calls (or a
+generator that relabels an arrow) marks lines nobody touched. The reader meets the picture
+that is simply true, and reaches for `Diff` deliberately. Nothing in `content.json` selects
+this; it follows the manifest's `kind`.
+
 ### `video` section (Step 5)
 
 ```json

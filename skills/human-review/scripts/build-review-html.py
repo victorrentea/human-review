@@ -820,6 +820,11 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
     padding:.05rem .3rem; font-size:11px; opacity:0; transition:opacity .12s; }
 .transcript li:hover .cue-drive, .cue-drive:focus, .cue-drive.copied { opacity:1; }
 .cue-drive:hover, .cue-drive.copied { color:var(--link); border-color:var(--link); }
+/* Nothing is running, so there is nowhere to drive to. Shown rather than hidden: the row
+    still says this moment is reachable, once something is up. */
+.cue-drive[aria-disabled="true"] { cursor:not-allowed; opacity:.35; }
+.transcript li:hover .cue-drive[aria-disabled="true"] { opacity:.35; }
+.appenv button[aria-disabled="true"] { cursor:not-allowed; opacity:.45; }
 /* A caption is a seek target, so a link inside one has to read as a *different* affordance
     without shouting: the page's own link colour and the dotted underline it already uses
     for .srcref, solid on hover. The click separation is in the script, not here. */
@@ -1170,17 +1175,41 @@ APP_ENV_JS = """<script>
     });
   }
 
+  // Everything that acts on the running app is enabled only once something has answered.
+  // A control that can be pressed while nothing is listening is a control that lies: the
+  // reset would fail, and the drive command would be copied with an empty --app.
+  // aria-disabled, not the `disabled` attribute: a disabled button fires no mouse events,
+  // so the tooltip saying *why* it cannot be pressed would never appear — which is the
+  // whole reason it is greyed rather than hidden.
+  function setLive(live, why) {
+    [].forEach.call(document.querySelectorAll('.appenv-reset, .cue-drive'), function (el) {
+      el.setAttribute('aria-disabled', live ? 'false' : 'true');
+      el.dataset.tip = live
+        ? (el.classList.contains('cue-drive') ? 'Drive the app to this point'
+                                              : 'Put the demo data back to its seed')
+        : why;
+    });
+  }
+  var blocked = function (el) { return el.getAttribute('aria-disabled') === 'true'; };
+
   function probe() {
     var b = base();
-    if (!b) { state.dataset.state = 'down'; state.textContent = 'not started'; return; }
+    if (!b) {
+      state.dataset.state = 'down'; state.textContent = 'not started';
+      setLive(false, 'Start the environment and paste its URL above first');
+      return;
+    }
     state.dataset.state = 'unknown'; state.textContent = 'checking\u2026';
+    setLive(false, 'Checking whether anything is listening\u2026');
     // /healthz answers with CORS open, so this works from a file:// page too. A failure
     // here means "nothing is listening", which is the normal case for an old report.
     fetch(b + '/healthz', {cache: 'no-store'}).then(function (r) {
       if (!r.ok) throw 0;
       state.dataset.state = 'live'; state.textContent = 'live';
+      setLive(true);
     }).catch(function () {
       state.dataset.state = 'down'; state.textContent = 'not running';
+      setLive(false, 'Nothing is answering at ' + b + ' \u2014 start it with the command above');
     });
   }
 
@@ -1207,6 +1236,7 @@ APP_ENV_JS = """<script>
   var tmpl = bar.dataset.drive;
   if (tmpl) document.querySelectorAll('.cue-drive').forEach(function (btn) {
     btn.addEventListener('click', function () {
+      if (blocked(btn)) return;
       var cmd = tmpl.replace(/\\{n\\}/g, btn.dataset.n).replace(/\\{base\\}/g, base());
       navigator.clipboard.writeText(cmd).then(function () {
         var was = btn.innerHTML;
@@ -1222,6 +1252,7 @@ APP_ENV_JS = """<script>
   // when they have made a mess.
   var reset = bar.querySelector('.appenv-reset');
   if (reset) reset.addEventListener('click', function () {
+    if (blocked(reset)) return;
     var b = base();
     if (!b) return;
     reset.disabled = true; reset.textContent = 'Resetting\u2026';
@@ -2980,12 +3011,15 @@ def dgm_views_html(panes, initial: str = "diff") -> str:
     argument and this control has to sit above a tall sequence diagram as comfortably as
     above a small structural one.
 
-    `initial` is which of the three the widget opens on. It is "diff" for a diagram,
-    where the delta is a clean two-colour drawing and the whole point of the section.
-    The UX audit passes "new": its delta is a pixel mask over a screenshot, and a
-    half-ghosted photo of a form is a picture a reader has to decode before it says
-    anything. The annotated *new* screen is the one that reads at a glance — the mask
-    stays one click away, for when the question is what moved.
+    `initial` is which of the three the widget opens on. It is "diff" for a *structural*
+    diagram, where the delta is a clean two-colour drawing and the whole point of the
+    section. Two callers pass "new" instead, for the same reason in two guises: the delta
+    is not trustworthy enough to be the first thing read. The UX audit's is a pixel mask
+    over a screenshot, and a half-ghosted photo of a form has to be decoded before it says
+    anything; a sequence diagram's is drawn from traces, and a run that reorders two
+    concurrent calls — or a generator that relabels an arrow — is reported as a change
+    nobody made. In both cases the undiffed picture is the one that reads at a glance, and
+    the delta stays one click away for when the question is what moved.
 
     Callers: `render_diagrams` below, for every PlantUML delta, and `drawio_widget_html`,
     for the hand-drawn conceptual model. Behaviour and styling live in `DGM_VIEWS_JS` / the
@@ -3027,7 +3061,17 @@ def dgm_views_html(panes, initial: str = "diff") -> str:
 def _diagram_views(row, assets: Path, full_svg: Path, root: Path):
     """One diagram's panes: the delta (with its focus chooser inside it) plus whichever
     of the undiffed pair `puml-diff.sh` managed to render. Returns the markup and whether
-    a New/Old pair exists — the header only advertises itself as a toggle when it does."""
+    a New/Old pair exists — the header only advertises itself as a toggle when it does.
+
+    A sequence diagram opens on `New`, a structural one on `Diff`. Not a preference: a
+    structural delta is derived from two files a human wrote, so every mark in it is a
+    change somebody made, while a sequence delta is derived from two *recordings*. The
+    order of concurrent calls is not stable between runs and the generator's own labels
+    move under it, so the differ reliably reports arrows nobody touched — which is what
+    the New/Old button's tooltip has always warned about, and what the guide keeps having
+    to say out loud next to the picture. Opening on the recording itself puts the reader
+    in front of something true first; the delta is one click away, where the claim it
+    makes can be taken with the caveat it needs."""
     panes = [("diff", _focus_views(row, assets, full_svg, root))]
     for view, column in (("new", "new_svg"), ("old", "old_svg")):
         name = (row.get(column) or "").strip()
@@ -3035,7 +3079,7 @@ def _diagram_views(row, assets: Path, full_svg: Path, root: Path):
             panes.append((view, f'<div class="svgbox">{inline_svg(assets / name, root)}</div>'))
     if len(panes) == 1:
         return panes[0][1], False
-    return dgm_views_html(panes), True
+    return dgm_views_html(panes, initial="new" if row.get("kind") == "sequence" else "diff"), True
 
 
 # `{{drawio:conceptual}}` — the hand-drawn diagram's three pictures, read off
@@ -4031,7 +4075,8 @@ def runtime_html(rt) -> str:
         return ""
     cmd = rt.get("command", "")
     fallback = rt.get("base", "")
-    reset = ('<button type="button" class="appenv-reset">Reset data</button>'
+    reset = ('<button type="button" class="appenv-reset" aria-disabled="true"'
+             ' data-tip="Start the environment first">Reset data</button>'
              if rt.get("reset") else "")
     cmdbox = (f'<span class="appenv-cmd"><code>{html.escape(cmd)}</code>'
               f'<button type="button" class="appenv-copy">Copy</button></span>') if cmd else ""
@@ -4080,8 +4125,8 @@ def _link_captions(cues, links, drive=False):
             unplaced.append(link)
     # 1-based, and the same numbering the reader is looking at: the driver replays the
     # walkthrough and stops after the nth caption, so "cue 3" has to mean the third row.
-    drive_btn = (lambda n: f'<button type="button" class="cue-drive" data-n="{n}" '
-                           f'data-tip="Drive the app to this point">&#9656;</button>') \
+    drive_btn = (lambda n: f'<button type="button" class="cue-drive" data-n="{n}" aria-disabled="true" '
+                           f'data-tip="Start the environment first">&#9656;</button>') \
         if drive else (lambda n: "")
     items = "".join(
         f'<li data-t="{c["t"]:.2f}"><span class="ts">{int(c["t"]) // 60}:'
