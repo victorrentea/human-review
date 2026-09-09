@@ -113,12 +113,40 @@ def stylesheet() -> str:
         "  color:#1a7f37; background:rgba(45,164,78,.09); }\n"
         ".code-badge[data-diff=unchanged] { color:var(--muted,#6b6b6b);\n"
         "  background:transparent; }\n"
+        # --- the source bar -----------------------------------------------------------
+        # The one header a quoted block gets, wherever it is quoted: what the block is on
+        # the left, the two ways to open the change beside it, and which file it came from
+        # on the right. It was three different headers before — the Tests tab's own bar in
+        # a per-review asset, the Review tab's diff corner, the Logging tab's bottom-right
+        # marker — which meant a reader learned the vocabulary three times and a fix to one
+        # of them left the other two alone. Defined here, in the stylesheet the snippets
+        # already share, so a hand-authored fragment gets it by using the class name.
+        ".srcbar { display:flex; align-items:center; flex-wrap:wrap; gap:7px;\n"
+        "  margin:0 0 .5rem; }\n"
+        # Everything before it is *about* the block; the file is where it came from. Pushed
+        # to the far end rather than centred, so the badge stays where the eye starts and
+        # the path stays where it can wrap without moving anything else.
+        ".srcbar .srcbar-path { margin:0 0 0 auto; text-align:right; }\n"
+        ".srcbar .code-badge { flex:0 0 auto; font-size:9px; padding:1px 6px; }\n"
+        # The two handles read as buttons, not as prose: they sit between the badge and the
+        # path because what the badge says happened is what they open. Each is emitted only
+        # where that side can really show it, so a missing one is an honest absence.
+        ".srcbar .srcbar-diff { flex:0 0 auto; font:700 10px/1.5 ui-monospace,\n"
+        "  SFMono-Regular,Menlo,monospace; letter-spacing:.04em; padding:1px 6px;\n"
+        "  border:1px solid var(--line,#dcdcdc); border-radius:5px; margin-bottom:0;\n"
+        "  border-bottom-style:solid; white-space:nowrap; }\n"
+        ".srcbar .srcbar-diff:hover { border-color:var(--link,#1a4fa0); }\n"
+        # A Java test path is longer than this column is wide. `anywhere` lets it wrap, and
+        # the <wbr> after each slash keeps every fragment a readable path segment;
+        # `break-word` alone would split `victor` down the middle.
+        ".srcbar .srcref { margin-bottom:0; overflow-wrap:anywhere; }\n"
         "@media (prefers-color-scheme: dark) {\n"
         "  pre.code .ln-row.added .dm { border-left-color:#3fb950; color:#3fb950; }\n"
         "  pre.code.diff-changed .ln-row:not(.added) { opacity:.5; }\n"
         "  .code-badge { color:#56d364; background:rgba(63,185,80,.12); }\n"
         "  .code-badge[data-diff=unchanged] { color:var(--muted,#9a9aa2);\n"
         "    background:transparent; }\n"
+        "  .srcbar .srcbar-diff { border-color:var(--line,#33333a); }\n"
         "}\n"
     )
 
@@ -223,6 +251,41 @@ def diff_badge(status) -> str:
     return (f'<span class="code-badge" data-diff="{status["diff"]}" '
             f'data-tip="{html.escape(status["tip"], quote=True)}">'
             f'{html.escape(status["label"])}</span>')
+
+
+def srcbar_html(href: str, rel: str, lineref: str = "", badge: str = "",
+                links: str = "") -> str:
+    """The header every quoted block on this page wears: *what* it is, *how* to open the
+    change, and *which file* it came from.
+
+    One builder for all three tabs. The Tests tab, the Review tab's applied fixes and the
+    Logging tab each grew their own version of this row, and they disagreed on all three
+    parts — which end the path sat at, whether the diff handles were there at all, whether
+    the face was the path or the name. A reader crossing tabs had to relearn it each time,
+    and a fix to one never reached the other two.
+
+    `badge` is what the block *is* (`new file`, `2 lines changed`, a diff's `+8 -4`), and
+    it leads because it is the part that is read rather than clicked. `links` are the
+    handles that open the change — the editor and github.com — and they sit next to the
+    badge because what the badge says happened is exactly what they open; each caller
+    passes only the ones its side can really show, so a missing handle is an honest
+    absence rather than a link that 404s.
+
+    The face is the file's **name** and the full path is on hover. A repo-relative Java
+    path spends five segments on module, `src/main/java` and the org package before it
+    reaches the one word that answers "which file is this?", which is the only question
+    this row exists to answer. A file at the repo root has no path to move, and a tooltip
+    repeating the name is a tooltip saying nothing."""
+    name = Path(rel).name
+    label = f"{name}:{lineref}" if lineref else name
+    tip = (f"{rel} — open in VS Code" if "/" in rel else "Open in VS Code")
+    # Break the path at its own slashes: a <wbr> after each one gives the browser a legal
+    # place to wrap, so a long name folds into readable pieces instead of snapping wherever
+    # the box happens to end.
+    face = html.escape(label).replace("/", "/<wbr>")
+    return (f'<div class="srcbar">{badge}{links}'
+            f'<a class="srcref srcbar-path" href="{html.escape(href)}"'
+            f' data-tip="{html.escape(tip, quote=True)}">{face}</a></div>')
 
 
 def repo_root() -> Path:
@@ -330,7 +393,18 @@ def _gap_row(hidden: int) -> str:
             f'<span class="code-gap">{hidden} line{"" if hidden == 1 else "s"} not shown</span>')
 
 
-def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> str:
+def render(ref: str, caption: str | None, root: Path, exact: bool = False,
+           links: str = "", link_at: tuple[int, int] | None = None) -> str:
+    """`links` is the pre-rendered VSC/GH handles for the source bar, when the caller knows
+    what this snippet is being compared against. The CLI does not — a snippet lifted by
+    hand has no base ref in the argument list — so it renders the bar without them, which
+    is the same bar minus two buttons rather than a different header.
+
+    `link_at` re-aims the bar at one (line, column) instead of at the window. The logging
+    tab needs it: its windows pull in the lines a logged value came *from*, so the window
+    is `9-11` while the statement the box is about is line 9 alone. Both halves move
+    together — the face says `:9` and the link lands on `:9` — because a bar that reads
+    `:9-11` and opens at 9 is two answers to one question."""
     rel, spans = parse_ref(ref)
     path = (root / rel).resolve()
     if not path.is_file():
@@ -362,15 +436,11 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> st
 
     start, end = spans[0][0], spans[-1][1]
     lineref = ",".join(f"{s}-{e}" if e != s else f"{s}" for s, e in spans)
-    # The name, and the path on hover. A snippet header answers one question — *which file
-    # is this?* — and a repo-relative Java path spends five segments on module,
-    # `src/main/java` and the org package before it gets there, on a line narrow enough
-    # that the answer wraps. The path is not lost, it moves to the tooltip, which is where
-    # this page puts everything a face has no room for. A file at the repo root has no
-    # path to move, and a tooltip repeating the name is a tooltip saying nothing.
-    label = f"{Path(rel).name}:{lineref}"
-    tip = f"{rel} — open in VS Code" if "/" in rel else "Open in VS Code"
-    link = f"vscode://file/{path}:{start}:1"
+    if link_at:
+        link = f"vscode://file/{path}:{link_at[0]}:{link_at[1]}"
+        lineref = str(link_at[0])
+    else:
+        link = f"vscode://file/{path}:{start}:1"
     lang = LANG_BY_SUFFIX.get(path.suffix, "")
 
     dedented = [l[shift:] if l.strip() else "" for l in body]
@@ -423,9 +493,7 @@ def render(ref: str, caption: str | None, root: Path, exact: bool = False) -> st
     return (
         f'<figure class="snippet">\n'
         f"{cap}"
-        f'<a class="srcref" href="{html.escape(link)}" data-tip="{html.escape(tip)}">'
-        f'{html.escape(label)}</a>\n'
-        f'{diff_badge(status)}\n'
+        f'{srcbar_html(link, rel, lineref, diff_badge(status), links)}\n'
         f'<pre class="code lang-{lang}'
         f'{" diff-changed" if status and status["diff"] == "changed" else ""}">'
         f'<code>{numbered}</code></pre>\n'

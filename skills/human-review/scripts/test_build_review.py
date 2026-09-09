@@ -369,11 +369,12 @@ def no_verdict_disk(monkeypatch):
 
 def test_each_statement_renders_as_the_page_s_one_snippet_style(no_verdict_disk):
     """Item 4 of the redesign: no invented second code-block style — the same `.snippet`
-    figure every other quoted line on the page uses, labelled `Class:line` instead of the
-    full repo path."""
+    figure every other quoted line on the page uses, headed by the source bar every quoted
+    block on this page wears, naming the file rather than the full repo path."""
     out = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=_fake_call())
     assert out.count('<figure class="snippet">') == 1
-    assert '>Slf4jExplicit:9</a>' in out                        # the location, and only that
+    assert out.count('<div class="srcbar">') == 1               # the shared header, once
+    assert '>Slf4jExplicit.java:9</a>' in out                   # the location, and only that
     assert 'DEBUG · ' not in out                # the level rides in the quoted code, not here
     assert f'>{html.escape(FIXTURE_REL)}:9</a>' not in out      # the old full-path label is gone
     assert 'badge sev-info">DEBUG</span>' not in out            # no more coloured level pill
@@ -389,14 +390,17 @@ def test_the_level_gets_no_line_of_its_own(no_verdict_disk):
     assert "loglevel" not in out
 
 
-def test_the_footer_puts_the_verdict_left_and_the_label_right(no_verdict_disk):
-    """Final position (the third and last one): verdict + trace on the left of one row
-    below the code, `LEVEL · Class:line` as a link at the right, in that DOM order so a
-    narrow width wraps label-under-verdict rather than truncating either one."""
+def test_the_location_leaves_the_footer_for_the_bar_every_tab_shares(no_verdict_disk):
+    """The location has moved for the last time. It spent three positions private to this
+    tab — top-left caption, then ahead of the verdict, then pinned to the footer's right —
+    and it is now in the source bar heading the block, which is where the Tests and Review
+    tabs put it too. What is left below the code is the verdict, alone."""
     out = build._logging_listing([DEBUG_HIT], REPO_ROOT, call=_fake_call())
+    bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
+    assert "Slf4jExplicit.java:9" in bar
     footer = out[out.index('<p class="log-footer">'):out.index("</p>", out.index('<p class="log-footer">')) + 4]
-    assert footer.index('class="privacy-verdict') < footer.index('Slf4jExplicit:9')
-    assert 'class="srcref"' in footer  # still the same shared link/anchor markup
+    assert 'class="privacy-verdict' in footer
+    assert "Slf4jExplicit" not in footer          # not said twice, once per position
     assert "log-snippet" not in out    # the old wrapper div from the previous position is gone
     assert ".log-snippet" not in build.CSS  # and so is its corner-tag CSS, not layered under a third rule
 
@@ -817,7 +821,7 @@ def test_logging_fragment_keeps_its_weight_with_no_header_or_card(tmp_path, monk
     assert "On the lines this change set touches" not in frag  # the header heading is gone
     assert "logging statement" not in frag           # the count pill is gone
     assert '<figure class="snippet">' in frag
-    assert "Foo:7" in frag           # the Class:line corner label
+    assert "Foo.java:7" in frag      # the location, in the bar every quoted block wears
     assert "bad id" in frag          # the statement's own text, verbatim in the snippet
     assert "SAFE" in frag            # the verdict, visible below the code
     assert "an int parameter" in frag  # the value's clause, from the (mocked) model
@@ -2527,14 +2531,15 @@ def test_the_diff_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
     head = build.diff_html(rel, "HEAD^", r, head="HEAD").split("</div>")[0]
     assert ">VetRepository.java<" in head
-    assert f'data-tip="{rel}"' in head
+    assert f'data-tip="{rel} \u2014 open in VS Code"' in head
     assert f">{rel}<" not in head, "the ceremony is on hover, not in the face"
 
 
 def test_a_file_at_the_repo_root_gets_no_tooltip_repeating_its_own_name(tmp_path):
     r = _repo_with_a_buried_file(tmp_path)
     head = build.diff_html("README.md", "HEAD^", r, head="HEAD").split("</div>")[0]
-    assert '<span class="path">README.md</span>' in head
+    assert ">README.md<" in head
+    assert 'data-tip="Open in VS Code"' in head, "no bubble restating the name"
 
 
 def test_a_diff_carries_both_ways_out_in_its_own_header(tmp_path):
@@ -2550,9 +2555,64 @@ def test_a_diff_carries_both_ways_out_in_its_own_header(tmp_path):
     out = build.diff_html(rel, "HEAD^", r, head="HEAD")
     corner = out.split('<div class="ghdiff-scroll">')[0]
     assert "&#8646; VSC" in corner and "&#8646; GH" in corner
-    assert "ghdiff-corner" in corner
+    # And it is the page's one source bar doing it, not a header private to this block.
+    assert corner.startswith('<div class="ghdiff"><div class="srcbar">')
     assert "srcref" not in out.split('</table></div>')[-1], \
         "the links moved into the header; nothing links from a footer under the diff"
+
+
+def test_the_three_tabs_head_a_quoted_block_with_the_same_bar(tmp_path, monkeypatch):
+    """One component, not three headers that happen to look alike.
+
+    The Tests tab's snippets, the Review tab's applied fixes and the Logging tab's
+    statements each grew their own version of this row, and they disagreed on every part
+    of it — which end the file sat at, whether the diff handles were there, whether the
+    face was the path or the name. A reader crossing tabs had to relearn it each time. So
+    the shape is asserted once, across all three producers: same class, same file-name
+    face, same full path on hover."""
+    r = _repo_with_a_buried_file(tmp_path)
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
+    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+
+    bars = [
+        build.diff_html(rel, "HEAD^", r, head="HEAD"),                    # Review
+        build.snippet_html(f"{rel}:1-2", None, r, exact=True),            # Tests
+    ]
+    for out in bars:
+        bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
+        assert 'class="srcref srcbar-path"' in bar
+        assert ">VetRepository.java" in bar, "the name is the face"
+        assert f'data-tip="{rel} \u2014 open in VS Code"' in bar, "the path is the hover"
+
+
+def test_a_quoted_snippet_offers_the_same_two_ways_out_a_diff_does(tmp_path, monkeypatch):
+    """A snippet used to be a dead end: it showed what the code says now and left "what
+    changed?" to the reader's imagination. It carries the same two handles the Review
+    tab's diffs carry — the editor, and github.com — because it is quoting the same
+    change, and the badge beside them already claims the lines are new."""
+    import subprocess as sp
+    r = _repo_with_a_buried_file(tmp_path)
+    sp.run(["git", "-C", str(r), "remote", "add", "origin",
+            "https://github.com/victorrentea/petclinic.git"], check=True)
+    rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
+    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    out = build.snippet_html(f"{rel}:1-2", None, r, exact=True)
+    bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
+    assert "&#8646; VSC" in bar and "&#8646; GH" in bar
+    assert 'class="srcref diffref srcbar-diff"' in bar   # the pill face, not the prose one
+
+
+def test_a_snippet_whose_base_is_not_there_still_gets_its_bar(tmp_path, monkeypatch):
+    """Each handle is emitted only where that side can really open what it promises — a
+    base that does not resolve has no diff to show, and a dead button is worse than no
+    button. What must not happen is the bar going with it: the file it came from is a
+    fact regardless of what git can be asked."""
+    r = _repo_with_a_buried_file(tmp_path)
+    monkeypatch.setattr(build, "SNIPPET_BASE", "no/such/ref")
+    out = build.snippet_html("README.md:1-2", None, r, exact=True)
+    assert '<div class="srcbar">' in out
+    assert "&#8646; VSC" not in out and "&#8646; GH" not in out
+    assert ">README.md:1-2</a>" in out
 
 
 def test_a_pinned_fix_the_file_has_moved_off_gets_no_editor_link(tmp_path):

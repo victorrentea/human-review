@@ -312,18 +312,14 @@ pre.code code { white-space:pre; }
 .diagram { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem; margin:1.1rem 0; }
 .diagram .head { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap; }
 .diagram .head b { font-size:1rem; }
-/* The logging tab: no separate line for the level, no second coloured pill, and no
-   top-left label line either. Both ride below the code on one row: the verdict and its
-   reason at the left, since that is what a reviewer reads, and the level/location
-   ("WARN - Class:line", still the vscode:// link) pinned to the far right as the box's
-   corner marker, since that is what they click. `space-between` holds that layout when
-   both fit; `flex-wrap` lets the label drop under the verdict at a narrow width, in
-   markup order, rather than truncating either one. This spot has now moved three times
-   (top-right corner, sharing the line ahead of the verdict, here) -- this is the one
-   rule left; the two positions before it left nothing behind. */
-.log-footer { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
+/* The logging tab: no separate line for the level and no second coloured pill — the
+   `log.warn(` in the code above says the level, in the colour Pygments gives every other
+   call. What is left under the code is the verdict alone. The location used to be pinned
+   to this row's far right as the box's corner marker; it has gone up into the source bar
+   that heads every quoted block on this page, which is where a reader now looks for it on
+   all three tabs instead of only here. */
+.log-footer { display:flex; flex-wrap:wrap; align-items:baseline;
               column-gap:.8rem; row-gap:.25rem; margin:.6rem 0 0; font-size:.85rem; }
-.log-footer .srcref { margin:0; }
 /* One bullet per value the statement interpolates, under the verdict that sums them up.
    The name is the argument as the source writes it, so a three-value statement can be
    scanned for *which* value is the problem instead of read as one fused sentence. */
@@ -364,9 +360,6 @@ pre.code code { white-space:pre; }
    and marks neither leaves the reader to guess which is which. */
 .ai-mark { font-size:.62em; vertical-align:super; margin-left:.28em; cursor:help;
            text-decoration:none; }
-/* The footer row is `space-between`: without this the mark drifts into the middle of the
-   line, orphaned from the word it is about. `margin-right:auto` gives it the slack. */
-.log-footer .ai-mark { margin-right:auto; }
 .privacy-legend { margin:1rem 0 0; }
 .privacy-legend-title { margin:0 0 .35rem; font-weight:700; font-size:.85rem; }
 .privacy-legend-note { margin:0 0 .5rem; color:var(--muted); font-size:.78rem; line-height:1.6; }
@@ -596,20 +589,15 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
           --diff-del-bg:#2d1214; --diff-del-gutter:#5c2225; }
 }
 .ghdiff { border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:.9rem 0; background:var(--card); }
-.ghdiff-head { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
-               gap:.5rem; padding:.45rem .7rem; border-bottom:1px solid var(--line);
+/* The bar itself is the shared `.srcbar` (layout, pills, the file on the right — all of
+   it in extract-snippet.py's stylesheet, which is where the snippets get theirs). What is
+   local to a diff card is only the skin: this one is a card *header*, so it takes the
+   card's edge and its code background, where the same bar over a snippet floats on the
+   card's own paper. Styling the seam and not the component is what keeps the two the same
+   row wearing one set of rules. */
+.ghdiff > .srcbar { margin:0; padding:.45rem .7rem; border-bottom:1px solid var(--line);
                background:var(--code-bg); font:600 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
-.ghdiff-head .path { color:var(--fg); overflow-wrap:anywhere; }
-/* Name on the left, and everything that is *about* the change on the right: the two ways
-   to open it, then how big it is. One group, so the middle item cannot drift into the
-   centre when the header wraps on a narrow screen. */
-.ghdiff-corner { display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap; }
-.ghdiff-head .stat { font-weight:700; white-space:nowrap; }
-.ghdiff-head a.srcref.inhead { margin:0; font-size:10px; font-weight:700; letter-spacing:.04em;
-          line-height:1.5; padding:.05rem .35rem; border:1px solid var(--line); border-radius:5px;
-          background:transparent; text-decoration:none; white-space:nowrap; }
-.ghdiff-head a.srcref.inhead:hover, .ghdiff-head a.srcref.inhead:focus-visible {
-          border-color:var(--link); }
+.ghdiff > .srcbar .stat { font-weight:700; white-space:nowrap; }
 .ghdiff-scroll { overflow-x:auto; }
 table.ghdiff-body { border-collapse:collapse; width:100%;
                     font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -1762,6 +1750,7 @@ DIFF_INLINE_TOKEN = re.compile(
 DIFF_CONTEXT = 3
 
 
+@functools.lru_cache(maxsize=None)
 def github_blob_base(root: Path) -> str | None:
     """`https://github.com/<owner>/<repo>` for this checkout, or None when it is not one.
 
@@ -1829,7 +1818,7 @@ def _github_compare_link(rel: str, base: str, root: Path, head: str | None = Non
     # was free to leave out while the label spelled it.
     if face:
         tip = f"On github.com — {tip[0].lower()}{tip[1:]}"
-    return (f'<a class="srcref{" diffref inhead" if face else ""}" target="_blank"'
+    return (f'<a class="srcref{" diffref srcbar-diff" if face else ""}" target="_blank"'
             f' rel="noopener" href="{html.escape(url)}"'
             f' data-tip="{tip}">{face or "&#8599; on GitHub"}</a>')
 
@@ -1980,16 +1969,17 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     # exactly that. The full path is not lost, it is moved to where the face could not fit
     # it, which is what this page's tooltips are for. A file at the repo root has no path
     # to move, and a tooltip repeating the name is a tooltip saying nothing.
-    name = html.escape(Path(rel).name)
-    head_path = (f'<span class="path" data-tip="{html.escape(rel)}">{name}</span>'
-                 if "/" in rel else f'<span class="path">{name}</span>')
+    # The same source bar every other quoted block on this page wears, built by the same
+    # function: the stat is this block's badge — `+8 -4 vs 5acf2472` is exactly the "what
+    # am I looking at" a snippet's `new code` answers — then the two handles, then the file.
+    stat = (f'<span class="stat"><span class="added">+{adds}</span> '
+            f'<span class="removed">&minus;{dels}</span> vs '
+            f'<code>{html.escape(base[:8])}</code></span>')
+    bar = _extract_module().srcbar_html(
+        f"vscode://file/{src.resolve()}", rel, "", stat, link + gh)
     return (
         '<div class="ghdiff">'
-        f'<div class="ghdiff-head">{head_path}'
-        f'<span class="ghdiff-corner">{link}{gh}'
-        f'<span class="stat"><span class="added">+{adds}</span> '
-        f'<span class="removed">&minus;{dels}</span> vs <code>{html.escape(base[:8])}</code>'
-        '</span></span></div>'
+        f'{bar}'
         f'<div class="ghdiff-scroll"><table class="ghdiff-body"><tbody>{"".join(body)}</tbody></table></div>'
         + (f'<p class="ghdiff-note">{caption}</p>' if caption else "")
         + '</div>'
@@ -1997,6 +1987,7 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
 
 
 
+@functools.lru_cache(maxsize=None)
 def diff_uri_handler() -> str | None:
     """The extension id that can open a diff for a guide read off disk, if it is installed.
 
@@ -2074,7 +2065,7 @@ def diff_link_html(rel: str, base: str, root: Path, face: str | None = None) -> 
         q = urllib.parse.urlencode({"file": str(src.resolve()), "base": base, "line": line})
         uri = f' data-diff-uri="{html.escape(f"vscode://{handler}/diff?{q}")}"'
     return (
-        f'<a class="srcref diffref{" inhead" if face else ""}"'
+        f'<a class="srcref diffref{" srcbar-diff" if face else ""}"'
         f' href="vscode://file/{src.resolve()}:{line}:1"{uri}'
         f' data-diff-path="{html.escape(rel)}" data-diff-base="{html.escape(base)}"'
         f' data-tip="Open this fix as a diff in VS Code — {short} on the left, the working'
@@ -2097,16 +2088,54 @@ def expand_snippets(text: str, root: Path) -> str:
     )
 
 
-def snippet_html(ref: str, caption: str | None, root: Path, exact: bool = False) -> str:
-    cmd = [sys.executable, str(EXTRACT), ref]
-    if caption:
-        cmd += ["--caption", caption]
-    if exact:
-        cmd.append("--exact")
-    out = subprocess.run(cmd, capture_output=True, text=True, cwd=root)
-    if out.returncode != 0:
-        raise SystemExit(out.stderr.strip() or f"extract-snippet failed for {ref}")
-    return out.stdout
+#: The ref every snippet on this page is implicitly a claim about. `extract-snippet.py`
+#: reads the same environment variable to decide which of a snippet's lines are new, so
+#: reading it here keeps one answer behind both halves of the source bar: the badge says
+#: "new code *since this*", and the handle beside it opens exactly that comparison. Two
+#: bases would let the badge and the button disagree in a way nothing on the page shows.
+SNIPPET_BASE = os.environ.get("HUMAN_REVIEW_DIFF_BASE", "origin/main")
+
+
+@functools.lru_cache(maxsize=1)
+def _extract_module():
+    """`extract-snippet.py` is hyphenated, so it is not importable by name.
+
+    Loaded rather than shelled out to, which it used to be, because the source bar needs
+    something a command line cannot carry: the two diff handles are built here — only this
+    side knows the review's base ref and whether github.com can be expected to have the
+    file — and they have to arrive *inside* the bar, not be glued onto its markup
+    afterwards. The interpreter is the same one either way, so the Pygments requirement is
+    unchanged."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("extract_snippet", str(EXTRACT))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _snippet_links(rel: str, root: Path) -> str:
+    """The `VSC` and `GH` handles for a quoted block, against the review's own base.
+
+    Both are optional and for the same reason: each is emitted only where that side can
+    really open what it promises. `diff_link_html` drops itself when the base does not
+    resolve, when the file did not exist in it, or when the two sides are identical;
+    `_github_compare_link` drops itself when the file is dirty in the working tree, which
+    is precisely when github.com has never seen what the snippet is showing. A bar with
+    one handle, or none, is the honest rendering — a dead button is worse than no button.
+
+    `origin/` is stripped for github.com only: it is a name for a ref in *this* checkout,
+    and a compare URL spelling it 404s."""
+    vsc = diff_link_html(rel, SNIPPET_BASE, root, face="&#8646; VSC")
+    gh = _github_compare_link(rel, SNIPPET_BASE.removeprefix("origin/"), root,
+                              face="&#8646; GH")
+    return vsc + gh
+
+
+def snippet_html(ref: str, caption: str | None, root: Path, exact: bool = False,
+                 link_at: tuple[int, int] | None = None) -> str:
+    rel = ref.rsplit(":", 1)[0] if ":" in ref else ref
+    return _extract_module().render(ref, caption, root, exact,
+                                    links=_snippet_links(rel, root), link_at=link_at)
 
 
 # `src://<repo-relative path>[:line]` — the handle the diagram generators leave on a
@@ -4043,21 +4072,16 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
     fields_by_file = fields_by_file or {}
     cache = _load_verdict_cache(cache_root)
     boxes = []
-    ANCHOR_RE = re.compile(r'<a class="srcref" href="([^"]+)"[^>]*>[^<]*</a>\n')
     # `new code` / `2 lines changed` — dropped on this tab only. Everywhere else the badge
     # answers "is this quoted block new, or an old one with a line in it?", which is a real
     # question about a snippet a reviewer did not choose. Here it is not: the gutter beside
     # the statement already marks the added lines with `+`, and every block on this tab is
     # here *because* the branch added or rewrote that logging line. A badge repeating the
-    # tab's own entry condition on every box is a word the eye has to skip.
-    BADGE_RE = re.compile(r'<span class="code-badge"[^>]*>[^<]*</span>\n')
+    # tab's own entry condition on every box is a word the eye has to skip. The rest of the
+    # bar stays: the file it came from, and the two handles that open the change.
+    BADGE_RE = re.compile(r'<span class="code-badge"[^>]*>[^<]*</span>')
     for h in added:
         ref = _logging_ref(h)
-        # Just the location. The level used to be prefixed here (`WARN · Class:93`), but
-        # the `log.warn(` in the code block directly above says it — in the same colour
-        # Pygments gives every other call — so the prefix was a second, worse copy of a
-        # fact already on screen.
-        label = f'{Path(h["file"]).stem}:{h["line"]}'
         h = {**h, "_fields": fields_by_file.get(h["file"])}
         result = privacy_verdict(h, cache_root, cache, call=call)
         # The rows come from the code (`logextract.py`'s argument list), the clauses from
@@ -4071,30 +4095,25 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
                                          *(["doubt"] if unassessed else []))
         emoji, word, css = PRIVACY_MARK[verdict_key]
         verdict_class = f"privacy-verdict {css}".strip()
-        # extract-snippet.py always captions and labels a snippet with the full
-        # repo-relative path, on its own line above the code — right when the path *is*
-        # the point (a diagram, a test pairing). Here neither is true: there is no
-        # caption line, and the label is pulled out of its default spot entirely and
-        # rebuilt below the code as the box's bottom-right corner marker (still the same
-        # vscode:// link) — the verdict and its trace sit on the same row, at the left,
-        # because that is the part a reviewer reads; the location is the part they
-        # click. `justify-content:space-between` pushes them to opposite ends when both
-        # fit on the row, and `flex-wrap` drops the label under the verdict — verdict
-        # first, since it is first in the markup — rather than truncating either one.
-        snippet = snippet_html(ref, None, root, exact=True)
-        snippet = ANCHOR_RE.sub("", snippet, count=1)
+        # This box used to take the snippet apart — anchor stripped off the top, a
+        # hand-rebuilt copy of it glued into the footer as a bottom-right marker — from
+        # back when the header was a bare path on a line of its own and the footer had
+        # room to spare. It is a shared component now, carrying the file *and* the two
+        # handles that open the change, and a tab that quietly rebuilds a component is a
+        # tab that stops getting its fixes. So the bar stays where every other tab has it,
+        # at the top, and the footer keeps only what is this tab's own: the verdict.
+        # The bar's own link opens at the *first* line of the window, which with origin
+        # lines pulled in is the origin rather than the statement. Re-aimed at the hit's
+        # own line and column: that is where a reader clicking a logging box expects to
+        # land, and it is the one thing the generic bar cannot work out for itself.
+        snippet = snippet_html(ref, None, root, exact=True,
+                               link_at=(h["line"], h.get("column", 1)))
         snippet = BADGE_RE.sub("", snippet, count=1)
-        # The link is built from the hit, not scraped back out of the snippet's own
-        # anchor: with origin lines pulled in, that anchor now opens at the *first* line
-        # of the window (the origin), and the label next to it says `:93`. Aiming it at
-        # the statement's own line and column is both truthful and where a reader
-        # clicking "VisitRestController:93" expects to land.
-        href = f'vscode://file/{(root / h["file"]).resolve()}:{h["line"]}:{h.get("column", 1)}'
-        # The verdict stands alone on its row now — the word and nothing else, with the
-        # location at the far right. What used to ride on this line was one run-on
+        # The verdict, and nothing else. What used to ride on this line was one run-on
         # sentence about the whole statement; it is a bullet per logged value below,
         # because "which of the three values is the problem" is the question a reader
-        # brings here and a fused sentence is precisely what destroys the answer.
+        # brings here and a fused sentence is precisely what destroys the answer. The
+        # location left this row too, upwards, into the source bar every tab shares.
         footer = (
             f'<p class="log-footer">'
             f'<span class="{verdict_class}">{emoji} <b>{word}</b></span>'
@@ -4102,9 +4121,7 @@ def _logging_listing(added: list, root: Path, fields_by_file: dict | None = None
             # note about *how the verdict was reached*, and only where one actually was --
             # NOT EVALUATED means the model was never successfully asked.
             + (AI_MARK if verdict_key != "error" else "")
-            + f'<a class="srcref" href="{html.escape(href)}" data-tip="Open in VS Code">'
-            f'{html.escape(label)}</a>'
-            f'</p>'
+            + f'</p>'
         )
         # The model-failure state has no per-value answers to show — it never got any —
         # so its one message rides under the verdict in the same place the bullets would.
