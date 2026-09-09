@@ -3540,9 +3540,14 @@ def opening_lede(spec) -> str:
         # news. Mode C is the case where a zero would be the lie instead — nobody was in a
         # position to be asked — so it says that rather than counting an empty pile.
         assumed = len(spec.get("assumptions", []))
+        # "to check" rather than "assumed by the coder": the first two clauses count work
+        # that is done, and this one counts work the reader still owes. Naming the pile
+        # after who produced it described its provenance, which the `your call` badge on
+        # every card already does; naming it after what is left to do says why it is in a
+        # line the reader skims on the way to the list.
         parts.append("coder could not be asked"
                      if block.get("mode") == "C" and not assumed
-                     else f"{assumed} assumed by the coder")
+                     else f"{assumed} coder assumption{'' if assumed == 1 else 's'} to check")
     if not parts:
         return ""
     # The stamp clause went the same way as "greyed out" and "yours to confirm", and it

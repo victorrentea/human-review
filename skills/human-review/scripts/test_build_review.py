@@ -2535,12 +2535,12 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"},
                           {"type": "autofixes"}]}]))
-    assert "2 assumed" in page
+    assert "2 coder assumptions to check" in page
     assert "yours to confirm" not in page, \
         "the badge already says `your call`"
     assert "9 open, worst first" in page
     assert "3 auto-applied" in page
-    assert "9 open, worst first &middot; 3 auto-applied &middot; 2 assumed by the coder" in page, \
+    assert "9 open, worst first &middot; 3 auto-applied &middot; 2 coder assumptions to check" in page, \
         "what a pass found comes first; what no pass could find comes after it"
     assert "greyed out" not in page, \
         "the applied fixes are visibly grey"
@@ -2556,19 +2556,19 @@ def test_the_lede_counts_the_coder_pile_at_zero_too(tmp_path):
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert "0 assumed by the coder" in page
+    assert "0 coder assumptions to check" in page
     assert "1 open, worst first" in page
 
 
 def test_the_lede_does_not_count_a_pile_nobody_could_be_asked_for(tmp_path):
     """Mode C is the one case where the zero would be the lie: no transcript survived, so
-    nothing was asked and `0 assumed` would be the page claiming an answer it never got."""
+    nothing was asked and `0 coder assumptions` would be the page claiming an answer it never got."""
     page, _ = _build(tmp_path, dict(
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "C"}, {"type": "findings"}]}]))
     assert "coder could not be asked" in page
-    assert "0 assumed" not in page
+    assert "0 coder assumption" not in page
 
 
 def test_a_page_that_declares_no_assumptions_block_is_told_so(tmp_path):
@@ -2588,8 +2588,8 @@ def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path
         assumptions=[_assumption()],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert page.count("1 assumed") == 1, "said once, not once per pile"
-    assert page.index("1 assumed") < page.index("Requires human review")
+    assert page.count("1 coder assumption to check") == 1, "said once, not once per pile"
+    assert page.index("1 coder assumption to check") < page.index("Requires human review")
 
 
 def test_the_lede_is_counts_and_one_ordering_fact_and_nothing_else(tmp_path):
