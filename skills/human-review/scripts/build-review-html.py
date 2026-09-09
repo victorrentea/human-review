@@ -137,6 +137,11 @@ h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
 p { margin:.6rem 0; }
 a { color:var(--link); }
 .sub { color:var(--muted); margin:0 0 .55rem; font-size:.93rem; }
+/* The one `.sub` that is not an aside. Every other subtitle on the page repeats or
+   qualifies something the reader can already see, which is what earns them the muted
+   grey; this line is the only place the size of each pile is stated at all. Grey filed
+   the page's opening fact under "small print" — it reads at full text weight instead. */
+.sub.counts { color:var(--fg); }
 .scopebar { display:flex; flex-wrap:wrap; gap:.45rem; margin:0 0 .55rem; }
 .chip { background:var(--card); border:1px solid var(--line); border-radius:999px;
         padding:.15rem .7rem; font-size:.82rem; color:var(--muted); }
@@ -2955,7 +2960,7 @@ def opening_lede(spec) -> str:
     if spec.get("findings"):
         parts.append(f"{len(spec['findings'])} open, worst first")
     if spec.get("autofixes"):
-        parts.append(f"{len(spec['autofixes'])} already applied")
+        parts.append(f"{len(spec['autofixes'])} auto-applied")
     if not parts:
         return ""
     # The stamp clause went the same way as "greyed out" and "yours to confirm", and it
@@ -2963,7 +2968,7 @@ def opening_lede(spec) -> str:
     # announcing that they do describes the thing directly under it. What is left is
     # counts and one ordering fact — the two things counting the list yourself would not
     # have told you.
-    return '<p class="sub">' + " &middot; ".join(parts) + "</p>"
+    return '<p class="sub counts">' + " &middot; ".join(parts) + "</p>"
 
 
 def _lede_into(head: str, lede: str) -> str:
@@ -5445,7 +5450,7 @@ def main(argv=None) -> int:
         kind = block.get("type", "section")
         if kind == "findings":
             items = spec.get("findings", [])
-            head = _lede_into(heading(block, "first", "Look here first"), opening_lede(spec))
+            head = _lede_into(heading(block, "first", "Requires human review"), opening_lede(spec))
             return (head + render_findings(items), len(items), len(items))
         if kind == "assumptions":
             items = spec.get("assumptions", [])
@@ -5566,16 +5571,31 @@ def main(argv=None) -> int:
     # appended to the tab the `tests` step feeds. Declaring the block explicitly is still
     # how you put it somewhere else in the panel — this only fills a gap, it never moves
     # a block the author placed.
+    #
+    # `"testLedger": false` turns the gap-filling off, and is for the one page shape that
+    # does not have the gap: a Tests tab whose own card already lists every test the change
+    # set moved — new, edited and deleted alike — which is what the requirements map does.
+    # There the ledger is the same rows a second time, grouped by a question the stamps on
+    # those rows already answer, and a reader made to hold two lists and diff them is a
+    # reader the second list cost something. Off is a claim the author is making, so it is
+    # said out loud rather than inferred: the build cannot read a hand-authored fragment
+    # and know what is in it.
     if tabs and spec.get("testChanges") and not any(
         b.get("type") == "tests" for tab in tabs for b in tab.get("blocks", [])
     ):
-        host = next((tab for tab in tabs if tab.get("id") == LEDGER_TAB), None)
-        if host is None:
-            print(f'[review] WARNING: there is a test manifest and no tab carries a '
-                  f'"tests" block — and no tab is called {LEDGER_TAB!r} to append it to, '
-                  "so what the change set did to the tests is on no page.", file=sys.stderr)
+        if spec.get("testLedger") is False:
+            print("[review] testLedger:false — no ledger. Every test the change set moved "
+                  "has to be listed on the page some other way, deleted ones included.",
+                  file=sys.stderr)
         else:
-            host["blocks"] = list(host.get("blocks", [])) + [{"type": "tests"}]
+            host = next((tab for tab in tabs if tab.get("id") == LEDGER_TAB), None)
+            if host is None:
+                print(f'[review] WARNING: there is a test manifest and no tab carries a '
+                      f'"tests" block — and no tab is called {LEDGER_TAB!r} to append it '
+                      "to, so what the change set did to the tests is on no page.",
+                      file=sys.stderr)
+            else:
+                host["blocks"] = list(host.get("blocks", [])) + [{"type": "tests"}]
 
     # Only a tabbed page grows a masthead; the plain single-column guide keeps the
     # heading it always had.
@@ -5702,7 +5722,7 @@ def main(argv=None) -> int:
     else:
         # No tab layout in the content file: the original single-column guide, unchanged.
         body_html = (
-            '<h2 id="first">Look here first</h2>\n'
+            '<h2 id="first">Requires human review</h2>\n'
             + render_findings(spec.get("findings", []))
             + f'\n<h2 id="diagrams">{html.escape(dspec.get("title", ""))}</h2>\n'
             + f'<p>{dspec.get("body", "")}</p>\n'

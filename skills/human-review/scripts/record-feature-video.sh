@@ -338,7 +338,7 @@ const get = async (url) => {
       : "[video] narration: none (NARRATION=off, or the synthesizer is unavailable)");
   if (!saved) {
     // Exit 3 is not a failure to handle — it is the most review-worthy film the pipeline
-    // can produce. Embed it, and put what it shows at the top of "Look here first".
+    // can produce. Embed it, and put what it shows at the top of "Requires human review".
     console.error("[video] NOTE: the feature did NOT hold — the film says so out loud. "
         + "Embed it anyway and lead the review with it.");
     process.exitCode = 3;

@@ -277,7 +277,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
 "tabs": [
   {"id":"review","label":"Review","count":true,
    "intro":"<p class=\"sub\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
-   "blocks":[{"type":"findings","title":"Look here first","body":"…"},
+   "blocks":[{"type":"findings","title":"Requires human review","body":"…"},
              {"type":"autofixes","title":"Already fixed for you","body":"…"}]},
   {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
   {"id":"api","label":"API","badge":"+4","blocks":[{"type":"section","id":"swaggerdiff"}]},
@@ -353,7 +353,7 @@ the one thing no amount of reading changes. Four tabs need something said about 
   arithmetic. The numbering follows the order the blocks appear in here, so that order is
   an editorial choice — with one rule the build enforces: work already done is the tail.
   Whichever pile opens the list writes its lede — `2 assumed · 9 open, worst first · 3
-  already applied` — computed, so restate none of it. It is counts and one ordering fact,
+  auto-applied` — computed, so restate none of it. It is counts and one ordering fact,
   and nothing that describes what is directly under it: the applied fixes are visibly
   grey, an assumption visibly says *your call*, and every item carries its source beside
   its own title, so `greyed out`, `yours to confirm` and `each stamped with the pass that

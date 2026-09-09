@@ -2459,7 +2459,7 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
     assert "yours to confirm" not in page, \
         "the badge already says `your call`"
     assert "9 open, worst first" in page
-    assert "3 already applied" in page
+    assert "3 auto-applied" in page
     assert "greyed out" not in page, \
         "the applied fixes are visibly grey"
     assert "stamped with" not in page, \
@@ -2475,7 +2475,7 @@ def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
     assert page.count("1 assumed") == 1, "said once, not once per pile"
-    assert page.index("1 assumed") < page.index("Look here first")
+    assert page.index("1 assumed") < page.index("Requires human review")
 
 
 def test_the_lede_is_counts_and_one_ordering_fact_and_nothing_else(tmp_path):
@@ -2485,7 +2485,7 @@ def test_the_lede_is_counts_and_one_ordering_fact_and_nothing_else(tmp_path):
     page, _ = _build(tmp_path, dict(
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
-    assert '<p class="sub">1 open, worst first</p>' in page
+    assert '<p class="sub counts">1 open, worst first</p>' in page
     assert "stamped with" not in page
 
 

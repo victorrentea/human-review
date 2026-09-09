@@ -111,7 +111,7 @@ Split every harvested finding in two, and say out loud which pile each landed in
   import. Fix, then re-run the affected tests. These become **Already fixed for you**.
 - **Disputable → hand it to the human.** Anything that changes an API contract, a migration
   already applied somewhere, a data-integrity trade-off, a performance/correctness tension,
-  or where two reasonable engineers would pick differently. These become **Look here first**,
+  or where two reasonable engineers would pick differently. These become **Requires human review**,
   most critical first.
 
 Never argue a finding away silently. If you skip one, it goes in the list with a reason.
@@ -202,7 +202,7 @@ not restate it.
 
 Then commit whatever was already in the working tree, and **leave your own fixes
 uncommitted**: their whole value is that `git diff` shows exactly what an agent touched. Do
-not comment your decisions into the code — that belongs in **Look here first**.
+not comment your decisions into the code — that belongs in **Requires human review**.
 
 ## Step 5 — Close, check, build, serve
 
