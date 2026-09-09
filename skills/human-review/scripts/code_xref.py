@@ -296,14 +296,19 @@ def _line_href(href: str, line: int) -> str:
 
 
 def _face(text: list[str]) -> str:
-    """The one line a folded window shows: its first line of actual code, trimmed.
+    """The one line a folded window shows: its first line of actual code.
 
     A fold that says only `⋯` makes the reader open it to find out whether it was the one
-    they wanted. Its signature says that without unfolding anything."""
+    they wanted. Its signature says that without unfolding anything.
+
+    Kept whole, not cut to fit. The stub sits in the empty half of a source bar and clips
+    with an ellipsis wherever that runs out, which is a width the browser knows and this
+    does not — and what is clipped is on the stub's own tooltip, so the line is never
+    somewhere the reader cannot get to it. The cap is only a bound on the index."""
     for line in text:
         stripped = line.strip()
         if stripped:
-            return stripped[:96] + ("…" if len(stripped) > 96 else "")
+            return stripped[:400]
     return ""
 
 

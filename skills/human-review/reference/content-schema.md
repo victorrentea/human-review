@@ -537,8 +537,11 @@ the one thing no amount of reading changes. Four tabs need something said about 
     - **A part something links to is folded, and the first part of a test never is.** The
       reader opened the row to read the test; the glue and the helpers under it are what they
       reach *through* the test, and expanded they are three screens of Playwright standing
-      between the row and the four sentences it was opened for. A folded part keeps its source
-      bar and shows its own first line, so it says what it is without being unfolded.
+      between the row and the four sentences it was opened for. A folded part costs **one
+      row**: its first line of code goes in the empty left half of the source bar it already
+      had, so it says what it is without being unfolded and without spending a row to do it.
+      What the bar clips is on the stub's own tooltip, because reading the end of a
+      signature should not cost a click that changes the page.
     - The wiring needs two things from the markup, and they are both things this fragment
       already emits: each excerpt in a `.rm-part`, and inside it the editor link from the
       source bar (`a.srcref` that is not a `.rm-diff`) carrying the same `href` as the part's

@@ -1539,17 +1539,30 @@ a.xref:hover, a.xref:focus-visible { background:var(--accent-soft,#eef2fb);
   border-bottom-style:solid; }
 /* The folded state. The source bar stays — a reader scanning an opened test still wants
    to see which files it went through — and what goes is the body, replaced by the one
-   line that says what is in it. */
+   line that says what is in it.
+
+   That line goes INSIDE the bar, not under it. The bar is right-aligned, so the whole left
+   half of it is empty: a folded excerpt was costing two rows, one of them a file name with
+   nothing beside it, and stacking four of them under a scenario put the next test a screen
+   away. `flex:1` fills that space, which also pushes nothing — the name, the badge and the
+   two handles were already against the right edge and stay exactly where they were. */
 .rm-part.xr-shut > .rm-scroll, .rm-part.xr-shut > pre.code { display:none; }
-.xr-stub { display:flex; align-items:baseline; gap:.45rem; width:100%;
-  margin:0; padding:.3rem .5rem; border:1px dashed var(--line,#e2e2ea);
-  border-radius:7px; background:transparent; color:var(--muted,#6b6b78);
-  font:400 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; text-align:left;
+/* `flex-basis:0`, not `auto`: a signature is a hundred characters wide, so basing the stub
+   on its own content made it ask for the whole row and the file name paid for it — the
+   name wrapped into three lines mid-word and the folded excerpt came out taller than the
+   two rows it replaced. At zero the name is measured first, as it always was, and the stub
+   grows into whatever the bar has left. */
+.xr-stub { flex:1 1 0; min-width:0; display:flex; align-items:baseline; gap:.35rem;
+  margin:0; padding:0; border:0; background:transparent; color:var(--muted,#6b6b78);
+  font:400 11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; text-align:left;
   cursor:pointer; overflow:hidden; }
-.xr-stub:hover { border-style:solid; color:var(--fg,#1c1c22); }
+.xr-stub:hover { color:var(--fg,#1c1c22); }
 .xr-stub .xr-face { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .xr-caret { flex:0 0 auto; transition:transform .12s ease; }
-.rm-part:not(.xr-shut) > .xr-stub .xr-caret { transform:rotate(90deg); }
+/* Unfolded, the signature is the first line of the code right underneath, so the stub
+   keeps only its handle — the one thing that folds the excerpt away again. */
+.rm-part:not(.xr-shut) .xr-stub .xr-face { display:none; }
+.rm-part:not(.xr-shut) .xr-stub .xr-caret { transform:rotate(90deg); }
 /* Where the click landed. The window a link opens is usually a screen away and folded, so
    it arrives with nothing saying which of its lines the link was about. The flash says it
    once and gets out of the way — a permanent mark would still be there on the next click,
@@ -1583,8 +1596,16 @@ XREF_JS = r"""<script>
 
   function fold(part, shut) {
     part.classList.toggle('xr-shut', shut);
-    var stub = part.querySelector(':scope > .xr-stub');
-    if (stub) stub.setAttribute('aria-expanded', String(!shut));
+    var stub = part.querySelector('.xr-stub');
+    if (!stub) return;
+    stub.setAttribute('aria-expanded', String(!shut));
+    // What it does, then what it does it to — and the second half is the whole first line,
+    // which is the half the stub itself cannot always show: it sits in whatever the source
+    // bar has left over, so a long signature is clipped at a width only the browser knows.
+    // Reading the clipped end should not cost a click that changes the page.
+    stub.setAttribute('data-tip', shut
+      ? 'Unfold this excerpt: ' + (stub.dataset.face || '')
+      : 'Fold this excerpt away');
   }
 
   // The requirements map builds a test's excerpts the first time its row is opened, so
@@ -1608,13 +1629,14 @@ XREF_JS = r"""<script>
       var stub = document.createElement('button');
       stub.type = 'button';
       stub.className = 'xr-stub';
-      stub.setAttribute('data-tip', 'Unfold this excerpt');
+      stub.dataset.face = seen.face || '';
       stub.innerHTML = '<span class="xr-caret" aria-hidden="true">▸</span>'
         + '<span class="xr-face"></span>';
       stub.querySelector('.xr-face').textContent = seen.face || 'folded';
+      // Into the bar's own empty left half, ahead of everything it already holds.
       var bar = part.querySelector(':scope > .rm-srcbar, :scope > .srcbar');
-      if (bar && bar.nextSibling) part.insertBefore(stub, bar.nextSibling);
-      else part.appendChild(stub);
+      if (bar) bar.insertBefore(stub, bar.firstChild);
+      else part.insertBefore(stub, part.firstChild);
       fold(part, true);
     });
   }
