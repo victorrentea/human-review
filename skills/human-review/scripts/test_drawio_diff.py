@@ -383,6 +383,22 @@ def test_the_verdict_records_how_to_run_this_again(tmp_path, branch_png):
     assert (out / "conceptual-diff.svg").is_file()
 
 
+def test_an_added_line_is_recoloured_and_not_thickened():
+    """Green is the mark. Weight is the diagram's own language for emphasis, and the
+    lines around it are the weight the human drew them at — a new line that is also a
+    heavier line reads as heavier first, and leaves the reader wondering what the second
+    difference was for."""
+    thin = BLACKENED.replace("strokeWidth=2;", "")
+    painted = dd.paint_added(thin, dd.diff_models(BASE, thin))
+    edge = dd.style_dict(dd.parse_model(painted)["e-vet-visit"].style)
+    assert edge["strokeColor"] == dd.ADDED_COLOR
+    assert "strokeWidth" not in edge, "a hairline the human drew stays a hairline"
+
+    # and a weight the drawing does carry is the drawing's to carry: left alone
+    painted = dd.paint_added(BLACKENED, dd.diff_models(BASE, BLACKENED))
+    assert dd.style_dict(dd.parse_model(painted)["e-vet-visit"].style)["strokeWidth"] == "2"
+
+
 def test_a_repainted_note_keeps_its_own_ink_and_gains_no_border():
     """Only strokes carry the mark. A text shape has none to carry it — and painting it
     would be worse than nothing twice over: draw.io reads `strokeColor` on a text shape

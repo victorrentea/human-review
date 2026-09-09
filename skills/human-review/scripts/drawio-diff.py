@@ -394,15 +394,18 @@ def _paint(style: str, color: str) -> str:
     colour: whatever label background they carried is dropped. draw.io's default is
     white, and a white chip behind a label inverts to a black slab in the dark theme —
     the one thing on the picture that nobody drew.
+
+    And the colour is the *only* thing that changes on a stroke. This used to widen the
+    line to 2px as well, which reads on the drawing as a heavier line rather than as a
+    new one: weight is the diagram's own language for emphasis, the map's other lines
+    are the weight the human drew them at, and a mark that says "new" twice leaves the
+    reader deciding whether the second one meant something else.
     """
     styles = style_dict(style)
     if "text" in styles or "edgeLabel" in styles:
         updates = {"labelBackgroundColor": "none"}
     else:
-        updates = {
-            "strokeColor": color,
-            "strokeWidth": str(max(2, int(float(styles.get("strokeWidth") or 1)))),
-        }
+        updates = {"strokeColor": color}
     # rebuilt in place, so draw.io's own bare keys (`text`, `rounded=0`, `edgeLabel`)
     # and their order survive: a style is not a dict to draw.io, it is a recipe
     out = []
