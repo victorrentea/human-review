@@ -1,298 +1,615 @@
 {
-  "title": "A visit remembers the vet who attended it",
-  "subtitle": "Review guide for <a href=\"https://github.com/victorrentea/petclinic/tree/test-pr\" target=\"_blank\"><code>test-pr</code></a> vs <code>origin/main</code> — assembled by /human-review, merge-base <code>39ceefc</code>.",
+  "title": "Attending vet on a visit",
+  "subtitle": "<code>test-pr</code> vs <code>main</code> — <code>5acf2472</code> · <span class=\"issue-ref\"><a href=\"https://github.com/victorrentea/petclinic/issues/37\">#37 Link Visit with Vet</a></span>. A visit now records the vet that attended it.",
   "scope": [
     {
-      "label": "branch",
-      "value": "test-pr",
-      "href": "https://github.com/victorrentea/petclinic/tree/test-pr"
+      "auto": "diffstat"
     },
     {
-      "label": "files",
-      "value": "35"
+      "auto": "tests",
+      "href": "#requirements"
     },
     {
-      "label": "lines",
-      "value": "<span class=\"added\">+329</span> / <span class=\"removed\">−10</span>"
+      "auto": "autofixed",
+      "href": "#review"
     },
     {
-      "label": "reviews run",
-      "value": "/code-review + /simplify",
-      "href": "https://claude.com/claude-code"
-    },
-    {
-      "label": "fixed for you",
-      "value": "6",
-      "href": "#fixed"
-    },
-    {
-      "label": "left to you",
-      "value": "6",
-      "href": "#first"
+      "auto": "cost"
     }
   ],
-  "summary": "<p><b>What it does.</b> <code>visits</code> gains a nullable <code>vet_id</code>, so a visit can name the vet that attended it. The vet flows end to end: a dropdown on the add/edit visit forms, a column in both visit lists, a field on <code>VisitDto</code>, and a <code>LEFT JOIN FETCH</code> so listing visits does not turn into an N+1.</p><p><b>What I already fixed</b>, from <code>/code-review</code> and <code>/simplify</code> (<a href=\"#fixed\">detail at the bottom</a>) — backend tests green after all six:</p><ul class=\"fixlist\"><li>Vet lookup out of the controller, onto the repository &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:24:1\">VetRepository.java:24</a></li><li>Three vet tests were passing vacuously — now flush + clear &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:296:1\">VisitTest.java:296</a></li><li>Vet dropdown opened blank &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:36:1\">visit-add.component.ts:36</a></li><li>Em-dash rule out of two templates, into a pipe &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-frontend/src/app/visits/vet-name.pipe.ts:8:1\">vet-name.pipe.ts:8</a></li><li>e2e vet picker no longer positional &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-test/src/add-visit.dsl.ts:48:1\">add-visit.dsl.ts:48</a></li><li>Dead <code>Vet</code> import &nbsp;<a class=\"srcref\" href=\"vscode://file//Users/victorrentea/workspace/petclinic/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:13:1\">VisitRestController.java:13</a></li></ul><p><b>What is left is genuinely yours</b> — <a href=\"#first\">five calls</a>, none of which I should make for you. The first one is a live 500.</p>",
+  "verdict": {
+    "score": 5,
+    "label": "not yet mergeable"
+  },
+  "extraCss": [
+    "assets/complexity-delta.css",
+    "assets/ds-audit.css"
+  ],
+  "tabs": [
+    {
+      "id": "review",
+      "label": "🤖 Review",
+      "count": true,
+      "blocks": [
+        {
+          "type": "findings",
+          "title": "Requires human review"
+        },
+        {
+          "type": "assumptions",
+          "mode": "B",
+          "title": "Decided by the coder, not by you"
+        },
+        {
+          "type": "autofixes",
+          "title": "Already fixed for you",
+          "body": "<p>Diffs cut from <code>bf26a0de</code> alone. A fourth was applied and then <b>reverted</b> — it inverted a rule the tests pin deliberately; that is item 9 above.</p>"
+        }
+      ],
+      "tip": "Findings from /code-review and /simplify — an LLM read the diff, so this tab cost tokens."
+    },
+    {
+      "id": "behaviour",
+      "label": "Demo",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "video"
+        }
+      ],
+      "tip": "Playwright drove the running app and the camera recorded it: no model in the loop."
+    },
+    {
+      "id": "api",
+      "label": "API",
+      "badge": "●",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "swaggerdiff"
+        }
+      ],
+      "tip": "oasdiff and Swagger UI. The breaking verdict is computed, not judged.",
+      "badgeClass": "dot-green",
+      "badgeLabel": "Backwards compatible — no breaking changes"
+    },
+    {
+      "id": "data",
+      "label": "Data",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "conceptual"
+        },
+        {
+          "type": "diagrams",
+          "only": [
+            "DomainModel",
+            "DB"
+          ]
+        }
+      ],
+      "tip": "Structural diff of the committed .puml files."
+    },
+    {
+      "id": "requirements",
+      "label": "Tests",
+      "tip": "The issue this branch answers, the acceptance tests written against it, and every test the branch moved.",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "requirements"
+        }
+      ]
+    },
+    {
+      "id": "sequence",
+      "label": "Sequence",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "sequences-note"
+        },
+        {
+          "type": "testpairs",
+          "id": "sequences",
+          "kind": "sequence",
+          "title": "Each test, beside the sequence its own run recorded",
+          "body": "The test says what was <i>intended</i>; the diagram says what the run actually did about it. Read them together — the pairing is derived from <code>MANIFEST.tsv</code>, which records the file each diagram was generated from, so a test added next month pairs itself. That is also why the Java pair needed no new machinery: it files its diagram beside its <code>.java</code>, and the manifest picked it up like any other.",
+          "snippets": [
+            {
+              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:51-60",
+              "caption": "The whole opt-in, in Java: <code>@GenerateSequence</code> on an otherwise ordinary <code>@SpringBootTest</code>. It is also a JUnit <code>@Tag</code>, which is how <code>mvn -Pgenseq -Dgroups=genseq</code> finds exactly these tests without a list of class names to keep in step."
+            },
+            {
+              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:124-155",
+              "caption": "This branch's behaviour at the cheapest layer that still crosses a real controller, a real transaction and a real Hibernate session — MockMvc, an embedded Postgres, and no browser at all. <code>given/when/then</code> are marks, not blocks: each opens the span the sentence's calls land in, which is what the diagram draws leaving the Test lifeline."
+            },
+            {
+              "ref": "petclinic-test/src/add-visit.spec.ts:35-48",
+              "caption": "The scenario that was already here: a visit with no vet."
+            },
+            {
+              "ref": "petclinic-test/src/add-visit.spec.ts:52-65",
+              "caption": "This branch's scenario. The vet link crosses browser → API → DB, which is why the diagram beside it is worth reading."
+            },
+            {
+              "ref": "petclinic-test/src/owner-search.feature:25-29",
+              "caption": "The one tagged scenario in this feature. Nothing on this branch touches owner search — it is here as the control."
+            },
+            {
+              "ref": "petclinic-test/src/add-visit.feature:15-18",
+              "caption": "The same behaviour as the TypeScript scenario above, in Gherkin."
+            }
+          ],
+          "unpaired": {
+            "id": "tests-nosequence",
+            "title": "Tagged for tracing, and no diagram came back",
+            "body": "Each of these carries <code>@generate_sequence</code>, so a traced run should have filed a <code>.genseq.puml</code> beside it, and none is in this checkout. That is a fact about the evidence rather than a gap in the page: the test is quoted here so the absence is visible, because a missing trace is usually tracing that was off for the run, not a test that does nothing."
+          }
+        }
+      ],
+      "tip": "Real OpenTelemetry traces, drawn: what each test and the backend actually said to each other — from a browser, or from a @SpringBootTest in the same JVM. No model in the loop."
+    },
+    {
+      "id": "packages",
+      "label": "Structure",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "packages-note"
+        },
+        {
+          "type": "puml",
+          "src": "petclinic-backend/docs/packages.puml",
+          "name": "Packages",
+          "status": "unchanged"
+        },
+        {
+          "type": "puml",
+          "src": "petclinic-backend/docs/generated/MavenModules.puml",
+          "name": "Maven modules",
+          "status": "unchanged"
+        }
+      ],
+      "tip": "Rendered from source and diffed structurally."
+    },
+    {
+      "id": "city",
+      "label": "Code City",
+      "blocks": [
+        {
+          "type": "codecity"
+        }
+      ],
+      "noStrike": true,
+      "tip": "Captured from the Code City renderer."
+    },
+    {
+      "id": "dsaudit",
+      "label": "UX",
+      "badge": "1",
+      "badgeClass": "dot-red",
+      "badgeLabel": "one control ships outside the design system",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "ds-audit"
+        }
+      ],
+      "tip": "Seven screens driven live with Playwright. A green badge is context; the red one is the finding."
+    },
+    {
+      "id": "complexity",
+      "label": "Complexity",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "complexity-delta"
+        }
+      ],
+      "tip": "Read from bytecode by the extractor test."
+    },
+    {
+      "id": "logging",
+      "label": "Logging",
+      "tip": "Every logging statement the change set added — found by syntax, not by grep. — ast-grep, matching syntax rather than asking a model.",
+      "blocks": [
+        {
+          "type": "logging",
+          "base": "origin/main",
+          "paths": [
+            "petclinic-backend"
+          ],
+          "id": "logging-added",
+          "title": "Logging added/updated",
+          "body": "<p>Found structurally with <code>ast-grep</code>, not by grepping for <code>log.</code> — <code>Math.log(x)</code> and a local variable called <code>log</code> are not logging. Each block also quotes the lines each logged value was traced back to — walked back through the syntax tree, not described.</p>"
+        }
+      ]
+    },
+    {
+      "id": "owners",
+      "label": "CODEOWNERS",
+      "badge": "!",
+      "badgeClass": "alarm",
+      "badgeLabel": "Code owners approval required",
+      "blocks": [
+        {
+          "type": "codeowners"
+        }
+      ],
+      "tip": "CODEOWNERS intersected with the change set."
+    }
+  ],
   "findings": [
     {
-      "severity": "info",
-      "title": "Local only: the working tree has <code>addVisitToOwner</code> stripped of its vet handling",
-      "body": "Not a defect in the change set — <code>HEAD</code> is intact. An <b>uncommitted</b> edit in the working tree removes four things from <code>addVisitToOwner</code>: the <code>VetRepository</code> import, the field, <code>@Validated</code> on the body, and the whole <code>if (vetId != null) setVet(...)</code> block — <code>+1 −6</code>. Because the Add Visit form posts to that owner-scoped endpoint (<code>visit.service.ts:34</code>), booking through the UI silently drops the vet <em>as the tree stands now</em>: a bare <code>curl</code> returns <code>201</code> with <code>vetId: null</code>, the e2e scenario is red, and the video narrates it.",
-      "why": "Listed so the red test and the video are not mistaken for a defect in the branch. <code>git checkout -- petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java</code> restores it. Everything below is about the committed change.",
-      "refs": [],
+      "severity": "high",
+      "title": "The new foreign key makes a vet with visits undeletable — <code>DELETE /api/vets/{id}</code> returns <b>500</b>",
+      "body": "<code>vet_id</code> gets no <code>ON DELETE</code> clause and nothing on the JPA side nulls it out, so <code>delete(vet)</code> raises a foreign-key violation the advice turns into a 500. Verified live this run: <code>DELETE /api/vets/4</code> → <b>HTTP 500</b>, <code>violates foreign key constraint \"visits_vet_id_fkey\"</code>. The backfill gives every seeded vet a visit, so on a fresh database none of the six can be deleted.",
+      "refs": [
+        "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:3-8"
+      ],
+      "source": "/code-review",
+      "why": "Three defensible answers: <code>ON DELETE SET NULL</code>, a guard in <code>deleteVet</code> answering 409, or “a vet who has attended is not deletable”. Returning 500 is not one of them.",
       "snippets": [
         {
-          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:142-153",
-          "caption": "The handler the form actually calls — vetId never leaves the DTO."
+          "ref": "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:3-4",
+          "caption": "No ON DELETE clause on the new constraint."
         },
         {
-          "ref": "petclinic-frontend/src/app/visits/visit.service.ts:34-42",
-          "caption": "Why this is the path that matters: the form posts owner-scoped, not to /api/visits."
-        }
-      ]
-    },
-    {
-      "severity": "high",
-      "title": "The new foreign key makes every seeded vet undeletable — <code>DELETE /api/vets/{id}</code> now returns 500",
-      "body": "<code>vet_id INT REFERENCES vets (id)</code> carries no <code>ON DELETE</code> clause, and nothing on the JPA side nulls it out: <code>Visit</code> is the owning side and <code>Vet</code> has no <code>visits</code> mapping. <code>deleteVet</code> just calls <code>delete(vet)</code>, so Postgres raises a FK violation, which <code>handleGeneralException</code> turns into a 500. The backfill on line 8 assigns a vet to <em>every</em> seeded visit, so all six demo vets become undeletable the moment this migration runs.",
-      "why": "Your call: <code>ON DELETE SET NULL</code> on the constraint, or null the visits out in <code>deleteVet</code>. Either changes behaviour, and amending V9 in place will trip Flyway's checksum on any database that already ran it — which is why I left it. No test covers deleting a vet that has visits.",
-      "refs": [
-        "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:3",
-        "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:88"
-      ],
-      "snippets": [
-        {
-          "ref": "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:1-8",
-          "caption": "The migration — no ON DELETE, and an unconditional backfill."
-        },
-        {
-          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:86-91",
-          "caption": "The delete path that now breaks."
-        }
-      ]
-    },
-    {
-      "severity": "high",
-      "title": "The backfill hardcodes vet ids 1–6 and has no <code>WHERE</code>",
-      "body": "<code>UPDATE visits SET vet_id = 1 + (id % 6)</code> assumes <code>vets</code> holds exactly ids 1..6 — true only for a pristine V3 seed. Delete a vet and add another through the existing API before upgrading, and the UPDATE points at a missing id: FK violation, Flyway marks V9 <b>failed</b>, and the backend refuses to boot until someone repairs it by hand. And the comment above it (\"every visit in the DB at this point comes from the V3 sample data\") is false for any database that has been in use: visits created through the UI or booked over MCP silently acquire a fabricated attending vet.",
-      "why": "The commit's own design says a null vet is legitimate, and both the UI and the tests already render the <code>—</code> fallback — so this write buys a demo nicety at the price of a data-integrity assumption. House precedent (<code>V5__clear_demo_owner_phone.sql</code>) keys data fixes off a name, not a hardcoded id.",
-      "refs": [
-        "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:6"
-      ]
-    },
-    {
-      "severity": "medium",
-      "title": "<code>PUT /api/visits/{id}</code> silently clears the attending vet when <code>vetId</code> is absent",
-      "body": "The handler overwrites unconditionally, so an existing consumer that PUTs only <code>{date, description}</code> — a script, or a client generated from the OpenAPI spec before this change — now also wipes <code>vet_id</code>, with nothing in the response to say so. <code>update_clearsTheAttendingVet</code> blesses this as intended behaviour, which makes it a decision rather than a bug.",
-      "why": "Either document it as a breaking change to the endpoint, or distinguish \"field absent\" from \"explicitly null\" (a <code>JsonNullable</code>/PATCH split). Both are contract decisions.",
-      "refs": [
-        "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:75"
-      ],
-      "snippets": [
-        {
-          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:70-77",
-          "caption": "Absent vetId and explicit null are indistinguishable here."
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:96-100",
+          "caption": "And nothing between the request and the violation."
         }
       ]
     },
     {
       "severity": "medium",
-      "title": "An unknown <code>vetId</code> answers 404, not 400",
-      "body": "<code>getByIdOrNull</code> throws a bare <code>NoSuchElementException</code>, which the advice maps to <code>404</code> with a plain-text <code>\"Not found!\"</code> body — not the <code>ProblemDetail</code> shape every other error uses. <code>PUT /api/visits/5</code> with <code>{\"vetId\": 999}</code> on an existing visit 5 therefore returns a 404 that is indistinguishable from \"visit 5 does not exist\", and the Angular error handler surfaces the wrong message. A bad <em>request field</em> is a 400.",
-      "why": "Fixing it means picking an exception type and touching <code>ExceptionControllerAdvice</code> — a cross-cutting contract change, so it is yours. It applies to <code>POST /api/visits</code> too.",
+      "title": "The V9 backfill hardcodes vet ids 1–6, and the comment above it is not true of every database",
+      "body": "The <code>UPDATE</code> assumes the six V3-seeded vets still occupy ids 1–6. <code>DELETE /api/vets/{id}</code> is exposed, so in any long-lived database where a seeded vet was removed this violates <code>visits_vet_id_fkey</code>: Flyway aborts and the app does not start.",
       "refs": [
-        "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:24"
+        "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:6-8"
       ],
+      "source": "/code-review",
+      "why": "Also false wherever a visit was booked through the UI. Selecting from the vets that actually exist costs one subquery and removes both problems.",
       "snippets": [
         {
-          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:18-29",
-          "caption": "The lookup I extracted — the null rule is now in one place, but the failure mode is still 404."
+          "ref": "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:6-8",
+          "caption": "Both the claim and the arithmetic that depends on it."
+        }
+      ]
+    },
+    {
+      "severity": "medium",
+      "title": "The vet dropdown calls a <code>VET_ADMIN</code> endpoint from two <code>OWNER_ADMIN</code> screens, and the 403 is swallowed",
+      "body": "The 403 is swallowed into an empty array, so the select renders with nothing but <i>-- not assigned --</i> and no error.",
+      "refs": [
+        "petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:40-48"
+      ],
+      "source": "/code-review",
+      "why": "Masked today: <code>petclinic.security.enable</code> is false by default and the one seeded user holds all three roles, so no test catches it. <code>PetTypeRestController</code> sets the precedent — <code>hasAnyRole(@roles.OWNER_ADMIN, @roles.VET_ADMIN)</code> — but widening an authorization rule is a contract decision.",
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:27-30",
+          "caption": "The role the whole controller requires."
+        },
+        {
+          "ref": "petclinic-frontend/src/app/vets/vet.service.ts:21-26",
+          "caption": "…and where the 403 becomes an empty list."
+        }
+      ]
+    },
+    {
+      "severity": "medium",
+      "title": "<code>@ManyToOne Vet</code> is EAGER, and only one of the four read paths join-fetches it",
+      "body": "The other three — <code>GET /api/owners/{ownerId}</code> (which the new e2e exercises), <code>GET /api/visits/{visitId}</code> and <code>PetClinicMcp.listVisits</code> — issue one <code>select … from vets where id=?</code> per visit. On the MCP tool that is N+1 across the whole clinic.",
+      "refs": [
+        "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:30-38"
+      ],
+      "source": "/code-review",
+      "why": "<code>LAZY</code> trades a query count for a <code>LazyInitializationException</code> on any path that maps outside the transaction. That trade is yours.",
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:30-33",
+          "caption": "EAGER by omission — @ManyToOne defaults to it."
+        },
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:18-19",
+          "caption": "The one query that was taught about the vet."
         }
       ]
     },
     {
       "severity": "low",
-      "title": "<code>@ManyToOne</code> defaults to EAGER, so vets load on every visit-reading path",
-      "body": "Only <code>findAllWithPetAndOwner</code> got the <code>LEFT JOIN FETCH v.vet</code>. <code>GET /api/pets</code>, the owner-detail page and MCP <code>list_visits</code> each now issue extra <code>SELECT … FROM vets</code> when visits are materialised. The first-level cache bounds it to the number of distinct vets per session, so the cost is modest.",
-      "why": "I left it because <code>fetch = LAZY</code> risks a <code>LazyInitializationException</code> in the mappers that run outside a transaction — which is a correctness change disguised as a tuning knob, and needs your read on the other paths.",
+      "title": "An unknown <code>vetId</code> answers 404, for a resource the client is trying to create",
+      "body": "<code>orElseThrow()</code> throws <code>NoSuchElementException</code>, which the advice maps to <b>404</b> with a bare <code>\"Not found!\"</code> string body rather than the <code>ProblemDetail</code> every other handler returns. <code>POST /api/visits {\"vetId\": 9999}</code> answers 404 and the client cannot tell a bad field from a bad URL.",
       "refs": [
-        "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:35"
+        "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:22-34"
       ],
+      "source": "/code-review",
+      "why": "Its Javadoc says <i>“an unknown one is rejected”</i>; a 400 naming the field would match that intent. Left alone because a status code is a contract.",
       "snippets": [
         {
-          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:35-37",
-          "caption": "The new association."
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:22-34",
+          "caption": "The rule, and the throw that decides the status code."
+        }
+      ]
+    },
+    {
+      "severity": "low",
+      "title": "The map now says a visit has exactly one vet, and the code says it may have none",
+      "body": "<code>DomainModelExtractor</code> reads the model by plain reflection and ignores JPA annotations on purpose, so it can only mark a <code>*</code> end — an unmarked end reads as <b>exactly one</b>.",
+      "refs": [
+        "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:30-38"
+      ],
+      "source": "/simplify",
+      "why": "Optionality is the central design decision of this change and the one thing the living diagrams cannot show; no test will complain either — the extractor that feeds them cannot see it.",
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:29-33",
+          "caption": "The Javadoc says 0..1; the diagram says 1."
+        }
+      ]
+    },
+    {
+      "severity": "low",
+      "title": "The deny that protects the generated <code>openapi.yaml</code> covers only one tool",
+      "body": "<code>Edit(./openapi.yaml)</code> blocks <code>Edit</code> and not <code>Write</code>, <code>MultiEdit</code> or <code>NotebookEdit</code>; the shell-write denies added earlier were dropped again. <code>CLAUDE.md</code> says hand-editing the file is denied, so the rule and the documentation disagree.",
+      "refs": [
+        ".claude/settings.json:10-16"
+      ],
+      "source": "/code-review",
+      "why": "Raised, not fixed, on purpose: an agent should not widen its own permission configuration because a review suggested it — and the <code>./</code> prefix in that glob is worth confirming actually matches first.",
+      "snippets": [
+        {
+          "ref": ".claude/settings.json:10-16",
+          "caption": "The deny, and the three verbs it does not name."
         }
       ]
     },
     {
       "severity": "info",
-      "title": "Unrelated: the trace-window store races itself and drops a diagram",
-      "body": "<code>trace-window-store.ts:13</code> read-modify-writes a shared JSON file from parallel Playwright workers; on the first traced run one worker read a truncated file and the scenario failed with <code>SyntaxError: Unexpected end of JSON input</code>, losing its sequence diagram. Re-running with <code>--workers=1</code> produced all four. Pre-existing, not this branch — but it will keep costing diagrams.",
-      "why": "Not fixed: it is outside the change set under review.",
+      "title": "The sequence deltas carry rendering noise",
+      "body": "This branch moved the diagram generator itself — <code>trace-to-puml.ts</code> alone changed 102 lines — so the committed base diagrams were rendered by the <i>old</i> generator and arrows that never changed still read as removed-and-re-added: <b>45 of 54 arrows red</b> in <code>add-visit</code>, <b>34 of 64</b> in <code>owner-search</code>, a scenario this feature does not touch at all.",
       "refs": [
-        "petclinic-test/src/support/trace-window-store.ts:13"
-      ]
-    }
-  ],
-  "diagrams": {
-    "title": "Diagram deltas",
-    "body": "Red = added, red struck-through = removed. Each image is the <em>delta</em>, not the snapshot — produced by <code>scripts/puml-diff.sh origin/main</code>, which diffs every changed <code>.puml</code> and dispatches structural diagrams to <code>puml_diff.py</code> and sequence diagrams to <code>seq_puml_diff.py</code>. The sequence arrows now carry the <b>real SQL</b> and the request/response payloads, and the browser's page-load resource fetches are gone — that engine came in with the merge of <code>origin/main</code>.",
-    "only": [
-      "DB",
-      "DomainModel",
-      "add-visit.spec.ts.genseq"
-    ],
-    "notes": {
-      "DB": "One nullable FK column and one relationship: <code>visits.vet_id → vets.id</code>. Nothing else in the schema moved.",
-      "DomainModel": "<code>Vet 1 — 0..* Visit</code>. The multiplicity is the design statement: a visit <em>may</em> have a vet, which is what makes the change backward-compatible with the legacy rows.",
-      "add-visit.spec.ts.genseq": "Red is what this branch adds to the trace. The new <code>== Add a visit attended by a vet ==</code> section is the boundary crossing that matters: <code>GET /api/vets</code> to fill the dropdown, then the booking round-trip. Each section is one <code>@generate_sequence</code> test in the file — the links below open the test that produced it and the diagram source."
-    }
-  },
-  "codecity": {
-    "title": "Where it landed in the city",
-    "body": "Every building is a class, sized by file size, coloured by churn; the branch's change set is lit and the rest of the skyline recedes. The change is a clean vertical slice — one domain class, one mapper, one repository, the two controllers, the DTOs, and the MCP tool — with no unrelated neighbourhood touched.",
-    "png": "assets/codecity.png",
-    "href": "assets/codecity/codecity.html",
-    "caption": "Click the image to open the live 3D city (Cmd/Ctrl-double-click a building there opens the file in VS Code)."
-  },
-  "extraCss": [
-    "assets/complexity.css"
-  ],
-  "testChanges": "assets/test-changes.json",
-  "sections": [
-    {
-      "id": "video",
-      "title": "See it work",
-      "body": "<p><b>Watch the captions:</b> this recording narrates what actually happens, including the moment the newly booked visit comes back with no vet (finding 1). The recorder asserts the row it just created rather than any row showing that name, so it cannot film a success the app did not deliver.</p><p>The whole tour, slowly, in a real browser: the owner's visit list, the Add Visit form and its new vet dropdown, the cross-owner visits page, and the Edit form with the vet coming back pre-selected. Recorded by <code>scripts/record-feature-video.sh</code>; the same flow is pinned by the Playwright scenario below.</p><p><b>Pages this change touches</b> — links open the running app:</p><table class=\"stat\"><tr><td><b>Owner detail</b></td><td><a href=\"http://localhost:4200/owners/2\"><code>/owners/2</code></a></td><td>the per-pet visit list — gained the <b>Vet</b> column</td></tr><tr><td><b>Add Visit</b></td><td><a href=\"http://localhost:4200/pets/2/visits/add\"><code>/pets/2/visits/add</code></a></td><td>gained the <b>Vet</b> dropdown, with <code>-- not assigned --</code> as the default</td></tr><tr><td><b>All visits</b></td><td><a href=\"http://localhost:4200/visits\"><code>/visits</code></a></td><td>the cross-owner list — gained the same <b>Vet</b> column</td></tr><tr><td><b>Edit Visit</b></td><td><a href=\"http://localhost:4200/visits/1/edit\"><code>/visits/1/edit</code></a></td><td>gained the <b>Vet</b> dropdown, pre-selected from the saved visit</td></tr></table>",
-      "video": "assets/add-visit-attended-by-a-vet.webm"
+        "petclinic-test/src/genseq/trace-to-puml.ts:1-20"
+      ],
+      "source": "/simplify",
+      "why": "Red means “rendered differently”, not “changed”. In <code>add-visit</code>, the <code>listVets</code> / <code>GET /api/vets</code> arrows are genuinely new. Re-recording the base side with the base generator needs the stack running on the base commit, and its ports are fixed."
     },
     {
-      "id": "complexity",
-      "title": "Entry Point Complexity",
-      "body": "<p>Grey is what the entry point already cost; <span class=\"added\"><b>green</b></span> is what this branch added (red would be what it removed). Both snapshots come from the same extractor — the baseline was produced by re-running it against the merge-base source — so every row is a real before/after, including the MCP tools.</p><p>The shape is worth noticing: the <b>+1</b>s are the paths that now resolve or format a vet, while every <b>+3</b> is the same thing paid over and over — the vet block in <code>VisitMapperImpl</code>, on every entry point that maps a visit. <code>GET /api/owners</code> was already the most expensive flow in the app at 20 and this pushes it to 23, so the change makes the heaviest entry point heavier rather than creating a new hot spot. On the MCP side only <code>list_visits</code> moved (3 → 4); the other four tools are untouched.</p>",
-      "includeHtml": "assets/complexity.html"
-    },
-    {
-      "id": "logic",
-      "title": "Core business logic",
-      "body": "<p>Three decisions carry the feature; everything else is plumbing.</p><p><b>1. The vet is optional, by design.</b> Legacy rows and MCP-booked visits have none, so the column is nullable and the association un-required. This is what lets the change ship without a data migration for real clinics.</p>",
+      "severity": "info",
+      "title": "Which line should a diagram header point at — the comment, or the declaration?",
+      "body": "The existing test pins the opposite rule on purpose, at line 3 of its fixture: a comment naming the test is still where a reviewer wants to land. The applied fix was reverted; the file is untouched by this branch.",
+      "refs": [
+        "petclinic-test/src/genseq/test-location.spec.ts:29-33"
+      ],
+      "source": "/simplify",
+      "why": "Which rule you actually want is a call for whoever reads these diagrams.",
       "snippets": [
         {
-          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:35-37",
-          "caption": "2. A visit points at its vet, not the other way round — Vet has no visits collection, which is why deleting a vet has no cascade to follow (see finding 1)."
-        },
-        {
-          "ref": "petclinic-frontend/src/app/visits/vet-name.pipe.ts:8-19",
-          "caption": "3. “No vet” is a first-class display state, not an empty cell. Extracted during this review from two templates that each spelled the rule out inline."
+          "ref": "petclinic-test/src/genseq/test-location.spec.ts:28-33",
+          "caption": "The preference the revert put back."
         }
       ]
+    }
+  ],
+  "autofixes": [
+    {
+      "severity": "high",
+      "title": "Restored the architecture arrow this branch had commented out",
+      "body": "",
+      "refs": [],
+      "source": "/code-review",
+      "why": "<code>PackagesArchTest</code> was red: line 38 had been commented out during a demo, so the arrow the guardrail checks was not in the diagram. Green again.",
+      "diffs": [
+        {
+          "path": "petclinic-backend/docs/packages.puml",
+          "base": "bf26a0de^",
+          "head": "bf26a0de"
+        }
+      ]
+    },
+    {
+      "severity": "medium",
+      "title": "Made the two remaining visit write paths one unit of work — on the public methods, not the private one",
+      "body": "",
+      "refs": [],
+      "source": "/code-review",
+      "why": "<code>@Transactional</code> on the private, self-invoked method is a no-op — Spring AOP proxies the public entry point, which is where it now sits.",
+      "diffs": [
+        {
+          "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+          "base": "bf26a0de^",
+          "head": "bf26a0de"
+        }
+      ]
+    },
+    {
+      "severity": "low",
+      "title": "Attaching a vet to a visit no longer drags its specialties along",
+      "body": "",
+      "refs": [],
+      "source": "/simplify",
+      "why": "The vet-detail query was fetching specialties that three write endpoints throw away; the existing one is untouched for the paths that need them.",
+      "diffs": [
+        {
+          "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
+          "base": "bf26a0de^",
+          "head": "bf26a0de"
+        }
+      ]
+    }
+  ],
+  "codecity": {
+    "body": "<b>11 classes lit</b> — a clean vertical slice: domain, mapper, repository, controller, and the tests beside them.",
+    "png": "assets/codecity.png",
+    "href": "assets/codecity/codecity.html"
+  },
+  "sections": [
+    {
+      "id": "conceptual",
+      "title": "The concepts, as the team drew them",
+      "body": "<div class=\"diagram dgm-toggles\"><div class=\"head\"><b>Conceptual Model</b><a class=\"dgm-src\" href=\"vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/ConceptualModel.drawio.png:1:1\">petclinic-backend/docs/ConceptualModel.drawio.png</a></div><p>Hand-drawn in draw.io, checked against the code by <code>ConceptualModelDiagramTest</code> — box names, and which boxes a line connects.</p><p><b>Red</b> — a link the drawing lacked, drawn by automation to keep that test green: open it in draw.io, re-lay it out by hand, and turn <b>every</b> line black while you are in there. <b>Green</b> — new against <code>main</code>.</p>{{drawio:conceptual}}</div>",
+      "unchanged": true
+    },
+    {
+      "id": "ds-audit",
+      "title": "Where the design system was not used",
+      "body": "<p><code>main</code> introduced <code>app-combo</code> — one standardised single-select that marks its host <code>data-ds=\"combo\"</code> — and moved every existing single-select onto it. This branch adds a vet picker to <b>two</b> screens and puts only one of them on the component.</p><p>Flagged: a native control filling a role the design system covers, with no <code>[data-ds]</code> above it. The roles are derived from the components themselves — the attribute <i>is</i> the registry — so controls the design system has no component for, like the multi-select on <b>Edit a vet</b>, are listed as considered and deliberately not judged.</p><p><b>Nothing else in the repository catches this.</b> Not ESLint, not the guardrails, not Cucumber: <code>app-combo</code> renders an inner <code>&lt;select&gt;</code> carrying the same <code>id</code>, so <code>page.locator('select#vetId')</code> in <code>add-visit.spec.ts</code> matches either implementation identically.</p>",
+      "includeHtml": "assets/ds-audit.html"
+    },
+    {
+      "id": "swaggerdiff",
+      "title": "",
+      "includeHtml": "assets/openapi-verdict.html",
+      "embed": {
+        "src": "assets/openapi-visual-diff.html#only-touched",
+        "class": "oaviframe",
+        "label": "openapi-visual-diff — openapi.yaml at 0e1d2647 against the working tree",
+        "missing": "run scripts/openapi-visual-diff.py (needs `brew install oasdiff`)"
+      }
+    },
+    {
+      "id": "video",
+      "title": "",
+      "body": "",
+      "video": "assets/attending-vet.webm",
+      "appLinks": [
+        {
+          "href": "/petclinic/owners/2",
+          "label": "owner detail",
+          "anchor": "visit list"
+        },
+        {
+          "href": "/petclinic/vets",
+          "label": "vets",
+          "anchor": "who will attend"
+        },
+        {
+          "href": "/petclinic/visits",
+          "label": "all visits"
+        }
+      ],
+      "runtime": {
+        "command": "cd ~/workspace/petclinic-pr && ./start-docker.sh up --ref 2a03c604",
+        "base": "",
+        "reset": "/__reset",
+        "drive": "cd ~/workspace/petclinic-pr/petclinic-test && node ~/workspace/human-review/skills/human-review/scripts/drive-to-cue.js --app {base} --script ../.human-review/feature-script.js --cue {n}"
+      }
+    },
+    {
+      "id": "sequences-note",
+      "title": "One opt-in, three test languages, four diagrams",
+      "body": "<p class=\"lede\">Every diagram in this tab was drawn from real OpenTelemetry traces of a test run, and every test that produced one opts in the same way: <code>@generate_sequence</code> as a Cucumber scenario tag in a <code>.feature</code>, the identical string as a Playwright tag in a <code>.spec.ts</code>, and <code>@GenerateSequence</code> on a <code>@SpringBootTest</code> in Java. Nothing else about a test changes in order to be drawn.</p><p><b>The Java pair is the cheapest of the three to record.</b> <code>AddVisitSequenceTest</code> is an in-memory integration test — no Chromium, no Angular, no running server, an embedded Postgres thrown away with the JVM — and it still exercises the real controller, the real transaction boundaries and the real Hibernate session, which is why its N+1 is the same N+1 the browser diagrams show. The JVM writes the very same trace-window file the browser suites write, and the very same generator turns it into a <code>.puml</code>; nothing in the renderer had to learn what a <code>@SpringBootTest</code> is. What it does need is Tempo up (<code>./start-grafana.sh</code>) and the OpenTelemetry Java agent attached, which is what <code>petclinic-backend/run-tests-with-tracing.sh</code> arranges. Under a plain <code>mvn test</code> the tracer is a no-op, the annotation costs nothing, and it is an ordinary test.</p><p><b>The generator itself moved on this branch</b>, so arrows that never changed still read as removed-and-re-added. The last finding on the Review tab measures how much.</p>",
+      "unchanged": true
+    },
+    {
+      "id": "complexity-delta",
+      "embed": {
+        "src": "assets/endpoint-complexity-explained.html",
+        "class": "oaviframe",
+        "label": "endpoint-complexity-explained — every increment, with a running total",
+        "missing": "run mvn test -Dtest=EndpointComplexityExtractorTest"
+      },
+      "includeHtml": "assets/complexity-delta.html",
+      "title": "",
+      "body": ""
+    },
+    {
+      "id": "packages-note",
+      "title": "Neither picture moved on this branch",
+      "body": "<p><b>Packages</b> — the dependencies allowed between Java packages, written by hand as the rule and enforced on every build by <code>PackagesArchTest</code> (ArchUnit): the test fails when the code disagrees with it. This branch did briefly break it — the <code>[Mapper] → [DTO]</code> arrow had been commented out during a demo. Restoring it is in the fixed list on the Review tab.</p><p><b>Maven modules</b> — from <code>mvn dependency:tree</code> per project, filtered to this repo's own <code>groupId:artifactId</code> pairs: four standalone builds with nothing between them. There is no aggregator <code>pom.xml</code> at the root, and <code>petclinic-frontend</code> and <code>petclinic-test</code> have no <code>pom.xml</code> at all.</p>",
+      "unchanged": true
     },
     {
       "id": "requirements",
-      "title": "Requirements",
-      "body": "<p>What the change set was supposed to do, and what pins each of it. The flag on every row below is not a claim in this file: <code>scripts/test-changes.py</code> reads the diff against the merge-base and decides, per <em>test case</em>, whether it is new, edited, deleted or untouched. This file only says which requirement a test belongs to.</p><div class=\"evidence\"><section class=\"evi e2e\"><h4><span class=\"evi-ic\">🌐</span> End-to-end (Playwright)<span class=\"evi-n\">1 new</span></h4><p>A real browser, the real API, the real database.</p><ul><li><b>Add a visit attended by a vet</b> — picks a vet in the dropdown and reads the name back off the owner's visit list. It is the scenario tagged <code>@generate_sequence</code>, so its own trace is the sequence diagram above.</li></ul></section><section class=\"evi api\"><h4><span class=\"evi-ic\">🔌</span> API (Spring MockMvc)<span class=\"evi-n\">4 new</span></h4><p><code>VisitTest</code> drives the two write endpoints and the read-back, inside a transaction that is flushed and cleared so the assertion reaches the database.</p><ul><li>Creating with a vet, exposing it on <code>GET</code>, changing it, and clearing it.</li></ul></section><section class=\"evi unit\"><h4><span class=\"evi-ic\">🧪</span> Component (Jasmine)<span class=\"evi-n\">2 new</span></h4><p>Both visit tables, rendered against a fixture that carries one attended visit and one unattended one — so the em-dash fallback is asserted, not assumed.</p></section><section class=\"evi none\"><h4><span class=\"evi-ic\">⚠️</span> Migration and vet lifecycle<span class=\"evi-n\">nothing</span></h4><p>No test at any level runs V9 against a database whose vet ids are not 1–6, and none deletes a vet that attended a visit. Those are the two requirements below that carry no list, and the two findings at the top of this page.</p></section></div>",
-      "requirements": [
-        {
-          "text": "<b>A visit may name the vet who attended it — and may legitimately name none.</b> <code>visits.vet_id</code> is nullable and <code>Visit.vet</code> is an optional <code>@ManyToOne</code>, so legacy rows, and visits booked over MCP, stay valid. The field travels the whole way out to <code>VisitDto</code> and back in through both write endpoints.",
-          "tests": [
-            {
-              "name": "create_withVet"
-            },
-            {
-              "name": "getById_exposesTheAttendingVet"
-            },
-            {
-              "name": "update_changesTheAttendingVet"
-            },
-            {
-              "name": "update_clearsTheAttendingVet",
-              "note": "The behaviour finding 4 asks you to confirm is intended rather than accidental."
-            },
-            {
-              "name": "update_ok",
-              "note": "Flagged edited because the four new tests landed directly beneath it — its own body is untouched. The unit is the test case, and its span runs to the next declaration, so an insertion at the seam reads as a change."
-            },
-            {
-              "name": "create_ok",
-              "note": "Untouched, and that is the point: creating a visit with no vet at all still has to work."
-            }
-          ]
-        },
-        {
-          "text": "<b>The Add Visit and Edit Visit forms offer a vet dropdown, defaulting to <code>-- not assigned --</code>.</b> On Edit it comes back pre-selected from the saved visit; on Add it starts on the placeholder, which is what the <code>{vetId: null}</code> seed in both components is for.",
-          "tests": [
-            {
-              "name": "Add a visit attended by a vet",
-              "path": "petclinic-test/src/add-visit.spec.ts"
-            },
-            {
-              "name": "Add a visit to an existing pet from the owner detail page",
-              "path": "petclinic-test/features/add-visit.feature",
-              "note": "The Cucumber scenario that used to cover this form went with the suite flattening in this change set; the Playwright spec above replaced it."
-            },
-            {
-              "name": "should submit visit and navigate to owner detail",
-              "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
-              "note": "Untouched — the form's own component test never learned that there is a vet to submit."
-            }
-          ]
-        },
-        {
-          "text": "<b>Both visit lists carry a Vet column, showing an em-dash when nobody attended.</b> The per-pet list on the owner detail page and the cross-owner list on <code>/visits</code>, both through the <code>vetName</code> pipe extracted during this review — so the two tables cannot drift apart on what “no vet” looks like.",
-          "tests": [
-            {
-              "name": "should show the attending vet"
-            },
-            {
-              "name": "renders the attending vet, and a dash when none is assigned"
-            }
-          ]
-        },
-        {
-          "text": "<b>Existing visits are backfilled with one of the six seeded vets, so the UI has something to show.</b> <code>UPDATE visits SET vet_id = 1 + (id % 6)</code>, unconditional, in V9. <span class=\"sub\">Nothing pins this: no test runs the migration against a database whose vet ids are not 1–6, which is why findings 2 and 3 are as easy to miss as they are.</span>"
-        },
-        {
-          "text": "<b>A vet can still be deleted.</b> The requirement nobody wrote down, and the one the new foreign key broke: <code>DELETE /api/vets/{id}</code> now answers 500 for every seeded vet. <span class=\"sub\">No test at any level covers it — the empty list under this requirement is the honest rendering of that.</span>"
-        }
-      ]
-    },
-    {
-      "id": "tests",
-      "title": "Acceptance tests",
-      "body": "<p>The scenario below is the one carrying <code>@generate_sequence</code>: it is the only test that crosses every boundary this change touches, so its trace becomes the sequence diagram above. It is <b>red right now</b> — see finding 1.</p>",
-      "snippets": [
-        {
-          "ref": "petclinic-test/src/add-visit.spec.ts:38-53",
-          "caption": "The end-to-end contract — currently failing on its last assertion."
-        },
-        {
-          "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:276-291",
-          "caption": "The clearing behaviour that finding 3 asks you to confirm is intended — note the flushAndClear() I added, without which this assertion read back the controller's own in-memory instance and would have passed even with the save() deleted."
-        }
-      ]
-    },
-    {
-      "id": "notcovered",
-      "title": "What is not covered",
-      "body": "<ul><li><b>Deleting a vet that attended a visit</b> — no test at any level, and it is currently a 500 (finding 1).</li><li><b>An unknown <code>vetId</code></b> — no test pins the status code, which is why finding 4 is easy to get wrong either way.</li><li><b>The V9 backfill</b> — no test runs it against a database whose vet ids are not 1–6.</li><li>Three sequence diagrams changed only as regeneration artifacts (<code>add-a-follow-up-visit…</code>, <code>add-a-visit-to-an-existing-pet…</code>, <code>emptying-the-last-name-field…</code>): the red in them is Hibernate statement-label granularity, not behaviour. They are in <code>review/assets/diagrams/</code> if you want to check that claim.</li></ul>"
-    },
-    {
-      "id": "fixed",
-      "title": "Fixed for you",
-      "body": "<p>Everything below came out of <code>/code-review</code> and <code>/simplify</code> and had exactly one defensible answer, so I applied it rather than spending your attention on it. Backend tests are green after these. Anything needing a judgement call went to <a href=\"#first\">Look here first</a> instead.</p><h3>1. The vet lookup had two homes</h3><p><code>VisitRestController</code> carried a private <code>resolveVet</code> that both of its write paths called. The null rule — \"no vetId means no vet, an unknown one is rejected\" — is a property of looking a vet up, not of a controller, so it moved onto the repository. Spring Data enforces <code>@NonNullApi</code> on repository methods, so the parameter needed an explicit <code>@Nullable</code>: without it the call throws <em>before</em> it reaches the body, and three tests went red on the first run.</p>{{snippet:petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:18-29|The rule, now in one place.}}<h3>2. Three tests were green for the wrong reason</h3><p><code>VisitTest</code> is <code>@Transactional</code>, so the test and the MockMvc-invoked controller share one persistence context. Every vet test asserted against the very instance the controller had just mutated in memory — they would have stayed green with <code>visitRepository.save()</code> deleted outright. They now flush and clear first, so the assertion reads the database.</p>{{snippet:petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:293-303|Added, and called before every read-back.}}<h3>3. The vet dropdown opened blank</h3><p>Both forms started from <code>this.visit = {} as Visit</code>, leaving <code>vetId</code> <code>undefined</code>. The placeholder option binds to <code>null</code>, and <code>undefined !== null</code> for Angular's option lookup, so the select rendered with <code>selectedIndex = -1</code> — empty — until the user touched it.</p>{{snippet:petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:36|Same one-line change in visit-edit.}}<h3>4. The same em-dash rule, written out twice</h3><p><code>visit.vetFirstName ? visit.vetFirstName + ' ' + visit.vetLastName : '—'</code> was spelled out inline in both visit-list templates. \"No vet\" is a display decision the whole app should make the same way, so it became a pipe — which also gets a long ternary out of a template.</p>{{snippet:petclinic-frontend/src/app/visits/vet-name.pipe.ts:8-19|Declared and exported from VisitsModule; both templates now read {{ visit | vetName }}.}}<h3>5. The e2e vet picker depended on the placeholder's position</h3><p>It selected <code>option.nth(1)</code> — \"index 0 is the placeholder\" encoded as an incidental fact about the template. Reorder the options, or add a second placeholder, and an unrelated scenario fails confusingly. It now picks the first option that actually carries a vet id.</p>{{snippet:petclinic-test/src/add-visit.dsl.ts:44-57|}}<h3>6. A dead import</h3><p><code>VisitRestController</code> stopped naming the <code>Vet</code> type once the lookup moved to the repository. Removed.</p>",
-      "snippets": []
+      "body": "",
+      "includeHtml": "assets/requirements-map.html",
+      "title": "",
+      "includeFirst": true
     }
   ],
-  "footer": "Generated by /human-review. <code>review/</code> is a throwaway artifact — delete it rather than commit it.",
-  "verdict": {
-    "score": 5,
-    "label": "not yet mergeable",
-    "bullets": [
-      "Feature design — sound. Nullable FK, one association, artifacts regenerated not hand-edited.",
-      "V9 — two defects that reach production behaviour.",
-      "<code>DELETE /api/vets/{id}</code> — HTTP 500 for all six seeded vets. A regression, not a gap.",
-      "Backfill on any DB whose vet ids aren't 1–6 — Flyway failure, backend won't boot.",
-      "Red e2e + vet-less video = an uncommitted local edit, not the branch. See finding 1."
-    ]
-  }
+  "footer": "Built by /human-review against the running stack on 2 Sep 2026.",
+  "pr": {
+    "number": 37,
+    "title": "Link Visit with Vet",
+    "url": "https://github.com/victorrentea/petclinic/issues/37",
+    "repo": "https://github.com/victorrentea/petclinic",
+    "branch": "test-pr",
+    "base": "main"
+  },
+  "note": "A visit now records the vet that attended it — merge-base <code>5acf2472</code>.",
+  "testChanges": "assets/test-changes.json",
+  "testLedger": false,
+  "assumptions": [
+    {
+      "source": "assumption",
+      "title": "The attending vet is optional at every layer &mdash; a visit nobody attended is a legal, permanent state",
+      "body": "Issue #37 asks that a visit &ldquo;be linked to the vet that attended that consultation&rdquo; and never says whether that link is mandatory. Six minutes in, the coder settled it as nullable everywhere &mdash; column, entity, both DTOs, no validation &mdash; and made <code>-- not assigned --</code> the picker's first option. Nothing in the stack can now refuse a vet-less visit. <em>&ldquo;one design decision matters: vet should be optional/nullable since legacy rows and MCP-booked visits won't have one yet&rdquo;</em> &mdash; its own thinking, 13 Aug 23:00.",
+      "alternative": "Required on every <b>new</b> visit &mdash; <code>@NotNull</code> on <code>VisitFieldsDto</code>, <code>NOT NULL</code> after the backfill &mdash; with vet-less tolerated only for rows that predate the column.",
+      "why": "Whether a receptionist may save a visit naming no vet, and whether that is a legitimate resting state or a to-do something should chase.",
+      "refs": [
+        "petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:3",
+        "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:30"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java:17-24",
+          "caption": "<code>description</code> carries <code>@NotNull</code>; <code>vetId</code>, right beneath it, carries only <code>@Min(0)</code>."
+        },
+        {
+          "ref": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.html:54-62",
+          "caption": "Booking with nobody attending is the dropdown's first option."
+        }
+      ]
+    },
+    {
+      "source": "assumption",
+      "title": "A <code>PUT</code> that omits <code>vetId</code> silently unassigns the attending vet",
+      "body": "<code>updateVisit</code> assigns <code>resolveVet(visitDto.getVetId())</code> unconditionally, and <code>vetId</code> is a plain <code>Integer</code> &mdash; so &ldquo;field absent&rdquo; and &ldquo;explicitly null&rdquo; are the same wire value. Any client still sending the pre-feature body wipes the vet on every save. <em>&ldquo;I'm adding a helper method that resolves a vet by id, returning null if the id is null and throwing otherwise, then using it in both bookVisit and updateVisit&rdquo;</em> &mdash; its own thinking, 13 Aug 23:02. The two paths were never separated after that.",
+      "alternative": "Leave the recorded vet untouched when <code>vetId</code> is absent, and require an explicit null to unassign.",
+      "why": "Whether an older integration, or a partial form post, is allowed to erase attribution as a side effect. No test clears a vet, so nothing pins today's answer either.",
+      "refs": [
+        "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:95"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:89-97",
+          "caption": "<code>setVet</code> runs on every update, with whatever the body did or did not carry."
+        }
+      ]
+    },
+    {
+      "source": "assumption",
+      "title": "The picker offers every vet &mdash; no specialty, no availability, no double-booking rule",
+      "body": "The form loads <code>getVets()</code> and lists the whole clinic, unfiltered and unordered. The domain already models <code>vet_specialties</code>, and a visit already carries a date and an exact time, so narrowing by specialty or by who is free at that slot was available and was never weighed. Nothing prevents booking one vet for two visits at the same minute. <em>&ldquo;adding a vets array to visit-add, loading it in ngOnInit, and binding a select dropdown to vetId using ngValue&rdquo;</em> &mdash; its own thinking, 13 Aug 23:03, straight from &ldquo;add a dropdown&rdquo; to binding it.",
+      "alternative": "Offer only vets whose specialty fits, or only those with no clashing visit at that date and time &mdash; and reject a clashing <code>vetId</code> server-side.",
+      "why": "Whether picking a vet is scheduling, with the constraints that implies, or only record-keeping about who was there.",
+      "refs": [
+        "petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:44"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:43-46",
+          "caption": "The whole vets feed: <code>getVets()</code>, no filter, no awareness of the date being booked."
+        }
+      ]
+    },
+    {
+      "source": "assumption",
+      "title": "The chatbot can read the attending vet but can never set one",
+      "body": "&ldquo;Display its vet everywhere throughout the app&rdquo; was read as display-only for the MCP surface: <code>list_visits</code> gained a vet name, <code>create_visit</code> gained no vet parameter. Every visit an owner books through the assistant is therefore vet-less until somebody opens the web form. <em>&ldquo;This keeps things least disruptive and avoids breaking the MCP create_visit path, so I'll move on to checking the remaining files rather than asking for clarification&rdquo;</em> &mdash; its own thinking, 13 Aug 23:00. That constraint is also what forced the column to stay nullable, so this call and the first one are the same call.",
+      "alternative": "Give <code>create_visit</code> an optional <code>vetId</code>, so the chat booking path carries what the web form does.",
+      "why": "Whether owners booking by chat are meant to choose a vet at all, and who is expected to fill the gap on the visits they create.",
+      "refs": [
+        "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:125"
+      ],
+      "snippets": [
+        {
+          "ref": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:119-133",
+          "caption": "<code>create_visit</code>'s four required parameters &mdash; pet, date, time, description; no vet."
+        }
+      ]
+    }
+  ]
 }

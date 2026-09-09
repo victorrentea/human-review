@@ -82,11 +82,25 @@ fi
 
 rm -rf "$dest"
 mkdir -p "$dest"
-# Trailing slash on the source copies its contents, not the directory itself.
-cp -R "$src"/. "$dest"/
+# Only what a reader is meant to open. Everything a run keeps for itself wears a leading
+# dot — the per-step stamps, the ledger (written mode 600), the privacy verdicts, the
+# session id, the vendored .tools/ — and a demo directory is a public repository, so the
+# split the run already makes by naming is the one to publish along.
+for entry in "$src"/*; do
+  cp -R "$entry" "$dest/"
+done
+
+# The un-narrated capture is a build intermediate: nothing on the page plays it, and it is
+# the single largest file in a snapshot. It would sit in git history forever.
+find "$dest" -name '*.raw.webm' -delete
+
+skipped=$(cd "$src" && ls -A | grep '^\.' | tr '\n' ' ' || true)
 
 size=$(du -sh "$dest" | cut -f1)
 echo "Copied $src -> $dest ($size)"
+if [ -n "$skipped" ]; then
+  echo "Left behind (the run's own bookkeeping): $skipped"
+fi
 echo
 echo "Next steps:"
 echo "  cd $repo"

@@ -1,0 +1,56 @@
+/* ds-audit — the annotated screenshots and the findings table, and nothing else:
+   the three-state viewer they sit in belongs to the report, and a fragment that
+   restyled it would be a second implementation of it wearing a hat. */
+.dsa { margin: 1rem 0 2rem; }
+.dsa-shot { position: relative; line-height: 0; }
+.dsa-shot img { width: 100%; height: auto; display: block; border-radius: .3rem; }
+.dsa-mark { position: absolute; box-sizing: border-box; border-radius: .2rem; pointer-events: auto; }
+.dsa-mark.ok  { border: 2px solid var(--dsa-ok); background: color-mix(in srgb, var(--dsa-ok) 10%, transparent); }
+.dsa-mark.bad { border: 3px solid var(--dsa-bad); background: color-mix(in srgb, var(--dsa-bad) 14%, transparent); }
+.dsa-mark.new { border: 2px dashed var(--dsa-new); background: transparent; }
+.dsa-mark b { position: absolute; left: 0; top: -1.15rem; font: 700 .68rem/1.15rem
+  -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #fff;
+  padding: 0 .35rem; border-radius: .2rem; white-space: nowrap; }
+.dsa-mark.ok b  { background: var(--dsa-ok); }
+.dsa-mark.bad b { background: var(--dsa-bad); }
+.dsa-mark.new b { background: var(--dsa-new); }
+.dsa-mark.hot { outline: 3px solid var(--dsa-hot); outline-offset: 3px; }
+.dsa-legend { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: .5rem 0 .3rem;
+  font-size: .82rem; align-items: center; }
+.dsa-legend i { width: .85rem; height: .85rem; border-radius: .2rem; display: inline-block;
+  vertical-align: -.1rem; margin-right: .3rem; }
+.dsa-legend .k-ok i  { background: var(--dsa-ok); }
+.dsa-legend .k-bad i { background: var(--dsa-bad); }
+.dsa-legend .k-new i { background: var(--dsa-new); }
+.dsa-legend .dsa-ink i { background: #d61fa5; }
+.dsa-legend .dsa-ghost i { background: #f5cde8; border: 1px solid #d61fa5; }
+.dsa-legend .dsa-ink, .dsa-legend .dsa-ghost { display: inline-flex;
+  align-items: center; gap: .3rem; }
+.dsa-table { width: 100%; border-collapse: collapse; margin-top: .8rem; font-size: .86rem; }
+.dsa-table th { text-align: left; font-weight: 700; border-bottom: 2px solid currentColor;
+  padding: .3rem .5rem; opacity: .75; }
+.dsa-table td { padding: .35rem .5rem; border-bottom: 1px solid rgba(128,128,128,.28);
+  vertical-align: top; }
+.dsa-table tr.bad td:first-child { border-left: 4px solid var(--dsa-bad); }
+.dsa-table tr.ok  td:first-child { border-left: 4px solid var(--dsa-ok); }
+.dsa-table tr:hover { background: rgba(128,128,128,.10); }
+.dsa-v { font-weight: 700; text-transform: uppercase; font-size: .72rem; letter-spacing: .04em; }
+.dsa-v.bad { color: var(--dsa-bad); }
+.dsa-v.ok  { color: var(--dsa-ok); }
+.dsa-table tr.ok td:first-child { border-left: 4px solid var(--dsa-ok); }
+.dsa-reg { font-size: .82rem; margin: .6rem 0; }
+.dsa-reg code { font-size: .95em; }
+.dsa-prov { opacity: .7; font-style: italic; }
+.dsa-sel { font-size: .78rem; opacity: .72; word-break: break-all; }
+.dsa-none { opacity: .7; font-style: italic; }
+.dsa-considered { margin: .6rem 0 0; font-size: .84rem; opacity: .85; }
+.dsa-considered summary { cursor: pointer; }
+.dsa-considered ul { margin: .4rem 0 0 .2rem; }
+.dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
+.dsa-hdr .dsa-count { font-weight: 700; }
+:root { --dsa-ok: #1f7a45; --dsa-bad: #c1121f; --dsa-new: #1a4fa0; --dsa-hot: #f0a500; }
+@media (prefers-color-scheme: dark) {
+  :root { --dsa-ok: #46c07a; --dsa-bad: #ff6b6b; --dsa-new: #7aa9ef; --dsa-hot: #ffc94d; }
+  .dsa-shot img { filter: none; }
+}
+

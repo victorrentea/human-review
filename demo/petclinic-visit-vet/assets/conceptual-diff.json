@@ -1,0 +1,79 @@
+{
+  "added": [
+    {
+      "key": "edge:Vet-Visit",
+      "id": "e-vet-visit",
+      "kind": "edge",
+      "what": "Vet-Visit",
+      "already_red": false
+    },
+    {
+      "key": "label:edge:Vet-Visit@tgt",
+      "id": "e-vet-visit-t",
+      "kind": "label",
+      "what": "label on Vet-Visit",
+      "already_red": false
+    }
+  ],
+  "removed": [],
+  "changed": [],
+  "moved": [
+    {
+      "key": "node:Owner",
+      "id": "c-owner",
+      "kind": "node",
+      "what": "Owner"
+    },
+    {
+      "key": "node:PetType",
+      "id": "c-pettype",
+      "kind": "node",
+      "what": "PetType"
+    },
+    {
+      "key": "node:User",
+      "id": "c-user",
+      "kind": "node",
+      "what": "User"
+    },
+    {
+      "key": "node:Vet",
+      "id": "c-vet",
+      "kind": "node",
+      "what": "Vet"
+    },
+    {
+      "key": "node:Visit",
+      "id": "c-visit",
+      "kind": "node",
+      "what": "Visit"
+    },
+    {
+      "key": "note#footer-guardrail",
+      "id": "footer-guardrail",
+      "kind": "annotation",
+      "what": "This diagram is unit tested against the reality of the domain model<br><font style=\"font-size: 10px\">ConceptualModelDiagramTest</font>"
+    }
+  ],
+  "red": [],
+  "linked_concepts": [
+    "Owner",
+    "Pet",
+    "PetType",
+    "Role",
+    "Specialty",
+    "User",
+    "Vet",
+    "Visit"
+  ],
+  "unlinked_concepts": [],
+  "renderer": "drawio",
+  "added_color": "#2E7D32",
+  "drawio_url": "drawio:///Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/ConceptualModel.drawio.png",
+  "diagram": "petclinic-backend/docs/ConceptualModel.drawio.png",
+  "drawio_web_url": "https://app.diagrams.net/?splash=0&title=ConceptualModel.drawio.png#R%3CmxGraphModel%20dx%3D%22694%22%20dy%3D%221704%22%20grid%3D%221%22%20gridSize%3D%2210%22%20guides%3D%221%22%20tooltips%3D%221%22%20connect%3D%221%22%20arrows%3D%221%22%20fold%3D%221%22%20page%3D%221%22%20pageScale%3D%221%22%20pageWidth%3D%22850%22%20pageHeight%3D%221100%22%20math%3D%220%22%20shadow%3D%220%22%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%22title%22%20parent%3D%221%22%20style%3D%22text%3Bhtml%3D1%3BfontSize%3D20%3BfontStyle%3D1%3Balign%3Dcenter%3B%22%20value%3D%22Conceptual%20Model%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2230%22%20width%3D%22380%22%20x%3D%22150%22%20y%3D%22-45%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3Cobject%20label%3D%22Owner%22%20concept%3D%22Owner%22%20id%3D%22c-owner%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%2240%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22PetType%22%20concept%3D%22PetType%22%20id%3D%22c-pettype%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%22200%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22User%22%20concept%3D%22User%22%20id%3D%22c-user%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%22360%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22Vet%22%20concept%3D%22Vet%22%20id%3D%22c-vet%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%22520%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22Pet%22%20concept%3D%22Pet%22%20id%3D%22c-pet%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%22120%22%20y%3D%22100%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22Role%22%20concept%3D%22Role%22%20id%3D%22c-role%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%22360%22%20y%3D%22100%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22Specialty%22%20concept%3D%22Specialty%22%20id%3D%22c-specialty%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%22520%22%20y%3D%22100%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22Visit%22%20concept%3D%22Visit%22%20id%3D%22c-visit%22%3E%3CmxCell%20parent%3D%221%22%20style%3D%22rounded%3D0%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%23dae8fc%3BstrokeColor%3D%236c8ebf%3BfontSize%3D15%3BfontStyle%3D1%3BstrokeWidth%3D2%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2240%22%20width%3D%22120%22%20x%3D%22200%22%20y%3D%22200%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3Cobject%20label%3D%22%22%20assoc%3D%22Owner-Pet%22%20id%3D%22e-owner-pet%22%3E%3CmxCell%20edge%3D%221%22%20parent%3D%221%22%20source%3D%22c-owner%22%20style%3D%22endArrow%3Dnone%3Bhtml%3D1%3BstrokeColor%3D%23333333%3BfontSize%3D12%3BstrokeWidth%3D2%3B%22%20target%3D%22c-pet%22%3E%3CmxGeometry%20relative%3D%221%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3CmxCell%20id%3D%22e-owner-pet-t%22%20connectable%3D%220%22%20parent%3D%22e-owner-pet%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3BfontSize%3D24%3BfontStyle%3D1%3BlabelBackgroundColor%3Dnone%3B%22%20value%3D%22%2A%22%20vertex%3D%221%22%3E%3CmxGeometry%20relative%3D%221%22%20x%3D%220.6%22%20as%3D%22geometry%22%3E%3CmxPoint%20as%3D%22offset%22%2F%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3Cobject%20label%3D%22%22%20assoc%3D%22Pet-PetType%22%20id%3D%22e-pettype-pet%22%3E%3CmxCell%20edge%3D%221%22%20parent%3D%221%22%20source%3D%22c-pettype%22%20style%3D%22endArrow%3Dnone%3Bhtml%3D1%3BstrokeColor%3D%23333333%3BfontSize%3D12%3BstrokeWidth%3D2%3B%22%20target%3D%22c-pet%22%3E%3CmxGeometry%20relative%3D%221%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3CmxCell%20id%3D%22e-pettype-pet-t%22%20connectable%3D%220%22%20parent%3D%22e-pettype-pet%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3BfontSize%3D24%3BfontStyle%3D1%3BlabelBackgroundColor%3Dnone%3B%22%20value%3D%22%2A%22%20vertex%3D%221%22%3E%3CmxGeometry%20relative%3D%221%22%20x%3D%220.6%22%20as%3D%22geometry%22%3E%3CmxPoint%20as%3D%22offset%22%2F%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3Cobject%20label%3D%22%22%20assoc%3D%22Pet-Visit%22%20id%3D%22e-pet-visit%22%3E%3CmxCell%20edge%3D%221%22%20parent%3D%221%22%20source%3D%22c-pet%22%20style%3D%22endArrow%3Dnone%3Bhtml%3D1%3BstrokeColor%3D%23333333%3BfontSize%3D12%3BstrokeWidth%3D2%3B%22%20target%3D%22c-visit%22%3E%3CmxGeometry%20relative%3D%221%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3CmxCell%20id%3D%22e-pet-visit-t%22%20connectable%3D%220%22%20parent%3D%22e-pet-visit%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3BfontSize%3D24%3BfontStyle%3D1%3BlabelBackgroundColor%3Dnone%3B%22%20value%3D%22%2A%22%20vertex%3D%221%22%3E%3CmxGeometry%20relative%3D%221%22%20x%3D%220.6%22%20as%3D%22geometry%22%3E%3CmxPoint%20as%3D%22offset%22%2F%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3Cobject%20label%3D%22%22%20assoc%3D%22Role-User%22%20id%3D%22e-user-role%22%3E%3CmxCell%20edge%3D%221%22%20parent%3D%221%22%20source%3D%22c-user%22%20style%3D%22endArrow%3Dnone%3Bhtml%3D1%3BstrokeColor%3D%23333333%3BfontSize%3D12%3BstrokeWidth%3D2%3B%22%20target%3D%22c-role%22%3E%3CmxGeometry%20relative%3D%221%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3CmxCell%20id%3D%22e-user-role-t%22%20connectable%3D%220%22%20parent%3D%22e-user-role%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3BfontSize%3D24%3BfontStyle%3D1%3BlabelBackgroundColor%3Dnone%3B%22%20value%3D%22%2A%22%20vertex%3D%221%22%3E%3CmxGeometry%20relative%3D%221%22%20x%3D%220.6%22%20as%3D%22geometry%22%3E%3CmxPoint%20as%3D%22offset%22%2F%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3Cobject%20label%3D%22%22%20assoc%3D%22Specialty-Vet%22%20id%3D%22e-vet-specialty%22%3E%3CmxCell%20edge%3D%221%22%20parent%3D%221%22%20source%3D%22c-vet%22%20style%3D%22endArrow%3Dnone%3Bhtml%3D1%3BstrokeColor%3D%23333333%3BfontSize%3D12%3BstrokeWidth%3D2%3B%22%20target%3D%22c-specialty%22%3E%3CmxGeometry%20relative%3D%221%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3CmxCell%20id%3D%22e-vet-specialty-t%22%20connectable%3D%220%22%20parent%3D%22e-vet-specialty%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3BfontSize%3D24%3BfontStyle%3D1%3BlabelBackgroundColor%3Dnone%3B%22%20value%3D%22%2A%22%20vertex%3D%221%22%3E%3CmxGeometry%20relative%3D%221%22%20x%3D%220.6%22%20as%3D%22geometry%22%3E%3CmxPoint%20as%3D%22offset%22%2F%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3Cobject%20label%3D%22%22%20assoc%3D%22Vet-Visit%22%20addedBy%3D%22pull-request-automation%22%20id%3D%22e-vet-visit%22%3E%3CmxCell%20edge%3D%221%22%20parent%3D%221%22%20source%3D%22c-vet%22%20style%3D%22endArrow%3Dnone%3Bhtml%3D1%3BstrokeWidth%3D2%3BfontSize%3D12%3B%22%20target%3D%22c-visit%22%3E%3CmxGeometry%20relative%3D%221%22%20as%3D%22geometry%22%3E%3CArray%20as%3D%22points%22%3E%3CmxPoint%20x%3D%22680%22%20y%3D%22220%22%2F%3E%3C%2FArray%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3C%2Fobject%3E%3CmxCell%20id%3D%22e-vet-visit-t%22%20connectable%3D%220%22%20parent%3D%22e-vet-visit%22%20style%3D%22edgeLabel%3Bhtml%3D1%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3BfontSize%3D24%3BfontStyle%3D1%3BlabelBackgroundColor%3Dnone%3B%22%20value%3D%22%2A%22%20vertex%3D%221%22%3E%3CmxGeometry%20relative%3D%221%22%20x%3D%220.6%22%20as%3D%22geometry%22%3E%3CmxPoint%20as%3D%22offset%22%2F%3E%3C%2FmxGeometry%3E%3C%2FmxCell%3E%3CmxCell%20id%3D%22footer-guardrail%22%20parent%3D%221%22%20style%3D%22text%3Bhtml%3D1%3BfontSize%3D12%3BfontStyle%3D2%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3BfontColor%3D%238C8C8C%3B%22%20value%3D%22This%20diagram%20is%20unit%20tested%20against%20the%20reality%20of%20the%20domain%20model%26lt%3Bbr%26gt%3B%26lt%3Bfont%20style%3D%26quot%3Bfont-size%3A%2010px%26quot%3B%26gt%3BConceptualModelDiagramTest%26lt%3B%2Ffont%26gt%3B%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2236%22%20width%3D%22600%22%20x%3D%2240%22%20y%3D%22325%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E",
+  "rerun": {
+    "cwd": "/Users/victorrentea/workspace/petclinic-pr",
+    "command": "/Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base origin/main --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual"
+  }
+}

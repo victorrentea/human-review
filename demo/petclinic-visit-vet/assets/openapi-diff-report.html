@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REST contract diff — openapi.yaml</title>
+<style>
+:root {
+  --bg:#fbfbfd; --fg:#1c1c22; --muted:#6b6b78; --line:#e2e2ea; --card:#ffffff;
+  --code-bg:#f6f6fa; --link:#1a4fa0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#15151a; --fg:#e8e8ef; --muted:#9a9aa8; --line:#2c2c36; --card:#1d1d24;
+    --code-bg:#101015; --link:#8ab4f8;
+  }
+}
+body { margin:0; background:var(--bg); color:var(--fg);
+       font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+/* The same 1080px column the review reads in, so a report opened on its own keeps the
+   line length its tables and prose were laid out for. */
+.wrap { max-width:1080px; margin:0 auto; padding:1.4rem 1.25rem 5rem; }
+/* One line of provenance, in the shape of the page's masthead: what this is, then what
+   it was computed from. A reader arrives here from a link in a verdict band and has no
+   other way to tell which two specs produced it. */
+.rp-head { margin:0 0 .3rem; font-size:1.25rem; font-weight:700; }
+.rp-sub { margin:0 0 1.4rem; color:var(--muted); font-size:.92rem; }
+.rp-sub a { color:var(--link); }
+
+
+.oad-lede, .oad-group { --oad-break:#c62828; --oad-add:#2e7d32; --oad-chg:#b56b00; --oad-cos:#6b6b78; }
+.oad-lede { margin:.4rem 0 1rem; color:var(--muted); font-size:.9rem; line-height:1.7; }
+.oad-lede b { color:var(--fg); }
+.oad-group { margin:1.2rem 0; }
+.oad-kind { font:600 .82rem/1.6 inherit; text-transform:uppercase; letter-spacing:.06em;
+            color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:.3rem; }
+.oad-count { background:var(--code-bg); border-radius:999px; padding:0 .4rem; margin-left:.3rem;
+             font-size:.72rem; }
+.oad-subject { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--line);
+               border-radius:8px; padding:.6rem .8rem; margin:.6rem 0; }
+.oad-subject.oad-is-added { border-left-color:var(--oad-add); }
+.oad-subject.oad-is-removed { border-left-color:var(--oad-break); }
+.oad-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.oad-link { text-decoration:none; display:inline-flex; align-items:center; gap:.45rem; }
+.oad-link:hover .oad-path { text-decoration:underline; }
+.oad-verb { font:700 10.5px/1.7 ui-monospace,Menlo,monospace; border-radius:4px; padding:0 .38rem;
+            color:#fff; letter-spacing:.04em; }
+.oad-get { background:#2f6fb5; } .oad-post { background:#2e7d32; }
+.oad-put { background:#b56b00; } .oad-delete { background:#c62828; }
+.oad-path { font:600 12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg); }
+.oad-chip { border-radius:4px; padding:.06rem .4rem; font-size:.68rem; font-weight:700;
+            text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+.oad-chip.oad-breaking { background:#fdeaea; color:#8a1c1c; }
+.oad-chip.oad-additive { background:#eef7ef; color:#245c30; }
+.oad-chip.oad-changed  { background:#fdf3e2; color:#8a5a12; }
+.oad-chip.oad-cosmetic { background:#f0f0f4; color:#5d5d6b; }
+.oad-chip.oad-modified, .oad-chip.oad-added, .oad-chip.oad-removed { background:var(--code-bg); color:var(--muted); }
+.oad-note { color:var(--muted); font-size:.8rem; }
+.oad-changes { list-style:none; margin:.5rem 0 0; padding:0; display:grid; gap:.3rem; }
+.oad-changes li { display:flex; align-items:baseline; gap:.5rem; font-size:.88rem; flex-wrap:wrap; }
+.oad-changes code { font:600 12px/1.5 ui-monospace,Menlo,monospace; background:var(--code-bg);
+                    border-radius:3px; padding:0 .25rem; }
+.oad-type { color:var(--link); font:12px/1.5 ui-monospace,Menlo,monospace; }
+.oad-facets { color:var(--muted); font-size:.78rem; }
+.oad-req { color:#8a1c1c; font-size:.72rem; font-weight:700; text-transform:uppercase; }
+.oad-changes b.oad-add { color:#2e7d32; } .oad-changes b.oad-del { color:#c62828; }
+.oad-raw { margin:1.4rem 0 0; }
+.oad-raw summary { cursor:pointer; color:var(--muted); font-size:.85rem; }
+.oad-raw pre { margin:.6rem 0 0; background:var(--code-bg); border-radius:6px; padding:.6rem .8rem;
+               overflow-x:auto; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+               display:flex; flex-direction:column; }
+.oad-raw span.oad-add { color:#2e7d32; } .oad-raw span.oad-del { color:#c62828; }
+.oad-raw span.oad-hunk { color:var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .oad-chip.oad-breaking { background:#3a1f1f; color:#f2a0a0; }
+  .oad-chip.oad-additive { background:#1b2c1f; color:#9ad3a5; }
+  .oad-chip.oad-changed  { background:#3a3018; color:#e6c07b; }
+  .oad-chip.oad-cosmetic { background:#26262f; color:#a5a5b4; }
+  .oad-changes b.oad-add, .oad-raw span.oad-add { color:#8fd39c; }
+  .oad-changes b.oad-del, .oad-raw span.oad-del { color:#f08a8a; }
+  .oad-req { color:#f2a0a0; }
+}
+</style>
+</head><body><div class="wrap">
+<h1 class="rp-head">REST contract diff — openapi.yaml</h1>
+<p class="rp-sub">Read as a structure by <code>openapi-diff.py</code>, the review's own classifier — the second opinion behind the verdict band, not the tool that produced its counts.</p>
+<p class="oad-lede">Read from <code>openapi.yaml</code> as a structure, not as text: <b>0</b> operations and <b>2</b> schemas moved. Those schemas are served by <b>11</b> operations, which change what a caller sends or receives even where the <code>paths</code> section did not move a byte — see the API contract tab for the per-operation shapes. Each line is classified by what it does to somebody already calling this API — <span class="oad-chip oad-additive">4 additive</span></p>
+<div class="oad-group"><div class="oad-kind">Schemas <span class="oad-count">2</span></div>
+<div class="oad-subject oad-is-modified"><div class="oad-head"><a class="oad-link" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/openapi.yaml:1893:1" data-tip="open the spec at this definition"><code class="oad-path">VisitDto</code></a><span class="oad-chip oad-additive">modified</span><span class="oad-note">request &amp; response body</span></div><ul class="oad-changes"><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetFirstName</code> <span class="oad-type">string</span> <span class="oad-facets">read-only</span><span class="oad-note">First name of the vet (server-populated).</span></li><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetId</code> <span class="oad-type">integer(int32)</span> <span class="oad-facets">minimum 0</span><span class="oad-note">The ID of the vet that attended the visit.</span></li><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetLastName</code> <span class="oad-type">string</span> <span class="oad-facets">read-only</span><span class="oad-note">Last name of the vet (server-populated).</span></li></ul></div>
+<div class="oad-subject oad-is-modified"><div class="oad-head"><a class="oad-link" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/openapi.yaml:1955:1" data-tip="open the spec at this definition"><code class="oad-path">VisitFieldsDto</code></a><span class="oad-chip oad-additive">modified</span><span class="oad-note">request body</span></div><ul class="oad-changes"><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetId</code> <span class="oad-type">integer(int32)</span> <span class="oad-facets">minimum 0</span><span class="oad-note">The ID of the vet that attended the visit.</span></li></ul></div>
+</div>
+<details class="oad-raw"><summary>The unified diff this was read from</summary><pre><span>diff --git a/openapi.yaml b/openapi.yaml</span>
+<span>index f5fbb26a..cf368a56 100644</span>
+<span>--- a/openapi.yaml</span>
+<span>+++ b/openapi.yaml</span>
+<span class=oad-hunk>@@ -1934,6 +1934,20 @@ components:</span>
+<span>           type: string</span>
+<span>           description: Name of the pet (server-populated).</span>
+<span>           readOnly: true</span>
+<span class=oad-add>+        vetFirstName:</span>
+<span class=oad-add>+          type: string</span>
+<span class=oad-add>+          description: First name of the vet (server-populated).</span>
+<span class=oad-add>+          readOnly: true</span>
+<span class=oad-add>+        vetId:</span>
+<span class=oad-add>+          type: integer</span>
+<span class=oad-add>+          format: int32</span>
+<span class=oad-add>+          description: The ID of the vet that attended the visit.</span>
+<span class=oad-add>+          example: 1</span>
+<span class=oad-add>+          minimum: 0</span>
+<span class=oad-add>+        vetLastName:</span>
+<span class=oad-add>+          type: string</span>
+<span class=oad-add>+          description: Last name of the vet (server-populated).</span>
+<span class=oad-add>+          readOnly: true</span>
+<span>       required:</span>
+<span>       - description</span>
+<span>       - id</span>
+<span class=oad-hunk>@@ -1952,5 +1966,11 @@ components:</span>
+<span>           example: rabies shot</span>
+<span>           maxLength: 255</span>
+<span>           minLength: 1</span>
+<span class=oad-add>+        vetId:</span>
+<span class=oad-add>+          type: integer</span>
+<span class=oad-add>+          format: int32</span>
+<span class=oad-add>+          description: The ID of the vet that attended the visit.</span>
+<span class=oad-add>+          example: 1</span>
+<span class=oad-add>+          minimum: 0</span>
+<span>       required:</span>
+<span>       - description</span></pre></details>
+</div></body></html>

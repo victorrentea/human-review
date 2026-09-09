@@ -1,0 +1,245 @@
+[
+  {
+    "id": "petclinic-test/src/add-visit.spec.ts:35",
+    "suite": "playwright",
+    "title": "Add a visit to an existing pet from the owner detail page",
+    "asserts": [
+      "Submitting the New Visit form without choosing a vet returns the user to the owner detail page for that owner.",
+      "The newly added visit (matching the date and the generated description) appears in the pet's visit list on the owner detail page.",
+      "The visit's vet column shows an em dash ('—') when no vet was selected."
+    ],
+    "surfaces": [
+      "owner detail page",
+      "visit form"
+    ],
+    "strength": "asserted",
+    "notes": "The no-vet dash check targets the specific `.visit-vet` cell with toHaveText — a precise, value-comparing assertion. The 'back on owner detail page' check combines a URL-pattern wait (waitForURL) with a heading-visibility wait; both throw/fail the test on timeout, so they function as assertions even though they're not `expect()` calls. The intermediate 'New Visit form opens' step (waiting for the 'New Visit' heading after clicking Add Visit) is a bare visibility wait used only to proceed — not counted as an asserted fact here, just exercised. The owner/pet used are the first found via a live GET /api/owners call (any owner with any pet), not fixed fixture data.",
+    "vetOnVisit": true
+  },
+  {
+    "id": "petclinic-test/src/add-visit.spec.ts:52",
+    "suite": "playwright",
+    "title": "Add a visit attended by a vet",
+    "asserts": [
+      "Submitting the New Visit form after selecting a vet returns the user to the owner detail page for that owner.",
+      "The newly added visit's row in the pet's visit list contains the name of the vet that was selected in the form."
+    ],
+    "surfaces": [
+      "owner detail page",
+      "visit form"
+    ],
+    "strength": "asserted",
+    "notes": "The vet-name check uses toContainText on the WHOLE visit row (petBlock 'app-visit-list tr' filtered by date+description), not scoped to the `.visit-vet` cell the way the sibling no-vet test scopes its check — looser than it looks, though in practice only the vet column would contain that text. The expected vetName is read directly off the <select> option's own text right before submitting (not from an independent oracle/fixture), so this proves round-trip consistency — the vet chosen in the form is the vet later displayed — rather than validating against a known-correct vet roster. Does not assert pet name or owner name are correct on the row (only touched, via the existing row-scoping helper). This is the one browser test the vet-on-visit browser->API->DB path is explicitly tagged for tracing (@generate_sequence).",
+    "vetOnVisit": true
+  },
+  {
+    "id": "petclinic-test/src/visits.spec.ts:27",
+    "suite": "playwright",
+    "title": "shows all visits on initial load",
+    "asserts": [
+      "The all-visits page lists exactly the same visits as GET /api/visits returns, one row per visit, no more and no fewer.",
+      "Each row's date, description, pet name, owner full name, and vet name (or '—' when the visit has no vet) match the corresponding API fields exactly."
+    ],
+    "surfaces": [
+      "all-visits page",
+      "REST API"
+    ],
+    "strength": "asserted",
+    "notes": "Strongest assertion in the whole browser suite: a full deep-equal comparison (rows sorted by date first, to avoid order flakiness) between what the DOM renders and what the API itself returns — this explicitly includes vet-name display, formatted as 'First Last' or an em dash when vetFirstName is absent. `waitForVisitsCount` silently swallows its own timeout ('let assertions surface the actual values'), so the real check is entirely the final `toEqual`.",
+    "vetOnVisit": true
+  },
+  {
+    "id": "petclinic-test/src/visits.spec.ts:45",
+    "suite": "playwright",
+    "title": "rows are sorted descending by date",
+    "asserts": [
+      "The all-visits page contains at least one visit row.",
+      "Visit rows are ordered by date, descending (most recent first)."
+    ],
+    "surfaces": [
+      "all-visits page"
+    ],
+    "strength": "asserted",
+    "notes": "Order check is a plain lexical sort/reverse of the date-column text, so it's only meaningful if dates render in a lexically-sortable format (e.g. YYYY-MM-DD); it does not independently verify the date values themselves are correct, only their relative ordering. Does not touch pet/owner/vet columns at all.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/visits.spec.ts:53",
+    "suite": "playwright",
+    "title": "owner link navigates to owner detail",
+    "asserts": [
+      "Clicking the owner link on the first row of the all-visits page navigates the browser to a URL matching /owners/<number>."
+    ],
+    "surfaces": [
+      "all-visits page",
+      "owner detail page"
+    ],
+    "strength": "asserted",
+    "notes": "Weaker than the title suggests: it only checks the URL SHAPE (any numeric owner id), not that the browser landed on the SPECIFIC owner referenced by that row — it never compares the resulting id, or the destination page's content, to the row's ownerFullName/ownerId. So it proves the link is wired to *an* owner detail page, not necessarily the *correct* one.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/chatbot.spec.ts:8",
+    "suite": "playwright",
+    "title": "shows the signed-in owner from the JWT as read-only text (no editable name field)",
+    "asserts": [
+      "The chatbot page displays the signed-in user's name, derived from the JWT, as read-only text reading exactly 'Kevin McCallister'.",
+      "The chatbot page displays the signed-in user's email, containing 'kevin.mccallister@petclinic.example'.",
+      "The name is not rendered as an editable input field — no `<input id=\"assistantUser\">` exists on the page."
+    ],
+    "surfaces": [
+      "chatbot"
+    ],
+    "strength": "asserted",
+    "notes": "The expected name/email are hardcoded to the fixture DEMO_JWT the chatbot app uses in test mode, not independently supplied or varied — a real multi-user identity/auth flow is not exercised, only that this one fixed identity renders correctly and is not an editable field (regression guard against a prior bug).",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/chatbot.spec.ts:19",
+    "suite": "playwright",
+    "title": "answers a triage question without a server error",
+    "asserts": [
+      "Submitting a triage question to the chatbot produces an assistant reply of more than 20 characters within 90 seconds.",
+      "The assistant's reply does not contain the text 'Error:'."
+    ],
+    "surfaces": [
+      "chatbot"
+    ],
+    "strength": "asserted",
+    "notes": "This is explicitly a smoke/regression test for a 500 error that was just fixed (per the inline comment), and what it checks matches its modest title exactly — it does NOT assert the reply is topically relevant, medically sound, or otherwise a *correct* triage answer, only that something substantial and non-error-shaped came back. A mapper should not read this as validating chatbot answer quality or correctness, only that the pipeline doesn't crash/error on a real question.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/owner-search.feature:18",
+    "suite": "cucumber",
+    "title": "Filter owners by a case-sensitive prefix of the last name",
+    "asserts": [
+      "Searching owners for the exact last-name \"Potter\" lists exactly Harry Potter and Beatrix Potter, no more and no fewer."
+    ],
+    "surfaces": [
+      "owners page"
+    ],
+    "strength": "asserted",
+    "notes": "Examples row: search=\"Potter\" -> owners=\"Harry Potter, Beatrix Potter\". Comparison is order-insensitive (both sides sorted before compare) and polls up to 10s. The scenario's Background step also asserts, via a direct GET /api/owners call (not through the browser), that both Potters are present among all seeded owners before the scenario runs — a real check, but not a browser-UI assertion.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/owner-search.feature:19",
+    "suite": "cucumber",
+    "title": "Filter owners by a case-sensitive prefix of the last name",
+    "asserts": [
+      "Searching owners for the partial last-name prefix \"Pot\" lists exactly Harry Potter and Beatrix Potter."
+    ],
+    "surfaces": [
+      "owners page"
+    ],
+    "strength": "asserted",
+    "notes": "Examples row: search=\"Pot\" -> owners=\"Harry Potter, Beatrix Potter\". Confirms the filter matches on a partial PREFIX of the last name, not only the full last name. Same Background precondition as the other rows in this outline.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/owner-search.feature:20",
+    "suite": "cucumber",
+    "title": "Filter owners by a case-sensitive prefix of the last name",
+    "asserts": [
+      "Searching owners for \"otter\" (a suffix of \"Potter\", not a prefix) lists no owners."
+    ],
+    "surfaces": [
+      "owners page"
+    ],
+    "strength": "asserted",
+    "notes": "Examples row: search=\"otter\" -> owners=\"\" (empty). Establishes the match is PREFIX-based, not substring/contains-based — a real fragment of an existing last name that isn't a leading prefix returns zero results.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/owner-search.feature:21",
+    "suite": "cucumber",
+    "title": "Filter owners by a case-sensitive prefix of the last name",
+    "asserts": [
+      "Searching owners for \"Harry\" (a first name, not a last name) lists no owners."
+    ],
+    "surfaces": [
+      "owners page"
+    ],
+    "strength": "asserted",
+    "notes": "Examples row: search=\"Harry\" -> owners=\"\" (empty). Establishes the search field filters by LAST NAME only — 'Harry' is a real owner's first name yet matches nothing, so this specifically rules out a combined first+last name search.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/owner-search.feature:22",
+    "suite": "cucumber",
+    "title": "Filter owners by a case-sensitive prefix of the last name",
+    "asserts": [
+      "Searching owners for \"potter\" (all lowercase) lists no owners, even though \"Potter\" (capitalized) exists."
+    ],
+    "surfaces": [
+      "owners page"
+    ],
+    "strength": "asserted",
+    "notes": "Examples row: search=\"potter\" -> owners=\"\" (empty). This is the scenario that establishes the search is CASE-SENSITIVE — the one directly relevant to the feature title's claim.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/owner-search.feature:23",
+    "suite": "cucumber",
+    "title": "Filter owners by a case-sensitive prefix of the last name",
+    "asserts": [
+      "Searching owners for a last-name prefix that matches nobody (\"Zzzz\") lists no owners."
+    ],
+    "surfaces": [
+      "owners page"
+    ],
+    "strength": "asserted",
+    "notes": "Examples row: search=\"Zzzz\" -> owners=\"\" (empty). Baseline negative case — no owner has a matching last name.",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/owner-search.feature:26",
+    "suite": "cucumber",
+    "title": "Searching with an empty last name lists every owner",
+    "asserts": [
+      "Searching owners with an empty last-name field lists every owner known to the clinic — not just the two Potters from the Background — matching the complete owner list obtained live from the API."
+    ],
+    "surfaces": [
+      "owners page",
+      "REST API"
+    ],
+    "strength": "asserted",
+    "notes": "The comparison target is the full owner-name list the Background step captured moments earlier from a live GET /api/owners call, so this is a genuine end-to-end check against whatever the clinic's real seed data is at run time, not a hardcoded list. Tagged @generate_sequence (traced for a sequence diagram).",
+    "vetOnVisit": false
+  },
+  {
+    "id": "petclinic-test/src/add-visit.feature:16",
+    "suite": "playwright-cucumber",
+    "title": "A visit remembers the vet who attended it",
+    "asserts": [
+      "The clinic's vet roster returned by GET /api/vets contains “Helen Leary” — checked in the Background, before anything is booked.",
+      "Booking a visit for that pet with “Helen Leary” selected as the attending vet returns the user to the owner detail page.",
+      "That pet's visit history on the owner detail page shows the new visit attended by “Helen Leary”."
+    ],
+    "surfaces": [
+      "owner detail page",
+      "visit form",
+      "REST API GET /api/vets"
+    ],
+    "strength": "asserted",
+    "notes": "The difference that matters against add-visit.spec.ts:52: that one reads the vet's name off the <select> option immediately before submitting, so it proves round-trip consistency — whatever was picked is what is shown. This one names the vet in the Gherkin, asserts via the API that she is really on the roster, and only then asserts the history shows that same name: an independent oracle rather than a round trip. Selection is by label (select_attending_vet → selectOption({label})), so a dropdown that did not offer her would throw rather than fail an assertion. It drives the very same DSL functions as the TypeScript scenario, so the mechanics are identical and only the reading differs.",
+    "vetOnVisit": true
+  },
+  {
+    "id": "petclinic-test/src/add-visit.feature:20",
+    "suite": "playwright-cucumber",
+    "title": "A visit nobody attended says so, rather than saying nothing",
+    "asserts": [
+      "Booking a visit for that pet without selecting any vet returns the user to the owner detail page and the visit is created.",
+      "That pet's visit history shows the new visit's vet cell as an em dash (VetNamePipe.NOT_ATTENDED), not blank."
+    ],
+    "surfaces": [
+      "owner detail page",
+      "visit form"
+    ],
+    "strength": "asserted",
+    "notes": "Reaches the same DSL assertion as add-visit.spec.ts:35 (expect_pet_visit_list_shows_no_vet — toHaveText on the .visit-vet cell) through the Gherkin front end. It books a visit with nobody attending; it never opens an existing visit, so it says nothing about clearing a vet that was already assigned.",
+    "vetOnVisit": true
+  }
+]

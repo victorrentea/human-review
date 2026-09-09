@@ -1,0 +1,60 @@
+@startuml
+caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color>
+
+title Domain Model - Diff
+footer domain/*.java -> petclinic-backend/docs/generated/DomainModel.puml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam hyperlinkUnderline false
+skinparam hyperlinkColor #000000
+class Owner [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java:28{Click to open in editor}]] {
+  id : Integer
+  firstName : String
+  lastName : String
+  address : String
+  city : String
+  telephone : String
+}
+class Pet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:29{Click to open in editor}]] {
+  id : Integer
+  name : String
+  birthDate : LocalDate
+}
+class PetType [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/PetType.java:8{Click to open in editor}]] {
+  id : Integer
+  name : String
+}
+class Role [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Role.java:8{Click to open in editor}]] {
+  id : Integer
+  name : String
+}
+class Specialty [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Specialty.java:7{Click to open in editor}]] {
+  id : Integer
+  name : String
+  description : String
+}
+class User [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/User.java:11{Click to open in editor}]] {
+  username : String
+  password : String
+  enabled : Boolean
+}
+class Vet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Vet.java:11{Click to open in editor}]] {
+  id : Integer
+  firstName : String
+  lastName : String
+}
+class Visit [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:11{Click to open in editor}]] {
+  id : Integer
+  date : LocalDate
+  time : LocalTime
+  description : String
+}
+
+Owner "owner" <--> "~* pets" Pet
+Pet "~*" --> "type" PetType
+Pet "pet" <--> "~* visits" Visit
+User "user" <--> "~* roles" Role
+Vet --> "~* specialties" Specialty
+Visit "~*" -[#2E7D32]-> "vet" Vet
+
+@enduml

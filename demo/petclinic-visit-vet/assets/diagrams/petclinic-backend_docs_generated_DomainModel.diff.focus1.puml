@@ -1,0 +1,36 @@
+@startuml
+caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — impacted + 1 neighbour (4 of 8 shown)
+
+title Domain Model - Diff
+footer domain/*.java -> petclinic-backend/docs/generated/DomainModel.puml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam hyperlinkUnderline false
+skinparam hyperlinkColor #000000
+class Pet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:29{Click to open in editor}]] {
+  id : Integer
+  name : String
+  birthDate : LocalDate
+}
+class Specialty [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Specialty.java:7{Click to open in editor}]] {
+  id : Integer
+  name : String
+  description : String
+}
+class Vet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Vet.java:11{Click to open in editor}]] {
+  id : Integer
+  firstName : String
+  lastName : String
+}
+class Visit [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:11{Click to open in editor}]] {
+  id : Integer
+  date : LocalDate
+  time : LocalTime
+  description : String
+}
+
+Pet "pet" <--> "~* visits" Visit
+Vet --> "~* specialties" Specialty
+Visit "~*" -[#2E7D32]-> "vet" Vet
+
+@enduml

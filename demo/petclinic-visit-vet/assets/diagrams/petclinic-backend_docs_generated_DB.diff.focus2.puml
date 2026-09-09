@@ -1,0 +1,58 @@
+@startuml
+caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — impacted + 2 neighbours (7 of 9 shown)
+
+title Database Schema (ERD) - Diff
+footer db/migration/*.sql -> DB -> dump to DB.sql -> converted to DB.puml
+hide circle
+hide empty members
+skinparam linetype ortho
+entity "owners" as owners {
+  {field} id : int <<PK>>
+  {field} first_name : text
+  {field} last_name : text
+  {field} address : text
+  {field} city : text
+  {field} telephone : text
+}
+entity "pets" as pets {
+  {field} id : int <<PK>>
+  {field} name : text
+  {field} birth_date : date
+  {field} type_id : int <<FK>> not null
+  {field} owner_id : int <<FK>>
+}
+entity "specialties" as specialties {
+  {field} id : int <<PK>>
+  {field} name : text
+  {field} description : text
+}
+entity "types" as types {
+  {field} id : int <<PK>>
+  {field} name : text
+}
+entity "vet_specialties" as vet_specialties {
+  {field} vet_id : int <<FK>> not null
+  {field} specialty_id : int <<FK>> not null
+}
+entity "vets" as vets {
+  {field} id : int <<PK>>
+  {field} first_name : text
+  {field} last_name : text
+}
+entity "visits" as visits {
+  {field} id : int <<PK>>
+  {field} pet_id : int <<FK>>
+  {field} visit_date : date
+  {field} description : text
+  {field} visit_time : time
+  <color:#2E7D32>{field} vet_id : int <<FK>></color>
+}
+
+owners ||--o{ pets : owner_id
+pets ||--o{ visits : pet_id
+specialties ||--o{ vet_specialties : specialty_id
+types ||--o{ pets : type_id
+vets ||--o{ vet_specialties : vet_id
+vets ||-[#2E7D32]-o{ visits : <color:#2E7D32>vet_id</color>
+
+@enduml

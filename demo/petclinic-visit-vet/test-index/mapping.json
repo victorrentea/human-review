@@ -1,0 +1,578 @@
+{
+  "$comment": "Sentence-level evidence map for GitHub issue #37. Sentence text is VERBATIM from the issue body (gh issue view 37 --json body); `sep` is the whitespace that follows the sentence in the original (\" \" same line, \"\\n\" end of source line). Per-link `strength` follows the test index's own convention: `asserted` when the sentence's fact appears in that test's `asserts` list, `exercised` when the test necessarily goes through it but never asserts it. A sentence with no evidence is deliberately left with tests:[] and strength:null - no colour, no warning, no finding.",
+  "$comment2": "Each sentence carries one `coverage` value - the colour. It answers 'how much of what this sentence CLAIMS is proven', not 'how many tests touch it'. The per-link `strength` below it is unchanged and still describes one test's relationship to the sentence.",
+  "$comment3": "Blocks mirror the issue's markdown skeleton: `p`, `hr`, `h2` (a `## ` heading) and `ol` (a numbered list whose items hold the sentences). Reconstruction is `\"\".join(text + sep)` per paragraph/list item, `\"## \" + text` per heading, `\"N. \"` per list item, blank line between blocks - build_mapping.py asserts the result equals `gh issue view 37 --json body` character for character. Sentence text keeps its `**bold**` markers so that stays true, and the renderer turns them into <strong>. The body is deliberately NOT hard-wrapped - one line per paragraph, list item and heading - so `sep` is a plain space almost everywhere and the tab wraps text to its own column instead of to whatever column the author typed in. The renderer still folds a stray newline inside a paragraph to a space, as defence against the issue being re-wrapped later.",
+  "issue": {
+    "repo": "petclinic",
+    "number": 37,
+    "title": "Link Visit with Vet",
+    "url": "https://github.com/victorrentea/petclinic/issues/37",
+    "author": "victorrentea",
+    "createdAt": "2026-06-13T09:31:55Z",
+    "$facts": "author/createdAt come from `gh issue view 37 --json author,createdAt`; the avatar is inlined as a data URI by build_asset.py because the report is opened from file:// and a remote <img> would not load."
+  },
+  "legend": {
+    "$rule": "Red and no-colour both mean 'no test'. The difference between them is the whole point of the scale: red is a claim about the software that nothing proves; no colour is a sentence that makes no such claim, so there is nothing to prove. A sentence is coloured for what it CLAIMS, not for how many tests happen to run through it.",
+    "covered": "full green - every claim it makes is in a test's assertion.",
+    "partly": "half green - part of what it claims is asserted; another part has no test behind it.",
+    "exercised": "orange - a test goes through it and never checks it.",
+    "missing": "full red - a testable claim no test asserts, or even reaches.",
+    "none": "no colour - not a claim about the software: a heading, the reason behind a rule, a scope exclusion, or a note about the ticket's own history. Nothing to cover, so nothing missing."
+  },
+  "$legendNote": "Four steps, not five. `exercised` (orange) already IS the 'reached but unproven' step, so a half-red 'partly missing' would name the same state as half-green 'partly covered' from the other end - two shades of different hue for one condition, which is the ambiguity worth avoiding. There is no half-orange either: nothing in this map is partly-walked-through, and a fifth tint between half-green and orange is not one a reader could name.",
+  "evidenceStrength": {
+    "asserted": "The fact is in a test's assertion.",
+    "exercised": "A test necessarily goes through it, but never asserts it.",
+    "touched": "Merely reached; no claim made about it."
+  },
+  "categories": {
+    "$derivation": "Derived at build time, never hand-listed. First authority is which test-index file the id appears in (browser.json -> e2e, rest.json and mcp.json -> api); a test the index has not picked up yet falls back to path shape: petclinic-test/** is e2e, src/test/java/**/rest/** and src/test/java/**/mcp/** are api, any other src/test/java/** is unit. Add a test and it classifies itself.",
+    "$mcp": "MCP sits under `api`, not on its own. It is a second machine-facing contract over the same service layer - it answers the same question REST does (does the contract carry the vet) and drives no browser. It also has no linked test on this branch, so a separate group would render as an empty box.",
+    "$rendered": "Only categories with members are drawn. On this branch that is e2e and api; `unit` classifies but nothing in this map lands there, so no empty group appears.",
+    "e2e": {
+      "label": "e2e",
+      "blurb": "drives the real UI end to end - Playwright, against the running stack."
+    },
+    "api": {
+      "label": "API",
+      "blurb": "exercises the contract under the UI - the REST endpoints, and the MCP tools over the same services."
+    },
+    "unit": {
+      "label": "unit",
+      "blurb": "pins a rule or algorithm in isolation, below any transport."
+    }
+  },
+  "tests": {
+    "petclinic-test/src/visits.spec.ts:27": {
+      "suite": "playwright",
+      "title": "shows all visits on initial load",
+      "indexStrength": "asserted",
+      "source": [
+        {
+          "file": "petclinic-test/src/visits.spec.ts",
+          "from": 27,
+          "to": 43
+        }
+      ],
+      "category": "e2e"
+    },
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:195": {
+      "suite": "junit-rest",
+      "title": "create_ok",
+      "indexStrength": "asserted",
+      "source": [
+        {
+          "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+          "from": 194,
+          "to": 208
+        }
+      ],
+      "category": "api"
+    },
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:226": {
+      "suite": "junit-rest",
+      "title": "create_withVet",
+      "indexStrength": "asserted",
+      "source": [
+        {
+          "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+          "from": 225,
+          "to": 243
+        },
+        {
+          "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+          "from": 301,
+          "to": 303
+        }
+      ],
+      "category": "api"
+    },
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:246": {
+      "suite": "junit-rest",
+      "title": "getById_exposesTheAttendingVet",
+      "indexStrength": "asserted",
+      "source": [
+        {
+          "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+          "from": 245,
+          "to": 256
+        },
+        {
+          "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+          "from": 90,
+          "to": 98
+        }
+      ],
+      "category": "api"
+    },
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:259": {
+      "suite": "junit-rest",
+      "title": "update_changesTheAttendingVet",
+      "indexStrength": "asserted",
+      "source": [
+        {
+          "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+          "from": 258,
+          "to": 273
+        },
+        {
+          "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+          "from": 293,
+          "to": 299
+        }
+      ],
+      "category": "api"
+    },
+    "petclinic-test/src/add-visit.feature:16": {
+      "suite": "playwright-cucumber",
+      "indexStrength": "asserted",
+      "title": "A visit remembers the vet who attended it",
+      "source": [
+        {
+          "file": "petclinic-test/src/add-visit.feature",
+          "from": 11,
+          "to": 18
+        },
+        {
+          "file": "petclinic-test/src/add-visit.feature.glue.ts",
+          "from": 68,
+          "to": 74
+        },
+        {
+          "file": "petclinic-test/src/add-visit.feature.glue.ts",
+          "from": 76,
+          "to": 79
+        },
+        {
+          "file": "petclinic-test/src/add-visit.dsl.ts",
+          "from": 81,
+          "to": 83
+        }
+      ],
+      "category": "e2e"
+    },
+    "petclinic-test/src/add-visit.feature:20": {
+      "suite": "playwright-cucumber",
+      "indexStrength": "asserted",
+      "title": "A visit nobody attended says so, rather than saying nothing",
+      "source": [
+        {
+          "file": "petclinic-test/src/add-visit.feature",
+          "from": 20,
+          "to": 22
+        },
+        {
+          "file": "petclinic-test/src/add-visit.feature.glue.ts",
+          "from": 81,
+          "to": 83
+        },
+        {
+          "file": "petclinic-test/src/add-visit.feature.glue.ts",
+          "from": 92,
+          "to": 99
+        },
+        {
+          "file": "petclinic-test/src/add-visit.dsl.ts",
+          "from": 105,
+          "to": 109
+        }
+      ],
+      "category": "e2e"
+    },
+    "petclinic-test/src/add-visit.spec.ts:35": {
+      "suite": "playwright",
+      "title": "Add a visit to an existing pet from the owner detail page",
+      "indexStrength": "asserted",
+      "source": [
+        {
+          "file": "petclinic-test/src/add-visit.spec.ts",
+          "from": 35,
+          "to": 48
+        },
+        {
+          "file": "petclinic-test/src/add-visit.dsl.ts",
+          "from": 105,
+          "to": 109
+        },
+        {
+          "file": "petclinic-test/src/add-visit.dsl.ts",
+          "from": 116,
+          "to": 119
+        }
+      ],
+      "category": "e2e"
+    },
+    "petclinic-test/src/add-visit.spec.ts:52": {
+      "suite": "playwright",
+      "title": "Add a visit attended by a vet",
+      "indexStrength": "asserted",
+      "source": [
+        {
+          "file": "petclinic-test/src/add-visit.spec.ts",
+          "from": 50,
+          "to": 65
+        },
+        {
+          "file": "petclinic-test/src/add-visit.dsl.ts",
+          "from": 66,
+          "to": 72
+        },
+        {
+          "file": "petclinic-test/src/add-visit.dsl.ts",
+          "from": 111,
+          "to": 114
+        },
+        {
+          "file": "petclinic-test/src/add-visit.dsl.ts",
+          "from": 116,
+          "to": 119
+        }
+      ],
+      "category": "e2e"
+    }
+  },
+  "blocks": [
+    {
+      "kind": "p",
+      "sentences": [
+        {
+          "id": "s1",
+          "text": "The Visit should be linked to the vet that attended that consultation.",
+          "sep": " ",
+          "coverage": "covered",
+          "gap": "No test supplies an unknown or invalid vetId - every one of them books with a vet that already exists on the roster.",
+          "tests": [
+            {
+              "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:226",
+              "strength": "asserted",
+              "why": "POST with a vetId returns 201 and the persisted visit's vet is that vet."
+            },
+            {
+              "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:259",
+              "strength": "asserted",
+              "why": "PUT with a vetId reassigns the attending vet, verified against the database after flush+clear."
+            },
+            {
+              "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:246",
+              "strength": "asserted",
+              "why": "GET /api/visits/{id} returns the linked vet's id, first name and last name."
+            },
+            {
+              "id": "petclinic-test/src/add-visit.spec.ts:52",
+              "strength": "asserted",
+              "why": "Browser to API to DB round trip: the vet chosen in the form is the vet on the resulting visit row."
+            },
+            {
+              "id": "petclinic-test/src/add-visit.feature:16",
+              "strength": "asserted",
+              "why": "Names a vet from the roster up front, books with her, and reads that same name back off the pet's history - an independent oracle rather than a round trip."
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "text": "Visit should display its vet everywhere throughout the app.",
+          "sep": "",
+          "coverage": "partly",
+          "gap": "The MCP side shows no vet at all and nothing covers it; the visit edit screen is never opened by a browser test.",
+          "tests": [
+            {
+              "id": "petclinic-test/src/visits.spec.ts:27",
+              "strength": "asserted",
+              "why": "Deep-equal of every rendered row against the API, vet name included."
+            },
+            {
+              "id": "petclinic-test/src/add-visit.spec.ts:52",
+              "strength": "asserted",
+              "why": "The vet's name appears on the visit row of the owner detail page."
+            },
+            {
+              "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:246",
+              "strength": "asserted",
+              "why": "The vet's name is on the DTO every screen reads from."
+            },
+            {
+              "id": "petclinic-test/src/add-visit.feature:16",
+              "strength": "asserted",
+              "why": "The owner page shows the named attending vet on the booked visit."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "hr",
+      "sentences": []
+    },
+    {
+      "kind": "h2",
+      "text": "What it has to do",
+      "sentences": []
+    },
+    {
+      "kind": "ol",
+      "items": [
+        {
+          "n": 1,
+          "sentences": [
+            {
+              "id": "s3",
+              "text": "**Booking a visit lets you choose the vet, and lets you not choose one.**",
+              "sep": " ",
+              "coverage": "covered",
+              "gap": "One named vet is now proven selectable, but the option list as a whole is still never compared with the roster, and nothing asserts the field is not marked required.",
+              "tests": [
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:52",
+                  "strength": "asserted",
+                  "why": "Books a visit choosing a vet; that vet's name is on the resulting row."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:35",
+                  "strength": "asserted",
+                  "why": "Books a visit leaving the dropdown alone; the visit appears with an em dash for the vet."
+                },
+                {
+                  "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:226",
+                  "strength": "asserted",
+                  "why": "POST with a vetId, 201 Created, vet persisted on the visit."
+                },
+                {
+                  "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:195",
+                  "strength": "asserted",
+                  "why": "POST with no vetId, 201 Created, visit persisted."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:16",
+                  "strength": "asserted",
+                  "why": "Chooses a named vet in the form and the history shows her."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:20",
+                  "strength": "asserted",
+                  "why": "Books with nobody attending and the visit is created."
+                }
+              ]
+            },
+            {
+              "id": "s4",
+              "text": "The vet is optional: half the time the appointment is booked before anyone knows who is taking it, and forcing a choice there produces bad data rather than information.",
+              "sep": "",
+              "coverage": "covered",
+              "gap": "Optionality is proven at creation only - nothing now shows a visit may be left without a vet later in its life.",
+              "tests": [
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:35",
+                  "strength": "asserted",
+                  "why": "Submitting the New Visit form without a vet returns to the owner page and the visit appears."
+                },
+                {
+                  "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:195",
+                  "strength": "asserted",
+                  "why": "POST /api/visits with no vetId, 201 Created, visit persisted."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:20",
+                  "strength": "asserted",
+                  "why": "A visit booked with nobody attending is created and reads as having no vet."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "sentences": [
+            {
+              "id": "s5",
+              "text": "**Editing a visit can change the vet, and can remove it.**",
+              "sep": " ",
+              "coverage": "partly",
+              "gap": "“And can remove it” has nothing behind it: no test sends a PUT that omits vetId, and no browser test opens the edit screen.",
+              "tests": [
+                {
+                  "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:259",
+                  "strength": "asserted",
+                  "why": "Setting/changing the vet on an existing visit."
+                }
+              ]
+            },
+            {
+              "id": "s6",
+              "text": "Clearing the field must persist as empty.",
+              "sep": " ",
+              "coverage": "missing",
+              "gap": "Still nothing - the new Gherkin included. “A visit nobody attended” books without a vet, which is a different claim from clearing a vet that was already assigned. Nothing sends a PUT that omits vetId, and no browser test opens the visit edit screen. A structural API diff cannot see it either, since VisitFieldsDto carries an optional vetId under both readings - the behaviour still works, it is simply unproven.",
+              "tests": []
+            },
+            {
+              "id": "s7",
+              "text": "We had this with pet types: the old value kept coming back.",
+              "sep": "",
+              "coverage": null,
+              "gap": "",
+              "tests": []
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "sentences": [
+            {
+              "id": "s8",
+              "text": "**Wherever a visit is shown with its details, the vet is shown too.**",
+              "sep": " ",
+              "coverage": "partly",
+              "gap": "The MCP tool list_visits also shows visits with their details, and shows no vet; nothing covers it.",
+              "tests": [
+                {
+                  "id": "petclinic-test/src/visits.spec.ts:27",
+                  "strength": "asserted",
+                  "why": "Deep-equal of every rendered row against the API, vet name included."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:52",
+                  "strength": "asserted",
+                  "why": "Vet name on the owner page's visit row."
+                },
+                {
+                  "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:246",
+                  "strength": "asserted",
+                  "why": "The vet's name is on the DTO every screen reads from."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:16",
+                  "strength": "asserted",
+                  "why": "The vet is shown with the visit on the owner page."
+                }
+              ]
+            },
+            {
+              "id": "s9",
+              "text": "Today that means the owner's page and the all-visits screen.",
+              "sep": "",
+              "coverage": "covered",
+              "gap": "The owner-page check uses toContainText against the whole visit row, not the .visit-vet cell its no-vet sibling scopes to.",
+              "tests": [
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:52",
+                  "strength": "asserted",
+                  "why": "Owner page, vet present."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:35",
+                  "strength": "asserted",
+                  "why": "Owner page, vet absent."
+                },
+                {
+                  "id": "petclinic-test/src/visits.spec.ts:27",
+                  "strength": "asserted",
+                  "why": "Visits screen, every row."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:16",
+                  "strength": "asserted",
+                  "why": "Owner page, vet present, named independently."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:20",
+                  "strength": "asserted",
+                  "why": "Owner page, vet absent."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "sentences": [
+            {
+              "id": "s10",
+              "text": "**A visit with no vet reads as having none.**",
+              "sep": " ",
+              "coverage": "covered",
+              "gap": "It is asserted as an em dash (VetNamePipe.NOT_ATTENDED), a character the ticket never asked for by name.",
+              "tests": [
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:35",
+                  "strength": "asserted",
+                  "why": "toHaveText on the .visit-vet cell."
+                },
+                {
+                  "id": "petclinic-test/src/visits.spec.ts:27",
+                  "strength": "asserted",
+                  "why": "Every vetless row renders the em dash."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:20",
+                  "strength": "asserted",
+                  "why": "A visit booked with nobody attending renders the em dash on the owner page."
+                }
+              ]
+            },
+            {
+              "id": "s11",
+              "text": "Not \"Unknown\", not blank-because-broken, and never an error.",
+              "sep": " ",
+              "coverage": "covered",
+              "gap": "“Never an error” is proven only by absence: no test deliberately provokes an error path on a vetless visit.",
+              "tests": [
+                {
+                  "id": "petclinic-test/src/add-visit.spec.ts:35",
+                  "strength": "asserted",
+                  "why": "Exact text match excludes 'Unknown' and excludes a blank cell."
+                },
+                {
+                  "id": "petclinic-test/src/visits.spec.ts:27",
+                  "strength": "asserted",
+                  "why": "Row-by-row equality excludes both across the whole list."
+                },
+                {
+                  "id": "petclinic-test/src/add-visit.feature:20",
+                  "strength": "asserted",
+                  "why": "Exact em-dash text, so neither 'Unknown' nor a blank cell can pass."
+                }
+              ]
+            },
+            {
+              "id": "s12",
+              "text": "Visits created before this change have no vet and will not get one.",
+              "sep": "",
+              "coverage": "exercised",
+              "gap": "The test never distinguishes pre-existing rows from the ones it created, and “will not get one” is a non-event no test can prove.",
+              "tests": [
+                {
+                  "id": "petclinic-test/src/visits.spec.ts:27",
+                  "strength": "exercised",
+                  "why": "Renders and compares every row on the all-visits page, seeded vetless visits included, without singling them out."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "h2",
+      "text": "Out of scope",
+      "sentences": []
+    },
+    {
+      "kind": "p",
+      "sentences": [
+        {
+          "id": "s13",
+          "text": "Searching or filtering visits by vet.",
+          "sep": "",
+          "coverage": null,
+          "gap": "",
+          "tests": []
+        }
+      ]
+    }
+  ],
+  "uncolouredRationale": {
+    "s7": "A reference to an older defect in pet types. It is a note about the ticket's own history, not a claim about this system - the behaviour it warns about is the sentence before it, which is red.",
+    "s13": "A scope exclusion. No test proves the absence of a feature; the owner-search scenarios filter by owner last name, not by vet."
+  }
+}

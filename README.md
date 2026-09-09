@@ -307,8 +307,11 @@ somebody can see what `/human-review` produces before installing anything. Anyth
 <https://victorrentea.github.io/human-review/>
 
 `demo/index.html` is a hand-written landing page listing the snapshots; each snapshot lives
-in `demo/<slug>/` and is a verbatim copy of a `.human-review/` output directory —
-`review.html`, `content.json` and `assets/`, bytes untouched. `.github/workflows/pages.yml`
+in `demo/<slug>/` and is a copy of a `.human-review/` output directory — `review.html`,
+`content.json` and `assets/`, bytes untouched. Two things are left behind: everything the
+run keeps for itself, which it names with a leading dot (the step stamps, the ledger, the
+privacy verdicts, the session id, the vendored `.tools/`), and `*.raw.webm`, the
+un-narrated capture nothing on the page plays. `.github/workflows/pages.yml`
 uploads the whole `demo/` directory and deploys it on every push to `main` that touches
 `demo/**` (or the workflow itself), and on `workflow_dispatch`.
 

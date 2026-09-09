@@ -1,0 +1,5697 @@
+{
+ "schema": "ds-audit/1",
+ "generated": "2026-09-03T08:58:15+00:00",
+ "verdict": "gaps",
+ "registry": {
+  "components": [
+   {
+    "ds": "combo",
+    "roles": [
+     "select"
+    ],
+    "provenance": "runtime:Edit a visit:new",
+    "detail": "<select> inside app-combo[name=\"vetId\"]",
+    "seen_on": [
+     "Edit a visit:new",
+     "Add a pet:new",
+     "Add a pet:old",
+     "Edit a pet:new",
+     "Edit a pet:old",
+     "Add a vet:new",
+     "Add a vet:old"
+    ]
+   }
+  ],
+  "roles": [
+   {
+    "role": "select",
+    "covered_by": [
+     "combo"
+    ],
+    "provenance": "runtime:Edit a visit:new"
+   }
+  ]
+ },
+ "determinism": {
+  "pins": [
+   "viewport and deviceScaleFactor fixed (no retina resampling between machines)",
+   "colour scheme, reduced-motion and locale forced identical on both sides",
+   "wall clock frozen \u2014 a form defaulting to \"today\" is the same date on both sides",
+   "Math.random seeded (mulberry32) \u2014 same sequence, same generated ids",
+   "animations, transitions and the text caret disabled; scrollbars given no width",
+   "screenshot taken with Playwright's animations=\"disabled\"",
+   "settle loop: shot repeatedly until two consecutive frames are byte-identical",
+   "same browser build drives both sides in one process \u2014 same fonts, same rasteriser",
+   "both sides read the same backend in the same run, so row order and ids match"
+  ],
+  "settled": {
+   "Book a visit": {
+    "new": true,
+    "old": true
+   },
+   "Edit a visit": {
+    "new": true,
+    "old": true
+   },
+   "Add a pet": {
+    "new": true,
+    "old": true
+   },
+   "Edit a pet": {
+    "new": true,
+    "old": true
+   },
+   "Add a vet": {
+    "new": true,
+    "old": true
+   },
+   "Edit a vet": {
+    "new": true,
+    "old": true
+   },
+   "Owners": {
+    "new": true,
+    "old": true
+   }
+  }
+ },
+ "screens": [
+  {
+   "screen": "Book a visit",
+   "sides": {
+    "new": {
+     "label": "test-pr",
+     "url": "http://localhost:4201/petclinic/pets/11/visits/add",
+     "commit": "038934b1",
+     "png": "assets/ds-audit-book-a-visit-new.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    },
+    "old": {
+     "label": "main",
+     "url": "http://localhost:4301/petclinic/pets/11/visits/add",
+     "commit": "773e3cef",
+     "png": "assets/ds-audit-book-a-visit-old.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    }
+   },
+   "settled": {
+    "new": true,
+    "old": true
+   },
+   "delta": {
+    "dom": {
+     "added": [
+      "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1>tr:1>th:4",
+      "form#visit>div.form-group:1>div.form-group:3",
+      "form#visit>div.form-group:1>div.form-group:3>div.col-sm-10:1",
+      "form#visit>div.form-group:1>div.form-group:3>label.col-sm-2.control-label:1",
+      "select#vetId"
+     ],
+     "removed": [],
+     "changed": [
+      "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1>tr:1>th:3"
+     ],
+     "moved": {}
+    },
+    "elements": {
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1>tr:1>th:4": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit>div.form-group:1>div.form-group:3": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit>div.form-group:1>div.form-group:3>div.col-sm-10:1": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit>div.form-group:1>div.form-group:3>label.col-sm-2.control-label:1": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "select#vetId": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>h2:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>b:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:2>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.col-12.text-left:1>p:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span.glyphicon.glyphicon-heart:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#cdk-live-announcer-0": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-focus-indicator:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:2>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.glyphicon.glyphicon-education:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.caret:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.col-12.text-left:1>p:1>b:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-touch-target:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1>span:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.col-12.text-left:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1>tr:1>th:3": {
+      "dom": "changed",
+      "pixel_churn": 0.5625,
+      "status": "changed"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#description": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1>tr:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-persistent-ripple.mdc-icon-button__ripple:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:2>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:2>div.col-sm-10.col-sm-offset-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span.glyphicon.glyphicon-home:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1>tr:1>th:1": {
+      "dom": "same",
+      "pixel_churn": 0.1298,
+      "status": "restyled"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1>path:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span.glyphicon.glyphicon-user:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span.glyphicon.glyphicon-calendar:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span.glyphicon.glyphicon-th-list:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:1>div.form-group.has-feedback:2>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-add:1>div.container-fluid:1>div.container.xd-container:1>div.container:2>div.row:1>div.col-12.text-center:1>app-visit-list:1>table.table.table-condensed:1>thead:1>tr:1>th:2": {
+      "dom": "same",
+      "pixel_churn": 0.1471,
+      "status": "restyled"
+     },
+     "form#visit>div.form-group:2>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     }
+    }
+   },
+   "findings": [
+    {
+     "id": "new:form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "date",
+      "label": "Date",
+      "sig": "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]"
+     },
+     "selector": "input[name=\"date\"]",
+     "box": {
+      "x": 248,
+      "y": 265,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:input#description",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "description",
+      "name": "description",
+      "label": "Description",
+      "sig": "input#description"
+     },
+     "selector": "#description",
+     "box": {
+      "x": 248,
+      "y": 309,
+      "w": 987,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:select#vetId",
+     "side": "new",
+     "verdict": "bare",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "vetId",
+      "name": "vetId",
+      "label": "Vet",
+      "sig": "select#vetId"
+     },
+     "selector": "#vetId",
+     "box": {
+      "x": 248,
+      "y": 358,
+      "w": 987,
+      "h": 34
+     },
+     "message": "native <code>&lt;select&gt;</code> in a role the design system covers (<b>combo</b>), and it is not inside any <code>[data-ds]</code> host",
+     "severity": "high",
+     "history": "new on this branch: it shipped bare, it was never migrated",
+     "delta": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     }
+    },
+    {
+     "id": "old:form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "date",
+      "label": "Date",
+      "sig": "form#visit>div.form-group:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]"
+     },
+     "selector": "input[name=\"date\"]",
+     "box": {
+      "x": 248,
+      "y": 265,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#description",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "description",
+      "name": "description",
+      "label": "Description",
+      "sig": "input#description"
+     },
+     "selector": "#description",
+     "box": {
+      "x": 248,
+      "y": 309,
+      "w": 987,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    }
+   ],
+   "summary": {
+    "new": {
+     "ds": 0,
+     "bare": 1,
+     "internal": 0,
+     "uncovered": 2
+    },
+    "old": {
+     "ds": 0,
+     "bare": 0,
+     "internal": 0,
+     "uncovered": 2
+    },
+    "regressions": [
+     "new:select#vetId"
+    ],
+    "pre_existing": [],
+    "improvements": []
+   }
+  },
+  {
+   "screen": "Edit a visit",
+   "sides": {
+    "new": {
+     "label": "test-pr",
+     "url": "http://localhost:4201/petclinic/visits/1/edit",
+     "commit": "038934b1",
+     "png": "assets/ds-audit-edit-a-visit-new.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    },
+    "old": {
+     "label": "main",
+     "url": "http://localhost:4301/petclinic/visits/1/edit",
+     "commit": "773e3cef",
+     "png": "assets/ds-audit-edit-a-visit-old.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    }
+   },
+   "settled": {
+    "new": true,
+    "old": true
+   },
+   "delta": {
+    "dom": {
+     "added": [
+      "form#visit>div.form-group.has-feedback:1>div.form-group:3",
+      "form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1",
+      "form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1>app-combo[name=vetId]",
+      "form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1>app-combo[name=vetId]>span.pc-combo__chevron:1",
+      "form#visit>div.form-group.has-feedback:1>div.form-group:3>label.col-sm-2.control-label:1",
+      "select#vetId"
+     ],
+     "removed": [],
+     "changed": [],
+     "moved": {}
+    },
+    "elements": {
+     "form#visit>div.form-group.has-feedback:1>div.form-group:3": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1>app-combo[name=vetId]": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1>app-combo[name=vetId]>span.pc-combo__chevron:1": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group:3>label.col-sm-2.control-label:1": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "select#vetId": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1>span:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#description": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a.active:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#cdk-live-announcer-0": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:2>div.col-sm-10.col-sm-offset-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span.glyphicon.glyphicon-home:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>h2:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.glyphicon.glyphicon-education:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a.active:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>b:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1>path:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:2>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.caret:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span.glyphicon.glyphicon-user:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:2>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:2>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:2>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a.active:1>span.glyphicon.glyphicon-calendar:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span.glyphicon.glyphicon-th-list:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-persistent-ripple.mdc-icon-button__ripple:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-touch-target:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-focus-indicator:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span.glyphicon.glyphicon-heart:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>thead:1>tr:1>th:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#visit>div.form-group:2>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-visit-edit:1>div.container-fluid:1>div.container.xd-container:1>table.table.table-striped:1>tr:1>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     }
+    }
+   },
+   "findings": [
+    {
+     "id": "new:form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "date",
+      "label": "Date",
+      "sig": "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]"
+     },
+     "selector": "input[name=\"date\"]",
+     "box": {
+      "x": 248,
+      "y": 265,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:input#description",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "description",
+      "name": "description",
+      "label": "Description",
+      "sig": "input#description"
+     },
+     "selector": "#description",
+     "box": {
+      "x": 248,
+      "y": 309,
+      "w": 987,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1>app-combo[name=vetId]",
+     "side": "new",
+     "verdict": "ds",
+     "role": null,
+     "expected_ds": [],
+     "ds": "combo",
+     "element": {
+      "tag": "app-combo",
+      "id": null,
+      "name": "vetId",
+      "label": "Vet",
+      "sig": "form#visit>div.form-group.has-feedback:1>div.form-group:3>div.col-sm-10:1>app-combo[name=vetId]"
+     },
+     "selector": "app-combo[name=\"vetId\"]",
+     "box": {
+      "x": 248,
+      "y": 358,
+      "w": 987,
+      "h": 34
+     },
+     "message": "design-system component <b>combo</b>",
+     "delta": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:select#vetId",
+     "side": "new",
+     "verdict": "internal",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "vetId",
+      "name": null,
+      "label": "Vet",
+      "sig": "select#vetId"
+     },
+     "selector": "#vetId",
+     "box": {
+      "x": 248,
+      "y": 358,
+      "w": 987,
+      "h": 34
+     },
+     "message": "inside the <b>combo</b> component \u2014 its own control",
+     "delta": {
+      "dom": "added",
+      "pixel_churn": null,
+      "status": "added"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "date",
+      "label": "Date",
+      "sig": "form#visit>div.form-group.has-feedback:1>div.form-group.has-feedback:1>div.col-sm-10:1>input[name=date]"
+     },
+     "selector": "input[name=\"date\"]",
+     "box": {
+      "x": 248,
+      "y": 265,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#description",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "description",
+      "name": "description",
+      "label": "Description",
+      "sig": "input#description"
+     },
+     "selector": "#description",
+     "box": {
+      "x": 248,
+      "y": 309,
+      "w": 987,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    }
+   ],
+   "summary": {
+    "new": {
+     "ds": 1,
+     "bare": 0,
+     "internal": 1,
+     "uncovered": 2
+    },
+    "old": {
+     "ds": 0,
+     "bare": 0,
+     "internal": 0,
+     "uncovered": 2
+    },
+    "regressions": [],
+    "pre_existing": [],
+    "improvements": []
+   }
+  },
+  {
+   "screen": "Add a pet",
+   "sides": {
+    "new": {
+     "label": "test-pr",
+     "url": "http://localhost:4201/petclinic/owners/9/pets/add",
+     "commit": "038934b1",
+     "png": "assets/ds-audit-add-a-pet-new.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    },
+    "old": {
+     "label": "main",
+     "url": "http://localhost:4301/petclinic/owners/9/pets/add",
+     "commit": "773e3cef",
+     "png": "assets/ds-audit-add-a-pet-old.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    }
+   },
+   "settled": {
+    "new": true,
+    "old": true
+   },
+   "delta": {
+    "dom": {
+     "added": [],
+     "removed": [],
+     "changed": [],
+     "moved": {}
+    },
+    "elements": {
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1>span:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>app-combo[name=type]": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#cdk-live-announcer-0": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:2>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span.glyphicon.glyphicon-home:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.glyphicon.glyphicon-education:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-touch-target:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1>path:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "select#type": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a.active:1>span.glyphicon.glyphicon-user:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a.active:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#owner_name": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-persistent-ripple.mdc-icon-button__ripple:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.caret:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>h2:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-focus-indicator:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span.glyphicon.glyphicon-calendar:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span.glyphicon.glyphicon-th-list:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#name": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span.glyphicon.glyphicon-heart:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6>div.col-sm-10.col-sm-offset-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:2>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>app-combo[name=type]>span.pc-combo__chevron:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a.active:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     }
+    }
+   },
+   "findings": [
+    {
+     "id": "new:input#owner_name",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "owner_name",
+      "name": "owner_name",
+      "label": "Owner",
+      "sig": "input#owner_name"
+     },
+     "selector": "#owner_name",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:input#name",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "name",
+      "name": "name",
+      "label": "Name",
+      "sig": "input#name"
+     },
+     "selector": "#name",
+     "box": {
+      "x": 258,
+      "y": 217,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "birthDate",
+      "label": "Birth Date",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]"
+     },
+     "selector": "input[name=\"birthDate\"]",
+     "box": {
+      "x": 258,
+      "y": 285,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>app-combo[name=type]",
+     "side": "new",
+     "verdict": "ds",
+     "role": null,
+     "expected_ds": [],
+     "ds": "combo",
+     "element": {
+      "tag": "app-combo",
+      "id": null,
+      "name": "type",
+      "label": "Type",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>app-combo[name=type]"
+     },
+     "selector": "app-combo[name=\"type\"]",
+     "box": {
+      "x": 258,
+      "y": 329,
+      "w": 962,
+      "h": 34
+     },
+     "message": "design-system component <b>combo</b>",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:select#type",
+     "side": "new",
+     "verdict": "internal",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "type",
+      "name": null,
+      "label": "Type",
+      "sig": "select#type"
+     },
+     "selector": "#type",
+     "box": {
+      "x": 258,
+      "y": 329,
+      "w": 962,
+      "h": 34
+     },
+     "message": "inside the <b>combo</b> component \u2014 its own control",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#owner_name",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "owner_name",
+      "name": "owner_name",
+      "label": "Owner",
+      "sig": "input#owner_name"
+     },
+     "selector": "#owner_name",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#name",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "name",
+      "name": "name",
+      "label": "Name",
+      "sig": "input#name"
+     },
+     "selector": "#name",
+     "box": {
+      "x": 258,
+      "y": 217,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "birthDate",
+      "label": "Birth Date",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]"
+     },
+     "selector": "input[name=\"birthDate\"]",
+     "box": {
+      "x": 258,
+      "y": 285,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>app-combo[name=type]",
+     "side": "old",
+     "verdict": "ds",
+     "role": null,
+     "expected_ds": [],
+     "ds": "combo",
+     "element": {
+      "tag": "app-combo",
+      "id": null,
+      "name": "type",
+      "label": "Type",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-add:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>app-combo[name=type]"
+     },
+     "selector": "app-combo[name=\"type\"]",
+     "box": {
+      "x": 258,
+      "y": 329,
+      "w": 962,
+      "h": 34
+     },
+     "message": "design-system component <b>combo</b>",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:select#type",
+     "side": "old",
+     "verdict": "internal",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "type",
+      "name": null,
+      "label": "Type",
+      "sig": "select#type"
+     },
+     "selector": "#type",
+     "box": {
+      "x": 258,
+      "y": 329,
+      "w": 962,
+      "h": 34
+     },
+     "message": "inside the <b>combo</b> component \u2014 its own control",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    }
+   ],
+   "summary": {
+    "new": {
+     "ds": 1,
+     "bare": 0,
+     "internal": 1,
+     "uncovered": 3
+    },
+    "old": {
+     "ds": 1,
+     "bare": 0,
+     "internal": 1,
+     "uncovered": 3
+    },
+    "regressions": [],
+    "pre_existing": [],
+    "improvements": []
+   }
+  },
+  {
+   "screen": "Edit a pet",
+   "sides": {
+    "new": {
+     "label": "test-pr",
+     "url": "http://localhost:4201/petclinic/pets/11/edit",
+     "commit": "038934b1",
+     "png": "assets/ds-audit-edit-a-pet-new.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    },
+    "old": {
+     "label": "main",
+     "url": "http://localhost:4301/petclinic/pets/11/edit",
+     "commit": "773e3cef",
+     "png": "assets/ds-audit-edit-a-pet-old.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    }
+   },
+   "settled": {
+    "new": true,
+    "old": true
+   },
+   "delta": {
+    "dom": {
+     "added": [],
+     "removed": [],
+     "changed": [],
+     "moved": {}
+    },
+    "elements": {
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-touch-target:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1>span:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6>div.col-sm-10.col-sm-offset-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:2>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>span.form-control-feedback.glyphicon:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#cdk-live-announcer-0": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2>app-combo[name=pettype]": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span.glyphicon.glyphicon-home:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:2>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.glyphicon.glyphicon-education:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "select#type": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#type1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#owner_name": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2>app-combo[name=pettype]>span.pc-combo__chevron:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:6>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-focus-indicator:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.caret:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span.glyphicon.glyphicon-user:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span.glyphicon.glyphicon-calendar:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>span.mat-mdc-button-persistent-ripple.mdc-icon-button__ripple:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span.glyphicon.glyphicon-th-list:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "input#name": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>mat-datepicker-toggle.mat-datepicker-toggle:1>button.mat-mdc-button-base.mat-mdc-icon-button:1>svg.mat-datepicker-toggle-default-icon:1>path:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span.glyphicon.glyphicon-heart:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>h2:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:3>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     }
+    }
+   },
+   "findings": [
+    {
+     "id": "new:input#owner_name",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "owner_name",
+      "name": "owner_name",
+      "label": "Owner",
+      "sig": "input#owner_name"
+     },
+     "selector": "#owner_name",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:input#name",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "name",
+      "name": "name",
+      "label": "Name",
+      "sig": "input#name"
+     },
+     "selector": "#name",
+     "box": {
+      "x": 258,
+      "y": 217,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "birthDate",
+      "label": "Birth Date",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]"
+     },
+     "selector": "input[name=\"birthDate\"]",
+     "box": {
+      "x": 258,
+      "y": 285,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:input#type1",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "type1",
+      "name": "type1",
+      "label": "Type",
+      "sig": "input#type1"
+     },
+     "selector": "#type1",
+     "box": {
+      "x": 273,
+      "y": 329,
+      "w": 130,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2>app-combo[name=pettype]",
+     "side": "new",
+     "verdict": "ds",
+     "role": null,
+     "expected_ds": [],
+     "ds": "combo",
+     "element": {
+      "tag": "app-combo",
+      "id": null,
+      "name": "pettype",
+      "label": "Type",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2>app-combo[name=pettype]"
+     },
+     "selector": "app-combo[name=\"pettype\"]",
+     "box": {
+      "x": 434,
+      "y": 329,
+      "w": 611,
+      "h": 34
+     },
+     "message": "design-system component <b>combo</b>",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:select#type",
+     "side": "new",
+     "verdict": "internal",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "type",
+      "name": null,
+      "label": "Type",
+      "sig": "select#type"
+     },
+     "selector": "#type",
+     "box": {
+      "x": 434,
+      "y": 329,
+      "w": 611,
+      "h": 34
+     },
+     "message": "inside the <b>combo</b> component \u2014 its own control",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#owner_name",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "owner_name",
+      "name": "owner_name",
+      "label": "Owner",
+      "sig": "input#owner_name"
+     },
+     "selector": "#owner_name",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#name",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "name",
+      "name": "name",
+      "label": "Name",
+      "sig": "input#name"
+     },
+     "selector": "#name",
+     "box": {
+      "x": 258,
+      "y": 217,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": null,
+      "name": "birthDate",
+      "label": "Birth Date",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.form-group.has-feedback:4>div.col-sm-10:1>input[name=birthDate]"
+     },
+     "selector": "input[name=\"birthDate\"]",
+     "box": {
+      "x": 258,
+      "y": 285,
+      "w": 172,
+      "h": 26
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#type1",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "type1",
+      "name": "type1",
+      "label": "Type",
+      "sig": "input#type1"
+     },
+     "selector": "#type1",
+     "box": {
+      "x": 273,
+      "y": 329,
+      "w": 130,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2>app-combo[name=pettype]",
+     "side": "old",
+     "verdict": "ds",
+     "role": null,
+     "expected_ds": [],
+     "ds": "combo",
+     "element": {
+      "tag": "app-combo",
+      "id": null,
+      "name": "pettype",
+      "label": "Type",
+      "sig": "app-root:1>div.content-wrapper:2>app-pet-edit:1>div.container-fluid:1>div.container.xd-container:1>form.form-horizontal:1>div.control-group:5>div.form-group.has-feedback:1>div.col-sm-10:1>div.col-sm-8:2>app-combo[name=pettype]"
+     },
+     "selector": "app-combo[name=\"pettype\"]",
+     "box": {
+      "x": 434,
+      "y": 329,
+      "w": 611,
+      "h": 34
+     },
+     "message": "design-system component <b>combo</b>",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:select#type",
+     "side": "old",
+     "verdict": "internal",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "type",
+      "name": null,
+      "label": "Type",
+      "sig": "select#type"
+     },
+     "selector": "#type",
+     "box": {
+      "x": 434,
+      "y": 329,
+      "w": 611,
+      "h": 34
+     },
+     "message": "inside the <b>combo</b> component \u2014 its own control",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    }
+   ],
+   "summary": {
+    "new": {
+     "ds": 1,
+     "bare": 0,
+     "internal": 1,
+     "uncovered": 4
+    },
+    "old": {
+     "ds": 1,
+     "bare": 0,
+     "internal": 1,
+     "uncovered": 4
+    },
+    "regressions": [],
+    "pre_existing": [],
+    "improvements": []
+   }
+  },
+  {
+   "screen": "Add a vet",
+   "sides": {
+    "new": {
+     "label": "test-pr",
+     "url": "http://localhost:4201/petclinic/vets/add",
+     "commit": "038934b1",
+     "png": "assets/ds-audit-add-a-vet-new.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    },
+    "old": {
+     "label": "main",
+     "url": "http://localhost:4301/petclinic/vets/add",
+     "commit": "773e3cef",
+     "png": "assets/ds-audit-add-a-vet-old.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    }
+   },
+   "settled": {
+    "new": true,
+    "old": true
+   },
+   "delta": {
+    "dom": {
+     "added": [],
+     "removed": [],
+     "changed": [],
+     "moved": {}
+    },
+    "elements": {
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1>span:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:3>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.control-group:4>div.form-group:1>div.col-sm-10:1>app-combo[name=specialties]>span.pc-combo__chevron:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.form-group:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#lastName": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.form-group:5>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#cdk-live-announcer-0": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span.glyphicon.glyphicon-home:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-add:1>div.container-fluid:1>div.container.xd-container:1>h2:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.control-group:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#firstName": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.glyphicon.glyphicon-education:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:2>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.form-group:5>div.col-sm-10.col-sm-offset-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:3>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.control-group:4>div.form-group:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-add:1>div.container-fluid:1>div.container.xd-container:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-add:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.control-group:4>div.form-group:1>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.control-group:4>div.form-group:1>div.col-sm-10:1>app-combo[name=specialties]": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:2>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:2>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.caret:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span.glyphicon.glyphicon-user:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span.glyphicon.glyphicon-calendar:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-add:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span.glyphicon.glyphicon-th-list:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:3>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.control-group:4>div.form-group:1>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span.glyphicon.glyphicon-heart:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.form-group:5>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet>div.form-group.has-feedback:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "select#specialties": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     }
+    }
+   },
+   "findings": [
+    {
+     "id": "new:input#firstName",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "firstName",
+      "name": "firstName",
+      "label": "First Name",
+      "sig": "input#firstName"
+     },
+     "selector": "#firstName",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:input#lastName",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "lastName",
+      "name": "lastName",
+      "label": "Last Name",
+      "sig": "input#lastName"
+     },
+     "selector": "#lastName",
+     "box": {
+      "x": 258,
+      "y": 197,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:form#vet>div.control-group:4>div.form-group:1>div.col-sm-10:1>app-combo[name=specialties]",
+     "side": "new",
+     "verdict": "ds",
+     "role": null,
+     "expected_ds": [],
+     "ds": "combo",
+     "element": {
+      "tag": "app-combo",
+      "id": null,
+      "name": "specialties",
+      "label": "Type",
+      "sig": "form#vet>div.control-group:4>div.form-group:1>div.col-sm-10:1>app-combo[name=specialties]"
+     },
+     "selector": "app-combo[name=\"specialties\"]",
+     "box": {
+      "x": 258,
+      "y": 246,
+      "w": 962,
+      "h": 34
+     },
+     "message": "design-system component <b>combo</b>",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:select#specialties",
+     "side": "new",
+     "verdict": "internal",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "specialties",
+      "name": null,
+      "label": "Type",
+      "sig": "select#specialties"
+     },
+     "selector": "#specialties",
+     "box": {
+      "x": 258,
+      "y": 246,
+      "w": 962,
+      "h": 34
+     },
+     "message": "inside the <b>combo</b> component \u2014 its own control",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#firstName",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "firstName",
+      "name": "firstName",
+      "label": "First Name",
+      "sig": "input#firstName"
+     },
+     "selector": "#firstName",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#lastName",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "lastName",
+      "name": "lastName",
+      "label": "Last Name",
+      "sig": "input#lastName"
+     },
+     "selector": "#lastName",
+     "box": {
+      "x": 258,
+      "y": 197,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:form#vet>div.control-group:4>div.form-group:1>div.col-sm-10:1>app-combo[name=specialties]",
+     "side": "old",
+     "verdict": "ds",
+     "role": null,
+     "expected_ds": [],
+     "ds": "combo",
+     "element": {
+      "tag": "app-combo",
+      "id": null,
+      "name": "specialties",
+      "label": "Type",
+      "sig": "form#vet>div.control-group:4>div.form-group:1>div.col-sm-10:1>app-combo[name=specialties]"
+     },
+     "selector": "app-combo[name=\"specialties\"]",
+     "box": {
+      "x": 258,
+      "y": 246,
+      "w": 962,
+      "h": 34
+     },
+     "message": "design-system component <b>combo</b>",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:select#specialties",
+     "side": "old",
+     "verdict": "internal",
+     "role": "select",
+     "expected_ds": [
+      "combo"
+     ],
+     "ds": null,
+     "element": {
+      "tag": "select",
+      "id": "specialties",
+      "name": null,
+      "label": "Type",
+      "sig": "select#specialties"
+     },
+     "selector": "#specialties",
+     "box": {
+      "x": 258,
+      "y": 246,
+      "w": 962,
+      "h": 34
+     },
+     "message": "inside the <b>combo</b> component \u2014 its own control",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    }
+   ],
+   "summary": {
+    "new": {
+     "ds": 1,
+     "bare": 0,
+     "internal": 1,
+     "uncovered": 2
+    },
+    "old": {
+     "ds": 1,
+     "bare": 0,
+     "internal": 1,
+     "uncovered": 2
+    },
+    "regressions": [],
+    "pre_existing": [],
+    "improvements": []
+   }
+  },
+  {
+   "screen": "Edit a vet",
+   "sides": {
+    "new": {
+     "label": "test-pr",
+     "url": "http://localhost:4201/petclinic/vets/2/edit",
+     "commit": "038934b1",
+     "png": "assets/ds-audit-edit-a-vet-new.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    },
+    "old": {
+     "label": "main",
+     "url": "http://localhost:4301/petclinic/vets/2/edit",
+     "commit": "773e3cef",
+     "png": "assets/ds-audit-edit-a-vet-old.png",
+     "page": {
+      "w": 1280,
+      "h": 900
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    }
+   },
+   "settled": {
+    "new": true,
+    "old": true
+   },
+   "delta": {
+    "dom": {
+     "added": [],
+     "removed": [],
+     "changed": [],
+     "moved": {}
+    },
+    "elements": {
+     "form#vet_form>div.form-group.has-feedback:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group:5>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1>span:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4>div.form-group:1>mat-form-field.col-sm-10.mat-form-field-appearance-fill:1>div.mat-mdc-text-field-wrapper.mdc-text-field:1>div.mat-mdc-form-field-flex.ng-tns-c1205077789-0:2>div.mat-mdc-form-field-infix.ng-tns-c1205077789-0:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-edit:1>div.container-fluid:1>div.container.xd-container:1>h2:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group.has-feedback:3>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group.has-feedback:2>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group.has-feedback:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group:5>div.col-sm-10.col-sm-offset-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-edit:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "input#lastName": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-edit:1>div.container-fluid:1>div.container.xd-container:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group.has-feedback:2>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4>div.form-group:1>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#mat-select-value-1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#mat-select-value-1>span.mat-mdc-select-value-text.ng-tns-c3393473648-1:1>span.mat-mdc-select-min-line.ng-tns-c3393473648-1:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#cdk-live-announcer-0": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4>div.form-group:1>mat-form-field.col-sm-10.mat-form-field-appearance-fill:1>div.mat-mdc-form-field-bottom-align.mat-mdc-form-field-subscript-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4>div.form-group:1>mat-form-field.col-sm-10.mat-form-field-appearance-fill:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span.glyphicon.glyphicon-home:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#mat-select-value-1>span.mat-mdc-select-value-text.ng-tns-c3393473648-1:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.glyphicon.glyphicon-education:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "input#firstName": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "mat-select#spec>div.mat-mdc-select-trigger.ng-tns-c3393473648-1:1>div.mat-mdc-select-arrow-wrapper.ng-tns-c3393473648-1:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4>div.form-group:1>mat-form-field.col-sm-10.mat-form-field-appearance-fill:1>div.mat-mdc-text-field-wrapper.mdc-text-field:1>div.mat-mdc-form-field-flex.ng-tns-c1205077789-0:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group.has-feedback:3>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-vet-edit:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.caret:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span.glyphicon.glyphicon-user:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span.glyphicon.glyphicon-calendar:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group:5>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span.glyphicon.glyphicon-th-list:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "mat-select#spec>div.mat-mdc-select-trigger.ng-tns-c3393473648-1:1>div.mat-mdc-select-arrow-wrapper.ng-tns-c3393473648-1:2>div.mat-mdc-select-arrow.ng-tns-c3393473648-1:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4>div.form-group:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group.has-feedback:3>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.control-group:4>div.form-group:1>mat-form-field.col-sm-10.mat-form-field-appearance-fill:1>div.mat-mdc-text-field-wrapper.mdc-text-field:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "mat-select#spec": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "mat-select#spec>div.mat-mdc-select-trigger.ng-tns-c3393473648-1:1>div.mat-mdc-select-arrow-wrapper.ng-tns-c3393473648-1:2>div.mat-mdc-select-arrow.ng-tns-c3393473648-1:1>svg.ng-tns-c3393473648-1:1>path.ng-tns-c3393473648-1:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group.has-feedback:2>div.col-sm-10:1>span.form-control-feedback.glyphicon:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span.glyphicon.glyphicon-heart:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#vet_form>div.form-group:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "mat-select#spec>div.mat-mdc-select-trigger.ng-tns-c3393473648-1:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "mat-select#spec>div.mat-mdc-select-trigger.ng-tns-c3393473648-1:1>div.mat-mdc-select-arrow-wrapper.ng-tns-c3393473648-1:2>div.mat-mdc-select-arrow.ng-tns-c3393473648-1:1>svg.ng-tns-c3393473648-1:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     }
+    }
+   },
+   "findings": [
+    {
+     "id": "new:input#firstName",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "firstName",
+      "name": "firstName",
+      "label": "First Name",
+      "sig": "input#firstName"
+     },
+     "selector": "#firstName",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:input#lastName",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "lastName",
+      "name": "lastName",
+      "label": "Last Name",
+      "sig": "input#lastName"
+     },
+     "selector": "#lastName",
+     "box": {
+      "x": 258,
+      "y": 197,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "new:mat-select#spec",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "role=combobox",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "mat-select",
+      "id": "spec",
+      "name": "specialties",
+      "label": "Specialties",
+      "sig": "mat-select#spec"
+     },
+     "selector": "#spec",
+     "box": {
+      "x": 274,
+      "y": 262,
+      "w": 930,
+      "h": 24
+     },
+     "message": "<code>&lt;mat-select&gt;</code> in role <code>role=combobox</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#firstName",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "firstName",
+      "name": "firstName",
+      "label": "First Name",
+      "sig": "input#firstName"
+     },
+     "selector": "#firstName",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#lastName",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "lastName",
+      "name": "lastName",
+      "label": "Last Name",
+      "sig": "input#lastName"
+     },
+     "selector": "#lastName",
+     "box": {
+      "x": 258,
+      "y": 197,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:mat-select#spec",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "role=combobox",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "mat-select",
+      "id": "spec",
+      "name": "specialties",
+      "label": "Specialties",
+      "sig": "mat-select#spec"
+     },
+     "selector": "#spec",
+     "box": {
+      "x": 274,
+      "y": 262,
+      "w": 930,
+      "h": 24
+     },
+     "message": "<code>&lt;mat-select&gt;</code> in role <code>role=combobox</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    }
+   ],
+   "summary": {
+    "new": {
+     "ds": 0,
+     "bare": 0,
+     "internal": 0,
+     "uncovered": 3
+    },
+    "old": {
+     "ds": 0,
+     "bare": 0,
+     "internal": 0,
+     "uncovered": 3
+    },
+    "regressions": [],
+    "pre_existing": [],
+    "improvements": []
+   }
+  },
+  {
+   "screen": "Owners",
+   "sides": {
+    "new": {
+     "label": "test-pr",
+     "url": "http://localhost:4201/petclinic/owners",
+     "commit": "038934b1",
+     "png": "assets/ds-audit-owners-new.png",
+     "page": {
+      "w": 1280,
+      "h": 1597
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    },
+    "old": {
+     "label": "main",
+     "url": "http://localhost:4301/petclinic/owners",
+     "commit": "773e3cef",
+     "png": "assets/ds-audit-owners-old.png",
+     "page": {
+      "w": 1280,
+      "h": 1597
+     },
+     "viewport": {
+      "w": 1280,
+      "h": 900
+     }
+    }
+   },
+   "settled": {
+    "new": true,
+    "old": true
+   },
+   "delta": {
+    "dom": {
+     "added": [],
+     "removed": [],
+     "changed": [],
+     "moved": {}
+    },
+    "elements": {
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td:5>tr:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>thead:1>tr:1>th:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#search-owner-form>div.form-group:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td:5>tr:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a.active:1>span.glyphicon.glyphicon-user:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:11>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a.active:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td:5>tr:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>thead:1>tr:1>th:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:11": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span.glyphicon.glyphicon-heart:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2>a.active:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:11>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:11>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>thead:1>tr:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:12>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#cdk-live-announcer-0": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td:5>tr:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:11>td:5": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:11>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td:5>tr:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#search-owner-form": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>thead:1>tr:1>th:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>thead:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>thead:1>tr:1>th:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#search-owner-form>div.form-group:2>div.col-sm-10.col-sm-offset-2:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-owner-list:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.glyphicon.glyphicon-education:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>div:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li.dropdown:3>a.dropdown-toggle:1>span.caret:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:12>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:12>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:19>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:10": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td:5>tr:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:25": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1>a.brand-emoji.navbar-brand:1>span:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>div.navbar-header:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-owner-list:1>div.container-fluid:1>div.container.xd-container:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#lastNameGroup>label.col-sm-2.control-label:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "input#lastName": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:12>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:14>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:22>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-owner-list:1>div.container-fluid:1>div.container.xd-container:1>h2:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:12": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:1>a:1>span.glyphicon.glyphicon-home:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:11>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:3>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:2>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#search-owner-form>div.form-group:2": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:24>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:23>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:8": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:21>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#lastNameGroup>div.col-sm-10:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:6": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:27>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:12>td:5": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:18>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:4>a:1>span.glyphicon.glyphicon-calendar:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "form#search-owner-form>div.form-group:2>div.col-sm-10.col-sm-offset-2:1>button.btn.btn-default:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>div:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.container-fluid.main-wrapper:1>nav.navbar.navbar-default:1>div.container-fluid:1>ul.nav.navbar-nav:1>li:6>a:1>span.glyphicon.glyphicon-th-list:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "app-root:1>div.content-wrapper:2>app-owner-list:1>div.container-fluid:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:13>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:16>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>thead:1>tr:1>th:5": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:15>td.ownerFullName:1": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:17>td:3": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:4>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:26>td.ownerFullName:1>a:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:12>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:20": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:9>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28>td:4": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:5>td:5>tr:1": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:1>td:2": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:28": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     },
+     "div#ownersTable>table.table.table-striped:1>tbody:1>tr:7>td:5": {
+      "dom": "same",
+      "pixel_churn": null,
+      "status": "same"
+     }
+    }
+   },
+   "findings": [
+    {
+     "id": "new:input#lastName",
+     "side": "new",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "lastName",
+      "name": "lastName",
+      "label": "Last name",
+      "sig": "input#lastName"
+     },
+     "selector": "#lastName",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    },
+    {
+     "id": "old:input#lastName",
+     "side": "old",
+     "verdict": "uncovered",
+     "role": "input[type=text]",
+     "expected_ds": [],
+     "ds": null,
+     "element": {
+      "tag": "input",
+      "id": "lastName",
+      "name": "lastName",
+      "label": "Last name",
+      "sig": "input#lastName"
+     },
+     "selector": "#lastName",
+     "box": {
+      "x": 258,
+      "y": 148,
+      "w": 962,
+      "h": 34
+     },
+     "message": "<code>&lt;input&gt;</code> in role <code>input[type=text]</code>. No design-system component claims that role \u2014 the registry covers <code>select</code> \u2014 so this control is considered and deliberately not judged",
+     "delta": {
+      "dom": "same",
+      "pixel_churn": 0.0,
+      "status": "same"
+     },
+     "severity": "info"
+    }
+   ],
+   "summary": {
+    "new": {
+     "ds": 0,
+     "bare": 0,
+     "internal": 0,
+     "uncovered": 1
+    },
+    "old": {
+     "ds": 0,
+     "bare": 0,
+     "internal": 0,
+     "uncovered": 1
+    },
+    "regressions": [],
+    "pre_existing": [],
+    "improvements": []
+   }
+  }
+ ],
+ "summary": {
+  "new": {
+   "ds": 4,
+   "bare": 1,
+   "internal": 4,
+   "uncovered": 17
+  },
+  "old": {
+   "ds": 3,
+   "bare": 0,
+   "internal": 3,
+   "uncovered": 17
+  },
+  "regressions": [
+   "new:select#vetId"
+  ],
+  "pre_existing": [],
+  "improvements": [],
+  "weighting": "DOM decides which element a finding is about; pixels only vote in the one case the DOM is blind to \u2014 same signature, same attributes, >12% of the element\u2019s own box repainted, reported as `restyled`. Each element is compared cropped on its own box, so a layout shift above it costs nothing."
+ }
+}

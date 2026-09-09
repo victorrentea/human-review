@@ -1,0 +1,304 @@
+[
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java:46",
+    "suite": "junit-mcp",
+    "title": "lists_visits_of_authenticated_owner",
+    "asserts": [
+      "list_visits returns the visits belonging to the authenticated owner, verified by checking the returned visits' descriptions contain 'Annual checkup'."
+    ],
+    "surfaces": ["MCP tool list_visits"],
+    "strength": "asserted",
+    "notes": "assertThat(visits).extracting(PetClinicMcp.VisitView::description).contains(\"Annual checkup\") is the only assertion. The fixture Visit never calls setVet(...), so VisitView.vetName is null for this record and is never extracted or asserted — vet display is neither exercised nor touched here, it is simply absent from the test."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitToolTest.java:73",
+    "suite": "junit-mcp",
+    "title": "books_visit_directly_without_any_elicitation",
+    "asserts": [
+      "create_visit's confirmation string contains 'Created visit', the pet name 'Rex', the visit date, and the time '10:30'.",
+      "The visit is persisted to the repository with description 'Vaccination'."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": "assertThat(result).contains(\"Created visit\").contains(\"Rex\").contains(future.toString()).contains(\"10:30\"); assertThat(visitRepository.findByPetId(petId)).extracting(v -> v.getDescription()).contains(\"Vaccination\"). No vet is set on the pet/visit and no vet text is checked (createVisit's return string never includes vet info in production code)."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitToolTest.java:84",
+    "suite": "junit-mcp",
+    "title": "unknown_pet_is_rejected",
+    "asserts": [
+      "create_visit throws IllegalArgumentException with message containing 'Pet not found' when the pet id does not exist."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitToolTest.java:91",
+    "suite": "junit-mcp",
+    "title": "pet_of_another_owner_is_rejected",
+    "asserts": [
+      "create_visit throws IllegalArgumentException with message containing 'does not belong to owner' when the target pet belongs to a different owner."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitToolTest.java:111",
+    "suite": "junit-mcp",
+    "title": "past_date_is_rejected",
+    "asserts": [
+      "create_visit throws IllegalArgumentException with message containing 'must be today or in the future' for a past visit date."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitToolTest.java:120",
+    "suite": "junit-mcp",
+    "title": "rejects_booking_when_pet_already_has_max_upcoming_visits",
+    "asserts": [
+      "After a pet reaches MAX_UPCOMING_VISITS_PER_PET upcoming visits, one more create_visit call throws IllegalArgumentException whose message contains 'already has the maximum' and the numeric cap value."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitToolTest.java:135",
+    "suite": "junit-mcp",
+    "title": "today_with_already_passed_time_is_rejected",
+    "asserts": [
+      "create_visit throws IllegalArgumentException with message containing 'Visit time must be in the future' when booking today at a time already past."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:98",
+    "suite": "junit-mcp",
+    "title": "FailsIf > thePetDoesNotExist",
+    "asserts": [
+      "create_visit throws with message containing 'Pet not found' when the pet repository returns empty."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": "Social/mockito unit-test variant of CreateVisitToolTest's unknown_pet_is_rejected."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:106",
+    "suite": "junit-mcp",
+    "title": "FailsIf > thePetBelongsToAnotherOwner",
+    "asserts": [
+      "create_visit throws with message containing 'does not belong to owner' when the pet's owner differs from the authenticated owner."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:115",
+    "suite": "junit-mcp",
+    "title": "FailsIf > theDateIsInThePast",
+    "asserts": [
+      "create_visit throws with message containing 'must be today or in the future' for a past date."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:124",
+    "suite": "junit-mcp",
+    "title": "FailsIf > theTimeHasAlreadyPassedToday",
+    "asserts": [
+      "create_visit throws with message containing 'Visit time must be in the future' for today at midnight (already past)."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:134",
+    "suite": "junit-mcp",
+    "title": "FailsIf > thePetAlreadyHasTheMaximumOfUpcomingVisits",
+    "asserts": [
+      "create_visit throws with message containing 'already has the maximum' and the numeric cap value when the pet already holds MAX_UPCOMING_VISITS_PER_PET upcoming visits."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:164",
+    "suite": "junit-mcp",
+    "title": "ForAValidBooking > saveTheVisitAsDescribed",
+    "asserts": [
+      "The Visit object passed to visitRepository.save(...) has the requested date, time, and description ('Vaccination')."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": "ArgumentCaptor<Visit> captures the saved entity; only date/time/description are asserted (saved.getValue().getDate()/getTime()/getDescription()). No vet field is set on the captured Visit and none is asserted — create_visit never assigns or reports a vet."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:177",
+    "suite": "junit-mcp",
+    "title": "ForAValidBooking > linkTheVisitToThePetOnBothSides",
+    "asserts": [
+      "After create_visit, the pet's visit collection contains exactly one visit whose getPet() is the same pet instance (bidirectional association maintained)."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java:186",
+    "suite": "junit-mcp",
+    "title": "ForAValidBooking > confirmWithTheIdOfTheNewVisit",
+    "asserts": [
+      "create_visit's returned confirmation string contains 'id=<newVisitId>', the pet name 'Rex', and the visit date."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": "assertThat(confirmation).contains(\"id=\" + NEW_VISIT_ID).contains(\"Rex\").contains(nextWeek.toString()). No vet substring is checked; PetClinicMcp.createVisit's return statement never includes a vet name in production code (it interpolates only id, pet name, date, time), so no test in this suite could ever assert a vet appears in create_visit's response."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:47",
+    "suite": "junit-mcp",
+    "title": "cancel_deletes_matching_future_visit",
+    "asserts": [
+      "cancel_visit's result string contains 'Cancelled 1 visit(s)' and the cancelled date.",
+      "The visit is no longer present in the repository after cancellation."
+    ],
+    "surfaces": ["MCP tool cancel_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:65",
+    "suite": "junit-mcp",
+    "title": "cancel_returns_no_visits_when_none_match_date",
+    "asserts": [
+      "cancel_visit's result string contains 'No upcoming visits found' and the requested date when nothing matches."
+    ],
+    "surfaces": ["MCP tool cancel_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:76",
+    "suite": "junit-mcp",
+    "title": "cancel_rejects_past_date",
+    "asserts": [
+      "cancel_visit throws IllegalArgumentException with message containing 'must be today or in the future' for a past date."
+    ],
+    "surfaces": ["MCP tool cancel_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:86",
+    "suite": "junit-mcp",
+    "title": "cancel_throws_when_owner_not_found",
+    "asserts": [
+      "cancel_visit throws IllegalArgumentException with message containing 'Owner not found' for an unknown authenticated owner id."
+    ],
+    "surfaces": ["MCP tool cancel_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:95",
+    "suite": "junit-mcp",
+    "title": "create_books_visit_directly_without_elicitation",
+    "asserts": [
+      "create_visit's result contains 'Created visit' and the pet name 'Whiskers'.",
+      "The visit is persisted with description 'Test visit'."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:109",
+    "suite": "junit-mcp",
+    "title": "create_rejects_pet_not_belonging_to_caller",
+    "asserts": [
+      "create_visit throws IllegalArgumentException with message containing 'does not belong to owner' when booking for another owner's pet."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:122",
+    "suite": "junit-mcp",
+    "title": "create_rejects_unknown_pet_id",
+    "asserts": [
+      "create_visit throws IllegalArgumentException with message containing 'Pet not found' for an unknown pet id."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:133",
+    "suite": "junit-mcp",
+    "title": "create_rejects_past_date",
+    "asserts": [
+      "create_visit throws IllegalArgumentException with message containing 'must be today or in the future' for a past date."
+    ],
+    "surfaces": ["MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java:145",
+    "suite": "junit-mcp",
+    "title": "list_throws_when_owner_not_found",
+    "asserts": [
+      "list_visits throws IllegalArgumentException with message containing 'Owner not found' for an unknown authenticated owner id."
+    ],
+    "surfaces": ["MCP tool list_visits"],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/SickPetScenarioTest.java:56",
+    "suite": "junit-mcp",
+    "title": "sick_cat_flow_reads_profile_then_books_visit_for_tomorrow",
+    "asserts": [
+      "get_owner_profile's rendered text contains the pet's name ('Mițică'), and the pet id can be parsed out of that text via the same 'id=<n> — <name>' pattern the LLM would use.",
+      "create_visit's confirmation string contains 'Created visit', the pet name, tomorrow's date, and '08:00'.",
+      "The persisted visit has the requested date, time (08:00), and a description containing 'sick'."
+    ],
+    "surfaces": ["MCP resource get_owner_profile (me://profile)", "MCP tool create_visit"],
+    "strength": "asserted",
+    "notes": "End-to-end LLM-flow scenario (read profile -> extract pet id -> create_visit) but the owner/pet fixture never sets a vet, get_owner_profile's formatPet() never includes vet info at all (only id/name/type/birthdate), and create_visit's response never includes vet either. Vet is entirely absent from this scenario, not merely unchecked."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/OwnerMcpResourceTest.java:42",
+    "suite": "junit-mcp",
+    "title": "renders_profile_with_pets_for_authenticated_owner",
+    "asserts": [
+      "get_owner_profile's rendered text contains the owner's first name, last name, address, and the pet's name."
+    ],
+    "surfaces": ["MCP resource get_owner_profile (me://profile)"],
+    "strength": "asserted",
+    "notes": "assertThat(profile).contains(\"Ronald\").contains(\"Weasley_TST\").contains(\"The Burrow\").contains(\"Scabbers\"). get_owner_profile only renders owner fields + a pet list (id/name/type/birthdate) — no visits, no vet — so this resource cannot surface a vet name at all in current production code."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/OwnerMcpResourceTest.java:65",
+    "suite": "junit-mcp",
+    "title": "unknown_id_throws",
+    "asserts": [
+      "get_owner_profile throws IllegalStateException when the authenticated owner id does not exist."
+    ],
+    "surfaces": ["MCP resource get_owner_profile (me://profile)"],
+    "strength": "asserted",
+    "notes": ""
+  }
+]

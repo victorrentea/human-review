@@ -43,22 +43,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # A snapshot is only worth downloading if it is whole. Every relative src/href in
-      # review.html has to resolve to a file inside the snapshot directory — a link that
-      # escapes with `..`, or points at a file that was never copied in, works on the
-      # machine that built the page and dead-ends for everybody else. That is precisely
-      # the failure this download exists to avoid, so it is checked rather than assumed.
+      # A snapshot is only worth downloading if it is whole. Every *document-relative*
+      # src/href in review.html has to resolve to a file inside the snapshot directory — a
+      # link that escapes with `..`, or names a file that was never copied in, works on the
+      # machine that built the page and dead-ends for everybody else. That is precisely the
+      # failure this download exists to avoid, so it is checked rather than assumed.
+      #
+      # Three kinds of link are counted rather than flagged, because they are machine-local
+      # by design and the page says so itself: `vscode://` references into the author's
+      # checkout, root-relative `/...` deep links into the running app (the page rewrites
+      # those against whatever base the reader configures in its app-environment bar), and
+      # anything with a scheme. Inline <script> is cut out before matching, or every
+      # `href="' + x + '"` the page builds at runtime reads as a broken file reference.
       #
       # It warns instead of failing: a stale link is a reason to fix the snapshot, never a
       # reason to withhold the rest of the page from someone waiting to download it.
-      # `vscode://` links are counted, not flagged — they are known to resolve only on the
-      # authoring machine, and the page says so itself.
       - name: Every relative link resolves inside its snapshot
         run: |
           python3 - <<'PY'
-          import os, re, sys
+          import os, re
           from urllib.parse import unquote, urlsplit
 
+          SCRIPT = re.compile(r"<script\b.*?</script>", re.S | re.I)
           ATTR = re.compile(r'(?:src|href|poster|data-src)="([^"]*)"')
           SCHEME = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.-]*:')
 
@@ -68,13 +74,16 @@ jobs:
               if not os.path.isfile(page):
                   continue
               root = os.path.realpath(snap)
-              html = open(page, encoding="utf-8").read()
-              broken, escaping, editor = set(), set(), 0
+              html = SCRIPT.sub("", open(page, encoding="utf-8").read())
+              broken, escaping, editor, app = set(), set(), 0, 0
               for raw in ATTR.findall(html):
                   if not raw or raw.startswith("#"):
                       continue
                   if SCHEME.match(raw):
                       editor += raw.startswith("vscode:")
+                      continue
+                  if raw.startswith("/"):
+                      app += 1
                       continue
                   rel = unquote(urlsplit(raw).path)
                   if not rel:
@@ -90,8 +99,8 @@ jobs:
               for ref in sorted(broken):
                   print(f"::warning file={page}::{slug}: link points at a file the snapshot "
                         f"does not carry: {ref}")
-              print(f"{slug}: {len(escaping)} escaping, {len(broken)} missing, "
-                    f"{editor} vscode:// links (those resolve only where the page was built)")
+              print(f"{slug}: {len(escaping)} escaping, {len(broken)} missing; "
+                    f"{editor} vscode:// and {app} app links, which are machine-local by design")
           PY
 
       - name: Zip each snapshot

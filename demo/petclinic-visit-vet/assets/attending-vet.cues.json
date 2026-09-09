@@ -1,0 +1,338 @@
+[
+ {
+  "t": 5.238,
+  "text": "Every pet’s visit list now carries a Vet column.",
+  "box": {
+   "x": 319,
+   "y": 358,
+   "width": 901,
+   "height": 392
+  },
+  "audio": "attending-vet.narration/cue00.wav",
+  "speech": 2.632108843537415,
+  "words": [
+   {
+    "w": "Every",
+    "t": 0.008
+   },
+   {
+    "w": "pet’s",
+    "t": 0.275
+   },
+   {
+    "w": "visit",
+    "t": 0.589
+   },
+   {
+    "w": "list",
+    "t": 0.914
+   },
+   {
+    "w": "now",
+    "t": 1.192
+   },
+   {
+    "w": "carries",
+    "t": 1.425
+   },
+   {
+    "w": "a",
+    "t": 1.843
+   },
+   {
+    "w": "Vet",
+    "t": 1.889
+   },
+   {
+    "w": "column.",
+    "t": 2.121
+   }
+  ]
+ },
+ {
+  "t": 10.685,
+  "text": "The booking form asks who will attend — and lets you say nobody yet.",
+  "box": {
+   "x": 248,
+   "y": 358,
+   "width": 987,
+   "height": 34
+  },
+  "audio": "attending-vet.narration/cue01.wav",
+  "speech": 3.7388662131519275,
+  "words": [
+   {
+    "w": "The",
+    "t": 0
+   },
+   {
+    "w": "booking",
+    "t": 0.093
+   },
+   {
+    "w": "form",
+    "t": 0.453
+   },
+   {
+    "w": "asks",
+    "t": 0.778
+   },
+   {
+    "w": "who",
+    "t": 1.138
+   },
+   {
+    "w": "will",
+    "t": 1.278
+   },
+   {
+    "w": "attend",
+    "t": 1.463
+   },
+   {
+    "w": "—",
+    "t": 2.183
+   },
+   {
+    "w": "and",
+    "t": 2.225
+   },
+   {
+    "w": "lets",
+    "t": 2.322
+   },
+   {
+    "w": "you",
+    "t": 2.601
+   },
+   {
+    "w": "say",
+    "t": 2.682
+   },
+   {
+    "w": "nobody",
+    "t": 2.915
+   },
+   {
+    "w": "yet.",
+    "t": 3.333
+   }
+  ]
+ },
+ {
+  "t": 16.091,
+  "text": "We book this one with Rafael Ortega.",
+  "box": {
+   "x": 248,
+   "y": 358,
+   "width": 987,
+   "height": 34
+  },
+  "audio": "attending-vet.narration/cue02.wav",
+  "speech": 2.068934240362812,
+  "words": [
+   {
+    "w": "We",
+    "t": 0.002
+   },
+   {
+    "w": "book",
+    "t": 0.13
+   },
+   {
+    "w": "this",
+    "t": 0.351
+   },
+   {
+    "w": "one",
+    "t": 0.583
+   },
+   {
+    "w": "with",
+    "t": 0.78
+   },
+   {
+    "w": "Rafael",
+    "t": 0.954
+   },
+   {
+    "w": "Ortega.",
+    "t": 1.454
+   }
+  ]
+ },
+ {
+  "t": 19.836,
+  "text": "Back on the owner, the new visit names the vet that will attend it.",
+  "box": {
+   "x": 319,
+   "y": 462,
+   "width": 901,
+   "height": 72
+  },
+  "audio": "attending-vet.narration/cue03.wav",
+  "speech": 3.359546485260771,
+  "words": [
+   {
+    "w": "Back",
+    "t": 0.004
+   },
+   {
+    "w": "on",
+    "t": 0.248
+   },
+   {
+    "w": "the",
+    "t": 0.399
+   },
+   {
+    "w": "owner,",
+    "t": 0.538
+   },
+   {
+    "w": "the",
+    "t": 1.154
+   },
+   {
+    "w": "new",
+    "t": 1.235
+   },
+   {
+    "w": "visit",
+    "t": 1.432
+   },
+   {
+    "w": "names",
+    "t": 1.769
+   },
+   {
+    "w": "the",
+    "t": 2.106
+   },
+   {
+    "w": "vet",
+    "t": 2.199
+   },
+   {
+    "w": "that",
+    "t": 2.431
+   },
+   {
+    "w": "will",
+    "t": 2.605
+   },
+   {
+    "w": "attend",
+    "t": 2.779
+   },
+   {
+    "w": "it.",
+    "t": 3.127
+   }
+  ]
+ },
+ {
+  "t": 25.717,
+  "text": "The all-visits page carries the same column.",
+  "box": {
+   "x": 1104,
+   "y": 148,
+   "width": 116,
+   "height": 37
+  },
+  "audio": "attending-vet.narration/cue04.wav",
+  "speech": 2.37859410430839,
+  "words": [
+   {
+    "w": "The",
+    "t": 0.01
+   },
+   {
+    "w": "all-visits",
+    "t": 0.138
+   },
+   {
+    "w": "page",
+    "t": 0.695
+   },
+   {
+    "w": "carries",
+    "t": 1.043
+   },
+   {
+    "w": "the",
+    "t": 1.427
+   },
+   {
+    "w": "same",
+    "t": 1.543
+   },
+   {
+    "w": "column.",
+    "t": 1.868
+   }
+  ]
+ },
+ {
+  "t": 30.746,
+  "text": "And on the edit form the vet picker is the design-system combo.",
+  "box": {
+   "x": 248,
+   "y": 358,
+   "width": 987,
+   "height": 34
+  },
+  "audio": "attending-vet.narration/cue05.wav",
+  "speech": 3.3400907029478457,
+  "words": [
+   {
+    "w": "And",
+    "t": 0.008
+   },
+   {
+    "w": "on",
+    "t": 0.147
+   },
+   {
+    "w": "the",
+    "t": 0.31
+   },
+   {
+    "w": "edit",
+    "t": 0.449
+   },
+   {
+    "w": "form",
+    "t": 0.705
+   },
+   {
+    "w": "the",
+    "t": 1.03
+   },
+   {
+    "w": "vet",
+    "t": 1.111
+   },
+   {
+    "w": "picker",
+    "t": 1.343
+   },
+   {
+    "w": "is",
+    "t": 1.68
+   },
+   {
+    "w": "the",
+    "t": 1.831
+   },
+   {
+    "w": "design-system",
+    "t": 1.947
+   },
+   {
+    "w": "combo.",
+    "t": 2.771
+   }
+  ]
+ }
+]

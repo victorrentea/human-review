@@ -1,0 +1,446 @@
+[
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:101",
+    "suite": "junit-rest",
+    "title": "getByIdOk",
+    "asserts": [
+      "GET /api/visits/{id} for an existing visit returns 200 with the visit's id, description, and petId."
+    ],
+    "surfaces": [
+      "REST API GET /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:110",
+    "suite": "junit-rest",
+    "title": "getById_notFound",
+    "asserts": [
+      "GET /api/visits/{id} for a non-existent visit id returns 404 Not Found."
+    ],
+    "surfaces": [
+      "REST API GET /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:116",
+    "suite": "junit-rest",
+    "title": "getAll",
+    "asserts": [
+      "GET /api/visits returns 200 with a JSON list that includes the seeded visit's id and description."
+    ],
+    "surfaces": [
+      "REST API GET /api/visits"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:131",
+    "suite": "junit-rest",
+    "title": "getAll_returnsEnrichedFields",
+    "asserts": [
+      "Each visit returned by GET /api/visits carries denormalized fields — petName, ownerId, ownerFirstName, ownerLastName — matching the pet/owner records that visit belongs to, not just the visit's own columns."
+    ],
+    "surfaces": [
+      "REST API GET /api/visits"
+    ],
+    "strength": "asserted",
+    "notes": "Distinct from getAll: this is specifically about the enrichment fields on the list DTO, not merely that the visit is present in the list."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:156",
+    "suite": "junit-rest",
+    "title": "create_invalid",
+    "asserts": [
+      "POST /api/visits with a visit missing its description returns 400 Bad Request (server-side validation, not just client-side)."
+    ],
+    "surfaces": [
+      "REST API POST /api/visits"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:169",
+    "suite": "junit-rest",
+    "title": "update_invalid",
+    "asserts": [
+      "PUT /api/visits/{id} with a null description returns a 4xx client error."
+    ],
+    "surfaces": [
+      "REST API PUT /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": "Uses is4xxClientError() (not a specific 400), so it only pins 'client error', not an exact status code."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:180",
+    "suite": "junit-rest",
+    "title": "delete_ok",
+    "asserts": [
+      "DELETE /api/visits/{id} on an existing visit returns a 2xx status.",
+      "After that DELETE, the visit is actually gone: GET /api/visits/{id} for the same id now returns 404."
+    ],
+    "surfaces": [
+      "REST API DELETE /api/visits/{id}",
+      "REST API GET /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:189",
+    "suite": "junit-rest",
+    "title": "delete_notFound",
+    "asserts": [
+      "DELETE /api/visits/{id} for a non-existent visit id returns 404 Not Found."
+    ],
+    "surfaces": [
+      "REST API DELETE /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:195",
+    "suite": "junit-rest",
+    "title": "create_ok",
+    "asserts": [
+      "POST /api/visits with a valid petId, date, and description returns 201 Created.",
+      "The new visit is actually persisted: a visit with that description exists in the repository afterward."
+    ],
+    "surfaces": [
+      "REST API POST /api/visits"
+    ],
+    "strength": "asserted",
+    "notes": "Does not assert on the response body's fields, only the status and DB persistence."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:211",
+    "suite": "junit-rest",
+    "title": "update_ok",
+    "asserts": [
+      "PUT /api/visits/{id} with a new date and description returns 200 OK.",
+      "The updated description is actually persisted (re-read from the repository)."
+    ],
+    "surfaces": [
+      "REST API PUT /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:226",
+    "suite": "junit-rest",
+    "title": "create_withVet",
+    "asserts": [
+      "POST /api/visits with a vetId included returns 201 Created.",
+      "The persisted visit's attending vet is set to the vet whose id was supplied at creation time."
+    ],
+    "surfaces": [
+      "REST API POST /api/visits"
+    ],
+    "strength": "asserted",
+    "notes": "ATTENDING VET TEST: this is the one covering assignment of the attending vet at visit-creation time (as opposed to update). Uses a real, existing vet id (anExistingVetId()) — does not exercise or assert anything about an unknown/invalid vetId."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:246",
+    "suite": "junit-rest",
+    "title": "getById_exposesTheAttendingVet",
+    "asserts": [
+      "When a visit has an attending vet assigned, GET /api/visits/{id} returns that vet's id, first name, and last name (vetId, vetFirstName, vetLastName) on the response DTO."
+    ],
+    "surfaces": [
+      "REST API GET /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": "ATTENDING VET TEST: covers the read side — that the vet identity and name are exposed through the API once a vet is assigned. Vet assignment itself is done directly via the repository/entity (visit.setVet(vet)) in test setup, not through the API."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:259",
+    "suite": "junit-rest",
+    "title": "update_changesTheAttendingVet",
+    "asserts": [
+      "PUT /api/visits/{id} with a vetId in the update payload returns 200 OK and reassigns the visit's attending vet to that vet, verified by re-reading the entity from the database after a flush+clear."
+    ],
+    "surfaces": [
+      "REST API PUT /api/visits/{id}"
+    ],
+    "strength": "asserted",
+    "notes": "ATTENDING VET TEST: covers reassigning/setting the attending vet via update. The flush+clear is deliberate (see file comment at VisitTest.java:293-295) to force a real DB round-trip rather than reading back the same in-memory instance the controller mutated."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:306",
+    "suite": "junit-rest",
+    "title": "findVisitsByPetId",
+    "asserts": [
+      "VisitRepository.findByPetId(petId) returns all visits belonging to that pet (two, after a second is added), each with a non-null pet reference whose id matches petId, and a non-null date."
+    ],
+    "surfaces": [
+      "Repository method VisitRepository.findByPetId (no REST API call — does not go through MockMvc)"
+    ],
+    "strength": "asserted",
+    "notes": "NOT a REST-level test despite living in VisitTest / the rest package: it calls the repository directly and never performs an HTTP request. Include with caution when mapping REST-surface requirements — it establishes a data-access fact, not an API contract fact."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:76",
+    "suite": "junit-rest",
+    "title": "getByIdOk",
+    "asserts": [
+      "GET /api/pets/{id} for an existing pet returns 200 with id, name, type.name, and birthDate matching the seeded pet."
+    ],
+    "surfaces": [
+      "REST API GET /api/pets/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:86",
+    "suite": "junit-rest",
+    "title": "getById_notFound",
+    "asserts": [
+      "GET /api/pets/{id} for a non-existent pet id returns 404 Not Found."
+    ],
+    "surfaces": [
+      "REST API GET /api/pets/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:92",
+    "suite": "junit-rest",
+    "title": "getAll",
+    "asserts": [
+      "GET /api/pets returns 200 with a list that includes the seeded pet's id, name, type name, and birth date."
+    ],
+    "surfaces": [
+      "REST API GET /api/pets"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:107",
+    "suite": "junit-rest",
+    "title": "update_ok",
+    "asserts": [
+      "PUT /api/pets/{id} with a new name returns 200 OK, and the new name is actually persisted (confirmed by re-fetching via GET)."
+    ],
+    "surfaces": [
+      "REST API PUT /api/pets/{id}",
+      "REST API GET /api/pets/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:122",
+    "suite": "junit-rest",
+    "title": "update_invalid",
+    "asserts": [
+      "PUT /api/pets/{id} with an empty name returns a 4xx client error."
+    ],
+    "surfaces": [
+      "REST API PUT /api/pets/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:133",
+    "suite": "junit-rest",
+    "title": "update_notFound",
+    "asserts": [
+      "PUT /api/pets/{id} for a non-existent pet id returns 404 Not Found."
+    ],
+    "surfaces": [
+      "REST API PUT /api/pets/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:143",
+    "suite": "junit-rest",
+    "title": "delete_ok",
+    "asserts": [
+      "DELETE /api/pets/{id} on an existing pet returns a 2xx status, and afterward GET /api/pets/{id} for that id returns 404 — the pet is actually gone."
+    ],
+    "surfaces": [
+      "REST API DELETE /api/pets/{id}",
+      "REST API GET /api/pets/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java:152",
+    "suite": "junit-rest",
+    "title": "delete_notFound",
+    "asserts": [
+      "DELETE /api/pets/{id} for a non-existent pet id returns 404 Not Found."
+    ],
+    "surfaces": [
+      "REST API DELETE /api/pets/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:71",
+    "suite": "junit-rest",
+    "title": "getPetTypeSuccessAsOwnerAdmin",
+    "asserts": [
+      "GET /api/pettypes/{id} for an existing pet type returns 200 with matching id and name."
+    ],
+    "surfaces": [
+      "REST API GET /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": "MISLEADING NAME: despite 'AsOwnerAdmin' in the method name, the test is annotated @WithMockUser(roles = \"VET_ADMIN\") — it actually runs as VET_ADMIN, not OWNER_ADMIN. No test in this class asserts different behaviour per role or asserts an authorization failure for a wrong/missing role; role is only ever set, never varied and checked."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:80",
+    "suite": "junit-rest",
+    "title": "getPetType_notFound",
+    "asserts": [
+      "GET /api/pettypes/{id} for a non-existent id returns 404 Not Found."
+    ],
+    "surfaces": [
+      "REST API GET /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:87",
+    "suite": "junit-rest",
+    "title": "getAllPetTypesSuccessAsOwnerAdmin",
+    "asserts": [
+      "GET /api/pettypes returns 200 with a list of at least one pet type, including the seeded one's id and name."
+    ],
+    "surfaces": [
+      "REST API GET /api/pettypes"
+    ],
+    "strength": "asserted",
+    "notes": "Same role-naming caveat as getPetTypeSuccessAsOwnerAdmin: actual role used is VET_ADMIN."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:104",
+    "suite": "junit-rest",
+    "title": "createPetType_ok",
+    "asserts": [
+      "POST /api/pettypes with a name returns 201 Created and a Location header pointing at the new resource.",
+      "Following that Location header with GET returns a pet type with the submitted name."
+    ],
+    "surfaces": [
+      "REST API POST /api/pettypes",
+      "REST API GET /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:124",
+    "suite": "junit-rest",
+    "title": "createPetType_invalid",
+    "asserts": [
+      "POST /api/pettypes with an empty name returns a 4xx client error."
+    ],
+    "surfaces": [
+      "REST API POST /api/pettypes"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:136",
+    "suite": "junit-rest",
+    "title": "updatePetType_ok",
+    "asserts": [
+      "PUT /api/pettypes/{id} with a new name returns a 2xx status, and the new name is actually persisted (confirmed by re-fetching via GET)."
+    ],
+    "surfaces": [
+      "REST API PUT /api/pettypes/{id}",
+      "REST API GET /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:152",
+    "suite": "junit-rest",
+    "title": "updatePetType_invalid",
+    "asserts": [
+      "PUT /api/pettypes/{id} with an empty name returns a 4xx client error."
+    ],
+    "surfaces": [
+      "REST API PUT /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:164",
+    "suite": "junit-rest",
+    "title": "deletePetType_ok",
+    "asserts": [
+      "DELETE /api/pettypes/{id} on an existing, unused pet type returns a 2xx status, and afterward GET /api/pettypes/{id} returns 404 — it is actually gone."
+    ],
+    "surfaces": [
+      "REST API DELETE /api/pettypes/{id}",
+      "REST API GET /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:175",
+    "suite": "junit-rest",
+    "title": "deletePetType_notFound",
+    "asserts": [
+      "DELETE /api/pettypes/{id} for a non-existent id returns 404 Not Found."
+    ],
+    "surfaces": [
+      "REST API DELETE /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": ""
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java:183",
+    "suite": "junit-rest",
+    "title": "deletePetType_inUse_returnsConflict",
+    "asserts": [
+      "DELETE /api/pettypes/{id} for a pet type still referenced by an existing pet returns HTTP 500 Internal Server Error (status().isInternalServerError()) — NOT 409 Conflict, despite the test's method name.",
+      "The error response body contains the text 'PetType is in use by existing pets and cannot be deleted'."
+    ],
+    "surfaces": [
+      "REST API DELETE /api/pettypes/{id}"
+    ],
+    "strength": "asserted",
+    "notes": "NAME IS MISLEADING: 'returnsConflict' suggests HTTP 409, but the actual coded and asserted expectation is status().isInternalServerError() (500). A mapper going by the method name alone would record the wrong status code — go by the assertion, not the title, for this one."
+  },
+  {
+    "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:64",
+    "suite": "junit-rest",
+    "title": "addsAVisitToAnExistingPet",
+    "asserts": [
+      "POST /api/owners/{ownerId}/pets/{petId}/visits with a date and description, for an existing owner and one of their pets, returns 201 Created.",
+      "After creation, GET /api/owners/{ownerId} shows the new visit nested under that pet's visits list, with matching description and date."
+    ],
+    "surfaces": [
+      "REST API POST /api/owners/{ownerId}/pets/{petId}/visits",
+      "REST API GET /api/owners/{ownerId}",
+      "REST API GET /api/owners (used only to locate a seeded owner with a pet, not itself asserted beyond 200 OK)"
+    ],
+    "strength": "asserted",
+    "notes": "End-to-end journey test (given/when/then style, @GenerateSequence produces a companion sequence diagram) exercising a DIFFERENT visit-creation endpoint than VisitTest's POST /api/visits: this one is nested under the owner+pet path and does not accept/assert a vetId at all — no vet involvement here. Relies on seeded sample data containing at least one owner with a pet (fails loudly with a custom AssertionError if not, rather than silently passing)."
+  }
+]

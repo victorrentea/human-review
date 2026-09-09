@@ -1,0 +1,42 @@
+<p class="oad-lede">Read from <code>openapi.yaml</code> as a structure, not as text: <b>0</b> operations and <b>2</b> schemas moved. Those schemas are served by <b>11</b> operations, which change what a caller sends or receives even where the <code>paths</code> section did not move a byte — see the API contract tab for the per-operation shapes. Each line is classified by what it does to somebody already calling this API — <span class="oad-chip oad-additive">4 additive</span></p>
+<div class="oad-group"><div class="oad-kind">Schemas <span class="oad-count">2</span></div>
+<div class="oad-subject oad-is-modified"><div class="oad-head"><a class="oad-link" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/openapi.yaml:1893:1" data-tip="open the spec at this definition"><code class="oad-path">VisitDto</code></a><span class="oad-chip oad-additive">modified</span><span class="oad-note">request &amp; response body</span></div><ul class="oad-changes"><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetFirstName</code> <span class="oad-type">string</span> <span class="oad-facets">read-only</span><span class="oad-note">First name of the vet (server-populated).</span></li><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetId</code> <span class="oad-type">integer(int32)</span> <span class="oad-facets">minimum 0</span><span class="oad-note">The ID of the vet that attended the visit.</span></li><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetLastName</code> <span class="oad-type">string</span> <span class="oad-facets">read-only</span><span class="oad-note">Last name of the vet (server-populated).</span></li></ul></div>
+<div class="oad-subject oad-is-modified"><div class="oad-head"><a class="oad-link" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/openapi.yaml:1955:1" data-tip="open the spec at this definition"><code class="oad-path">VisitFieldsDto</code></a><span class="oad-chip oad-additive">modified</span><span class="oad-note">request body</span></div><ul class="oad-changes"><li class="oad-additive"><span class="oad-chip oad-additive">additive</span><b class="oad-add">+</b> <code>vetId</code> <span class="oad-type">integer(int32)</span> <span class="oad-facets">minimum 0</span><span class="oad-note">The ID of the vet that attended the visit.</span></li></ul></div>
+</div>
+<details class="oad-raw"><summary>The unified diff this was read from</summary><pre><span>diff --git a/openapi.yaml b/openapi.yaml</span>
+<span>index f5fbb26a..cf368a56 100644</span>
+<span>--- a/openapi.yaml</span>
+<span>+++ b/openapi.yaml</span>
+<span class=oad-hunk>@@ -1934,6 +1934,20 @@ components:</span>
+<span>           type: string</span>
+<span>           description: Name of the pet (server-populated).</span>
+<span>           readOnly: true</span>
+<span class=oad-add>+        vetFirstName:</span>
+<span class=oad-add>+          type: string</span>
+<span class=oad-add>+          description: First name of the vet (server-populated).</span>
+<span class=oad-add>+          readOnly: true</span>
+<span class=oad-add>+        vetId:</span>
+<span class=oad-add>+          type: integer</span>
+<span class=oad-add>+          format: int32</span>
+<span class=oad-add>+          description: The ID of the vet that attended the visit.</span>
+<span class=oad-add>+          example: 1</span>
+<span class=oad-add>+          minimum: 0</span>
+<span class=oad-add>+        vetLastName:</span>
+<span class=oad-add>+          type: string</span>
+<span class=oad-add>+          description: Last name of the vet (server-populated).</span>
+<span class=oad-add>+          readOnly: true</span>
+<span>       required:</span>
+<span>       - description</span>
+<span>       - id</span>
+<span class=oad-hunk>@@ -1952,5 +1966,11 @@ components:</span>
+<span>           example: rabies shot</span>
+<span>           maxLength: 255</span>
+<span>           minLength: 1</span>
+<span class=oad-add>+        vetId:</span>
+<span class=oad-add>+          type: integer</span>
+<span class=oad-add>+          format: int32</span>
+<span class=oad-add>+          description: The ID of the vet that attended the visit.</span>
+<span class=oad-add>+          example: 1</span>
+<span class=oad-add>+          minimum: 0</span>
+<span>       required:</span>
+<span>       - description</span></pre></details>

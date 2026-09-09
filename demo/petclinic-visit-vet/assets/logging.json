@@ -1,0 +1,241 @@
+{
+  "all": {
+    "logging": [
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "line": 93,
+        "column": 13,
+        "end_line": 93,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "Lombok @Slf4j",
+        "evidence": "injected by Lombok `@Slf4j`",
+        "confidence": "lombok",
+        "method": "warn",
+        "format": "\"Rejecting visit: attending vet id {} does not exist\"",
+        "args": [
+          "vetId"
+        ],
+        "raw_line": "            log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId);",
+        "text": "log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId)"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "line": 172,
+        "column": 13,
+        "end_line": 172,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "Lombok @Slf4j",
+        "evidence": "injected by Lombok `@Slf4j`",
+        "confidence": "lombok",
+        "method": "warn",
+        "format": "\"Rejecting visit: attending vet id {} does not exist\"",
+        "args": [
+          "vetId"
+        ],
+        "raw_line": "            log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId);",
+        "text": "log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId)"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 52,
+        "column": 9,
+        "end_line": 52,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "warn",
+        "format": "\"Validation failed: {}\"",
+        "args": [
+          "errors"
+        ],
+        "raw_line": "        log.warn(\"Validation failed: {}\", errors);",
+        "text": "log.warn(\"Validation failed: {}\", errors)"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 66,
+        "column": 9,
+        "end_line": 66,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "warn",
+        "format": "\"Validation failed: {}\"",
+        "args": [
+          "errors"
+        ],
+        "raw_line": "        log.warn(\"Validation failed: {}\", errors);",
+        "text": "log.warn(\"Validation failed: {}\", errors)"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 76,
+        "column": 9,
+        "end_line": 76,
+        "level": "ERROR",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "error",
+        "format": "\"An unexpected error occurred: {}\"",
+        "args": [
+          "e.getMessage()",
+          "e"
+        ],
+        "raw_line": "        log.error(\"An unexpected error occurred: {}\", e.getMessage(), e);",
+        "text": "log.error(\"An unexpected error occurred: {}\", e.getMessage(), e)"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 87,
+        "column": 9,
+        "end_line": 87,
+        "level": "ERROR",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "error",
+        "format": "\"Not found!\"",
+        "args": [],
+        "raw_line": "        log.error(\"Not found!\");",
+        "text": "log.error(\"Not found!\")"
+      }
+    ],
+    "antipattern": [
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/PetClinicApplication.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/PetClinicApplication.java",
+        "line": 22,
+        "column": 9,
+        "kind": "System.out",
+        "raw_line": "        System.out.println(\"\u2705 started petclinic-backend on port \" + event.getWebServer().getPort());",
+        "text": "System.out.println(\"\u2705 started petclinic-backend on port \" + event.getWebServer().getPort())"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
+        "line": 51,
+        "column": 9,
+        "kind": "System.out",
+        "raw_line": "        System.out.println(\"Address: \" + address + \", City: \" + city);",
+        "text": "System.out.println(\"Address: \" + address + \", City: \" + city)"
+      },
+      {
+        "file": "petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "line": 133,
+        "column": 13,
+        "kind": "System.err",
+        "raw_line": "            System.err.println(\"\u26a0\ufe0f  genseq: could not record the trace window (\" + e.getMessage() + \")\");",
+        "text": "System.err.println(\"\u26a0\ufe0f  genseq: could not record the trace window (\" + e.getMessage() + \")\")"
+      },
+      {
+        "file": "petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "line": 154,
+        "column": 13,
+        "kind": "System.err",
+        "raw_line": "            System.err.println(\"\u26a0\ufe0f  genseq: could not clear the previous run's windows (\" + e.getMessage() + \")\");",
+        "text": "System.err.println(\"\u26a0\ufe0f  genseq: could not clear the previous run's windows (\" + e.getMessage() + \")\")"
+      },
+      {
+        "file": "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/JpaMatchesDBSchemaTest.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/test/java/victor/training/petclinic/guardrail/JpaMatchesDBSchemaTest.java",
+        "line": 34,
+        "column": 9,
+        "kind": "System.out",
+        "raw_line": "        System.out.println(\"a\");",
+        "text": "System.out.println(\"a\")"
+      }
+    ]
+  },
+  "stats": {
+    "files_with_loggers": 3,
+    "symbols": {
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java": [
+        {
+          "name": "log",
+          "flavour": "SLF4J",
+          "evidence": "declared `Logger log`",
+          "confidence": "declared",
+          "line": 35
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java": [
+        {
+          "name": "log",
+          "flavour": "Lombok @Slf4j",
+          "evidence": "injected by Lombok `@Slf4j`",
+          "confidence": "lombok",
+          "line": 28
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java": [
+        {
+          "name": "log",
+          "flavour": "Lombok @Slf4j",
+          "evidence": "injected by Lombok `@Slf4j`",
+          "confidence": "lombok",
+          "line": 51
+        }
+      ]
+    }
+  },
+  "changed": {
+    "logging": [
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "line": 93,
+        "column": 13,
+        "end_line": 93,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "Lombok @Slf4j",
+        "evidence": "injected by Lombok `@Slf4j`",
+        "confidence": "lombok",
+        "method": "warn",
+        "format": "\"Rejecting visit: attending vet id {} does not exist\"",
+        "args": [
+          "vetId"
+        ],
+        "raw_line": "            log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId);",
+        "text": "log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId)"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "line": 172,
+        "column": 13,
+        "end_line": 172,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "Lombok @Slf4j",
+        "evidence": "injected by Lombok `@Slf4j`",
+        "confidence": "lombok",
+        "method": "warn",
+        "format": "\"Rejecting visit: attending vet id {} does not exist\"",
+        "args": [
+          "vetId"
+        ],
+        "raw_line": "            log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId);",
+        "text": "log.warn(\"Rejecting visit: attending vet id {} does not exist\", vetId)"
+      }
+    ],
+    "antipattern": []
+  }
+}
