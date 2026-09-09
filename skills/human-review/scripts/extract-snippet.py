@@ -128,14 +128,20 @@ def stylesheet() -> str:
         # the path stays where it can wrap without moving anything else.
         ".srcbar .srcbar-path { margin:0 0 0 auto; text-align:right; }\n"
         ".srcbar .code-badge { flex:0 0 auto; font-size:9px; padding:1px 6px; }\n"
-        # The two handles read as buttons, not as prose: they sit between the badge and the
-        # path because what the badge says happened is what they open. Each is emitted only
-        # where that side can really show it, so a missing one is an honest absence.
-        ".srcbar .srcbar-diff { flex:0 0 auto; font:700 10px/1.5 ui-monospace,\n"
-        "  SFMono-Regular,Menlo,monospace; letter-spacing:.04em; padding:1px 6px;\n"
-        "  border:1px solid var(--line,#dcdcdc); border-radius:5px; margin-bottom:0;\n"
-        "  border-bottom-style:solid; white-space:nowrap; }\n"
-        ".srcbar .srcbar-diff:hover { border-color:var(--link,#1a4fa0); }\n"
+        # The two handles sit between the badge and the path because what the badge says
+        # happened is what they open. Each is emitted only where that side can really show
+        # it, so a missing one is an honest absence. They are dotted-underlined at the
+        # bar's own size, not boxed at 10px: `a.srcref.diffref` boxes the *standalone*
+        # handle that floats under a snippet with nothing around it, and carrying that
+        # skin into the bar bought a second vocabulary for the third link in a row of
+        # three. It also outranked this rule, so its -.35rem/1.15rem pull-up came along
+        # and lifted both handles off the baseline the stat and the path share. The
+        # selector keeps its type so it outranks that one; margin:0 puts them back on
+        # the line.
+        ".srcbar a.srcref.diffref { flex:0 0 auto; padding:0; margin:0; background:none;\n"
+        "  border:0; border-bottom:1px dotted currentColor; border-radius:0;\n"
+        "  letter-spacing:0; white-space:nowrap; }\n"
+        ".srcbar a.srcref.diffref:hover { background:var(--accent-soft,#eef2fb); }\n"
         # A Java test path is longer than this column is wide. `anywhere` lets it wrap, and
         # the <wbr> after each slash keeps every fragment a readable path segment;
         # `break-word` alone would split `victor` down the middle.
@@ -146,7 +152,6 @@ def stylesheet() -> str:
         "  .code-badge { color:#56d364; background:rgba(63,185,80,.12); }\n"
         "  .code-badge[data-diff=unchanged] { color:var(--muted,#9a9aa2);\n"
         "    background:transparent; }\n"
-        "  .srcbar .srcbar-diff { border-color:var(--line,#33333a); }\n"
         "}\n"
     )
 
