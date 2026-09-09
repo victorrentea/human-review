@@ -31,6 +31,7 @@ not resolve, a file that did not exist in it, or an empty diff. **No diff beats 
 | `{{snippet:path:12-30\|caption}}` | the lines, verbatim, as a captioned card |
 | `{{diff:path@<sha>\|caption}}` | the file's change since `<sha>`, GitHub-style: two line-number gutters, green and red bands, three lines of context, a link under it that opens the same comparison in the editor — and on github.com when the change is committed and `origin` is a GitHub repo |
 | `{{difflink:path@<sha>}}` | only the link, for when the diff itself is not the point |
+| `{{drawio:conceptual}}` | the hand-drawn diagram's Diff / New / Old widget, inlined from the `conceptual-*.svg` `drawio-diff.py` wrote, with its legend and opening pane read off `conceptual-diff.json` — so a re-layout shows up on the next build instead of being frozen into this file |
 | `{{tabcount}}` | the number of tabs actually emitted (for the summary's walk-through) |
 
 `{{diff:…}}` and the `diffs` array are the same renderer; the array is the way to write it
@@ -629,17 +630,23 @@ the one thing no amount of reading changes. Four tabs need something said about 
   page a human drew, and three rules go with it:
   - **Head it the way the file names itself** — `Conceptual Model`, both words capital.
     It is the name of an artefact the team maintains, not a description of one.
-  - **Its legend names meanings, not colours** (the same rule the Tests tab's legend
-    follows): the swatch is already the colour, so a row reading *"orange — new on this
-    branch"* spends its bold on the one word the reader can see. Write `added by this PR`
-    and `still waiting for a hand-drawn layout`, and take the colour from
-    `var(--dgm-diff-add)` rather than a hex of its own — `drawio-diff.py` paints additions
-    in the report's shared *added* green, and a legend with a private palette drifts off it.
-    Repeat the to-do row under the **New** pane too: the red is drawn in the diagram
-    itself, so it is on screen there as well, with nothing to explain it.
-  - **Open it on `New` while the layout is still owed.** `data-state` is markup, so a
-    diagram may open on whichever pane answers first — and until someone has re-laid the
-    thing out by hand, the delta is a picture of automation's routing rather than of the
-    change. Once it is drawn, `diff` is the pane that earns the open.
+  - **Write `{{drawio:conceptual}}` for the picture — never paste the SVG in.** The token
+    expands at build time from the `<name>-{diff,new,original}.svg` and `<name>-diff.json`
+    that `drawio-diff.py` wrote, and it is the one diagram on the page whose whole point
+    is that *the reader is being asked to go and change it*: red is automation's to-do,
+    and the picture is supposed to look different once they have re-laid it out in
+    draw.io. Markup pasted into this file freezes it — they re-draw the map, rebuild, and
+    get back the drawing that was current when you wrote the section. Re-running the
+    `diagrams` step and rebuilding is then the whole refresh.
+  - **The legend and the opening pane come with the token**, because both are readings of
+    the verdict rather than choices: the *added by this PR* row appears when something is
+    added and not drawn red, the *still waiting for a hand-drawn layout* row when anything
+    in the drawing is still red (repeated under the **New** pane, where the red is on
+    screen with nothing else to explain it), and the widget opens on `New` while a layout
+    is owed — the delta is a picture of automation's routing until someone draws it — and
+    on `Diff` once it is not. Do not restate any of that in prose that will outlive it.
+  - **Say the mechanism, not the state.** The paragraph above the picture is the place for
+    what red *means* and what clicking the note in it does; a sentence saying red is
+    currently there is a sentence that goes stale the moment someone acts on it.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the
   repository can produce.

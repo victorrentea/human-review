@@ -8,10 +8,10 @@ reader a one-click escape to the undiffed before/after and lets them judge.
 
 Two things are worth pinning here, and they are the two that would rot quietly:
 
-* **one component, two callers.** The generated PlantUML deltas and the hand-written
-  conceptual-model section both go through `dgm_views_html`, and the behaviour is
-  delegated off `document` so neither needs to register anything. A second copy of this
-  in a section body would drift within a week and nothing would notice.
+* **one component, two callers.** The generated PlantUML deltas and the hand-drawn
+  conceptual model both go through `dgm_views_html`, and the behaviour is delegated off
+  `document` so neither needs to register anything. A second copy of this in a section
+  body would drift within a week and nothing would notice.
 * **the header toggles, the body never does.** A sequence diagram is taller than the
   viewport; a stray click while scrolling or selecting text must not swap the picture.
 
@@ -20,6 +20,7 @@ Run with:  python3 -m pytest test_diagram_views.py
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -185,8 +186,9 @@ def test_a_link_in_the_header_still_opens_instead_of_toggling():
 
 
 def test_the_control_is_delegated_so_hand_written_markup_works_too():
-    """The conceptual model's widget is written into a section body, not generated here.
-    A per-widget listener bound at build time would leave it dead."""
+    """The conceptual model's widget is expanded into a section body from a token, and
+    a `.dgmviews` may also be written into one by hand. A per-widget listener bound where
+    `render_diagrams` runs would leave both dead."""
     assert "document.addEventListener('click'" in build.DGM_VIEWS_JS
     assert "querySelectorAll('.dgmviews')" not in build.DGM_VIEWS_JS
 
@@ -430,3 +432,97 @@ def test_a_test_with_no_diagram_is_never_dropped(tmp_path):
                                         tmp_path, tmp_path)
     assert "No diagram came back" in html and "untraced" in html
     assert 'id="tests-nosequence"' in html
+
+
+# ── the hand-drawn diagram, read off disk on every build ──────────────────────────
+#
+# The conceptual model is the only picture on this page the report *asks the reader to go
+# and change*: it tells them to open draw.io and re-lay the thing out by hand. Its markup
+# used to be pasted into content.json, which meant the reader did exactly that, rebuilt,
+# and got back the drawing that was current when a model last wrote the section — the one
+# surface where "refresh" was guaranteed not to show the change just made.
+
+def _drawio_set(assets: Path, name="conceptual", red=(), added=()):
+    assets.mkdir(parents=True, exist_ok=True)
+    for suffix, text in (("diff", "delta"), ("new", "after"), ("original", "before")):
+        _svg(assets / f"{name}-{suffix}.svg", text)
+    (assets / f"{name}-diff.json").write_text(json.dumps({
+        "added": [{"what": w, "already_red": r} for w, r in added],
+        "removed": [], "changed": [], "moved": [],
+        "red": [{"what": w} for w in red],
+    }))
+    return assets
+
+
+def test_the_token_inlines_the_pictures_that_are_on_disk_now(tmp_path):
+    out = build.drawio_widget_html("conceptual", _drawio_set(tmp_path / "assets"), tmp_path)
+    assert "delta" in out and "after" in out and "before" in out
+    assert 'class="dgmviews"' in out
+
+
+def test_re_running_the_differ_is_the_whole_refresh(tmp_path):
+    """The bug this token exists for: re-lay the diagram out, rebuild, see the new one."""
+    assets = _drawio_set(tmp_path / "assets")
+    _svg(assets / "conceptual-new.svg", "hand-drawn at last")
+    out = build.drawio_widget_html("conceptual", assets, tmp_path)
+    assert "hand-drawn at last" in out and "after" not in out
+
+
+def test_it_opens_on_new_while_a_layout_is_still_owed(tmp_path):
+    """`New` is the pane that answers first while anything is red: the delta is then a
+    picture of automation's routing rather than of the change."""
+    assets = _drawio_set(tmp_path / "assets", red=["Vet-Visit"], added=[("Vet-Visit", True)])
+    assert 'data-state="new"' in build.drawio_widget_html("conceptual", assets, tmp_path)
+
+
+def test_it_opens_on_the_delta_once_the_layout_has_been_drawn(tmp_path):
+    assets = _drawio_set(tmp_path / "assets", added=[("Vet-Visit", False)])
+    assert 'data-state="diff"' in build.drawio_widget_html("conceptual", assets, tmp_path)
+
+
+def test_the_legend_names_only_the_colours_the_drawing_actually_uses(tmp_path):
+    """A legend row for a colour that is not on screen is a row the reader has to rule
+    out by eye — and the to-do row outliving the to-do is how the page told Victor his
+    hand-drawn layout had not been picked up."""
+    drawn = build.drawio_widget_html(
+        "conceptual", _drawio_set(tmp_path / "a", added=[("Vet-Visit", False)]), tmp_path)
+    assert "added by this PR" in drawn
+    assert "still waiting for a hand-drawn layout" not in drawn
+
+    owed = build.drawio_widget_html(
+        "conceptual",
+        _drawio_set(tmp_path / "b", red=["Vet-Visit"], added=[("Vet-Visit", True)]), tmp_path)
+    assert "still waiting for a hand-drawn layout" in owed
+    assert "added by this PR" not in owed, "an addition drawn red renders red, not green"
+
+
+def test_the_to_do_row_is_repeated_under_the_undiffed_new_pane(tmp_path):
+    """The red is drawn in the diagram itself, so it is on screen there too — with
+    nothing else on that pane to explain it. The green is not: nothing in the undiffed
+    drawing is green."""
+    out = build.drawio_widget_html(
+        "conceptual",
+        _drawio_set(tmp_path / "a", red=["Vet-Visit"], added=[("Vet-Visit", True)]), tmp_path)
+    pane = re.search(r'<div class="dgmpane" data-view="new".*?(?=<div class="dgmpane")',
+                     out, re.S).group(0)
+    assert "still waiting for a hand-drawn layout" in pane
+
+
+def test_a_section_body_expands_the_token(tmp_path):
+    out_dir = tmp_path / ".human-review"
+    _drawio_set(out_dir / "assets")
+    body = build.expand_drawio("<p>prose</p>{{drawio:conceptual}}", out_dir, tmp_path)
+    assert "<p>prose</p>" in body and "delta" in body
+
+
+def test_a_missing_render_says_which_step_writes_it(tmp_path):
+    """Better than a traceback in the middle of a build, and better than a silent gap:
+    the diagrams step is the one thing that fixes it."""
+    out = build.drawio_widget_html("conceptual", tmp_path / "assets", tmp_path)
+    assert "diagrams" in out and "conceptual-diff.svg" in out
+
+
+def test_the_legend_takes_its_green_from_the_report_s_added_colour(tmp_path):
+    """A private hex here would be the one place on the page where "added" is a second
+    green. `drawio-diff.py` paints the strokes with the same one."""
+    assert "color:var(--dgm-diff-add)" in build.CSS
