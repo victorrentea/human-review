@@ -1308,6 +1308,31 @@ def test_the_show_all_button_shares_the_footer_s_line_at_its_far_end(tmp_path):
     assert "footer .allbar { margin-left:auto; }" in page
 
 
+def test_the_footer_offers_the_page_as_a_zip_to_take_away(tmp_path):
+    """A review page is nearly always read on someone else's screen — projected in a
+    room, or shared for the length of a call. The reader who reaches the bottom has
+    nothing afterwards unless the page tells them where a copy lives, so the build says
+    it on every page: a link named for what it hands over, pointing at the rolling
+    release the `demo zip` workflow keeps current."""
+    page, _ = _build(tmp_path, BARE)
+    foot = page[page.index("<footer>"):page.index("</footer>")]
+    assert ">zip</a>" in foot
+    assert "https://github.com/victorrentea/human-review/releases/tag/demo" in foot
+    # Between the sentence and the control, so the row still reads sentence-first and the
+    # button keeps the right edge.
+    assert foot.index("takeaway") < foot.index("allbar")
+
+
+def test_the_zip_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
+    """The footer sentence is the author's and may be missing entirely; the offer is the
+    build's. A page with no `footer` in its content file still tells its reader where to
+    get one."""
+    spec = {k: v for k, v in BARE.items() if k != "footer"}
+    page, _ = _build(tmp_path, spec)
+    foot = page[page.index("<footer>"):page.index("</footer>")]
+    assert ">zip</a>" in foot
+
+
 def test_the_show_all_button_says_what_it_does_next(tmp_path):
     """It is a toggle, and both of its states need a name now: the pressed styling alone
     carried the state while the button sat among the tabs, and at the foot of the page

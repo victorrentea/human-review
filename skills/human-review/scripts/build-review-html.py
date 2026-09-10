@@ -5682,6 +5682,33 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
 
 HOME_URL = "https://github.com/victorrentea/human-review"
 
+# Where a finished page lives once the projector is off. The `demo zip` workflow rebuilds
+# a zip per snapshot under `demo/` on every push to main and clobbers it onto a rolling
+# release under a fixed tag, so this address never moves and never goes stale — it is the
+# one URL worth reading out to a room, and the one worth forwarding afterwards.
+#
+# The tag page rather than a particular `.zip`: which snapshot a reader wants is theirs to
+# pick, the release notes there name the commit the assets actually stand on, and a link
+# that starts a download the instant it is clicked is a poor thing to paste into a chat.
+DEMO_ZIP_URL = "https://github.com/victorrentea/human-review/releases/tag/demo"
+
+# The footer's own line is where the offer goes. A reader still reading has no use for it;
+# a reader who has reached the bottom is precisely the one who wants to keep a copy — and
+# the page they are looking at is usually on somebody else's screen, so "keep a copy" is
+# the only thing they can act on at all.
+#
+# A sibling of the footer sentence, not a clause inside it: that sentence belongs to the
+# content file and an author may write anything there or nothing, while this offer is the
+# build's and is owed to every page it produces. The link's name is the noun — `zip` — for
+# the same reason the button beside it says `show single page`: down here a reader is
+# scanning for a thing to take, not a sentence to read.
+TAKEAWAY = (
+    '<span class="takeaway">Take a finished page home as a '
+    f'<a href="{DEMO_ZIP_URL}" target="_blank" rel="noopener" '
+    'data-tip="Sample review pages on GitHub, one zip each. Unzip it and open '
+    'review.html — no install, no server.">zip</a>.</span>'
+)
+
 
 # The footer used to end on a sentence about the page's own honesty — "every snippet is cut
 # from the working tree at build time; every number on this page was measured by the step
@@ -6659,7 +6686,7 @@ def main(argv=None) -> int:
 {verdict_html}
 
 {body_html}
-<footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{allbtn_html}</div></footer>
+<footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{TAKEAWAY}{allbtn_html}</div></footer>
 </div>
 {CAPTION_JS}
 {APP_ENV_JS}
