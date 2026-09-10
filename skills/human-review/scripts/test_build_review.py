@@ -2952,3 +2952,17 @@ def test_the_review_tab_label_is_the_word_alone():
     item inside it already says, one item at a time."""
     schema = (HERE.parent / "reference" / "content-schema.md").read_text(encoding="utf-8")
     assert "🤖 Review" not in schema
+
+
+def test_shift_wheel_scrolls_a_wide_block_sideways():
+    """The only way to reach the right-hand end of a long quoted line used to be dragging
+    the block's own scrollbar, which makes the reader leave the line they were reading.
+    Shift+wheel has to move the box under the cursor — and only when that box has
+    somewhere left to go, so the page still scrolls once it is at the end."""
+    js = build.HSCROLL_JS
+    assert "ev.shiftKey" in js
+    assert "{ passive: false }" in js       # a passive listener cannot claim the gesture
+    assert "scrollLeft" in js
+    assert "if (box.scrollLeft !== before) ev.preventDefault();" in js
+    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    assert "{HSCROLL_JS}" in src            # and it is actually emitted into the page
