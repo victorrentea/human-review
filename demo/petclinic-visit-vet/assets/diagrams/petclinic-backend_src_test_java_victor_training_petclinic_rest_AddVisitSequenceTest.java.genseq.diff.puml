@@ -9,7 +9,8 @@ participant Test
 participant Backend
 participant DB
 == [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:72{Click to open the test} adds a visit to an existing pet]] ==
-Test -> Test: given an owner with at least one pet exists
+Test -[#C62828]> Test: <color:#C62828><s>given an owner with at least one pet exists</s></color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:73{Click to open the line of the test that says this} given an owner with at least one pet exists ↗]]
 activate Test
 Test -> Backend: List owners\nGET /api/owners
 activate Backend
@@ -80,7 +81,8 @@ Backend -[#2E7D32]> DB: [[genseq://1eq1h2q{Click for the statement behind this c
 Backend -[#2E7D32]-> Test: [[genseq://1xguyjn{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Test
-Test -> Test: when the owner detail page is opened
+Test -[#C62828]> Test: <color:#C62828><s>when the owner detail page is opened</s></color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:78{Click to open the line of the test that says this} when the owner detail page is opened ↗]]
 activate Test
 Test -> Backend: Get an owner by ID\nGET /api/owners/{ownerId}
 activate Backend
@@ -95,7 +97,8 @@ Backend -[#2E7D32]> DB: [[genseq://1bcshtp{Click for the statement behind this c
 Backend --> Test: [[genseq://0ygekze{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Test
-Test -> Test: and a visit is added for the first pet
+Test -[#C62828]> Test: <color:#C62828><s>and a visit is added for the first pet</s></color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:81{Click to open the line of the test that says this} and a visit is added for the first pet ↗]]
 activate Test
 Test -[#2E7D32]> Backend: [[genseq://1wjv03m{Click for this call’s JSON body} Add a visit for an owner's pet\nPOST /api/owners/{ownerId}/pets/{petId}/visits ⊕]]
 activate Backend
@@ -112,7 +115,8 @@ end
 Backend --> Test: 201
 deactivate Backend
 deactivate Test
-Test -> Test: then the visit is listed under the pet
+Test -[#C62828]> Test: <color:#C62828><s>then the visit is listed under the pet</s></color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:88{Click to open the line of the test that says this} then the visit is listed under the pet ↗]]
 activate Test
 Test -> Backend: Get an owner by ID\nGET /api/owners/{ownerId}
 activate Backend
@@ -128,7 +132,7 @@ Backend -[#2E7D32]-> Test: [[genseq://00a085a{Click for this call’s JSON body}
 deactivate Backend
 deactivate Test
 == <color:#2E7D32>[[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:113{Click to open the test} remembers the vet who attended it]]</color> ==
-Test -[#2E7D32]> Test: <color:#2E7D32>given an owner with at least one pet exists</color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:128{Click to open the line of the test that says this} given an owner with at least one pet exists ↗]]
 activate Test
 Test -[#2E7D32]> Backend: <color:#2E7D32>List owners</color>\n<color:#2E7D32>GET /api/owners</color>
 activate Backend
@@ -199,7 +203,7 @@ Backend -[#2E7D32]> DB: [[genseq://1eq1h2q{Click for the statement behind this c
 Backend -[#2E7D32]-> Test: [[genseq://1ftjhxd{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Test
-Test -[#2E7D32]> Test: <color:#2E7D32>and the clinic has a vet who can attend it</color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:133{Click to open the line of the test that says this} and the clinic has a vet who can attend it ↗]]
 activate Test
 Test -[#2E7D32]> Backend: <color:#2E7D32>listVets</color>\n<color:#2E7D32>GET /api/vets</color>
 activate Backend
@@ -212,7 +216,7 @@ deactivate Backend
 Backend -[#2E7D32]-> Test: [[genseq://08na0ss{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Test
-Test -[#2E7D32]> Test: <color:#2E7D32>when a visit is booked for that pet with that vet attending</color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:138{Click to open the line of the test that says this} when a visit is booked for that pet with that vet attending ↗]]
 activate Test
 Test -[#2E7D32]> Backend: [[genseq://0xemnw2{Click for this call’s JSON body} Add a visit for an owner's pet\nPOST /api/owners/{ownerId}/pets/{petId}/visits ⊕]]
 activate Backend
@@ -235,7 +239,7 @@ end
 Backend -[#2E7D32]-> Test: <color:#2E7D32>201</color>
 deactivate Backend
 deactivate Test
-Test -[#2E7D32]> Test: <color:#2E7D32>then that pet's history shows the visit was attended by that vet</color>
+Test -[#2E7D32]> Test: [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:146{Click to open the line of the test that says this} then that pet's history shows the visit was attended by that vet ↗]]
 activate Test
 Test -[#2E7D32]> Backend: <color:#2E7D32>Get an owner by ID</color>\n<color:#2E7D32>GET /api/owners/{ownerId}</color>
 activate Backend

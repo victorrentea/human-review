@@ -107,23 +107,14 @@
       "label": "Sequence",
       "blocks": [
         {
-          "type": "section",
-          "id": "sequences-note"
-        },
-        {
           "type": "testpairs",
           "id": "sequences",
           "kind": "sequence",
-          "title": "Each test, beside the sequence its own run recorded",
-          "body": "The test says what was <i>intended</i>; the diagram says what the run actually did about it. Read them together — the pairing is derived from <code>MANIFEST.tsv</code>, which records the file each diagram was generated from, so a test added next month pairs itself. That is also why the Java pair needed no new machinery: it files its diagram beside its <code>.java</code>, and the manifest picked it up like any other.",
+          "title": "",
           "snippets": [
             {
-              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:51-60",
-              "caption": "The whole opt-in, in Java: <code>@GenerateSequence</code> on an otherwise ordinary <code>@SpringBootTest</code>. It is also a JUnit <code>@Tag</code>, which is how <code>mvn -Pgenseq -Dgroups=genseq</code> finds exactly these tests without a list of class names to keep in step."
-            },
-            {
-              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:124-155",
-              "caption": "This branch's behaviour at the cheapest layer that still crosses a real controller, a real transaction and a real Hibernate session — MockMvc, an embedded Postgres, and no browser at all. <code>given/when/then</code> are marks, not blocks: each opens the span the sentence's calls land in, which is what the diagram draws leaving the Test lifeline."
+              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:51-60,124-155",
+              "caption": "MockMvc, an embedded Postgres, no browser — the cheapest layer that still crosses a real controller, a real transaction and a real Hibernate session. Each <code>given</code>/<code>when</code>/<code>then</code> is an arrow on the diagram's Test lifeline, and clicking it opens the line that wrote it."
             },
             {
               "ref": "petclinic-test/src/add-visit.spec.ts:35-48",
@@ -496,12 +487,6 @@
         "reset": "/__reset",
         "drive": "cd ~/workspace/petclinic-pr/petclinic-test && node ~/workspace/human-review/skills/human-review/scripts/drive-to-cue.js --app {base} --script ../.human-review/feature-script.js --cue {n}"
       }
-    },
-    {
-      "id": "sequences-note",
-      "title": "One opt-in, three test languages, four diagrams",
-      "body": "<p class=\"lede\">Every diagram in this tab was drawn from real OpenTelemetry traces of a test run, and every test that produced one opts in the same way: <code>@generate_sequence</code> as a Cucumber scenario tag in a <code>.feature</code>, the identical string as a Playwright tag in a <code>.spec.ts</code>, and <code>@GenerateSequence</code> on a <code>@SpringBootTest</code> in Java. Nothing else about a test changes in order to be drawn.</p><p><b>The Java pair is the cheapest of the three to record.</b> <code>AddVisitSequenceTest</code> is an in-memory integration test — no Chromium, no Angular, no running server, an embedded Postgres thrown away with the JVM — and it still exercises the real controller, the real transaction boundaries and the real Hibernate session, which is why its N+1 is the same N+1 the browser diagrams show. The JVM writes the very same trace-window file the browser suites write, and the very same generator turns it into a <code>.puml</code>; nothing in the renderer had to learn what a <code>@SpringBootTest</code> is. What it does need is Tempo up (<code>./start-grafana.sh</code>) and the OpenTelemetry Java agent attached, which is what <code>petclinic-backend/run-tests-with-tracing.sh</code> arranges. Under a plain <code>mvn test</code> the tracer is a no-op, the annotation costs nothing, and it is an ordinary test.</p><p><b>The generator itself moved on this branch</b>, so arrows that never changed still read as removed-and-re-added. The last finding on the Review tab measures how much.</p>",
-      "unchanged": true
     },
     {
       "id": "complexity-delta",
