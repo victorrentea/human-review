@@ -344,6 +344,42 @@ span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
 @media (prefers-color-scheme: dark) {
   .tgroup-off { border-left-color:#e0a458; } .tgroup-off h3 { color:#e0a458; }
 }
+/* The traces: one row per recorded test, each opening on the Playwright trace viewer
+   itself. The row is deliberately the same furniture as a ledger row — the same flag
+   column, the same `.tloc` — because it is the same test seen from a different angle,
+   and a second vocabulary for "this one failed" would be a second thing to learn. */
+.traces { display:grid; gap:.3rem; margin:.7rem 0 1rem; }
+details.trace { border:1px solid var(--line); border-radius:8px; background:var(--card); }
+details.trace > summary { list-style:none; cursor:pointer; padding:.42rem .6rem;
+        display:flex; align-items:baseline; gap:.4rem; font-size:.93rem; }
+details.trace > summary::-webkit-details-marker { display:none; }
+details.trace > summary::before { content:"\\25b8"; color:var(--muted);
+        display:inline-block; width:.7rem; transition:transform .12s ease; }
+details.trace[open] > summary::before { transform:rotate(90deg); }
+details.trace > summary:hover { background:var(--code-bg); border-radius:8px; }
+.trname { font-weight:600; }
+.trpath { color:var(--muted); font-weight:400; }
+/* Pushed to the right edge: the duration and the file are what a reader scans DOWN the
+   column for, and a ragged right edge makes that scan a hunt. */
+.trwhere { margin-left:auto; color:var(--muted); font-size:11.5px;
+        font-variant-numeric:tabular-nums; }
+.trbody { padding:0 .6rem .55rem 1.3rem; display:grid; gap:.45rem; }
+/* The steps as one wrapping strip rather than a list: it is a table of contents for the
+   recording below it, and a twelve-item bulleted list would outweigh the thing it
+   indexes. Only the top level is here; the nesting is in the viewer. */
+.trsteps { display:flex; flex-wrap:wrap; gap:.3rem; font-size:.8rem; }
+.trsteps span { border:1px solid var(--line); border-radius:999px; padding:.02rem .45rem;
+        color:var(--muted); }
+.trsteps b { margin-left:.3rem; font-weight:600; font-variant-numeric:tabular-nums; }
+.trerr { margin:0; color:#c62828; font:.84rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+        white-space:pre-wrap; }
+@media (prefers-color-scheme: dark) { .trerr { color:#f08a8a; } }
+/* Tall on purpose. The viewer is a three-pane application — actions, snapshot, and the
+   network/console tabs under it — and in anything shorter the snapshot pane, which is
+   the point of the whole thing, comes out as a letterbox. */
+iframe.traceview { width:100%; height:78vh; min-height:520px; border:1px solid var(--line);
+        border-radius:6px; background:var(--card); }
+.trnote { margin:0; color:var(--muted); font-size:.88rem; }
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
@@ -1670,6 +1706,64 @@ window.addEventListener('message', function (e) {
     if (f.contentWindow === e.source) f.style.height = (d.height + 4) + 'px';
   });
 });
+</script>"""
+
+
+TRACE_JS = """<script>
+// The Playwright trace viewer, brought up inside the row that names the test.
+//
+// Lazily, and never twice: each frame is a browser application that fetches a
+// multi-megabyte zip and unpacks it in a service worker, so building all of them at page
+// load would spend the reader's memory on eleven recordings they did not ask for. The
+// first `open` builds one; every open after that finds it already there.
+//
+// The `file:` branch is the whole reason the frame is not in the markup. The viewer reads
+// the trace with `fetch`, and a page opened off disk — out of the downloadable zip, or
+// straight from `.human-review/` — can fetch nothing, not even a file sitting beside it.
+// There the honest thing on screen is the command that opens the same recording natively,
+// not a frame that will sit blank while the reader waits for it.
+(function () {
+  function fill(det) {
+    var slot = det.querySelector('.trframe');
+    if (!slot || slot.getAttribute('data-filled')) return;
+    slot.setAttribute('data-filled', '1');
+    var zip = det.getAttribute('data-trace');
+    var viewer = det.getAttribute('data-viewer');
+    if (viewer && location.protocol !== 'file:') {
+      var f = document.createElement('iframe');
+      f.className = 'traceview';
+      f.setAttribute('loading', 'lazy');
+      // Absolute, because the viewer resolves `?trace=` against its own document and not
+      // against ours: a relative path would be looked for inside the viewer's folder.
+      f.src = viewer + '?trace=' + encodeURIComponent(new URL(zip, location.href).href);
+      slot.appendChild(f);
+      return;
+    }
+    var cmd = det.getAttribute('data-cmd') || '';
+    var note = document.createElement('p');
+    note.className = 'trnote';
+    note.textContent = viewer
+      ? 'This page is open as a file, so the viewer cannot read the recording. Serve it ' +
+        '(scripts/serve-review.py) to step through it here, or open it natively:'
+      : 'No trace viewer was copied next to this page. Open the recording natively:';
+    var line = document.createElement('div');
+    line.className = 'cmdline';
+    var code = document.createElement('code');
+    code.textContent = cmd;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copycmd';
+    btn.setAttribute('data-copy', cmd);
+    btn.setAttribute('data-tip', 'Copy the command');
+    btn.textContent = 'Copy';
+    line.appendChild(code); line.appendChild(btn);
+    slot.appendChild(note); slot.appendChild(line);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('details.trace'), function (det) {
+    det.addEventListener('toggle', function () { if (det.open) fill(det); });
+    if (det.open) fill(det);
+  });
+})();
 </script>"""
 
 
@@ -4342,6 +4436,94 @@ def render_test_ledger(rows, root: Path) -> tuple[str, int]:
     return '<div class="tledger">' + "".join(blocks) + "</div>" + rest, moved
 
 
+TRACE_STATES = {
+    "passed":      ("same", "passed"),
+    "failed":      ("removed", "failed"),
+    "timedOut":    ("removed", "timed out"),
+    "interrupted": ("removed", "interrupted"),
+    "skipped":     ("changed", "skipped"),
+}
+
+
+def _ms(value) -> str:
+    """`1658` → `1.7s`. Under a second stays in milliseconds: a step that took 43ms and
+    one that took 430ms are a different kind of fast, and `0.0s` says neither."""
+    ms = int(value or 0)
+    return f"{ms}ms" if ms < 1000 else f"{ms / 1000:.1f}s"
+
+
+def render_traces(doc: dict, root: Path) -> tuple[str, int]:
+    """Every recorded test, each opening on the trace its own run left behind.
+
+    The tests above this say what the branch did to them and whether they went green. The
+    question that follows — *what did that test actually do?* — has only ever been
+    answerable by checking the branch out, starting the stack and running the suite again,
+    which is most of a morning and a different run from the one the page is about. The
+    recording answers it in the tab: every action with the screenshot either side of it,
+    the DOM at each step, the console, and every request the browser made.
+
+    The frame is empty until the row is opened, and `data-trace` is a path, not a `src`.
+    A tab holding twelve rows would otherwise boot twelve copies of a browser application
+    on page load, each fetching its own multi-megabyte zip, to show one the reader asked
+    for. It is also why nothing here is an `<iframe>` in the markup at all: the element is
+    made in JS, so a page opened from the zip — where no server can answer for the trace —
+    never renders a frame that could only come up blank.
+    """
+    tests = doc.get("tests") or []
+    if not tests:
+        return "", 0
+    viewer = doc.get("viewer") or ""
+    rows = []
+    for t in tests:
+        cls, label = TRACE_STATES.get(t.get("status", ""), ("changed", t.get("status", "ran")))
+        where = Path(t.get("file", "")).name + (f':{t["line"]}' if t.get("line") else "")
+        titles = "".join(f'<span class="trpath">{html.escape(p)} › </span>'
+                         for p in t.get("path") or [])
+        # A retry is not a detail: the row is one *attempt*, and a page that showed
+        # attempt 2 with no mark on it would report a flaky test as a passing one.
+        retry = (f'<span class="tsilenced">retry {t["retry"]}</span>'
+                 if t.get("retry") else "")
+        src = (root / t["file"]).resolve() if t.get("file") else None
+        open_test = ""
+        if t.get("line") and src and src.is_file():
+            open_test = (f'<a class="srcref testref" href="vscode://file/{src}:{t["line"]}:1"'
+                         f' data-tip="{html.escape(t["file"])}">'
+                         f'{html.escape(where)}</a>')
+        steps = "".join(
+            f'<span>{html.escape(s.get("title", ""))}<b>{_ms(s.get("duration"))}</b></span>'
+            for s in t.get("steps") or [])
+        err = (f'<p class="trerr">{html.escape(t["error"])}</p>') if t.get("error") else ""
+        # The command is the answer for a reader holding the page as a file — from the
+        # zip, from Pages — where the viewer cannot fetch anything and a frame would be a
+        # blank rectangle. It is written whether or not that reader exists, because the
+        # build cannot know which of the two is reading.
+        cmd = f"npx playwright show-trace .human-review/{t['trace']}"
+        rows.append(
+            f'<details class="trace" data-trace="{html.escape(t["trace"], quote=True)}"'
+            f' data-viewer="{html.escape(viewer, quote=True)}"'
+            f' data-cmd="{html.escape(cmd, quote=True)}">'
+            f'<summary><span class="tflag {cls}">{html.escape(label)}</span>'
+            f'<span class="trname">{titles}{html.escape(t.get("title", ""))}</span>{retry}'
+            f'<span class="trwhere">{html.escape(where)} · {_ms(t.get("duration"))}</span>'
+            "</summary>"
+            f'<div class="trbody">{open_test}{err}'
+            f'<div class="trsteps">{steps}</div><div class="trframe"></div></div>'
+            "</details>")
+
+    # One line, and only what this run measured. `untraced` is the honest half of the
+    # picture: a suite that recorded four of its forty tests has not shown the reader the
+    # run, and a list of four with nothing said would read as if it had.
+    said = [f"{doc['recorded']} recorded"]
+    if doc.get("omitted"):
+        said.append(f"{doc['omitted']} more not carried onto this page")
+    if doc.get("untraced"):
+        said.append(f"{doc['untraced']} result(s) ran with tracing off")
+    note = (f'<p class="sub">{html.escape(" · ".join(said))}. '
+            "Open one to step through it: every action with the page either side of it, "
+            "the console, and the network.</p>")
+    return '<div class="traces">' + note + "".join(rows) + "</div>", len(tests)
+
+
 def render_requirements(items, index: dict, root: Path) -> str:
     """Each requirement, with the tests that pin it nested under its own text.
 
@@ -5985,6 +6167,14 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
     tc = spec.get("testChanges")
     if tc and not (out_dir / tc).is_file():
         problems.append(f"testChanges -> {tc} does not exist — run scripts/test-changes.py first")
+    pt = spec.get("playwrightTraces")
+    if pt and not (out_dir / pt).is_file():
+        problems.append(f"playwrightTraces -> {pt} does not exist — "
+                        "run scripts/playwright-traces.py first")
+    if any(b.get("type") == "traces" for t_ in spec.get("tabs") or []
+           for b in t_.get("blocks") or []) and not pt:
+        problems.append("a tab declares a 'traces' block, but no top-level "
+                        "'playwrightTraces' manifest says which recordings to show")
     for i, s in enumerate(spec.get("sections") or []):
         for j, req in enumerate(s.get("requirements") or []):
             if not req.get("text"):
@@ -6382,6 +6572,11 @@ def main(argv=None) -> int:
     # itself. Loaded once: the content file only says which requirement a test belongs to.
     test_doc = (json.loads((out_dir / spec["testChanges"]).read_text(encoding="utf-8"))
                 if spec.get("testChanges") else {})
+    # The recordings the same run left behind, harvested by `playwright-traces.py`. Loaded
+    # the same way and for the same reason: what happened in a test is measured, never
+    # written down by hand.
+    traces_doc = (json.loads((out_dir / spec["playwrightTraces"]).read_text(encoding="utf-8"))
+                  if spec.get("playwrightTraces") else {})
     tests_idx = test_index(test_doc.get("tests", []))
 
     sections, by_id, unchanged_ids = [], {}, {}
@@ -6792,6 +6987,17 @@ def main(argv=None) -> int:
             return (heading(block, "test-ledger",
                             block.get("title", "What this change set did to the tests"))
                     + frag, 1, moved)
+        if kind == "traces":
+            frag, n = render_traces(traces_doc, root)
+            if not frag:
+                return "", 0, 0
+            # Weight, and no changes — the same call `codecity` and `puml` make. A trace is
+            # a recording of how the code behaves now; it is evidence *about* the branch,
+            # not a thing the branch moved, and a tab kept alive by it alone should still
+            # say on the strip that nothing here changed.
+            return (heading(block, "traces",
+                            block.get("title", "Step through what the tests did"))
+                    + frag, n, 0)
         if kind == "codecity":
             return city_html, 1 if city_html else 0, 0
         if kind == "section":
@@ -6864,6 +7070,22 @@ def main(argv=None) -> int:
                       file=sys.stderr)
             else:
                 host["blocks"] = list(host.get("blocks", [])) + [{"type": "tests"}]
+
+    # The recordings fill their gap the same way, and for the identical reason: the step
+    # that harvests them runs whether or not a content file mentions them, and a run that
+    # copied eleven traces onto disk for nobody to open has spent the reader's disk and
+    # given them nothing. They go *under* the ledger — the ledger is what the branch did,
+    # the recordings are what the run did, and that is the order the questions arrive in.
+    if tabs and spec.get("playwrightTraces") and not any(
+        b.get("type") == "traces" for tab in tabs for b in tab.get("blocks", [])
+    ):
+        host = next((tab for tab in tabs if tab.get("id") == LEDGER_TAB), None)
+        if host is None:
+            print("[review] WARNING: traces were harvested and no tab carries a "
+                  f'"traces" block — and no tab is called {LEDGER_TAB!r} to append one '
+                  "to, so the recordings are on no page.", file=sys.stderr)
+        else:
+            host["blocks"] = list(host.get("blocks", [])) + [{"type": "traces"}]
 
     # Only a tabbed page grows a masthead; the plain single-column guide keeps the
     # heading it always had.
@@ -7029,7 +7251,7 @@ def main(argv=None) -> int:
 {DGM_VIEWS_JS}
 {XREF_JS}
 {EDITOR_JS}
-{FRAME_JS}\n{HSCROLL_JS}\n{TABS_JS}
+{FRAME_JS}\n{TRACE_JS}\n{HSCROLL_JS}\n{TABS_JS}
 {COST_JS}
 {TIP_JS}
 </body></html>

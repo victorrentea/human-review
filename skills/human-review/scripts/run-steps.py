@@ -251,6 +251,37 @@ def _tests(ctx: Ctx):
     sh(f"{HERE}/test-changes.py --base {ctx.base} --out {ART}/test-changes.json", ctx)
 
 
+def _traces(ctx: Ctx):
+    """The Playwright recordings of the run, copied next to the page that shows them.
+
+    No suite is run from here by default. The browser suite has already run — `city.tests`
+    runs it for the coverage colours — and running it a second time to record it would
+    double the longest step on the page in exchange for a second, differently-flaky
+    opinion about the same branch. What a project has to do instead is turn tracing ON in
+    that run (`--trace on`, or an env knob its config reads); `commands` is here for the
+    project that genuinely has no other run to attach to.
+    """
+    c = ctx.step_cfg("traces")
+    report = c.get("report")
+    if not report:
+        raise LookupError("traces.report not configured")
+    for cmd in c.get("commands") or []:
+        r = sh(cmd, ctx, check=False)
+        if r.returncode != 0:
+            ctx.notes.append(f"the traced suite did not pass ({cmd}); the recordings below "
+                             "are of that run, which is exactly when they are worth most")
+    project = f' --project-dir "{c["projectDir"]}"' if c.get("projectDir") else ""
+    r = sh(f'{HERE}/playwright-traces.py --report "{report}" --out {ART} '
+           f"--json {ART}/traces.json --limit {c.get('limit', 12)}{project}", ctx, check=False)
+    if r.returncode == 2:
+        raise LookupError(f"no Playwright HTML report at {report} — did the suite run?")
+    if r.returncode == 3:
+        raise LookupError("the suite ran with tracing off — nothing to step through. "
+                          "Record with `--trace on` to get this tab")
+    if r.returncode != 0:
+        raise RuntimeError(f"playwright-traces.py exit {r.returncode}")
+
+
 # name, tabs (None = feeds no tab), label, prerequisite, runner
 STEPS = [
     ("diagrams",    "data,packages", "diagram deltas",            None,              _diagrams),
@@ -273,6 +304,12 @@ STEPS = [
      lambda c: bool(c.step_cfg("dsaudit")) or "dsaudit not configured", _dsaudit),
     ("owners",      "owners",        "codeowners check",          None,              _owners),
     ("tests",       "requirements",  "test change manifest",      None,              _tests),
+    # Last, and on the tab the manifest above already feeds: the recordings are read after
+    # the reader knows which tests moved, and they are only worth copying once the run
+    # they belong to is over.
+    ("traces",      "requirements",  "Playwright trace recordings",
+     lambda c: bool(c.step_cfg("traces").get("report")) or "traces.report not configured",
+     _traces),
 ]
 
 

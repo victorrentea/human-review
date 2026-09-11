@@ -81,8 +81,9 @@ ${SKILL}/scripts/run-steps.py --base "$BASE"
 
 One command runs every deterministic producer — diagram deltas, sequence diagrams, Code
 City, the feature film, complexity, the REST contract and its two second opinions, the
-logging scan, the design-system audit, code owners, the test manifest — each gated on its
-own prerequisite, each ledger-wrapped, none of them able to skip its `end`.
+logging scan, the design-system audit, code owners, the test manifest, the Playwright
+recordings — each gated on its own prerequisite, each ledger-wrapped, none of them able to
+skip its `end`.
 
 Read the status table it prints. Three things in it are yours:
 

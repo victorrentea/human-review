@@ -35,13 +35,28 @@
       "//11": "their two .exec files into the two reports the city colours by.",
       "tests": [
         "cd petclinic-backend && mvn -o test -Dmaven.test.failure.ignore=true",
-        "cd petclinic-test && JACOCO_E2E=1 npm test",
+        "cd petclinic-test && JACOCO_E2E=1 PW_TRACE=on npm test",
         "cd petclinic-backend && mvn -o -q jacoco:merge@merge-all jacoco:report@report-all jacoco:report@report-acceptance"
       ],
       "out": "petclinic-backend/docs/generated/codecity",
       "title": "Code City",
       "acceptance": "petclinic-backend/target/site/jacoco-acceptance/jacoco.xml",
       "baseline": "petclinic-backend/docs/generated/codecity/coverage-baseline.tsv"
+    },
+    "traces": {
+      "//": "Playwright's own recordings of the run, carried onto the page so a reviewer",
+      "//2": "can step through what each test did — every action with the page either side",
+      "//3": "of it, the console and the network — without checking the branch out.",
+      "//4": "`report` is the html reporter's output directory. Nothing is run from here:",
+      "//5": "the suite `city.tests` already ran is the one harvested, which is why that",
+      "//6": "command turns tracing ON (PW_TRACE=on above, read by playwright.config.ts).",
+      "//7": "A project with no other run to attach to puts its own `commands` here.",
+      "//8": "`limit` caps how many travel with the page, failures first — they are",
+      "//9": "megabytes each and the page is offered as a downloadable zip. What is left",
+      "//10": "behind is counted on the page rather than quietly dropped.",
+      "report": "petclinic-test/test-results/playwright-report",
+      "projectDir": "petclinic-test",
+      "limit": 12
     },
     "video": {
       "out": ".human-review/assets/feature.webm"

@@ -133,6 +133,7 @@ smallest of them as the answer.
 "extraCss": ["assets/openapi-diff.css", "assets/openapi-compat.css",
              "assets/complexity-delta.css", "assets/ds-audit.css"],
 "testChanges": "assets/test-changes.json",
+"playwrightTraces": "assets/traces.json",
 "footer": "Built by /human-review against the running stack on 2 Sep 2026."
 ```
 
@@ -152,7 +153,8 @@ as at nine, and the build warns when no tab declares the block, because a page t
 mentions the coder's guesses and a coder who made none look the same from the outside) ·
 **`autofixes`** (the top-level `autofixes` array, same shape as a finding) · **`diagrams`** (the delta gallery, narrowed by `kind` / `only` /
 `except`) · **`testpairs`** (Step 3) · **`tests`** (the ledger: every test the change set
-moved, grouped by what happened to it) · **`logging`** (Step 7c) · **`puml`** (a diagram this
+moved, grouped by what happened to it) · **`traces`** (the Playwright recordings of the run,
+each opening on the trace viewer itself) · **`logging`** (Step 7c) · **`puml`** (a diagram this
 branch did not change, rendered from source as context) · **`codeowners`** (Step 8, run by
 the renderer) · **`codecity`** · **`section`** (one entry of `sections` by `id`) · **`html`**.
 
@@ -178,6 +180,13 @@ again. It still renders a `title` you write on purpose.
 **`tests`** takes no configuration — it renders `testChanges` — and you do not have to
 declare it: a page that has a manifest and no `tests` block gets one appended to the
 `requirements` tab. Declare it only to put it somewhere else in that panel.
+
+**`traces`** is the same arrangement over `playwrightTraces`, and appends *under* the
+ledger for a reason worth keeping in that order: the ledger is what the branch did to the
+tests, the recordings are what the run did, and that is the order the two questions arrive
+in. It takes a `title` (default *Step through what the tests did*) and a `body`, and
+nothing else — which test each recording belongs to is read out of the run's own HTML
+report by `playwright-traces.py`, never written here.
 
 A tab may carry an **`intro`** (raw HTML before its first block, carrying no weight of its
 own) and a **`tip`** (hover sentence for a tab whose subject two words cannot carry).
@@ -220,6 +229,43 @@ difference between two *recordings*, and a run that reorders concurrent calls (o
 generator that relabels an arrow) marks lines nobody touched. The reader meets the picture
 that is simply true, and reaches for `Diff` deliberately. Nothing in `content.json` selects
 this; it follows the manifest's `kind`.
+
+### `traces` (the Playwright recordings)
+
+```json
+{"type":"traces","title":"Step through what the tests did",
+ "body":"<p>…what these runs are, in this page's own words…</p>"}
+```
+
+Fed by `"playwrightTraces": "assets/traces.json"`, written by
+`scripts/playwright-traces.py` out of the run's own HTML report. Each row is one *attempt*
+— title, the describe() path in front of it, the file and line, the duration, and the
+top-level steps as a strip — and opens on Playwright's own trace viewer, in the panel:
+every action with the page either side of it, the DOM, the console, and the network.
+
+Three things about it are decisions, not details:
+
+- **The frame is built on open, never in the markup.** A tab holding a dozen rows would
+  otherwise boot a dozen copies of a browser application on page load, each fetching its
+  own multi-megabyte zip, to show the one row the reader asked for.
+- **A page read off disk gets the command instead.** The viewer reads the trace with
+  `fetch`, and a page opened from `file://` — out of the downloadable zip, straight from
+  `.human-review/` — can fetch nothing, not even a file beside it. There the row offers
+  `npx playwright show-trace …`, which opens the same recording natively. Serve the page
+  (`scripts/serve-review.py`) and the frame comes back.
+- **A retry is stamped on the row.** The row is one attempt; attempt 2 shown unmarked
+  reports a flaky test as a green one.
+
+The block carries weight and **no changes**, like `codecity` and `puml`: a recording is
+evidence about how the code behaves, not something the branch moved. The counts in its
+lede — recorded, not carried, ran untraced — are the harvester's, never typed: a suite
+that recorded four of its forty tests has not shown the reader the run, and a list of four
+with nothing said would read exactly as if it had.
+
+Tracing has to be **on** for the run that produced the report (`--trace on`, or a config
+knob the project's own test command sets). A suite left on `trace: 'on-first-retry'`
+records nothing on a green run, the step skips with that reason, and the tab is dropped and
+named under the strip.
 
 ### `video` section (Step 5)
 

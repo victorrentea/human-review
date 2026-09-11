@@ -119,6 +119,7 @@ whatever order the reviewer's doubt takes them, so the page is a strip of tabs:
 | Demo | a Playwright recording of the feature, narrated |
 | Sequence | sequence diagrams recorded from real traces, each beside the test that produced it — and the tests tagged for tracing that came back without one |
 | Tests | what the change set was supposed to do, the tests that pin each sentence of it, and what the branch did to the test run — including the tests it stopped running without deleting |
+| Tests → traces | each Playwright test of that same run, opening on Playwright's own trace viewer in the panel: every action with the page either side of it, the DOM, the console and the network |
 | Data | the DB and domain deltas — added in green, removed in red and struck — and the change in domain language |
 | Structure | the package delta, or the current package diagram as context |
 | API | every operation and schema the branch moved, each classified breaking / additive / changed / cosmetic |
@@ -151,6 +152,8 @@ Everything else buys a tab, and its absence costs only that tab:
   `$ref`s the fallback cannot, and `openapi-changes` (pb33f) embeds a second opinion
 - **`ast-grep`** — the Logging tab, the only way to tell `log.info(x)` from `Math.log(x)`
 - **Playwright**, **numpy** and both branches served — the design-system audit
+- **Playwright with tracing on** (`--trace on`) and its HTML report — the recordings the
+  Tests tab steps through; the viewer travels with them, so the page needs no network
 - **ffmpeg** and a TTF the captions can use — the feature video
 - Diagrams to diff: any `.puml` your project generates and commits, and a hand-drawn
   `.drawio.png` if you keep one
