@@ -379,7 +379,6 @@ details.trace > summary:hover { background:var(--code-bg); border-radius:8px; }
    the point of the whole thing, comes out as a letterbox. */
 iframe.traceview { width:100%; height:78vh; min-height:520px; border:1px solid var(--line);
         border-radius:6px; background:var(--card); }
-.trnote { margin:0; color:var(--muted); font-size:.88rem; }
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
@@ -1740,8 +1739,14 @@ TRACE_JS = """<script>
       return;
     }
     var cmd = det.getAttribute('data-cmd') || '';
+    // `.rerun` is the page's existing dress for "a line to run in a terminal, with the
+    // button that copies it" — the box, the mono line, the button and its hover are all
+    // scoped under it, so the fallback is wrapped in one rather than given a second set
+    // of rules that would drift from the first.
+    var box = document.createElement('div');
+    box.className = 'rerun';
     var note = document.createElement('p');
-    note.className = 'trnote';
+    note.style.margin = '0';
     note.textContent = viewer
       ? 'This page is open as a file, so the viewer cannot read the recording. Serve it ' +
         '(scripts/serve-review.py) to step through it here, or open it natively:'
@@ -1757,7 +1762,8 @@ TRACE_JS = """<script>
     btn.setAttribute('data-tip', 'Copy the command');
     btn.textContent = 'Copy';
     line.appendChild(code); line.appendChild(btn);
-    slot.appendChild(note); slot.appendChild(line);
+    box.appendChild(note); box.appendChild(line);
+    slot.appendChild(box);
   }
   Array.prototype.forEach.call(document.querySelectorAll('details.trace'), function (det) {
     det.addEventListener('toggle', function () { if (det.open) fill(det); });
@@ -4452,7 +4458,7 @@ def _ms(value) -> str:
     return f"{ms}ms" if ms < 1000 else f"{ms / 1000:.1f}s"
 
 
-def render_traces(doc: dict, root: Path) -> tuple[str, int]:
+def render_traces(doc: dict, root: Path, out_dir: Path) -> tuple[str, int]:
     """Every recorded test, each opening on the trace its own run left behind.
 
     The tests above this say what the branch did to them and whether they went green. The
@@ -4473,6 +4479,13 @@ def render_traces(doc: dict, root: Path) -> tuple[str, int]:
     if not tests:
         return "", 0
     viewer = doc.get("viewer") or ""
+    # Where this page was built, said the way a terminal at the repo root would say it:
+    # `.human-review` is only the default, and a command naming a directory the reader does
+    # not have is worse than no command at all.
+    try:
+        here = out_dir.resolve().relative_to(root.resolve())
+    except ValueError:
+        here = out_dir.resolve()
     rows = []
     for t in tests:
         cls, label = TRACE_STATES.get(t.get("status", ""), ("changed", t.get("status", "ran")))
@@ -4497,7 +4510,7 @@ def render_traces(doc: dict, root: Path) -> tuple[str, int]:
         # zip, from Pages — where the viewer cannot fetch anything and a frame would be a
         # blank rectangle. It is written whether or not that reader exists, because the
         # build cannot know which of the two is reading.
-        cmd = f"npx playwright show-trace .human-review/{t['trace']}"
+        cmd = f"npx playwright show-trace {shlex.quote(str(here / t['trace']))}"
         rows.append(
             f'<details class="trace" data-trace="{html.escape(t["trace"], quote=True)}"'
             f' data-viewer="{html.escape(viewer, quote=True)}"'
@@ -6988,7 +7001,7 @@ def main(argv=None) -> int:
                             block.get("title", "What this change set did to the tests"))
                     + frag, 1, moved)
         if kind == "traces":
-            frag, n = render_traces(traces_doc, root)
+            frag, n = render_traces(traces_doc, root, out_dir)
             if not frag:
                 return "", 0, 0
             # Weight, and no changes — the same call `codecity` and `puml` make. A trace is

@@ -88,7 +88,9 @@ skip its `end`.
 Read the status table it prints. Three things in it are yours:
 
 - **`skipped`** — a missing optional binary or an unconfigured step. Its tab is dropped and
-  named under the strip. That is honest; do not work around it.
+  named under the strip. That is honest; do not work around it. **Unless another step feeds
+  the same tab** — `tests` and `traces` both feed Tests — in which case the tab stays and
+  only that step's half of it is missing: say *that*, not that the tab was dropped.
 - **`failed`** — say so in the guide. A failed producer is a fact about the run.
 - **`note`** — things only the run knows: the measured Code City count to put under the
   image, an amber `PARTIAL LIST` seal that is *correct*, a suite that could not start, and

@@ -182,6 +182,36 @@ def test_a_run_with_tracing_off_is_reported_rather_than_rendered_empty(tmp_path,
     assert "tracing off" in capsys.readouterr().err
 
 
+def test_a_test_that_never_ran_is_not_counted_as_one_that_ran_untraced(tmp_path):
+    """A skipped test recorded nothing because it never started. Counting it would make the
+    page report tracing as off for tests that were never asked to do anything."""
+    doc = harvest(tmp_path, [_test("a", line=1),
+                             _test("skipped one", line=9, traced=False, status="skipped")])
+    assert doc["recorded"] == 1 and doc["untraced"] == 0
+
+
+def test_a_run_with_tracing_off_clears_the_previous_runs_viewer(tmp_path):
+    """Not copying it is only half the saving: the previous run's three megabytes would
+    otherwise travel in the zip beside a page that no longer names them."""
+    harvest(tmp_path, [_test("a", line=1)])
+    assert (tmp_path / "assets" / "traceviewer").is_dir()
+    harvest(tmp_path, [_test("a", line=1, traced=False)])
+    assert not (tmp_path / "assets" / "traceviewer").exists()
+
+
+def test_a_missing_report_still_writes_the_manifest_it_was_asked_for(tmp_path):
+    """A content file that names a manifest and does not find it fails the whole build.
+    Finding it and reading "nothing was recorded" costs one tab, which is what a step that
+    could not run is supposed to cost."""
+    out = tmp_path / "assets"
+    code = pw.main(["--report", str(tmp_path / "nowhere"), "--out", str(out),
+                    "--json", str(out / "traces.json")])
+    assert code == 2
+    assert json.loads((out / "traces.json").read_text()) == {
+        "report": str(tmp_path / "nowhere"), "viewer": None, "recorded": 0,
+        "omitted": 0, "untraced": 0, "tests": []}
+
+
 def test_a_run_with_tracing_off_leaves_no_viewer_behind(tmp_path):
     """Three megabytes of browser application, copied into the assets the downloadable zip
     is built from, for a tab that is about to be dropped."""
@@ -217,7 +247,7 @@ def _manifest(tmp_path, **over):
 
 
 def test_a_row_carries_the_test_the_recording_is_of(tmp_path):
-    frag, weight = build.render_traces(_manifest(tmp_path), tmp_path)
+    frag, weight = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
     assert weight == 1
     assert "lists the visits of an owner" in frag
     assert '<span class="trpath">Owner page › </span>' in frag
@@ -228,7 +258,7 @@ def test_a_row_carries_the_test_the_recording_is_of(tmp_path):
 def test_the_frame_is_a_path_on_the_row_and_never_an_iframe_in_the_markup(tmp_path):
     """Eleven rows would otherwise boot eleven copies of a browser application on load,
     each fetching its own multi-megabyte zip, to show the one the reader asked for."""
-    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path)
+    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
     assert "<iframe" not in frag
     assert 'data-trace="assets/traces/001-owner-page.zip"' in frag
     assert 'data-viewer="assets/traceviewer/index.html"' in frag
@@ -238,14 +268,21 @@ def test_every_row_offers_the_native_command_for_a_page_read_off_disk(tmp_path):
     """From the zip or from `file://` nothing can be fetched, so the frame would be blank.
     The command opens the same recording, and it is written whether or not that reader
     exists — the build cannot know which of the two is reading."""
-    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path)
+    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
     assert "npx playwright show-trace .human-review/assets/traces/001-owner-page.zip" in frag
+
+
+def test_the_command_names_the_directory_the_page_was_built_into(tmp_path):
+    """`.human-review` is only the default. A command naming a directory the reader does
+    not have is worse than no command at all."""
+    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / "out/review")
+    assert "npx playwright show-trace out/review/assets/traces/001-owner-page.zip" in frag
 
 
 def test_a_failed_run_is_flagged_and_its_headline_shown(tmp_path):
     doc = _manifest(tmp_path)
     doc["tests"][0].update(status="failed", error="expect(locator).toHaveText failed")
-    frag, _ = build.render_traces(doc, tmp_path)
+    frag, _ = build.render_traces(doc, tmp_path, tmp_path / '.human-review')
     assert '<span class="tflag removed">failed</span>' in frag
     assert 'class="trerr">expect(locator).toHaveText failed' in frag
 
@@ -255,12 +292,12 @@ def test_a_retry_is_stamped_on_the_row(tmp_path):
     one, which is the single most expensive thing this tab could get wrong."""
     doc = _manifest(tmp_path)
     doc["tests"][0]["retry"] = 1
-    frag, _ = build.render_traces(doc, tmp_path)
+    frag, _ = build.render_traces(doc, tmp_path, tmp_path / '.human-review')
     assert "retry 1" in frag
 
 
 def test_the_lede_states_what_the_run_did_not_record(tmp_path):
-    frag, _ = build.render_traces(_manifest(tmp_path, untraced=38, omitted=4), tmp_path)
+    frag, _ = build.render_traces(_manifest(tmp_path, untraced=38, omitted=4), tmp_path, tmp_path / '.human-review')
     assert "38 result(s) ran with tracing off" in frag
     assert "4 more not carried onto this page" in frag
 
@@ -268,13 +305,13 @@ def test_the_lede_states_what_the_run_did_not_record(tmp_path):
 def test_a_manifest_with_no_recordings_renders_nothing_at_all(tmp_path):
     """Weight zero, so a tab built on this block alone is dropped and named rather than
     kept as an empty panel under a pill that promises a recording."""
-    assert build.render_traces({"tests": []}, tmp_path) == ("", 0)
+    assert build.render_traces({"tests": []}, tmp_path, tmp_path / '.human-review') == ("", 0)
 
 
 def test_a_title_from_the_suite_cannot_close_the_row_it_sits_in(tmp_path):
     doc = _manifest(tmp_path)
     doc["tests"][0]["title"] = '</summary><script>alert(1)</script>'
-    frag, _ = build.render_traces(doc, tmp_path)
+    frag, _ = build.render_traces(doc, tmp_path, tmp_path / '.human-review')
     assert "<script>alert(1)</script>" not in frag
     assert "&lt;script&gt;" in frag
 
@@ -282,13 +319,13 @@ def test_a_title_from_the_suite_cannot_close_the_row_it_sits_in(tmp_path):
 def test_the_test_file_is_openable_when_it_is_still_on_disk(tmp_path):
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "owners.spec.ts").write_text("// here", encoding="utf-8")
-    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path)
+    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
     assert f'href="vscode://file/{(tmp_path / "src/owners.spec.ts").resolve()}:15:1"' in frag
 
 
 def test_a_test_file_that_is_gone_leaves_no_dead_link(tmp_path):
     """The one thing this page never emits is a custom URL that opens nothing."""
-    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path)
+    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
     assert "vscode://file/" not in frag
 
 

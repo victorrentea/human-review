@@ -138,7 +138,11 @@ def harvest(report: Path, out: Path, prefix: str, root: Path,
                 trace = next((a for a in result.get("attachments") or []
                               if a.get("name") == "trace" and a.get("path")), None)
                 if trace is None:
-                    untraced += 1
+                    # A skipped test recorded nothing because it never ran, which is a
+                    # fact about the suite and not about tracing. Counting it here would
+                    # make the page report tracing as off for tests that never started.
+                    if result.get("status") != "skipped":
+                        untraced += 1
                     continue
                 where = test.get("location") or {}
                 src = where.get("file") or f.get("fileName") or ""
@@ -187,11 +191,15 @@ def harvest(report: Path, out: Path, prefix: str, root: Path,
     # megabytes of browser application in the assets directory for a tab that is about to
     # be dropped — and those assets are what the downloadable zip is built from.
     viewer = None
+    dest = out / "traceviewer"
+    # Removed first, always. Copying it only when something was kept is what stops a run
+    # with tracing off spending three megabytes on a tab about to be dropped — but leaving
+    # the PREVIOUS run's copy in place would put that weight in the downloadable zip
+    # anyway, beside a page that no longer names it.
+    if dest.exists():
+        shutil.rmtree(dest)
     src = viewer_source(report, base) if kept else None
     if src:
-        dest = out / "traceviewer"
-        if dest.exists():
-            shutil.rmtree(dest)
         shutil.copytree(src, dest)
         viewer = f"{prefix}/traceviewer/index.html"
 
@@ -229,14 +237,17 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     report = Path(args.report)
-    if not (report / "index.html").is_file():
-        print(f"[traces] no Playwright report at {report} — did the suite run?",
-              file=sys.stderr)
-        return 2
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    doc = harvest(report, out, args.prefix.rstrip("/"), Path.cwd(),
-                  Path(args.project_dir) if args.project_dir else None, args.limit)
+    missing = not (report / "index.html").is_file()
+    # Written on every path, the empty one included — the same reason the actions manifest
+    # beside the page is. A content file that names this manifest and does not find it
+    # fails the whole build; finding it and reading "nothing was recorded" costs the page
+    # one tab, which is what a step that could not run is supposed to cost.
+    doc = ({"report": str(report), "viewer": None, "recorded": 0, "omitted": 0,
+            "untraced": 0, "tests": []} if missing else
+           harvest(report, out, args.prefix.rstrip("/"), Path.cwd(),
+                   Path(args.project_dir) if args.project_dir else None, args.limit))
 
     text = json.dumps(doc, indent=2) + "\n"
     if args.json_out:
@@ -244,6 +255,11 @@ def main(argv=None) -> int:
         Path(args.json_out).write_text(text, encoding="utf-8")
     else:
         sys.stdout.write(text)
+
+    if missing:
+        print(f"[traces] no Playwright report at {report} — did the suite run?",
+              file=sys.stderr)
+        return 2
 
     if not doc["recorded"]:
         print(f"[traces] {doc['untraced']} test result(s) in {report} and not one trace — "
