@@ -41,6 +41,65 @@ EXTRACT = HERE / "extract-snippet.py"
 CODEOWNERS = HERE / "codeowners-check.py"
 TESTCHANGES = HERE / "test-changes.py"
 
+# --------------------------------------------------------------------------- #
+# what the page is allowed to ask the server to run
+# --------------------------------------------------------------------------- #
+
+# Dot-prefixed deliberately: `publish-demo.sh` publishes everything in a run directory
+# that does not begin with a dot, and the downloadable zip is built from what it
+# publishes. A manifest that travelled with either would be a list of this machine's
+# commands sitting next to a page on someone else's, offering to run them.
+ACTIONS_FILE = ".actions.json"
+
+# Three buttons on this page describe a command and hand it to the clipboard, because a
+# file on disk cannot run anything. Served by serve-review.py they can — but the command
+# must not travel from the page, or "the review guide" becomes "a shell on :7654 that any
+# tab in the browser can reach". So the page sends an id and the server looks the command
+# up here, in a manifest written beside review.html by this build.
+#
+# The consequences are the point, not a side effect:
+#   * a page from an older build can only name ids the *current* build still declares;
+#   * the copy in the zip and the copy on GitHub Pages sit next to no manifest at all, so
+#     they can ask for nothing — which is also exactly what they could do before;
+#   * every command in it was written by this build out of the content file, so reviewing
+#     what the button may run is reviewing the content file, which is already reviewed.
+#
+# A module-level register rather than a value threaded through the emitters: the three
+# declarations are made by `runtime_html` and `rerun_html`, which are leaves of a render
+# tree eight calls deep whose every other node is a pure string function. Passing a
+# collector down that tree would put a parameter for the action server on a dozen
+# signatures that have nothing to do with it. `main` clears it before a build and writes
+# it after, which is the only ordering that matters.
+ACTIONS: dict[str, dict] = {}
+
+
+def declare_action(action_id: str, command: str, *, params: dict[str, str] | None = None,
+                   scrape: str = "", reload: bool = False, label: str = "") -> str:
+    """Register one runnable command and return the id the page should send.
+
+    `params` maps each `{name}` hole in the command to the shape its value must have
+    (`int`, `url`, `word` — serve-review.py owns the patterns). A hole with no declared
+    shape is refused at run time rather than interpolated, so a template can never grow a
+    parameter here without someone deciding what is allowed to go in it."""
+    ACTIONS[action_id] = {"command": command, "params": dict(params or {}),
+                          "scrape": scrape, "reload": reload, "label": label}
+    return action_id
+
+
+def write_actions(out_dir: Path) -> Path:
+    """Drop the manifest beside the page, always — an empty one included.
+
+    Always, because the file is read by mtime and the alternative to rewriting it is
+    leaving the previous build's manifest in place: a page that no longer has the button
+    next to a server that still offers to run the command behind it. An empty `actions`
+    is a perfectly good statement and the one this build means when it renders no
+    runnable control."""
+    path = out_dir / ACTIONS_FILE
+    path.write_text(json.dumps({"version": 1, "actions": ACTIONS}, indent=2) + "\n",
+                    encoding="utf-8")
+    return path
+
+
 SEVERITIES = {
     "high": ("sev-high", "must look"),
     "medium": ("sev-med", "worth a look"),
@@ -1141,6 +1200,110 @@ DGM_VIEWS_JS = """<script>
 </script>"""
 
 
+SERVER_JS = """<script>
+// Is there a review server behind this page, and what will it run for me?
+//
+// This replaces `location.protocol === 'http:'`, which answered a different question and
+// answered it wrongly in the one place it mattered most. The demo published on GitHub
+// Pages is https, so the protocol test said "served": four hundred and seventy-seven
+// editor handles on that page each fetched `/__open__` against github.io, collected a
+// 404, and toasted "Could not open OwnerController.java" at a reader who had clicked a
+// perfectly good link. A page cannot tell a web server from *its* web server by looking
+// at the scheme. It has to ask, and the answer has to be one only ours can give — hence
+// a JSON body carrying our own key: GitHub's 404 page is HTML and does not parse, and
+// something else on :7654 parses but says nothing about human review.
+//
+// The probe is asynchronous, and everything downstream of it is written to start in the
+// degraded state and *rise* when it answers. Never the other way round. A button drawn
+// as live that falls back to the clipboard 30ms later has already been clicked by then,
+// and has already lied; one that appears capable a moment after the page paints has cost
+// nobody anything.
+//
+// It carries a list of actions rather than a boolean for the same reason. "Am I served?"
+// is not what a button needs to know — `cue-drive` needs to know whether *drive-to-cue*
+// is on offer here, and a build that stopped declaring it has to be able to take the
+// verb away from a page that is still open.
+window.HR = (function () {
+  var caps = null, settled = false, waiting = [];
+
+  var ready = fetch('/__human_review__', {cache: 'no-store'})
+    .then(function (r) { return r.ok ? r.json() : null; })
+    // `humanReview` present, or this is somebody else's JSON on somebody else's port.
+    .then(function (j) { return (j && j.humanReview) ? j : null; })
+    // A file:// page cannot fetch at all, and that throw is the *normal* path for a
+    // guide read off disk or out of the zip. It is not a failure to report.
+    .catch(function () { return null; })
+    .then(function (j) {
+      caps = j; settled = true;
+      waiting.splice(0).forEach(function (fn) { try { fn(j); } catch (e) {} });
+      return j;
+    });
+
+  function can(id) { return !!(caps && caps.actions && caps.actions[id]); }
+
+  // Fires once, with the answer, whenever it arrives — before or after registration.
+  // `settled` and not `caps !== null`, because "no server" is an answer and null is how
+  // it is spelt.
+  function onready(fn) { if (settled) fn(caps); else waiting.push(fn); }
+
+  // Poll rather than stream. `./start-docker.sh up` is a docker build: minutes of output
+  // this page shows one line of. An EventSource would be a second protocol, a second
+  // failure mode and a connection held open across the reap, to deliver six words a
+  // second more promptly than a timer does.
+  function poll(snap, onprogress) {
+    if (onprogress) { try { onprogress(snap); } catch (e) {} }
+    if (snap.state !== 'running') return Promise.resolve(snap);
+    return new Promise(function (resolve, reject) {
+      setTimeout(function () {
+        fetch('/__run_status__?run=' + encodeURIComponent(snap.run), {cache: 'no-store'})
+          .then(function (r) {
+            if (!r.ok) throw new Error('the review server lost track of that run');
+            return r.json();
+          })
+          .then(function (next) { resolve(poll(next, onprogress)); })
+          .catch(reject);
+      }, 700);
+    });
+  }
+
+  // Resolves with the finished snapshot ({state, exit, output, result}) whatever the
+  // exit code — a command that ran and failed is an answer, not an exception. It rejects
+  // only when the *request* could not be made or the run could not be followed, which is
+  // the case where the caller has to fall back to the clipboard.
+  function run(id, params, onprogress) {
+    if (!can(id)) return Promise.reject(new Error(id + ' is not available here'));
+    return fetch('/__run__', {
+      method: 'POST', cache: 'no-store',
+      // Both halves deliberate. POST + a non-simple Content-Type is not a request a
+      // cross-origin page may send without a preflight, and the server answers no
+      // preflight — so the browser refuses on our behalf before anything arrives. The
+      // token is the belt to that pair of braces: it is minted per server process and
+      // handed out only over the same-origin-guarded probe above, so a page that never
+      // read the probe cannot produce it.
+      headers: {'Content-Type': 'application/json',
+                'X-Human-Review-Token': (caps && caps.token) || ''},
+      body: JSON.stringify({id: id, params: params || {}})
+    }).then(function (r) {
+      if (r.ok) return r.json();
+      // The server explains its refusals in the body — "n is not a valid int",
+      // "cue-drive is not an action this review declares" — and a reader who sees the
+      // sentence can act on it where a generic shrug leaves them nothing.
+      return r.text().then(function (t) { throw new Error(t || 'the review server refused'); });
+    }).then(function (first) { return poll(first, onprogress); });
+  }
+
+  // The last line the command has printed, for a control with room for one line.
+  function tail(snap) {
+    var lines = (snap.output || '').split('\\n');
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    return lines.length ? lines[lines.length - 1].trim() : '';
+  }
+
+  return {ready: ready, can: can, onready: onready, run: run, tail: tail};
+})();
+</script>"""
+
+
 APP_ENV_JS = """<script>
 // Turns the transcript's app links into links that actually go somewhere.
 //
@@ -1225,29 +1388,111 @@ APP_ENV_JS = """<script>
     remember(input.value); apply(); probe();
   });
 
+  // Learned once the environment answers on its own, and only then. `adopt` is the whole
+  // reason the start button is worth more than the clipboard: `start-docker.sh` ends by
+  // printing the port the host gave it, the server scrapes that line, and the box the
+  // reader would otherwise have had to paste into fills itself. Two round trips to the
+  // terminal become none — the second being the one nobody counts, where you go back to
+  // find the URL again because the clipboard has moved on.
+  function adopt(url) {
+    if (!url) return false;
+    input.value = url.replace(/\\/+$/, '');
+    remember(input.value); apply(); probe();
+    return true;
+  }
+
   var copy = bar.querySelector('.appenv-copy');
   if (copy) copy.addEventListener('click', function () {
     var cmd = bar.querySelector('.appenv-cmd code').textContent;
+    if (copy.dataset.run === '1') { start(); return; }
     navigator.clipboard.writeText(cmd).then(function () {
       copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy'; }, 1200);
     }).catch(function () { copy.textContent = 'Copy failed'; });
   });
 
-  // One command per caption, copied rather than run: this page is a file on disk and
-  // cannot drive a browser on your machine. What it can do is hand you the exact line,
-  // already carrying the port the environment came up on and the number of the caption
-  // you clicked.
+  // The command *stays in the box* beside the button that now runs it. It is not
+  // redundant: it is the only thing on the page that says what the click is about to do
+  // to this machine, and the answer to "what do I type when I am not reading this in a
+  // browser" has not gone away.
+  function start() {
+    copy.disabled = true; copy.textContent = 'Starting\\u2026';
+    state.dataset.state = 'unknown'; state.textContent = 'starting\\u2026';
+    setLive(false, 'Waiting for the environment to come up');
+    window.HR.run('demo-env', {}, function (snap) {
+      // One line, in the pill's tooltip, where a docker build's thousands would not fit
+      // and where a reader who wants to know it is still moving can look.
+      var line = window.HR.tail(snap);
+      if (line) state.dataset.tip = line;
+    }).then(function (done) {
+      copy.disabled = false; copy.textContent = 'Start';
+      state.removeAttribute('data-tip');
+      if (done.state === 'done' && adopt(done.result && done.result.base)) return;
+      // It ran and printed no URL we recognised, or it failed. Either way the reader is
+      // back where they started rather than stuck: `probe` re-reads whatever base is in
+      // the box, and the box is still typeable.
+      probe();
+      if (done.state !== 'done') {
+        state.dataset.state = 'down';
+        state.textContent = 'start failed';
+        state.dataset.tip = window.HR.tail(done) || 'the command exited ' + done.exit;
+      }
+    }).catch(function (e) {
+      copy.disabled = false; copy.textContent = 'Start';
+      state.dataset.state = 'down'; state.textContent = 'start failed';
+      state.dataset.tip = e.message || 'the review server is no longer running';
+    });
+  }
+
+  // One command per caption. Off disk it is copied, because a file cannot drive a browser
+  // on your machine; served, it is run, and what the reader gets back is the app already
+  // sitting on the screen the caption describes. Same template either way — the one in
+  // `data-drive` for the clipboard, the one the build declared for the server — so the
+  // two paths cannot drift into doing different things.
   var tmpl = bar.dataset.drive;
   if (tmpl) document.querySelectorAll('.cue-drive').forEach(function (btn) {
     btn.addEventListener('click', function () {
       if (blocked(btn)) return;
+      var was = btn.innerHTML;
+      function tick(mark, hold) {
+        btn.classList.add('copied'); btn.innerHTML = mark;
+        setTimeout(function () { btn.classList.remove('copied'); btn.innerHTML = was; }, hold);
+      }
+      if (window.HR.can('cue-drive')) {
+        btn.innerHTML = '&#8943;';
+        window.HR.run('cue-drive', {n: btn.dataset.n, base: base()})
+          .then(function (done) {
+            if (done.state === 'done') { tick('&#10003;', 1400); return; }
+            btn.dataset.tip = window.HR.tail(done) || 'the driver exited ' + done.exit;
+            tick('&#10007;', 2600);
+          })
+          .catch(function (e) { btn.dataset.tip = e.message; tick('&#10007;', 2600); });
+        return;
+      }
       var cmd = tmpl.replace(/\\{n\\}/g, btn.dataset.n).replace(/\\{base\\}/g, base());
       navigator.clipboard.writeText(cmd).then(function () {
-        var was = btn.innerHTML;
-        btn.classList.add('copied'); btn.innerHTML = '&#10003;';
-        setTimeout(function () { btn.classList.remove('copied'); btn.innerHTML = was; }, 1400);
+        tick('&#10003;', 1400);
       }).catch(function () { btn.title = 'could not copy'; });
     });
+  });
+
+  window.HR.onready(function () {
+    // `copy` is absent when the runtime block declared no command — in which case the
+    // build declared no `demo-env` either, but the two are checked independently rather
+    // than one being assumed from the other.
+    if (copy && window.HR.can('demo-env')) {
+      copy.dataset.run = '1';
+      copy.textContent = 'Start';
+      copy.dataset.tip = 'Run this command here and fill the box in from what it prints';
+    }
+    // Nothing in the box and a host that can be asked: ask it. The base normally survives
+    // a reload in localStorage, so this is for the first reader of a page whose
+    // environment somebody else already started — and for the browser with site data
+    // blocked, where `stored()` has always come back empty by design.
+    if (!base() && window.HR.can('demo-env-url')) {
+      window.HR.run('demo-env-url', {}).then(function (done) {
+        if (done.state === 'done') adopt(done.result && done.result.base);
+      }).catch(function () { /* nothing was running; the bar already says so */ });
+    }
   });
 
   // Explicit, never automatic. Resetting on every link click would throw away work the
@@ -1836,7 +2081,15 @@ EDITOR_JS = r"""<script>
 //   embedded, unserved → copy the reference and say what to do with it, once, in a banner.
 (function () {
   var EMBEDDED = window.self !== window.top;
-  var SERVED = location.protocol === 'http:' || location.protocol === 'https:';
+  // False until the probe in SERVER_JS says otherwise, and never back. It used to be
+  // `location.protocol === 'http:'`, which is not the same question: the demo on GitHub
+  // Pages is https, so every handle on it fetched `/__open__` against github.io and
+  // toasted a failure at the reader. Starting false costs the first few tens of
+  // milliseconds after paint, during which a click falls through to the href — which is
+  // the same thing it does on a machine with no server at all, and therefore already
+  // tested.
+  var SERVED = false;
+  window.HR.onready(function (caps) { SERVED = !!caps; });
 
   function copy(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1855,7 +2108,11 @@ EDITOR_JS = r"""<script>
   }
 
   var toast = null;
-  function flash(message) {
+  // `sticky` is for a command that is still running: a docker build outlasts 2.6 seconds
+  // many times over, and a progress line that fades while the thing is still going reads
+  // as the thing having stopped. The next flash replaces it; a plain one after it ends
+  // clears it.
+  function flash(message, sticky) {
     if (!toast) {
       toast = document.createElement('div');
       toast.id = 'copy-toast';
@@ -1864,6 +2121,7 @@ EDITOR_JS = r"""<script>
     toast.textContent = message;
     toast.classList.add('shown');
     clearTimeout(flash.timer);
+    if (sticky) return;
     flash.timer = setTimeout(function () { toast.classList.remove('shown'); }, 2600);
   }
 
@@ -1877,12 +2135,47 @@ EDITOR_JS = r"""<script>
   // the command that re-renders the hand-drawn diagram. It lives in this handler because
   // `copy` and `flash` do, and a second clipboard-and-toast implementation for one button
   // is how two of them end up behaving differently.
+  //
+  // Served, it runs the command instead \u2014 the same command, looked up by the id the build
+  // stamped on the button. Its last stage rewrites *this file*, which is why the reload
+  // is part of the action and not left to the reader: the alternative is a green tick
+  // beside a picture that is still the old one, which is precisely the confusion the
+  // "then reload this page" in the copy message exists to prevent.
   document.addEventListener('click', function (ev) {
     var cmd = ev.target.closest && ev.target.closest('button.copycmd');
     if (!cmd) return;
+    var action = cmd.getAttribute('data-action');
+    if (action && window.HR.can(action)) { rerun(cmd, action); return; }
     copy(cmd.getAttribute('data-copy') || '')
       .then(function () { flash('Copied \u2014 run it in a terminal, then reload this page'); });
   });
+
+  function rerun(button, action) {
+    var was = button.textContent, last = '';
+    button.disabled = true;
+    button.textContent = 'Running\u2026';
+    flash('Re-rendering the diagram\u2026', true);
+    window.HR.run(action, {}, function (snap) {
+      var line = window.HR.tail(snap);
+      // Only on change: the poll is every 700ms and a quiet command would otherwise
+      // repaint the same sentence eighty times while nothing happened.
+      if (line && line !== last) { last = line; flash(line, true); }
+    }).then(function (done) {
+      if (done.state === 'done') {
+        button.textContent = 'Done';
+        flash('Rebuilt \u2014 reloading this page', true);
+        // A beat, so the sentence is readable before the page goes. `reload()` and not a
+        // cache-busting navigation: the server sends no-store for exactly this.
+        setTimeout(function () { location.reload(); }, 800);
+        return;
+      }
+      button.disabled = false; button.textContent = was;
+      flash(window.HR.tail(done) || ('The command exited ' + done.exit));
+    }).catch(function (e) {
+      button.disabled = false; button.textContent = was;
+      flash(e.message || 'The review server is no longer running');
+    });
+  }
 
   document.addEventListener('click', function (ev) {
     var link = ev.target.closest && ev.target.closest('a[href^="vscode:"]');
@@ -1941,8 +2234,13 @@ EDITOR_JS = r"""<script>
     copy(ref).then(function () { flash('Copied ' + ref + ' — paste into Quick Open (\u2318P)'); });
   });
 
-  if (!EMBEDDED || SERVED) return;
-  document.addEventListener('DOMContentLoaded', function () {
+  // The banner is the consolation prize, so it must not be printed until we know there
+  // is nothing better on offer — which is now something we learn after the page has
+  // painted rather than from the URL. Waiting for the probe also means it is never shown
+  // and then withdrawn, which would be a paragraph of apology flashing past for no reason.
+  if (!EMBEDDED) return;
+  window.HR.onready(function (caps) {
+    if (caps) return;
     var note = document.createElement('p');
     note.className = 'embedded-note';
     note.innerHTML = 'You are reading this inside an embedded browser, opened straight off '
@@ -3179,7 +3477,7 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
     return (dgm_views_html(panes, initial="new" if red else "diff")
             + drawio_open_html(verdict.get("drawio_url") or "",
                                verdict.get("drawio_web_url") or "")
-            + rerun_html(verdict.get("rerun"), rebuild))
+            + rerun_html(verdict.get("rerun"), rebuild, name))
 
 
 def drawio_open_html(app_url: str, web_url: str = "") -> str:
@@ -3208,7 +3506,7 @@ def drawio_open_html(app_url: str, web_url: str = "") -> str:
     return f'<p class="dgm-open">Edit this diagram in {" or ".join(links)}</p>'
 
 
-def rerun_html(rerun: dict | None, rebuild: str) -> str:
+def rerun_html(rerun: dict | None, rebuild: str, name: str = "") -> str:
     """The command that re-renders this diagram and rebuilds this page, ready to paste.
 
     Not a convenience. The picture above is inlined into the HTML, and it has to be: the
@@ -3226,10 +3524,24 @@ def rerun_html(rerun: dict | None, rebuild: str) -> str:
     if not rerun or not rerun.get("command"):
         return ""
     line = f'cd {shlex.quote(rerun["cwd"])} \\\n  && {rerun["command"]} \\\n  && {rebuild}'
+    # Per diagram, because a page can carry several and each one reruns its own. The id
+    # is the diagram's name for the same reason every other handle on this page is: so a
+    # button that has been on screen since the last build cannot end up running the
+    # command belonging to a different picture.
+    #
+    # `reload`, because the last stage of this line rewrites the very file the browser is
+    # displaying. Leaving the reader on the old bytes with a green tick beside them would
+    # be the worst possible outcome: the page would look like it had picked the edit up.
+    act = ""
+    if name:
+        aid = declare_action(f"drawio:{name}", line, reload=True,
+                             label=f"Re-render {name} and rebuild this page")
+        act = f' data-action="{html.escape(aid, quote=True)}"'
     return ('<div class="rerun">For this report to pick your edit up, run this in the '
             'terminal:'
             f'<div class="cmdline"><code>{html.escape(line)}</code>'
-            f'<button type="button" class="copycmd" data-copy="{html.escape(line, quote=True)}" '
+            f'<button type="button" class="copycmd"{act} '
+            f'data-copy="{html.escape(line, quote=True)}" '
             'data-tip="Copy the command">Copy</button></div></div>')
 
 
@@ -4124,6 +4436,23 @@ def runtime_html(rt) -> str:
              if rt.get("reset") else "")
     cmdbox = (f'<span class="appenv-cmd"><code>{html.escape(cmd)}</code>'
               f'<button type="button" class="appenv-copy">Copy</button></span>') if cmd else ""
+    # The command keeps its place in the box either way: it is the thing to paste where
+    # nothing is serving this page, and where something is, it is still the answer to
+    # "what is that button about to do to my machine?".
+    if cmd:
+        declare_action("demo-env", cmd, scrape="url",
+                       label="Start the environment the walkthrough was filmed against")
+    # Optional and never guessed. Turning `… up --ref abc` into `… url --ref abc` by
+    # string surgery would work for the one host this was written against and fail
+    # silently on the next, at probe time, where nobody would see it fail. Declared or
+    # absent — and absent costs only the re-discovery of a base the browser had already
+    # remembered in localStorage.
+    if rt.get("urlCommand"):
+        declare_action("demo-env-url", rt["urlCommand"], scrape="url",
+                       label="Ask the host where the environment is already answering")
+    if rt.get("drive"):
+        declare_action("cue-drive", rt["drive"], params={"n": "int", "base": "url"},
+                       label="Drive the app to one caption of the walkthrough")
     return (f'<div class="appenv" data-fallback="{html.escape(fallback)}"'
             f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}'
             f'{f' data-drive="{html.escape(rt["drive"])}"' if rt.get("drive") else ""}>'
@@ -5972,6 +6301,10 @@ def main(argv=None) -> int:
     out_path = Path(args.out).resolve()
     out_dir = out_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Emptied here rather than trusted to be empty: the register is module state, and the
+    # module is imported and driven directly by the test suite, where two builds in one
+    # process would otherwise leave the second one declaring the first one's actions.
+    ACTIONS.clear()
     # How to start this build again, for the copy button under the hand-drawn diagram.
     rebuild_cmd = " ".join([rebuild_interpreter(), shlex.quote(str(Path(__file__).resolve())),
                             shlex.quote(args.content), "--out", shlex.quote(args.out)])
@@ -6688,6 +7021,7 @@ def main(argv=None) -> int:
 {body_html}
 <footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{TAKEAWAY}{allbtn_html}</div></footer>
 </div>
+{SERVER_JS}
 {CAPTION_JS}
 {APP_ENV_JS}
 {GENSEQ_JS}
@@ -6705,6 +7039,10 @@ def main(argv=None) -> int:
     doc = one_tooltip_only(doc)
     check_baked_excerpts(doc)
     out_path.write_text(doc, encoding="utf-8")
+    # After the page, so the manifest can never promise a verb for a build that failed to
+    # write its own HTML — and every declaration is in by now, the register being filled
+    # as the emitters run.
+    write_actions(out_dir)
     print(f"[review] wrote {out_path}", file=sys.stderr)
     return 0
 

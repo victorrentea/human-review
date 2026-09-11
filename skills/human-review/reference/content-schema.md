@@ -245,6 +245,7 @@ purpose.
 ```json
 "runtime": {
   "command": "cd ~/workspace/petclinic && ./start-docker.sh up --ref 9f3c1ab",
+  "urlCommand": "cd ~/workspace/petclinic && ./start-docker.sh url --ref 9f3c1ab",
   "base": "http://localhost:4200",
   "reset": "/__reset"
 }
@@ -270,6 +271,21 @@ starting point, and a "Reset data" button appears. Omit it and no button is draw
 is the right thing whenever nothing is there to answer, since a button that always fails is
 worse than no button. Resetting is never automatic: doing it on every link click would
 throw away work the reviewer was in the middle of.
+
+`command` and `drive` are copied to the clipboard on a page read off disk, and **run** on
+a page served by `serve-review.py`: the build writes them into `.human-review/.actions.json`
+and the button sends the id of the one it wants, never the command itself. So the Copy
+button becomes Start, the server scrapes the `http://localhost:<port>` line the command
+prints, and the box above fills itself — which also flips the pill to `live` and unlocks
+`Reset data` and every `▸` without the reviewer pasting anything. Where nothing is serving
+the page, all three controls behave exactly as they always did.
+
+`urlCommand` is **optional** and is the same host asked where the environment already
+*is* — `url` rather than `up`. It is run once when a served page loads with an empty box,
+which covers the reader who opens a guide somebody else already started the environment
+for, and the browser with site data blocked where the remembered base was never there. It
+is never derived from `command`: turning `up` into `url` by string surgery works for one
+host and fails silently on the next, at load time, where nobody sees it fail.
 
 Keep the film's section id `video` (it has outlived two tab reshuffles, so `#video` still
 lands). The builder emits the player only for a file on disk; with none it emits a notice

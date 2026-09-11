@@ -222,7 +222,12 @@ URL=$(${SKILL}/scripts/serve-review.py .human-review)
 
 `end` before `check`, so the guide record is closed when the check reads it. `check` before
 the build, so a `DRIFT:` line is still actionable — once the page is written, a renamed tab
-is a column of blanks nobody can tell from a step never instrumented.
+is a column of blanks nobody can tell from a step never instrumented. The build before the
+serve for a second reason now: it writes `.human-review/.actions.json` beside the page, and
+that file is the only thing that lets the served copy *run* the commands its buttons
+describe — the environment, the drive-to-cue, the diagram rerun. A page read off disk, or
+out of the zip, has no manifest next to it and copies them to the clipboard as it always
+did.
 
 **Never `open review.html`** — that hands it to whatever the OS thinks owns `.html`, on
 another desktop. With `$TERM_PROGRAM = vscode` and
