@@ -1052,29 +1052,31 @@ body.showall .paneltag { display:block; }
 body.showall .panel { border-top:1px solid var(--line); }
 body.showall .panel:first-of-type { border-top:0; }
 /* A test and the sequence its run recorded are one exhibit, not two: the diagram is
-   evidence for the test directly above it. One ruled edge holds the pair together. */
+   evidence for the test directly above it. One ruled edge holds the pair together, and
+   one fold puts the whole exhibit away — closing over the test alone used to leave its
+   diagram standing there with nothing above it to explain what it draws. */
 .testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
 .testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
 /* The quoted test and the diagram under it are one card in two halves — the test, then
    the test drawn as a sequence. The snippets stack with no air between them and the
-   diagram continues straight down from the last one; only the outer corners are round.
-   A closed fold leaves the diagram standing alone, so it gets its own top edge back. */
-.testpair > .testcode .snippet { margin:0; border-radius:0; }
-.testpair > .testcode .snippet + .snippet { border-top:0; }
-.testpair > .testcode > summary + .snippet { border-radius:8px 8px 0 0; }
-.testpair > .testcode[open] + .diagram { margin-top:0; border-top:0; border-radius:0 0 8px 8px; }
-.testlead { margin:0; }
-/* The fold over a pair's quoted test. Quiet on purpose: it is a control for getting the
-   source out of the way while comparing two diagrams, not a heading competing with the
-   diagram's own. */
-.testcode { margin:0; }
-.testcode > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.35rem;
+   diagram continues straight down from the last one; only the outer corners are round. */
+details.testpair > .snippet { margin:.7rem 0 0; border-radius:8px 8px 0 0; }
+details.testpair > .snippet ~ .snippet { margin-top:0; border-top:0; border-radius:0; }
+details.testpair > .snippet ~ .diagram { margin-top:0; border-top:0; border-radius:0 0 8px 8px; }
+.testlead { margin:.7rem 0 0; }
+/* The fold's own summary: the test's file name, quiet on purpose. It is a control for
+   getting an exhibit out of the way while comparing two others, not a heading competing
+   with the picture below it. */
+details.testpair > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.35rem;
   align-items:center; color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace;
   padding:.2rem 0; }
-.testcode > summary::-webkit-details-marker { display:none; }
-.testcode > summary::before { content:"▾"; font-size:.75rem; }
-.testcode:not([open]) > summary::before { content:"▸"; }
-.testcode > summary:hover { color:var(--link); }
+details.testpair > summary::-webkit-details-marker { display:none; }
+details.testpair > summary::before { content:"▾"; font-size:.75rem; }
+details.testpair:not([open]) > summary::before { content:"▸"; }
+details.testpair > summary:hover { color:var(--link); }
+/* With the title gone, the .puml path is the only thing left in a paired diagram's
+   header row, and `space-between` would park it on the left under the fold arrow. */
+.diagram.dgm-bare .head .dgm-src { margin-left:auto; }
 @media print {
   .tabstrip { display:none; }
   .panel[hidden] { display:block !important; }
@@ -1375,8 +1377,21 @@ window.HR = (function () {
   }
 
   onready(function (j) {
+    if (!j) return;
+    // A play mark in front of the tab's title, where the favicon already is. A reader
+    // keeps several of these open — one per branch, a static copy of an old one beside a
+    // live one — and the tab strip is where they pick between them, long before anything
+    // in the page is on screen. The badge in the title row says the same thing, but only
+    // to someone already looking at the page.
+    //
+    // Play and not a green dot: green on this page means a check passed, and a report
+    // whose tab turns green when a server happens to be up would be saying the branch is
+    // fine. This says one thing only — something is running behind it.
+    if (document.title.indexOf('▶') !== 0) {
+      document.title = '▶️ ' + document.title;
+    }
     var chip = document.getElementById('hr-mode');
-    if (!chip || !j) return;
+    if (!chip) return;
     chip.textContent = 'served';
     chip.classList.add('chip-served');
     // Nothing left to copy: the line it offered is the one that got the reader here.
@@ -2548,14 +2563,13 @@ GENSEQ_JS = """<script>
   // who asked for values once is reading the whole page in values. So the choice is the
   // page's, and every panel opened after it honours it.
   var panel = null, els = null, current = null, step = null, showValues = false;
-  // Where ⌘-click goes from the panel: the source of whichever diagram is open.
-  var source = null;
-
-  // The test a diagram was generated from — already computed at build time and sitting
-  // under the picture as `generated by <test>`, so there is nothing to resolve here and
-  // nothing that can disagree with the link a reader can see. Falls back to the .puml
-  // when the test file could not be found (the second provenance link is always there).
+  // The test a diagram was generated from, computed at build time. Inside a test pair the
+  // heading above the picture already names that file, so the card prints no `generated by`
+  // line of its own and the href rides on the card instead; a diagram standing alone still
+  // carries the provenance paragraph, and that is the fallback.
   function sourceOf(diagram) {
+    var direct = diagram.getAttribute('data-test-src');
+    if (direct) return direct;
     var links = diagram.querySelectorAll('.prov .srcref');
     // The test first, explicitly: the second provenance link is the .puml, and a scenario's
     // line number resolved against a generated file would point at nothing.
@@ -2575,12 +2589,6 @@ GENSEQ_JS = """<script>
   function unwrap(node) {
     while (node.firstChild) node.parentNode.insertBefore(node.firstChild, node);
     node.remove();
-  }
-
-  // ⌘ on a Mac, Ctrl elsewhere — the same chord that opens a link in a new tab, which is
-  // the habit this borrows: the arrow is a reference, and this follows it.
-  function wantsSource(ev) {
-    return ev.metaKey || ev.ctrlKey;
   }
 
   function openSource(href) {
@@ -2609,9 +2617,9 @@ GENSEQ_JS = """<script>
       body: panel.querySelector('pre'),
     };
     panel.querySelector('.genseq-close').addEventListener('click', close);
-    els.title.addEventListener('click', function (ev) {
-      if (wantsSource(ev)) { ev.preventDefault(); openSource(source); }
-    });
+    // The title is a label, not a control. ⌘-click on it used to open the diagram's test
+    // — a door with no handle, opening what the section header above the picture opens on
+    // a plain click, and at the right line rather than at line 1.
     els.toggle.addEventListener('click', function () { showValues = !showValues; render(); });
     panel.addEventListener('click', function (ev) { ev.stopPropagation(); });
   }
@@ -2678,12 +2686,8 @@ GENSEQ_JS = """<script>
     els.handler.appendChild(name);
   }
 
-  function show(entry, index, target, href) {
+  function show(entry, index, target) {
     build();
-    source = href;
-    els.title.style.cursor = href ? 'pointer' : '';
-    // No tooltip on the title: the cursor already says it is clickable, and a hint that
-    // pops over the heading you are reading costs more than it explains.
     step = entry.steps[index];
     els.title.textContent = entry.title;
     els.step.textContent = entry.steps.length > 1 ? (index + 1) + ' / ' + entry.steps.length : '';
@@ -2756,27 +2760,25 @@ GENSEQ_JS = """<script>
       group.addEventListener('click', function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
-        // ⌘-click reads the arrow as a reference to the code rather than as something to
-        // expand: a reviewer who wants the SQL clicks, and one who wants the test that
-        // caused it holds ⌘. Checked before anything else, so the panel neither opens
-        // nor advances its step counter on the way out.
-        if (wantsSource(ev)) { openSource(href); return; }
+        // One arrow, one gesture. ⌘-click used to open the test from here as well, which
+        // was a second way to reach what the section header above already opens — and a
+        // chord the page had to spend a sentence explaining.
         if (current && current !== state) current.reset();
         index++;
         if (index >= entry.steps.length) { close(); return; }
         current = state;
         group.classList.add('genseq-open');
-        show(entry, index, link, href);
+        show(entry, index, link);
       });
     });
 
     if (!revealable) return;
     var hint = document.createElement('p');
     hint.className = 'genseq-hint';
-    hint.textContent = 'Simplified on purpose — click any arrow marked \u2295 to reveal its SQL '
-      + 'or its JSON payload. Switching a statement to its bound values switches them all. '
-      + 'Click a section header to open its scenario in the test; \u2318-click an arrow '
-      + '(Ctrl elsewhere) to open the test file.';
+    // One line. Everything else this paragraph used to say is either visible (the \u2197 on
+    // a linked label), said by a tooltip at the moment it applies, or a second way to do
+    // something already reachable.
+    hint.textContent = 'Click any arrow marked \u2295 for the SQL or the JSON behind it.';
     // Above the whole viewer where there is one, not above the first .svgbox — that one
     // lives inside the Diff pane, so the instructions vanished on New and Old.
     (diagram.querySelector('.dgmviews') || diagram.querySelector('.svgbox'))
@@ -4066,24 +4068,26 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
     )
 
 
-def _folded_test(test_rel: str, quoted: list[str]) -> str:
-    """The quoted test, foldable, and open.
+def _folded_pair(test_rel: str, pieces: list[str]) -> str:
+    """The test and the sequence its run recorded, foldable together, and open.
 
-    Open, because the test is the half of the pair a reader came to read, and a tab that
-    opens on nothing but summaries makes them click before it says anything. Foldable,
-    because this tab's argument is made by putting several diagrams beside each other —
-    and once a reader is comparing two pictures, the source between them is the thing in
-    the way. The two states are wanted at different moments by the same person.
+    Open, because the pair is what the reader came for, and a tab that opens on nothing
+    but summaries makes them click before it says anything. Foldable, because this tab's
+    argument is made by putting several exhibits beside each other, and a reader comparing
+    two of them wants the rest out of the way.
 
-    The summary is the file's basename and nothing more: the panel it opens already prints
-    the path and the line ranges in its own header bar, and the diagram below prints the
-    path again. A summary repeating either would be the third place on one screen to say
-    one thing, which is the habit this tab has just been pruned of.
+    Both halves fold, which is the correction: the fold used to close over the quoted test
+    alone and leave the diagram standing underneath, orphaned. A sequence is a drawing of
+    one test — without the test above it, it is a picture of nothing, and the reader who
+    just put the test away is the last person who wants it left on screen.
+
+    The summary is the file's basename and nothing more: the quoted block under it already
+    prints the path and the line ranges in its own header bar.
     """
     name = html.escape(test_rel.rsplit("/", 1)[-1])
-    return ('<details class="testcode" open>'
+    return ('<details class="testpair" open>'
             f'<summary>{name}</summary>'
-            + "\n".join(x.strip("\n") for x in quoted)
+            + "\n".join(x.strip("\n") for x in pieces)
             + "</details>")
 
 
@@ -4141,15 +4145,10 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
         # section headers are those same titles, linked to those same lines, drawn by
         # the generator. Two copies of one list, and the one on the picture is the one
         # that sits where the reader is already looking.
-        pieces = [""]
         quoted = take(test_rel)
-        pieces.append(_folded_test(test_rel, quoted) if quoted
-                      else _unquoted_note(test_rel, root))
-        pieces.append(render_diagrams(merged, root, out_dir, [r]))
-        # Each piece already ends its own last tag; extract-snippet also ends with a
-        # newline, and joining on one more turns the ruled block into a gappy list.
-        parts.append('<div class="testpair">'
-                     + "\n".join(x.strip("\n") for x in pieces) + "</div>")
+        pieces = list(quoted) if quoted else [_unquoted_note(test_rel, root)]
+        pieces.append(render_diagrams(merged, root, out_dir, [r], bare=test_rel))
+        parts.append(_folded_pair(test_rel, pieces))
 
     orphaned = [x for x in snippets if id(x) not in used]
     tail = block.get("unpaired") or {}
@@ -4196,7 +4195,15 @@ def select_rows(rows, block) -> list:
     return rows
 
 
-def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
+def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") -> str:
+    """`bare` is the test file a pair's heading already names.
+
+    A sequence diagram inside a test pair used to print three answers to one question in
+    four centimetres: a title that was the test's file name with `.genseq` on the end, a
+    `generated by <test>` line under it, and the `.puml` path on the right — above a fold
+    whose summary was that same file name. Only the last is news. So the title and the
+    provenance line go, and the href they carried for the scenario links rides on the card
+    as `data-test-src` instead."""
     manifest = out_dir / spec.get("manifest", "assets/diagrams/MANIFEST.tsv")
     if rows is None:
         rows = read_manifest(manifest)
@@ -4221,9 +4228,13 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
         else:
             body, toggles = (f'<p class="sub">not rendered — see '
                              f'<code>{html.escape(r["diff_puml"])}</code></p>', False)
+        test_src = (f' data-test-src="vscode://file/{(root / bare).resolve()}:1:1"'
+                    if bare and (root / bare).is_file() else "")
         parts.append(
-            f'<div class="diagram{" dgm-toggles" if toggles else ""}">'
-            f'<div class="head"><b>{html.escape(_pretty(r["name"]))}</b>'
+            f'<div class="diagram{" dgm-toggles" if toggles else ""}{" dgm-bare" if bare else ""}"'
+            f'{test_src}>'
+            f'<div class="head">'
+            + ("" if bare else f'<b>{html.escape(_pretty(r["name"]))}</b>')
             # A badge earns its place by saying something surprising. "modified" is what
             # a diagram in a delta gallery always is, and "structural" is legible from the
             # picture — so only the states that carry information get one.
@@ -4231,7 +4242,7 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None) -> str:
                f'{html.escape(r["status"])}</span>' if r["status"] != "modified" else "")
             + _source_link(r["source"], root) + '</div>'
             + (f"<p>{note}</p>" if note else "")
-            + _provenance(r["source"], root)
+            + ("" if bare else _provenance(r["source"], root))
             + genseq_details(r["source"], root)
             + genseq_details_at_base(r, manifest.parent, root)
             + body + '</div>'

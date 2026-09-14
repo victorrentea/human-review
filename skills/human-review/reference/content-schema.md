@@ -202,10 +202,26 @@ and struck through.
 {"type":"testpairs","id":"sequences","kind":"sequence",
  "title":"Each test, beside the sequence its own run recorded",
  "body":"<p>…what the deltas amount to, in this page's own words…</p>",
- "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
+ "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27"}],
  "unpaired":{"id":"tests-nosequence",
              "title":"Tagged for tracing, and no diagram came back","body":"…"}}
 ```
+
+**One snippet per test file, and no caption.** A pair is a fold: its summary is the file
+name, the quoted test is inside it, and the diagram is inside it too. Two entries for one
+file split that into two code blocks under one heading, and a reader counting blocks counts
+two tests. A file with several tagged scenarios is therefore *one* multi-span reference —
+`Test.java:60-61,70-94,124-155` — which prints a `⋯ N lines not shown` row between spans and
+keeps the file's real line numbers throughout.
+
+Span each scenario **from its tag**: `@generate_sequence` in a `.feature`, `@Test` and the
+`@Order`/`@WithMockUser` above the method in Java. That tag is why the diagram exists, and a
+range opening below it quotes a test that looks untagged. Open with the class's own tag line
+where there is one (`@GenerateSequence` and its `class` line, as a first span).
+
+A caption on one of these is prose nobody asked for: the fold already names the file, the
+source bar already prints the path and the lines, and the diagram below is the same scenario
+drawn. Say it in the block's `body` if it is worth saying once for the tab.
 
 **`title: ""`** drops the heading altogether, and the block opens straight on the first
 pair. Worth reaching for: each pair already names its scenarios and prints its own source
