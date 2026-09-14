@@ -429,7 +429,7 @@
     {
       "id": "conceptual",
       "title": "The concepts, as the team drew them",
-      "body": "<div class=\"diagram dgm-toggles\"><div class=\"head\"><b>Conceptual Model</b><a class=\"dgm-src\" href=\"vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/ConceptualModel.drawio.png:1:1\">petclinic-backend/docs/ConceptualModel.drawio.png</a></div><p>Hand-drawn in draw.io, checked against the code by <code>ConceptualModelDiagramTest</code> — box names, and which boxes a line connects.</p><p><b>Red</b> — a link the drawing lacked, drawn by automation to keep that test green: open it in draw.io, re-lay it out by hand, and turn <b>every</b> line black while you are in there. <b>Green</b> — new against <code>main</code>.</p>{{drawio:conceptual}}</div>",
+      "body": "<div class=\"diagram dgm-toggles\"><div class=\"head\"><b>Conceptual Model</b><a class=\"dgm-src\" href=\"vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/ConceptualModel.drawio.png:1:1\">petclinic-backend/docs/ConceptualModel.drawio.png</a></div><p>Hand-drawn in draw.io, but checked to match the code by <code>ConceptualModelDiagramTest</code>.</p>{{drawio:conceptual}}</div>",
       "unchanged": true
     },
     {

@@ -597,14 +597,27 @@ pre.code code { white-space:pre; }
    go and look up is a rebuild step that does not happen. One line, selectable, with the
    button that puts it on the clipboard. */
 .rerun { margin:.6rem .6rem .1rem; font-size:.78rem; color:var(--muted); line-height:1.6; }
+.rerun .dgm-open { margin:0; }
 .rerun .cmdline { display:flex; align-items:flex-start; gap:.5rem; margin-top:.35rem; }
 .rerun code { flex:1; min-width:0; overflow-x:auto; white-space:pre; display:block;
               background:var(--code-bg); border:1px solid var(--rule); border-radius:5px;
               padding:.4rem .55rem; font-size:.94em; }
-.rerun button { flex:none; cursor:pointer; font:inherit; color:var(--muted);
+.rerun .cmdline button { flex:none; cursor:pointer; font:inherit; color:var(--muted);
                 background:var(--code-bg); border:1px solid var(--rule); border-radius:5px;
                 padding:.4rem .6rem; }
-.rerun button:hover { color:var(--fg); border-color:var(--muted); }
+.rerun .cmdline button:hover { color:var(--fg); border-color:var(--muted); }
+/* The two offers inside the sentence are worded as things you do, not as things you
+   press, so they are dressed as the draw.io links beside them and not as buttons: three
+   boxed controls in one line under a picture read as a toolbar, which is exactly what
+   this line stopped being. `button` and not `a` because neither goes anywhere. */
+.rerun .runhere, .rerun .cmdpeek { cursor:pointer; font:inherit; color:var(--fg);
+              font-weight:600; background:none; border:0; padding:0;
+              text-decoration:underline; text-underline-offset:2px; }
+.rerun .runhere:hover, .rerun .cmdpeek:hover { text-decoration-thickness:2px; }
+/* The fold's own state, said by the chevron and nothing else: a command box that is open
+   is on screen, and a second word saying so would be the page narrating itself. */
+.rerun .cmdpeek::after { content:" \\2304"; text-decoration:none; display:inline-block; }
+.rerun .cmdpeek[aria-expanded="true"]::after { content:" \\2303"; }
 /* Progressive disclosure: the diagram arrives simplified, and an arrow that has more
     to say is clickable. The hit area is a transparent rect the script lays under each
     such arrow, so the whole band — label, line, marker — answers to one click. */
@@ -1372,17 +1385,16 @@ window.HR = (function () {
     chip.removeAttribute('data-copy');
     chip.setAttribute('data-tip', 'Served by the review server: buttons run their command '
       + 'from this page, and recordings play in it.');
-    // The diagram blocks: the command stays in view — it is what the click is about to
-    // do — but the words around it stop sending the reader to a terminal, and the button
-    // says the two things it does, in order.
-    [].forEach.call(document.querySelectorAll('.rerun button.copycmd[data-action]'),
+    // The diagram blocks: off disk the first offer in the sentence is a button that can
+    // only explain itself, so it is worded as the modest one. Here it does the job, and
+    // the sentence says so — the fold at the end keeps the terminal route for whoever
+    // still wants it.
+    [].forEach.call(document.querySelectorAll('.rerun button.runhere[data-action]'),
         function (b) {
       if (!can(b.getAttribute('data-action'))) return;
       var say = b.closest('.rerun').querySelector('.rerun-say');
-      if (say) say.textContent = 'Edited the diagram? This re-renders it, rebuilds the '
-        + 'report and reloads the page:';
-      b.textContent = 'Re-render & reload';
-      b.setAttribute('data-tip', 'Run this here, then reload with the new picture');
+      if (say) say.textContent = 're-render and reload this report';
+      b.setAttribute('data-tip', 'Runs it here, then reloads with the new picture');
     });
   });
 
@@ -2377,10 +2389,30 @@ EDITOR_JS = r"""<script>
   // beside a picture that is still the old one, which is precisely the confusion the
   // "then reload this page" in the copy message exists to prevent.
   document.addEventListener('click', function (ev) {
-    var cmd = ev.target.closest && ev.target.closest('button.copycmd');
+    var cmd = ev.target.closest &&
+      ev.target.closest('button.copycmd, button.runhere, button.cmdpeek');
     if (!cmd) return;
+    // The fold at the end of the sentence. The command is one click away and costs the
+    // page nothing until someone asks for it.
+    if (cmd.classList.contains('cmdpeek')) {
+      var box = cmd.closest('.rerun').querySelector('.cmdline');
+      var opening = box.hidden;
+      box.hidden = !opening;
+      cmd.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      return;
+    }
     var action = cmd.getAttribute('data-action');
     if (action && window.HR.can(action)) { rerun(cmd, action); return; }
+    // Static: the offer stays on the page and says what it needs, rather than vanishing
+    // between two copies of the same report. The line that gets the reader to served mode
+    // is already on the badge in the title row, so this points at it instead of growing a
+    // second copy of it here.
+    if (cmd.classList.contains('runhere')) {
+      flash('This copy of the report is static, so nothing in it can run. Serve the page '
+        + '\u2014 the "static" badge at the top copies the line that does \u2014 and this '
+        + 'will re-render the diagram and reload.');
+      return;
+    }
     // The static badge copies a different kind of line: not one that changes this page
     // and wants a reload, but one that starts the server and opens the page from it.
     var serve = cmd.id === 'hr-mode';
@@ -3675,9 +3707,20 @@ DRAWIO_TOKEN = re.compile(r"\{\{drawio:(?P<name>[A-Za-z0-9_.-]+)\}\}")
 
 # Meanings, not colours: the swatch is already the colour, so the bold goes on the one
 # thing the reader cannot see.
-CM_LEGEND_NEW = '<span class="new"><i></i><b>added by this PR</b></span>'
+#
+# The to-do row carries the whole instruction — what the red *is* and what to do about it
+# — because this is the one place on the page that is guaranteed to disappear with the
+# red. Those sentences used to be a paragraph above the picture, written by hand into
+# `content.json`, and a hand-written paragraph about red outlives the red: the layout gets
+# drawn, the colour goes, and the prose still tells the next reader to go and turn lines
+# black. Both rows are read off the verdict, so the page stops saying it the moment it
+# stops being true.
+CM_LEGEND_NEW = ('<span class="new"><i></i><b>added by this PR</b> '
+                 "— new against the base branch</span>")
 CM_LEGEND_TODO = ('<span class="todo"><i></i><b>still waiting for a hand-drawn layout</b> '
-                  "— drawn by automation to keep the guardrail green</span>")
+                  "— a line the drawing lacked, drawn by automation to keep the guardrail "
+                  "green: open it in draw.io, re-lay it out by hand, and turn "
+                  "<b>every</b> line black while you are in there</span>")
 
 
 def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -> str:
@@ -3715,13 +3758,13 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
         return (f'<p class="sub">not rendered — run the <code>diagrams</code> step to '
                 f'write <code>{html.escape(name)}-diff.svg</code></p>')
     return (dgm_views_html(panes, initial="new" if red else "diff")
-            + drawio_open_html(verdict.get("drawio_url") or "",
-                               verdict.get("drawio_web_url") or "")
-            + rerun_html(verdict.get("rerun"), rebuild, name))
+            + rerun_html(verdict.get("rerun"), rebuild, name,
+                         verdict.get("drawio_url") or "",
+                         verdict.get("drawio_web_url") or ""))
 
 
 def drawio_open_html(app_url: str, web_url: str = "") -> str:
-    """The two ways to edit the drawing, rendered as links under it.
+    """The two ways to edit the drawing, as links.
 
     Under the picture and not inside it: a rendered diagram cannot show a cursor, so an
     invitation painted onto the map has to spell out in words that it is clickable — and
@@ -3730,39 +3773,47 @@ def drawio_open_html(app_url: str, web_url: str = "") -> str:
 
     They are not the same offer, which is why both are named rather than one being "the"
     link. The **App** opens the file on disk, so an edit lands where the rerun command
-    below can pick it up. The **Web** editor opens a copy carried in the URL — nothing is
+    can pick it up. The **Web** editor opens a copy carried in the URL — nothing is
     uploaded, and nothing it saves reaches the repository either. It is the answer when
     draw.io is not installed on this machine, and the reader can tell which is which
     before clicking rather than after.
     """
-    if not app_url and not web_url:
-        return ""
     links = []
     if app_url:
         links.append(f'<a href="{html.escape(app_url, quote=True)}">draw.io App ↗</a>')
     if web_url:
         links.append(f'<a href="{html.escape(web_url, quote=True)}" '
                      'target="_blank" rel="noopener">draw.io Web ↗</a>')
-    return f'<p class="dgm-open">Edit this diagram in {" or ".join(links)}</p>'
+    return " or ".join(links)
 
 
-def rerun_html(rerun: dict | None, rebuild: str, name: str = "") -> str:
-    """The command that re-renders this diagram and rebuilds this page, ready to paste.
+def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
+               app_url: str = "", web_url: str = "") -> str:
+    """One line under the drawing: where to edit it, and the two ways to pick the edit up.
 
-    Not a convenience. The picture above is inlined into the HTML, and it has to be: the
-    boxes are links into the classes they name and the to-do note is a link into draw.io,
-    and an SVG loaded through `<img src>` renders those as decoration — the reader can see
-    them and cannot click them. So the file on disk and the picture in the page are two
-    artefacts, and reloading the browser only ever refreshes the second one. That is a
-    thing the page owes the reader an answer to, at the moment they need it, in the form
-    of something they can run — not a paragraph explaining that they are out of luck.
+    The command is not a convenience. The picture above is inlined into the HTML, and it
+    has to be: the boxes are links into the classes they name and the to-do note is a link
+    into draw.io, and an SVG loaded through `<img src>` renders those as decoration — the
+    reader can see them and cannot click them. So the file on disk and the picture in the
+    page are two artefacts, and reloading the browser only ever refreshes the second one.
+    That is a thing the page owes the reader an answer to, at the moment they need it, in
+    the form of something they can run.
+
+    What it does *not* owe them is three stacked lines of tooling under a diagram. Where
+    to edit, an offer to re-render, and a shell command used to be a paragraph, a sentence
+    and a code block — read once and then permanently in the way of the picture they sit
+    under. They are one sentence now, and the command is folded away behind the end of it:
+    the reader who wants to run it here clicks four words, and the reader who wants to
+    paste it in a terminal opens the fold. Both are one click; only one of them costs the
+    page a code block on every look.
 
     `rerun` is what `drawio-diff.py` recorded about its own invocation; `rebuild` is how
     this build was started. Neither is reconstructed here — a guessed command that does
     not work is worse than no command, because it is tried first.
     """
+    edit = drawio_open_html(app_url, web_url)
     if not rerun or not rerun.get("command"):
-        return ""
+        return f'<p class="dgm-open">Edit this diagram in {edit}</p>' if edit else ""
     line = f'cd {shlex.quote(rerun["cwd"])} \\\n  && {rerun["command"]} \\\n  && {rebuild}'
     # Per diagram, because a page can carry several and each one reruns its own. The id
     # is the diagram's name for the same reason every other handle on this page is: so a
@@ -3777,13 +3828,27 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "") -> str:
         aid = declare_action(f"drawio:{name}", line, reload=True,
                              label=f"Re-render {name} and rebuild this page")
         act = f' data-action="{html.escape(aid, quote=True)}"'
-    # The sentence is in a span of its own so the served page can swap it: there, the
-    # button beside the line runs it, and "run this in the terminal" would send the
-    # reader away from the one control that does the job.
-    return ('<div class="rerun"><span class="rerun-say">For this report to pick your '
-            'edit up, run this in the terminal:</span>'
-            f'<div class="cmdline"><code>{html.escape(line)}</code>'
-            f'<button type="button" class="copycmd"{act} '
+    # `runhere` is rendered on the static page too, and says so when pressed rather than
+    # being absent from it. A control that disappears between two copies of the same
+    # report teaches the reader that the report is unreliable; one that explains what it
+    # needs teaches them what served mode is — and the `static` badge in the title row is
+    # already holding the line that gets them there.
+    #
+    # The lead-in is a span of its own so the served page can swap the wording: there, the
+    # first offer is a button that does the job, and "run this in the terminal" would be
+    # the page sending the reader to a terminal it could have saved them.
+    body = html.escape(line)
+    return ('<div class="rerun">'
+            f'<p class="dgm-open">{f"Edit this diagram in {edit}, then " if edit else ""}'
+            '<span class="rerun-say">pick your edit up</span> by '
+            f'<button type="button" class="runhere"{act} '
+            'data-tip="This copy of the report is static, so nothing here can run: '
+            'serve the page — the static badge at the top copies the line that does — '
+            'and this re-renders the diagram and reloads.">clicking here</button> or '
+            '<button type="button" class="cmdpeek" aria-expanded="false">'
+            'running one command in the terminal</button></p>'
+            f'<div class="cmdline" hidden><code>{body}</code>'
+            f'<button type="button" class="copycmd" '
             f'data-copy="{html.escape(line, quote=True)}" '
             'data-tip="Copy the command">Copy</button></div></div>')
 
@@ -3799,14 +3864,48 @@ def _pretty(name: str) -> str:
     return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
 
 
+DGM_SRC_ANCHOR = re.compile(r'<a class="dgm-src"(?P<attrs>[^>]*)>(?P<face>[^<]+)</a>')
+
+
+def shorten_dgm_src(markup: str) -> str:
+    """A diagram header names its file by **name**, with the path on hover.
+
+    `petclinic-backend/docs/ConceptualModel.drawio.png` spends two segments on where the
+    repository keeps its documents before reaching the one word that answers "which
+    drawing is this?" — and it does it in the header of a card whose title already said
+    *Conceptual Model*. The name alone is the same answer in a quarter of the width; the
+    path is still one hover away, which is where a reader goes only when they want to
+    find the file rather than read the picture.
+
+    This is the rule `srcbar_html` already applies to every quoted block on the page,
+    down to the wording of the tip, so the two rows read the same way. It runs over
+    rendered markup rather than at each call site because the conceptual model's header
+    is written by hand into `content.json` — a rule enforced only in `_source_link`
+    would hold for the generated PlantUML cards and quietly not for the one card the
+    reader is being asked to go and edit.
+
+    Idempotent: a face with no slash left in it is already short (or is a file at the
+    repository root, which has no path to move)."""
+    def one(m: re.Match) -> str:
+        rel = html.unescape(m["face"])
+        if "/" not in rel:
+            return m.group(0)
+        attrs = re.sub(r'\s+data-tip="[^"]*"', "", m["attrs"])
+        tip = html.escape(f"Open in VS Code: {rel}", quote=True)
+        return (f'<a class="dgm-src"{attrs} data-tip="{tip}">'
+                f'{html.escape(Path(rel).name)}</a>')
+    return DGM_SRC_ANCHOR.sub(one, markup)
+
+
 def _source_link(rel: str, root: Path) -> str:
     """The path already shown on the right of the header, made the link to the file.
 
     It used to be plain text with a second `<a>name.puml</a>` under the title — two
     controls for one destination, and the shorter of the two said less."""
     if (root / rel).is_file():
-        return (f'<a class="dgm-src" href="vscode://file/{(root / rel).resolve()}:1:1">'
-                f'{html.escape(rel)}</a>')
+        return shorten_dgm_src(
+            f'<a class="dgm-src" href="vscode://file/{(root / rel).resolve()}:1:1">'
+            f'{html.escape(rel)}</a>')
     return f'<span>{html.escape(rel)}</span>'
 
 
@@ -6783,8 +6882,9 @@ def main(argv=None) -> int:
         vid = ""
         if s.get("video"):
             vid = video_html(s, out_dir)
-        body = expand_drawio(expand_snippets(s.get("body", ""), root), out_dir, root,
-                             rebuild_cmd)
+        body = shorten_dgm_src(
+            expand_drawio(expand_snippets(s.get("body", ""), root), out_dir, root,
+                          rebuild_cmd))
         collides = s["id"] in tab_ids
         if collides:
             print(f'[review] section {s["id"]!r} shares its id with a tab: the heading drops '

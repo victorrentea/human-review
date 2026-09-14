@@ -821,8 +821,13 @@ the one thing no amount of reading changes. Four tabs need something said about 
     screen with nothing else to explain it), and the widget opens on `New` while a layout
     is owed — the delta is a picture of automation's routing until someone draws it — and
     on `Diff` once it is not. Do not restate any of that in prose that will outlive it.
-  - **Say the mechanism, not the state.** The paragraph above the picture is the place for
-    what red *means* and what clicking the note in it does; a sentence saying red is
-    currently there is a sentence that goes stale the moment someone acts on it.
+  - **The colours explain themselves in the legend, so do not explain them in prose.** What
+    red *is* and what to do about it — open it in draw.io, re-lay it out by hand, turn every
+    line black — is part of the to-do row the token emits, and that row is gone the moment
+    the layout is drawn. The same sentences written above the picture outlive the red: the
+    colour goes, and the paragraph keeps telling the next reader to go and turn lines black.
+  - **One sentence above the picture, about the artefact and not about this build.** What
+    the drawing is and what holds it honest — *Hand-drawn in draw.io, but checked to match
+    the code by `ConceptualModelDiagramTest`* — and nothing that a rebuild can falsify.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the
   repository can produce.

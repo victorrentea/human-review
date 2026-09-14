@@ -650,13 +650,37 @@ def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
 
 
 def test_the_command_says_what_it_is_for(tmp_path):
-    """It sits directly under the two edit links, so it is read as the third step of the
-    same sentence: edit the drawing, then run this for the report to see it."""
+    """Where to edit, and the two ways to pick the edit up, are one sentence — not a
+    paragraph, a sentence and a code block stacked under the picture they explain."""
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert "For this report to pick your edit up, run this in the terminal:" in out
+    line = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
+    assert "pick your edit up" in line and "clicking here" in line
+    assert "running one command in the terminal" in line
+
+
+def test_the_command_itself_is_folded_away_until_it_is_asked_for(tmp_path):
+    """A code block under a diagram is read once and then sits in front of the picture on
+    every look after that. The fold costs the reader who wants it one click."""
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    assert '<div class="cmdline" hidden>' in out
+    assert 'class="cmdpeek" aria-expanded="false"' in out
+
+
+def test_the_run_here_offer_is_on_the_static_page_too_and_says_what_it_needs(tmp_path):
+    """A control that is simply absent from one copy of the report teaches the reader the
+    report is unreliable; one that explains itself teaches them what served mode is."""
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    assert 'class="runhere" data-action="drawio:conceptual"' in out
+    assert "static" in re.search(r'class="runhere"[^>]*data-tip="([^"]*)"', out).group(1)
 
 
 def test_both_editors_are_offered_and_named(tmp_path):
@@ -700,3 +724,45 @@ def test_the_rebuild_command_is_never_an_interpreter_that_is_about_to_vanish():
     got = build.rebuild_interpreter()
     assert "/.cache/uv/builds" not in got
     assert got.startswith("python3") or got.startswith("uv run") or Path(got).exists()
+
+
+# ── the file named in a diagram's header ──────────────────────────────────────────
+#
+# The card's title already said *Conceptual Model*; the header's second half exists to
+# answer "which file is that?". A repo-relative path answers it in its last segment and
+# spends everything before that on where the repository keeps its documents.
+
+def test_the_header_names_the_file_and_keeps_the_path_on_hover(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "ConceptualModel.drawio.png").write_bytes(b"")
+    out = build._source_link("docs/ConceptualModel.drawio.png", tmp_path)
+    assert ">ConceptualModel.drawio.png</a>" in out
+    assert 'data-tip="Open in VS Code: docs/ConceptualModel.drawio.png"' in out
+    assert ">docs/" not in out, "the path is the hover, not the face"
+
+
+def test_the_hand_written_header_in_a_section_body_is_shortened_too(tmp_path):
+    """The conceptual model's header is pasted into content.json rather than emitted, so
+    a rule enforced only where diagrams are rendered would hold for every card except the
+    one the reader is being asked to go and edit."""
+    body = build.shorten_dgm_src(
+        '<div class="head"><b>Conceptual Model</b>'
+        '<a class="dgm-src" href="vscode://file//r/b/docs/ConceptualModel.drawio.png:1:1">'
+        'b/docs/ConceptualModel.drawio.png</a></div>')
+    assert ">ConceptualModel.drawio.png</a>" in body
+    assert 'data-tip="Open in VS Code: b/docs/ConceptualModel.drawio.png"' in body
+    assert 'href="vscode://file//r/b/docs/ConceptualModel.drawio.png:1:1"' in body, \
+        "the link still opens the file it always opened"
+
+
+def test_a_file_at_the_repository_root_is_left_alone(tmp_path):
+    """Nothing to move, and a tip repeating the name says nothing."""
+    (tmp_path / "Model.drawio.png").write_bytes(b"")
+    out = build._source_link("Model.drawio.png", tmp_path)
+    assert ">Model.drawio.png</a>" in out and "data-tip" not in out
+
+
+def test_shortening_twice_changes_nothing(tmp_path):
+    once = build.shorten_dgm_src(
+        '<a class="dgm-src" href="x">b/docs/Model.puml</a>')
+    assert build.shorten_dgm_src(once) == once

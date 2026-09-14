@@ -3058,9 +3058,9 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert 'u="$(' in line and 'open "$u"' in line and "7654" not in line
     assert "chip.removeAttribute('data-copy')" in page, "served: nothing left to copy"
     assert "chip.textContent = 'served'" in page
-    # Served, the diagram block stops sending the reader to a terminal: its button says
-    # what the click does, and the sentence beside the command is rewritten to match.
-    assert "b.textContent = 'Re-render & reload'" in page
+    # Served, the diagram block stops sending the reader to a terminal: the first offer
+    # in its sentence becomes one that does the job, and the wording is rewritten to match.
+    assert "say.textContent = 're-render and reload this report'" in page
     assert "querySelector('.rerun-say')" in page
     assert "querySelectorAll('.rm-t[data-id]')" in page
     # Each recorded row offers the viewer in a window of its own: the same URL the frame
