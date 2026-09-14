@@ -1414,11 +1414,16 @@ window.HR = (function () {
     // only explain itself, so it is worded as the modest one. Here it does the job, and
     // the sentence says so — the fold at the end keeps the terminal route for whoever
     // still wants it.
+    //
+    // "update this report" and not "re-render and reload this report": the reader knows
+    // what they want to happen, and naming the two stages spends the middle of the
+    // sentence on how the page is built. The stages are still there for anyone who opens
+    // the fold, where they are the command rather than a description of one.
     [].forEach.call(document.querySelectorAll('.rerun button.runhere[data-action]'),
         function (b) {
       if (!can(b.getAttribute('data-action'))) return;
       var say = b.closest('.rerun').querySelector('.rerun-say');
-      if (say) say.textContent = 're-render and reload this report';
+      if (say) say.textContent = 'update this report';
       b.setAttribute('data-tip', b.getAttribute('data-tip-served')
         || b.getAttribute('data-tip'));
     });
