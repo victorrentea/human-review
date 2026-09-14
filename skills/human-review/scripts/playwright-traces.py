@@ -31,8 +31,17 @@ Tracing has to have been ON for the run. A project that leaves `trace: 'on-first
 (the default worth having in CI) records nothing on a green local run, and this exits 3
 saying so rather than writing an empty manifest the page would render as "no tests here".
 
+A Cucumber suite drives the same browser through the same Playwright, and records nothing
+by itself: the runner is cucumber-js, so there is no HTML report and no attachment to read.
+A project that wants those scenarios on the page records them in its own hooks — one zip
+per scenario, plus a sidecar JSON next to it naming the test the zip is of — and names the
+directory with `--cucumber`. The sidecar carries what the report would have: `title`,
+`path` (the feature's name, shown in front of the title), `file`, `line`, `status`,
+`duration` (ms), `error`, and `trace` (the zip's filename, beside it).
+
 Usage:
     playwright-traces.py --report petclinic-test/test-results/playwright-report \\
+        --cucumber petclinic-test/test-results/cucumber-traces \\
         --out .human-review/assets --json .human-review/assets/traces.json
 
 Exit codes: 0 harvested · 2 no report where one was named · 3 a report, and no trace in it.
@@ -127,11 +136,47 @@ def first_line(text: str) -> str:
     return ""
 
 
+def cucumber_rows(folder: Path | None, root: Path, base: Path | None) -> list[dict]:
+    """The scenarios a Cucumber run recorded, one sidecar each, in the report's own shape.
+
+    Read only what the sidecar says. A zip with no sidecar is a recording of nobody-knows-
+    what, and putting a guessed name over it is the mistake the report-reading half of this
+    script exists to avoid; it is left where it is."""
+    if not folder or not folder.is_dir():
+        return []
+    rows = []
+    for side in sorted(folder.glob("*.json")):
+        try:
+            t = json.loads(side.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        zip_path = folder / (t.get("trace") or "")
+        if not t.get("trace") or not zip_path.is_file():
+            continue
+        src = t.get("file") or ""
+        on_disk = (base / src).resolve() if base and src else None
+        rows.append({
+            "title": t.get("title", ""),
+            "path": t.get("path") or [],
+            "file": _relative(on_disk, root) if on_disk and on_disk.is_file() else src,
+            "line": t.get("line"),
+            "project": "cucumber",
+            "status": t.get("status", ""),
+            "outcome": "expected" if t.get("status") == "passed" else "unexpected",
+            "retry": 0,
+            "duration": t.get("duration", 0),
+            "steps": [],
+            "error": first_line(t.get("error", "")),
+            "_zip": zip_path,
+        })
+    return rows
+
+
 def harvest(report: Path, out: Path, prefix: str, root: Path,
-            base: Path | None, limit: int) -> dict:
+            base: Path | None, limit: int, cucumber: Path | None = None) -> dict:
     doc = report_data(report)
     base = base or project_dir(report)
-    rows, untraced = [], 0
+    rows, untraced = cucumber_rows(cucumber, root, base), 0
     for f in doc["files"]:
         for test in f.get("tests") or []:
             for result in test.get("results") or []:
@@ -232,6 +277,8 @@ def main(argv=None) -> int:
                     help="how the page addresses --out (default: assets)")
     ap.add_argument("--json", dest="json_out", help="write the manifest here (default: stdout)")
     ap.add_argument("--project-dir", help="what the report's test paths are relative to")
+    ap.add_argument("--cucumber", help="a directory of per-scenario zips with their sidecar "
+                                       "JSON, recorded by the project's own Cucumber hooks")
     ap.add_argument("--limit", type=int, default=12,
                     help="how many traces to carry, failures first (0 = all)")
     args = ap.parse_args(argv)
@@ -247,7 +294,8 @@ def main(argv=None) -> int:
     doc = ({"report": str(report), "viewer": None, "recorded": 0, "omitted": 0,
             "untraced": 0, "tests": []} if missing else
            harvest(report, out, args.prefix.rstrip("/"), Path.cwd(),
-                   Path(args.project_dir) if args.project_dir else None, args.limit))
+                   Path(args.project_dir) if args.project_dir else None, args.limit,
+                   Path(args.cucumber) if args.cucumber else None))
 
     text = json.dumps(doc, indent=2) + "\n"
     if args.json_out:

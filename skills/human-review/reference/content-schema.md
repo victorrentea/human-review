@@ -262,6 +262,14 @@ lede — recorded, not carried, ran untraced — are the harvester's, never type
 that recorded four of its forty tests has not shown the reader the run, and a list of four
 with nothing said would read exactly as if it had.
 
+A Cucumber suite records nothing by itself — cucumber-js writes no Playwright report — so
+a project that wants its `.feature` scenarios here records them in its own `Before`/`After`
+hooks (`context.tracing.start/stop`), one zip per scenario plus a sidecar JSON naming the
+test (`title`, `path`, `file`, `line`, `status`, `duration`, `error`, `trace`), and names
+that directory as `steps.traces.cucumber`. The harvester files those rows with the
+report's, in the same shape; the page tells them apart by nothing but the `.feature` in
+the location.
+
 Tracing has to be **on** for the run that produced the report (`--trace on`, or a config
 knob the project's own test command sets). A suite left on `trace: 'on-first-retry'`
 records nothing on a green run, the step skips with that reason, and the tab is dropped and

@@ -271,8 +271,10 @@ def _traces(ctx: Ctx):
             ctx.notes.append(f"the traced suite did not pass ({cmd}); the recordings below "
                              "are of that run, which is exactly when they are worth most")
     project = f' --project-dir "{c["projectDir"]}"' if c.get("projectDir") else ""
+    cucumber = f' --cucumber "{c["cucumber"]}"' if c.get("cucumber") else ""
     r = sh(f'{HERE}/playwright-traces.py --report "{report}" --out {ART} '
-           f"--json {ART}/traces.json --limit {c.get('limit', 12)}{project}", ctx, check=False)
+           f"--json {ART}/traces.json --limit {c.get('limit', 12)}{project}{cucumber}",
+           ctx, check=False)
     if r.returncode == 2:
         raise LookupError(f"no Playwright HTML report at {report} — did the suite run?")
     if r.returncode == 3:

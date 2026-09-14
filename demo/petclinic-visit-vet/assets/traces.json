@@ -1,7 +1,7 @@
 {
   "report": "petclinic-test/test-results/playwright-report",
   "viewer": "assets/traceviewer/index.html",
-  "recorded": 12,
+  "recorded": 16,
   "omitted": 2,
   "untraced": 0,
   "tests": [
@@ -532,6 +532,74 @@
       "bytes": 2233
     },
     {
+      "title": "A visit remembers the vet who attended it",
+      "path": [
+        "Record which vet attended a visit"
+      ],
+      "file": "petclinic-test/src/add-visit.feature",
+      "line": 16,
+      "project": "cucumber",
+      "status": "passed",
+      "outcome": "expected",
+      "retry": 0,
+      "duration": 924,
+      "steps": [],
+      "error": "",
+      "trace": "assets/traces/012-record-which-vet-attended-a-visit-a-visit-remembers-the-vet.zip",
+      "bytes": 358834
+    },
+    {
+      "title": "A visit nobody attended says so, rather than saying nothing",
+      "path": [
+        "Record which vet attended a visit"
+      ],
+      "file": "petclinic-test/src/add-visit.feature",
+      "line": 20,
+      "project": "cucumber",
+      "status": "passed",
+      "outcome": "expected",
+      "retry": 0,
+      "duration": 686,
+      "steps": [],
+      "error": "",
+      "trace": "assets/traces/013-record-which-vet-attended-a-visit-a-visit-nobody-attended-sa.zip",
+      "bytes": 382941
+    },
+    {
+      "title": "Filter owners by a case-sensitive prefix of the last name",
+      "path": [
+        "Search owners by last name"
+      ],
+      "file": "petclinic-test/src/owner-search.feature",
+      "line": 11,
+      "project": "cucumber",
+      "status": "passed",
+      "outcome": "expected",
+      "retry": 0,
+      "duration": 402,
+      "steps": [],
+      "error": "",
+      "trace": "assets/traces/014-search-owners-by-last-name-filter-owners-by-a-case-sensitive.zip",
+      "bytes": 287572
+    },
+    {
+      "title": "Searching with an empty last name lists every owner",
+      "path": [
+        "Search owners by last name"
+      ],
+      "file": "petclinic-test/src/owner-search.feature",
+      "line": 26,
+      "project": "cucumber",
+      "status": "passed",
+      "outcome": "expected",
+      "retry": 0,
+      "duration": 411,
+      "steps": [],
+      "error": "",
+      "trace": "assets/traces/015-search-owners-by-last-name-searching-with-an-empty-last-name.zip",
+      "bytes": 367112
+    },
+    {
       "title": "shows all visits on initial load",
       "path": [
         "Visits Page"
@@ -578,7 +646,7 @@
         }
       ],
       "error": "",
-      "trace": "assets/traces/012-visits-page-shows-all-visits-on-initial-load.zip",
+      "trace": "assets/traces/016-visits-page-shows-all-visits-on-initial-load.zip",
       "bytes": 298486
     }
   ]

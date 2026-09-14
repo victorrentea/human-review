@@ -345,3 +345,32 @@ def test_a_manifest_that_was_never_written_is_named(tmp_path):
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+def test_cucumber_scenarios_recorded_by_the_projects_own_hooks_join_the_list(tmp_path):
+    """cucumber-js writes no Playwright report, so a project records its scenarios itself:
+    a zip each and a sidecar naming the test. The harvester reads the sidecars — never
+    guesses a name from a zip — and files them with the report's rows, in the same shape,
+    so the page tells them apart by nothing but the `.feature` in the location."""
+    rep = report(tmp_path, [_test("lists the visits of an owner", line=15)])
+    cuc = tmp_path / "cucumber-traces"
+    cuc.mkdir()
+    (cuc / "add-visit-remembers.zip").write_bytes(b"PK\x03\x04" + b"0" * 100)
+    (cuc / "add-visit-remembers.json").write_text(json.dumps({
+        "title": "A visit remembers the vet who attended it", "path": ["Add a visit"],
+        "file": "src/add-visit.feature", "line": 16, "status": "passed", "duration": 2300,
+        "error": "", "trace": "add-visit-remembers.zip"}), encoding="utf-8")
+    (cuc / "orphan.zip").write_bytes(b"PK")            # no sidecar: nobody knows whose
+    (cuc / "broken.json").write_text("{", encoding="utf-8")
+    (tmp_path / "src").mkdir(exist_ok=True)
+    (tmp_path / "src" / "add-visit.feature").write_text("Feature: Add a visit\n", encoding="utf-8")
+    out = tmp_path / ".human-review" / "assets"
+    doc = pw.harvest(rep, out, "assets", tmp_path, tmp_path, 12, cuc)
+    assert doc["recorded"] == 2
+    feature = next(t for t in doc["tests"] if t["file"].endswith(".feature"))
+    assert feature["file"] == "src/add-visit.feature" and feature["line"] == 16
+    assert feature["path"] == ["Add a visit"] and feature["status"] == "passed"
+    assert (out / "traces" / Path(feature["trace"]).name).is_file()
+    assert not any("orphan" in t["trace"] for t in doc["tests"])
+    # Nothing to read is nothing to add — not an error, and not a row.
+    assert pw.harvest(rep, out, "assets", tmp_path, tmp_path, 12, tmp_path / "nope")["recorded"] == 1

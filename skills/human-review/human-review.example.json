@@ -54,7 +54,11 @@
       "//8": "`limit` caps how many travel with the page, failures first — they are",
       "//9": "megabytes each and the page is offered as a downloadable zip. What is left",
       "//10": "behind is counted on the page rather than quietly dropped.",
+      "//11": "`cucumber`: scenarios run by cucumber-js, which writes no Playwright report.",
+      "//12": "The project's own hooks record one zip + sidecar JSON per scenario there",
+      "//13": "(see reference/content-schema.md, traces); leave it out if there are none.",
       "report": "petclinic-test/test-results/playwright-report",
+      "cucumber": "petclinic-test/test-results/cucumber-traces",
       "projectDir": "petclinic-test",
       "limit": 12
     },
