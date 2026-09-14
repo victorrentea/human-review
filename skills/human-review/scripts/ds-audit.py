@@ -44,6 +44,8 @@ import json
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1127,6 +1129,34 @@ def render(result: dict, assets_prefix: str) -> str:
 
 # ── capture ───────────────────────────────────────────────────────────────────────
 
+def answers(url: str, timeout: float = 3.0) -> bool:
+    """Whether anything at all is serving `url` (any HTTP status counts — a dev server
+    answers every path with the same index). Kept in step with `run-steps.py`'s twin: the
+    runner gates on it before the ledger stamp, and this one is the last line of defence
+    for a direct invocation, so that "nobody is listening on 4301" is said in one line
+    here rather than by Playwright, in a traceback, after the browser was launched."""
+    try:
+        urllib.request.urlopen(url, timeout=timeout).close()
+        return True
+    except urllib.error.HTTPError:
+        return True
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
+
+
+def unreachable(wanted: list, label_new: str, label_old: str) -> list[str]:
+    """`"<origin> (<side>: <label>)"` for every http(s) origin in `wanted` that does not
+    answer — one entry per origin, not per screen, because the screens of one side all
+    live on the same server and the message should name the server."""
+    origins: dict[str, str] = {}
+    for _name, new_url, old_url in wanted:
+        for url, side in ((new_url, f"new: {label_new}"), (old_url, f"old: {label_old}")):
+            m = re.match(r"^(https?://[^/]+)", url)
+            if m:
+                origins.setdefault(m.group(1), side)
+    return [f"{o} ({side})" for o, side in origins.items() if not answers(o)]
+
+
 def capture(url: str, png: Path, *, viewport, epoch: int, seed: int, wait_for: str | None,
             settle_ms: int, mask: list[str], color_scheme: str) -> dict:
     from playwright.sync_api import sync_playwright
@@ -1413,6 +1443,12 @@ def main():
     common = dict(viewport=(w, h), epoch=args.epoch, seed=args.seed,
                   wait_for=args.wait_for, settle_ms=args.settle, mask=args.mask,
                   color_scheme=args.color_scheme)
+
+    down = [] if cap_dir else unreachable(wanted, args.label_new, args.label_old)
+    if down:
+        print(f"[ds-audit] no app answering at {' and '.join(down)} — the audit compares "
+              "two running builds; start it and re-run", file=sys.stderr)
+        sys.exit(2)
 
     snaps, screens_io = {}, []
     for name, new_url, old_url in wanted:

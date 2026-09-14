@@ -38,6 +38,8 @@ import os
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -73,6 +75,24 @@ def sh(cmd, ctx: Ctx, check=True, capture=False) -> subprocess.CompletedProcess:
 
 def have(binary: str) -> bool:
     return shutil.which(binary) is not None
+
+
+def answers(url: str, timeout: float = 3.0) -> bool:
+    """Whether *anything* is serving at `url` — the running-app twin of `have()`.
+
+    Any HTTP status counts, 404 included: a dev server answers every path, and the audit's
+    screens are deep links the front end routes client-side anyway. What this tells apart
+    is "a build is up" from "nobody is listening", which is the only distinction a
+    prerequisite needs — and the one Playwright reports as a 40-line traceback ending in
+    ERR_CONNECTION_REFUSED, three steps too late to say so plainly.
+    """
+    try:
+        urllib.request.urlopen(url, timeout=timeout).close()
+        return True
+    except urllib.error.HTTPError:
+        return True
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
 
 
 def merge_base(ctx: Ctx) -> str:
@@ -243,6 +263,26 @@ def _dsaudit(ctx: Ctx):
     sh(f"{HERE}/ds-audit.py --css > {ART}/ds-audit.css", ctx)
 
 
+def _dsaudit_prereq(ctx: Ctx):
+    """Configured, and both builds up. The audit compares two running apps screen by screen,
+    so a missing app is its missing binary: a precondition, checked before the stamp, with
+    the URL that did not answer and what it stands for in the reason — not a defect of the
+    run to be dug out of a Playwright traceback and a 400-character command line."""
+    c = ctx.step_cfg("dsaudit")
+    if not c:
+        return "dsaudit not configured"
+    if ctx.dry or not (c.get("base-new") and c.get("base-old")):
+        return True                    # the step itself names what is missing
+    down = [f"{url} ({what})" for url, what in ((c["base-new"], "this branch"),
+                                                (c["base-old"], c.get("label-old", "main")))
+            if not answers(url)]
+    if not down:
+        return True
+    return (f"no app answering at {' and '.join(down)} — the audit compares two running "
+            "builds; start both (human-review.json steps.dsaudit names them) and re-run "
+            "--only dsaudit")
+
+
 def _owners(ctx: Ctx):
     sh(f"{HERE}/codeowners-check.py --base {ctx.base} --state", ctx, check=False)
 
@@ -302,8 +342,7 @@ STEPS = [
      lambda c: have("openapi-changes") or "openapi-changes not installed", _specchanges),
     ("logging",     "logging",       "structural logging scan",
      lambda c: have("ast-grep") or "ast-grep not installed", _logging),
-    ("dsaudit",     "dsaudit",       "design-system audit",
-     lambda c: bool(c.step_cfg("dsaudit")) or "dsaudit not configured", _dsaudit),
+    ("dsaudit",     "dsaudit",       "design-system audit",      _dsaudit_prereq,   _dsaudit),
     ("owners",      "owners",        "codeowners check",          None,              _owners),
     ("tests",       "requirements",  "test change manifest",      None,              _tests),
     # Last, and on the tab the manifest above already feeds: the recordings are read after

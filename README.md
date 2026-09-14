@@ -315,7 +315,11 @@ one worth making.
 
 The JSON is the artefact and the picture is its rendering — a reviewing agent reads
 `--json` rather than OCR-ing a PNG. Needs Playwright (`pip install playwright &&
-playwright install chromium`), Pillow and numpy, and both revisions served.
+playwright install chromium`), Pillow and numpy, and **both revisions served** — the
+branch at `--base-new`, the base at `--base-old`, two instances side by side. Neither is
+started for you: `run-steps.py` probes both before the browser is launched and skips the
+step, naming the URL that did not answer, and the script itself refuses in one line rather
+than a Playwright traceback when run by hand against a port nobody is listening on.
 
 ## Publishing a snapshot to GitHub Pages
 

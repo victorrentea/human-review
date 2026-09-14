@@ -174,6 +174,87 @@ def test_a_step_that_skips_itself_midway_still_closes_its_record(ledger):
     assert [v for v, _ in ledger.calls] == ["start", "end"]
 
 
+def _dsaudit_ctx(new="http://localhost:4300", old="http://localhost:4301"):
+    return rs.Ctx(base="origin/main", dry=False, cfg={"steps": {"dsaudit": {
+        "base-new": new, "base-old": old, "label-old": "main",
+        "source": ["src"], "screens": {"Book a visit": "pets/11/visits/add"}}}})
+
+
+def _dead_port() -> int:
+    """A port nothing listens on: bound once by the kernel and released, so a connect to
+    it is refused rather than left hanging until the probe's timeout."""
+    import socket
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def test_dsaudit_with_no_app_up_is_skipped_by_name_and_never_stamped(ledger, monkeypatch):
+    """The audit compares two running builds, so an app that is not up is its missing
+    binary. Before this, nothing probed: Playwright hit ERR_CONNECTION_REFUSED three calls
+    deep, the step came back `failed` with the 400-character command line as its reason,
+    and the reader had to work out for themselves that two instances were required."""
+    monkeypatch.setattr(rs, "answers", lambda url, timeout=3.0: False)
+    spec = next(p for n, _t, _l, p, _f in rs.STEPS if n == "dsaudit")
+    result = rs.run_step("dsaudit", "dsaudit", "d", spec, lambda c: None, _dsaudit_ctx())
+    assert result["status"] == rs.SKIPPED
+    assert "http://localhost:4300 (this branch)" in result["reason"]
+    assert "http://localhost:4301 (main)" in result["reason"]
+    assert "--only dsaudit" in result["reason"]
+    assert ledger.calls == [], "a skipped step stamped the ledger anyway"
+
+
+def test_dsaudit_names_only_the_side_that_is_down(monkeypatch):
+    monkeypatch.setattr(rs, "answers", lambda url, timeout=3.0: url.endswith("4300"))
+    reason = rs._dsaudit_prereq(_dsaudit_ctx())
+    assert "4301 (main)" in reason and "4300" not in reason
+
+
+def test_dsaudit_runs_when_both_answer(monkeypatch):
+    monkeypatch.setattr(rs, "answers", lambda url, timeout=3.0: True)
+    assert rs._dsaudit_prereq(_dsaudit_ctx()) is True
+
+
+def test_the_probe_counts_any_http_answer_as_up_and_a_refused_connect_as_down():
+    """A dev server answers every path, usually with its index; a 404 is still a build
+    that is up. Only nobody-listening is down."""
+    import http.server, threading
+
+    class NotFound(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_error(404)
+
+        def log_message(self, *_a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), NotFound)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        assert rs.answers(f"http://127.0.0.1:{srv.server_port}/anything") is True
+    finally:
+        srv.shutdown()
+    assert rs.answers(f"http://127.0.0.1:{_dead_port()}/") is False
+
+
+def test_ds_audit_run_by_hand_refuses_in_one_line_not_a_traceback(tmp_path):
+    """The runner gates first, but the script is also run by hand — and the run that
+    exposed this ended in `Page.goto: net::ERR_CONNECTION_REFUSED` under a Python
+    traceback, after a browser had been launched for nothing."""
+    import subprocess, sys
+    dead, dead2 = (f"http://127.0.0.1:{_dead_port()}" for _ in range(2))
+    r = subprocess.run([sys.executable, str(HERE / "ds-audit.py"),
+                        "--base-new", dead, "--base-old", dead2,
+                        "--screen", "Book a visit=pets/11/visits/add",
+                        "--label-new", "test-pr", "--label-old", "main",
+                        "--assets", str(tmp_path), "-o", str(tmp_path / "o.html"),
+                        "--json", str(tmp_path / "o.json")],
+                       text=True, capture_output=True, cwd=tmp_path)
+    assert r.returncode == 2
+    assert "Traceback" not in r.stderr
+    assert f"{dead} (new: test-pr)" in r.stderr and "(old: main)" in r.stderr
+    assert len(r.stderr.strip().splitlines()) == 1, r.stderr
+
+
 def test_each_step_gets_its_own_handle_file():
     """Two steps sharing one handle overwrite each other's index, so the second `end` closes
     the first step's record and the second never closes at all."""

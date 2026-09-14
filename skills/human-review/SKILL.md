@@ -87,8 +87,10 @@ skip its `end`.
 
 Read the status table it prints. Three things in it are yours:
 
-- **`skipped`** — a missing optional binary or an unconfigured step. Its tab is dropped and
-  named under the strip. That is honest; do not work around it. **Unless another step feeds
+- **`skipped`** — a missing optional binary, an unconfigured step, or a stack that is not
+  up (the design-system audit needs *both* builds served, `base-new` and `base-old`, and
+  skips naming the URL that did not answer). Its tab is dropped and named under the strip.
+  That is honest; do not work around it. **Unless another step feeds
   the same tab** — `tests` and `traces` both feed Tests — in which case the tab stays and
   only that step's half of it is missing: say *that*, not that the tab was dropped.
 - **`failed`** — say so in the guide. A failed producer is a fact about the run.
