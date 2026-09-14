@@ -148,17 +148,72 @@ def test_the_runtime_bar_carries_the_command_and_the_fallback(tmp_path):
     out = build.video_html(s, tmp_path)
     assert '<div class="appenv" data-fallback="http://localhost:4200"' in out
     assert "./start-docker.sh up --ref abc123" in out
-    # The front door of the app, beside the box that says where it is: a new tab, and
-    # dead until the probe has heard the app answer.
+    # The front door of the app, in a tab of its own, and dead until the probe has heard
+    # the app answer.
     assert ('<a class="appenv-open" target="_blank" rel="noopener" aria-disabled="true"'
             in out)
-    assert out.index("appenv-base") < out.index("appenv-open") < out.index("appenv-state")
-    # The reset control is opt-in: the environment has to actually offer an endpoint.
+    # Both opt-in controls stay away until the environment says it offers them: a button
+    # that always fails is worse than no button.
+    assert "appenv-stop" not in out
     assert "appenv-reset" not in out and "data-reset" not in out
+
+
+def test_the_row_reads_start_open_stop_reset_then_the_address(tmp_path):
+    """The order the reviewer uses them in — and Open sits where their eye already is
+    after the click that produced something to open.
+
+    The address comes last because "live at http://localhost:53421" is one phrase, and
+    leading the row with an empty box made the bar look like a form to fill in."""
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "up", "stop": "down", "reset": "/__reset"}
+    out = build.video_html(s, tmp_path)
+    order = ["appenv-title", "appenv-start", "appenv-open", "appenv-stop",
+             "appenv-reset", "appenv-state", "appenv-base"]
+    assert [out.index(c) for c in order] == sorted(out.index(c) for c in order)
+    assert ">Deployed app<" in out
+
+
+def test_start_and_stop_say_why_they_are_dead_rather_than_disappearing(tmp_path):
+    """Off disk there is no process here to run a command. A control that vanishes between
+    two copies of the same report teaches the reader the report is unreliable; one that
+    explains what it needs teaches them what served mode is."""
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "up", "stop": "down"}
+    out = build.video_html(s, tmp_path)
+    for cls in ("appenv-start", "appenv-stop"):
+        at = out.index(cls)
+        tag = out[out.rindex("<button", 0, at):out.index(">", at) + 1]
+        assert 'aria-disabled="true"' in tag
+        assert "Serve this report" in tag
+
+
+def test_the_command_sits_on_its_own_line_under_the_buttons(tmp_path):
+    """Served, it is the escape hatch; off disk it is the only route. Either way it is a
+    line of its own rather than a column competing with the controls."""
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "./start-docker.sh up"}
+    out = build.video_html(s, tmp_path)
+    assert out.index("appenv-run") < out.index("appenv-manual")
+    assert "Run this in a terminal to start it:" in out, "the static wording leads"
+    assert "appenv-copy" in out
+
+
+def test_the_stop_control_appears_only_when_a_command_is_declared(tmp_path):
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "up", "stop": "./start-docker.sh down --ref abc"}
+    out = build.video_html(s, tmp_path)
+    assert "appenv-stop" in out and ">Stop<" in out
+    # The command itself never reaches the page: the button sends the id of the action and
+    # the server holds the line.
+    assert "start-docker.sh down" not in out
+    assert build.ACTIONS["demo-env-stop"]["command"] == "./start-docker.sh down --ref abc"
 
 
 def test_the_reset_control_appears_only_when_an_endpoint_is_declared(tmp_path):
     s = _video_dir(tmp_path, filmed=True)
+    out = build.video_html(dict(s, runtime={"command": "x", "base": "http://localhost:4200"}),
+                           tmp_path)
+    assert "appenv-reset" not in out
     s["runtime"] = {"command": "x", "base": "http://localhost:4200", "reset": "/__reset"}
     out = build.video_html(s, tmp_path)
     assert 'data-reset="/__reset"' in out and "appenv-reset" in out

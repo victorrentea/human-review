@@ -682,3 +682,41 @@ def test_the_note_is_clickable_in_every_pane(tmp_path, branch_png):
     want = f'href="{dd.drawio_url(branch_png)}"'
     for view in ("original", "new", "diff"):
         assert want in (out / f"c-{view}.svg").read_text(), view
+
+
+def test_the_verdict_records_the_way_back_to_automation_s_own_drawing(tmp_path, branch_png):
+    """Re-laying the map out by hand is the one step with no undo: the layout is in the
+    file, the file is in the repository, and "let me see what the machine drew" otherwise
+    means going and finding a revision by hand. Half the line is derivable from the flags
+    this run already has; the other half is the repository's own patch script, which is
+    why it is passed in rather than guessed."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for setting in (("user.email", "t@t"), ("user.name", "t")):
+        subprocess.run(["git", "-C", str(tmp_path), "config", *setting], check=True)
+    puml = tmp_path / "DomainModel.puml"
+    puml.write_text(DOMAIN_PUML)
+    diagram = tmp_path / "docs" / "CM.drawio.png"
+    diagram.parent.mkdir()
+    diagram.write_bytes(png_with(BASE))
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "base"], check=True)
+    diagram.write_bytes(branch_png.read_bytes())
+
+    def run(*extra):
+        out = tmp_path / ("out" + str(len(extra)))
+        proc = subprocess.run(
+            [sys.executable, str(HERE / "drawio-diff.py"), "--base", "HEAD",
+             "--diagram", "docs/CM.drawio.png", "--out-dir", out.name, "--name",
+             "conceptual", "--renderer", "builtin", "--concepts", "DomainModel.puml",
+             *extra],
+            capture_output=True, text=True, cwd=tmp_path)
+        assert proc.returncode == 0, proc.stderr
+        return json.loads((out / "conceptual-diff.json").read_text())
+
+    redraw = run("--redraw", "docs/patch.py")["redraw"]
+    assert redraw["command"] == "git checkout HEAD -- docs/CM.drawio.png && docs/patch.py"
+    assert Path(redraw["cwd"]).resolve() == tmp_path.resolve()
+    assert redraw["base"] == "HEAD"
+    # Not guessed: a script that rewrites a checked-in file is not something to derive
+    # from a naming convention and then offer a reader a button for.
+    assert "redraw" not in run()

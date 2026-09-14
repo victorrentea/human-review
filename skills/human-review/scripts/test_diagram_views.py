@@ -668,7 +668,7 @@ def test_the_command_itself_is_folded_away_until_it_is_asked_for(tmp_path):
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert '<div class="cmdline" hidden>' in out
+    assert '<div class="cmdline" id="cmd-conceptual" hidden>' in out
     assert 'class="cmdpeek" aria-expanded="false"' in out
 
 
@@ -766,3 +766,58 @@ def test_shortening_twice_changes_nothing(tmp_path):
     once = build.shorten_dgm_src(
         '<a class="dgm-src" href="x">b/docs/Model.puml</a>')
     assert build.shorten_dgm_src(once) == once
+
+
+# ── the way back: automation's own drawing ────────────────────────────────────────
+#
+# Re-laying the map out by hand is what the red asks for, and it was also the only step
+# on this page with no way back: the layout is in the file, the file is in the repository,
+# and "let me see what the machine drew" meant going and finding a revision by hand.
+
+REDRAW = {"cwd": "/repo", "base": "origin/main", "diagram": "docs/CM.drawio.png",
+          "command": "git checkout origin/main -- docs/CM.drawio.png && docs/patch.py"}
+
+
+def _widget_with(tmp_path, **verdict):
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps(
+        {"added": [], "removed": [], "changed": [], "moved": [], "red": [], **verdict}))
+    return build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+
+
+def test_the_offer_to_start_over_runs_the_restore_the_redraw_and_the_re_render(tmp_path):
+    """Stopping after the patch script would leave the reader looking at their own layout
+    with a green tick beside it: the picture in the page is an inlined SVG, and only
+    `drawio-diff.py` rewrites it."""
+    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
+    line = re.search(r'id="redraw-conceptual"[^>]*><code>(.*?)</code>', out, re.S).group(1)
+    assert "git checkout origin/main -- docs/CM.drawio.png" in line
+    assert "docs/patch.py" in line
+    assert RERUN["command"] in line, "the picture on the page is re-rendered too"
+    assert REBUILD in line
+
+
+def test_starting_over_shows_the_command_before_it_offers_to_run_it(tmp_path):
+    """It throws work away, so its run button is inside the fold: the first click reads
+    the `git checkout` that discards the layout, the second one runs it."""
+    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
+    sentence = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
+    assert "let automation draw it again" in sentence
+    assert 'data-action="drawio-redraw:conceptual"' not in sentence
+    fold = re.search(r'id="redraw-conceptual".*?</div>', out, re.S).group(0)
+    assert 'data-action="drawio-redraw:conceptual"' in fold
+
+
+def test_the_two_folds_are_opened_by_id_and_not_by_position(tmp_path):
+    """Two commands under one picture: "the first .cmdline in here" would open the one
+    that re-renders when the reader asked for the one that starts over."""
+    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
+    assert 'aria-controls="cmd-conceptual"' in out
+    assert 'aria-controls="redraw-conceptual"' in out
+
+
+def test_a_repository_that_declared_no_redraw_is_offered_none(tmp_path):
+    """The patch script is the reviewed repository's, not this tool's. Guessing it from a
+    naming convention and running it on a reader's click is not a trade worth making."""
+    out = _widget_with(tmp_path, rerun=RERUN)
+    assert "start over" not in out and "redraw-conceptual" not in out

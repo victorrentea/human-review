@@ -472,6 +472,7 @@
       ],
       "runtime": {
         "command": "cd ~/workspace/petclinic-pr && ./start-docker.sh up --ref 2a03c604",
+        "stop": "cd ~/workspace/petclinic-pr && ./start-docker.sh down --ref 2a03c604",
         "base": "",
         "reset": "/__reset",
         "drive": "cd ~/workspace/petclinic-pr/petclinic-test && node ~/workspace/human-review/skills/human-review/scripts/drive-to-cue.js --app {base} --script ../.human-review/feature-script.js --cue {n}"

@@ -235,6 +235,22 @@ way to the SVG, because a picture has no other way to show that something in it 
 clickable. The title and the captions are anchored just as silently — they are not
 asking the reader for anything.
 
+Re-laying the map out by hand is what the red asks for, and it is also the one step on
+the page with no way back — the layout is in the file, the file is in the repository, and
+"let me see what the machine drew" otherwise means going and finding a revision by hand.
+`--redraw '<command>'` closes that: half the line falls out of the flags this run already
+has (`git checkout <base> -- <diagram>`), the other half is the repository's own patch
+script, and the report turns the pair into an offer under the picture — shown as a command
+first, run on a second click. It is passed in and never guessed: a script that rewrites a
+checked-in file is not something to derive from a naming convention and then give a reader
+a button for.
+
+```sh
+./drawio-diff.py --base origin/main --diagram docs/ConceptualModel.drawio.png \
+                 --redraw 'python3 docs/scripts/conceptual-model-patch.py' \
+                 --out-dir .human-review/assets --name conceptual
+```
+
 It writes three SVGs plus a machine-readable `<name>-diff.json`. Rendering goes through
 the draw.io desktop app when it is installed, which is the only faithful picture;
 without it, a built-in renderer walks the mxGeometry, which is enough for this class of

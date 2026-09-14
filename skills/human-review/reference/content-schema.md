@@ -299,6 +299,7 @@ purpose.
 ```json
 "runtime": {
   "command": "cd ~/workspace/petclinic && ./start-docker.sh up --ref 9f3c1ab",
+  "stop": "cd ~/workspace/petclinic && ./start-docker.sh down --ref 9f3c1ab",
   "urlCommand": "cd ~/workspace/petclinic && ./start-docker.sh url --ref 9f3c1ab",
   "base": "http://localhost:4200",
   "reset": "/__reset"
@@ -312,27 +313,51 @@ shown) and `{base}` to the URL in the bar. `drive-to-cue.js` replays the project
 and stops after the nth `say()`, leaving a headed browser on that screen for you to take
 over. Nothing describes the journey twice, so nothing can drift.
 
-`runtime` puts a bar above the player: the command that brings the environment back, and a
-box for the URL that command prints. Paste it once and every relative `appLinks` href
-points into the running app; it is remembered per page, so a reload keeps it. `base` is the
-fallback the links use before anything is pasted — with neither, they render grey and
-unclickable rather than pretending to lead somewhere.
+`runtime` puts a **Deployed app** bar above the player — one row of verbs, and under it the
+same offer spelled out for a terminal:
+
+```
+Deployed app  [Start] [Open ↗] [Stop] [Reset data]        live at http://localhost:53421
+or run this terminal command yourself:  cd ~/workspace/petclinic && ./start…   [Copy]
+```
+
+The address at the end of the row is where every relative `appLinks` href resolves against;
+it is remembered per page, so a reload keeps it. `base` is the fallback the links use before
+anything is known — with neither, they render grey and unclickable rather than pretending to
+lead somewhere.
 
 The bar asks `GET <base>/healthz` whether anything is listening, so an environment that
-wants the live/not-running pill must answer it with CORS open. `reset` is **optional and
-opt-in**: give it a path the environment answers on `POST` to put the data back to its
-starting point, and a "Reset data" button appears. Omit it and no button is drawn — which
-is the right thing whenever nothing is there to answer, since a button that always fails is
-worse than no button. Resetting is never automatic: doing it on every link click would
-throw away work the reviewer was in the middle of.
+wants the `live at` / `offline` pill must answer it with CORS open.
 
-`command` and `drive` are copied to the clipboard on a page read off disk, and **run** on
-a page served by `serve-review.py`: the build writes them into `.human-review/.actions.json`
-and the button sends the id of the one it wants, never the command itself. So the Copy
-button becomes Start, the server scrapes the `http://localhost:<port>` line the command
-prints, and the box above fills itself — which also flips the pill to `live` and unlocks
-`Reset data` and every `▸` without the reviewer pasting anything. Where nothing is serving
-the page, all three controls behave exactly as they always did.
+Each control is gated on the thing it actually needs, because a control that can be pressed
+while its precondition is missing is one that lies:
+
+| control | drawn when | pressable when |
+|---|---|---|
+| `Start` | `command` | served, and nothing is up |
+| `Open ↗` | always | something answers at the address |
+| `Stop` | `stop` | served, and something is up |
+| `Reset data` | `reset` | something answers at the address |
+
+`stop` and `reset` are **optional and opt-in**, and neither is ever derived from `command`:
+turning `… up --ref abc` into `… down --ref abc` by string surgery works for one host and
+fails silently on the next. `stop` is a command the host runs; `reset` is a path the
+environment answers on `POST` to put the data back to its starting point. Omit either and
+no button is drawn. Resetting is never automatic — doing it on every link click would throw
+away work the reviewer was in the middle of — and `Stop` empties the address box, since
+leaving it behind would leave every link in the transcript pointing confidently at nothing.
+
+`command`, `stop` and `drive` are **run** on a page served by `serve-review.py` and are
+otherwise inert: the build writes them into `.human-review/.actions.json` and the button
+sends the id of the one it wants, never the command itself. Served, `Start` has the server
+scrape the `http://localhost:<port>` line the command prints and fills the address box
+itself — which flips the pill to `live at`, unlocks `Open ↗`, `Reset data` and every `▸`,
+and makes the box **read-only**, since it is output then rather than something to type into.
+
+Off disk none of that exists, and the row says so instead of disappearing: it dims, `Start`
+and `Stop` carry a tooltip pointing at the command below, the address box stays typeable so
+pasting a URL by hand still aims the transcript's links, and the second line drops its
+"or …" and reads as the instruction it is. `drive` falls back to the clipboard the same way.
 
 `urlCommand` is **optional** and is the same host asked where the environment already
 *is* — `url` rather than `up`. It is run once when a served page loads with an empty box,

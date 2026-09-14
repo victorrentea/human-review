@@ -819,6 +819,14 @@ def main():
                          "links, which is the failure nobody notices until they click one")
     ap.add_argument("--repo-root", default=".",
                     help="what the paths inside --concepts are relative to")
+    ap.add_argument("--redraw", metavar="COMMAND",
+                    help="the repository's own patch script — the thing that draws a "
+                         "missing box or line in red to keep its guardrail green. Recorded "
+                         "in the verdict, where the report turns it into the one offer it "
+                         "cannot make on its own: throw a hand-drawn layout away and let "
+                         "automation draw this diagram again. Not guessed from --base: a "
+                         "script that rewrites a checked-in file is not something to "
+                         "derive from a naming convention and run on a reader's click")
     ap.add_argument("--json", action="store_true",
                     help="print the verdict as JSON instead of a summary line")
     args = ap.parse_args()
@@ -877,6 +885,21 @@ def main():
         "command": " ".join(shlex.quote(a) for a in
                             [str(Path(__file__).resolve()), *sys.argv[1:]]),
     }
+    # The other direction, and the only one the reader cannot reconstruct: put automation's
+    # own drawing back. Re-laying the map out by hand is the whole point of the red, and it
+    # is also the one step on this page with no undo — the layout is in the file, the file
+    # is in the repository, and "I would like to see what the machine drew" means finding a
+    # revision by hand. Two halves, and only one of them is ours: restoring the diagram to
+    # its base state is derivable from the flags this run already has, and redrawing it is
+    # the repository's own script, which is why it has to be passed in.
+    if args.redraw and args.base:
+        restore = f"git checkout {shlex.quote(args.base)} -- {shlex.quote(str(source))}"
+        verdict["redraw"] = {
+            "cwd": str(Path.cwd()),
+            "command": f"{restore} && {args.redraw}",
+            "diagram": str(source),
+            "base": args.base,
+        }
     (out_dir / f"{stem}-diff.json").write_text(json.dumps(verdict, indent=2))
 
     if args.json:

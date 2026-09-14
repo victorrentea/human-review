@@ -610,10 +610,14 @@ pre.code code { white-space:pre; }
    press, so they are dressed as the draw.io links beside them and not as buttons: three
    boxed controls in one line under a picture read as a toolbar, which is exactly what
    this line stopped being. `button` and not `a` because neither goes anywhere. */
-.rerun .runhere, .rerun .cmdpeek { cursor:pointer; font:inherit; color:var(--fg);
+.rerun .dgm-open .runhere, .rerun .cmdpeek { cursor:pointer; font:inherit; color:var(--fg);
               font-weight:600; background:none; border:0; padding:0;
               text-decoration:underline; text-underline-offset:2px; }
-.rerun .runhere:hover, .rerun .cmdpeek:hover { text-decoration-thickness:2px; }
+.rerun .dgm-open .runhere:hover, .rerun .cmdpeek:hover { text-decoration-thickness:2px; }
+/* The offer that throws work away is the one sentence here that does not read as part of
+   the flow: a middot's worth of air before it, and the muted colour it inherits, so it is
+   found by the reader who wants it rather than met by the reader who does not. */
+.rerun .rerun-redraw::before { content:"\\00a0\\00a0\\00b7\\00a0\\00a0"; }
 /* The fold's own state, said by the chevron and nothing else: a command box that is open
    is on screen, and a second word saying so would be the page narrating itself. */
 .rerun .cmdpeek::after { content:" \\2304"; text-decoration:none; display:inline-block; }
@@ -916,17 +920,37 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
 /* The bar that turns a static page into a live one. It sits above the player rather
     than inside .vidwrap, which is a two-column grid the video and the transcript own. */
 .appenv { border:1px solid var(--line); border-radius:var(--r); background:var(--card);
-    padding:.55rem .7rem; margin:0 0 .7rem; display:flex; flex-wrap:wrap;
-    gap:.5rem .8rem; align-items:center; font-size:12.5px; }
+    padding:.55rem .7rem; margin:0 0 .7rem; display:flex; flex-direction:column;
+    gap:.4rem; font-size:12.5px; }
 .appenv code { font:12px/1.6 ui-monospace,Menlo,monospace; background:var(--accent-soft);
     border-radius:4px; padding:.15rem .4rem; user-select:all; }
-.appenv .appenv-cmd { display:flex; gap:.4rem; align-items:center; flex:1 1 22rem; min-width:0; }
-.appenv .appenv-cmd code { overflow-x:auto; white-space:nowrap; flex:1; }
+/* The row of verbs, then the address they all act on. Two lines and not one: the command
+    underneath is the same offer spelled out for a terminal, and the reader chooses a
+    route rather than reading one long line of mixed controls. */
+.appenv .appenv-run { display:flex; flex-wrap:wrap; gap:.4rem .5rem; align-items:center; }
+.appenv .appenv-title { font-weight:600; margin-right:.2rem; }
+/* Pushed hard right: the buttons are what the reader came to press, and the address is
+    the answer they get back. On a narrow screen the row wraps and the margin collapses. */
+.appenv .appenv-at { display:flex; gap:.35rem; align-items:center;
+    margin-left:auto; min-width:0; }
+.appenv .appenv-manual { display:flex; gap:.4rem; align-items:center; margin:0;
+    min-width:0; color:var(--muted); }
+.appenv .appenv-manual code { overflow-x:auto; white-space:nowrap; flex:1; min-width:0; }
 .appenv button { font:inherit; cursor:pointer; border:1px solid var(--line); border-radius:4px;
     background:var(--bg); color:var(--fg); padding:.2rem .55rem; white-space:nowrap; }
 .appenv button:hover { background:var(--accent-soft); }
 .appenv input { font:12px/1.6 ui-monospace,Menlo,monospace; padding:.2rem .4rem; width:12rem;
     border:1px solid var(--line); border-radius:4px; background:var(--bg); color:var(--fg); }
+/* Output, not input, once the page can start the app itself: no frame and no field
+    background, so it reads as the address the row just reported. */
+.appenv input[readonly] { border-color:transparent; background:transparent;
+    color:var(--link); width:auto; min-width:11rem; padding-left:0; }
+/* Off disk nothing in this row can be *started*, and the row says so by stepping back —
+    the command below it is the only route, and it takes the emphasis instead. Dimmed
+    rather than hidden: Open, Reset and every cue's play glyph still work here the moment
+    a pasted URL answers, so the row is quiet, not absent. */
+.appenv:not(.appenv-served) .appenv-run { opacity:.55; }
+.appenv:not(.appenv-served) .appenv-manual { color:var(--fg); }
 /* Three states, and the page must never claim the third without having asked: unknown
     until the probe answers, then live or down. */
 .appenv .appenv-state { font-weight:600; }
@@ -950,7 +974,8 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
 .appenv button[aria-disabled="true"], .appenv .appenv-open[aria-disabled="true"] {
     cursor:not-allowed; opacity:.45; }
 .appenv .appenv-open { border:1px solid var(--line); border-radius:4px; background:var(--bg);
-    color:var(--fg); padding:.2rem .5rem; text-decoration:none; line-height:1.6; }
+    color:var(--fg); padding:.2rem .55rem; text-decoration:none; line-height:1.6;
+    white-space:nowrap; }
 .appenv .appenv-open:not([aria-disabled="true"]):hover { background:var(--accent-soft);
     color:var(--link); border-color:var(--link); }
 /* A caption is a seek target, so a link inside one has to read as a *different* affordance
@@ -1394,7 +1419,8 @@ window.HR = (function () {
       if (!can(b.getAttribute('data-action'))) return;
       var say = b.closest('.rerun').querySelector('.rerun-say');
       if (say) say.textContent = 're-render and reload this report';
-      b.setAttribute('data-tip', 'Runs it here, then reloads with the new picture');
+      b.setAttribute('data-tip', b.getAttribute('data-tip-served')
+        || b.getAttribute('data-tip'));
     });
   });
 
@@ -1404,18 +1430,29 @@ window.HR = (function () {
 
 
 APP_ENV_JS = """<script>
-// Turns the transcript's app links into links that actually go somewhere.
+// The deployed-app row: four buttons, a pill, and the URL they all point at.
 //
-// The page is static and was built before the environment existed, so it cannot know the
-// port: the host allocates one per instance precisely so several branches can run at
-// once. The reviewer pastes the URL the start command printed, this remembers it, and
-// every [data-app] path is resolved against it from then on.
+// Two copies of this report exist and the row has to be honest in both. Served, the
+// buttons ask the review server to run the commands the build declared, and the box below
+// them fills itself from what `Start` printed. Off disk nothing here can run a command, so
+// Start and Stop stay greyed and say why, the reviewer pastes the URL by hand, and Open,
+// Reset and every cue's ▸ come alive the moment something answers there.
+//
+// Everything is written to start in the degraded state and *rise*. A button drawn as live
+// that falls back 30ms later has already been clicked by then, and has already lied.
 (function () {
   var bar = document.querySelector('.appenv');
   if (!bar) return;
   var input = bar.querySelector('.appenv-base');
   var state = bar.querySelector('.appenv-state');
   var open = bar.querySelector('.appenv-open');
+  var startBtn = bar.querySelector('.appenv-start');
+  var stopBtn = bar.querySelector('.appenv-stop');
+  var reset = bar.querySelector('.appenv-reset');
+  var copy = bar.querySelector('.appenv-copy');
+  // Raised by the probe in SERVER_JS, never assumed: a page on GitHub Pages is https and
+  // is not served by us, and the buttons here must not believe otherwise.
+  var served = false;
   if (open) open.addEventListener('click', function (e) { if (blocked(open)) e.preventDefault(); });
   var links = Array.prototype.slice.call(document.querySelectorAll('a[data-app]'));
   // Per page, not per machine: two review pages describe two branches, and each branch
@@ -1443,46 +1480,61 @@ APP_ENV_JS = """<script>
     });
   }
 
-  // Everything that acts on the running app is enabled only once something has answered.
-  // A control that can be pressed while nothing is listening is a control that lies: the
-  // reset would fail, and the drive command would be copied with an empty --app.
-  // aria-disabled, not the `disabled` attribute: a disabled button fires no mouse events,
-  // so the tooltip saying *why* it cannot be pressed would never appear — which is the
-  // whole reason it is greyed rather than hidden.
+  var blocked = function (el) { return el.getAttribute('aria-disabled') === 'true'; };
+  function arm(el, on, tip) {
+    if (!el) return;
+    el.setAttribute('aria-disabled', on ? 'false' : 'true');
+    el.dataset.tip = tip;
+  }
+
+  // The row's whole truth, in one call. Each control is gated on the thing it actually
+  // needs — Start and Stop on a server to run them, everything else on something being
+  // up — because a control that can be pressed while its precondition is missing is a
+  // control that lies: Reset would fail, and ▸ would copy a command with an empty --app.
+  var STATIC = 'Serve this report to start the app from here \\u2014 off disk, run the '
+             + 'command below in a terminal yourself.';
   function setLive(live, why) {
-    [].forEach.call(document.querySelectorAll('.appenv-reset, .appenv-open, .cue-drive'),
-        function (el) {
-      el.setAttribute('aria-disabled', live ? 'false' : 'true');
-      el.dataset.tip = live
-        ? (el.classList.contains('cue-drive') ? 'Drive the app to this point'
-           : el.classList.contains('appenv-open') ? 'Open the running app in a new tab'
-           : 'Put the demo data back to its seed')
-        : why;
+    arm(startBtn, served && !live,
+        !served ? STATIC : live ? 'Already running \\u2014 it is live at ' + base()
+                                : 'Start the app and fill the box from what it prints');
+    arm(stopBtn, served && live,
+        !served ? STATIC : live ? 'Stop the app and free its port' : 'Nothing is running');
+    arm(open, live, live ? 'Open the running app in a new tab' : why);
+    arm(reset, live, live ? 'Put the demo data back to its seed' : why);
+    [].forEach.call(document.querySelectorAll('.cue-drive'), function (el) {
+      arm(el, live, live ? 'Drive the app to this point' : why);
     });
     // The href is the base itself, set only while something answers there: a greyed link
     // that still opened a dead port on a middle-click would be greyed for nothing.
     if (open) { if (live) open.href = base(); else open.removeAttribute('href'); }
   }
-  var blocked = function (el) { return el.getAttribute('aria-disabled') === 'true'; };
+
+  // "live at http://localhost:53421" reads as one phrase, so the pill carries only the
+  // preposition and the box beside it carries the rest. Anything other than live has
+  // nowhere to point, so the box empties rather than showing a URL that is not answering.
+  function say(kind, text) {
+    state.dataset.state = kind;
+    state.textContent = text;
+  }
 
   function probe() {
     var b = base();
     if (!b) {
-      state.dataset.state = 'down'; state.textContent = 'not started';
-      setLive(false, 'Start the environment and paste its URL above first');
+      say('down', 'offline');
+      setLive(false, 'Nothing is running yet');
       return;
     }
-    state.dataset.state = 'unknown'; state.textContent = 'checking\u2026';
-    setLive(false, 'Checking whether anything is listening\u2026');
+    say('unknown', 'checking\\u2026');
+    setLive(false, 'Checking whether anything is listening\\u2026');
     // /healthz answers with CORS open, so this works from a file:// page too. A failure
     // here means "nothing is listening", which is the normal case for an old report.
     fetch(b + '/healthz', {cache: 'no-store'}).then(function (r) {
       if (!r.ok) throw 0;
-      state.dataset.state = 'live'; state.textContent = 'live';
+      say('live', 'live at');
       setLive(true);
     }).catch(function () {
-      state.dataset.state = 'down'; state.textContent = 'not running';
-      setLive(false, 'Nothing is answering at ' + b + ' \u2014 start it with the command above');
+      say('down', 'offline');
+      setLive(false, 'Nothing is answering at ' + b + ' \\u2014 start it first');
     });
   }
 
@@ -1495,7 +1547,7 @@ APP_ENV_JS = """<script>
   });
 
   // Learned once the environment answers on its own, and only then. `adopt` is the whole
-  // reason the start button is worth more than the clipboard: `start-docker.sh` ends by
+  // reason the Start button is worth more than the clipboard: `start-docker.sh` ends by
   // printing the port the host gave it, the server scrapes that line, and the box the
   // reader would otherwise have had to paste into fills itself. Two round trips to the
   // terminal become none — the second being the one nobody counts, where you go back to
@@ -1507,47 +1559,62 @@ APP_ENV_JS = """<script>
     return true;
   }
 
-  var copy = bar.querySelector('.appenv-copy');
   if (copy) copy.addEventListener('click', function () {
-    var cmd = bar.querySelector('.appenv-cmd code').textContent;
-    if (copy.dataset.run === '1') { start(); return; }
+    var cmd = bar.querySelector('.appenv-manual code').textContent;
     navigator.clipboard.writeText(cmd).then(function () {
       copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy'; }, 1200);
     }).catch(function () { copy.textContent = 'Copy failed'; });
   });
 
-  // The command *stays in the box* beside the button that now runs it. It is not
-  // redundant: it is the only thing on the page that says what the click is about to do
-  // to this machine, and the answer to "what do I type when I am not reading this in a
-  // browser" has not gone away.
-  function start() {
-    copy.disabled = true; copy.textContent = 'Starting\\u2026';
-    state.dataset.state = 'unknown'; state.textContent = 'starting\\u2026';
-    setLive(false, 'Waiting for the environment to come up');
-    window.HR.run('demo-env', {}, function (snap) {
-      // One line, in the pill's tooltip, where a docker build's thousands would not fit
-      // and where a reader who wants to know it is still moving can look.
+  // While a command is in flight nothing else in the row may be pressed — a Stop sent
+  // into the middle of a docker build is a half-torn-down instance nobody asked for —
+  // and the pill carries the last line the command printed, which is where a reader who
+  // wants to know it is still moving can look. A docker build prints thousands.
+  function drive(id, face, then) {
+    setLive(false, 'Waiting for the app \\u2014 ' + face.toLowerCase() + '\\u2026');
+    say('unknown', face + '\\u2026');
+    return window.HR.run(id, {}, function (snap) {
       var line = window.HR.tail(snap);
       if (line) state.dataset.tip = line;
     }).then(function (done) {
-      copy.disabled = false; copy.textContent = 'Start';
       state.removeAttribute('data-tip');
+      then(done);
+    }).catch(function (e) {
+      say('down', face + ' failed');
+      state.dataset.tip = e.message || 'the review server is no longer running';
+      setLive(false, state.dataset.tip);
+    });
+  }
+
+  if (startBtn) startBtn.addEventListener('click', function () {
+    if (blocked(startBtn)) return;
+    drive('demo-env', 'Starting', function (done) {
       if (done.state === 'done' && adopt(done.result && done.result.base)) return;
       // It ran and printed no URL we recognised, or it failed. Either way the reader is
       // back where they started rather than stuck: `probe` re-reads whatever base is in
-      // the box, and the box is still typeable.
+      // the box, and off disk the box is still typeable.
       probe();
       if (done.state !== 'done') {
-        state.dataset.state = 'down';
-        state.textContent = 'start failed';
+        say('down', 'start failed');
         state.dataset.tip = window.HR.tail(done) || 'the command exited ' + done.exit;
       }
-    }).catch(function (e) {
-      copy.disabled = false; copy.textContent = 'Start';
-      state.dataset.state = 'down'; state.textContent = 'start failed';
-      state.dataset.tip = e.message || 'the review server is no longer running';
     });
-  }
+  });
+
+  // Stop clears the box as well as the port. Leaving the URL behind would leave every
+  // link in the transcript pointing confidently at nothing, and the next Start will hand
+  // us a different port anyway.
+  if (stopBtn) stopBtn.addEventListener('click', function () {
+    if (blocked(stopBtn)) return;
+    drive('demo-env-stop', 'Stopping', function (done) {
+      if (done.state === 'done') { input.value = ''; remember(''); apply(); }
+      probe();
+      if (done.state !== 'done') {
+        say('down', 'stop failed');
+        state.dataset.tip = window.HR.tail(done) || 'the command exited ' + done.exit;
+      }
+    });
+  });
 
   // One command per caption. Off disk it is copied, because a file cannot drive a browser
   // on your machine; served, it is run, and what the reader gets back is the app already
@@ -1582,13 +1649,23 @@ APP_ENV_JS = """<script>
   });
 
   window.HR.onready(function () {
-    // `copy` is absent when the runtime block declared no command — in which case the
-    // build declared no `demo-env` either, but the two are checked independently rather
-    // than one being assumed from the other.
-    if (copy && window.HR.can('demo-env')) {
-      copy.dataset.run = '1';
-      copy.textContent = 'Start';
-      copy.dataset.tip = 'Run this command here and fill the box in from what it prints';
+    // `demo-env` and not merely "is there a server": a build that stopped declaring the
+    // start command has to be able to take the verb away from a page that is still open.
+    served = window.HR.can('demo-env');
+    if (served) {
+      bar.classList.add('appenv-served');
+      // The box is output now, not input — Start scrapes the port out of what the
+      // command printed — and a typeable box full of output invites a correction nobody
+      // asked for. Off disk it stays typeable: pasting into it is the only thing that
+      // ever aims the transcript's links anywhere.
+      input.readOnly = true;
+      input.dataset.tip = 'Filled in from what Start printed';
+      var or = bar.querySelector('.appenv-or');
+      if (or) or.textContent = 'or run this terminal command yourself:';
+      // Re-ask rather than re-deriving from whatever the pill happens to say: the first
+      // probe may still be in flight, and `served` has just changed the answer for two
+      // of the four controls.
+      probe();
     }
     // Nothing in the box and a host that can be asked: ask it. The base normally survives
     // a reload in localStorage, so this is for the first reader of a page whose
@@ -1605,12 +1682,11 @@ APP_ENV_JS = """<script>
   // reviewer was in the middle of; the duplicate rows and unique-constraint collisions it
   // exists to prevent are the reviewer's own repeated form submissions, and they know
   // when they have made a mess.
-  var reset = bar.querySelector('.appenv-reset');
   if (reset) reset.addEventListener('click', function () {
     if (blocked(reset)) return;
     var b = base();
     if (!b) return;
-    reset.disabled = true; reset.textContent = 'Resetting\u2026';
+    reset.disabled = true; reset.textContent = 'Resetting\\u2026';
     fetch(b + bar.dataset.reset, {method: 'POST', cache: 'no-store'}).then(function (r) {
       reset.textContent = r.ok ? 'Reset' : 'Reset failed';
     }).catch(function () { reset.textContent = 'Reset failed'; }).then(function () {
@@ -2395,7 +2471,11 @@ EDITOR_JS = r"""<script>
     // The fold at the end of the sentence. The command is one click away and costs the
     // page nothing until someone asks for it.
     if (cmd.classList.contains('cmdpeek')) {
-      var box = cmd.closest('.rerun').querySelector('.cmdline');
+      // By id, not by position: a diagram block carries two of these folds — the one that
+      // re-renders and the one that throws the layout away — and "the first .cmdline in
+      // here" would open the wrong command as soon as the second offer exists.
+      var box = document.getElementById(cmd.getAttribute('aria-controls'));
+      if (!box) return;
       var opening = box.hidden;
       box.hidden = !opening;
       cmd.setAttribute('aria-expanded', opening ? 'true' : 'false');
@@ -3760,7 +3840,8 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
     return (dgm_views_html(panes, initial="new" if red else "diff")
             + rerun_html(verdict.get("rerun"), rebuild, name,
                          verdict.get("drawio_url") or "",
-                         verdict.get("drawio_web_url") or ""))
+                         verdict.get("drawio_web_url") or "",
+                         verdict.get("redraw")))
 
 
 def drawio_open_html(app_url: str, web_url: str = "") -> str:
@@ -3787,8 +3868,84 @@ def drawio_open_html(app_url: str, web_url: str = "") -> str:
     return " or ".join(links)
 
 
+# What a click-to-run offer says on a static page — where it stays visible and explains
+# itself rather than being absent from one copy of the report and present in the other.
+# `data-tip-served` is what the same button says where it actually works; the probe swaps
+# them, so the two readings live next to each other here instead of in the script.
+STATIC_RUN_TIP = ("This copy of the report is static, so nothing here can run: serve the "
+                  "page — the static badge at the top copies the line that does — and "
+                  "this button does the job.")
+
+
+def _cmdfold(fold_id: str, line: str, run: str = "", run_label: str = "",
+             served_tip: str = "") -> str:
+    """One shell command, folded away: the box, the line, and the buttons that act on it.
+
+    A command a reader is about to run on their own checkout is shown before it runs and
+    not after — which is the whole reason the destructive offer puts its button *in* here
+    rather than in the sentence above, beside an offer that only re-renders."""
+    return (f'<div class="cmdline" id="{html.escape(fold_id, quote=True)}" hidden>'
+            f'<code>{html.escape(line)}</code>'
+            + (f'<button type="button" class="runhere"{run} '
+               f'data-tip="{html.escape(STATIC_RUN_TIP, quote=True)}" '
+               f'data-tip-served="{html.escape(served_tip, quote=True)}">{run_label}'
+               "</button>" if run_label else "")
+            + f'<button type="button" class="copycmd" '
+              f'data-copy="{html.escape(line, quote=True)}" '
+              'data-tip="Copy the command">Copy</button></div>')
+
+
+def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
+                name: str) -> tuple[str, str]:
+    """The one offer under this picture that the reader cannot reconstruct: start over.
+
+    Re-laying the map out by hand is what the red asks for, and it is also the only step
+    on this page with no way back — the layout is in the file, the file is in the
+    repository, and "let me see what the machine drew again" means going and finding a
+    revision by hand. The command is half derived and half declared: restoring the diagram
+    to its base state falls out of the flags `drawio-diff.py` already ran with, and
+    redrawing it is the repository's own patch script, which is why it has to be passed
+    in with `--redraw` rather than guessed from a naming convention.
+
+    It throws work away, so it is the only control in this block whose button is inside
+    the fold: opening it shows the `git checkout` that discards the layout, and the click
+    that runs it is the second click, on a line the reader has by then read.
+
+    Returns the offer and its fold separately — the offer belongs in the sentence, and a
+    `<div>` inside a `<p>` closes the paragraph out from under it.
+    """
+    if not redraw or not redraw.get("command"):
+        return "", ""
+    # Four stages, and the middle two are the reason this is not two separate offers:
+    # restoring the file and redrawing it change the drawing on disk, and the picture in
+    # this page is an inlined SVG that only `drawio-diff.py` rewrites. Stopping after the
+    # patch script would leave the reader looking at their own layout with a green tick
+    # beside it — the same trap the re-render offer exists to close, in the one direction
+    # where the reader has just thrown their layout away and has nothing to compare
+    # against.
+    line = (f'cd {shlex.quote(redraw["cwd"])} \\\n  && {redraw["command"]} \\\n'
+            f'  && {rerun["command"]} \\\n  && {rebuild}')
+    act = ""
+    if name:
+        aid = declare_action(f"drawio-redraw:{name}", line, reload=True,
+                             label=f"Restore {name} to its base state and redraw it")
+        act = f' data-action="{html.escape(aid, quote=True)}"'
+    base = redraw.get("base") or "the base branch"
+    tip = (f"Throws the hand-drawn layout away: restores the drawing to {base} and runs "
+           "the repository's own script over it, which draws what the code has and the "
+           "map lacks — in red, as a to-do — again.")
+    fold = f"redraw-{name or 'diagram'}"
+    return ('<span class="rerun-redraw">Rather start over? '
+            f'<button type="button" class="cmdpeek" aria-expanded="false" '
+            f'aria-controls="{html.escape(fold, quote=True)}" '
+            f'data-tip="{html.escape(tip, quote=True)}">'
+            "let automation draw it again ⟲</button></span>",
+            _cmdfold(fold, line, act, "Run it",
+                     "Runs it here, then reloads with automation's drawing back"))
+
+
 def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
-               app_url: str = "", web_url: str = "") -> str:
+               app_url: str = "", web_url: str = "", redraw: dict | None = None) -> str:
     """One line under the drawing: where to edit it, and the two ways to pick the edit up.
 
     The command is not a convenience. The picture above is inlined into the HTML, and it
@@ -3837,20 +3994,23 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     # The lead-in is a span of its own so the served page can swap the wording: there, the
     # first offer is a button that does the job, and "run this in the terminal" would be
     # the page sending the reader to a terminal it could have saved them.
-    body = html.escape(line)
+    fold = f"cmd-{name or 'diagram'}"
+    over, over_fold = redraw_html(redraw, rerun, rebuild, name)
     return ('<div class="rerun">'
             f'<p class="dgm-open">{f"Edit this diagram in {edit}, then " if edit else ""}'
             '<span class="rerun-say">pick your edit up</span> by '
             f'<button type="button" class="runhere"{act} '
-            'data-tip="This copy of the report is static, so nothing here can run: '
-            'serve the page — the static badge at the top copies the line that does — '
-            'and this re-renders the diagram and reloads.">clicking here</button> or '
-            '<button type="button" class="cmdpeek" aria-expanded="false">'
-            'running one command in the terminal</button></p>'
-            f'<div class="cmdline" hidden><code>{body}</code>'
-            f'<button type="button" class="copycmd" '
-            f'data-copy="{html.escape(line, quote=True)}" '
-            'data-tip="Copy the command">Copy</button></div></div>')
+            f'data-tip="{html.escape(STATIC_RUN_TIP, quote=True)}" '
+            'data-tip-served="Runs it here, then reloads with the new picture">'
+            "clicking here</button> or "
+            f'<button type="button" class="cmdpeek" aria-expanded="false" '
+            f'aria-controls="{html.escape(fold, quote=True)}">'
+            'running one command in the terminal</button>'
+            # Second sentence, same line: it is the same subject — this drawing, and what
+            # you can do to it — and a paragraph of its own would put the offer nobody
+            # takes on most visits on a line of its own under the picture.
+            + over + '</p>'
+            + _cmdfold(fold, line) + over_fold + '</div>')
 
 
 def expand_drawio(text: str, out_dir: Path, root: Path, rebuild: str) -> str:
@@ -4880,28 +5040,61 @@ def _app_anchor(href: str) -> str:
 
 
 def runtime_html(rt) -> str:
-    """The command that starts the app, and the box that remembers where it answered.
+    """The app the walkthrough was filmed against: start it, open it, stop it, reset it.
 
     This page is a file on disk that outlives the branch it describes, so it cannot hold a
     live URL: by the time anyone opens it the environment is long gone, and the next one
-    will come up on a different port. What it can hold is the command that brings the
-    environment back, and a place to paste the URL that command prints — after which every
-    link in the transcript points into a running app instead of nowhere."""
+    will come up on a different port. What it *can* hold is a way to bring the environment
+    back — and there are two of those, which is the whole shape of this bar.
+
+    Served, the row is a set of buttons: the page asks its own server to run the command,
+    scrapes the URL out of what the command printed, and fills the box itself. Off disk
+    there is no process here to run anything, so the only way through is the command, and
+    the row above it says so rather than disappearing. The command therefore keeps its
+    place in both copies of the report, on a line of its own under the buttons: served it
+    reads as the escape hatch it is, and off disk it is the offer.
+
+    Every control except the command is opt-in on something the environment actually
+    provides — `stop`, `reset` — because a button that always fails is worse than no
+    button, and none of these can be derived from `command` by string surgery without
+    working for the one host this was written against and failing silently on the next.
+    """
     if not rt:
         return ""
     cmd = rt.get("command", "")
     fallback = rt.get("base", "")
-    reset = ('<button type="button" class="appenv-reset" aria-disabled="true"'
-             ' data-tip="Start the environment first">Reset data</button>'
-             if rt.get("reset") else "")
-    cmdbox = (f'<span class="appenv-cmd"><code>{html.escape(cmd)}</code>'
-              f'<button type="button" class="appenv-copy">Copy</button></span>') if cmd else ""
-    # The command keeps its place in the box either way: it is the thing to paste where
-    # nothing is serving this page, and where something is, it is still the answer to
-    # "what is that button about to do to my machine?".
+    # Off disk Start and Stop cannot work at all — there is no process here to run a
+    # command — and they say so instead of vanishing: a control that disappears between
+    # two copies of the same report teaches the reader the report is unreliable, where one
+    # that explains what it needs teaches them what served mode is.
+    static = ("Serve this report to start the app from here — off disk, run the "
+              "command below in a terminal yourself.")
+    cold = "Start the app first"
+
+    def btn(cls: str, face: str, tip: str) -> str:
+        # aria-disabled, not `disabled`: a disabled button fires no mouse events, so the
+        # tooltip saying *why* it cannot be pressed would never appear — which is the
+        # whole reason these are greyed rather than hidden.
+        return (f'<button type="button" class="{cls}" aria-disabled="true"'
+                f' data-tip="{html.escape(tip, quote=True)}">{face}</button>')
+
+    # Start, then the way in, then the way out, then the big red one. The order is the
+    # order the reader uses them in, and Open sits where their eye already is after the
+    # click that produced something to open.
+    controls = btn("appenv-start", "Start", static) if cmd else ""
+    controls += ('<a class="appenv-open" target="_blank" rel="noopener" aria-disabled="true"'
+                 f' data-tip="{cold}">Open ↗</a>')
+    if rt.get("stop"):
+        controls += btn("appenv-stop", "Stop", static)
+    if rt.get("reset"):
+        controls += btn("appenv-reset", "Reset data", cold)
+
     if cmd:
         declare_action("demo-env", cmd, scrape="url",
                        label="Start the environment the walkthrough was filmed against")
+    if rt.get("stop"):
+        declare_action("demo-env-stop", rt["stop"],
+                       label="Stop the environment the walkthrough was filmed against")
     # Optional and never guessed. Turning `… up --ref abc` into `… url --ref abc` by
     # string surgery would work for the one host this was written against and fail
     # silently on the next, at probe time, where nobody would see it fail. Declared or
@@ -4913,20 +5106,31 @@ def runtime_html(rt) -> str:
     if rt.get("drive"):
         declare_action("cue-drive", rt["drive"], params={"n": "int", "base": "url"},
                        label="Drive the app to one caption of the walkthrough")
+
+    # The state and the URL read as one phrase — "live at http://localhost:53421" — so
+    # they sit together at the end of the row rather than the URL leading it. Where the
+    # page can start the app it also knows where the app landed, and the box goes
+    # read-only: it is output then, and a typeable box full of output invites a reader to
+    # correct something nobody asked them for. Off disk it stays typeable, because pasting
+    # into it is the only thing that ever aims the transcript's links anywhere.
+    at = ('<span class="appenv-at">'
+          '<span class="appenv-state" data-state="unknown">checking…</span>'
+          '<input type="url" class="appenv-base" spellcheck="false"'
+          f' placeholder="{html.escape(fallback or "http://localhost:4200")}"></span>')
+
+    # The lead-in is a span of its own so the served page can swap the wording: there the
+    # buttons above have already made the offer and this is the alternative, where off
+    # disk it is the only route and must not be worded as an aside.
+    manual = (f'<p class="appenv-manual"><span class="appenv-or">Run this in a terminal '
+              f'to start it:</span><code>{html.escape(cmd)}</code>'
+              '<button type="button" class="appenv-copy" data-tip="Copy the command">'
+              'Copy</button></p>') if cmd else ""
+
     return (f'<div class="appenv" data-fallback="{html.escape(fallback)}"'
             f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}'
             f'{f' data-drive="{html.escape(rt["drive"])}"' if rt.get("drive") else ""}>'
-            + cmdbox
-            + '<label>running at <input type="url" class="appenv-base" spellcheck="false"'
-              f' placeholder="{html.escape(fallback or "http://localhost:4200")}"></label>'
-            # The way *into* the app, beside the box that says where it is. The links in
-            # the narration each open one page of it; this one opens the front door, in
-            # a tab of its own so the review stays where it was. Dead until the probe has
-            # heard the app answer: a link to a port nothing is listening on is not a link.
-            + '<a class="appenv-open" target="_blank" rel="noopener" aria-disabled="true"'
-              ' data-tip="Start the environment first">\u2197</a>'
-            + '<span class="appenv-state" data-state="unknown">checking\u2026</span>'
-            + reset + '</div>')
+            '<div class="appenv-run"><span class="appenv-title">Deployed app</span>'
+            + controls + at + '</div>' + manual + '</div>')
 
 
 def _link_captions(cues, links, drive=False):
@@ -4965,7 +5169,7 @@ def _link_captions(cues, links, drive=False):
     # 1-based, and the same numbering the reader is looking at: the driver replays the
     # walkthrough and stops after the nth caption, so "cue 3" has to mean the third row.
     drive_btn = (lambda n: f'<button type="button" class="cue-drive" data-n="{n}" aria-disabled="true" '
-                           f'data-tip="Start the environment first">&#9656;</button>') \
+                           f'data-tip="Start the app first">&#9656;</button>') \
         if drive else (lambda n: "")
     items = "".join(
         f'<li data-t="{c["t"]:.2f}"><span class="ts">{int(c["t"]) // 60}:'
