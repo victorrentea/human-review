@@ -1336,6 +1336,18 @@ def build_result(screens, registry) -> dict:
     }
 
 
+def asset_prefix(raw: str) -> str:
+    """`assets` and `assets/` both mean the folder next to the page.
+
+    The prefix is glued straight onto the PNG name, so a caller who writes it the way
+    every other `--assets`-style flag is written (a bare directory) got `assetsds-audit-…`
+    and a page of broken images. Settled here, once, rather than at each of the places
+    that join it: empty stays empty (the PNGs sit beside the fragment), anything else
+    ends in exactly one slash.
+    """
+    return raw.rstrip("/") + "/" if raw else ""
+
+
 def _png_size(path: Path, fallback: dict) -> dict:
     """The overlay is positioned in percentages of the *picture*, so the denominator has
     to be the PNG's own pixel size. `scrollWidth` is a good guess and occasionally a pixel
@@ -1398,6 +1410,7 @@ def main():
     if args.css:
         print(CSS)
         return
+    args.asset_prefix = asset_prefix(args.asset_prefix)
 
     assets = Path(args.assets)
     assets.mkdir(parents=True, exist_ok=True)

@@ -861,6 +861,26 @@ def test_it_prints_its_stylesheet_and_exits_like_its_siblings():
     assert ".dsa-mark" in out and "<" not in out.split("*/")[1]
 
 
+@pytest.mark.parametrize("spelling", ["assets", "assets/"])
+def test_the_asset_prefix_is_a_folder_however_it_is_spelled(tmp_path, spelling):
+    """`run-steps.py` once passed `--asset-prefix assets`, the way its `--assets` flag is
+    written, and every image on the UX tab came out as `assetsds-audit-…png`. Both
+    spellings are the same folder; neither may produce a broken picture."""
+    out = tmp_path / "ds-audit.html"
+    subprocess.run([sys.executable, str(HERE / "ds-audit.py"), "--from-capture", str(CAPTURE),
+                    "--assets", str(tmp_path / "assets"), "--asset-prefix", spelling,
+                    "--json", str(tmp_path / "ds-audit.json"), "-o", str(out)],
+                   capture_output=True, text=True, check=True)
+    srcs = re.findall(r'<img[^>]*\bsrc="([^"]+)"', out.read_text())
+    assert srcs and all(s.startswith("assets/ds-audit-") for s in srcs), srcs
+    assert not any("assetsds-audit" in s for s in srcs)
+
+
+def test_an_empty_prefix_keeps_the_pictures_beside_the_page():
+    assert ds.asset_prefix("") == ""
+    assert ds.asset_prefix("assets") == "assets/" == ds.asset_prefix("assets//")
+
+
 def test_every_colour_the_fragment_uses_is_defined_for_both_themes():
     tokens = set(re.findall(r"var\(--dsa-([\w-]+)\)", ds.CSS))
     light = dict(re.findall(r"--dsa-([\w-]+):\s*([^;]+);", ds.CSS.split("prefers-color")[0]))
