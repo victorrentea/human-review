@@ -3016,3 +3016,20 @@ def test_the_traces_put_the_branch_s_own_tests_first_and_fold_the_rest_of_the_ru
     # No ledger, or a ledger that names none of them: the list is simply the run.
     flat, _ = build.render_traces(doc, tmp_path, tmp_path / ".human-review", set())
     assert "trmore" not in flat and flat.count("<details class=\"trace\"") == 3
+
+
+def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_this_is(tmp_path):
+    """The covering-tests map names a test by file and declaration line; a trace row
+    carries the same key, so the 📺 the page hangs on the map's row is a lookup. And the
+    header carries one chip that says whether this copy is served or static, emitted as
+    static and promoted by the probe — never drawn live and demoted later."""
+    doc = {"recorded": 1, "omitted": 0, "untraced": 0, "viewer": "assets/tv/index.html",
+           "tests": [{"title": "adds a visit", "file": "src/add-visit.spec.ts", "line": 52,
+                      "status": "passed", "duration": 10, "trace": "t/1.zip"}]}
+    out, _ = build.render_traces(doc, tmp_path, tmp_path / ".human-review")
+    assert 'id="trace-1"' in out and 'data-test="add-visit.spec.ts:52"' in out
+    page, _ = _build(tmp_path, BARE)
+    assert '<span class="chip chip-mode" id="hr-mode"' in page
+    assert ">static</span>" in page
+    assert "chip.textContent = 'served'" in page
+    assert "querySelectorAll('.rm-t[data-id]')" in page

@@ -217,6 +217,7 @@ a { color:var(--link); }
 .chip b { color:var(--fg); font-weight:600; }
 a.chip-link { text-decoration:none; }
 a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
+.chip-served { color:#2e7d32; border-color:#2e7d32; }
 /* The per-tab cost breakdown, hung off the one chip that already states the total.
    A caret, not a hover hint: tab headers deliberately carry no tooltips, and a number
    that only appears when a pointer happens to rest on the right pill is a number nobody
@@ -368,6 +369,10 @@ details.trace > summary:hover { background:var(--code-bg); border-radius:8px; }
    ones under here ran in the same session and were recorded the same way, and a reader
    who has just watched the branch's own tests is the only one who wants them. */
 details.trmore { margin-top:.5rem; }
+/* The 📺 a covering-tests row wears when the run recorded that test. A link, so it has
+   an address the reader can copy; the click itself opens the row it points at. */
+.rm-tv { flex:0 0 auto; text-decoration:none; font-size:12px; line-height:1; }
+.rm-tv:hover { filter:brightness(1.2); }
 details.trmore > summary { cursor:pointer; color:var(--muted); font-size:.85rem;
         padding:.2rem 0; }
 details.trmore > summary:hover { color:var(--link); }
@@ -1341,6 +1346,15 @@ window.HR = (function () {
     return lines.length ? lines[lines.length - 1].trim() : '';
   }
 
+  onready(function (j) {
+    var chip = document.getElementById('hr-mode');
+    if (!chip || !j) return;
+    chip.textContent = 'served';
+    chip.classList.add('chip-served');
+    chip.setAttribute('data-tip', 'Served by the review server: buttons run their command '
+      + 'from this page, and recordings play in it.');
+  });
+
   return {ready: ready, can: can, onready: onready, run: run, tail: tail};
 })();
 </script>"""
@@ -1776,6 +1790,48 @@ TRACE_JS = """<script>
     det.addEventListener('toggle', function () { if (det.open) fill(det); });
     if (det.open) fill(det);
   });
+
+  // Open one row and bring it into view — the fold above it too, when it sits under one.
+  function show(det) {
+    var fold = det.closest('details.trmore');
+    if (fold) fold.open = true;
+    det.open = true;
+    det.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+
+  // A 📺 on the covering-tests rows whose test was recorded. The map lists a test by
+  // file and declaration line, which is exactly how a trace row is addressed, so the
+  // pairing is a lookup and not a guess. Done here, from the outside, because the map is
+  // written per run and pasted in — it does not know what the run recorded, and should
+  // not have to. Run after the parse: the map draws its rows in its own inline script.
+  function decorate() {
+    var rows = document.querySelectorAll('.rm-t[data-id]');
+    Array.prototype.forEach.call(rows, function (row) {
+      if (row.querySelector('.rm-tv')) return;
+      var id = row.getAttribute('data-id') || '';
+      var m = /^(.*?)(?::(\\d+))?$/.exec(id);
+      var key = (m[1] || '').split('/').pop() + (m[2] ? ':' + m[2] : '');
+      var det = null;
+      Array.prototype.some.call(document.querySelectorAll('details.trace'), function (d) {
+        if (d.getAttribute('data-test') === key) { det = d; return true; }
+      });
+      if (!det) return;
+      var where = row.querySelector('.rm-tw');
+      if (!where) return;
+      var tv = document.createElement('a');
+      tv.className = 'rm-tv';
+      tv.href = '#' + det.id;
+      tv.textContent = '📺';
+      tv.setAttribute('data-tip', 'Recorded: step through what this test did, below');
+      tv.setAttribute('aria-label', 'open the recording of this test');
+      tv.addEventListener('click', function (ev) {
+        ev.preventDefault(); ev.stopPropagation(); show(det);
+      });
+      where.parentNode.insertBefore(tv, where);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', decorate);
+  else decorate();
 })();
 </script>"""
 
@@ -4508,8 +4564,12 @@ def render_traces(doc: dict, root: Path, out_dir: Path,
     except ValueError:
         here = out_dir.resolve()
     rows, mine = [], []
-    for t in tests:
+    for i, t in enumerate(tests, 1):
         mine.append(bool(touched) and (Path(t.get("file", "")).name, t.get("line")) in touched)
+        # `data-test` is the row's address for the rest of the page: the covering-tests
+        # list above names a test the same way, file and declaration line, and hangs a
+        # 📺 on its row when a recording with that address is down here.
+        key = Path(t.get("file", "")).name + (f':{t["line"]}' if t.get("line") else "")
         cls, label = TRACE_STATES.get(t.get("status", ""), ("changed", t.get("status", "ran")))
         where = Path(t.get("file", "")).name + (f':{t["line"]}' if t.get("line") else "")
         titles = "".join(f'<span class="trpath">{html.escape(p)} › </span>'
@@ -4531,7 +4591,8 @@ def render_traces(doc: dict, root: Path, out_dir: Path,
         # build cannot know which of the two is reading.
         cmd = f"npx playwright show-trace {shlex.quote(str(here / t['trace']))}"
         rows.append(
-            f'<details class="trace" data-trace="{html.escape(t["trace"], quote=True)}"'
+            f'<details class="trace" id="trace-{i}" data-test="{html.escape(key, quote=True)}"'
+            f' data-trace="{html.escape(t["trace"], quote=True)}"'
             f' data-viewer="{html.escape(viewer, quote=True)}"'
             f' data-cmd="{html.escape(cmd, quote=True)}">'
             f'<summary><span class="tflag {cls}">{html.escape(label)}</span>'
@@ -6817,6 +6878,16 @@ def main(argv=None) -> int:
             chips.append(COST_CHIP_TOKEN)
             continue
         emit(c)
+    # Which of the two pages this is — served by scripts/serve-review.py, where buttons
+    # run and recordings play in the page, or a static copy (a file, the zip, Pages),
+    # where they copy their command and hand over a `show-trace` line. Every control on
+    # the page already degrades on its own; this is the one place that says which world
+    # the reader is in before they press anything. Emitted as static: the probe in
+    # SERVER_JS promotes it, never the other way round.
+    chips.append(
+        '<span class="chip chip-mode" id="hr-mode" data-tip="A static copy of the page: '
+        'buttons copy their command instead of running it, and recordings open natively, '
+        'not here. Serve it with scripts/serve-review.py to have both.">static</span>')
     chips = "".join(chips)
 
     # This used to require a chip per automated pass — /code-review hunts bugs, /simplify
