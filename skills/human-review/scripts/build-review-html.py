@@ -792,6 +792,10 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .titlerow.oneline h1 { min-width:0; overflow:hidden; text-overflow:ellipsis;
                         white-space:nowrap; }
 .titlerow.oneline .titlescore { flex:0 0 auto; }
+/* The served/static badge rides the title row, against the score: pushed hard right
+   with the pill, so the title keeps the whole left and the two facts read as one. */
+.titlerow .chip-mode { flex:0 0 auto; margin-left:auto; align-self:center; }
+.titlerow .chip-mode + .titlescore { margin-left:0; }
 .masthead .scopebar { margin:.3rem 0 .05rem; }
 /* Inside the masthead the strip is no longer its own sticky, full-bleed band: the block
    around it does the bleeding, the pinning and the edge. */
@@ -1363,6 +1367,18 @@ window.HR = (function () {
     chip.removeAttribute('data-copy');
     chip.setAttribute('data-tip', 'Served by the review server: buttons run their command '
       + 'from this page, and recordings play in it.');
+    // The diagram blocks: the command stays in view — it is what the click is about to
+    // do — but the words around it stop sending the reader to a terminal, and the button
+    // says the two things it does, in order.
+    [].forEach.call(document.querySelectorAll('.rerun button.copycmd[data-action]'),
+        function (b) {
+      if (!can(b.getAttribute('data-action'))) return;
+      var say = b.closest('.rerun').querySelector('.rerun-say');
+      if (say) say.textContent = 'Edited the diagram? This re-renders it, rebuilds the '
+        + 'report and reloads the page:';
+      b.textContent = 'Re-render & reload';
+      b.setAttribute('data-tip', 'Run this here, then reload with the new picture');
+    });
   });
 
   return {ready: ready, can: can, onready: onready, run: run, tail: tail};
@@ -3722,8 +3738,11 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "") -> str:
         aid = declare_action(f"drawio:{name}", line, reload=True,
                              label=f"Re-render {name} and rebuild this page")
         act = f' data-action="{html.escape(aid, quote=True)}"'
-    return ('<div class="rerun">For this report to pick your edit up, run this in the '
-            'terminal:'
+    # The sentence is in a span of its own so the served page can swap it: there, the
+    # button beside the line runs it, and "run this in the terminal" would send the
+    # reader away from the one control that does the job.
+    return ('<div class="rerun"><span class="rerun-say">For this report to pick your '
+            'edit up, run this in the terminal:</span>'
             f'<div class="cmdline"><code>{html.escape(line)}</code>'
             f'<button type="button" class="copycmd"{act} '
             f'data-copy="{html.escape(line, quote=True)}" '
@@ -7217,7 +7236,7 @@ def main(argv=None) -> int:
 
     # Only a tabbed page grows a masthead; the plain single-column guide keeps the
     # heading it always had.
-    strip_html = allbtn_html = ""
+    strip_html = allbtn_html = mode_html = ""
     if tabs:
         # Measured once, for every tab, before the loop: one subprocess and one transcript
         # scan rather than one per tab. `costs` is None only when review-cost.py itself
@@ -7306,14 +7325,15 @@ def main(argv=None) -> int:
         # which is what the pressed styling alone could no longer carry once the button
         # left the strip — down here there is nothing beside it to read the highlight
         # against.
-        # Beside it, which of the two pages this is — served by scripts/serve-review.py,
-        # where buttons run and recordings play in the page, or a static copy (a file,
-        # the zip, Pages), where they copy their command and hand over a `show-trace`
-        # line. Every control on the page already degrades on its own; this is the one
-        # place that says which world the reader is in. Down here and not in the header:
-        # it is a fact about the copy, not about the branch, and the header's chips are
-        # all about the branch. Emitted as static: the probe in SERVER_JS promotes it,
-        # never the other way round.
+        # And which of the two pages this is — served by scripts/serve-review.py, where
+        # buttons run and recordings play in the page, or a static copy (a file, the zip,
+        # Pages), where they copy their command and hand over a `show-trace` line. Every
+        # control on the page already degrades on its own; this is the one place that
+        # says which world the reader is in, so it goes in the title row, beside the
+        # score: the two things a reader wants before pressing anything are how the
+        # branch did and what this copy can do. (It sat in the footer for an evening; a
+        # fact nobody scrolls down for is a fact nobody reads.) Emitted as static: the
+        # probe in SERVER_JS promotes it, never the other way round.
         # The static badge is a button, and what it copies is the way out of static: one
         # line that starts the server on this directory and opens this page from it.
         # `serve-review.py` prints the URL it ends up serving on — the next free port when
@@ -7330,14 +7350,15 @@ def main(argv=None) -> int:
                      f'{shlex.quote(str(HERE / "serve-review.py"))} {shlex.quote(str(here))}'
                      f' --page {shlex.quote(out_path.name)})" && (open "$u" 2>/dev/null'
                      ' || xdg-open "$u")')
-        allbtn_html = (
-            '<div class="allbar">'
+        mode_html = (
             '<button type="button" class="chip chip-mode copycmd" id="hr-mode" '
             f'data-copy="{html.escape(serve_cmd, quote=True)}" '
             'data-tip="A static copy of the page: buttons copy their command instead of '
             'running it, and recordings open natively, not here. Click to copy the line '
             'that serves this directory and opens the page from it.">'
-            'static</button>'
+            'static</button>')
+        allbtn_html = (
+            '<div class="allbar">'
             '<button type="button" class="allbtn" aria-pressed="false" '
             'data-label-off="show single page" data-label-on="back to one tab at a time" '
             'data-tip="Every tab on one page. Makes \u2318F search all of it.">'
@@ -7395,7 +7416,7 @@ def main(argv=None) -> int:
 <style>{CSS}{extra_css.rstrip()}
 {LATE_CSS}{XREF_CSS}</style></head>
 <body><div class="wrap">
-{masthead_html(spec, title_score, chips, strip_html, base_st)}
+{masthead_html(spec, mode_html + title_score, chips, strip_html, base_st)}
 {lede_html}
 {verdict_html}
 
