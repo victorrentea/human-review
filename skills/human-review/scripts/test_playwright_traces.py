@@ -40,14 +40,15 @@ _bspec.loader.exec_module(build)
 # a report, the way the html reporter writes one
 # --------------------------------------------------------------------------- #
 
-def _test(title, *, line, status="passed", traced=True, retry=0, error="", path=None):
+def _test(title, *, line, status="passed", traced=True, retry=0, error="", path=None,
+          file="src/owners.spec.ts"):
     attachments = []
     if traced:
         attachments.append({"name": "trace", "contentType": "application/zip",
                             "path": f"data/{title.replace(' ', '-')}.zip"})
     return {
         "title": title, "projectName": "chromium", "path": path or ["Owner page"],
-        "location": {"file": "src/owners.spec.ts", "line": line, "column": 5},
+        "location": {"file": file, "line": line, "column": 5},
         "duration": 1658, "outcome": "expected" if status == "passed" else "unexpected",
         "results": [{"status": status, "retry": retry, "duration": 1658,
                      "attachments": attachments,
@@ -88,10 +89,11 @@ def report(tmp_path: Path, tests, *, viewer=True) -> Path:
     return out
 
 
-def harvest(tmp_path, tests, *, limit=12, **kw):
+def harvest(tmp_path, tests, *, limit=12, changed=None, **kw):
     out = tmp_path / "assets"
     out.mkdir(exist_ok=True)
-    return pw.harvest(report(tmp_path, tests, **kw), out, "assets", tmp_path, None, limit)
+    return pw.harvest(report(tmp_path, tests, **kw), out, "assets", tmp_path, None, limit,
+                      changed=changed)
 
 
 # --------------------------------------------------------------------------- the harvester
@@ -153,6 +155,34 @@ def test_the_limit_keeps_the_failures(tmp_path):
     assert [t["title"] for t in doc["tests"]] == ["the red one"]
     assert doc["omitted"] == 2
     assert len(list((tmp_path / "assets" / "traces").iterdir())) == 1
+
+
+def test_the_limit_keeps_the_tests_of_the_files_the_branch_touched_and_cuts_skipped_first(tmp_path):
+    """Twenty recorded, sixteen carried — and the four cut were the tests of the file the
+    branch changed, while a skipped suite's recordings stayed. The covering test on the
+    Tests tab then had no 📺, and the reader asked why. Failures still outrank everything;
+    below them the change set's own tests come before the rest, and a skipped result is
+    the first thing to go. The cut rows are still counted."""
+    doc = harvest(tmp_path, [_test("skipped but recorded", line=1, status="skipped",
+                                   file="src/chatbot.spec.ts"),
+                             _test("green elsewhere", line=9, file="src/no-reset.spec.ts"),
+                             _test("shows all visits", line=17, file="src/visits.spec.ts"),
+                             _test("the red one", line=25, status="failed",
+                                   file="src/no-reset.spec.ts")],
+                  limit=2, changed={"visits.spec.ts"})
+    assert [t["title"] for t in doc["tests"]] == ["the red one", "shows all visits"]
+    assert doc["omitted"] == 2 and doc["untraced"] == 0
+
+
+def test_the_change_set_is_read_off_the_manifest_the_tests_step_wrote(tmp_path):
+    """`test-changes.py` runs before this step and leaves its manifest beside the output;
+    the basenames of its added/modified rows are the preference, an unchanged row is not."""
+    (tmp_path / "test-changes.json").write_text(json.dumps({"tests": [
+        {"name": "a", "path": "petclinic-test/src/visits.spec.ts", "status": "modified"},
+        {"name": "b", "path": "petclinic-test/src/owners.spec.ts", "status": "unchanged"},
+    ]}))
+    assert pw.changed_test_files(tmp_path / "test-changes.json") == {"visits.spec.ts"}
+    assert pw.changed_test_files(tmp_path / "absent.json") == set()
 
 
 def test_a_second_run_does_not_leave_the_first_runs_traces_behind(tmp_path):

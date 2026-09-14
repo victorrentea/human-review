@@ -27,6 +27,14 @@ whenever any test attached a trace, so it is the same build of the viewer that r
 traces — a pairing that cannot drift. `node_modules/playwright-core/lib/vite/traceViewer` is
 the fallback for a report written without one.
 
+A limit caps how many recordings the page carries, and which ones go is a ranking, not
+the order the report happened to list them in: failures first and never cut; then the
+tests of files the change set touched — the ones the Tests tab lists as covering the
+change, read from `test-changes.json` beside the output when `test-changes.py` has run,
+or from `--test-changes`; then the rest, by file and line; and skipped/undefined results
+last, because a test that never ran recorded nothing worth a megabyte. Whatever falls
+past the limit is still counted as `omitted`.
+
 Tracing has to have been ON for the run. A project that leaves `trace: 'on-first-retry'`
 (the default worth having in CI) records nothing on a green local run, and this exits 3
 saying so rather than writing an empty manifest the page would render as "no tests here".
@@ -172,8 +180,22 @@ def cucumber_rows(folder: Path | None, root: Path, base: Path | None) -> list[di
     return rows
 
 
+def changed_test_files(manifest: Path | None) -> set[str]:
+    """The basenames of the test files `test-changes.py` saw the branch touch.
+
+    Basenames, because that is how the builder matches a trace to a ledger row: the
+    report's paths are relative to the Playwright config and the ledger's to the repo,
+    and the one thing both spell the same is the file's name."""
+    if not manifest or not manifest.is_file():
+        return set()
+    doc = json.loads(manifest.read_text(encoding="utf-8"))
+    return {Path(t["path"]).name for t in doc.get("tests") or []
+            if t.get("status") != "unchanged" and t.get("path")}
+
+
 def harvest(report: Path, out: Path, prefix: str, root: Path,
-            base: Path | None, limit: int, cucumber: Path | None = None) -> dict:
+            base: Path | None, limit: int, cucumber: Path | None = None,
+            changed: set[str] | None = None) -> dict:
     doc = report_data(report)
     base = base or project_dir(report)
     rows, untraced = cucumber_rows(cucumber, root, base), 0
@@ -214,8 +236,18 @@ def harvest(report: Path, out: Path, prefix: str, root: Path,
 
     # Failures first, and never dropped. A limit exists because traces are megabytes each
     # and the page is offered as a downloadable zip; a limit that could drop the recording
-    # of the one test that failed would be a limit on exactly the wrong thing.
-    rows.sort(key=lambda r: (r["status"] == "passed", r["file"], r["line"] or 0))
+    # of the one test that failed would be a limit on exactly the wrong thing. Below the
+    # failures, the tests of the files the branch touched: those are the rows the Tests
+    # tab marks as covering the change, and a reader who clicks the 📺 on one of them and
+    # finds nothing has been told the run was not recorded, when it was — the recording
+    # was cut in favour of a test of something else. Skipped results go last: a test that
+    # never ran recorded a browser opening and closing, and a limit spent on that has
+    # dropped a real one to keep it.
+    changed = changed or set()
+    rows.sort(key=lambda r: (r["status"] in ("skipped", "undefined"),
+                             r["status"] == "passed",
+                             Path(r["file"]).name not in changed,
+                             r["file"], r["line"] or 0))
     omitted = max(0, len(rows) - limit) if limit else 0
     kept = rows[:limit] if limit else rows
 
@@ -281,6 +313,9 @@ def main(argv=None) -> int:
                                        "JSON, recorded by the project's own Cucumber hooks")
     ap.add_argument("--limit", type=int, default=12,
                     help="how many traces to carry, failures first (0 = all)")
+    ap.add_argument("--test-changes",
+                    help="test-changes.py's manifest, so the limit keeps the tests of the "
+                         "files the branch touched (default: test-changes.json under --out)")
     args = ap.parse_args(argv)
 
     report = Path(args.report)
@@ -295,7 +330,9 @@ def main(argv=None) -> int:
             "untraced": 0, "tests": []} if missing else
            harvest(report, out, args.prefix.rstrip("/"), Path.cwd(),
                    Path(args.project_dir) if args.project_dir else None, args.limit,
-                   Path(args.cucumber) if args.cucumber else None))
+                   Path(args.cucumber) if args.cucumber else None,
+                   changed_test_files(Path(args.test_changes) if args.test_changes
+                                      else out / "test-changes.json")))
 
     text = json.dumps(doc, indent=2) + "\n"
     if args.json_out:

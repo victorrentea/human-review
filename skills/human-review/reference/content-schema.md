@@ -286,6 +286,14 @@ lede — recorded, not carried, ran untraced — are the harvester's, never type
 that recorded four of its forty tests has not shown the reader the run, and a list of four
 with nothing said would read exactly as if it had.
 
+Which recordings the harvester's `--limit` carries is a ranking, not the report's order:
+failures first and never cut; then the tests of the files the change set touched — the
+rows the Tests tab marks as covering the change, read off `test-changes.json` (written by
+the `tests` step, which runs first) — then the rest by file and line; skipped results are
+cut first, since a test that never ran recorded nothing. So a covering test's 📺 is only
+missing when the run genuinely did not trace it, and whatever fell past the limit is still
+in the *not carried* count.
+
 A Cucumber suite records nothing by itself — cucumber-js writes no Playwright report — so
 a project that wants its `.feature` scenarios here records them in its own `Before`/`After`
 hooks (`context.tracing.start/stop`), one zip per scenario plus a sidecar JSON naming the
