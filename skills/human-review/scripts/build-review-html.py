@@ -585,10 +585,13 @@ pre.code code { white-space:pre; }
    work away is found by the reader who goes looking for it rather than met by the reader
    who does not. */
 .rerun .rerun-redraw::before { content:"\\00a0\\00a0"; }
-/* The fold's own state, said by the chevron and nothing else: a command box that is open
-   is on screen, and a second word saying so would be the page narrating itself. */
-.rerun .cmdpeek::after { content:" \\2304"; text-decoration:none; display:inline-block; }
-.rerun .cmdpeek[aria-expanded="true"]::after { content:" \\2303"; }
+/* The second route, in brackets and quieter than the first: `(or run this)` is the aside
+   for the reader who wants to read the command, paste it elsewhere, or is holding a
+   static copy where nothing runs. The brackets keep their own colour so the offer inside
+   them still reads as a control. No chevron — the fold's state is the command box itself,
+   which is either under the sentence or not, and a mark repeating that is the page
+   narrating itself. */
+.rerun .cmdalt { color:var(--muted); font-weight:400; }
 /* Progressive disclosure: the diagram arrives simplified, and an arrow that has more
     to say is clickable. The hit area is a transparent rect the script lays under each
     such arrow, so the whole band — label, line, marker — answers to one click. */
@@ -2421,7 +2424,10 @@ EDITOR_JS = r"""<script>
     var was = button.textContent, last = '';
     button.disabled = true;
     button.textContent = 'Running\u2026';
-    flash('Re-rendering the diagram\u2026', true);
+    // Two offers under the same picture run through here, and "Re-rendering the diagram"
+    // over a click that has just thrown the layout away would be the page describing the
+    // wrong half of what it is doing.
+    flash(button.getAttribute('data-run-say') || 'Re-rendering the diagram\u2026', true);
     window.HR.run(action, {}, function (snap) {
       var line = window.HR.tail(snap);
       // Only on change: the poll is every 700ms and a quiet command would otherwise
@@ -3792,22 +3798,41 @@ STATIC_RUN_TIP = ("This copy of the report is static, so nothing here can run: s
                   "this button does the job.")
 
 
-def _cmdfold(fold_id: str, line: str, run: str = "", run_label: str = "",
-             served_tip: str = "") -> str:
-    """One shell command, folded away: the box, the line, and the buttons that act on it.
+def _cmdfold(fold_id: str, line: str) -> str:
+    """One shell command, folded away: the box, the line, and the button that copies it.
 
-    A command a reader is about to run on their own checkout is shown before it runs and
-    not after — which is the whole reason the destructive offer puts its button *in* here
-    rather than in the sentence above, beside an offer that only re-renders."""
+    Nothing runs from in here. The offer to run is up in the sentence, where the reader
+    who does not want to read a shell command never has to scroll past one."""
     return (f'<div class="cmdline" id="{html.escape(fold_id, quote=True)}" hidden>'
             f'<code>{html.escape(line)}</code>'
-            + (f'<button type="button" class="runhere"{run} '
-               f'data-tip="{html.escape(STATIC_RUN_TIP, quote=True)}" '
-               f'data-tip-served="{html.escape(served_tip, quote=True)}">{run_label}'
-               "</button>" if run_label else "")
-            + f'<button type="button" class="copycmd" '
-              f'data-copy="{html.escape(line, quote=True)}" '
-              'data-tip="Copy the command">Copy</button></div>')
+            f'<button type="button" class="copycmd" '
+            f'data-copy="{html.escape(line, quote=True)}" '
+            'data-tip="Copy the command">Copy</button></div>')
+
+
+def _run_or_read(fold_id: str, act: str, static_tip: str, served_tip: str,
+                 running: str = "") -> str:
+    """`click here (or run this)` — one offer, two ways to take it.
+
+    Both offers under this diagram have the same shape, so they get the same four words.
+    The first runs the command through the review server, which is what a reader wants
+    nine times in ten; the parenthetical opens the command underneath for the tenth, who
+    wants to read it, paste it somewhere, or is reading a static copy where nothing runs.
+
+    The parenthesis is the compacting. Spelling out both routes as full clauses — *click
+    here to update the report or run one command in the terminal* — made the middle of the
+    sentence about this page's plumbing; in brackets the second route reads as the aside
+    it is, and the two offers under the picture come out the same length.
+    """
+    return (f'<button type="button" class="runhere"{act} '
+            f'data-tip="{html.escape(static_tip, quote=True)}" '
+            f'data-tip-served="{html.escape(served_tip, quote=True)}"'
+            + (f' data-run-say="{html.escape(running, quote=True)}"' if running else "")
+            + '>click here</button> <span class="cmdalt">(or '
+            f'<button type="button" class="cmdpeek" aria-expanded="false" '
+            f'aria-controls="{html.escape(fold_id, quote=True)}" '
+            'data-tip="Show the command, to read or to paste in a terminal">'
+            "run this</button>)</span>")
 
 
 def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
@@ -3850,16 +3875,11 @@ def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
            "the repository's own script over it, which draws what the code has and the "
            "map lacks — in red, as a to-do — again.")
     fold = f"redraw-{name or 'diagram'}"
-    # No glyph of its own on the button: the fold's chevron is already at the end of it,
-    # and a ⟲ beside a ⌄ is two marks for one control, neither of which the reader can
-    # take at face value.
-    return ('<span class="rerun-redraw">To start over, let automation '
-            f'<button type="button" class="cmdpeek" aria-expanded="false" '
-            f'aria-controls="{html.escape(fold, quote=True)}" '
-            f'data-tip="{html.escape(tip, quote=True)}">'
-            "re-draw it again</button></span>",
-            _cmdfold(fold, line, act, "Run it",
-                     "Runs it here, then reloads with automation's drawing back"))
+    return ('<span class="rerun-redraw">To start over, '
+            + _run_or_read(fold, act, tip,
+                           "Runs it here, then reloads with automation's drawing back",
+                           "Putting automation's drawing back…")
+            + ".</span>", _cmdfold(fold, line))
 
 
 def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
@@ -3919,13 +3939,9 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     over, over_fold = redraw_html(redraw, rerun, rebuild, name)
     return ('<div class="rerun">'
             f'<p class="dgm-open">{f"Edit this diagram in {edit}, then " if edit else ""}'
-            f'<button type="button" class="runhere"{act} '
-            f'data-tip="{html.escape(STATIC_RUN_TIP, quote=True)}" '
-            'data-tip-served="Runs it here, then reloads with the new picture">'
-            "click here</button> to update the report or "
-            f'<button type="button" class="cmdpeek" aria-expanded="false" '
-            f'aria-controls="{html.escape(fold, quote=True)}">'
-            'run this terminal command</button>.'
+            + _run_or_read(fold, act, STATIC_RUN_TIP,
+                           "Runs it here, then reloads with the new picture")
+            + " to update the report."
             # Second sentence, same line: it is the same subject — this drawing, and what
             # you can do to it — and a paragraph of its own would put the offer nobody
             # takes on most visits on a line of its own under the picture.
