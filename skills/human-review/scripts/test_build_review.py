@@ -1296,16 +1296,15 @@ def test_the_show_all_button_sits_after_the_footer_not_in_the_strip(tmp_path):
     assert "allbtn" in foot and "show single page" in foot
 
 
-def test_the_show_all_button_shares_the_footer_s_line_at_its_far_end(tmp_path):
-    """A button alone on the last line of the page reads as the page's conclusion, which
-    it is not — it is a control, and a control belongs at the far end of a line the page
-    already has. Both halves are in one flex row; the alignment is `margin-left:auto` in
-    the CSS, so the sentence keeps its own width."""
+def test_the_show_all_button_sits_centred_under_the_footer_s_line(tmp_path):
+    """The footer's sentence is one flex row; the control is not a word of it. It stands
+    on its own line below, centred, so it reads as the page's one control rather than as
+    the tail of the sentence."""
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
     assert '<div class="footrow">' in foot
-    assert foot.index("footrow") < foot.index("allbar"), "one row, sentence first"
-    assert "footer .allbar { margin-left:auto; }" in page
+    assert foot.index("</div>") < foot.index("allbar"), "the row closes before the button"
+    assert "footer .allbar { text-align:center;" in page
 
 
 def test_the_footer_offers_the_page_as_a_zip_to_take_away(tmp_path):
@@ -1316,10 +1315,9 @@ def test_the_footer_offers_the_page_as_a_zip_to_take_away(tmp_path):
     release the `demo zip` workflow keeps current."""
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert ">zip</a>" in foot
+    assert ">Download here</a> a standalone demo zip." in foot
     assert "https://github.com/victorrentea/human-review/releases/tag/demo" in foot
-    # Between the sentence and the control, so the row still reads sentence-first and the
-    # button keeps the right edge.
+    # After the sentence and before the control, so the row still reads sentence-first.
     assert foot.index("takeaway") < foot.index("allbar")
 
 
@@ -1330,7 +1328,7 @@ def test_the_zip_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
     spec = {k: v for k, v in BARE.items() if k != "footer"}
     page, _ = _build(tmp_path, spec)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert ">zip</a>" in foot
+    assert ">Download here</a>" in foot
 
 
 def test_the_show_all_button_says_what_it_does_next(tmp_path):
@@ -1510,7 +1508,7 @@ def test_the_methodology_boilerplate_is_stripped_from_the_footer():
 # says it the moment it is rebuilt.
 def test_the_footer_invites_the_reader_to_take_the_toolset():
     out = build._link_home("Built by /human-review against the running stack on 2 Sep 2026.")
-    assert out.endswith("Tell your agent to clone and port this to your environment and needs.")
+    assert out.endswith("Tell your agent to adapt this to your environment.")
     # The footer is emitted as HTML and not escaped on the way out, so a bare `&` in the
     # invitation would be a lone ampersand in the markup.
     assert " & " not in out
@@ -2991,3 +2989,30 @@ def test_shift_wheel_scrolls_a_wide_block_sideways():
     assert "if (box.scrollLeft !== before) ev.preventDefault();" in js
     src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
     assert "{HSCROLL_JS}" in src            # and it is actually emitted into the page
+
+
+def test_the_traces_put_the_branch_s_own_tests_first_and_fold_the_rest_of_the_run(tmp_path):
+    """A run records everything it executed. The reader is here for the tests this branch
+    touched, so those rows come first, on their own, and the rest of the session sits
+    under one fold that says how many and whose they are. No step strip under a row: the
+    viewer's action list is that list, with the screenshots."""
+    doc = {"recorded": 3, "omitted": 0, "untraced": 0, "viewer": "assets/tv/index.html",
+           "tests": [
+               {"title": "guards the reset route", "file": "guard.spec.ts", "line": 5,
+                "status": "passed", "duration": 40, "trace": "t/1.zip",
+                "steps": [{"title": "Navigate to \"/\"", "duration": 14}]},
+               {"title": "adds a visit with a vet", "file": "add-visit.spec.ts", "line": 52,
+                "status": "passed", "duration": 4000, "trace": "t/2.zip", "steps": []},
+               {"title": "skipped one", "file": "chat.spec.ts", "line": 20,
+                "status": "skipped", "duration": 0, "trace": "t/3.zip", "steps": []},
+           ]}
+    out, n = build.render_traces(doc, tmp_path, tmp_path / ".human-review",
+                                 {("add-visit.spec.ts", 52)})
+    assert n == 3
+    assert out.index("adds a visit with a vet") < out.index("<details class=\"trmore\">")
+    assert "2 more recorded in the same run, in tests this branch did not touch" in out
+    assert out.index("trmore") < out.index("guards the reset route") < out.index("skipped one")
+    assert "trsteps" not in out and "Navigate to" not in out
+    # No ledger, or a ledger that names none of them: the list is simply the run.
+    flat, _ = build.render_traces(doc, tmp_path, tmp_path / ".human-review", set())
+    assert "trmore" not in flat and flat.count("<details class=\"trace\"") == 3

@@ -252,7 +252,8 @@ def test_a_row_carries_the_test_the_recording_is_of(tmp_path):
     assert "lists the visits of an owner" in frag
     assert '<span class="trpath">Owner page › </span>' in frag
     assert "owners.spec.ts:15" in frag and "1.7s" in frag
-    assert 'Navigate to &quot;/&quot;<b>14ms</b>' in frag
+    # The steps are the viewer's to show, with the screenshots; no strip of them on the row.
+    assert "Navigate to" not in frag and "trsteps" not in frag
 
 
 def test_the_frame_is_a_path_on_the_row_and_never_an_iframe_in_the_markup(tmp_path):

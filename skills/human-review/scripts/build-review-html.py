@@ -364,13 +364,14 @@ details.trace > summary:hover { background:var(--code-bg); border-radius:8px; }
 .trwhere { margin-left:auto; color:var(--muted); font-size:11.5px;
         font-variant-numeric:tabular-nums; }
 .trbody { padding:0 .6rem .55rem 1.3rem; display:grid; gap:.45rem; }
-/* The steps as one wrapping strip rather than a list: it is a table of contents for the
-   recording below it, and a twelve-item bulleted list would outweigh the thing it
-   indexes. Only the top level is here; the nesting is in the viewer. */
-.trsteps { display:flex; flex-wrap:wrap; gap:.3rem; font-size:.8rem; }
-.trsteps span { border:1px solid var(--line); border-radius:999px; padding:.02rem .45rem;
-        color:var(--muted); }
-.trsteps b { margin-left:.3rem; font-weight:600; font-variant-numeric:tabular-nums; }
+/* The rest of the run, folded. The rows above it are the tests this branch touched; the
+   ones under here ran in the same session and were recorded the same way, and a reader
+   who has just watched the branch's own tests is the only one who wants them. */
+details.trmore { margin-top:.5rem; }
+details.trmore > summary { cursor:pointer; color:var(--muted); font-size:.85rem;
+        padding:.2rem 0; }
+details.trmore > summary:hover { color:var(--link); }
+details.trmore > .traces { margin-top:.3rem; }
 .trerr { margin:0; color:#c62828; font:.84rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
         white-space:pre-wrap; }
 @media (prefers-color-scheme: dark) { .trerr { color:#f08a8a; } }
@@ -987,14 +988,12 @@ button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--acc
    occasional act. It lives at the foot of the page now, which is where you arrive having
    finished reading and is the moment the thing it offers ("show me all of it at once, so
    ⌘F works") is actually worth wanting.
-   On the footer's own line, not under it: a button alone on the last line of the page
-   reads as the page's conclusion, which it is not — it is a control, and the far end of
-   the line the footer already occupies is where a page puts one. `margin-left:auto` does
-   the aligning, so the sentence keeps its natural width and the button keeps the right
-   edge at every width; `flex-wrap` drops it under the sentence on a narrow screen rather
-   than squeezing either. */
+   Under the footer's line, centred: it sat at the far end of that line for a while and
+   read as one more word of it. Alone on its own line, in the middle, it is unmistakably
+   the page's one control — the sentence above keeps its natural width and `flex-wrap`
+   still folds the two halves of that sentence on a narrow screen. */
 footer .footrow { display:flex; align-items:baseline; gap:.6rem 1.2rem; flex-wrap:wrap; }
-footer .allbar { margin-left:auto; }
+footer .allbar { text-align:center; margin-top:.9rem; }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
                 border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
 button.allbtn:hover { color:var(--fg); border-color:var(--link); }
@@ -4466,8 +4465,22 @@ def _ms(value) -> str:
     return f"{ms}ms" if ms < 1000 else f"{ms / 1000:.1f}s"
 
 
-def render_traces(doc: dict, root: Path, out_dir: Path) -> tuple[str, int]:
+def render_traces(doc: dict, root: Path, out_dir: Path,
+                  touched: set[tuple[str, int]] | None = None) -> tuple[str, int]:
     """Every recorded test, each opening on the trace its own run left behind.
+
+    The branch's own tests first, and the rest of the run folded under them. A run
+    records everything it executed — the chatbot's skipped specs, the guard against a
+    data-reset endpoint, five rows of it — and a reader of *this* review is here for the
+    tests this branch added or changed. `touched` is (file basename, line) pairs out of
+    the test ledger; a row whose test is among them is the branch's, the others are the
+    same session's evidence about code the branch left alone. Without a ledger nothing is
+    known about which is which, and the list is simply the run.
+
+    No strip of steps under the row. It used to list the top-level actions as pills, as a
+    table of contents for the recording; the viewer's own action list is the same list,
+    with the screenshots, and a reader with the viewer open has no use for a second copy
+    of it above the first.
 
     The tests above this say what the branch did to them and whether they went green. The
     question that follows — *what did that test actually do?* — has only ever been
@@ -4494,8 +4507,9 @@ def render_traces(doc: dict, root: Path, out_dir: Path) -> tuple[str, int]:
         here = out_dir.resolve().relative_to(root.resolve())
     except ValueError:
         here = out_dir.resolve()
-    rows = []
+    rows, mine = [], []
     for t in tests:
+        mine.append(bool(touched) and (Path(t.get("file", "")).name, t.get("line")) in touched)
         cls, label = TRACE_STATES.get(t.get("status", ""), ("changed", t.get("status", "ran")))
         where = Path(t.get("file", "")).name + (f':{t["line"]}' if t.get("line") else "")
         titles = "".join(f'<span class="trpath">{html.escape(p)} › </span>'
@@ -4510,9 +4524,6 @@ def render_traces(doc: dict, root: Path, out_dir: Path) -> tuple[str, int]:
             open_test = (f'<a class="srcref testref" href="vscode://file/{src}:{t["line"]}:1"'
                          f' data-tip="{html.escape(t["file"])}">'
                          f'{html.escape(where)}</a>')
-        steps = "".join(
-            f'<span>{html.escape(s.get("title", ""))}<b>{_ms(s.get("duration"))}</b></span>'
-            for s in t.get("steps") or [])
         err = (f'<p class="trerr">{html.escape(t["error"])}</p>') if t.get("error") else ""
         # The command is the answer for a reader holding the page as a file — from the
         # zip, from Pages — where the viewer cannot fetch anything and a frame would be a
@@ -4527,8 +4538,7 @@ def render_traces(doc: dict, root: Path, out_dir: Path) -> tuple[str, int]:
             f'<span class="trname">{titles}{html.escape(t.get("title", ""))}</span>{retry}'
             f'<span class="trwhere">{html.escape(where)} · {_ms(t.get("duration"))}</span>'
             "</summary>"
-            f'<div class="trbody">{open_test}{err}'
-            f'<div class="trsteps">{steps}</div><div class="trframe"></div></div>'
+            f'<div class="trbody">{open_test}{err}<div class="trframe"></div></div>'
             "</details>")
 
     # One line, and only what this run measured. `untraced` is the honest half of the
@@ -4542,7 +4552,14 @@ def render_traces(doc: dict, root: Path, out_dir: Path) -> tuple[str, int]:
     note = (f'<p class="sub">{html.escape(" · ".join(said))}. '
             "Open one to step through it: every action with the page either side of it, "
             "the console, and the network.</p>")
-    return '<div class="traces">' + note + "".join(rows) + "</div>", len(tests)
+    own = [r for r, m in zip(rows, mine) if m]
+    rest = [r for r, m in zip(rows, mine) if not m]
+    if not own or not rest:
+        return '<div class="traces">' + note + "".join(rows) + "</div>", len(tests)
+    return ('<div class="traces">' + note + "".join(own) + "</div>"
+            f'<details class="trmore"><summary>{len(rest)} more recorded in the same run, '
+            "in tests this branch did not touch</summary>"
+            '<div class="traces">' + "".join(rest) + "</div></details>", len(tests))
 
 
 def render_requirements(items, index: dict, root: Path) -> str:
@@ -6239,14 +6256,13 @@ DEMO_ZIP_URL = "https://github.com/victorrentea/human-review/releases/tag/demo"
 #
 # A sibling of the footer sentence, not a clause inside it: that sentence belongs to the
 # content file and an author may write anything there or nothing, while this offer is the
-# build's and is owed to every page it produces. The link's name is the noun — `zip` — for
-# the same reason the button beside it says `show single page`: down here a reader is
-# scanning for a thing to take, not a sentence to read.
+# build's and is owed to every page it produces. The link is the verb — `Download here` —
+# for the same reason the button under it says `show single page`: down here a reader is
+# scanning for a thing to do, not a sentence to read.
 TAKEAWAY = (
-    '<span class="takeaway">Take a finished page home as a '
-    f'<a href="{DEMO_ZIP_URL}" target="_blank" rel="noopener" '
+    f'<span class="takeaway"><a href="{DEMO_ZIP_URL}" target="_blank" rel="noopener" '
     'data-tip="Sample review pages on GitHub, one zip each. Unzip it and open '
-    'review.html — no install, no server.">zip</a>.</span>'
+    'review.html — no install, no server.">Download here</a> a standalone demo zip.</span>'
 )
 
 
@@ -6278,7 +6294,7 @@ RUNNING_STACK = re.compile(r"\s+against the running stack", re.I)
 # agent, not a repository you sit down and re-implement.
 # Whatever it says, it is emitted as HTML and not escaped on the way out, so any `&` put
 # back into it has to be written `&amp;`.
-INVITATION = "Tell your agent to clone and port this to your environment and needs."
+INVITATION = "Tell your agent to adapt this to your environment."
 
 
 def _link_home(footer: str) -> str:
@@ -7009,7 +7025,9 @@ def main(argv=None) -> int:
                             block.get("title", "What this change set did to the tests"))
                     + frag, 1, moved)
         if kind == "traces":
-            frag, n = render_traces(traces_doc, root, out_dir)
+            touched = {(Path(t["path"]).name, t.get("line"))
+                       for t in test_doc.get("tests", []) if t.get("status") != "unchanged"}
+            frag, n = render_traces(traces_doc, root, out_dir, touched)
             if not frag:
                 return "", 0, 0
             # Weight, and no changes — the same call `codecity` and `puml` make. A trace is
@@ -7194,11 +7212,11 @@ def main(argv=None) -> int:
             + "".join(strip) + "</div>"
         )
         # The show-everything toggle is not part of the strip any more (see the CSS): it
-        # is emitted at the foot of the page, on the footer's own line and at the far
-        # right of it. The label says what it does *next* and therefore has to change with
-        # the state, which is what the pressed styling alone could no longer carry once the
-        # button left the strip — down here there is nothing beside it to read the
-        # highlight against.
+        # is emitted at the foot of the page, centred on its own line under the footer's.
+        # The label says what it does *next* and therefore has to change with the state,
+        # which is what the pressed styling alone could no longer carry once the button
+        # left the strip — down here there is nothing beside it to read the highlight
+        # against.
         allbtn_html = (
             '<div class="allbar"><button type="button" class="allbtn" aria-pressed="false" '
             'data-label-off="show single page" data-label-on="back to one tab at a time" '
@@ -7262,7 +7280,7 @@ def main(argv=None) -> int:
 {verdict_html}
 
 {body_html}
-<footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{TAKEAWAY}{allbtn_html}</div></footer>
+<footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{TAKEAWAY}</div>{allbtn_html}</footer>
 </div>
 {SERVER_JS}
 {CAPTION_JS}
