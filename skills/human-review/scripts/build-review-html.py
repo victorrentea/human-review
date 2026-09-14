@@ -4129,6 +4129,26 @@ def _unquoted_note(test_rel: str, root: Path) -> str:
             f'left.</span></p>')
 
 
+def _unchanged_sequence(test_rel: str, root: Path, out_dir: Path) -> str:
+    """The card for a sequence the branch left alone, inside its test's pair.
+
+    The same bare card `render_diagrams` draws for a delta — no title, no provenance line,
+    the test's href on the card for the scenario links — with two differences that are
+    the whole point: the pill says UNCHANGED in the neutral colour a `puml` context block
+    wears, and there is no Diff/New/Old bar, because there is nothing to diff against.
+    The picture is drawn from the committed `.puml` by the `puml` block's own renderer,
+    and the generator's sidecar rides along so the handles in it still expand."""
+    rel = test_rel + ".genseq.puml"
+    cache, why_not = _context_svg(rel, root, out_dir)
+    body = f'<div class="svgbox">{inline_svg(cache, root)}</div>' if cache else why_not
+    return (f'<div class="diagram dgm-bare"'
+            f' data-test-src="vscode://file/{(root / test_rel).resolve()}:1:1">'
+            '<div class="head"><span class="badge sev-info">unchanged</span>'
+            + _source_link(rel, root) + '</div>'
+            + genseq_details(rel, root)
+            + body + '</div>')
+
+
 def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     """Each acceptance test next to the sequence its own run recorded.
 
@@ -4140,11 +4160,16 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     is derived, not authored.
 
     Neither side is ever dropped, and neither is ever given a partner it did not produce.
-    A test with no diagram goes to a trailing group that says exactly that — the more
-    interesting of the two absences, because a tagged test with no recorded trace is a
-    fact about the *evidence* rather than a gap in the page. A diagram whose test is not
-    quoted, or not in this checkout at all, says so under its own heading rather than
-    sitting there looking like it came from nowhere."""
+    The manifest lists only the diagrams this branch *changed*, so a quoted test with no
+    row in it has two different stories, and they are told apart on disk: its
+    `<test>.genseq.puml` is either there, identical to the base — a sequence the branch
+    left alone, paired and marked as such, counted as no delta — or it is not there at
+    all, and the test goes to a trailing group that says exactly that. The second is the
+    more interesting absence, because a tagged test with no recorded trace is a fact about
+    the *evidence* rather than a gap in the page; the first used to be filed under it, and
+    every such page had to be corrected by hand. A diagram whose test is not quoted, or
+    not in this checkout at all, says so under its own heading rather than sitting there
+    looking like it came from nowhere."""
     rows = [r for r in select_rows(manifest_rows, block) if r["kind"] == "sequence"]
     snippets = list(block.get("snippets", []))
     parts, used = [], set()
@@ -4170,6 +4195,15 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
         pieces.append(render_diagrams(merged, root, out_dir, [r], bare=test_rel))
         parts.append(_folded_pair(test_rel, pieces))
 
+    unchanged = 0
+    for test_rel in dict.fromkeys(x["ref"].rpartition(":")[0] for x in snippets
+                                  if id(x) not in used):
+        if not (root / (test_rel + ".genseq.puml")).is_file():
+            continue
+        pieces = take(test_rel) + [_unchanged_sequence(test_rel, root, out_dir)]
+        parts.append(_folded_pair(test_rel, pieces))
+        unchanged += 1
+
     orphaned = [x for x in snippets if id(x) not in used]
     tail = block.get("unpaired") or {}
     if orphaned:
@@ -4193,8 +4227,10 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     head = ((f'<h3 id="{html.escape(block.get("id", "sequences"))}">'
              f'{html.escape(title)}</h3>') if title else "")
     head += f'<p>{block["body"]}</p>' if block.get("body") else ""
+    # Weight counts every exhibit; changes count only the manifest's rows. An unchanged
+    # pair is context, exactly as a `puml` block is, and must not un-strike the tab.
     return ("\n".join(([head] if head else []) + parts) + "\n",
-            len(rows) + len(orphaned), len(rows))
+            len(rows) + unchanged + len(orphaned), len(rows))
 
 
 def select_rows(rows, block) -> list:
@@ -4890,17 +4926,9 @@ def render_puml(block, root: Path, out_dir: Path) -> str:
     the change landed in even on the \u2014 common, and good \u2014 branches that left it alone.
     Rendered here from the committed source, so the page carries no stale SVG."""
     src = root / block["src"]
-    if not src.is_file():
-        return f'<p class="sub">no diagram at <code>{html.escape(block["src"])}</code></p>'
-    cache = out_dir / "assets" / (Path(block["src"]).stem + ".context.svg")
-    cache.parent.mkdir(parents=True, exist_ok=True)
-    if not cache.is_file() or cache.stat().st_mtime < src.stat().st_mtime:
-        out = subprocess.run(["plantuml", "-tsvg", "-pipe"],
-                             input=src.read_bytes(), capture_output=True)
-        if out.returncode != 0 or not out.stdout:
-            return (f'<p class="sub">plantuml could not render '
-                    f'<code>{html.escape(block["src"])}</code> \u2014 is it installed?</p>')
-        cache.write_bytes(out.stdout)
+    cache, why_not = _context_svg(block["src"], root, out_dir)
+    if not cache:
+        return why_not
     return (
         '<div class="diagram">'
         f'<div class="head"><b>{html.escape(block.get("name", src.stem))}</b>'
@@ -4910,6 +4938,28 @@ def render_puml(block, root: Path, out_dir: Path) -> str:
         + _provenance(block["src"], root)
         + f'<div class="svgbox">{inline_svg(cache, root)}</div></div>'
     )
+
+
+def _context_svg(rel: str, root: Path, out_dir: Path):
+    """The committed `.puml` drawn as it stands, cached under assets/ by mtime.
+
+    Returns `(svg_path, "")`, or `(None, <the paragraph to print instead>)`: a missing
+    file and a missing PlantUML are the two ways there is no picture, and each is named
+    rather than swallowed. Shared by the `puml` block and by a test pair whose sequence
+    exists but carried no delta \u2014 the same picture, drawn the same way."""
+    src = root / rel
+    if not src.is_file():
+        return None, f'<p class="sub">no diagram at <code>{html.escape(rel)}</code></p>'
+    cache = out_dir / "assets" / (Path(rel).stem + ".context.svg")
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    if not cache.is_file() or cache.stat().st_mtime < src.stat().st_mtime:
+        out = subprocess.run(["plantuml", "-tsvg", "-pipe"],
+                             input=src.read_bytes(), capture_output=True)
+        if out.returncode != 0 or not out.stdout:
+            return None, (f'<p class="sub">plantuml could not render '
+                          f'<code>{html.escape(rel)}</code> \u2014 is it installed?</p>')
+        cache.write_bytes(out.stdout)
+    return cache, ""
 
 
 # The guide is one of forty tabs the reviewer has open, all of them named after the

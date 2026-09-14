@@ -532,6 +532,34 @@ def test_a_test_with_no_diagram_is_never_dropped(tmp_path):
     assert 'id="tests-nosequence"' in html
 
 
+def test_a_test_whose_sequence_did_not_change_is_paired_and_marked_not_orphaned(tmp_path):
+    """The manifest lists only diagrams the branch changed. A quoted test whose
+    `.genseq.puml` sits beside it, identical to the base, used to land in "no diagram
+    came back" — false, and corrected by hand on every page it happened to. It is a pair:
+    the picture drawn from the committed source, pilled UNCHANGED, with no Diff to offer,
+    and it weighs as context rather than as a delta."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "same.ts").write_text("// x\ntest('untouched', () => {\n  ok();\n});\n")
+    (tmp_path / "same.ts.genseq.puml").write_text("@startuml\n@enduml\n")
+    (tmp_path / "same.ts.genseq.json").write_text('{"version":1,"details":{"h1":{}}}')
+    # The render the `puml` block's own cache would hold, so no PlantUML runs here.
+    cache = tmp_path / "assets" / "same.ts.genseq.context.svg"
+    cache.parent.mkdir()
+    cache.write_text('<svg xmlns="http://www.w3.org/2000/svg"><text>same</text></svg>')
+    block = {"type": "testpairs", "id": "sequences", "kind": "sequence",
+             "snippets": [{"ref": "same.ts:2-4"}],
+             "unpaired": {"id": "tests-nosequence", "title": "No diagram came back"}}
+    html, weight, changes = build.render_testpairs(block, {"manifest": "M.tsv"}, [],
+                                                   tmp_path, tmp_path)
+    assert "No diagram came back" not in html
+    assert '<details class="testpair" open><summary>same.ts</summary>' in html
+    assert '<span class="badge sev-info">unchanged</span>' in html
+    assert "<text>same</text>" in html and "untouched" in html
+    assert "dgmviews" not in html and "dgm-diff" not in html
+    assert "data-test-src=" in html and 'class="genseq-details"' in html
+    assert (weight, changes) == (1, 0)
+
+
 # ── the hand-drawn diagram, read off disk on every build ──────────────────────────
 #
 # The conceptual model is the only picture on this page the report *asks the reader to go
