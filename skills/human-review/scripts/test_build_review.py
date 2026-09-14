@@ -2401,12 +2401,15 @@ def test_a_base_that_has_moved_ahead_is_reported_as_commits_not_as_a_boolean(tmp
 
 
 def test_a_stale_local_ref_is_a_different_sentence_from_a_base_that_moved(tmp_path):
-    """Two failures, two fixes: one is `git merge main`, the other is `git fetch`. Told
-    the wrong one, a reader does the wrong thing and the mark stays."""
+    """Two failures, two fixes: one is `git merge main`, the other is fast-forwarding the
+    local base. Told the wrong one, a reader does the wrong thing and the mark stays —
+    and `git fetch` was the wrong one: the count itself came off the fetched ref, and a
+    fetch never moves the local branch."""
     r = _drifting_repo(tmp_path, local_base_stale=True)
     warning = build.base_warning(build.base_state(r, "main"))
     assert "local main is 1 behind it" in warning
-    assert "git fetch" in warning
+    assert "git branch -f main origin/main" in warning
+    assert "git fetch" not in warning, "the command a reader has already run is not the fix"
     assert "ahead of the fork point" not in warning, \
         "the branch is not forked from behind in this one"
 

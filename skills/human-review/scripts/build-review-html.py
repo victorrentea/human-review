@@ -555,9 +555,13 @@ pre.code code { white-space:pre; }
    more copy to keep in step. */
 .cmlegend { display:flex; gap:1rem; flex-wrap:wrap; margin:.55rem .6rem .1rem;
             color:var(--muted); font-size:.78rem; line-height:1.6; }
-.cmlegend span { display:inline-flex; align-items:center; gap:.4rem; }
-.cmlegend i { width:1.1rem; height:0; border-top:3px solid currentColor;
-              border-radius:2px; flex:none; }
+/* An entry is a run of text with a swatch at its head, not a flex row: made a flex
+   container, it turns each inline <b> in the sentence into a cell of its own, so the
+   to-do row's "turn <b>every</b> line black" came out as four columns with "every"
+   standing alone in one of them. The swatch sits on the text baseline as an
+   inline-block, and the ordinary space after it is the gap. */
+.cmlegend i { display:inline-block; width:1.1rem; height:0; border-top:3px solid currentColor;
+              border-radius:2px; vertical-align:middle; margin-right:.25rem; }
 .cmlegend .new { color:var(--dgm-diff-add); }
 .cmlegend .todo { color:#d7263d; }
 .cmlegend b { color:var(--fg); font-weight:600; }
@@ -6210,8 +6214,12 @@ def base_warning(state: dict | None) -> str | None:
                      "the fork point. Merge or rebase, then rebuild.")
     behind = state.get("localBehind")
     if behind:
+        # Not `git fetch`: the count above was read off the remote-tracking ref, so the
+        # fetch has already happened, and it never moves the local branch anyway. What
+        # closes this gap is fast-forwarding the local branch onto what was fetched.
         parts.append(f"Compared against {state['ref']} ({state['sha'][:8]}); local "
-                     f"{state['localRef']} is {behind} behind it. git fetch.")
+                     f"{state['localRef']} is {behind} behind it. "
+                     f"git branch -f {state['localRef']} {state['ref']}.")
     return " ".join(parts) or None
 
 
