@@ -3113,8 +3113,9 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert "chip.textContent = 'served'" in page
     # Served, the diagram block stops sending the reader to a terminal: the first offer
     # in its sentence becomes one that does the job, and the wording is rewritten to match.
-    assert "say.textContent = 'update this report'" in page
-    assert "querySelector('.rerun-say')" in page
+    # The diagram block reads the same in both worlds; only the hover changes, from what
+    # the button needs to what it does.
+    assert "b.getAttribute('data-tip-served')" in page
     assert "querySelectorAll('.rm-t[data-id]')" in page
     # Served, the 📺 is a link into the viewer in a new window; off disk it copies the
     # show-trace line. The page carries no trace list, no frame, no rows.

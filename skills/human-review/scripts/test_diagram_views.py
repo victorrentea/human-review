@@ -657,8 +657,8 @@ def test_the_command_says_what_it_is_for(tmp_path):
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
     line = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert "pick your edit up" in line and "clicking here" in line
-    assert "running one command in the terminal" in line
+    assert "click here</button> to update the report" in line
+    assert "run this terminal command" in line
 
 
 def test_the_command_itself_is_folded_away_until_it_is_asked_for(tmp_path):
@@ -802,7 +802,8 @@ def test_starting_over_shows_the_command_before_it_offers_to_run_it(tmp_path):
     the `git checkout` that discards the layout, the second one runs it."""
     out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
     sentence = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert "let automation draw it again" in sentence
+    assert "To start over, let automation" in sentence
+    assert "re-draw it again" in sentence
     assert 'data-action="drawio-redraw:conceptual"' not in sentence
     fold = re.search(r'id="redraw-conceptual".*?</div>', out, re.S).group(0)
     assert 'data-action="drawio-redraw:conceptual"' in fold
@@ -821,3 +822,13 @@ def test_a_repository_that_declared_no_redraw_is_offered_none(tmp_path):
     naming convention and running it on a reader's click is not a trade worth making."""
     out = _widget_with(tmp_path, rerun=RERUN)
     assert "start over" not in out and "redraw-conceptual" not in out
+
+
+def test_a_folded_command_is_actually_folded(tmp_path):
+    """`display:flex` on a class beats the browser's own `[hidden] { display:none }`, so
+    both commands were folded in the markup and open on the screen, one under the other —
+    which read as the same line printed twice."""
+    assert ".rerun .cmdline[hidden] { display:none; }" in build.CSS
+    body = build.CSS[build.CSS.index(".rerun .cmdline {"):]
+    assert body.index("[hidden]") < body.index(".rerun code"), \
+        "after the rule it has to beat, or specificity decides it the other way"
