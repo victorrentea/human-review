@@ -1304,7 +1304,7 @@ def test_the_show_all_button_sits_centred_under_the_footer_s_line(tmp_path):
     foot = page[page.index("<footer>"):page.index("</footer>")]
     assert '<div class="footrow">' in foot
     assert foot.index("</div>") < foot.index("allbar"), "the row closes before the button"
-    assert "footer .allbar { text-align:center;" in page
+    assert "footer .allbar { display:flex; justify-content:center;" in page
 
 
 def test_the_footer_offers_the_page_as_a_zip_to_take_away(tmp_path):
@@ -3029,7 +3029,9 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     out, _ = build.render_traces(doc, tmp_path, tmp_path / ".human-review")
     assert 'id="trace-1"' in out and 'data-test="add-visit.spec.ts:52"' in out
     page, _ = _build(tmp_path, BARE)
-    assert '<span class="chip chip-mode" id="hr-mode"' in page
-    assert ">static</span>" in page
+    foot = page[page.index("<footer>"):page.index("</footer>")]
+    assert '<span class="chip chip-mode" id="hr-mode"' in foot, "in the footer, beside the toggle"
+    assert foot.index("hr-mode") < foot.index("allbtn")
+    assert ">static</span>" in foot
     assert "chip.textContent = 'served'" in page
     assert "querySelectorAll('.rm-t[data-id]')" in page

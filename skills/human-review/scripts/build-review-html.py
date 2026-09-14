@@ -998,7 +998,8 @@ button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--acc
    the page's one control — the sentence above keeps its natural width and `flex-wrap`
    still folds the two halves of that sentence on a narrow screen. */
 footer .footrow { display:flex; align-items:baseline; gap:.6rem 1.2rem; flex-wrap:wrap; }
-footer .allbar { text-align:center; margin-top:.9rem; }
+footer .allbar { display:flex; justify-content:center; align-items:center; gap:.6rem;
+                 margin-top:.9rem; }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
                 border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
 button.allbtn:hover { color:var(--fg); border-color:var(--link); }
@@ -6878,16 +6879,6 @@ def main(argv=None) -> int:
             chips.append(COST_CHIP_TOKEN)
             continue
         emit(c)
-    # Which of the two pages this is — served by scripts/serve-review.py, where buttons
-    # run and recordings play in the page, or a static copy (a file, the zip, Pages),
-    # where they copy their command and hand over a `show-trace` line. Every control on
-    # the page already degrades on its own; this is the one place that says which world
-    # the reader is in before they press anything. Emitted as static: the probe in
-    # SERVER_JS promotes it, never the other way round.
-    chips.append(
-        '<span class="chip chip-mode" id="hr-mode" data-tip="A static copy of the page: '
-        'buttons copy their command instead of running it, and recordings open natively, '
-        'not here. Serve it with scripts/serve-review.py to have both.">static</span>')
     chips = "".join(chips)
 
     # This used to require a chip per automated pass — /code-review hunts bugs, /simplify
@@ -7288,8 +7279,21 @@ def main(argv=None) -> int:
         # which is what the pressed styling alone could no longer carry once the button
         # left the strip — down here there is nothing beside it to read the highlight
         # against.
+        # Beside it, which of the two pages this is — served by scripts/serve-review.py,
+        # where buttons run and recordings play in the page, or a static copy (a file,
+        # the zip, Pages), where they copy their command and hand over a `show-trace`
+        # line. Every control on the page already degrades on its own; this is the one
+        # place that says which world the reader is in. Down here and not in the header:
+        # it is a fact about the copy, not about the branch, and the header's chips are
+        # all about the branch. Emitted as static: the probe in SERVER_JS promotes it,
+        # never the other way round.
         allbtn_html = (
-            '<div class="allbar"><button type="button" class="allbtn" aria-pressed="false" '
+            '<div class="allbar">'
+            '<span class="chip chip-mode" id="hr-mode" data-tip="A static copy of the page: '
+            'buttons copy their command instead of running it, and recordings open '
+            'natively, not here. Serve it with scripts/serve-review.py to have both.">'
+            'static</span>'
+            '<button type="button" class="allbtn" aria-pressed="false" '
             'data-label-off="show single page" data-label-on="back to one tab at a time" '
             'data-tip="Every tab on one page. Makes \u2318F search all of it.">'
             "show single page</button></div>"
