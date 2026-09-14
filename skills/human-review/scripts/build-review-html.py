@@ -217,7 +217,8 @@ a { color:var(--link); }
 .chip b { color:var(--fg); font-weight:600; }
 a.chip-link { text-decoration:none; }
 a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
-.chip-served { color:#2e7d32; border-color:#2e7d32; }
+button.chip-mode { font:inherit; font-size:.82rem; cursor:copy; }
+.chip-served { color:#2e7d32; border-color:#2e7d32; cursor:default; }
 /* The per-tab cost breakdown, hung off the one chip that already states the total.
    A caret, not a hover hint: tab headers deliberately carry no tooltips, and a number
    that only appears when a pointer happens to rest on the right pill is a number nobody
@@ -924,7 +925,12 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
     still says this moment is reachable, once something is up. */
 .cue-drive[aria-disabled="true"] { cursor:not-allowed; opacity:.35; }
 .transcript li:hover .cue-drive[aria-disabled="true"] { opacity:.35; }
-.appenv button[aria-disabled="true"] { cursor:not-allowed; opacity:.45; }
+.appenv button[aria-disabled="true"], .appenv .appenv-open[aria-disabled="true"] {
+    cursor:not-allowed; opacity:.45; }
+.appenv .appenv-open { border:1px solid var(--line); border-radius:4px; background:var(--bg);
+    color:var(--fg); padding:.2rem .5rem; text-decoration:none; line-height:1.6; }
+.appenv .appenv-open:not([aria-disabled="true"]):hover { background:var(--accent-soft);
+    color:var(--link); border-color:var(--link); }
 /* A caption is a seek target, so a link inside one has to read as a *different* affordance
     without shouting: the page's own link colour and the dotted underline it already uses
     for .srcref, solid on hover. The click separation is in the script, not here. */
@@ -1352,6 +1358,9 @@ window.HR = (function () {
     if (!chip || !j) return;
     chip.textContent = 'served';
     chip.classList.add('chip-served');
+    // Nothing left to copy: the line it offered is the one that got the reader here.
+    chip.classList.remove('copycmd');
+    chip.removeAttribute('data-copy');
     chip.setAttribute('data-tip', 'Served by the review server: buttons run their command '
       + 'from this page, and recordings play in it.');
   });
@@ -1373,6 +1382,8 @@ APP_ENV_JS = """<script>
   if (!bar) return;
   var input = bar.querySelector('.appenv-base');
   var state = bar.querySelector('.appenv-state');
+  var open = bar.querySelector('.appenv-open');
+  if (open) open.addEventListener('click', function (e) { if (blocked(open)) e.preventDefault(); });
   var links = Array.prototype.slice.call(document.querySelectorAll('a[data-app]'));
   // Per page, not per machine: two review pages describe two branches, and each branch
   // gets its own instance on its own port.
@@ -1406,13 +1417,18 @@ APP_ENV_JS = """<script>
   // so the tooltip saying *why* it cannot be pressed would never appear — which is the
   // whole reason it is greyed rather than hidden.
   function setLive(live, why) {
-    [].forEach.call(document.querySelectorAll('.appenv-reset, .cue-drive'), function (el) {
+    [].forEach.call(document.querySelectorAll('.appenv-reset, .appenv-open, .cue-drive'),
+        function (el) {
       el.setAttribute('aria-disabled', live ? 'false' : 'true');
       el.dataset.tip = live
         ? (el.classList.contains('cue-drive') ? 'Drive the app to this point'
-                                              : 'Put the demo data back to its seed')
+           : el.classList.contains('appenv-open') ? 'Open the running app in a new tab'
+           : 'Put the demo data back to its seed')
         : why;
     });
+    // The href is the base itself, set only while something answers there: a greyed link
+    // that still opened a dead port on a middle-click would be greyed for nothing.
+    if (open) { if (live) open.href = base(); else open.removeAttribute('href'); }
   }
   var blocked = function (el) { return el.getAttribute('aria-disabled') === 'true'; };
 
@@ -2310,8 +2326,13 @@ EDITOR_JS = r"""<script>
     if (!cmd) return;
     var action = cmd.getAttribute('data-action');
     if (action && window.HR.can(action)) { rerun(cmd, action); return; }
+    // The static badge copies a different kind of line: not one that changes this page
+    // and wants a reload, but one that starts the server and opens the page from it.
+    var serve = cmd.id === 'hr-mode';
     copy(cmd.getAttribute('data-copy') || '')
-      .then(function () { flash('Copied \u2014 run it in a terminal, then reload this page'); });
+      .then(function () { flash(serve
+        ? 'Copied \u2014 run it in a terminal: it starts the review server and opens this page served'
+        : 'Copied \u2014 run it in a terminal, then reload this page'); });
   });
 
   function rerun(button, action) {
@@ -4741,6 +4762,12 @@ def runtime_html(rt) -> str:
             + cmdbox
             + '<label>running at <input type="url" class="appenv-base" spellcheck="false"'
               f' placeholder="{html.escape(fallback or "http://localhost:4200")}"></label>'
+            # The way *into* the app, beside the box that says where it is. The links in
+            # the narration each open one page of it; this one opens the front door, in
+            # a tab of its own so the review stays where it was. Dead until the probe has
+            # heard the app answer: a link to a port nothing is listening on is not a link.
+            + '<a class="appenv-open" target="_blank" rel="noopener" aria-disabled="true"'
+              ' data-tip="Start the environment first">\u2197</a>'
             + '<span class="appenv-state" data-state="unknown">checking\u2026</span>'
             + reset + '</div>')
 
@@ -7287,12 +7314,30 @@ def main(argv=None) -> int:
         # it is a fact about the copy, not about the branch, and the header's chips are
         # all about the branch. Emitted as static: the probe in SERVER_JS promotes it,
         # never the other way round.
+        # The static badge is a button, and what it copies is the way out of static: one
+        # line that starts the server on this directory and opens this page from it.
+        # `serve-review.py` prints the URL it ends up serving on — the next free port when
+        # :7654 is already serving another checkout — so the line has to *read* that URL
+        # rather than assume it, which is what the `$(…)` is. Absolute paths on purpose:
+        # this is a fact about the machine the page was built on, like the show-trace
+        # command on every trace row, and a reader on another machine has the zip's own
+        # README for the general recipe.
+        try:
+            here = out_dir.resolve().relative_to(root.resolve())
+        except ValueError:
+            here = out_dir.resolve()
+        serve_cmd = (f'cd {shlex.quote(str(root.resolve()))} && u="$('
+                     f'{shlex.quote(str(HERE / "serve-review.py"))} {shlex.quote(str(here))}'
+                     f' --page {shlex.quote(out_path.name)})" && (open "$u" 2>/dev/null'
+                     ' || xdg-open "$u")')
         allbtn_html = (
             '<div class="allbar">'
-            '<span class="chip chip-mode" id="hr-mode" data-tip="A static copy of the page: '
-            'buttons copy their command instead of running it, and recordings open '
-            'natively, not here. Serve it with scripts/serve-review.py to have both.">'
-            'static</span>'
+            '<button type="button" class="chip chip-mode copycmd" id="hr-mode" '
+            f'data-copy="{html.escape(serve_cmd, quote=True)}" '
+            'data-tip="A static copy of the page: buttons copy their command instead of '
+            'running it, and recordings open natively, not here. Click to copy the line '
+            'that serves this directory and opens the page from it.">'
+            'static</button>'
             '<button type="button" class="allbtn" aria-pressed="false" '
             'data-label-off="show single page" data-label-on="back to one tab at a time" '
             'data-tip="Every tab on one page. Makes \u2318F search all of it.">'

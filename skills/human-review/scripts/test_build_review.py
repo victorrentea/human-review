@@ -148,6 +148,11 @@ def test_the_runtime_bar_carries_the_command_and_the_fallback(tmp_path):
     out = build.video_html(s, tmp_path)
     assert '<div class="appenv" data-fallback="http://localhost:4200"' in out
     assert "./start-docker.sh up --ref abc123" in out
+    # The front door of the app, beside the box that says where it is: a new tab, and
+    # dead until the probe has heard the app answer.
+    assert ('<a class="appenv-open" target="_blank" rel="noopener" aria-disabled="true"'
+            in out)
+    assert out.index("appenv-base") < out.index("appenv-open") < out.index("appenv-state")
     # The reset control is opt-in: the environment has to actually offer an endpoint.
     assert "appenv-reset" not in out and "data-reset" not in out
 
@@ -3030,8 +3035,16 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert 'id="trace-1"' in out and 'data-test="add-visit.spec.ts:52"' in out
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert '<span class="chip chip-mode" id="hr-mode"' in foot, "in the footer, beside the toggle"
+    assert '<button type="button" class="chip chip-mode copycmd" id="hr-mode"' in foot, \
+        "in the footer, beside the toggle"
     assert foot.index("hr-mode") < foot.index("allbtn")
-    assert ">static</span>" in foot
+    assert ">static</button>" in foot
+    # The badge copies the way out of static: serve this directory, open the page from
+    # the URL the server prints — never a port assumed in advance.
+    m = re.search(r'id="hr-mode" data-copy="([^"]+)"', foot)
+    line = html.unescape(m.group(1))
+    assert line.startswith("cd ") and "serve-review.py" in line and "--page review.html" in line
+    assert 'u="$(' in line and 'open "$u"' in line and "7654" not in line
+    assert "chip.removeAttribute('data-copy')" in page, "served: nothing left to copy"
     assert "chip.textContent = 'served'" in page
     assert "querySelectorAll('.rm-t[data-id]')" in page

@@ -43,7 +43,7 @@
         {
           "type": "autofixes",
           "title": "Already fixed for you",
-          "body": "<p>Diffs cut from <code>bf26a0de</code> alone. A fourth was applied and then <b>reverted</b> — it inverted a rule the tests pin deliberately; that is item 9 above.</p>"
+          "body": "<p>Diffs cut from <code>bf26a0de</code> alone. A third was applied and then <b>reverted</b> — it inverted a rule the tests pin deliberately; that is item 9 above.</p>"
         }
       ],
       "tip": "Findings from /code-review and /simplify — an LLM read the diff, so this tab cost tokens."
@@ -389,21 +389,6 @@
     }
   ],
   "autofixes": [
-    {
-      "severity": "high",
-      "title": "Restored the architecture arrow this branch had commented out",
-      "body": "",
-      "refs": [],
-      "source": "/code-review",
-      "why": "<code>PackagesArchTest</code> was red: line 38 had been commented out during a demo, so the arrow the guardrail checks was not in the diagram. Green again.",
-      "diffs": [
-        {
-          "path": "petclinic-backend/docs/packages.puml",
-          "base": "bf26a0de^",
-          "head": "bf26a0de"
-        }
-      ]
-    },
     {
       "severity": "medium",
       "title": "Made the two remaining visit write paths one unit of work — on the public methods, not the private one",
