@@ -3111,6 +3111,12 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert 'u="$(' in line and 'open "$u"' in line and "7654" not in line
     assert "chip.removeAttribute('data-copy')" in page, "served: nothing left to copy"
     assert "chip.textContent = 'served'" in page
+    # And in the tab strip, where a reader picks between several of these — one per
+    # branch, a static copy beside a live one — long before anything in the page is on
+    # screen. Play and not a green dot: green here means a check passed, and a tab that
+    # turned green because a server is up would be saying the branch is fine.
+    assert "document.title = '\u25b6\ufe0f ' + document.title" in page
+    assert "document.title.indexOf('\u25b6') !== 0" in page, "prepended once, not per probe"
     # Served, the diagram block stops sending the reader to a terminal: the first offer
     # in its sentence becomes one that does the job, and the wording is rewritten to match.
     # The diagram block reads the same in both worlds; only the hover changes, from what
