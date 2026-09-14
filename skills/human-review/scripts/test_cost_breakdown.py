@@ -188,6 +188,48 @@ def test_the_chip_stays_an_inert_pill_when_there_is_nothing_to_open():
 
 
 # --------------------------------------------------------------------------- #
+# run_chip_html — the reviewer and the bill, in one pill
+# --------------------------------------------------------------------------- #
+
+REVIEW_HALF = {"label": "Opus 5 review", "href": "#review", "tip": "12 raised",
+               "value": '9 open &middot; <span class="sub">3 autofixed</span>'}
+COST_HALF = {"label": "cost", "value": "$24.87", "tip": "16 turns."}
+PANEL = '<div class="costbreak" id="cost-breakdown" hidden></div>'
+
+
+def test_one_pill_carries_both_halves_with_a_dot_between_them():
+    out = build.run_chip_html(REVIEW_HALF, COST_HALF, PANEL)
+    assert out.count('class="chip') == 1, "two borders is the thing being removed"
+    assert re.search(r"3 autofixed</span></b></span></a>"
+                     r'<span class="dot"[^>]*>&middot;</span>', out), \
+        "the halves are separated by a dot, not by a gap between two pills"
+    assert "9 open" in out and "$24.87" in out
+
+
+def test_the_merged_pill_says_review_once():
+    """Two chips meant two labels, and `review` was in both of them. Counted on the face —
+    hrefs and tooltips may say it as often as they need to."""
+    face = re.sub(r"<[^>]+>", "", build.run_chip_html(REVIEW_HALF, COST_HALF, ""))
+    assert face.count("review") == 1, f"said more than once: {face!r}"
+    assert "cost $24.87" in face, "the half keeps the one word the other does not carry"
+
+
+def test_each_half_keeps_its_own_destination():
+    """The look merges; the two places a reader can be sent do not. The findings and the
+    breakdown are different answers to different questions."""
+    out = build.run_chip_html(REVIEW_HALF, COST_HALF, PANEL)
+    assert '<a class="seg" href="#review">' in out
+    assert 'class="seg chip-cost"' in out and 'aria-controls="cost-breakdown"' in out
+    assert out.index("#review") < out.index("aria-controls"), "findings first, then cost"
+
+
+def test_the_cost_half_is_inert_when_there_is_no_breakdown_to_open():
+    out = build.run_chip_html(REVIEW_HALF, COST_HALF, "")
+    assert "aria-expanded" not in out and "caret" not in out
+    assert "$24.87" in out, "no breakdown still costs the reader nothing but the breakdown"
+
+
+# --------------------------------------------------------------------------- #
 # end to end — a real build, over a real transcript and a real ledger
 # --------------------------------------------------------------------------- #
 
@@ -203,7 +245,18 @@ def _turn(uid: str, when: str, inp: int, out: int) -> str:
 
 
 @pytest.fixture
-def built_page(tmp_path, monkeypatch):
+def built_page(tmp_path):
+    return _build_page(tmp_path, [{"label": "files", "value": "1"}, {"auto": "cost"}])
+
+
+@pytest.fixture
+def merged_page(tmp_path):
+    """The same page with both halves of the run asked for, which is what every real
+    content file asks for — and what the chip is merged for."""
+    return _build_page(tmp_path, [{"auto": "autofixed", "href": "#review"}, {"auto": "cost"}])
+
+
+def _build_page(tmp_path, scope):
     """A page built the way the skill builds it, with the session's transcript and the step
     ledger faked but read through the real code path — subprocess, `git rev-parse`, ledger
     parsing and all. `HOME` is redirected so `review-cost.py` finds our transcript under
@@ -241,7 +294,7 @@ def built_page(tmp_path, monkeypatch):
     content = {
         "title": "cost breakdown", "summary": "<p>s</p>",
         "verdict": {"score": 7, "label": "ok", "bullets": ["b"]},
-        "scope": [{"label": "files", "value": "1"}, {"auto": "cost"}],
+        "scope": scope,
         "findings": [{"title": "f", "body": "b", "severity": "high"}],
         "sections": [{"id": "s", "title": "S", "body": "<p>b</p>"},
                      {"id": "t", "title": "T", "body": "<p>b</p>"},
@@ -317,6 +370,25 @@ def test_the_breakdown_did_not_come_back_as_a_tab_header_tooltip(built_page):
     assert not offenders, (
         "a tab header grew a tooltip again — the per-tab cost has a panel now:\n  "
         + "\n  ".join(offenders))
+
+
+def test_the_built_page_merges_the_run_into_one_chip(merged_page):
+    """The regression this merge can suffer is silent: two chips again, or one chip with
+    the cost half gone. Both are visible from the markup alone."""
+    assert 'class="chip chip-run"' in merged_page
+    assert 'class="seg chip-cost"' in merged_page
+    assert 'class="chip chip-cost"' not in merged_page, "the cost is no longer its own pill"
+    assert "review cost" not in merged_page, \
+        "merged, the left half says `review` for both halves"
+
+
+def test_the_merged_chip_still_opens_the_breakdown(merged_page):
+    """`COST_JS` finds its button by `button.chip-cost`, which the segment keeps precisely
+    so that moving the cost inside another pill does not unhook the panel from it."""
+    assert "querySelector('button.chip-cost')" in merged_page
+    assert 'id="cost-breakdown"' in merged_page
+    assert re.search(r'<span class="chip chip-run">.*?<button[^>]*class="seg chip-cost"',
+                     merged_page, re.S)
 
 
 def test_the_breakdown_needs_no_network(built_page):

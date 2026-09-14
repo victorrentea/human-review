@@ -227,9 +227,25 @@ button.chip-mode { font:inherit; font-size:.82rem; cursor:copy; }
 button.chip-cost { font:inherit; font-size:.82rem; cursor:pointer; }
 button.chip-cost .caret { display:inline-block; margin-left:.3rem; font-size:.62em;
         opacity:.65; transform:rotate(0deg); transition:transform 120ms ease; }
-button.chip-cost:hover { border-color:var(--link); }
-button.chip-cost[aria-expanded="true"] { border-color:var(--link); background:var(--accent-soft); }
+button.chip.chip-cost:hover { border-color:var(--link); }
+button.chip.chip-cost[aria-expanded="true"] { border-color:var(--link); background:var(--accent-soft); }
 button.chip-cost[aria-expanded="true"] .caret { transform:rotate(90deg); }
+/* One run, one pill. Who reviewed and what the reviewing cost were two chips side by side,
+   and the border between them read as two measurements of two different things -- they are
+   the same run, counted twice over, and the word `review` was on both. Merged, the model is
+   named once and the money follows the findings after a dot. Only the frame was dropped:
+   inside, each half is still its own control, the left one jumping to the findings and the
+   right one opening the per-tab breakdown. The hover therefore lives on the halves and
+   never on the pill -- lighting the whole border while the pointer is over half of it
+   promises a click that the other half does not perform. */
+.chip-run { display:inline-flex; align-items:baseline; gap:.34rem; }
+.chip-run .seg { font:inherit; color:inherit; background:none; border:0; padding:0;
+        text-decoration:none; }
+.chip-run button.seg { cursor:pointer; }
+.chip-run .seg:hover, .chip-run .seg:hover b { color:var(--link); }
+.chip-run .dot { opacity:.55; }
+.chip-run:has(button.chip-cost[aria-expanded="true"]) { border-color:var(--link);
+        background:var(--accent-soft); }
 /* `order` rather than markup position: the panel is emitted right after its own chip so
    the two travel together, but a chip authored *after* the cost chip must not be shoved
    onto a second line by a full-width block landing between them. */
@@ -6479,23 +6495,82 @@ def cost_breakdown_html(costs: dict | None, tabs: list[dict]) -> str:
     )
 
 
+def chip_face(c: dict) -> str:
+    """A chip's own words: the label it was given and the value it measured. Shared by
+    every renderer below so that a chip which moves house — the cost chip becoming half of
+    the run chip — cannot pick up different markup on the way."""
+    return f'{html.escape(c["label"])} <b>{c["value"]}</b>'
+
+
+def chip_html(c: dict) -> str:
+    """One resolved chip, as the scope bar renders it: a link when it has somewhere to
+    send the reader, an inert pill otherwise."""
+    inner = chip_face(c)
+    if c.get("tip"):
+        inner = f'<span data-tip="{html.escape(c["tip"])}">{inner}</span>'
+    if c.get("href"):
+        return (f'<a class="chip chip-link" href="{html.escape(c["href"])}"'
+                f'{" target=_blank" if c["href"].startswith("http") else ""}>{inner}</a>')
+    return f'<span class="chip">{inner}</span>'
+
+
+def _cost_tip(tip: str) -> str:
+    return f"{tip} Click to break it down per tab." if tip else "The cost, tab by tab."
+
+
 def cost_chip_html(c: dict, panel: str) -> str:
-    """The aggregate cost chip — a plain pill on its own, a disclosure button once there
-    is a breakdown behind it. The caret is the whole point: the chip has to *look* like it
-    opens something, because nothing else on the page announces that the number decomposes.
+    """The aggregate cost chip standing alone — the shape the bar takes when the content
+    file asks for the cost without a review chip to merge it into. A plain pill on its own,
+    a disclosure button once there is a breakdown behind it. The caret is the whole point:
+    the chip has to *look* like it opens something, because nothing else on the page
+    announces that the number decomposes.
     """
     tip = c.get("tip") or ""
-    inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
+    inner = chip_face(c)
     if not panel:
         if tip:
             inner = f'<span data-tip="{html.escape(tip)}">{inner}</span>'
         return f'<span class="chip">{inner}</span>'
-    tip = f"{tip} Click to break it down per tab." if tip else "The cost, tab by tab."
     return (
         f'<button type="button" class="chip chip-cost" aria-expanded="false" '
-        f'aria-controls="{COST_PANEL_ID}" data-tip="{html.escape(tip)}">{inner}'
+        f'aria-controls="{COST_PANEL_ID}" data-tip="{html.escape(_cost_tip(tip))}">{inner}'
         f'<span class="caret" aria-hidden="true">▸</span></button>{panel}'
     )
+
+
+def run_chip_html(review: dict, cost: dict, panel: str) -> str:
+    """The review run in one pill: who reviewed and what they found, a dot, what it cost.
+
+    These were two chips — `Opus 5 review  9 open · 2 autofixed` and `review cost  $24.87`
+    — which said `review` twice and drew a border between two halves of a single fact. One
+    pill, one dot, and the cost keeps only the word the left half does not already say.
+
+    The halves stay separate elements on purpose. An `<a>` and a `<button>` inside one
+    border is the only way to merge the look without merging the destinations: the findings
+    and the breakdown are two different places, and a reader who clicks the number they are
+    reading must land where that number points.
+    """
+    left = chip_face(review)
+    if review.get("tip"):
+        left = f'<span data-tip="{html.escape(review["tip"])}">{left}</span>'
+    href = review.get("href")
+    left = (f'<a class="seg" href="{html.escape(href)}">{left}</a>' if href
+            else f'<span class="seg">{left}</span>')
+
+    right = chip_face(cost)
+    tip = cost.get("tip") or ""
+    if panel:
+        right = (f'<button type="button" class="seg chip-cost" aria-expanded="false" '
+                 f'aria-controls="{COST_PANEL_ID}" '
+                 f'data-tip="{html.escape(_cost_tip(tip))}">{right}'
+                 f'<span class="caret" aria-hidden="true">▸</span></button>')
+    elif tip:
+        right = f'<span class="seg" data-tip="{html.escape(tip)}">{right}</span>'
+    else:
+        right = f'<span class="seg">{right}</span>'
+
+    return (f'<span class="chip chip-run">{left}'
+            f'<span class="dot" aria-hidden="true">&middot;</span>{right}</span>{panel}')
 
 
 def validate(spec: dict, out_dir: Path) -> list[str]:
@@ -7015,7 +7090,14 @@ def main(argv=None) -> int:
     # section further down) or coloured (+added / -removed), and escaping would kill both.
     chips = []
     cost_scope_chip = None      # resolved here, rendered once the tab list is final
+    run_scope_chip = None       # its left half, when the two are merged into one pill
     scope = spec.get("scope", [])
+    # Who reviewed and what the review cost are two halves of one sentence about one run,
+    # so when the content file asks for both they are rendered as one chip. Decided up
+    # front rather than at each chip, because either can be written first and the merged
+    # pill takes the place of whichever comes first.
+    merge_run = (any(c.get("auto") == "autofixed" for c in scope)
+                 and any(c.get("auto") == "cost" for c in scope))
 
     # Where the base actually is, asked once: the diffstat chip measures against it and
     # the ref chip warns about it, and those two must never be talking about different
@@ -7039,16 +7121,7 @@ def main(argv=None) -> int:
         """Render one resolved chip. Shared so that a chip which expands into several --
         `diffstat` becomes `files` and `lines` -- cannot pick up different markup than
         the ones written by hand beside it."""
-        inner = f'{html.escape(c["label"])} <b>{c["value"]}</b>'
-        if c.get("tip"):
-            inner = f'<span data-tip="{html.escape(c["tip"])}">{inner}</span>'
-        if c.get("href"):
-            chips.append(
-                f'<a class="chip chip-link" href="{html.escape(c["href"])}"'
-                f'{" target=_blank" if c["href"].startswith("http") else ""}>{inner}</a>'
-            )
-        else:
-            chips.append(f'<span class="chip">{inner}</span>')
+        chips.append(chip_html(c))
 
     for c in scope:
         # The other chip that must never be typed. `{"auto": "autofixed"}` counts the two
@@ -7104,6 +7177,13 @@ def main(argv=None) -> int:
                                   total),
             }
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
+            if merge_run:
+                # Held like the cost chip beside it, and for the same reason: the pill the
+                # two share cannot be built until the tab list is final, because whether
+                # its right half is a button depends on there being a breakdown to open.
+                run_scope_chip = c
+                chips.append(COST_CHIP_TOKEN)
+                continue
         # A chip that has to be kept up to date by hand is a chip that will be wrong. The
         # cost of the run is the extreme case: it is still changing while the page is being
         # written, so it is computed here, at build time, and never typed into the content
@@ -7143,11 +7223,17 @@ def main(argv=None) -> int:
                 c["value"] = str(c["value"])[:m.start()].strip()
                 c["tip"] = f'{tokens} — {c["tip"]}' if c.get("tip") else tokens
             c["label"] = c["label"].replace("this review cost", "review cost")
+            # Merged, the pill already opens with `Opus 5 review`, so `review cost $24.87`
+            # would say the word a second time three inches to its right. The half keeps
+            # the one word the other half does not carry.
+            if merge_run:
+                c["label"] = "cost"
             # Held, not rendered: the chip becomes a button that opens the per-tab
             # breakdown, and whether there is a breakdown to open is only known after the
             # tab list has been built and its empty tabs dropped.
             cost_scope_chip = c
-            chips.append(COST_CHIP_TOKEN)
+            if not merge_run:
+                chips.append(COST_CHIP_TOKEN)
             continue
         emit(c)
     chips = "".join(chips)
@@ -7627,7 +7713,15 @@ def main(argv=None) -> int:
     # The slot the scope bar left open. A build that measured nothing still gets its chip —
     # as the inert pill it always was — so a missing breakdown costs the reader the
     # breakdown, never the total.
-    if cost_scope_chip is not None:
+    if run_scope_chip is not None and cost_scope_chip is not None:
+        chips = chips.replace(
+            COST_CHIP_TOKEN,
+            run_chip_html(run_scope_chip, cost_scope_chip, cost_panel_html))
+    elif run_scope_chip is not None:
+        # The run measured nothing — no session to ask, so `{"auto": "cost"}` dropped out
+        # — and the left half is the whole chip, in the shape it had before the merge.
+        chips = chips.replace(COST_CHIP_TOKEN, chip_html(run_scope_chip))
+    elif cost_scope_chip is not None:
         chips = chips.replace(COST_CHIP_TOKEN,
                               cost_chip_html(cost_scope_chip, cost_panel_html))
 
