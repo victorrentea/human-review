@@ -2706,6 +2706,17 @@ def test_the_diff_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
     assert f">{rel}<" not in head, "the ceremony is on hover, not in the face"
 
 
+def test_a_text_tooltip_stays_on_one_row_and_wraps_only_when_the_row_would_not_fit():
+    """The 22rem wrap folded "Open in VS Code: petclinic-test/src/add-visit.spec.ts" in
+    the middle of the file name. A path is read at a glance or not at all, so a plain-text
+    tip goes on one row as wide as the screen allows; only a row wider than the viewport
+    falls back to the wrapping box, and markup tips (lists) always wrap."""
+    js = build.TIP_JS
+    assert ".tip.oneline{white-space:nowrap;max-width:calc(100vw - 16px)}" in js
+    assert "bubble.classList.toggle('oneline', !html)" in js
+    assert "bubble.scrollWidth > window.innerWidth - 16) bubble.classList.remove('oneline')" in js
+
+
 def test_a_file_at_the_repo_root_gets_no_tooltip_repeating_its_own_name(tmp_path):
     r = _repo_with_a_buried_file(tmp_path)
     head = build.diff_html("README.md", "HEAD^", r, head="HEAD").split("</div>")[0]

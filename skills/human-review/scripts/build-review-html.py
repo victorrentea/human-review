@@ -1631,6 +1631,13 @@ TIP_JS = """<script>
     'overflow-wrap:anywhere;' +
     'opacity:0;transform:translateY(4px);transition:opacity 120ms ease,transform 120ms ease}' +
     '.tip.visible{opacity:1;transform:translateY(0)}' +
+    // `.oneline` is the first thing tried for a plain-text tip: the whole label on one
+    // row, as wide as it needs to be, up to the viewport. The 22rem wrap above had been
+    // folding "Open in VS Code: petclinic-test/src/add-visit.spec.ts" in the middle of
+    // the file name -- and a path broken across rows is a path the reader cannot read
+    // at a glance, which is the one job that tip has. `show()` drops the class again
+    // when the row would not fit, so a paragraph-sized hint still wraps.
+    '.tip.oneline{white-space:nowrap;max-width:calc(100vw - 16px)}' +
     // A tip that lists identifiers lists them: one per line, in code type, with a marker
     // -- not welded into a comma-separated sentence the reader has to parse to find out
     // whether their own library is in it. `.tipfoot` is for the sentence that genuinely
@@ -1701,6 +1708,11 @@ TIP_JS = """<script>
     current = el;
     if (html) bubble.innerHTML = html; else bubble.textContent = text;
     bubble.classList.remove('visible');
+    // One row when the row fits the screen; otherwise back to the wrapping box. Measured,
+    // not guessed from the character count: a path and a sentence of the same length are
+    // very different widths. Markup tips (lists) always wrap.
+    bubble.classList.toggle('oneline', !html);
+    if (!html && bubble.scrollWidth > window.innerWidth - 16) bubble.classList.remove('oneline');
     place(el);
     timer = setTimeout(function () {
       if (current !== el) return;
