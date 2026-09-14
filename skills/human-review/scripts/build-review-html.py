@@ -1023,6 +1023,14 @@ body.showall .panel:first-of-type { border-top:0; }
    evidence for the test directly above it. One ruled edge holds the pair together. */
 .testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
 .testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
+/* The quoted test and the diagram under it are one card in two halves — the test, then
+   the test drawn as a sequence. The snippets stack with no air between them and the
+   diagram continues straight down from the last one; only the outer corners are round.
+   A closed fold leaves the diagram standing alone, so it gets its own top edge back. */
+.testpair > .testcode .snippet { margin:0; border-radius:0; }
+.testpair > .testcode .snippet + .snippet { border-top:0; }
+.testpair > .testcode > summary + .snippet { border-radius:8px 8px 0 0; }
+.testpair > .testcode[open] + .diagram { margin-top:0; border-top:0; border-radius:0 0 8px 8px; }
 .testlead { margin:0; }
 /* The fold over a pair's quoted test. Quiet on purpose: it is a control for getting the
    source out of the way while comparing two diagrams, not a heading competing with the

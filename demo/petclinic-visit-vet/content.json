@@ -113,8 +113,12 @@
           "title": "",
           "snippets": [
             {
-              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:51-60,124-155",
-              "caption": "MockMvc, an embedded Postgres, no browser — the cheapest layer that still crosses a real controller, a real transaction and a real Hibernate session. Each <code>given</code>/<code>when</code>/<code>then</code> is an arrow on the diagram's Test lifeline, and clicking it opens the line that wrote it."
+              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:80-106",
+              "caption": "The scenario that was already here, one layer below the browser: MockMvc, an embedded Postgres, no Chromium — the cheapest layer that still crosses a real controller, a real transaction and a real Hibernate session. Each <code>given</code>/<code>when</code>/<code>then</code> is an arrow on the diagram's Test lifeline, and clicking it opens the line that wrote it."
+            },
+            {
+              "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitSequenceTest.java:145-179",
+              "caption": "This branch's scenario: the vet is chosen from <code>GET /api/vets</code>, travels as <code>vetId</code> on the POST, and comes back by name on the pet's history — the extra boundary crossing the diagram draws in green."
             },
             {
               "ref": "petclinic-test/src/add-visit.spec.ts:35-48",
@@ -596,5 +600,6 @@
         }
       ]
     }
-  ]
+  ],
+  "playwrightTraces": "assets/traces.json"
 }
