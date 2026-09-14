@@ -3062,31 +3062,29 @@ def test_shift_wheel_scrolls_a_wide_block_sideways():
     assert "{HSCROLL_JS}" in src            # and it is actually emitted into the page
 
 
-def test_the_traces_put_the_branch_s_own_tests_first_and_fold_the_rest_of_the_run(tmp_path):
-    """A run records everything it executed. The reader is here for the tests this branch
-    touched, so those rows come first, on their own, and the rest of the session sits
-    under one fold that says how many and whose they are. No step strip under a row: the
-    viewer's action list is that list, with the screenshots."""
+def test_the_recordings_are_a_registry_the_tv_reads_not_a_list(tmp_path):
+    """There used to be a list of rows here, one per recording, each framing the viewer.
+    Every word on it was already on the covering-tests map, so what is emitted now is
+    only the registry the 📺 on those rows reads: the viewer, and per test the key the
+    map uses, the zip, and the line that opens it natively off disk."""
     doc = {"recorded": 3, "omitted": 0, "untraced": 0, "viewer": "assets/tv/index.html",
            "tests": [
                {"title": "guards the reset route", "file": "guard.spec.ts", "line": 5,
-                "status": "passed", "duration": 40, "trace": "t/1.zip",
-                "steps": [{"title": "Navigate to \"/\"", "duration": 14}]},
-               {"title": "adds a visit with a vet", "file": "add-visit.spec.ts", "line": 52,
-                "status": "passed", "duration": 4000, "trace": "t/2.zip", "steps": []},
-               {"title": "skipped one", "file": "chat.spec.ts", "line": 20,
-                "status": "skipped", "duration": 0, "trace": "t/3.zip", "steps": []},
+                "status": "passed", "duration": 40, "trace": "t/1.zip"},
+               {"title": "adds a visit with a vet", "file": "src/add-visit.spec.ts",
+                "line": 52, "status": "passed", "duration": 4000, "trace": "t/2.zip"},
+               {"title": "ran with tracing off", "file": "chat.spec.ts", "line": 20,
+                "status": "skipped", "duration": 0},
            ]}
     out, n = build.render_traces(doc, tmp_path, tmp_path / ".human-review",
                                  {("add-visit.spec.ts", 52)})
-    assert n == 3
-    assert out.index("adds a visit with a vet") < out.index("<details class=\"trmore\">")
-    assert "2 more recorded in the same run, in tests this branch did not touch" in out
-    assert out.index("trmore") < out.index("guards the reset route") < out.index("skipped one")
-    assert "trsteps" not in out and "Navigate to" not in out
-    # No ledger, or a ledger that names none of them: the list is simply the run.
-    flat, _ = build.render_traces(doc, tmp_path, tmp_path / ".human-review", set())
-    assert "trmore" not in flat and flat.count("<details class=\"trace\"") == 3
+    assert out.startswith('<script type="application/json" id="hr-traces">')
+    assert "<details" not in out and "Step through" not in out and "adds a visit" not in out
+    reg = json.loads(re.search(r">(\{.*\})</script>", out).group(1))
+    assert reg["viewer"] == "assets/tv/index.html"
+    assert [e["test"] for e in reg["tests"]] == ["guard.spec.ts:5", "add-visit.spec.ts:52"]
+    assert n == 2, "a test with no trace is not a recording"
+    assert reg["tests"][1]["cmd"] == "npx playwright show-trace .human-review/t/2.zip"
 
 
 def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_this_is(tmp_path):
@@ -3098,7 +3096,7 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
            "tests": [{"title": "adds a visit", "file": "src/add-visit.spec.ts", "line": 52,
                       "status": "passed", "duration": 10, "trace": "t/1.zip"}]}
     out, _ = build.render_traces(doc, tmp_path, tmp_path / ".human-review")
-    assert 'id="trace-1"' in out and 'data-test="add-visit.spec.ts:52"' in out
+    assert '"test": "add-visit.spec.ts:52"' in out
     page, _ = _build(tmp_path, BARE)
     row = page[page.index('<div class="titlerow'):page.index("</div>", page.index('<div class="titlerow'))]
     assert '<button type="button" class="chip chip-mode copycmd" id="hr-mode"' in row, \
@@ -3118,7 +3116,8 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert "say.textContent = 'update this report'" in page
     assert "querySelector('.rerun-say')" in page
     assert "querySelectorAll('.rm-t[data-id]')" in page
-    # Each recorded row offers the viewer in a window of its own: the same URL the frame
-    # loads, opened in a new tab, and only where the page is served.
-    assert "a.className = 'tropen'" in page and "summary .trwhere" in page
-    assert "location.protocol === 'file:') return;" in page
+    # Served, the 📺 is a link into the viewer in a new window; off disk it copies the
+    # show-trace line. The page carries no trace list, no frame, no rows.
+    assert "'Open test replay in a new window'" in page
+    assert "tv.target = '_blank'" in page and "copy(t.cmd)" in page
+    assert "traceview" not in page and 'class="traces"' not in page

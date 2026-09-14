@@ -350,47 +350,10 @@ span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
    itself. The row is deliberately the same furniture as a ledger row — the same flag
    column, the same `.tloc` — because it is the same test seen from a different angle,
    and a second vocabulary for "this one failed" would be a second thing to learn. */
-.traces { display:grid; gap:.3rem; margin:.7rem 0 1rem; }
-details.trace { border:1px solid var(--line); border-radius:8px; background:var(--card); }
-details.trace > summary { list-style:none; cursor:pointer; padding:.42rem .6rem;
-        display:flex; align-items:baseline; gap:.4rem; font-size:.93rem; }
-details.trace > summary::-webkit-details-marker { display:none; }
-details.trace > summary::before { content:"\\25b8"; color:var(--muted);
-        display:inline-block; width:.7rem; transition:transform .12s ease; }
-details.trace[open] > summary::before { transform:rotate(90deg); }
-details.trace > summary:hover { background:var(--code-bg); border-radius:8px; }
-.trname { font-weight:600; }
-.trpath { color:var(--muted); font-weight:400; }
-/* Pushed to the right edge: the duration and the file are what a reader scans DOWN the
-   column for, and a ragged right edge makes that scan a hunt. */
-.trwhere { margin-left:auto; color:var(--muted); font-size:11.5px;
-        font-variant-numeric:tabular-nums; }
-.trbody { padding:0 .6rem .55rem 1.3rem; display:grid; gap:.45rem; }
-/* The way out of the column, at the end of the row: quiet like the timing beside it,
-   the page's link colour once the pointer says it is wanted. */
-.trwhere .tropen { margin-left:.6rem; color:var(--muted); text-decoration:none;
-        font-size:13px; line-height:1; }
-.trwhere .tropen:hover { color:var(--link); }
-/* The rest of the run, folded. The rows above it are the tests this branch touched; the
-   ones under here ran in the same session and were recorded the same way, and a reader
-   who has just watched the branch's own tests is the only one who wants them. */
-details.trmore { margin-top:.5rem; }
-/* The 📺 a covering-tests row wears when the run recorded that test. A link, so it has
-   an address the reader can copy; the click itself opens the row it points at. */
+/* The 📺 a covering-tests row wears when the run recorded that test. Served, it opens
+   the replay in a window of its own; off disk it copies the line that does. */
 .rm-tv { flex:0 0 auto; text-decoration:none; font-size:12px; line-height:1; }
 .rm-tv:hover { filter:brightness(1.2); }
-details.trmore > summary { cursor:pointer; color:var(--muted); font-size:.85rem;
-        padding:.2rem 0; }
-details.trmore > summary:hover { color:var(--link); }
-details.trmore > .traces { margin-top:.3rem; }
-.trerr { margin:0; color:#c62828; font:.84rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
-        white-space:pre-wrap; }
-@media (prefers-color-scheme: dark) { .trerr { color:#f08a8a; } }
-/* Tall on purpose. The viewer is a three-pane application — actions, snapshot, and the
-   network/console tabs under it — and in anything shorter the snapshot pane, which is
-   the point of the whole thing, comes out as a letterbox. */
-iframe.traceview { width:100%; height:78vh; min-height:520px; border:1px solid var(--line);
-        border-radius:6px; background:var(--card); }
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
@@ -599,6 +562,10 @@ pre.code code { white-space:pre; }
 .rerun { margin:.6rem .6rem .1rem; font-size:.78rem; color:var(--muted); line-height:1.6; }
 .rerun .dgm-open { margin:0; }
 .rerun .cmdline { display:flex; align-items:flex-start; gap:.5rem; margin-top:.35rem; }
+/* `display:flex` on a class beats the browser's own `[hidden] { display:none }`, so a
+   folded command was folded in the markup and open on the screen — both of them, one
+   under the other, reading as the same line printed twice. Specificity, not the fold. */
+.rerun .cmdline[hidden] { display:none; }
 .rerun code { flex:1; min-width:0; overflow-x:auto; white-space:pre; display:block;
               background:var(--code-bg); border:1px solid var(--rule); border-radius:5px;
               padding:.4rem .55rem; font-size:.94em; }
@@ -614,10 +581,10 @@ pre.code code { white-space:pre; }
               font-weight:600; background:none; border:0; padding:0;
               text-decoration:underline; text-underline-offset:2px; }
 .rerun .dgm-open .runhere:hover, .rerun .cmdpeek:hover { text-decoration-thickness:2px; }
-/* The offer that throws work away is the one sentence here that does not read as part of
-   the flow: a middot's worth of air before it, and the muted colour it inherits, so it is
-   found by the reader who wants it rather than met by the reader who does not. */
-.rerun .rerun-redraw::before { content:"\\00a0\\00a0\\00b7\\00a0\\00a0"; }
+/* A sentence of its own, and a sentence's worth of air before it: the offer that throws
+   work away is found by the reader who goes looking for it rather than met by the reader
+   who does not. */
+.rerun .rerun-redraw::before { content:"\\00a0\\00a0"; }
 /* The fold's own state, said by the chevron and nothing else: a command box that is open
    is on screen, and a second word saying so would be the page narrating itself. */
 .rerun .cmdpeek::after { content:" \\2304"; text-decoration:none; display:inline-block; }
@@ -945,6 +912,10 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
     background, so it reads as the address the row just reported. */
 .appenv input[readonly] { border-color:transparent; background:transparent;
     color:var(--link); width:auto; min-width:11rem; padding-left:0; }
+/* Read-only and empty: there is no address, and the placeholder standing in for one
+    beside the word `offline` reads as a URL that is up. `:placeholder-shown` is exactly
+    "this field has no value", which is the condition. */
+.appenv input[readonly]:placeholder-shown { display:none; }
 /* Off disk nothing in this row can be *started*, and the row says so by stepping back —
     the command below it is the only route, and it takes the emphasis instead. Dimmed
     rather than hidden: Open, Reset and every cue's play glyph still work here the moment
@@ -1410,20 +1381,13 @@ window.HR = (function () {
     chip.removeAttribute('data-copy');
     chip.setAttribute('data-tip', 'Served by the review server: buttons run their command '
       + 'from this page, and recordings play in it.');
-    // The diagram blocks: off disk the first offer in the sentence is a button that can
-    // only explain itself, so it is worded as the modest one. Here it does the job, and
-    // the sentence says so — the fold at the end keeps the terminal route for whoever
-    // still wants it.
-    //
-    // "update this report" and not "re-render and reload this report": the reader knows
-    // what they want to happen, and naming the two stages spends the middle of the
-    // sentence on how the page is built. The stages are still there for anyone who opens
-    // the fold, where they are the command rather than a description of one.
+    // The diagram blocks read the same in both worlds — "click here to update the report"
+    // is what the reader wants either way, and a sentence that is quietly different in the
+    // two copies of the same report teaches them the report is unreliable. Only the hover
+    // changes: off disk the button explains what it needs, here it says what it does.
     [].forEach.call(document.querySelectorAll('.rerun button.runhere[data-action]'),
         function (b) {
       if (!can(b.getAttribute('data-action'))) return;
-      var say = b.closest('.rerun').querySelector('.rerun-say');
-      if (say) say.textContent = 'update this report';
       b.setAttribute('data-tip', b.getAttribute('data-tip-served')
         || b.getAttribute('data-tip'));
     });
@@ -1873,102 +1837,36 @@ window.addEventListener('message', function (e) {
 
 
 TRACE_JS = """<script>
-// The Playwright trace viewer, brought up inside the row that names the test.
+// The 📺 on a covering-tests row whose test was recorded: the way into the recording.
 //
-// Lazily, and never twice: each frame is a browser application that fetches a
-// multi-megabyte zip and unpacks it in a service worker, so building all of them at page
-// load would spend the reader's memory on eleven recordings they did not ask for. The
-// first `open` builds one; every open after that finds it already there.
+// Served, it is a link to the Playwright trace viewer copied beside this page, opened in
+// a window of its own — the viewer is a three-pane application and gets the whole
+// screen, where the review page keeps its place in this one. The viewer reads the
+// recording with `fetch`, so a page opened off disk — out of the downloadable zip, or
+// straight from `.human-review/` — has nothing to hand it, not even a file sitting
+// beside it. There the 📺 copies the line that opens the same recording natively.
 //
-// The `file:` branch is the whole reason the frame is not in the markup. The viewer reads
-// the trace with `fetch`, and a page opened off disk — out of the downloadable zip, or
-// straight from `.human-review/` — can fetch nothing, not even a file sitting beside it.
-// There the honest thing on screen is the command that opens the same recording natively,
-// not a frame that will sit blank while the reader waits for it.
+// The registry is written per build by `render_traces`; the map's rows are drawn by its
+// own inline script and do not know what the run recorded, and should not have to. So
+// the pairing is done here, from the outside, after the map has drawn.
 (function () {
-  function fill(det) {
-    var slot = det.querySelector('.trframe');
-    if (!slot || slot.getAttribute('data-filled')) return;
-    slot.setAttribute('data-filled', '1');
-    var zip = det.getAttribute('data-trace');
-    var viewer = det.getAttribute('data-viewer');
-    if (viewer && location.protocol !== 'file:') {
-      var f = document.createElement('iframe');
-      f.className = 'traceview';
-      f.setAttribute('loading', 'lazy');
-      // Absolute, because the viewer resolves `?trace=` against its own document and not
-      // against ours: a relative path would be looked for inside the viewer's folder.
-      f.src = viewer + '?trace=' + encodeURIComponent(new URL(zip, location.href).href);
-      slot.appendChild(f);
-      return;
-    }
-    var cmd = det.getAttribute('data-cmd') || '';
-    // `.rerun` is the page's existing dress for "a line to run in a terminal, with the
-    // button that copies it" — the box, the mono line, the button and its hover are all
-    // scoped under it, so the fallback is wrapped in one rather than given a second set
-    // of rules that would drift from the first.
-    var box = document.createElement('div');
-    box.className = 'rerun';
-    var note = document.createElement('p');
-    note.style.margin = '0';
-    note.textContent = viewer
-      ? 'This page is open as a file, so the viewer cannot read the recording. Serve it ' +
-        '(scripts/serve-review.py) to step through it here, or open it natively:'
-      : 'No trace viewer was copied next to this page. Open the recording natively:';
-    var line = document.createElement('div');
-    line.className = 'cmdline';
-    var code = document.createElement('code');
-    code.textContent = cmd;
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'copycmd';
-    btn.setAttribute('data-copy', cmd);
-    btn.setAttribute('data-tip', 'Copy the command');
-    btn.textContent = 'Copy';
-    line.appendChild(code); line.appendChild(btn);
-    box.appendChild(note); box.appendChild(line);
-    slot.appendChild(box);
-  }
-  // The same viewer, in a window of its own. The frame is 78vh inside a column of text,
-  // and stepping through forty actions in it means scrolling the page to keep the pane in
-  // view; the URL the frame loads is a whole page already, so the ↗ on the row opens that
-  // page in a new tab and the recording gets the full window. Served only, for the same
-  // reason the frame is: off disk the viewer has nothing it can fetch.
-  function popout(det) {
-    var zip = det.getAttribute('data-trace'), viewer = det.getAttribute('data-viewer');
-    if (!viewer || location.protocol === 'file:') return;
-    var a = document.createElement('a');
-    a.className = 'tropen';
-    a.href = viewer + '?trace=' + encodeURIComponent(new URL(zip, location.href).href);
-    a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = '\u2197';
-    a.setAttribute('data-tip', 'Open this recording in a new window');
-    // A click inside a <summary> also toggles the row; this one is only the link.
-    a.addEventListener('click', function (ev) {
-      ev.preventDefault(); ev.stopPropagation(); window.open(a.href, '_blank', 'noopener');
-    });
-    var where = det.querySelector('summary .trwhere');
-    if (where) where.appendChild(a);
-  }
-  Array.prototype.forEach.call(document.querySelectorAll('details.trace'), function (det) {
-    det.addEventListener('toggle', function () { if (det.open) fill(det); });
-    if (det.open) fill(det);
-    popout(det);
-  });
+  var el = document.getElementById('hr-traces');
+  if (!el) return;
+  var reg; try { reg = JSON.parse(el.textContent); } catch (e) { return; }
+  var byKey = {};
+  (reg.tests || []).forEach(function (t) { byKey[t.test] = t; });
+  var served = !!reg.viewer && location.protocol !== 'file:';
 
-  // Open one row and bring it into view — the fold above it too, when it sits under one.
-  function show(det) {
-    var fold = det.closest('details.trmore');
-    if (fold) fold.open = true;
-    det.open = true;
-    det.scrollIntoView({behavior: 'smooth', block: 'start'});
+  function copy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '-1000px';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    return Promise.resolve();
   }
 
-  // A 📺 on the covering-tests rows whose test was recorded. The map lists a test by
-  // file and declaration line, which is exactly how a trace row is addressed, so the
-  // pairing is a lookup and not a guess. Done here, from the outside, because the map is
-  // written per run and pasted in — it does not know what the run recorded, and should
-  // not have to. Run after the parse: the map draws its rows in its own inline script.
   function decorate() {
     var rows = document.querySelectorAll('.rm-t[data-id]');
     Array.prototype.forEach.call(rows, function (row) {
@@ -1976,22 +1874,34 @@ TRACE_JS = """<script>
       var id = row.getAttribute('data-id') || '';
       var m = /^(.*?)(?::(\\d+))?$/.exec(id);
       var key = (m[1] || '').split('/').pop() + (m[2] ? ':' + m[2] : '');
-      var det = null;
-      Array.prototype.some.call(document.querySelectorAll('details.trace'), function (d) {
-        if (d.getAttribute('data-test') === key) { det = d; return true; }
-      });
-      if (!det) return;
+      var t = byKey[key];
+      if (!t) return;
       var where = row.querySelector('.rm-tw');
       if (!where) return;
       var tv = document.createElement('a');
       tv.className = 'rm-tv';
-      tv.href = '#' + det.id;
       tv.textContent = '📺';
-      tv.setAttribute('data-tip', 'Recorded: step through what this test did, below');
       tv.setAttribute('aria-label', 'open the recording of this test');
-      tv.addEventListener('click', function (ev) {
-        ev.preventDefault(); ev.stopPropagation(); show(det);
-      });
+      if (served) {
+        // Absolute, because the viewer resolves `?trace=` against its own document and
+        // not against ours: a relative path would be looked for inside the viewer's folder.
+        tv.href = reg.viewer + '?trace=' + encodeURIComponent(new URL(t.trace, location.href).href);
+        tv.target = '_blank'; tv.rel = 'noopener';
+        tv.setAttribute('data-tip', 'Open test replay in a new window');
+        tv.addEventListener('click', function (ev) { ev.stopPropagation(); });
+      } else {
+        tv.href = '#';
+        tv.setAttribute('data-tip', 'Recorded. Copy the command that opens the replay natively'
+          + (reg.viewer ? ' \\u2014 or serve this page (scripts/serve-review.py) to open it from here' : ''));
+        tv.addEventListener('click', function (ev) {
+          ev.preventDefault(); ev.stopPropagation();
+          copy(t.cmd).then(function () {
+            var was = tv.getAttribute('data-tip');
+            tv.setAttribute('data-tip', 'Copied \\u2014 run it in a terminal');
+            setTimeout(function () { tv.setAttribute('data-tip', was); }, 2000);
+          });
+        });
+      }
       where.parentNode.insertBefore(tv, where);
     });
   }
@@ -3940,11 +3850,14 @@ def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
            "the repository's own script over it, which draws what the code has and the "
            "map lacks — in red, as a to-do — again.")
     fold = f"redraw-{name or 'diagram'}"
-    return ('<span class="rerun-redraw">Rather start over? '
+    # No glyph of its own on the button: the fold's chevron is already at the end of it,
+    # and a ⟲ beside a ⌄ is two marks for one control, neither of which the reader can
+    # take at face value.
+    return ('<span class="rerun-redraw">To start over, let automation '
             f'<button type="button" class="cmdpeek" aria-expanded="false" '
             f'aria-controls="{html.escape(fold, quote=True)}" '
             f'data-tip="{html.escape(tip, quote=True)}">'
-            "let automation draw it again ⟲</button></span>",
+            "re-draw it again</button></span>",
             _cmdfold(fold, line, act, "Run it",
                      "Runs it here, then reloads with automation's drawing back"))
 
@@ -3996,21 +3909,23 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     # needs teaches them what served mode is — and the `static` badge in the title row is
     # already holding the line that gets them there.
     #
-    # The lead-in is a span of its own so the served page can swap the wording: there, the
-    # first offer is a button that does the job, and "run this in the terminal" would be
-    # the page sending the reader to a terminal it could have saved them.
+    # One wording in both worlds. The sentence used to be rewritten when the probe found a
+    # server — "pick your edit up" off disk, "update this report" served — on the reasoning
+    # that a static page must not promise what it cannot do. But the offer is what the
+    # reader wants either way, and a button that says what it needs when pressed teaches
+    # them what served mode is; a sentence that quietly reads differently in the two copies
+    # of the same report teaches them the report is unreliable.
     fold = f"cmd-{name or 'diagram'}"
     over, over_fold = redraw_html(redraw, rerun, rebuild, name)
     return ('<div class="rerun">'
             f'<p class="dgm-open">{f"Edit this diagram in {edit}, then " if edit else ""}'
-            '<span class="rerun-say">pick your edit up</span> by '
             f'<button type="button" class="runhere"{act} '
             f'data-tip="{html.escape(STATIC_RUN_TIP, quote=True)}" '
             'data-tip-served="Runs it here, then reloads with the new picture">'
-            "clicking here</button> or "
+            "click here</button> to update the report or "
             f'<button type="button" class="cmdpeek" aria-expanded="false" '
             f'aria-controls="{html.escape(fold, quote=True)}">'
-            'running one command in the terminal</button>'
+            'run this terminal command</button>.'
             # Second sentence, same line: it is the same subject — this drawing, and what
             # you can do to it — and a paragraph of its own would put the offer nobody
             # takes on most visits on a line of its own under the picture.
@@ -4849,13 +4764,6 @@ def render_test_ledger(rows, root: Path) -> tuple[str, int]:
     return '<div class="tledger">' + "".join(blocks) + "</div>" + rest, moved
 
 
-TRACE_STATES = {
-    "passed":      ("same", "passed"),
-    "failed":      ("removed", "failed"),
-    "timedOut":    ("removed", "timed out"),
-    "interrupted": ("removed", "interrupted"),
-    "skipped":     ("changed", "skipped"),
-}
 
 
 def _ms(value) -> str:
@@ -4867,39 +4775,28 @@ def _ms(value) -> str:
 
 def render_traces(doc: dict, root: Path, out_dir: Path,
                   touched: set[tuple[str, int]] | None = None) -> tuple[str, int]:
-    """Every recorded test, each opening on the trace its own run left behind.
+    """What the run recorded, as a registry the 📺 on the covering-tests rows reads.
 
-    The branch's own tests first, and the rest of the run folded under them. A run
-    records everything it executed — the chatbot's skipped specs, the guard against a
-    data-reset endpoint, five rows of it — and a reader of *this* review is here for the
-    tests this branch added or changed. `touched` is (file basename, line) pairs out of
-    the test ledger; a row whose test is among them is the branch's, the others are the
-    same session's evidence about code the branch left alone. Without a ledger nothing is
-    known about which is which, and the list is simply the run.
+    Nothing visible. There used to be a list here — "Step through what the tests did",
+    one collapsible row per recording with the viewer framed inside it — and every word
+    on it was already on the covering-tests map above: the test's title, its file and
+    line, whether it passed. The one thing the row added was the way into the recording,
+    and that is now the 📺 itself: served, it opens the viewer in a window of its own,
+    where a three-pane application belongs, instead of in 78vh of a text column that has
+    to be scrolled to keep the snapshot pane in view.
 
-    No strip of steps under the row. It used to list the top-level actions as pills, as a
-    table of contents for the recording; the viewer's own action list is the same list,
-    with the screenshots, and a reader with the viewer open has no use for a second copy
-    of it above the first.
-
-    The tests above this say what the branch did to them and whether they went green. The
-    question that follows — *what did that test actually do?* — has only ever been
-    answerable by checking the branch out, starting the stack and running the suite again,
-    which is most of a morning and a different run from the one the page is about. The
-    recording answers it in the tab: every action with the screenshot either side of it,
-    the DOM at each step, the console, and every request the browser made.
-
-    The frame is empty until the row is opened, and `data-trace` is a path, not a `src`.
-    A tab holding twelve rows would otherwise boot twelve copies of a browser application
-    on page load, each fetching its own multi-megabyte zip, to show one the reader asked
-    for. It is also why nothing here is an `<iframe>` in the markup at all: the element is
-    made in JS, so a page opened from the zip — where no server can answer for the trace —
-    never renders a frame that could only come up blank.
+    The registry keys a recording by the test's file basename and declaration line, which
+    is exactly how the map addresses a row, so the pairing is a lookup and not a guess.
+    `viewer` is the copied trace viewer, relative to the page; `trace` is the zip; `cmd`
+    is the line that opens the same recording natively, for a reader holding the page as
+    a file — from the zip, from Pages — where the viewer cannot fetch anything. It is
+    written whether or not that reader exists, because the build cannot know which of
+    the two is reading. `touched` is accepted for the caller's sake and no longer changes
+    what is emitted: with no rows there is no order to put the branch's own tests in.
     """
     tests = doc.get("tests") or []
     if not tests:
         return "", 0
-    viewer = doc.get("viewer") or ""
     # Where this page was built, said the way a terminal at the repo root would say it:
     # `.human-review` is only the default, and a command naming a directory the reader does
     # not have is worse than no command at all.
@@ -4907,64 +4804,17 @@ def render_traces(doc: dict, root: Path, out_dir: Path,
         here = out_dir.resolve().relative_to(root.resolve())
     except ValueError:
         here = out_dir.resolve()
-    rows, mine = [], []
-    for i, t in enumerate(tests, 1):
-        mine.append(bool(touched) and (Path(t.get("file", "")).name, t.get("line")) in touched)
-        # `data-test` is the row's address for the rest of the page: the covering-tests
-        # list above names a test the same way, file and declaration line, and hangs a
-        # 📺 on its row when a recording with that address is down here.
+    entries = []
+    for t in tests:
+        if not t.get("trace"):
+            continue
         key = Path(t.get("file", "")).name + (f':{t["line"]}' if t.get("line") else "")
-        cls, label = TRACE_STATES.get(t.get("status", ""), ("changed", t.get("status", "ran")))
-        where = Path(t.get("file", "")).name + (f':{t["line"]}' if t.get("line") else "")
-        titles = "".join(f'<span class="trpath">{html.escape(p)} › </span>'
-                         for p in t.get("path") or [])
-        # A retry is not a detail: the row is one *attempt*, and a page that showed
-        # attempt 2 with no mark on it would report a flaky test as a passing one.
-        retry = (f'<span class="tsilenced">retry {t["retry"]}</span>'
-                 if t.get("retry") else "")
-        src = (root / t["file"]).resolve() if t.get("file") else None
-        open_test = ""
-        if t.get("line") and src and src.is_file():
-            open_test = (f'<a class="srcref testref" href="vscode://file/{src}:{t["line"]}:1"'
-                         f' data-tip="{html.escape(t["file"])}">'
-                         f'{html.escape(where)}</a>')
-        err = (f'<p class="trerr">{html.escape(t["error"])}</p>') if t.get("error") else ""
-        # The command is the answer for a reader holding the page as a file — from the
-        # zip, from Pages — where the viewer cannot fetch anything and a frame would be a
-        # blank rectangle. It is written whether or not that reader exists, because the
-        # build cannot know which of the two is reading.
-        cmd = f"npx playwright show-trace {shlex.quote(str(here / t['trace']))}"
-        rows.append(
-            f'<details class="trace" id="trace-{i}" data-test="{html.escape(key, quote=True)}"'
-            f' data-trace="{html.escape(t["trace"], quote=True)}"'
-            f' data-viewer="{html.escape(viewer, quote=True)}"'
-            f' data-cmd="{html.escape(cmd, quote=True)}">'
-            f'<summary><span class="tflag {cls}">{html.escape(label)}</span>'
-            f'<span class="trname">{titles}{html.escape(t.get("title", ""))}</span>{retry}'
-            f'<span class="trwhere">{html.escape(where)} · {_ms(t.get("duration"))}</span>'
-            "</summary>"
-            f'<div class="trbody">{open_test}{err}<div class="trframe"></div></div>'
-            "</details>")
-
-    # One line, and only what this run measured. `untraced` is the honest half of the
-    # picture: a suite that recorded four of its forty tests has not shown the reader the
-    # run, and a list of four with nothing said would read as if it had.
-    said = [f"{doc['recorded']} recorded"]
-    if doc.get("omitted"):
-        said.append(f"{doc['omitted']} more not carried onto this page")
-    if doc.get("untraced"):
-        said.append(f"{doc['untraced']} result(s) ran with tracing off")
-    note = (f'<p class="sub">{html.escape(" · ".join(said))}. '
-            "Open one to step through it: every action with the page either side of it, "
-            "the console, and the network.</p>")
-    own = [r for r, m in zip(rows, mine) if m]
-    rest = [r for r, m in zip(rows, mine) if not m]
-    if not own or not rest:
-        return '<div class="traces">' + note + "".join(rows) + "</div>", len(tests)
-    return ('<div class="traces">' + note + "".join(own) + "</div>"
-            f'<details class="trmore"><summary>{len(rest)} more recorded in the same run, '
-            "in tests this branch did not touch</summary>"
-            '<div class="traces">' + "".join(rest) + "</div></details>", len(tests))
+        entries.append({"test": key, "trace": t["trace"], "status": t.get("status", ""),
+                        "cmd": f"npx playwright show-trace {shlex.quote(str(here / t['trace']))}"})
+    reg = {"viewer": doc.get("viewer") or "", "tests": entries}
+    # `</` cannot appear inside a script element, whatever its type.
+    return ('<script type="application/json" id="hr-traces">'
+            + json.dumps(reg).replace("</", "<\\/") + "</script>", len(entries))
 
 
 def render_requirements(items, index: dict, root: Path) -> str:
@@ -7486,13 +7336,11 @@ def main(argv=None) -> int:
             frag, n = render_traces(traces_doc, root, out_dir, touched)
             if not frag:
                 return "", 0, 0
-            # Weight, and no changes — the same call `codecity` and `puml` make. A trace is
-            # a recording of how the code behaves now; it is evidence *about* the branch,
-            # not a thing the branch moved, and a tab kept alive by it alone should still
-            # say on the strip that nothing here changed.
-            return (heading(block, "traces",
-                            block.get("title", "Step through what the tests did"))
-                    + frag, n, 0)
+            # No heading: the block is a registry the 📺 on the covering-tests rows read,
+            # not a thing to look at. Weight, and no changes — the same call `codecity`
+            # and `puml` make. A trace is a recording of how the code behaves now; it is
+            # evidence *about* the branch, not a thing the branch moved.
+            return frag, n, 0
         if kind == "codecity":
             return city_html, 1 if city_html else 0, 0
         if kind == "section":
