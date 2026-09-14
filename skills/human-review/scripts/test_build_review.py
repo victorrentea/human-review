@@ -3052,3 +3052,7 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert "b.textContent = 'Re-render & reload'" in page
     assert "querySelector('.rerun-say')" in page
     assert "querySelectorAll('.rm-t[data-id]')" in page
+    # Each recorded row offers the viewer in a window of its own: the same URL the frame
+    # loads, opened in a new tab, and only where the page is served.
+    assert "a.className = 'tropen'" in page and "summary .trwhere" in page
+    assert "location.protocol === 'file:') return;" in page

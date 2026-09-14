@@ -366,6 +366,11 @@ details.trace > summary:hover { background:var(--code-bg); border-radius:8px; }
 .trwhere { margin-left:auto; color:var(--muted); font-size:11.5px;
         font-variant-numeric:tabular-nums; }
 .trbody { padding:0 .6rem .55rem 1.3rem; display:grid; gap:.45rem; }
+/* The way out of the column, at the end of the row: quiet like the timing beside it,
+   the page's link colour once the pointer says it is wanted. */
+.trwhere .tropen { margin-left:.6rem; color:var(--muted); text-decoration:none;
+        font-size:13px; line-height:1; }
+.trwhere .tropen:hover { color:var(--link); }
 /* The rest of the run, folded. The rows above it are the tests this branch touched; the
    ones under here ran in the same session and were recorded the same way, and a reader
    who has just watched the branch's own tests is the only one who wants them. */
@@ -1819,9 +1824,31 @@ TRACE_JS = """<script>
     box.appendChild(note); box.appendChild(line);
     slot.appendChild(box);
   }
+  // The same viewer, in a window of its own. The frame is 78vh inside a column of text,
+  // and stepping through forty actions in it means scrolling the page to keep the pane in
+  // view; the URL the frame loads is a whole page already, so the ↗ on the row opens that
+  // page in a new tab and the recording gets the full window. Served only, for the same
+  // reason the frame is: off disk the viewer has nothing it can fetch.
+  function popout(det) {
+    var zip = det.getAttribute('data-trace'), viewer = det.getAttribute('data-viewer');
+    if (!viewer || location.protocol === 'file:') return;
+    var a = document.createElement('a');
+    a.className = 'tropen';
+    a.href = viewer + '?trace=' + encodeURIComponent(new URL(zip, location.href).href);
+    a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = '\u2197';
+    a.setAttribute('data-tip', 'Open this recording in a new window');
+    // A click inside a <summary> also toggles the row; this one is only the link.
+    a.addEventListener('click', function (ev) {
+      ev.preventDefault(); ev.stopPropagation(); window.open(a.href, '_blank', 'noopener');
+    });
+    var where = det.querySelector('summary .trwhere');
+    if (where) where.appendChild(a);
+  }
   Array.prototype.forEach.call(document.querySelectorAll('details.trace'), function (det) {
     det.addEventListener('toggle', function () { if (det.open) fill(det); });
     if (det.open) fill(det);
+    popout(det);
   });
 
   // Open one row and bring it into view — the fold above it too, when it sits under one.
