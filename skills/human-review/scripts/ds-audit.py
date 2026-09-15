@@ -841,7 +841,8 @@ CSS = """/* ds-audit — the annotated screenshots and the findings table, and n
 .dsa-considered ul { margin: .4rem 0 0 .2rem; }
 .dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
 .dsa-hdr .dsa-count { font-weight: 700; }
-.dsa-untouched { font-size: .84rem; opacity: .85; margin: .2rem 0 .6rem; }
+.dsa-untouched { font-size: .82rem; opacity: .8; margin: .2rem 0 .4rem; }
+.dsa-untouched > summary, .dsa-reg > summary { cursor: pointer; }
 .dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
   padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
 .dsa-unlisted code { color: inherit; }
@@ -939,19 +940,15 @@ def _marks_for(findings, side):
 
 LEGEND = (
     '<div class="dsa-legend">'
-    '<span class="k-ok"><i></i>is a design-system component</span>'
-    '<span class="k-bad"><i></i>not the design-system component &mdash; a native '
-    'control where one belongs, outside any <code>[data-ds]</code></span>'
-    '<span class="k-new"><i></i>new or changed on this branch</span>'
-    '<span class="dsa-prov">everything else is deliberately unmarked</span>'
+    '<span class="k-ok"><i></i>design-system component</span>'
+    '<span class="k-bad"><i></i>native control where one belongs</span>'
+    '<span class="k-new"><i></i>changed on this branch</span>'
     "</div>")
 
 DIFF_LEGEND = (
-    '<div class="dsa-legend"><span class="k-new"><i></i>outlined: the DOM says this '
-    'element is new or changed</span>'
-    '<span class="dsa-ink"><i></i>differs, and structure does not explain it</span>'
-    '<span class="dsa-ghost"><i></i>differs only because it moved</span>'
-    '<span class="dsa-prov">faded: identical</span></div>')
+    '<div class="dsa-legend"><span class="k-new"><i></i>new or changed</span>'
+    '<span class="dsa-ink"><i></i>differs</span>'
+    '<span class="dsa-ghost"><i></i>only moved</span></div>')
 
 
 def slug(name: str) -> str:
@@ -992,11 +989,11 @@ def ds_phrase(counts: dict) -> str:
     control the branch migrated — so without this the added combo on Edit a visit was
     invisible in every count."""
     new, old = counts["new"]["ds"], counts["old"]["ds"]
-    txt = f'{new} design-system component{"" if new == 1 else "s"} in use'
+    txt = f'{new} component{"" if new == 1 else "s"}'
     if new > old:
-        txt += f', {new - old} added by this branch'
+        txt += f' <span class="dsa-prov">(+{new - old} on this branch)</span>'
     elif old > new:
-        txt += f', {old - new} removed by this branch'
+        txt += f' <span class="dsa-prov">(\u2212{old - new} on this branch)</span>'
     return txt
 
 
@@ -1066,14 +1063,13 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     dom = screen.get("delta", {}).get("dom", {})
     moved = sum(len(dom.get(k) or ()) for k in ("added", "removed", "changed"))
     if nothing:
-        verdict = (f'changed by this branch ({moved} element{"" if moved == 1 else "s"}), '
-                   'and nothing on it is a control the design system covers '
-                   '\u2014 no gap, no component, no verdict; the pictures show the change')
+        verdict = (f'changed \u00b7 {moved} element{"" if moved == 1 else "s"} \u00b7 '
+                   'no control the design system covers')
     else:
         verdict = (f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
                    f'{"" if counts["new"]["bare"] == 1 else "s"} '
                    f'\u00b7 {ds_phrase(counts)}'
-                   + (f' \u00b7 {len(counts["improvements"])} migrated by this branch'
+                   + (f' \u00b7 {len(counts["improvements"])} migrated'
                       if counts["improvements"] else ""))
     head = (f'<h3 id="dsa-{slug(screen["screen"])}">{html.escape(screen["screen"])}</h3>'
             f'<p class="dsa-hdr">{verdict}</p>')
@@ -1081,8 +1077,7 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     table = ('<table class="dsa-table"><thead><tr><th></th><th>side</th><th>element</th>'
              '<th>role</th><th>why</th><th>delta</th><th>churn</th></tr></thead><tbody>'
              + "".join(rows) + "</tbody></table>") if rows else (
-        '<p class="dsa-none">Nothing on this screen is a design-system component or a '
-        "gap where one belongs.</p>")
+        "")
 
     # What the audit looked at and let past. "Nothing was flagged" is not a claim anyone
     # can check; "these five controls were considered, and here is the role each one
@@ -1106,7 +1101,7 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     # heading has already said the audit has no opinion on it.
     return (f'<div class="dsa">{head}'
             f'<details class="dsa-screen"{"" if nothing else " open"}>'
-            f'<summary>{"screenshots of the change" if nothing else "screenshots and findings"}</summary>'
+            f'<summary>{"pictures" if nothing else "pictures and findings"}</summary>'
             f'{build.dgm_views_html(panes, initial="new")}{table}{considered}</details></div>')
 
 
@@ -1137,13 +1132,12 @@ def render(result: dict, assets_prefix: str) -> str:
     n = len(result["screens"])
     verdict_line = (
         f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
-        f'{"" if counts["new"]["bare"] == 1 else "s"} across '
-        f'{n} screen{"" if n == 1 else "s"} audited, '
-        f'{len(touched)} changed by this branch \u00b7 {ds_phrase(counts)}'
+        f'{"" if counts["new"]["bare"] == 1 else "s"}'
         + (f' \u00b7 <b>{len(counts["regressions"])} regression'
            f'{"" if len(counts["regressions"]) == 1 else "s"}</b>'
            if counts["regressions"] else "")
-        + (f' \u00b7 {len(counts["improvements"])} migrated by this branch'
+        + f' \u00b7 {len(touched)} of {n} screens changed \u00b7 {ds_phrase(counts)}'
+        + (f' \u00b7 {len(counts["improvements"])} migrated'
            if counts["improvements"] else ""))
 
     # The embedded copy drops the per-element table. It is keyed on every signature on
@@ -1160,12 +1154,11 @@ def render(result: dict, assets_prefix: str) -> str:
     # decides which screens matter, but only among the screens it was given.
     unlisted = result.get("unlisted") or []
     unlisted_line = "".join(
-        f'<p class="dsa-unlisted">\u26a0 <b>Changed and not audited:</b> '
-        f'<code>{html.escape(u["component"])}</code> renders '
-        f'<code>{html.escape(u["route"])}</code>'
-        + (f' (through <code>{html.escape(u["via"])}</code>)' if u.get("via") else "")
-        + ' and no screen in the catalogue reaches it \u2014 add one to '
-        '<code>steps.dsaudit.screens</code> and re-run.</p>'
+        f'<p class="dsa-unlisted">\u26a0 <b>Not audited:</b> '
+        f'<code>{html.escape(u["route"])}</code> '
+        f'(<code>{html.escape(u["component"])}</code>'
+        + (f' via <code>{html.escape(u["via"])}</code>' if u.get("via") else "")
+        + ') changed and is not in <code>steps.dsaudit.screens</code>.</p>'
         for u in unlisted)
     # The screens the branch left alone are named, not drawn: a reader who wonders why
     # "Edit a pet" is missing gets the answer in one line instead of three screenshots of
@@ -1178,8 +1171,9 @@ def render(result: dict, assets_prefix: str) -> str:
                f'{"" if sc["summary"]["new"]["bare"] == 1 else "s"} already there)</span>'
                if sc["summary"]["new"]["bare"] else "")
             for sc in untouched)
-        untouched_line = (f'<p class="dsa-untouched">Also audited, identical on both sides '
-                          f'\u2014 this branch did not touch: {names}.</p>')
+        untouched_line = (f'<details class="dsa-untouched"><summary>{len(untouched)} '
+                          f'unchanged screen{"" if len(untouched) == 1 else "s"}</summary>'
+                          f'{names}</details>')
     else:
         untouched_line = ""
     return (
@@ -1187,10 +1181,12 @@ def render(result: dict, assets_prefix: str) -> str:
         f'{unlisted_line}'
         f'<p class="dsa-hdr">{verdict_line}</p>'
         f'{untouched_line}'
-        f'<div class="dsa-reg"><b>Roles the design system covers</b>, derived \u2014 not '
-        "listed by hand, so a second component needs no change here:"
-        f'<ul>{reg_rows}</ul></div>'
-        + "".join(render_screen(sc, assets_prefix, build) for sc in touched)
+        f'<details class="dsa-reg"><summary>roles the design system covers</summary>'
+        f'<ul>{reg_rows}</ul></details>'
+        # Screens with a verdict first — a gap, a regression, a component — so the tab
+        # opens on a marked-up picture; the changed-but-nothing-to-judge ones trail.
+        + "".join(render_screen(sc, assets_prefix, build)
+                  for sc in sorted(touched, key=screen_has_nothing_to_judge))
         + f'<script type="application/json" class="ds-audit-data">{payload}</script>'
         + HL_JS + "</div>")
 

@@ -693,18 +693,17 @@ def test_a_screen_the_branch_moved_is_the_one_drawn():
     frag = ds.render(result, "")
     assert frag.count('<details class="dsa-screen" open>') == 2
     assert 'dsa-untouched' not in frag
-    assert "2 screens audited, 2 changed by this branch" in frag
+    assert "2 of 2 screens changed" in frag
     assert "in place" not in frag
 
 
 def test_a_component_the_branch_added_is_said_to_be_added():
     """"4 in place" left the reader asking whether the branch put any of them there. A
     component added is not a migration, so the improvements count never showed it."""
-    assert ds.ds_phrase({"new": {"ds": 4}, "old": {"ds": 3}}) == \
-        "4 design-system components in use, 1 added by this branch"
-    assert ds.ds_phrase({"new": {"ds": 1}, "old": {"ds": 1}}) == "1 design-system component in use"
-    assert ds.ds_phrase({"new": {"ds": 0}, "old": {"ds": 2}}) == \
-        "0 design-system components in use, 2 removed by this branch"
+    assert ds.ds_phrase({"new": {"ds": 4}, "old": {"ds": 3}}).startswith("4 components <span")
+    assert "(+1 on this branch)" in ds.ds_phrase({"new": {"ds": 4}, "old": {"ds": 3}})
+    assert ds.ds_phrase({"new": {"ds": 1}, "old": {"ds": 1}}) == "1 component"
+    assert "(\u22122 on this branch)" in ds.ds_phrase({"new": {"ds": 0}, "old": {"ds": 2}})
 
 
 def test_a_changed_screen_with_nothing_to_judge_says_so_and_folds():
@@ -721,11 +720,11 @@ def test_a_changed_screen_with_nothing_to_judge_says_so_and_folds():
     n = sum(len(dom[k]) for k in ("added", "removed", "changed"))
     assert ds.screen_has_nothing_to_judge(sc)
     frag = ds.render(ds.build_result([sc], reg), "")
-    head = frag[frag.index('<h3 id="dsa-'):frag.index("<details")]
-    assert f"changed by this branch ({n} elements)" in head
-    assert "no gap, no component, no verdict" in head
+    head = frag[frag.index('<h3 id="dsa-'):]
+    head = head[:head.index("<details")]
+    assert f"changed · {n} elements · no control the design system covers" in head
     assert "0 gaps" not in head
-    assert '<details class="dsa-screen">' in frag and "screenshots of the change" in frag
+    assert '<details class="dsa-screen">' in frag and "<summary>pictures</summary>" in frag
 
 
 def test_a_screen_nothing_happened_on_is_named_and_not_drawn():
@@ -738,10 +737,10 @@ def test_a_screen_nothing_happened_on_is_named_and_not_drawn():
     assert ds.screen_touched(sc) is False
     frag = ds.render(ds.build_result([sc], reg), "")
     assert 'class="dsa-screen"' not in frag
-    assert "1 screen audited, 0 changed by this branch" in frag
-    line = frag[frag.index('<p class="dsa-untouched">'):]
-    line = line[:line.index("</p>")]
-    assert "did not touch: Book a visit" in line
+    assert "0 of 1 screens changed" in frag
+    line = frag[frag.index('<details class="dsa-untouched">'):]
+    line = line[:line.index("</details>")]
+    assert "1 unchanged screen</summary>Book a visit" in line
     if sc["summary"]["new"]["bare"]:
         assert f'{sc["summary"]["new"]["bare"]} gap' in line and "already there" in line
 
@@ -758,9 +757,9 @@ def test_a_changed_routed_component_no_screen_reaches_is_red_and_first():
     frag = ds.render(result, "")
     first = frag.index('<p class="dsa-unlisted">')
     assert first < frag.index('<p class="dsa-hdr">')
-    assert "Changed and not audited" in frag
-    assert "<code>VisitEditComponent</code> renders <code>visits/:id/edit</code>" in frag
-    assert "through <code>&lt;app-visit-list&gt;</code>" in frag
+    assert "Not audited" in frag
+    assert "<code>visits/:id/edit</code> (<code>VisitEditComponent</code>)" in frag
+    assert "via <code>&lt;app-visit-list&gt;</code>" in frag
     assert "steps.dsaudit.screens" in frag
 
 
@@ -777,12 +776,12 @@ def test_a_drawn_screen_states_its_gaps_above_the_fold():
     reg, screen = _screen_from_capture()
     frag = ds.render(ds.build_result([screen], reg), "")
     head, _, _ = frag.partition('<details class="dsa-screen" open>')
-    assert "gap" in head and "design-system component" in head
+    assert "gap" in head and "component" in head
 
 
 def test_the_registry_is_stated_once_for_the_whole_run():
     frag = ds.render(_both_screens(), "")
-    assert frag.count("Roles the design system covers") == 1
+    assert frag.count("roles the design system covers") == 1
 
 
 def test_a_capture_remembers_what_the_screens_were_called():
