@@ -694,6 +694,38 @@ def test_a_screen_the_branch_moved_is_the_one_drawn():
     assert frag.count('<details class="dsa-screen" open>') == 2
     assert 'dsa-untouched' not in frag
     assert "2 screens audited, 2 changed by this branch" in frag
+    assert "in place" not in frag
+
+
+def test_a_component_the_branch_added_is_said_to_be_added():
+    """"4 in place" left the reader asking whether the branch put any of them there. A
+    component added is not a migration, so the improvements count never showed it."""
+    assert ds.ds_phrase({"new": {"ds": 4}, "old": {"ds": 3}}) == \
+        "4 design-system components in use, 1 added by this branch"
+    assert ds.ds_phrase({"new": {"ds": 1}, "old": {"ds": 1}}) == "1 design-system component in use"
+    assert ds.ds_phrase({"new": {"ds": 0}, "old": {"ds": 2}}) == \
+        "0 design-system components in use, 2 removed by this branch"
+
+
+def test_a_changed_screen_with_nothing_to_judge_says_so_and_folds():
+    """A list that grew a column: the DOM changed, so the screen is on the page, but no
+    control on it is in a role the design system covers. `0 gaps · 0 components` read as
+    a verdict; the heading now says there is none, and the pictures fold closed."""
+    reg, screen = _screen_from_capture()
+    sc = copy.deepcopy(screen)
+    sc["summary"]["new"] = dict(sc["summary"]["new"], bare=0, ds=0)
+    sc["summary"]["old"] = dict(sc["summary"]["old"], bare=0, ds=0)
+    sc["summary"]["regressions"] = []
+    sc["delta"]["dom"]["added"] = ["x"] * 3
+    dom = sc["delta"]["dom"]
+    n = sum(len(dom[k]) for k in ("added", "removed", "changed"))
+    assert ds.screen_has_nothing_to_judge(sc)
+    frag = ds.render(ds.build_result([sc], reg), "")
+    head = frag[frag.index('<h3 id="dsa-'):frag.index("<details")]
+    assert f"changed by this branch ({n} elements)" in head
+    assert "no gap, no component, no verdict" in head
+    assert "0 gaps" not in head
+    assert '<details class="dsa-screen">' in frag and "screenshots of the change" in frag
 
 
 def test_a_screen_nothing_happened_on_is_named_and_not_drawn():

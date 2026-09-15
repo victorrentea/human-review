@@ -984,6 +984,30 @@ def screen_touched(screen: dict) -> bool:
     return bool(counts["regressions"] or counts["improvements"])
 
 
+def ds_phrase(counts: dict) -> str:
+    """`4 design-system components in use, 1 added by this branch`. The plain count used to
+    read "4 in place" and left the reader guessing whether the branch put any of them
+    there; the answer is the difference between the two sides, and it is said out loud.
+    A component the branch *added* is not an "improvement" — that word is kept for a bare
+    control the branch migrated — so without this the added combo on Edit a visit was
+    invisible in every count."""
+    new, old = counts["new"]["ds"], counts["old"]["ds"]
+    txt = f'{new} design-system component{"" if new == 1 else "s"} in use'
+    if new > old:
+        txt += f', {new - old} added by this branch'
+    elif old > new:
+        txt += f', {old - new} removed by this branch'
+    return txt
+
+
+def screen_has_nothing_to_judge(screen: dict) -> bool:
+    """A changed screen with no control in a role the design system covers: a list that
+    grew a column, a detail page. The audit has no verdict on it, and its heading has to
+    say that rather than print `0 gaps · 0 components` as if that were a clean bill."""
+    c = screen["summary"]
+    return not (c["new"]["bare"] or c["new"]["ds"] or c["old"]["ds"] or c["old"]["bare"])
+
+
 def render_screen(screen: dict, assets_prefix: str, build) -> str:
     findings = screen["findings"]
     pages = {s: screen["sides"][s]["page"] for s in ("new", "old")}
@@ -1038,14 +1062,21 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
             f'<td>{churn_txt}</td></tr>')
 
     counts = screen["summary"]
+    nothing = screen_has_nothing_to_judge(screen)
+    dom = screen.get("delta", {}).get("dom", {})
+    moved = sum(len(dom.get(k) or ()) for k in ("added", "removed", "changed"))
+    if nothing:
+        verdict = (f'changed by this branch ({moved} element{"" if moved == 1 else "s"}), '
+                   'and nothing on it is a control the design system covers '
+                   '\u2014 no gap, no component, no verdict; the pictures show the change')
+    else:
+        verdict = (f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
+                   f'{"" if counts["new"]["bare"] == 1 else "s"} '
+                   f'\u00b7 {ds_phrase(counts)}'
+                   + (f' \u00b7 {len(counts["improvements"])} migrated by this branch'
+                      if counts["improvements"] else ""))
     head = (f'<h3 id="dsa-{slug(screen["screen"])}">{html.escape(screen["screen"])}</h3>'
-            f'<p class="dsa-hdr"><span class="dsa-count">{counts["new"]["bare"]}</span> gap'
-            f'{"" if counts["new"]["bare"] == 1 else "s"} '
-            f'\u00b7 {counts["new"]["ds"]} design-system component'
-            f'{"" if counts["new"]["ds"] == 1 else "s"} in place'
-            + (f' \u00b7 {len(counts["improvements"])} migrated by this branch'
-               if counts["improvements"] else "")
-            + '</p>')
+            f'<p class="dsa-hdr">{verdict}</p>')
 
     table = ('<table class="dsa-table"><thead><tr><th></th><th>side</th><th>element</th>'
              '<th>role</th><th>why</th><th>delta</th><th>churn</th></tr></thead><tbody>'
@@ -1070,10 +1101,12 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
                       f'{"" if len(passed) == 1 else "s"} considered and deliberately not '
                       f'judged</summary><ul>{items}</ul></details>')
     # The heading and its counts stay outside the fold: a folded screen still has to
-    # say how many gaps it carries, or folding it would be hiding a finding.
+    # say how many gaps it carries, or folding it would be hiding a finding. A screen
+    # with nothing to judge folds closed: it is on the page because it changed, and the
+    # heading has already said the audit has no opinion on it.
     return (f'<div class="dsa">{head}'
-            '<details class="dsa-screen" open>'
-            '<summary>screenshots and findings</summary>'
+            f'<details class="dsa-screen"{"" if nothing else " open"}>'
+            f'<summary>{"screenshots of the change" if nothing else "screenshots and findings"}</summary>'
             f'{build.dgm_views_html(panes, initial="new")}{table}{considered}</details></div>')
 
 
@@ -1106,9 +1139,7 @@ def render(result: dict, assets_prefix: str) -> str:
         f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
         f'{"" if counts["new"]["bare"] == 1 else "s"} across '
         f'{n} screen{"" if n == 1 else "s"} audited, '
-        f'{len(touched)} changed by this branch, '
-        f'{counts["new"]["ds"]} design-system component'
-        f'{"" if counts["new"]["ds"] == 1 else "s"} in place'
+        f'{len(touched)} changed by this branch \u00b7 {ds_phrase(counts)}'
         + (f' \u00b7 <b>{len(counts["regressions"])} regression'
            f'{"" if len(counts["regressions"]) == 1 else "s"}</b>'
            if counts["regressions"] else "")
