@@ -203,6 +203,12 @@
 .reqmap .rm-tt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap}
 .reqmap .rm-tw{flex:0 0 auto;font-size:10.5px}
+/* The part of the file name that says what kind of test this is - `.feature`, `.spec.ts`,
+   `.component.spec.ts`, `.java` - in amber, the page's own "look here" colour, so the
+   kind is read off the row without decoding the whole name. Everything before the first
+   dot of the extension run is the test's name and stays the link colour. */
+.reqmap .rm-tw .rm-tk{color:var(--drift);font-weight:600}
+@media (prefers-color-scheme:dark){.reqmap .rm-tw .rm-tk{color:var(--drift)}}
 /* What the branch did to this test, on the test itself. It is the fact the deleted
    evidence cards carried in prose ("the new one", "the pre-existing flow, extended") -
    worth one word on the row, and silence when the answer is "nothing": a test the branch
@@ -429,6 +435,14 @@
   function esc(s){return String(s).replace(/[&<>]/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
   function where(id){return id.split('/').pop();}
+  // `add-visit.component.spec.ts:52` -> the name, then the run of extensions that names
+  // the kind of test (`.component.spec.ts`), then the `:line`. The run starts at the first
+  // dot after the name: a dotted name (`visits.page.spec.ts`) would colour from `.page`
+  // on, which is still where the eye should land.
+  function kind(face){
+    var m=/^([^.]+)((?:\.[^.:]+)+)(:\d+)?$/.exec(face);
+    return m?m[1]+'<span class="rm-tk">'+m[2]+'</span>'+(m[3]||''):face;
+  }
 
   // Test names arrive as identifiers - `getById_exposesTheAttendingVet` - because that is
   // what the source calls them, and a column of those is read one hump at a time. A name
@@ -625,7 +639,7 @@
          // file left in this checkout, and a dead vscode:// URL is the one thing this page
          // never emits, so it keeps the location and loses the link.
          var href=t.href||(t.parts&&t.parts[0]&&t.parts[0].href),
-             face=esc(t.where||where(id));
+             face=kind(esc(t.where||where(id)));
          return href?'<a class="rm-tw srcref" href="'+href+'" data-tip="Open in VS Code">'
                      +face+'</a>'
                    :'<span class="rm-tw srcref tgone" data-tip="the file is gone">'

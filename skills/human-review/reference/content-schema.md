@@ -663,6 +663,13 @@ the one thing no amount of reading changes. Four tabs need something said about 
     sentence, and **the deleted ones belong in it too** — a page that lists a test
     somewhere else and not here makes the reader hold two lists and diff them. Tests the
     manifest knows but the map has no excerpt for get their excerpt cut at build time.
+  - **The kind of test is read off the file name, in amber.** The location on a row
+    (`add-visit.feature:20`, `visits-page.component.spec.ts:78`, `VisitTest.java:197`)
+    wraps the run of extensions after the name in `<span class="rm-tk">`, coloured with
+    `--drift` — `.feature` is a Gherkin scenario, `.spec.ts` a Playwright test,
+    `.component.spec.ts` an Angular component test, `.java` a JUnit one. The badge says
+    UI/API/unit; the suffix says *which framework*, and thirteen rows of near-identical
+    monospace names hide it. The name and the `:line` keep the link colour.
   - A **deleted** row is listed and inert: this checkout has no source to quote, so it does
     not open (no disclosure arrow, no tab stop, no `role="button"`), its name is struck
     through the way the run struck it, and its location keeps the words but loses the link
