@@ -41,6 +41,13 @@ EXTRACT = HERE / "extract-snippet.py"
 CODEOWNERS = HERE / "codeowners-check.py"
 TESTCHANGES = HERE / "test-changes.py"
 
+# The scope bar's third sign, beside `+` and `−`. It was `±`, which everywhere else a
+# reader has met it means a *range* — "forty, give or take" — while the count of edited
+# files is exact. A pencil says "someone went in and changed these", which is the fact,
+# and it is the mark the page already uses for an edited row further down.
+PENCIL = "\u270d\ufe0f"
+
+
 # --------------------------------------------------------------------------- #
 # what the page is allowed to ask the server to run
 # --------------------------------------------------------------------------- #
@@ -272,9 +279,11 @@ table.costtab tfoot tr.costtotal td { border-top:1px solid var(--line);
              padding-top:.35rem; font-weight:700; }
 /* The page's diff vocabulary, and the only three colours a signed number is allowed to
    take: green added, red removed, yellow changed. The third joined the other two once
-   the scope bar started stating `±` counts beside `+` and `−` — a number left the colour
-   of the text beside two coloured ones reads as a different KIND of number, not as the
-   third member of a set. */
+   the scope bar started counting edited files beside `+` and `−` — a number left the
+   colour of the text beside two coloured ones reads as a different KIND of number, not
+   as the third member of a set. The pencil in front of it is a glyph, not a colour, and
+   the number behind it still needs to be the same yellow as everything else that
+   changed. */
 .added { color:#2e7d32; } .removed { color:#c62828; } .changed { color:#9a6700; }
 @media (prefers-color-scheme: dark) {
   .added{color:#8fd39c} .removed{color:#f08a8a} .changed{color:#d29922}
@@ -1017,20 +1026,26 @@ button.tab:hover { color:var(--fg); background:var(--card); border-color:var(--l
 button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
 button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
                 font-variant-numeric:tabular-nums; }
-/* A badge that says something is *wrong* cannot look like a count. This one is worn by
-   the tab the reviewer must not skip — a blocked merge — so it keeps its colour even
-   while the tab is selected, where the strip inverts everything else. */
-button.tab .n.alarm { background:#c62828; color:#fff; opacity:1; border-radius:50%;
-                      flex:0 0 auto; width:.9rem; height:.9rem; padding:0;
-                      display:inline-flex; align-items:center; justify-content:center;
-                      letter-spacing:0; text-indent:.02em; }
-button.tab[aria-selected="true"] .n.alarm { background:#fdeaea; color:#8a1c1c; }
+/* A tab the reviewer must not skip — a blocked merge — is red. It used to wear a `!` in
+   a red circle beside its name, which is the same fact said as an ornament: a glyph the
+   reader has to decode hung off a word that could simply have carried the colour itself.
+   The label *is* the alarm now. Selected, the strip inverts everything, so the red moves
+   to the fill and the word turns white rather than losing the one thing marking it. */
+button.tab.alarm { color:#c62828; }
+button.tab.alarm:hover { color:#a41f1f; background:var(--card); border-color:#c62828; }
+button.tab[aria-selected="true"].alarm { background:#c62828; color:#fff; border-color:#c62828; }
 /* A verdict the strip can carry without words: green nothing changed, amber changed
    but nothing breaks, red a caller breaks. A number there ("+3") counted changes,
    which is not the question anyone opens that tab with. */
 button.tab .n.dot-green, button.tab .n.dot-amber, button.tab .n.dot-red {
   width:9px; height:9px; border-radius:50%; opacity:1; font-size:0; padding:0;
   display:inline-block; vertical-align:middle; }
+@media (prefers-color-scheme:dark) {
+  button.tab.alarm { color:#ff8a8a; }
+  button.tab.alarm:hover { color:#ffb0b0; border-color:#ff8a8a; }
+  button.tab[aria-selected="true"].alarm { background:#ff8a8a; color:#1d1d24;
+                                           border-color:#ff8a8a; }
+}
 button.tab .n.dot-green { background:#2e9e5b; }
 button.tab .n.dot-amber { background:#d98218; }
 button.tab .n.dot-red   { background:#d7263d; }
@@ -6120,11 +6135,10 @@ def tests_chip(doc: dict | None) -> dict | None:
             f'<span class="removed">\u2212{t["lost"]}</span>' if t["lost"] else "",
         ) if piece
     )
-    # `±` for the edited ones, beside `+` and `−`, because the scope bar is read as a row
-    # of signed numbers and a third sign is read in the same glance a word is not. It also
-    # retires the `~` that used to be typed for the same thing one chip to the left: a
-    # tilde is an approximation, and "about forty files changed" is not what was meant.
-    edited = f'<span class="changed">±{t["modified"]}</span>' if t["modified"] else ""
+    # `PENCIL` for the edited ones, beside `+` and `−`; see the constant for why it is
+    # not `±` any more. It retired a `~` before that, for the same reason: an
+    # approximation standing in for a number that was never approximate.
+    edited = f'<span class="changed">{PENCIL}{t["modified"]}</span>' if t["modified"] else ""
     value = " / ".join(x for x in (balance, edited) if x) or "none touched"
 
     # A hover is read standing up, one glance, hand on the mouse. It gets the numbers the
@@ -6368,13 +6382,13 @@ def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None) -> l
     hidden = (fa + fe + fd) - (a + e + d)
 
     where = f"vs {state['ref']}"
-    # The signs are the page's, not this chip's: `+` added, `-` removed, `±` changed, and
-    # a zero is dropped rather than printed. A row of chips is read as a row of signed
-    # numbers, and `-0` is noise that costs a glance to dismiss.
+    # The signs are the page's, not this chip's: `+` added, `-` removed, a pencil for
+    # changed, and a zero is dropped rather than printed. A row of chips is read as a row
+    # of signed numbers, and `-0` is noise that costs a glance to dismiss.
     files_value = " / ".join(piece for piece in (
         f'<span class="added">+{a}</span>' if a else "",
         f'<span class="removed">−{d}</span>' if d else "",
-        f'<span class="changed">±{e}</span>' if e else "",
+        f'<span class="changed">{PENCIL}{e}</span>' if e else "",
     ) if piece) or "none"
     lines_value = " / ".join(piece for piece in (
         f'<span class="added">+{adds}</span>' if adds else "",
@@ -6852,7 +6866,7 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
     is then free to be a title.
 
     They are chips, not parenthesised asides, because in that row `(test-pr)` beside
-    `files +1 / ±40` reads as an unlabelled number. The label is what makes the pair
+    `files +1 / ✍️40` reads as an unlabelled number. The label is what makes the pair
     legible in one pass, and it costs four characters.
 
     The base chip carries a `!` when the two refs have drifted apart — the base has moved
@@ -7513,7 +7527,7 @@ def main(argv=None) -> int:
                       file=sys.stderr)
                 return "", 0, 0
             if state == "approval_required":
-                auto_badge["badge"], auto_badge["class"] = "!", "alarm"
+                auto_badge["tabClass"] = "alarm"
                 auto_badge["label"] = "approval required"
             # No default heading, for the reason `codecity` has none: the tab pill says
             # CODEOWNERS, its badge says "Code owners approval required", and the seal
@@ -7658,13 +7672,17 @@ def main(argv=None) -> int:
                      or (str(weight) if tab.get("count") else ""))
             badge_class = tab.get("badgeClass") or (
                 auto_badge.get("class", "") if not tab.get("badge") else "")
-            # An alarm is a mark, not a word: it has to survive being read at the width of a
-            # tab pill, so it is a single glyph in a red circle. The words it stands for are
-            # not dropped, they move to where a machine and a pointer can still find them —
-            # `aria-label`, which becomes part of the tab button's accessible name ("Code
-            # owners approval required"), and `data-tip`, which is the page's own tooltip.
+            # An alarm is a colour, not a mark: the tab's own label goes red rather than
+            # growing a `!` beside it. That leaves the words it stands for with nowhere on
+            # screen to live, so they go where a machine still finds them — the button's
+            # `aria-label`, which has to restate the label too, because `aria-label`
+            # replaces the accessible name rather than adding to it.
             badge_label = tab.get("badgeLabel") or (
                 auto_badge.get("label", "") if not tab.get("badge") else "")
+            # A class on the pill itself, for a fact about the whole tab rather than about
+            # a number on it. `tabClass` in the content file overrides, the same way
+            # `badgeClass` does.
+            tab_class = tab.get("tabClass") or auto_badge.get("tabClass", "")
             count = (
                 f'<span class="n{" " + html.escape(badge_class) if badge_class else ""}"'
                 + (f' role="img" aria-label="{html.escape(badge_label)}"'
@@ -7685,8 +7703,11 @@ def main(argv=None) -> int:
             # did not touch that tab, and the cost moved into the breakdown the cost chip
             # opens (`cost_breakdown_html`), where every tab's number can be read at once.
             strip.append(
-                f'<button type="button" class="tab{" quiet" if still else ""}" role="tab" '
+                f'<button type="button" class="tab{" quiet" if still else ""}'
+                f'{" " + html.escape(tab_class) if tab_class else ""}" role="tab" '
                 f'id="tabbtn-{tid}" aria-controls="{tid}" aria-selected="false" tabindex="-1"'
+                + (f' aria-label="{html.escape(tab["label"])} — {html.escape(badge_label)}"'
+                   if tab_class and badge_label else "")
                 + f'>{html.escape(tab["label"])}{count}</button>'
             )
             # `intro` is prose about the *tab*, not about any one block in it — where the

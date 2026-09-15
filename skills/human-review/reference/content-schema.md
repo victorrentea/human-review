@@ -88,9 +88,11 @@ in (or fetching) clears it by itself; there is nothing to reset.
 ```
 
 The scope bar is read as a row of signed numbers, so the signs are a convention and not
-a per-chip choice: **`+` added, `−` removed, `±` changed** (`files <span class="added">+1</span>
-/ ±40`). Never `~` for the changed ones — a tilde reads as an approximation, and "about
-forty files were touched" is not what the number means.
+a per-chip choice: **`+` added, `−` removed, `✍️` changed** (`files <span class="added">+1</span>
+/ ✍️40`). Never `~` or `±` for the changed ones — both read as an approximation, and "about
+forty files were touched" is not what the number means: the pencil says somebody went in
+and edited exactly that many. It is `build.PENCIL`, so the two chips that use it cannot
+drift apart.
 
 `value` is raw HTML on purpose; `href` makes the chip a link. The four `auto` chips are
 **computed, never typed** — `diffstat` measures the change set with `git diff`, `autofixed`
@@ -122,7 +124,7 @@ the chip reads `Opus 5 review  12 raised · 9 open` rather than needing a second
 `reviewed by` chip beside it. `{"by":"Opus 5"}` is the fallback for a page rebuilt outside
 the session that reviewed it.
 
-The `tests` chip is a **balance**, not a count — `+10 / −4 / ±4` — because the
+The `tests` chip is a **balance**, not a count — `+10 / −4 / ✍️4` — because the
 question it answers is whether the branch left fewer tests running than it found. The
 loss is one number over three causes (deleted, commented out, left standing under an
 `@Disabled`), split only in its tooltip: all three cost the run the same test, only
@@ -448,8 +450,15 @@ it and strikes the label through.
   tooltip saying so. `noStrike: true` opts out. `puml`/`codecity` blocks never carry a delta;
   a `section` counts as one unless it declares `"unchanged": true`.
 - A changed diagram no tab claimed prints a **warning**.
-- `count: true` puts the item count on the tab, `badge: "…"` a literal, `badgeClass: "alarm"`
-  makes it a red `!` (the phrase moves to `aria-label` and `data-tip`); `badgeLabel` sets it.
+- `count: true` puts the item count on the tab, `badge: "…"` a literal, `badgeClass`
+  paints that badge; `badgeLabel` names it for `aria-label` and `data-tip`.
+- **A blocked tab is red, it does not wear a mark.** `tabClass: "alarm"` colours the pill's
+  own label — that is what the CODEOWNERS tab gets when the branch touches somebody else's
+  files. It used to grow a `!` in a red circle beside its name, which is the same fact said
+  as an ornament: a glyph the reader decodes hung off a word that could carry the colour
+  itself. With the mark gone the words have nowhere on screen to live, so `badgeLabel`
+  becomes the button's `aria-label` — which has to restate the tab's own label too, because
+  `aria-label` replaces the accessible name rather than adding to it.
 - **A coloured dot on a tab is a verdict, and only a computed verdict may wear one.**
   `badgeClass: "dot-green" | "dot-amber" | "dot-red"` paints the badge as a traffic light,
   which is the strongest claim anything on this page makes: it is read before the tab's own

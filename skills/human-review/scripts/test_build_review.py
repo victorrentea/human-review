@@ -1035,6 +1035,26 @@ BARE = {
 }
 
 
+def test_a_blocked_tab_is_red_rather_than_wearing_an_exclamation_mark(tmp_path):
+    """The CODEOWNERS tab, when the branch touches somebody else's files.
+
+    It used to grow a `!` in a red circle beside its name — the same fact said as an
+    ornament, a glyph the reader has to decode hung off a word that could have carried the
+    colour itself. The word is the alarm now, and the `!` has to be gone rather than
+    merely recoloured: two marks for one fact is what this change exists to end.
+    """
+    content = {**BARE, "tabs": [
+        {**BARE["tabs"][0], "tabClass": "alarm", "badgeLabel": "approval required"},
+        BARE["tabs"][1]]}
+    page, _ = _build(tmp_path, content)
+    assert 'class="tab alarm"' in page
+    assert 'aria-label="One — approval required"' in page, \
+        "aria-label replaces the accessible name, so it has to restate the tab's own label"
+    assert '<span class="n alarm"' not in page and ">!</span>" not in page
+    assert "button.tab.alarm { color:#c62828; }" in page, \
+        "the pill's own colour, not a badge's"
+
+
 def test_the_tab_count_token_is_filled_in_from_the_tabs_that_were_emitted(tmp_path):
     page, _ = _build(tmp_path, BARE)
     assert "Two tabs" in page, "the two declared tabs, and no synthesised Overview"
@@ -2024,8 +2044,9 @@ def test_the_chip_states_the_balance_of_the_run_not_just_what_was_added():
     assert chip["label"] == "tests"
     assert '<span class="added">+10</span>' in chip["value"]
     assert '<span class="removed">\u22124</span>' in chip["value"]
-    assert "\u00b14" in chip["value"], \
-        "the scope bar's third sign — `~` reads as an approximation, which is not the claim"
+    assert f'{build.PENCIL}4' in chip["value"], \
+        "the scope bar's third sign — a pencil, because `~` and `±` both read as an " \
+        "approximation, which is not the claim"
 
 
 def test_the_chip_splits_the_loss_only_in_the_tooltip():
@@ -2339,7 +2360,8 @@ def test_the_diffstat_counts_the_code_and_leaves_the_generated_files_out(tmp_pat
     files, lines = build.diffstat_chips(r, build.base_state(r, "main"), None)
     assert files["label"] == "files" and lines["label"] == "lines"
     assert '<span class="added">+1</span>' in files["value"]   # VetPicker.java, new
-    assert "±1" in files["value"]                         # Visit.java, edited
+    assert f'{build.PENCIL}1' in files["value"]            # Visit.java, edited
+    assert "±" not in files["value"], "the pencil replaced the range sign, it did not join it"
     assert '<span class="added">+6</span>' in lines["value"]
     assert "−" not in lines["value"], "a zero is dropped, not printed as −0"
     assert "1 added, 1 edited, 0 deleted" in files["tip"]
