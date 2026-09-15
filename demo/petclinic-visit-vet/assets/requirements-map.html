@@ -211,13 +211,19 @@
 @media (prefers-color-scheme:dark){.reqmap .rm-tw .rm-tk{color:var(--drift)}}
 /* What the branch did to this test, on the test itself. It is the fact the deleted
    evidence cards carried in prose ("the new one", "the pre-existing flow, extended") -
-   worth one word on the row, and silence when the answer is "nothing": a test the branch
-   never touched is the ordinary case, and a label on all nine would say nothing. */
+   worth one word on the row. An untouched test used to get silence, on the theory that
+   it is the ordinary case - but on a list of "every test this change set touched" a row
+   with no mark reads as a gap, not as a fact, and the reader stops to ask whether the
+   build forgot it. So the answer "nothing" gets a mark too: the page glyph alone, no
+   badge, in the same muted grey the excerpt's own `unchanged` badge wears, and the hover
+   says why the row is here at all - the test is untouched, and it is listed because it
+   runs through code this branch changed. */
 .reqmap .rm-cat[data-tip],.reqmap .code-badge{cursor:help}
 .reqmap .rm-st{flex:0 0 auto;align-self:center;display:inline-flex;cursor:help;
   --st:var(--rm-g-edge)}
 .reqmap .rm-st[data-st=edited]{--st:var(--rm-o-edge)}
 .reqmap .rm-st[data-st=deleted]{--st:var(--rm-r-edge)}
+.reqmap .rm-st[data-st=unchanged]{--st:var(--muted,#6b6b6b)}
 .reqmap .rm-st svg{display:block;width:15px;height:15px;overflow:visible}
 /* Two vocabularies, one alphabet. On a test row the mark stands alone - plus, pencil,
    cross - because the subject is a test; on the excerpt's badge the same mark rides the
@@ -527,12 +533,19 @@
                       'it existed before - this branch changed it','edited test','edited'],
              deleted:[BIG+CROSS+'</g></svg>',
                       'this branch removed it - nothing asserts what it asserted',
-                      'deleted test','deleted']};
+                      'deleted test','deleted'],
+             // The one state where the subject IS a file, untouched: the page glyph with no
+             // badge on it, same as the excerpt badge one level down says "unchanged".
+             // Not blown up like the others - there is nothing in its corner to read.
+             unchanged:[ICON+'</svg>',
+                        'unchanged - this branch did not touch this test; it is listed '
+                        +'because it runs through code the change set edited',
+                        'unchanged test','unchanged']};
   function stamp(t){
     // The manifest is the authority on what the branch did to a TEST; a part's own diff
     // only knows what happened inside the lines quoted, which is not the same question -
     // a test edited three lines above the excerpt reads as untouched otherwise.
-    var st=STAMP[t.status];if(!st)return '';
+    var st=STAMP[t.status]||STAMP.unchanged;
     // The word is gone from the page but not from the accessibility tree: a screen reader
     // reading this row still gets "new test", which is what the glyph is for.
     return '<span class="rm-st" data-st="'+st[3]

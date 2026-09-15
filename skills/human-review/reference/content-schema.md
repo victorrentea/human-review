@@ -670,6 +670,15 @@ the one thing no amount of reading changes. Four tabs need something said about 
     `.component.spec.ts` an Angular component test, `.java` a JUnit one. The badge says
     UI/API/unit; the suffix says *which framework*, and thirteen rows of near-identical
     monospace names hide it. The name and the `:line` keep the link colour.
+  - **An untouched test wears a mark too**, not silence. On a list headed *every test this
+    change set touched*, a row with no stamp reads as a gap the build left, not as a fact
+    — the reader stops to ask whether it was forgotten. So a test the branch never edited
+    (no `status` in the data, or `"unchanged"`) gets the page glyph alone, no badge, in the
+    muted grey the excerpt's own `unchanged` badge already wears one level down, and the
+    hover says why the row is here at all: *unchanged — this branch did not touch this
+    test; it is listed because it runs through code the change set edited*. The subject of
+    that glyph really is a file this time, which is why it is the page and not one of the
+    three blown-up badges.
   - A **deleted** row is listed and inert: this checkout has no source to quote, so it does
     not open (no disclosure arrow, no tab stop, no `role="button"`), its name is struck
     through the way the run struck it, and its location keeps the words but loses the link
