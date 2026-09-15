@@ -854,7 +854,19 @@ the one thing no amount of reading changes. Four tabs need something said about 
     things the reader has to recognise as a key before they can use it as one.
     **Spread the row edge to edge** (`justify-content:space-between`) under the frame, so
     the five words sit under the width of text they explain instead of bunching at the
-    left. **A thin grey frame around all five**, so the row reads as five badges rather
+    left. **It shrinks along x, it never folds** (`flex-wrap:nowrap`, and a font size that
+    falls with the column: `container-type:inline-size` on `.rm-text`, then
+    `font-size:min(1em,calc(3.2cqi - 0.5px))` on the row, with the pills' padding and the
+    gaps in `em` so the whole thing shrinks together). Wrapping put `N/A` on a second row
+    directly over the ticket's first sentence, where a badge reads as part of the prose
+    rather than as the key above it — and it cost the ticket a line of height exactly on
+    the narrow window that had least to give. The coefficient is the measurement: the five
+    words, their padding and the four gaps are 30.6em wide, `100/30.6` shaved to `3.2`
+    because the five 1px borders do not shrink with the font. Give `.rm-text` an explicit
+    `width:100%` in the stacked (`max-width:900px`) layout — `align-items:flex-start`
+    sizes it from its content there, and a content-based width is the one thing
+    `container-type:inline-size` refuses to compute, so the column measures 0 and the
+    legend inside it renders at a 0px font. **A thin grey frame around all five**, so the row reads as five badges rather
     than five words that happen to be coloured — on all of them and not only the filled
     ones, because `N/A`'s state *is* no fill and without an edge it is a bare word the
     reader cannot tell is the same kind of thing as `full`. Name the states, not their colours. **The hover is one short sentence** — *Only
