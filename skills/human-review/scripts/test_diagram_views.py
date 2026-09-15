@@ -474,6 +474,22 @@ def test_the_whole_pair_folds_away_and_starts_open(tmp_path):
     assert "snippet" in body and 'class="diagram' in body
 
 
+def test_the_quoted_test_starts_closed_and_the_diagram_is_in_view(tmp_path):
+    """The tab is called Sequence. A thirty-line block of the spec above every diagram put
+    the picture below the fold on each exhibit; now the source is a closed fold inside the
+    open pair, its summary names the lines it quotes, and the diagram is outside it."""
+    html_out = _pairs_fixture(tmp_path)
+    assert '<details class="testsrc">' in html_out
+    assert '<details class="testsrc" open>' not in html_out
+    src = html_out[html_out.index('<details class="testsrc">'):]
+    src = src[:src.index("</details>")]
+    assert "snippet" in src and 'class="diagram' not in src
+    assert "<summary>the test · lines " in src
+    after = html_out[html_out.index('<details class="testsrc">'):]
+    after = after[after.index("</details>"):]
+    assert 'class="diagram' in after
+
+
 def test_the_fold_is_labelled_with_the_file_and_not_the_path_again(tmp_path):
     """The panel it opens prints the path and line range in its own header bar, and the
     diagram under it prints the path too. A third copy in the summary is the habit this

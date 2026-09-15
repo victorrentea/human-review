@@ -36,6 +36,7 @@ import argparse
 import json
 import os
 import shutil
+import re
 import subprocess
 import sys
 import urllib.error
@@ -249,16 +250,160 @@ def _logging(ctx: Ctx):
        f"--json {ART}/logging.json", ctx)
 
 
+# ── which screens did the branch change? ──────────────────────────────────────────
+#
+# The audit's `screens` used to be two entries somebody guessed the branch touched, copied
+# from the example, and the one screen that mattered ("Edit a visit", changed by the
+# branch) was not among them. Nothing looked at the diff. Now `screens` is the whole
+# app's catalogue, the audit draws only the ones whose DOM changed, and the runner does the
+# one check the audit cannot: it reads the diff for changed Angular components, follows
+# them to their routes, and shouts about any route the catalogue does not reach.
+
+ROUTE_TOKEN = re.compile(
+    r"""(?P<open>\{)|(?P<close>\})|(?P<path>\bpath\s*:\s*(['"`])(?P<p>.*?)\4)"""
+    r"""|(?P<comp>\bcomponent\s*:\s*(?P<c>[A-Za-z_]\w*))|(?P<children>\bchildren\s*:)"""
+    r"""|(?P<comment>//[^\n]*|/\*.*?\*/)""", re.S)
+
+
+def angular_routes(text: str) -> list[tuple[str, str]]:
+    """`(route pattern, component class)` pairs out of one routing source, nested children
+    joined onto their parent's path. A stack of open `{`s, not a TypeScript parser: each
+    route object records its own `path:` and `component:`, and a `children:` array under
+    it opens objects whose paths are prefixed with its own. Comments are skipped so a
+    route somebody commented out is not a route."""
+    out, stack = [], []          # one entry per open `{`: {"path", "full", "component"}
+    for m in ROUTE_TOKEN.finditer(text):
+        if m["comment"]:
+            continue
+        if m["open"]:
+            # A child opened under a route inherits that route's full path; an object
+            # opened before its parent's `path:` (or a `resolve: {…}`) inherits the
+            # grandparent's, which is the right answer for both.
+            stack.append({"path": None, "component": None,
+                          "full": stack[-1]["full"] if stack else ""})
+        elif m["close"]:
+            if not stack:
+                continue
+            r = stack.pop()
+            if r["component"] and r["path"] is not None:
+                out.append((r["full"], r["component"]))
+        elif m["path"] is not None and stack:
+            r = stack[-1]
+            r["path"] = m["p"].replace("\\/", "/").strip("/")
+            r["full"] = "/".join(x for x in (r["full"], r["path"]) if x)
+        elif m["comp"] and stack:
+            stack[-1]["component"] = m["c"]
+    return out
+
+
+def route_matches(pattern: str, url: str) -> bool:
+    """`pets/:id/visits/add` reaches `pets/11/visits/add`. A parameter takes one segment; a
+    `**` takes the rest; the catalogue's URL is compared without its origin, query or hash."""
+    path = re.sub(r"^https?://[^/]+", "", url).split("?", 1)[0].split("#", 1)[0].strip("/")
+    rx = "/".join("[^/]+" if seg.startswith(":") else ".*" if seg == "**" else re.escape(seg)
+                  for seg in pattern.strip("/").split("/") if seg)
+    return re.fullmatch(rx, path) is not None
+
+
+def _component_ts(rel: str) -> str | None:
+    """The `.component.ts` behind any file of an Angular component; None for a spec or
+    for a file that is not a component's."""
+    m = re.match(r"(.*\.component)\.(ts|html|scss|css|less)$", rel)
+    if not m or rel.endswith(".spec.ts"):
+        return None
+    return m.group(1) + ".ts"
+
+
+def unlisted_screens(changed: list[str], catalogue: dict, sources: list[str],
+                     root: Path = Path(".")) -> list[dict]:
+    """The changed, routed components no catalogue screen reaches.
+
+    `changed` is the diff's file list; a changed component that owns a route is checked
+    directly, and one that does not (a child like `<app-visit-list>`) is followed one hop
+    to the routed components whose templates embed its selector. Anything further — a
+    pipe, a service, a shared stylesheet — is left to the DOM diff, which sees it on
+    whichever catalogue screen renders it. The result is what the audit prints in red."""
+    roots = [root / s for s in sources] or [root]
+    routes: list[tuple[str, str]] = []
+    for r in roots:
+        for f in r.rglob("*.ts"):
+            if f.name.endswith(".spec.ts") or "node_modules" in f.parts:
+                continue
+            try:
+                text = f.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if re.search(r"\bRouter(Module\.for(Root|Child)|Config)\b|:\s*Routes\b", text):
+                routes += angular_routes(text)
+    by_class = {}
+    for pattern, cls in routes:
+        by_class.setdefault(cls, []).append(pattern)
+
+    changed_ts = sorted({t for t in map(_component_ts, changed) if t})
+    candidates: dict[str, str | None] = {}          # class -> via selector, or None
+    templates = None
+    for ts in changed_ts:
+        f = root / ts
+        if not f.is_file():
+            continue
+        text = f.read_text(encoding="utf-8", errors="replace")
+        cls = re.search(r"export\s+class\s+(\w+)", text)
+        if not cls:
+            continue
+        if cls.group(1) in by_class:
+            candidates.setdefault(cls.group(1), None)
+            continue
+        sel = re.search(r"selector\s*:\s*['\"]([^'\"]+)['\"]", text)
+        if not sel:
+            continue
+        if templates is None:
+            templates = [h for r in roots for h in r.rglob("*.component.html")
+                         if "node_modules" not in h.parts]
+        for h in templates:
+            if f"<{sel.group(1)}" not in h.read_text(encoding="utf-8", errors="replace"):
+                continue
+            host = h.parent / (h.name[: -len(".html")] + ".ts")
+            if not host.is_file():
+                continue
+            hc = re.search(r"export\s+class\s+(\w+)",
+                           host.read_text(encoding="utf-8", errors="replace"))
+            if hc and hc.group(1) in by_class:
+                candidates.setdefault(hc.group(1), f"<{sel.group(1)}>")
+
+    urls = list((catalogue or {}).values())
+    out = []
+    for cls, via in candidates.items():
+        for pattern in by_class[cls]:
+            if pattern in ("", "**") or any(route_matches(pattern, u) for u in urls):
+                continue
+            out.append({"component": cls, "route": pattern, **({"via": via} if via else {})})
+    return out
+
+
 def _dsaudit(ctx: Ctx):
     c = ctx.step_cfg("dsaudit")
-    screens = " ".join(f'--screen "{k}={v}"' for k, v in (c.get("screens") or {}).items())
+    catalogue = c.get("screens") or {}
+    screens = " ".join(f'--screen "{k}={v}"' for k, v in catalogue.items())
     sources = " ".join(f"--source {s}" for s in (c.get("source") or []))
     if not (c.get("base-new") and c.get("base-old") and screens):
         raise LookupError("dsaudit needs base-new, base-old and at least one screen")
     branch = sh("git rev-parse --abbrev-ref HEAD", ctx, capture=True).stdout.strip() or "HEAD"
+    changed = sh(f"git diff --name-only {merge_base(ctx)} HEAD -- "
+                 + " ".join(f"'{s}'" for s in (c.get("source") or [])),
+                 ctx, capture=True, check=False).stdout.split()
+    unlisted = unlisted_screens(changed, catalogue, c.get("source") or [])
+    for u in unlisted:
+        ctx.notes.append(f"UNLISTED SCREEN — {u['component']} changed and renders "
+                         f"{u['route']}" + (f" (through {u['via']})" if u.get("via") else "")
+                         + ", which no steps.dsaudit.screens entry reaches: the audit never "
+                         "looked at it. Add the screen to human-review.json and re-run "
+                         "--only dsaudit; until then say so in the guide")
+    flags = " ".join(
+        f'--unlisted "{u["component"]}={u["route"]}' + (f'={u["via"]}' if u.get("via") else "") + '"'
+        for u in unlisted)
     sh(f"{HERE}/ds-audit.py --base-new {c['base-new']} --base-old {c['base-old']} "
        f'--label-new "{branch}" --label-old {c.get("label-old", "main")} {screens} {sources} '
-       f"--assets {ART} --asset-prefix assets --json {ART}/ds-audit.json "
+       f"{flags} --assets {ART} --asset-prefix assets --json {ART}/ds-audit.json "
        f"-o {ART}/ds-audit.html", ctx)
     sh(f"{HERE}/ds-audit.py --css > {ART}/ds-audit.css", ctx)
 

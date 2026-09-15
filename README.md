@@ -291,11 +291,25 @@ product.
 ```sh
 ./ds-audit.py --base-new http://localhost:4300 --base-old http://localhost:4301 \
               --screen "Book a visit=pets/11/visits/add" \
+              --screen "Edit a visit=visits/1/edit" \
               --screen "Edit a pet=pets/11/edit" \
               --label-new my-branch --label-old main \
               --source ../frontend/src \
               --assets assets -o assets/ds-audit.html --json assets/ds-audit.json
 ```
+
+**Which screens?** All of them. `steps.dsaudit.screens` in `human-review.json` is the
+app's whole catalogue — every route, deep-linked to a seeded row — not the two screens
+somebody guessed the branch touched. The audit shoots every one, draws a viewer only for
+the screens whose DOM differs between the two builds, and names the rest in one line
+under the verdict ("also audited, identical on both sides"). Which screens matter is
+decided by the diff, never by hand. The one thing the diff cannot see is a changed screen
+that is not in the catalogue, so `run-steps.py` follows every changed Angular component
+in the diff to its route (one hop through the templates that embed an unrouted child) and
+prints, in red at the top of the UX tab and in the run's notes, any route the catalogue
+does not reach — *"VisitEditComponent renders visits/:id/edit and no screen reaches it"*.
+That is the exact failure this arrangement exists to rule out: a two-screen list that
+covered "Book a visit" while the branch's own "Edit a visit" was never looked at.
 
 The role registry is **derived, not listed**. A hand-written table of "roles the design
 system covers" is wrong the day the second component lands and nobody remembers the file

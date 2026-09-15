@@ -18,9 +18,11 @@ Green is context. Red is the product.
                   --source ../petclinic-frontend/src \
                   --assets assets -o assets/ds-audit.html --json assets/ds-audit.json
 
-Several screens per run, because a migration touches one control per form: "it flagged
-the bare one" is a weak claim, "it flagged *only* the bare one, and called the other
-three right" is the one worth making.
+Every screen of the app per run, not the two somebody guessed the branch touched: the
+DOM diff decides which screens changed, the changed ones get a viewer, the rest are
+named in one line. "It flagged the bare one" is a weak claim; "it flagged *only* the bare
+one, and called the other three right" is the one worth making — and "the screen it
+changed was not on the list" is the failure this arrangement exists to rule out.
 
 The JSON is the artefact; the picture is its rendering. An adversarial review agent
 reads `--json` and never has to OCR a PNG. Emit the stylesheet the fragment needs with
@@ -839,6 +841,10 @@ CSS = """/* ds-audit — the annotated screenshots and the findings table, and n
 .dsa-considered ul { margin: .4rem 0 0 .2rem; }
 .dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
 .dsa-hdr .dsa-count { font-weight: 700; }
+.dsa-untouched { font-size: .84rem; opacity: .85; margin: .2rem 0 .6rem; }
+.dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
+  padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
+.dsa-unlisted code { color: inherit; }
 :root { --dsa-ok: #1f7a45; --dsa-bad: #c1121f; --dsa-new: #1a4fa0; --dsa-hot: #f0a500; }
 @media (prefers-color-scheme: dark) {
   :root { --dsa-ok: #46c07a; --dsa-bad: #ff6b6b; --dsa-new: #7aa9ef; --dsa-hot: #ffc94d; }
@@ -955,10 +961,12 @@ def slug(name: str) -> str:
 def screen_touched(screen: dict) -> bool:
     """Did this branch modify this screen at all?
 
-    A run audits every form a migration could have touched, and most of them come back
-    identical on both sides. Those are the screens the reviewer scrolls past — three
-    full-page screenshots and a table of components that were already right — so they
-    open collapsed and the ones the branch actually moved stay open.
+    A run audits every screen the app has, and most of them come back identical on both
+    sides. Those are the screens the reviewer would scroll past — three full-page
+    screenshots and a table of components that were already right — so they are not
+    drawn at all: one line under the verdict names them, and only the screens the branch
+    actually moved get a viewer. The catalogue is the whole app precisely so that the
+    choice of *which* screens to look at is never made by hand — the DOM diff makes it.
 
     The question is asked of the delta, not of the findings: an element the audit does
     not judge is still a modification, and a screen whose only change is a paragraph is
@@ -1061,15 +1069,11 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
         considered = (f'<details class="dsa-considered"><summary>{len(passed)} control'
                       f'{"" if len(passed) == 1 else "s"} considered and deliberately not '
                       f'judged</summary><ul>{items}</ul></details>')
-    # The heading and its counts stay outside the fold: a collapsed screen still has to
-    # say how many gaps it carries, or collapsing it would be hiding a finding.
-    touched = screen_touched(screen)
-    label = ("screenshots and findings" if touched else
-             'screenshots and findings <span class="dsa-prov">— this branch did not '
-             "touch this screen</span>")
+    # The heading and its counts stay outside the fold: a folded screen still has to
+    # say how many gaps it carries, or folding it would be hiding a finding.
     return (f'<div class="dsa">{head}'
-            f'<details class="dsa-screen"{" open" if touched else ""}>'
-            f'<summary>{label}</summary>'
+            '<details class="dsa-screen" open>'
+            '<summary>screenshots and findings</summary>'
             f'{build.dgm_views_html(panes, initial="new")}{table}{considered}</details></div>')
 
 
@@ -1095,10 +1099,14 @@ def render(result: dict, assets_prefix: str) -> str:
                     "bill of health.</li>")
 
     counts = result["summary"]
+    touched = [sc for sc in result["screens"] if screen_touched(sc)]
+    untouched = [sc for sc in result["screens"] if not screen_touched(sc)]
+    n = len(result["screens"])
     verdict_line = (
         f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
         f'{"" if counts["new"]["bare"] == 1 else "s"} across '
-        f'{len(result["screens"])} screen{"" if len(result["screens"]) == 1 else "s"}, '
+        f'{n} screen{"" if n == 1 else "s"} audited, '
+        f'{len(touched)} changed by this branch, '
         f'{counts["new"]["ds"]} design-system component'
         f'{"" if counts["new"]["ds"] == 1 else "s"} in place'
         + (f' \u00b7 <b>{len(counts["regressions"])} regression'
@@ -1116,13 +1124,42 @@ def render(result: dict, assets_prefix: str) -> str:
         for sc in result["screens"]])
     embedded["full_json"] = "the --json file beside this page carries delta.elements too"
     payload = json.dumps(embedded, separators=(",", ":")).replace("</", "<\\/")
+    # A changed screen the catalogue does not reach is the one finding this audit cannot
+    # make by itself, so it is the first thing on the page and it is red: the DOM diff
+    # decides which screens matter, but only among the screens it was given.
+    unlisted = result.get("unlisted") or []
+    unlisted_line = "".join(
+        f'<p class="dsa-unlisted">\u26a0 <b>Changed and not audited:</b> '
+        f'<code>{html.escape(u["component"])}</code> renders '
+        f'<code>{html.escape(u["route"])}</code>'
+        + (f' (through <code>{html.escape(u["via"])}</code>)' if u.get("via") else "")
+        + ' and no screen in the catalogue reaches it \u2014 add one to '
+        '<code>steps.dsaudit.screens</code> and re-run.</p>'
+        for u in unlisted)
+    # The screens the branch left alone are named, not drawn: a reader who wonders why
+    # "Edit a pet" is missing gets the answer in one line instead of three screenshots of
+    # a form that did not change. A gap that was already there is still a gap, so the
+    # count rides along; it is just not this branch's doing.
+    if untouched:
+        names = ", ".join(
+            html.escape(sc["screen"])
+            + (f' <span class="dsa-prov">({sc["summary"]["new"]["bare"]} gap'
+               f'{"" if sc["summary"]["new"]["bare"] == 1 else "s"} already there)</span>'
+               if sc["summary"]["new"]["bare"] else "")
+            for sc in untouched)
+        untouched_line = (f'<p class="dsa-untouched">Also audited, identical on both sides '
+                          f'\u2014 this branch did not touch: {names}.</p>')
+    else:
+        untouched_line = ""
     return (
         '<div class="dsa-run">'
+        f'{unlisted_line}'
         f'<p class="dsa-hdr">{verdict_line}</p>'
+        f'{untouched_line}'
         f'<div class="dsa-reg"><b>Roles the design system covers</b>, derived \u2014 not '
         "listed by hand, so a second component needs no change here:"
         f'<ul>{reg_rows}</ul></div>'
-        + "".join(render_screen(sc, assets_prefix, build) for sc in result["screens"])
+        + "".join(render_screen(sc, assets_prefix, build) for sc in touched)
         + f'<script type="application/json" class="ds-audit-data">{payload}</script>'
         + HL_JS + "</div>")
 
@@ -1368,6 +1405,9 @@ def main():
                          "/ --base-old (repeatable). Three of the four controls a "
                          "migration touches usually live on three different forms, so "
                          "\"it flagged only the right one\" needs more than one screen.")
+    ap.add_argument("--unlisted", action="append", default=[], metavar="COMPONENT=ROUTE[=VIA]",
+                    help="a changed routed component no --screen reaches; rendered as a red "
+                         "warning at the top and carried in the JSON as `unlisted`")
     ap.add_argument("--base-new", help="origin the branch is served from, e.g. http://localhost:4300")
     ap.add_argument("--base-old", help="origin the base is served from, e.g. http://localhost:4301")
     ap.add_argument("--new", action="append", default=[],
@@ -1520,6 +1560,8 @@ def main():
                                     delta={"dom": dom, "elements": elements}))
 
     result = build_result(screens, registry)
+    result["unlisted"] = [dict(zip(("component", "route", "via"), u.split("=", 2)))
+                          for u in args.unlisted]
     Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.json_out).write_text(json.dumps(result, indent=1), encoding="utf-8")
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)

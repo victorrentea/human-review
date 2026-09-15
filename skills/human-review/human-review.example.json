@@ -82,9 +82,31 @@
       "base-old": "http://localhost:4301",
       "label-old": "main",
       "source": ["petclinic-frontend/src"],
+      "//screens": "EVERY screen of the app, deep-linked to a seeded row, not the ones",
+      "//screens2": "somebody guessed the branch touched. The audit shoots them all and",
+      "//screens3": "draws only those whose DOM changed; the rest are named in one line.",
+      "//screens4": "run-steps.py follows every changed component to its route and flags,",
+      "//screens5": "in red on the page, any route this list does not reach.",
       "screens": {
+        "Welcome": "welcome",
+        "Owners": "owners",
+        "Add an owner": "owners/add",
+        "Owner details": "owners/8",
+        "Edit an owner": "owners/8/edit",
+        "Add a pet": "owners/8/pets/add",
+        "Pets": "pets",
+        "Edit a pet": "pets/11/edit",
         "Book a visit": "pets/11/visits/add",
-        "Edit a pet": "pets/11/edit"
+        "Visits": "visits",
+        "Edit a visit": "visits/1/edit",
+        "Pet types": "pettypes",
+        "Add a pet type": "pettypes/add",
+        "Edit a pet type": "pettypes/1/edit",
+        "Specialties": "specialties",
+        "Edit a specialty": "specialties/1/edit",
+        "Vets": "vets",
+        "Add a vet": "vets/add",
+        "Edit a vet": "vets/1/edit"
       }
     }
   }

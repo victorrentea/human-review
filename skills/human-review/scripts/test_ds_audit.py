@@ -687,24 +687,49 @@ def _untouched(screen):
     return sc
 
 
-def test_a_screen_the_branch_moved_is_the_one_left_open():
+def test_a_screen_the_branch_moved_is_the_one_drawn():
     result = _both_screens()
     assert [ds.screen_touched(sc) for sc in result["screens"]] == [True, True]
     frag = ds.render(result, "")
     assert frag.count('<details class="dsa-screen" open>') == 2
-    assert 'did not touch this screen' not in frag
+    assert 'dsa-untouched' not in frag
+    assert "2 screens audited, 2 changed by this branch" in frag
 
 
-def test_a_screen_nothing_happened_on_opens_collapsed():
-    """Seven forms audited, one touched: the other six are three full-page screenshots
-    each of a picture that did not change. They fold, and they say why."""
-    _, screen = _screen_from_capture()
+def test_a_screen_nothing_happened_on_is_named_and_not_drawn():
+    """Every screen of the app is audited, and one was touched: the others would be three
+    full-page screenshots each of a picture that did not change. They are named in one
+    line under the verdict — so a reader who wonders why "Edit a pet" is missing gets the
+    answer — and get no viewer at all. The gaps already on them still count."""
+    reg, screen = _screen_from_capture()
     sc = _untouched(screen)
     assert ds.screen_touched(sc) is False
-    frag = ds.render(ds.build_result([sc], _screen_from_capture()[0]), "")
-    assert '<details class="dsa-screen">' in frag
-    assert " open>" not in frag
-    assert "did not touch this screen" in frag
+    frag = ds.render(ds.build_result([sc], reg), "")
+    assert 'class="dsa-screen"' not in frag
+    assert "1 screen audited, 0 changed by this branch" in frag
+    line = frag[frag.index('<p class="dsa-untouched">'):]
+    line = line[:line.index("</p>")]
+    assert "did not touch: Book a visit" in line
+    if sc["summary"]["new"]["bare"]:
+        assert f'{sc["summary"]["new"]["bare"]} gap' in line and "already there" in line
+
+
+def test_a_changed_routed_component_no_screen_reaches_is_red_and_first():
+    """The one finding the audit cannot make on its own: the DOM diff picks the changed
+    screens, but only among the screens it was given. The runner works out which routed
+    components the branch changed; one the catalogue does not reach is the first thing on
+    the page, in red, naming the route to add."""
+    result = _both_screens()
+    result["unlisted"] = [{"component": "VisitEditComponent", "route": "visits/:id/edit"},
+                          {"component": "PetListComponent", "route": "pets",
+                           "via": "<app-visit-list>"}]
+    frag = ds.render(result, "")
+    first = frag.index('<p class="dsa-unlisted">')
+    assert first < frag.index('<p class="dsa-hdr">')
+    assert "Changed and not audited" in frag
+    assert "<code>VisitEditComponent</code> renders <code>visits/:id/edit</code>" in frag
+    assert "through <code>&lt;app-visit-list&gt;</code>" in frag
+    assert "steps.dsaudit.screens" in frag
 
 
 def test_an_element_that_only_moved_does_not_reopen_the_screen():
@@ -714,12 +739,12 @@ def test_an_element_that_only_moved_does_not_reopen_the_screen():
     assert ds.screen_touched(sc) is False
 
 
-def test_a_folded_screen_still_states_its_gaps():
-    """Collapsing a screen may hide the pictures; hiding the count would be hiding a
+def test_a_drawn_screen_states_its_gaps_above_the_fold():
+    """Folding a screen may hide the pictures; hiding the count would be hiding a
     finding. The heading stays above the fold."""
-    _, screen = _screen_from_capture()
-    frag = ds.render(ds.build_result([_untouched(screen)], _screen_from_capture()[0]), "")
-    head, _, _ = frag.partition('<details class="dsa-screen">')
+    reg, screen = _screen_from_capture()
+    frag = ds.render(ds.build_result([screen], reg), "")
+    head, _, _ = frag.partition('<details class="dsa-screen" open>')
     assert "gap" in head and "design-system component" in head
 
 

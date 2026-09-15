@@ -98,6 +98,12 @@ Read the status table it prints. Three things in it are yours:
   image, an amber `PARTIAL LIST` seal that is *correct*, a suite that could not start, and
   above all **video exit 3 — filmed, and the feature did not hold.** Lead the whole review
   with that one.
+- **`UNLISTED SCREEN`** (a `dsaudit` note) — the branch changed a routed component that no
+  entry in `steps.dsaudit.screens` reaches, so the design-system audit never looked at
+  the one screen the change was about. That is a hole in the evidence, not a finding to
+  narrate around: add the screen to `human-review.json` (the list is the app's whole
+  catalogue; only the screens whose DOM changed are drawn) and re-run `--only dsaudit`
+  before writing the guide. The page prints the same warning in red at the top of UX.
 
 ## Step 4 — Write the judgement
 

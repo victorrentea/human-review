@@ -1078,11 +1078,22 @@ body.showall .panel:first-of-type { border-top:0; }
 .testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
 .testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
 /* The quoted test and the diagram under it are one card in two halves — the test, then
-   the test drawn as a sequence. The snippets stack with no air between them and the
-   diagram continues straight down from the last one; only the outer corners are round. */
-details.testpair > .snippet { margin:.7rem 0 0; border-radius:8px 8px 0 0; }
-details.testpair > .snippet ~ .snippet { margin-top:0; border-top:0; border-radius:0; }
-details.testpair > .snippet ~ .diagram { margin-top:0; border-top:0; border-radius:0 0 8px 8px; }
+   the test drawn as a sequence. The test half is its own fold, closed on load: the tab
+   is about the drawing, and the source is one click away under a summary naming the
+   lines it quotes. Opened, the snippets stack with no air between them and the diagram
+   continues straight down from the last one; only the outer corners are round. */
+details.testsrc { margin:.7rem 0 0; }
+details.testsrc > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.35rem;
+  align-items:center; color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace;
+  padding:.2rem 0; }
+details.testsrc > summary::-webkit-details-marker { display:none; }
+details.testsrc > summary::before { content:"▾"; font-size:.75rem; }
+details.testsrc:not([open]) > summary::before { content:"▸"; }
+details.testsrc > summary:hover { color:var(--link); }
+details.testsrc > .snippet { margin:.3rem 0 0; border-radius:8px 8px 0 0; }
+details.testsrc > .snippet ~ .snippet { margin-top:0; border-top:0; border-radius:0; }
+details.testpair > details.testsrc[open] ~ .diagram { margin-top:0; border-top:0; border-radius:0 0 8px 8px; }
+details.testpair > details.testsrc:not([open]) ~ .diagram { margin-top:.4rem; }
 .testlead { margin:.7rem 0 0; }
 /* The fold's own summary: the test's file name, quiet on purpose. It is a control for
    getting an exhibit out of the way while comparing two others, not a heading competing
@@ -4088,8 +4099,10 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
     )
 
 
-def _folded_pair(test_rel: str, pieces: list[str]) -> str:
-    """The test and the sequence its run recorded, foldable together, and open.
+def _folded_pair(test_rel: str, pieces: list[str], quoted: list[str] = (),
+                 ranges: str = "") -> str:
+    """The test and the sequence its run recorded, foldable together, and open — with the
+    quoted test itself folded *closed* inside, so the picture is what the page opens on.
 
     Open, because the pair is what the reader came for, and a tab that opens on nothing
     but summaries makes them click before it says anything. Foldable, because this tab's
@@ -4101,12 +4114,24 @@ def _folded_pair(test_rel: str, pieces: list[str]) -> str:
     one test — without the test above it, it is a picture of nothing, and the reader who
     just put the test away is the last person who wants it left on screen.
 
-    The summary is the file's basename and nothing more: the quoted block under it already
-    prints the path and the line ranges in its own header bar.
+    Inside the pair the test source starts closed. This tab is called Sequence: the reader
+    came to see what the run *did*, and a thirty-line block of the spec above every
+    diagram put the picture below the fold on every exhibit. The source is one click away
+    under a summary that says which lines it quotes; the diagram is in view at once.
+
+    The outer summary is the file's basename and nothing more: the quoted block under it
+    already prints the path and the line ranges in its own header bar.
     """
     name = html.escape(test_rel.rsplit("/", 1)[-1])
+    src = ""
+    if quoted:
+        src = ('<details class="testsrc">'
+               f'<summary>the test{" · lines " + html.escape(ranges) if ranges else ""}</summary>'
+               + "\n".join(x.strip("\n") for x in quoted)
+               + "</details>\n")
     return ('<details class="testpair" open>'
             f'<summary>{name}</summary>'
+            + src
             + "\n".join(x.strip("\n") for x in pieces)
             + "</details>")
 
@@ -4175,10 +4200,12 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     parts, used = [], set()
 
     def take(test_rel):
-        """The snippets that quote this test file, removed from the pool."""
+        """The snippets that quote this test file, removed from the pool, and the line
+        ranges they quote — `35-48, 52-65` — for the fold that hides them."""
         mine = [x for x in snippets if x["ref"].rpartition(":")[0] == test_rel]
         used.update(id(x) for x in mine)
-        return [snippet_html(x["ref"], x.get("caption"), root) for x in mine]
+        ranges = ", ".join(x["ref"].rpartition(":")[2].replace("-", "–") for x in mine)
+        return [snippet_html(x["ref"], x.get("caption"), root) for x in mine], ranges
 
     merged = dict(dspec)
     merged.pop("only", None)
@@ -4190,18 +4217,19 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
         # section headers are those same titles, linked to those same lines, drawn by
         # the generator. Two copies of one list, and the one on the picture is the one
         # that sits where the reader is already looking.
-        quoted = take(test_rel)
-        pieces = list(quoted) if quoted else [_unquoted_note(test_rel, root)]
+        quoted, ranges = take(test_rel)
+        pieces = [] if quoted else [_unquoted_note(test_rel, root)]
         pieces.append(render_diagrams(merged, root, out_dir, [r], bare=test_rel))
-        parts.append(_folded_pair(test_rel, pieces))
+        parts.append(_folded_pair(test_rel, pieces, quoted, ranges))
 
     unchanged = 0
     for test_rel in dict.fromkeys(x["ref"].rpartition(":")[0] for x in snippets
                                   if id(x) not in used):
         if not (root / (test_rel + ".genseq.puml")).is_file():
             continue
-        pieces = take(test_rel) + [_unchanged_sequence(test_rel, root, out_dir)]
-        parts.append(_folded_pair(test_rel, pieces))
+        quoted, ranges = take(test_rel)
+        parts.append(_folded_pair(test_rel, [_unchanged_sequence(test_rel, root, out_dir)],
+                                  quoted, ranges))
         unchanged += 1
 
     orphaned = [x for x in snippets if id(x) not in used]
