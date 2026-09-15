@@ -82,8 +82,7 @@ in (or fetching) clears it by itself; there is nothing to reset.
   {"auto":"diffstat"},
   {"auto":"tests","href":"#requirements"},
   {"label":"diagrams","value":"3","href":"#diagrams"},
-  {"auto":"autofixed","href":"#review"},
-  {"auto":"cost"}
+  {"auto":"autofixed","href":"#review"}
 ]
 ```
 
@@ -94,11 +93,15 @@ forty files were touched" is not what the number means: the pencil says somebody
 and edited exactly that many. It is `build.PENCIL`, so the two chips that use it cannot
 drift apart.
 
-`value` is raw HTML on purpose; `href` makes the chip a link. The four `auto` chips are
+`value` is raw HTML on purpose; `href` makes the chip a link. The three `auto` chips are
 **computed, never typed** — `diffstat` measures the change set with `git diff`, `autofixed`
-counts the page's own two lists, `cost` runs `review-cost.py` over the run's transcript,
-`tests` reads the manifest `test-changes.py` already built for the tab below. All four drop
-themselves rather than print a wrong number. A chip whose number is typed by hand goes
+counts the page's own two lists, `tests` reads the manifest `test-changes.py` already built
+for the tab below. All three drop themselves rather than print a wrong number.
+
+`{"auto":"cost"}` is **retired and ignored**, not an error: the cost is the last tab on the
+strip now (see *The cost tab*), because what a chip in this bar could say was only ever the
+review's own share of the bill — and the review is the cheaper half of what a change costs.
+Leaving it in a content file does nothing. A chip whose number is typed by hand goes
 stale without anything noticing: the `tests` chip exists because `unit tests · 125 green
 (20 new)` used to be typed here, and was true until somebody wrote the next test.
 
@@ -120,9 +123,12 @@ pathspecs; the built-in list cannot be switched off, and the tooltip states the 
 totals regardless — the generated files are ranked below the code, never hidden from it.
 
 `autofixed` names the model that did the reviewing, taken from the run's own transcript, so
-the chip reads `Opus 5 review  12 raised · 9 open` rather than needing a second, unverifiable
-`reviewed by` chip beside it. `{"by":"Opus 5"}` is the fallback for a page rebuilt outside
-the session that reviewed it.
+the chip reads `🤖Opus 5 review: 9 open, 3 auto-fixed` rather than needing a second,
+unverifiable `reviewed by` chip beside it. `{"by":"Opus 5"}` is the fallback for a page
+rebuilt outside the session that reviewed it. The pill is written as a **sentence** — robot,
+model, colon, then the two numbers with a comma between them — because a label followed by a
+gap and a row of figures reads as a measurement, and this is a claim somebody made about the
+diff. The applied half stays grey: it is there to be checked, not acted on.
 
 The `tests` chip is a **balance**, not a count — `+10 / −4 / ✍️4` — because the
 question it answers is whether the branch left fewer tests running than it found. The
@@ -480,6 +486,52 @@ it and strikes the label through.
   derived from the strip's own height, never typed — the strip wraps to two rows at every
   width, which is its normal state.
 - Omit `tabs` entirely and you get the original single-column page.
+
+## The cost tab
+
+The **last pill on the strip, past CODEOWNERS, labelled with the money** — `$749`, no
+decimals. The build appends it; a content file neither declares it nor can move it, for the
+same two reasons the diffstat is not typed: its label is a measurement, and where it goes is
+a fact about the page rather than about any one review. It is also left out of `{{tabcount}}`
+and of the lede's walk-through, so no content file has to recite the page's own furniture.
+
+It answers *what did this change cost*, which is not the question the old cost chip answered.
+The chip could only report the review run — and on the branch this was built for, the
+conversation that **wrote** the feature cost $648 against the review's $96. A page that
+totals an agent's bill exists so somebody can decide whether this way of working pays for
+itself, and reporting only the cheaper half of it answers nothing.
+
+Four sources, in the order the money was spent, each measured by whatever can actually see
+it and each saying so when it cannot:
+
+| group | where the number comes from |
+|---|---|
+| writing the code | `authoring-sessions.py` finds the conversation that edited these files; `review-cost.py` prices it between its first and last edit to them |
+| reviewing it | the review passes that **forked** — a subagent has a transcript of its own, so `/code-review` and `/simplify` are priced exactly, and split into finding and fixing by how each was invoked |
+| building this guide | the per-tab rows, every turn charged to whichever step's window was open, plus the residual (`assembling the guide`, `subagent`, `the orchestrating conversation`) |
+| total | writing + the run + any pass that predates the run's start marker |
+
+Three kinds of honesty the table has to keep, all of them things it got wrong first:
+
+- **A window is not a fence.** The authoring row is costed between that conversation's first
+  and last edit to these files. Work inside that window belonging to something else is
+  counted, so the row prints the window and the edit count and lets the reader judge its
+  width rather than trusting a number that cannot be tightened.
+- **Nothing is added twice.** A pass usually runs *before* `/human-review` does — that is the
+  design, the guide harvests a review rather than paying to re-derive one — so its cost is
+  outside the run's own total and is added. One fired mid-run is already inside it, is not
+  added, and its row says so.
+- **A zero is not an absence.** A tab a script produced costs nothing and says `$0.00`; a tab
+  nothing could measure says *that*, in words, and so does an authoring conversation that is
+  not on disk. `$0.00` under `writing the code` would read as "writing this was free".
+
+If **neither** half is measurable — no transcript for the run, and no conversation on disk
+that wrote the code — the tab drops itself rather than rendering `$0`, which would be a claim
+that this change was free. Either half alone is enough to keep it.
+
+A pass that ran **inline** rather than forking cannot be priced — its turns are interleaved
+with the conversation that invoked it, with no marker saying where it stopped. Those are
+counted and named, never estimated, and their money stays in the residual where it landed.
 
 ## The tab strip
 

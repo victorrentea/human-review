@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The per-tab cost has to be *visible*, and that is the part that keeps going missing.
+"""The cost has to be *visible*, and that is the part that keeps going missing.
 
 `review-cost.py --tab-costs` and `steps-ledger.py` have had tests since the day they were
 written, and both were green for the whole period during which the measurement they produce
@@ -11,8 +11,13 @@ So the tests here are deliberately at the other end of the pipe. They do not che
 arithmetic is right (test_review_cost.py owns that) — they check that the arithmetic reaches
 the HTML, with the right numbers in it, from a real `build-review-html.py` run over a real
 transcript and a real step ledger. A rendering regression of the exact kind this file exists
-to catch cannot be silent again: the end-to-end test fails if the breakdown is absent, and it
-also fails if the breakdown is present but empty.
+to catch cannot be silent again: the end-to-end test fails if the ledger tab is absent, and
+it also fails if the tab is present but empty.
+
+The surface has moved twice now. It was a `data-tip` per tab header; then a drawer under a
+scope-bar chip; it is a tab of its own, labelled with the money, because the review's own
+cost turned out to be the smaller half of the answer — the conversation that WROTE the code
+is on the same disk and costs more.
 
 Run with:  python3 -m pytest test_cost_breakdown.py
 """
@@ -50,12 +55,32 @@ def _report(tabs: dict, residual=None, reason=None):
                                      "messages": 0, "tip": "…"}}
 
 
+def _ledger(tabs_report, writing=None, passes=None, run=None, total=0.0, tokens=0):
+    """A whole bill around a per-tab report. The tab rows are what most of these tests are
+    about, so everything else defaults to the shape a run with nothing else to say produces
+    — which is itself a case worth keeping exercised."""
+    return {"tabs": tabs_report,
+            "writing": writing or {"measured": False, "reason": "not a git repository",
+                                   "sessions": [], "cost": 0.0, "tokens": 0},
+            # A measured run by default: that is what a page built by the session that
+            # reviewed it has, and without it the table declines to render at all — which
+            # is its own behaviour, pinned by its own two tests below.
+            "run": run or {"measured": True, "cost": total, "tokens": tokens,
+                           "messages": 1, "models": ["Opus 5"]},
+            "passes": passes or {"measured": True, "groups": {}, "inline": 0},
+            "total": total, "total_tokens": tokens}
+
+
+def _table(tabs_report, tabs, **kw):
+    return build.cost_ledger_html(_ledger(tabs_report, **kw), tabs)
+
+
 # --------------------------------------------------------------------------- #
-# cost_breakdown_html — the shape of the panel
+# cost_ledger_html — the shape of the table
 # --------------------------------------------------------------------------- #
 
 def test_a_tab_with_spend_gets_its_own_row_with_both_numbers():
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"review": _row(cost=12.5, tokens=1_400_000)}),
         [_tab("review", "🤖 Review")],
     )
@@ -65,7 +90,7 @@ def test_a_tab_with_spend_gets_its_own_row_with_both_numbers():
 
 
 def test_the_rows_are_ordered_by_spend_not_by_tab_order():
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"a": _row(cost=1.0, tokens=10_000),
                  "b": _row(cost=9.0, tokens=90_000)}),
         [_tab("a", "Cheap"), _tab("b", "Dear")],
@@ -79,7 +104,7 @@ def test_measured_zero_tabs_collapse_into_one_honest_row():
     """A zero is information: a script produced that tab, so it cost nothing. But six of
     them stacked above the two rows that carry the money is a wall, so they fold into one
     row that still names every one of them."""
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"review": _row(cost=4.0, tokens=100_000),
                  "data": _row(cost=0.0, tokens=0),
                  "api": _row(cost=0.0, tokens=0),
@@ -91,12 +116,17 @@ def test_measured_zero_tabs_collapse_into_one_honest_row():
     for name in ("Data", "API", "CODEOWNERS"):
         assert name in html, f"the zero row must still name {name}"
     assert "$0.00" in html, "a measured zero prints as $0.00, never as <$0.01"
-    assert html.count("<tr") == 4, (  # header + the spend row + the zero row + total
-        "the zero tabs must occupy exactly one row between them")
+    # Counted inside the tab section alone: the groups above it have rows of their own,
+    # and what this test is about is the folding of the zeros.
+    tabs_part = html.split("building this guide")[1]
+    assert len(re.findall(r"<tr(?! class=\"costtotal\").*?</tr>", tabs_part, re.S)) == 2, (
+        "the spend row and the zero row: the zero tabs must occupy exactly one row "
+        "between them")
+    assert "costtotal" in html
 
 
 def test_a_single_zero_tab_says_tab_not_tabs():
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"review": _row(cost=4.0, tokens=100_000), "data": _row()}),
         [_tab("review", "Review"), _tab("data", "Data")],
     )
@@ -106,7 +136,7 @@ def test_a_single_zero_tab_says_tab_not_tabs():
 def test_unmeasured_tabs_never_render_as_a_measured_zero():
     """The failure this whole feature guards against: "we could not measure this" looking
     exactly like "this measured zero"."""
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"review": _row(cost=4.0, tokens=100_000),
                  "logging": _row(measured=False)},
                 reason="no step ledger at .human-review/.steps.json"),
@@ -120,11 +150,11 @@ def test_unmeasured_tabs_never_render_as_a_measured_zero():
 
 
 def test_the_residual_and_the_total_are_both_shown():
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"a": _row(cost=2.0, tokens=20_000), "b": _row(cost=3.0, tokens=30_000)},
                 residual={"measured": True, "cost": 1.25, "tokens": 5_000,
                           "messages": 4, "tip": "…"}),
-        [_tab("a", "A"), _tab("b", "B")],
+        [_tab("a", "A"), _tab("b", "B")], total=6.25,
     )
     assert "$1.25" in html                      # the residual
     assert "not one tab's" in html
@@ -137,7 +167,7 @@ def test_no_tab_is_exempt_from_the_ledger_by_name_any_more():
     permanent "not measured" row for it was noise about a tab with no step by design. The
     tab is gone — the summary and the verdict open the first tab now — and with it the
     exemption, so an unmeasured tab is reported like any other whatever it is called."""
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"overview": _row(measured=False), "review": _row(cost=1.0, tokens=1000)}),
         [_tab("overview", "Overview"), _tab("review", "Review")],
     )
@@ -145,15 +175,40 @@ def test_no_tab_is_exempt_from_the_ledger_by_name_any_more():
     assert "1 tab not measured" in html
 
 
-def test_no_report_means_no_panel():
-    assert build.cost_breakdown_html(None, [_tab("a", "A")]) == ""
-    assert build.cost_breakdown_html(_report({"a": _row()}), []) == ""
+def test_nothing_measured_anywhere_means_no_tab():
+    """A pill reading `$0` claims this change was free. The absence of a measurement is
+    not a measurement of zero, so the page carries no tab at all."""
+    assert _table({}, [], run={"measured": False, "cost": 0.0, "tokens": 0,
+                              "messages": 0, "models": []}) == ""
+
+
+def test_either_half_alone_is_enough_to_keep_the_tab():
+    """A page rebuilt outside the session that reviewed it can still say what writing the
+    code cost, and losing one half must not lose the other."""
+    assert _table({}, [], writing=WROTE_IT, total=648.23,
+                  run={"measured": False, "cost": 0.0, "tokens": 0,
+                       "messages": 0, "models": []}) != ""
+
+
+def test_no_ledger_at_all_means_no_tab():
+    """`review-cost.py` could not be asked — not "it answered nothing". The page then has
+    no cost tab rather than one that says nothing, because a tab labelled `$0` is a claim
+    and this is the absence of one."""
+    assert build.cost_ledger_html(None, [_tab("a", "A")]) == ""
+
+
+def test_a_ledger_with_no_tab_report_still_renders_the_rest_of_the_bill():
+    """The per-tab half is the part that needs a step ledger; what the code cost to write
+    does not. Losing one must not lose the other."""
+    html = _table({}, [], writing=WROTE_IT, total=648.23)
+    assert "$648.23" in html
+    assert "no step ledger" in html
 
 
 def test_a_ledgerless_run_still_says_so_rather_than_showing_nothing():
     """The whole run unmeasured is the case that used to render as silence. It renders as
     a sentence: one row, with the reason in it."""
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({t: _row(measured=False) for t in ("a", "b", "c")},
                 reason="no session id ($CLAUDE_CODE_SESSION_ID unset)"),
         [_tab("a", "A"), _tab("b", "B"), _tab("c", "C")],
@@ -161,72 +216,109 @@ def test_a_ledgerless_run_still_says_so_rather_than_showing_nothing():
     assert html
     assert "3 tabs not measured" in html
     assert "no session id" in html
-    assert "costtotal" not in html, (
-        "a $0.00 total under a chip that says $308.64 reads as wrong, not as unmeasured — "
-        "a run that measured nothing has no total to show")
 
 
 # --------------------------------------------------------------------------- #
-# cost_chip_html — the handle, and its promise
+# the three acts — writing it, reviewing it, building this guide
 # --------------------------------------------------------------------------- #
 
-def test_the_chip_becomes_a_disclosure_button_when_there_is_a_breakdown():
-    out = build.cost_chip_html({"label": "review cost", "value": "$165.05", "tip": "x"},
-                               '<div class="costbreak" id="cost-breakdown" hidden></div>')
-    assert 'class="chip chip-cost"' in out
-    assert 'aria-expanded="false"' in out
-    assert f'aria-controls="{build.COST_PANEL_ID}"' in out
-    assert "caret" in out, "the chip must look like it opens something without being hovered"
-    assert "$165.05" in out
+WROTE_IT = {
+    "measured": True, "mode": "B", "weak": False, "cost": 648.23, "tokens": 1_044_604_362,
+    "sessions": [{"session": "f98b888f-1111-2222-3333-444444444444", "cost": 648.23,
+                  "tokens": 1_044_604_362, "messages": 4544, "subagents": 3,
+                  "models": ["Opus 5", "Sonnet 5"], "first": "2026-09-02T15:41:21Z",
+                  "last": "2026-09-03T12:50:37Z", "edits": 25, "bash": 6, "files": 15,
+                  "current": False}],
+}
 
 
-def test_the_chip_stays_an_inert_pill_when_there_is_nothing_to_open():
-    out = build.cost_chip_html({"label": "review cost", "value": "$165.05", "tip": "x"}, "")
-    assert "chip-cost" not in out
-    assert "aria-expanded" not in out
-    assert "$165.05" in out, "losing the breakdown must never cost the reader the total"
+def test_the_conversation_that_wrote_the_code_is_the_first_row():
+    """The number the page could never state and the reader most wants. Reviewing is the
+    cheaper half of what a change costs, and it is the half a review page used to report
+    alone — which quietly answered "what did this PAGE cost" instead."""
+    html = _table(_report({"review": _row(cost=4.0, tokens=100_000)}),
+                  [_tab("review", "Review")], writing=WROTE_IT, total=652.23)
+    assert "writing the code" in html
+    assert html.index("writing the code") < html.index("building this guide")
+    assert "$648.23" in html
+    assert "f98b888f" in html, "the conversation is named, so the reader can go and look"
 
 
-# --------------------------------------------------------------------------- #
-# run_chip_html — the reviewer and the bill, in one pill
-# --------------------------------------------------------------------------- #
-
-REVIEW_HALF = {"label": "Opus 5 review", "href": "#review", "tip": "12 raised",
-               "value": '9 open &middot; <span class="sub">3 autofixed</span>'}
-COST_HALF = {"label": "cost", "value": "$24.87", "tip": "16 turns."}
-PANEL = '<div class="costbreak" id="cost-breakdown" hidden></div>'
-
-
-def test_one_pill_carries_both_halves_with_a_dot_between_them():
-    out = build.run_chip_html(REVIEW_HALF, COST_HALF, PANEL)
-    assert out.count('class="chip') == 1, "two borders is the thing being removed"
-    assert re.search(r"3 autofixed</span></b></span></a>"
-                     r'<span class="dot"[^>]*>&middot;</span>', out), \
-        "the halves are separated by a dot, not by a gap between two pills"
-    assert "9 open" in out and "$24.87" in out
+def test_the_authoring_row_prints_the_window_it_was_costed_over():
+    """A window is not a fence: work inside it that belonged to something else is counted.
+    The row prints the window precisely so nobody reads the number as tighter than it is."""
+    html = _table(_report({"review": _row(cost=4.0, tokens=100_000)}),
+                  [_tab("review", "Review")], writing=WROTE_IT)
+    assert "2 Sep 15:41" in html and "3 Sep 12:50" in html
+    assert "25 edits across 15 files" in html
 
 
-def test_the_merged_pill_says_review_once():
-    """Two chips meant two labels, and `review` was in both of them. Counted on the face —
-    hrefs and tooltips may say it as often as they need to."""
-    face = re.sub(r"<[^>]+>", "", build.run_chip_html(REVIEW_HALF, COST_HALF, ""))
-    assert face.count("review") == 1, f"said more than once: {face!r}"
-    assert "cost $24.87" in face, "the half keeps the one word the other does not carry"
+def test_an_unmeasurable_author_says_so_instead_of_printing_a_zero():
+    """Mode C — a branch from somebody else, or transcripts since cleaned up. A `$0.00`
+    there would read as "writing this was free", which is the one thing it does not mean."""
+    html = _table(_report({"review": _row(cost=4.0, tokens=100_000)}),
+                  [_tab("review", "Review")],
+                  writing={"measured": False, "sessions": [], "cost": 0.0, "tokens": 0,
+                           "reason": "no conversation on disk wrote these files"})
+    assert "no conversation on disk wrote these files" in html
+    assert "$0.00" not in html.split("building this guide")[0], \
+        "a zero under `writing the code` would read as `writing this was free`"
 
 
-def test_each_half_keeps_its_own_destination():
-    """The look merges; the two places a reader can be sent do not. The findings and the
-    breakdown are different answers to different questions."""
-    out = build.run_chip_html(REVIEW_HALF, COST_HALF, PANEL)
-    assert '<a class="seg" href="#review">' in out
-    assert 'class="seg chip-cost"' in out and 'aria-controls="cost-breakdown"' in out
-    assert out.index("#review") < out.index("aria-controls"), "findings first, then cost"
+def test_a_shell_only_author_is_flagged_rather_than_trusted():
+    weak = {**WROTE_IT, "weak": True,
+            "sessions": [{**WROTE_IT["sessions"][0], "edits": 0, "bash": 5}]}
+    html = _table(_report({"review": _row(cost=1.0, tokens=1000)}),
+                  [_tab("review", "Review")], writing=weak)
+    assert "no conversation used the edit tools" in html
+    assert "5 shell writes across 15 files" in html
 
 
-def test_the_cost_half_is_inert_when_there_is_no_breakdown_to_open():
-    out = build.run_chip_html(REVIEW_HALF, COST_HALF, "")
-    assert "aria-expanded" not in out and "caret" not in out
-    assert "$24.87" in out, "no breakdown still costs the reader nothing but the breakdown"
+def test_the_passes_are_split_into_finding_and_fixing():
+    passes = {"measured": True, "inline": 0, "groups": {
+        "finding": {"cost": 4.91, "earlier": 4.91, "tokens": 4_500_000, "messages": 46,
+                    "passes": 2, "invoked": ["/code-review origin/main"]},
+        "fixing": {"cost": 2.10, "earlier": 2.10, "tokens": 900_000, "messages": 12,
+                   "passes": 1, "invoked": ["/simplify"]},
+    }}
+    html = _table(_report({"review": _row(cost=1.0, tokens=1000)}),
+                  [_tab("review", "Review")], passes=passes)
+    assert "reviewing it" in html, "the group caption"
+    assert "the passes that read the diff" in html
+    assert "the passes that applied what they found" in html
+    assert "$4.91" in html and "$2.10" in html
+    assert "/code-review origin/main" in html and "/simplify" in html
+    assert html.index("read the diff") < html.index("applied what they found"), \
+        "found first, then fixed — the order the work happened in"
+
+
+def test_a_pass_already_inside_the_run_says_it_is_not_added_twice():
+    """A pass fired mid-run is inside the run's own total. Its row still shows the whole
+    number — it is what that pass cost — and says where the arithmetic put it."""
+    passes = {"measured": True, "inline": 0, "groups": {
+        "finding": {"cost": 5.00, "earlier": 1.00, "tokens": 1000, "messages": 4,
+                    "passes": 1, "invoked": ["/code-review"]}}}
+    html = _table(_report({"review": _row(cost=1.0, tokens=1000)}),
+                  [_tab("review", "Review")], passes=passes)
+    assert "already inside the run below" in html
+
+
+def test_an_inline_pass_is_counted_and_named_rather_than_estimated():
+    passes = {"measured": True, "inline": 4, "groups": {}}
+    html = _table(_report({"review": _row(cost=1.0, tokens=1000)}),
+                  [_tab("review", "Review")], passes=passes)
+    assert "4 passes ran in this conversation rather than forking" in html
+    assert "no transcript of their own to price" in html
+
+
+def test_the_total_is_the_ledger_s_own_not_a_sum_of_the_rows():
+    """The rows are not disjoint by construction — the passes are a view inside the run —
+    so the table prints the total `review-cost.py` computed rather than adding a column up
+    and getting a different answer than the tab label says."""
+    html = _table(_report({"review": _row(cost=4.0, tokens=100_000)}),
+                  [_tab("review", "Review")], writing=WROTE_IT, total=652.23,
+                  tokens=1_100_000_000)
+    assert "$652.23" in html and "costtotal" in html
 
 
 # --------------------------------------------------------------------------- #
@@ -246,13 +338,16 @@ def _turn(uid: str, when: str, inp: int, out: int) -> str:
 
 @pytest.fixture
 def built_page(tmp_path):
+    """`{"auto": "cost"}` is still in the scope, because content files in the wild still
+    ask for it. It is a no-op now, and the cost tab appears regardless — which is exactly
+    what this fixture is here to keep true."""
     return _build_page(tmp_path, [{"label": "files", "value": "1"}, {"auto": "cost"}])
 
 
 @pytest.fixture
 def merged_page(tmp_path):
-    """The same page with both halves of the run asked for, which is what every real
-    content file asks for — and what the chip is merged for."""
+    """The scope every real content file writes: the review chip and the retired cost
+    chip side by side."""
     return _build_page(tmp_path, [{"auto": "autofixed", "href": "#review"}, {"auto": "cost"}])
 
 
@@ -317,20 +412,52 @@ def _build_page(tmp_path, scope):
         env={**os.environ, "HOME": str(home), "CLAUDE_CODE_SESSION_ID": SESSION},
     )
     assert proc.returncode == 0, proc.stderr
+    # Stashed rather than returned: one test is about what the build SAID, and threading a
+    # second return value through every other caller to serve it is worse than this.
+    _build_page.last_stderr = proc.stderr
     return out.read_text(encoding="utf-8")
 
 
 def _panel(page: str) -> str:
-    m = re.search(r'<div class="costbreak"[^>]*>(.*?)</div>', page, re.S)
-    assert m, ("the built page has no per-tab cost breakdown at all — the measurement ran "
-               "and reached nobody, which is the bug this test exists for")
+    m = re.search(r'<section class="panel" id="cost"[^>]*>(.*?)</section>', page, re.S)
+    assert m, ("the built page has no cost tab at all — the measurement ran and reached "
+               "nobody, which is the bug this file exists for")
     return m.group(1)
 
 
-def test_the_built_page_carries_the_breakdown(built_page):
-    assert 'id="cost-breakdown"' in built_page
-    assert 'class="chip chip-cost"' in built_page
-    assert 'aria-controls="cost-breakdown"' in built_page
+def test_the_built_page_carries_the_cost_as_its_own_tab(built_page):
+    assert 'id="tabbtn-cost"' in built_page
+    assert 'aria-controls="cost"' in built_page
+    assert "<p class=\"paneltag\">Cost</p>" in _panel(built_page)
+
+
+def test_the_tab_is_labelled_with_the_money_and_no_cents(built_page):
+    """`$0.93` on a pill invites reading the cents of a list-price estimate whose error
+    bars are the width of a whole session. The label says the size; the cents are one
+    click away, in the table it opens."""
+    btn = re.search(r'<button[^>]*id="tabbtn-cost"[^>]*>(.*?)</button>', built_page, re.S)
+    assert btn, "no cost tab on the strip"
+    assert btn.group(1).strip() == "$1"
+    assert "$0.93" in _panel(built_page), "the cents are in the table, not on the pill"
+
+
+def test_the_cost_tab_is_the_last_pill_on_the_strip(built_page):
+    """After CODEOWNERS and after everything else, because a bill goes at the end. It is
+    also why the page appends it rather than the content file declaring it: position and
+    label are both facts about the page, not about any one review."""
+    ids = re.findall(r'<button[^>]*id="tabbtn-([a-z]+)"', built_page)
+    assert ids[-1] == "cost", f"the strip ends with {ids[-1]!r}: {ids}"
+
+
+def test_the_cost_tab_is_not_in_the_walk_through_the_lede_has_to_name(built_page):
+    """`{{tabcount}}` and the lede's enumeration are about the tabs carrying the review.
+    Requiring every content file to also recite `$1` would be the page reading its own
+    furniture back to the reader — and the build warns about unnamed tabs, so a cost tab
+    inside that list would make every page warn, forever."""
+    assert "4 of them" in _build_page.last_stderr, (
+        "the enumeration check counted the bill as a tab to be named: "
+        + _build_page.last_stderr)
+    assert 'id="tabbtn-cost"' in built_page, "…while the tab itself is on the strip"
 
 
 def test_the_built_page_shows_the_real_per_tab_numbers(built_page):
@@ -356,10 +483,29 @@ def test_the_built_page_totals_the_run_including_the_residual(built_page):
     assert "$0.93" in panel, "0.75 + 0.15 + 0.00 + 0.03"
 
 
-def test_the_breakdown_is_closed_until_it_is_asked_for(built_page):
-    """Not noisy: the page's subject is the diff, not what measuring it cost."""
-    assert re.search(r'<div class="costbreak" id="cost-breakdown" hidden>', built_page)
-    assert 'aria-expanded="false"' in built_page
+def test_the_built_page_says_it_could_not_find_who_wrote_the_code(built_page):
+    """The fixture's repo has no commits and no origin, so there is no change set to
+    attribute. The row has to say that in words — a `$0.00` there would read as "writing
+    this was free", which is the one thing it does not mean."""
+    panel = _panel(built_page)
+    assert "writing the code" in panel
+    assert "nothing to attribute" in panel or "not measured" in panel
+
+
+def test_the_cost_is_no_longer_a_chip_in_the_scope_bar(built_page):
+    """The surface it left. A chip AND a tab is the same number in two places, and the
+    chip is the one that could only ever carry the review's own share of it."""
+    assert "chip-cost" not in built_page
+    assert "cost-breakdown" not in built_page
+    assert "chip chip-run" not in built_page
+
+
+def test_the_review_chip_survives_the_cost_leaving_it(merged_page):
+    """What the pill was always best at: who reviewed, and what is left to do. It used to
+    carry the money as a second segment; losing that must not lose the findings."""
+    assert "review" in merged_page
+    assert "1 open" in merged_page
+    assert "chip-run" not in merged_page, "one half left, so it is a plain chip again"
 
 
 def test_the_breakdown_did_not_come_back_as_a_tab_header_tooltip(built_page):
@@ -368,45 +514,26 @@ def test_the_breakdown_did_not_come_back_as_a_tab_header_tooltip(built_page):
                  re.finditer(r'<button type="button" class="tab[^>]*>', built_page)
                  if "data-tip" in m.group(0)]
     assert not offenders, (
-        "a tab header grew a tooltip again — the per-tab cost has a panel now:\n  "
+        "a tab header grew a tooltip again — the cost has a tab of its own now:\n  "
         + "\n  ".join(offenders))
 
 
-def test_the_built_page_merges_the_run_into_one_chip(merged_page):
-    """The regression this merge can suffer is silent: two chips again, or one chip with
-    the cost half gone. Both are visible from the markup alone."""
-    assert 'class="chip chip-run"' in merged_page
-    assert 'class="seg chip-cost"' in merged_page
-    assert 'class="chip chip-cost"' not in merged_page, "the cost is no longer its own pill"
-    assert "review cost" not in merged_page, \
-        "merged, the left half says `review` for both halves"
+def test_the_cost_tab_needs_no_network(built_page):
+    """The page is opened from disk: everything the table needs is inline."""
+    panel = _panel(built_page)
+    assert "http://" not in panel
+    assert "cdn" not in panel.lower()
 
 
-def test_the_merged_chip_still_opens_the_breakdown(merged_page):
-    """`COST_JS` finds its button by `button.chip-cost`, which the segment keeps precisely
-    so that moving the cost inside another pill does not unhook the panel from it."""
-    assert "querySelector('button.chip-cost')" in merged_page
-    assert 'id="cost-breakdown"' in merged_page
-    assert re.search(r'<span class="chip chip-run">.*?<button[^>]*class="seg chip-cost"',
-                     merged_page, re.S)
-
-
-def test_the_breakdown_needs_no_network(built_page):
-    """The report is opened from disk: everything it needs is inline."""
-    panel_and_script = built_page[built_page.index('id="cost-breakdown"'):]
-    assert "http://" not in panel_and_script[:4000]
-    assert "cdn" not in panel_and_script[:4000].lower()
-
-
-def test_the_breakdown_is_styled_for_both_themes():
-    """No literal colours in the panel's own rules — the page's tokens flip with
+def test_the_cost_tab_is_styled_for_both_themes():
+    """No literal colours in the table's own rules — the page's tokens flip with
     `prefers-color-scheme`, and a hard-coded hex would only be right in one of them."""
     rules = [line for line in build.CSS.splitlines()
-             if "costtab" in line or "costbreak" in line or "chip-cost" in line]
-    assert rules, "the breakdown has no styles of its own"
+             if "costtab" in line or "costledger" in line or "costsub" in line]
+    assert rules, "the cost table has no styles of its own"
     hexes = [line for line in rules if re.search(r"#[0-9a-fA-F]{3,8}\b", line)]
-    assert not hexes, ("the breakdown must use var(--fg)/var(--muted)/… like the rest of "
-                       "the page:\n  " + "\n  ".join(hexes))
+    assert not hexes, ("the cost table must use var(--fg)/var(--muted)/… like the rest "
+                       "of the page:\n  " + "\n  ".join(hexes))
     assert any("var(--" in line for line in rules)
 
 
@@ -436,7 +563,7 @@ def _report_with_parts(tabs, residual, parts):
 
 
 def test_the_residual_renders_as_named_rows_when_the_report_names_them():
-    html = build.cost_breakdown_html(
+    html = _table(
         _report_with_parts(
             {"a": _row(cost=2.0, tokens=20_000)},
             {"measured": True, "cost": 10.0, "tokens": 100_000, "messages": 9, "tip": "…"},
@@ -451,13 +578,12 @@ def test_the_residual_renders_as_named_rows_when_the_report_names_them():
     assert "not one tab&#x27;s" not in html and "not one tab's" not in html, (
         "the undifferentiated row must give way to the named ones, not sit beside them")
     assert "$6.00" in html and "$3.00" in html and "$1.00" in html
-    assert "$12.00" in html, "the total is still tabs + the whole residual"
 
 
 def test_a_part_with_no_turns_in_it_is_not_rendered_at_all():
     """A run with no subagents should not be told it spent $0.00 on subagents — an empty
     bucket is not a finding, it is a row of noise."""
-    html = build.cost_breakdown_html(
+    html = _table(
         _report_with_parts(
             {"a": _row(cost=2.0, tokens=20_000)},
             {"measured": True, "cost": 4.0, "tokens": 40_000, "messages": 3, "tip": "…"},
@@ -471,7 +597,7 @@ def test_a_part_with_no_turns_in_it_is_not_rendered_at_all():
 
 
 def test_the_guide_row_comes_first_because_it_is_the_one_with_a_real_name():
-    html = build.cost_breakdown_html(
+    html = _table(
         _report_with_parts(
             {"a": _row(cost=1.0, tokens=1000)},
             {"measured": True, "cost": 9.0, "tokens": 90_000, "messages": 6, "tip": "…"},
@@ -485,24 +611,26 @@ def test_the_guide_row_comes_first_because_it_is_the_one_with_a_real_name():
 def test_a_report_without_parts_still_renders_the_single_residual_row():
     """Forward compatibility in the other direction: the panel must not go blank against a
     `review-cost.py` that has not learned to decompose."""
-    html = build.cost_breakdown_html(
+    html = _table(
         _report({"a": _row(cost=2.0, tokens=20_000)},
                 residual={"measured": True, "cost": 1.0, "tokens": 10_000,
                           "messages": 2, "tip": "…"}),
         [_tab("a", "A")],
     )
     assert "not one tab" in html
-    assert "$3.00" in html
+    assert "$1.00" in html, "the undifferentiated residual still carries its own number"
 
 
-def test_the_caption_says_which_steps_burned_time_not_what_a_tab_cost():
-    """Five of the ten tabs are produced by shell scripts and honestly cost nothing, so a
-    caption promising "what each tab cost" over-claims what the table can answer."""
-    html = build.cost_breakdown_html(
+def test_the_caption_says_what_the_change_cost_not_what_the_page_cost():
+    """The tab's subject changed when it stopped being a drawer under the review's own
+    bill: it is what producing AND reviewing this change came to, and the caption has to
+    promise that rather than "which of our steps burned time"."""
+    html = _table(
         _report({"a": _row(cost=1.0, tokens=1000)}), [_tab("a", "A")])
     caption = re.search(r"<caption>(.*?)</caption>", html, re.S).group(1)
-    assert "steps" in caption.lower()
-    assert "costs nothing" in caption or "cost nothing" in caption
+    assert "produce" in caption and "review" in caption
+    assert "list price" in caption, "the number is not what anybody was billed"
+    assert "subscription is billed" in caption
 
 
 if __name__ == "__main__":

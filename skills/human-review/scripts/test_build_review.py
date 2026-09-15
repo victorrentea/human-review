@@ -1005,12 +1005,30 @@ def test_a_lede_that_matches_the_strip_is_silent(capsys):
 # --------------------------------------------------------------------------- #
 
 def _build(tmp_path, content, env=None) -> str:
+    """A page built the way the skill builds it, with two things held still.
+
+    `HOME` is redirected at an empty directory, and the session id is dropped. Both are
+    about the cost tab, which asks the machine it is running on what this change cost to
+    write and to review — and the machine it is running on, for this suite, is the very
+    repo whose transcripts it would find. Left alone, the assertions here depend on how
+    much the developer happened to spend in this checkout last week: the suite started
+    taking six minutes and one test began counting seventeen mentions of `Opus 5` that
+    came out of real conversations rather than out of the content file. An empty `HOME`
+    makes every transcript lookup find nothing, instantly and identically everywhere.
+    Tests that are ABOUT the cost tab build their own `HOME` with a transcript in it.
+    """
+    import os
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    base = dict(env if env is not None else os.environ)
+    base["HOME"] = str(home)
+    base.pop("CLAUDE_CODE_SESSION_ID", None)
     src = tmp_path / "content.json"
     src.write_text(json.dumps(content), encoding="utf-8")
     out = tmp_path / "review.html"
     proc = subprocess.run(
         [sys.executable, str(HERE / "build-review-html.py"), str(src), "--out", str(out)],
-        capture_output=True, text=True, env=env)
+        capture_output=True, text=True, env=base)
     assert proc.returncode == 0, proc.stderr
     return out.read_text(encoding="utf-8"), proc.stderr
 
@@ -2470,14 +2488,18 @@ def test_the_mark_lands_on_the_base_chip_alone_and_carries_its_own_tooltip(tmp_p
 
 def test_the_review_chip_leads_with_what_is_left_to_do(tmp_path):
     """`12 raised` is the sum of the other two numbers, so it is the one nobody acts on.
-    Open first, because that is the work; autofixed second, because it is the fact a
-    reader cannot get anywhere else without opening the tab."""
+    Open first, because that is the work; auto-fixed second, because it is the fact a
+    reader cannot get anywhere else without opening the tab.
+
+    Written as a sentence — `🤖Opus 5 review: 9 open, 3 auto-fixed` — rather than as a
+    label, a gap and a row of figures: the second shape is what a measurement looks like,
+    and this is a claim a model made about the diff."""
     page, _ = _build(tmp_path, dict(
         BARE, scope=[{"auto": "autofixed", "href": "#one"}],
         findings=[{"title": f"f{i}", "body": "<p>b</p>", "source": "/code-review"}
                   for i in range(9)],
         autofixes=[{"title": f"a{i}", "source": "/simplify"} for i in range(3)]))
-    assert '9 open &middot; <span class="sub">3 autofixed</span>' in page, \
+    assert '9 open, <span class="sub">3 auto-fixed</span>' in page, \
         "the half that needs nothing from the reader is greyed, not equal-weight"
     assert "12 raised" in page, "the total is in the hover, not on the face"
     assert "9 by /code-review, 3 by /simplify" in page, \
@@ -2491,7 +2513,8 @@ def test_the_review_chip_names_the_model_instead_of_a_second_chip_beside_it(tmp_
         BARE, scope=[{"auto": "autofixed", "href": "#one", "by": "Opus 5"}],
         findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
         env=_sessionless_env())
-    assert "Opus 5 review" in page
+    assert "\U0001f916Opus 5 review:" in page, \
+        "robot, model, colon — the pill is one sentence, not a label beside a number"
     # And nowhere else: the chip's face already reads `Opus 5 review`, so the hover
     # restating it taught the reader that hovers here are not worth the trouble.
     assert "running on Opus 5" not in page

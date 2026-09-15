@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import datetime as dt
 import functools
 import hashlib
 import html
@@ -226,39 +227,6 @@ a.chip-link { text-decoration:none; }
 a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
 button.chip-mode { font:inherit; font-size:.82rem; cursor:copy; }
 .chip-served { color:#2e7d32; border-color:#2e7d32; cursor:default; }
-/* The per-tab cost breakdown, hung off the one chip that already states the total.
-   A caret, not a hover hint: tab headers deliberately carry no tooltips, and a number
-   that only appears when a pointer happens to rest on the right pill is a number nobody
-   reads. Closed by default — the subject of this page is the diff, not what measuring it
-   cost — and one click from being a table you can scan in a single pass. */
-button.chip-cost { font:inherit; font-size:.82rem; cursor:pointer; }
-button.chip-cost .caret { display:inline-block; margin-left:.3rem; font-size:.62em;
-        opacity:.65; transform:rotate(0deg); transition:transform 120ms ease; }
-button.chip.chip-cost:hover { border-color:var(--link); }
-button.chip.chip-cost[aria-expanded="true"] { border-color:var(--link); background:var(--accent-soft); }
-button.chip-cost[aria-expanded="true"] .caret { transform:rotate(90deg); }
-/* One run, one pill. Who reviewed and what the reviewing cost were two chips side by side,
-   and the border between them read as two measurements of two different things -- they are
-   the same run, counted twice over, and the word `review` was on both. Merged, the model is
-   named once and the money follows the findings after a dot. Only the frame was dropped:
-   inside, each half is still its own control, the left one jumping to the findings and the
-   right one opening the per-tab breakdown. The hover therefore lives on the halves and
-   never on the pill -- lighting the whole border while the pointer is over half of it
-   promises a click that the other half does not perform. */
-.chip-run { display:inline-flex; align-items:baseline; gap:.34rem; }
-.chip-run .seg { font:inherit; color:inherit; background:none; border:0; padding:0;
-        text-decoration:none; }
-.chip-run button.seg { cursor:pointer; }
-.chip-run .seg:hover, .chip-run .seg:hover b { color:var(--link); }
-.chip-run .dot { opacity:.55; }
-.chip-run:has(button.chip-cost[aria-expanded="true"]) { border-color:var(--link);
-        background:var(--accent-soft); }
-/* `order` rather than markup position: the panel is emitted right after its own chip so
-   the two travel together, but a chip authored *after* the cost chip must not be shoved
-   onto a second line by a full-width block landing between them. */
-.costbreak { order:2; flex:1 0 100%; margin:.35rem 0 0; background:var(--card);
-             border:1px solid var(--line); border-radius:8px; padding:.75rem .95rem; }
-.costbreak[hidden] { display:none; }
 table.costtab { border-collapse:collapse; width:100%; font-size:.85rem; }
 table.costtab caption { caption-side:top; text-align:left; color:var(--muted);
              font-size:.8rem; line-height:1.5; margin:0 0 .55rem; }
@@ -269,6 +237,26 @@ table.costtab td { padding:.24rem 0; border-bottom:1px solid var(--line); color:
 table.costtab th + th, table.costtab td + td { text-align:right; padding-left:1.2rem;
              font-variant-numeric:tabular-nums; white-space:nowrap; }
 table.costtab td:last-child { font-weight:600; }
+/* The bill's own tab, where the table is the panel rather than a drawer under a chip: it
+   gets the page's reading width and a size a reader can sit with, not the compressed
+   footnote a popover has to be. */
+.costledger { font-size:.95rem; max-width:64rem; }
+.costledger caption { font-size:.88rem; margin-bottom:.9rem; }
+/* The three acts — writing it, reviewing it, building this guide. A caption row rather
+   than three tables, because the whole point of the tab is comparing magnitudes ACROSS
+   them, and three tables means three column widths and nothing lines up. */
+table.costtab tr.costgroup td { padding:1.1rem 0 .3rem; border-bottom:0;
+             font:700 .68rem/1.7 inherit; letter-spacing:.09em; text-transform:uppercase;
+             color:var(--muted); }
+table.costtab tr.costgroup:first-child td { padding-top:.4rem; }
+/* What the row is measuring, under the row's own name. On its own line because these are
+   the caveats that keep the number honest — which window was costed, which command was
+   priced — and a reader scanning the money column should be able to skip them, not have
+   them wrapped into the label. */
+.costsub { display:block; color:var(--muted); font-size:.8rem; font-weight:400;
+             line-height:1.45; margin-top:.1rem; }
+.costsub code { font-size:.95em; }
+.costnote { color:var(--muted); font-weight:400; }
 /* A measured zero is an answer, not a gap — the tab was produced by a script, so it cost
    nothing. Muted and folded onto one row so the answer is on the page without a wall of
    zeros burying the three rows that carry the actual spend. */
@@ -1858,30 +1846,6 @@ TIP_JS = """<script>
   document.addEventListener('touchstart', hide, {passive: true});
   window.addEventListener('scroll', hide, true);   // a fixed bubble would float away
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') hide(); });
-})();
-</script>"""
-
-
-COST_JS = """<script>
-// The aggregate cost chip is a disclosure button: it opens the per-tab breakdown that
-// sits directly after it in the scope bar. Deliberately not a tooltip — the tab strip
-// carries no hover hints by design, and a decomposition is something you scan, not
-// something you discover one pill at a time. Escape closes it, like every other
-// transient surface on this page.
-(function () {
-  var btn = document.querySelector('button.chip-cost');
-  var panel = btn && document.getElementById(btn.getAttribute('aria-controls'));
-  if (!btn || !panel) return;                 // no breakdown was emitted: nothing to open
-  function set(open) {
-    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    panel.hidden = !open;
-  }
-  btn.addEventListener('click', function () {
-    set(btn.getAttribute('aria-expanded') !== 'true');
-  });
-  document.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') set(false);
-  });
 })();
 </script>"""
 
@@ -6445,12 +6409,30 @@ def tab_cost_report(root: Path, tab_ids: list[str]) -> dict | None:
         return None
 
 
-# The chip's place in the scope bar, held open until the tabs are known. Whether the chip
-# is an inert pill or a button that opens a breakdown depends on a measurement that has not
-# run yet when the bar is built (it needs the final, post-drop tab list), so the bar keeps
-# the slot and the chip is rendered into it further down.
-COST_CHIP_TOKEN = "{{costchip}}"
-COST_PANEL_ID = "cost-breakdown"
+def cost_ledger_report(root: Path, tab_ids: list[str], base: str) -> dict | None:
+    """The whole bill — writing the code, the passes, every tab, the residual.
+
+    Same discipline as `tab_cost_report`, which it supersedes: every failure comes back as
+    data with a sentence explaining it, never as a silently missing number. It returns None
+    only when `review-cost.py` could not be asked at all.
+    """
+    script = Path(__file__).resolve().parent / "review-cost.py"
+    if not script.is_file():
+        return None
+    proc = subprocess.run(
+        [sys.executable, str(script), "--ledger", "--base", base,
+         "--tabs", ",".join(tab_ids)],
+        cwd=root, capture_output=True, text=True,
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        for line in proc.stderr.strip().splitlines()[-1:]:
+            print(f"[review] no cost ledger: {line}", file=sys.stderr)
+        return None
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return None
+
 
 # The unattributed cost, in the order a reader wants it: the one part that has a real name
 # first, then the two that are honestly leftovers. Keys come from `review-cost.py`'s
@@ -6474,6 +6456,10 @@ def _cost_money(c: float) -> str:
 
 def _cost_tokens(n: float) -> str:
     n = int(round(n))
+    # A conversation that wrote a feature over two days runs to ten figures, and `1044.6M`
+    # is four digits the reader has to convert before the column means anything.
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.1f}B"
     if n >= 1_000_000:
         return f"{n / 1_000_000:.1f}M"
     if n >= 1_000:
@@ -6481,118 +6467,207 @@ def _cost_tokens(n: float) -> str:
     return str(n)
 
 
-def cost_breakdown_html(costs: dict | None, tabs: list[dict]) -> str:
-    """The per-tab ledger, as a panel the aggregate cost chip opens.
 
-    This measurement spent a while with no surface at all. It was born as a `data-tip` on
-    each tab header; when tab-header tooltips were removed the emission went with them, so
-    the subprocess kept running on every build and its answer reached nobody — the exact
-    silent-nothing this pipeline pins with tests everywhere else. A tooltip was the wrong
-    home anyway. A per-tab number is something a reader wants to *scan* — all rows at once,
-    ordered, adding up — not to discover one pill at a time by pointing at it, and a hover
-    hint is invisible to anyone who never happens to hover. So it hangs off the chip that
-    already states the total, which is the only place on the page that raises the question
-    "and where did that go?" in the first place.
+COST_TAB_ID = "cost"
 
-    Three shapes of row, because there are three honest answers:
-      * a tab with measured spend gets its own row, biggest first;
-      * every measured-zero tab collapses into ONE muted row that names them all — a script
-        wrote that tab, so zero is the true answer, but ten of those stacked above the three
-        rows that carry the actual money would bury the point;
-      * every unmeasured tab collapses the same way, carrying the reason in words, because
-        "we could not measure this" must never render identically to a measured zero.
-    Returns "" only when there is nothing at all to say (no report, no tabs).
+# The groups the ledger reports, in the order the money was spent: somebody wrote it,
+# somebody reviewed it, and then this page was assembled. Each is a caption row, not a
+# separate table — the reader is comparing magnitudes across all three, and three tables
+# means three column widths and no comparison.
+PASS_ROWS = [
+    ("finding", "the passes that read the diff"),
+    ("fixing", "the passes that applied what they found"),
+]
+
+
+def _when(raw: str | None) -> str:
+    """`2026-09-02T15:41:21.4Z` as `2 Sep 15:41`. The date is there because the writing
+    happened on a different day from the review and that is half the point of the row;
+    the seconds are not, because nothing here is timed to the second."""
+    if not raw:
+        return ""
+    try:
+        t = dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    return f"{t.day} {t.strftime('%b')} {t:%H:%M}"
+
+
+def cost_ledger_html(led: dict | None, tabs: list[dict]) -> str:
+    """What this change set cost, from the first line written to this page being built.
+
+    This was a chip in the scope bar with a breakdown hanging off it, and the chip
+    answered the wrong question: *what did this page cost to make*. The question a reader
+    arrives with is what the **change** cost, and producing the code is the larger half of
+    it — on the branch this was built for, the conversation that wrote the feature cost
+    nearly seven times the review that read it. A number that big is not a footnote on a
+    bar of chips; it is its own tab, and it is the honest answer to "is this way of working
+    worth it", which is the only reason anybody totals up an agent's bill at all.
+
+    Every row is measured or says it is not. Three kinds of honesty the table has to keep:
+
+      * **A window is not a fence.** The authoring row is costed between that conversation's
+        first and last edit to these files. Work inside that window which belonged to
+        something else is counted, and the row prints the window so the reader can see how
+        wide it is rather than trusting a number that cannot be tightened.
+      * **The passes are added once.** A review pass usually runs before the guide does, so
+        its cost is outside the run's own total and is added; one fired mid-run is already
+        inside it and is not. The ledger tells the two apart rather than assuming.
+      * **A zero is not an absence.** A tab a script produced costs nothing to produce and
+        says so in its own row; a tab nothing could measure says *that*, in words.
     """
-    if not costs or not tabs:
+    if not led:
         return ""
+    # Nothing measured anywhere — no transcript for the run, and no conversation on disk
+    # that wrote the code — is an absence, and the page carries no tab for it. A pill
+    # reading `$0` is a claim that this change was free, which is the one thing the
+    # absence does not mean. A run that measured EITHER half still gets the tab, with the
+    # other half saying in words why it is missing.
+    if not ((led.get("writing") or {}).get("measured")
+            or (led.get("run") or {}).get("measured")):
+        return ""
+    rows = []
+
+    def row(label: str, tokens, cost, cls: str = "") -> None:
+        tok = _cost_tokens(tokens) if tokens is not None else "—"
+        money = _cost_money(cost) if cost is not None else "—"
+        rows.append(f'<tr{f' class="{cls}"' if cls else ""}><td>{label}</td>'
+                    f'<td>{tok}</td><td>{money}</td></tr>')
+
+    def group(title: str) -> None:
+        rows.append(f'<tr class="costgroup"><td colspan="3">{title}</td></tr>')
+
+    # --- writing it ---------------------------------------------------------
+    writing = led.get("writing") or {}
+    group("writing the code")
+    if writing.get("measured"):
+        for sess in writing.get("sessions") or []:
+            where = " &middot; ".join(x for x in (
+                f'{sess["edits"]} edits across {sess["files"]} files' if sess.get("edits")
+                else f'{sess["bash"]} shell writes across {sess["files"]} files',
+                f'{_when(sess.get("first"))} &rarr; {_when(sess.get("last"))}',
+                # Escaped, and `<synthetic>` dropped: it is what `review-cost.py` calls a
+                # turn with no model on it, it costs nothing, and unescaped it was a tag
+                # the browser swallowed along with the comma in front of it.
+                ", ".join(html.escape(m) for m in (sess.get("models") or [])
+                          if m and m != "<synthetic>"),
+            ) if x)
+            name = "this conversation" if sess.get("current") else \
+                f'conversation <code>{html.escape(sess["session"][:8])}</code>'
+            rows.append(
+                f'<tr><td>{name}<span class="costsub">{where}</span></td>'
+                f'<td>{_cost_tokens(sess.get("tokens") or 0)}</td>'
+                f'<td>{_cost_money(sess.get("cost") or 0.0)}</td></tr>')
+        if writing.get("weak"):
+            row('<span class="costnote">no conversation used the edit tools on these '
+                "files — this is the strongest shell-only match, and may be the wrong "
+                "one</span>", None, None, "costquiet")
+    else:
+        why = writing.get("reason") or "not measured"
+        row(f'<span class="costnote">{html.escape(str(why))}</span>', None, None, "costquiet")
+
+    # --- reviewing it -------------------------------------------------------
+    passes = led.get("passes") or {}
+    groups = passes.get("groups") or {}
+    if groups or passes.get("inline"):
+        group("reviewing it")
+    for key, title in PASS_ROWS:
+        g = groups.get(key)
+        if not g:
+            continue
+        invoked = ", ".join(f"<code>{html.escape(i)}</code>" for i in g.get("invoked") or [])
+        inside = (g.get("cost") or 0.0) - (g.get("earlier") or 0.0)
+        note = (" &middot; already inside the run below, so not added twice"
+                if inside > 0.005 else "")
+        rows.append(
+            f'<tr><td>{title}<span class="costsub">{invoked}{note}</span></td>'
+            f'<td>{_cost_tokens(g.get("tokens") or 0)}</td>'
+            f'<td>{_cost_money(g.get("cost") or 0.0)}</td></tr>')
+    if passes.get("inline"):
+        n = passes["inline"]
+        row(f'<span class="costnote">{n} pass{"es" if n != 1 else ""} ran in this '
+            "conversation rather than forking, so there is no transcript of their own to "
+            "price — their cost is in the rows below</span>", None, None, "costquiet")
+
+    # --- building the guide -------------------------------------------------
+    group("building this guide")
+    rows.append(_cost_tab_rows(led.get("tabs") or {}, tabs))
+
+    total = led.get("total") or 0.0
+    foot = (f'<tr class="costtotal"><td>total</td>'
+            f'<td>{_cost_tokens(led.get("total_tokens") or 0)}</td>'
+            f'<td>{_cost_money(total)}</td></tr>')
+    return (
+        '<table class="costtab costledger">'
+        '<caption>What this change cost to produce and to review, at list price — every '
+        'turn priced from the transcripts that recorded it. Nobody on a subscription is '
+        'billed this; it is what the same tokens would cost on the API.</caption>'
+        '<thead><tr><th scope="col">where it went</th><th scope="col">tokens</th>'
+        '<th scope="col">cost</th></tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody><tfoot>{foot}</tfoot></table>'
+    )
+
+
+def _cost_tab_rows(costs: dict, tabs: list[dict]) -> str:
+    """The per-tab half of the ledger.
+
+    Three shapes of row, because there are three honest answers: a tab with measured spend
+    gets its own, biggest first; every measured-zero tab collapses into one muted row that
+    names them all (a script wrote that tab, so zero is true, but ten of those stacked
+    above the rows carrying the money would bury the point); and every unmeasured tab
+    collapses the same way carrying the reason in words, because "we could not measure
+    this" must never render identically to a measured zero.
+    """
     rows = costs.get("tabs") or {}
-    entries = []
-    for tab in tabs:
-        row = rows.get(tab.get("id"))
-        if row:
-            entries.append((tab.get("label") or tab.get("id"), row))
+    entries = [(t.get("label") or t.get("id"), rows[t.get("id")])
+               for t in tabs if rows.get(t.get("id"))]
     if not entries:
-        return ""
+        why = costs.get("reason") or "no step ledger, so no turn could be placed in a tab"
+        return ('<tr class="costquiet"><td><span class="costnote">'
+                f'{html.escape(str(why))}</span></td><td>—</td><td>—</td></tr>')
 
-    def spend(row):
-        return row.get("cost") or 0.0
+    def spend(r):
+        return r.get("cost") or 0.0
 
-    def toks(row):
-        return row.get("tokens") or 0
+    def toks(r):
+        return r.get("tokens") or 0
 
     measured = [e for e in entries if e[1].get("measured")]
-    paid = sorted([e for e in measured if spend(e[1]) or toks(e[1])],
-                  key=lambda e: -spend(e[1]))
+    paid = sorted([e for e in measured if spend(e[1]) or toks(e[1])], key=lambda e: -spend(e[1]))
     free = [e for e in measured if not (spend(e[1]) or toks(e[1]))]
     unknown = [e for e in entries if not e[1].get("measured")]
 
     def names(items):
         return ", ".join(html.escape(str(l)) for l, _ in items)
 
-    body = "".join(
-        f'<tr><td>{html.escape(str(l))}</td><td>{_cost_tokens(toks(r))}</td>'
-        f'<td>{_cost_money(spend(r))}</td></tr>'
-        for l, r in paid
-    )
+    out = "".join(f'<tr><td>{html.escape(str(l))}</td><td>{_cost_tokens(toks(r))}</td>'
+                  f'<td>{_cost_money(spend(r))}</td></tr>' for l, r in paid)
     if free:
-        body += (
-            f'<tr class="costquiet"><td>{len(free)} tab'
-            f'{"s" if len(free) != 1 else ""} with no model spend — {names(free)}</td>'
-            f'<td>0</td><td>$0.00</td></tr>'
-        )
+        out += (f'<tr class="costquiet"><td>{len(free)} tab{"s" if len(free) != 1 else ""} '
+                f'with no model spend — {names(free)}</td><td>0</td><td>$0.00</td></tr>')
     if unknown:
         why = costs.get("reason") or "no step in the ledger named them"
-        body += (
-            f'<tr class="costquiet"><td>{len(unknown)} tab'
-            f'{"s" if len(unknown) != 1 else ""} not measured — {html.escape(str(why))}'
-            f' ({names(unknown)})</td><td>—</td><td>—</td></tr>'
-        )
-
-    total_cost = sum(spend(r) for _, r in entries)
-    total_toks = sum(toks(r) for _, r in entries)
-    foot = ""
+        out += (f'<tr class="costquiet"><td>{len(unknown)} tab'
+                f'{"s" if len(unknown) != 1 else ""} not measured — '
+                f'{html.escape(str(why))} ({names(unknown)})</td>'
+                '<td>—</td><td>—</td></tr>')
     resid = costs.get("residual") or {}
     if resid.get("measured"):
-        total_cost += resid.get("cost") or 0.0
-        total_toks += resid.get("tokens") or 0
-        # One undifferentiated "not one tab's" row routinely carried 90%+ of the bill, which
-        # does not read as a caveat — it reads as an instruction to ignore the rows above it.
-        # Where the report can name the parts, name them: the largest is Step 9 writing the
-        # page, which is a real answer, not a leftover.
         parts = costs.get("residual_parts") or {}
         shown = [(label, parts[key]) for key, label in RESIDUAL_ROWS
                  if (parts.get(key) or {}).get("messages")]
         if shown:
-            foot += "".join(
+            out += "".join(
                 f'<tr class="costquiet"><td>{label}</td>'
                 f'<td>{_cost_tokens(part.get("tokens") or 0)}</td>'
                 f'<td>{_cost_money(part.get("cost") or 0.0)}</td></tr>'
-                for label, part in shown
-            )
+                for label, part in shown)
         else:
-            foot += (
-                '<tr class="costquiet"><td>not one tab\'s — assembling the guide itself, plus '
-                'any step whose window did not cover it</td>'
-                f'<td>{_cost_tokens(resid.get("tokens") or 0)}</td>'
-                f'<td>{_cost_money(resid.get("cost") or 0.0)}</td></tr>'
-            )
-    # No total on a run that measured nothing. A `$0.00 total` sitting under a chip that
-    # says $308.64 does not read as "unmeasured", it reads as "wrong" — and the row above
-    # has already said, in words, why there is no number to add up.
-    if paid or free or resid.get("measured"):
-        foot += (f'<tr class="costtotal"><td>total</td><td>{_cost_tokens(total_toks)}</td>'
-                 f'<td>{_cost_money(total_cost)}</td></tr>')
-
-    return (
-        f'<div class="costbreak" id="{COST_PANEL_ID}" hidden>'
-        '<table class="costtab">'
-        '<caption>Which steps burned model time — every turn charged to whichever step was '
-        'running when it happened, at list price. A tab a script produced costs nothing to '
-        'produce, and says so.</caption>'
-        '<thead><tr><th scope="col">tab</th><th scope="col">tokens</th>'
-        '<th scope="col">cost</th></tr></thead>'
-        f'<tbody>{body}</tbody><tfoot>{foot}</tfoot></table></div>'
-    )
+            out += ("<tr class=\"costquiet\"><td>not one tab's — assembling the guide "
+                    "itself, plus any step whose window did not cover it</td>"
+                    f'<td>{_cost_tokens(resid.get("tokens") or 0)}</td>'
+                    f'<td>{_cost_money(resid.get("cost") or 0.0)}</td></tr>')
+    return out
 
 
 def chip_face(c: dict) -> str:
@@ -6612,65 +6687,6 @@ def chip_html(c: dict) -> str:
         return (f'<a class="chip chip-link" href="{html.escape(c["href"])}"'
                 f'{" target=_blank" if c["href"].startswith("http") else ""}>{inner}</a>')
     return f'<span class="chip">{inner}</span>'
-
-
-def _cost_tip(tip: str) -> str:
-    return f"{tip} Click to break it down per tab." if tip else "The cost, tab by tab."
-
-
-def cost_chip_html(c: dict, panel: str) -> str:
-    """The aggregate cost chip standing alone — the shape the bar takes when the content
-    file asks for the cost without a review chip to merge it into. A plain pill on its own,
-    a disclosure button once there is a breakdown behind it. The caret is the whole point:
-    the chip has to *look* like it opens something, because nothing else on the page
-    announces that the number decomposes.
-    """
-    tip = c.get("tip") or ""
-    inner = chip_face(c)
-    if not panel:
-        if tip:
-            inner = f'<span data-tip="{html.escape(tip)}">{inner}</span>'
-        return f'<span class="chip">{inner}</span>'
-    return (
-        f'<button type="button" class="chip chip-cost" aria-expanded="false" '
-        f'aria-controls="{COST_PANEL_ID}" data-tip="{html.escape(_cost_tip(tip))}">{inner}'
-        f'<span class="caret" aria-hidden="true">▸</span></button>{panel}'
-    )
-
-
-def run_chip_html(review: dict, cost: dict, panel: str) -> str:
-    """The review run in one pill: who reviewed and what they found, a dot, what it cost.
-
-    These were two chips — `Opus 5 review  9 open · 2 autofixed` and `review cost  $24.87`
-    — which said `review` twice and drew a border between two halves of a single fact. One
-    pill, one dot, and the cost keeps only the word the left half does not already say.
-
-    The halves stay separate elements on purpose. An `<a>` and a `<button>` inside one
-    border is the only way to merge the look without merging the destinations: the findings
-    and the breakdown are two different places, and a reader who clicks the number they are
-    reading must land where that number points.
-    """
-    left = chip_face(review)
-    if review.get("tip"):
-        left = f'<span data-tip="{html.escape(review["tip"])}">{left}</span>'
-    href = review.get("href")
-    left = (f'<a class="seg" href="{html.escape(href)}">{left}</a>' if href
-            else f'<span class="seg">{left}</span>')
-
-    right = chip_face(cost)
-    tip = cost.get("tip") or ""
-    if panel:
-        right = (f'<button type="button" class="seg chip-cost" aria-expanded="false" '
-                 f'aria-controls="{COST_PANEL_ID}" '
-                 f'data-tip="{html.escape(_cost_tip(tip))}">{right}'
-                 f'<span class="caret" aria-hidden="true">▸</span></button>')
-    elif tip:
-        right = f'<span class="seg" data-tip="{html.escape(tip)}">{right}</span>'
-    else:
-        right = f'<span class="seg">{right}</span>'
-
-    return (f'<span class="chip chip-run">{left}'
-            f'<span class="dot" aria-hidden="true">&middot;</span>{right}</span>{panel}')
 
 
 def validate(spec: dict, out_dir: Path) -> list[str]:
@@ -7189,16 +7205,7 @@ def main(argv=None) -> int:
     # Chips carry HTML on purpose: a chip is often a link (to the branch on GitHub, to a
     # section further down) or coloured (+added / -removed), and escaping would kill both.
     chips = []
-    cost_scope_chip = None      # resolved here, rendered once the tab list is final
-    run_scope_chip = None       # its left half, when the two are merged into one pill
     scope = spec.get("scope", [])
-    # Who reviewed and what the review cost are two halves of one sentence about one run,
-    # so when the content file asks for both they are rendered as one chip. Decided up
-    # front rather than at each chip, because either can be written first and the merged
-    # pill takes the place of whichever comes first.
-    merge_run = (any(c.get("auto") == "autofixed" for c in scope)
-                 and any(c.get("auto") == "cost" for c in scope))
-
     # Where the base actually is, asked once: the diffstat chip measures against it and
     # the ref chip warns about it, and those two must never be talking about different
     # commits. `origin/main` is the default because it is what a pull request merges into;
@@ -7245,7 +7252,13 @@ def main(argv=None) -> int:
             reviewer = next((m for m in paid.get("models") or [] if m and m != "synthetic"),
                             None) or c.get("by")
             computed = {
-                "label": f"{reviewer} review" if reviewer else "LLM review",
+                # A colon, not a gap. The pill reads as one sentence — `🤖 Fable 5 review:
+                # 6 open, 4 auto-fixed` — where before it was a label, a gap and a row of
+                # numbers, which is the shape of a measurement rather than of a statement.
+                # The robot is the page's own mark for "a model produced this", the same
+                # one the inferred headings wear, and it is what makes the chip legible as
+                # a claim by a machine rather than as another count of the diff.
+                "label": f"\U0001f916{reviewer} review:" if reviewer else "\U0001f916LLM review:",
                 # Both halves computed. The chip used to read `auto-fixed <n>`, and the
                 # label did the lying the tooltip then had to walk back: only three of the
                 # twelve were fixed, and a reader who never hovers was told all twelve
@@ -7261,8 +7274,8 @@ def main(argv=None) -> int:
                 # it, not so they can act on it, and at full contrast it competes with the
                 # number that IS the work. Grey is the page's own "already handled" —
                 # the same treatment the fixes themselves get in the list below.
-                "value": f'{total - fixed} open &middot; '
-                         f'<span class="sub">{fixed} autofixed</span>',
+                "value": f'{total - fixed} open, '
+                         f'<span class="sub">{fixed} auto-fixed</span>',
                 # The total, which the face no longer carries, split by the pass that
                 # raised each item. `by /code-review and /simplify` named the two passes
                 # and left the reader to guess the split — which is the only thing the
@@ -7277,13 +7290,6 @@ def main(argv=None) -> int:
                                   total),
             }
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
-            if merge_run:
-                # Held like the cost chip beside it, and for the same reason: the pill the
-                # two share cannot be built until the tab list is final, because whether
-                # its right half is a button depends on there being a breakdown to open.
-                run_scope_chip = c
-                chips.append(COST_CHIP_TOKEN)
-                continue
         # A chip that has to be kept up to date by hand is a chip that will be wrong. The
         # cost of the run is the extreme case: it is still changing while the page is being
         # written, so it is computed here, at build time, and never typed into the content
@@ -7309,31 +7315,11 @@ def main(argv=None) -> int:
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
 
         if c.get("auto") == "cost":
-            computed = cost_chip(root)
-            if computed is None:
-                continue
-            c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
-            # Dollars are the number a reader acts on; the token count is the one they
-            # ask for second. The script hands both over with the tokens already wrapped
-            # in a <span class="sub">, so lift that span out rather than splitting on the
-            # separator inside it.
-            m = re.search(r'\s*<span class="sub">(.*?)</span>\s*', str(c["value"]))
-            if m:
-                tokens = re.sub(r"^[\s·]+", "", m.group(1)).strip()
-                c["value"] = str(c["value"])[:m.start()].strip()
-                c["tip"] = f'{tokens} — {c["tip"]}' if c.get("tip") else tokens
-            c["label"] = c["label"].replace("this review cost", "review cost")
-            # Merged, the pill already opens with `Opus 5 review`, so `review cost $24.87`
-            # would say the word a second time three inches to its right. The half keeps
-            # the one word the other half does not carry.
-            if merge_run:
-                c["label"] = "cost"
-            # Held, not rendered: the chip becomes a button that opens the per-tab
-            # breakdown, and whether there is a breakdown to open is only known after the
-            # tab list has been built and its empty tabs dropped.
-            cost_scope_chip = c
-            if not merge_run:
-                chips.append(COST_CHIP_TOKEN)
+            # Dropped, not rendered and not an error. The cost is the last tab on the strip
+            # now; a chip in the bar could only ever carry the review's own share of it,
+            # which turned out to be the smaller half of what the reader wanted. Content
+            # files in the wild still ask for the chip, and silence is the right answer to
+            # them: the number they wanted is on the page, one pill further right.
             continue
         emit(c)
     chips = "".join(chips)
@@ -7569,7 +7555,6 @@ def main(argv=None) -> int:
         raise SystemExit(f"[review] unknown tab block type: {kind}")
 
     tabs = spec.get("tabs")
-    cost_panel_html = ""    # stays empty for the tabless single-column layout
     lede_html =f'<div class="lede">{spec.get("summary", "")}</div>' if spec.get("summary") else ""
     summary_html = lede_html
     overview_html = ""
@@ -7648,11 +7633,13 @@ def main(argv=None) -> int:
     strip_html = allbtn_html = mode_html = ""
     if tabs:
         # Measured once, for every tab, before the loop: one subprocess and one transcript
-        # scan rather than one per tab. `costs` is None only when review-cost.py itself
+        # scan rather than one per tab. `led` is None only when review-cost.py itself
         # could not be asked; a tab's own entry inside it is never missing (see
         # `tab_cost_report`'s docstring) — a bad day comes back as a "not measured"
-        # sentence, not as a tab silently getting no tooltip at all.
-        costs = tab_cost_report(root, [t["id"] for t in tabs])
+        # sentence, not as a tab silently getting no number at all.
+        led = cost_ledger_report(root, [t["id"] for t in tabs],
+                                 (spec.get("pr") or {}).get("base") or "origin/main")
+        costs = (led or {}).get("tabs")
         strip, panels, dropped, quiet, emitted = [], [], [], [], []
         for tab in tabs:
             body, weight, changes = "", 0, 0
@@ -7701,7 +7688,7 @@ def main(argv=None) -> int:
             # part of the page a reviewer navigates by, not reads. Both facts still reach
             # the reader, elsewhere and visibly: the strike-through itself says the branch
             # did not touch that tab, and the cost moved into the breakdown the cost chip
-            # opens (`cost_breakdown_html`), where every tab's number can be read at once.
+            # opens (`cost_ledger_html`), where every tab's number can be read at once.
             strip.append(
                 f'<button type="button" class="tab{" quiet" if still else ""}'
                 f'{" " + html.escape(tab_class) if tab_class else ""}" role="tab" '
@@ -7728,6 +7715,30 @@ def main(argv=None) -> int:
                   file=sys.stderr)
         if dropped:
             print(f"[review] dropped empty tabs: {', '.join(dropped)}", file=sys.stderr)
+        # The cost tab is the build's own, not the content file's, and it is appended
+        # after every declared tab — the last pill on the strip, past CODEOWNERS. Two
+        # reasons it cannot be declared: its label is a measured number (`$744`), and this
+        # page's whole discipline is that a number nobody can keep up to date is a number
+        # that will be wrong; and its position is a fact about the page rather than about
+        # any one review — the bill goes at the end, where a bill goes.
+        cost_tab_body = cost_ledger_html(led, emitted)
+        if cost_tab_body:
+            # No decimals. `$744.18` on a tab pill invites reading the cents of a
+            # list-price estimate whose error bars are the width of a whole session; `$744`
+            # says the size, which is the only thing a label has room to say. The cents are
+            # one click away, in the table the tab opens.
+            cost_label = f'${(led.get("total") or 0.0):,.0f}'
+            strip.append(
+                f'<button type="button" class="tab" role="tab" id="tabbtn-{COST_TAB_ID}" '
+                f'aria-controls="{COST_TAB_ID}" aria-selected="false" tabindex="-1" '
+                f'aria-label="cost — {cost_label} to write and review this change">'
+                f'{cost_label}</button>')
+            panels.append(
+                f'<section class="panel" id="{COST_TAB_ID}" role="tabpanel" '
+                f'aria-labelledby="tabbtn-{COST_TAB_ID}">'
+                '<p class="paneltag">Cost</p>'
+                f'{cost_tab_body}</section>')
+
         # The strip leaves the body: it belongs to the masthead now, and the masthead is
         # assembled around it below. `body_html` is the panels alone, which is what every
         # rewrite downstream of here (the tab count, the enumeration check) is about.
@@ -7795,10 +7806,11 @@ def main(argv=None) -> int:
         # Filled in from the tabs that survived, not from the tabs that were asked for: a
         # tab dropped for having nothing to show must not be counted in the walk-through
         # that promises the reader eleven of them.
+        # The cost tab is deliberately absent from this list. `{{tabcount}}` and the
+        # lede's walk-through are about the tabs that carry the review; requiring the
+        # summary to also name `$744` would make every content file recite the page's own
+        # furniture back at the reader.
         tab_labels = [t["label"] for t in emitted]
-        # Built from `emitted` for the same reason: a tab that was dropped for having
-        # nothing to show must not turn up in the ledger claiming to have cost something.
-        cost_panel_html = cost_breakdown_html(costs, emitted)
         body_html = body_html.replace(TAB_COUNT_TOKEN, spelled(len(tab_labels)))
         # The summary alone, not the whole overview: the walk-through is prose, and the
         # verdict beside it is a score and a label. Handed both, a page that dropped its
@@ -7817,20 +7829,6 @@ def main(argv=None) -> int:
             + "".join(sections)
         )
 
-    # The slot the scope bar left open. A build that measured nothing still gets its chip —
-    # as the inert pill it always was — so a missing breakdown costs the reader the
-    # breakdown, never the total.
-    if run_scope_chip is not None and cost_scope_chip is not None:
-        chips = chips.replace(
-            COST_CHIP_TOKEN,
-            run_chip_html(run_scope_chip, cost_scope_chip, cost_panel_html))
-    elif run_scope_chip is not None:
-        # The run measured nothing — no session to ask, so `{"auto": "cost"}` dropped out
-        # — and the left half is the whole chip, in the shape it had before the merge.
-        chips = chips.replace(COST_CHIP_TOKEN, chip_html(run_scope_chip))
-    elif cost_scope_chip is not None:
-        chips = chips.replace(COST_CHIP_TOKEN,
-                              cost_chip_html(cost_scope_chip, cost_panel_html))
 
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -7856,7 +7854,6 @@ def main(argv=None) -> int:
 {XREF_JS}
 {EDITOR_JS}
 {FRAME_JS}\n{TRACE_JS}\n{HSCROLL_JS}\n{TABS_JS}
-{COST_JS}
 {TIP_JS}
 </body></html>
 """

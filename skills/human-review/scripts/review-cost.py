@@ -35,6 +35,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -122,7 +123,8 @@ def subagent_transcripts(session_file: Path) -> list[Path]:
     return found
 
 
-def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict) -> None:
+def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict,
+          until: dt.datetime | None = None) -> None:
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         if not line.strip():
             continue
@@ -145,6 +147,13 @@ def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict) -
                 when = None
         if since is not None and when is not None and when < since:
             continue
+        # The far end of the window. It exists for the one caller that measures a session
+        # it does not own -- the conversation that WROTE the code, costed between its
+        # first and last edit to the change set. Without it that row would charge this
+        # review for everything that session ever did afterwards, which is a different
+        # question and a much larger number.
+        if until is not None and when is not None and when > until:
+            continue
         mid = msg.get("id") or f"{d.get('uuid')}"
         prev = best.get(mid)
         # `key` is the dedup tie-break only (a missing timestamp must still lose to a real
@@ -159,27 +168,28 @@ def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict) -
                          force_side or bool(d.get("isSidechain")), when)
 
 
-def gather_turns(path: Path, since: dt.datetime | None, include_subagents: bool = True):
+def gather_turns(path: Path, since: dt.datetime | None, include_subagents: bool = True,
+                 until: dt.datetime | None = None):
     """The deduped, priced turns `collect()` and `tab_costs()` both work from.
 
     One scan, shared, so the two never drift on what counts as a turn — the same
     dedupe-by-`message.id` and subagent-transcript discovery either would reimplement
     otherwise."""
     best: dict[str, tuple] = {}
-    _scan(path, since, False, best)
+    _scan(path, since, False, best, until)
     agents = subagent_transcripts(path) if include_subagents else []
     for extra in agents:
-        _scan(extra, since, True, best)
+        _scan(extra, since, True, best, until)
     return list(best.values()), len(agents)
 
 
 def collect(path: Path, since: dt.datetime | None, include_subagents: bool = True,
-           turns=None, n_agents: int | None = None) -> dict:
+           turns=None, n_agents: int | None = None, until: dt.datetime | None = None) -> dict:
     """`turns`/`n_agents` let a caller that already ran `gather_turns()` (the `--chip`
     path, when it also needs the residual) reuse that scan instead of reading the whole
     transcript — subagents included — a second time."""
     if turns is None:
-        turns, n_agents = gather_turns(path, since, include_subagents)
+        turns, n_agents = gather_turns(path, since, include_subagents, until)
 
     totals = {"in": 0, "out": 0, "cache_write": 0, "cache_read": 0}
     per_model: dict[str, dict] = {}
@@ -373,7 +383,8 @@ def tab_cost_tip(row: dict) -> str:
 
 
 def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path: Path,
-                    tabs: list[str], include_subagents: bool = True) -> dict:
+                    tabs: list[str], include_subagents: bool = True,
+                    turns=None) -> dict:
     """Everything a page builder needs to put an honest cost tooltip on every tab.
 
     Always returns an entry for every tab in `tabs` — never an empty dict a caller has to
@@ -402,7 +413,11 @@ def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path
     if not ledger_found:
         return {**blank(f"no step ledger at {steps_path}"), "available": True}
 
-    turns, _ = gather_turns(path, since, include_subagents)
+    # `turns` lets `ledger()` hand over the scan it already paid for. A transcript this
+    # size is read in seconds and the ledger needs the same turns twice -- once priced per
+    # tab, once totalled -- so scanning it again is the whole of that second wait.
+    if turns is None:
+        turns, _ = gather_turns(path, since, include_subagents)
     result = tab_costs(turns, steps, tabs)
     tabs_out = {
         t: {"measured": row["has_closed"], "cost": row["cost"],
@@ -443,6 +458,216 @@ def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path
     }
 
 
+AUTHORING = Path(__file__).resolve().parent / "authoring-sessions.py"
+
+
+def _stamp(raw: str | None) -> "dt.datetime | None":
+    if not raw:
+        return None
+    try:
+        return dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def authoring_cost(base: str, root: Path, exclude: str | None = None) -> dict:
+    """What the conversation that WROTE the code cost — the other half of the bill.
+
+    A review page has always been able to say what reviewing cost, because it is the run
+    doing the reviewing. The number beside it, what producing the thing under review cost,
+    was on the same disk the whole time and never asked for. It is the more interesting of
+    the two: a reader deciding whether this way of working pays for itself needs both.
+
+    Who wrote it is not guessed here. `authoring-sessions.py` already answers it from tool
+    calls — an `Edit` naming a changed file, or a shell command that demonstrably writes
+    one — and that script's evidence rules are the ones that matter, so this is a caller,
+    not a second implementation.
+
+    **Only sessions that used the edit tools count.** The scan also returns sessions whose
+    sole evidence is a shell command, and on a repo this large that is a dozen of them: a
+    `git checkout`, a `sed` in a script, an unrelated conversation that happened to write
+    a file with the same path. Charging the feature for all of those would turn a measured
+    number into an accumulation of other people's afternoons. Where *nothing* used the edit
+    tools the strongest shell-only session is taken instead, flagged `weak`, so the page can
+    hedge in words rather than print a confident wrong total.
+
+    **Each session is costed between its first and its last edit to these files**, not over
+    its whole length. A conversation that wrote this feature in the morning and did
+    something else all afternoon is charged for the morning. That window is a bound, not a
+    fence — work inside it that belonged to something else is still counted — and the page
+    says so rather than implying a precision the transcript cannot support.
+    """
+    proc = subprocess.run(
+        [sys.executable, str(AUTHORING), "--base", base, "--json"],
+        cwd=root, capture_output=True, text=True,
+    )
+    if not proc.stdout.strip():
+        line = (proc.stderr.strip().splitlines() or ["authoring-sessions.py said nothing"])[-1]
+        return {"measured": False, "reason": line, "sessions": [], "cost": 0.0, "tokens": 0}
+    try:
+        found = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return {"measured": False, "reason": "authoring-sessions.py returned no JSON",
+                "sessions": [], "cost": 0.0, "tokens": 0}
+
+    rows = [r for r in found.get("sessions") or [] if r.get("session") != exclude]
+    strong = [r for r in rows if r.get("edits")]
+    weak = not strong
+    picked = strong or rows[:1]
+    if not picked:
+        return {"measured": False, "mode": found.get("mode"), "sessions": [],
+                "cost": 0.0, "tokens": 0,
+                "reason": "no conversation on disk wrote these files — a branch from "
+                          "somebody else, or transcripts since cleaned up"}
+
+    out, total_cost, total_tokens = [], 0.0, 0
+    for r in picked:
+        path = Path(r.get("transcript") or "")
+        if not path.is_file():
+            continue
+        c = collect(path, _stamp(r.get("first")), until=_stamp(r.get("last")))
+        total_cost += c["cost"]
+        total_tokens += c["tokens"]
+        out.append({"session": r["session"], "cost": c["cost"], "tokens": c["tokens"],
+                    "messages": c["messages"], "subagents": c["subagents"],
+                    "models": list(c["models"]), "first": r.get("first"),
+                    "last": r.get("last"), "edits": r.get("edits", 0),
+                    "bash": r.get("bash", 0), "files": len(r.get("files") or []),
+                    "current": r.get("current", False)})
+    return {"measured": bool(out), "mode": found.get("mode"), "weak": weak,
+            "sessions": out, "cost": total_cost, "tokens": total_tokens,
+            "reason": None if out else "the authoring transcripts are no longer on disk"}
+
+
+PASSES = Path(__file__).resolve().parent / "review-passes.py"
+
+# A pass that applies what it finds, told apart from one that only reports. `/simplify`
+# rewrites by definition; `/code-review` only does with `--fix`. Name-based, because the
+# invocation is the only record of intent there is -- a transcript cannot be asked whether
+# an edit came from a finding or from the conversation around it.
+FIXING = ("--fix", "/simplify", "simplify")
+
+
+def pass_costs(session: str, since: "dt.datetime | None" = None) -> dict:
+    """What the review passes cost, split into finding and fixing.
+
+    `review-passes.py` already answers which passes ran and where each one's turns are;
+    this prices them. A pass that **forked** is priced exactly — a subagent has a
+    transcript of its own, and everything in it is that pass and nothing else. A pass that
+    ran **inline** cannot be: its turns are interleaved with the conversation that invoked
+    it, with no marker saying where it stopped. Those are counted and named, not estimated,
+    and their money stays in the residual where it actually landed.
+
+    Each group carries `earlier` beside `cost`: the part spent *before* the run's start
+    marker. That is the part the run's own total cannot already contain, and it is the only
+    part a grand total may add — a pass fired after the guide started is inside the run's
+    number, and adding it again would bill it twice. Usually `earlier` IS the whole cost,
+    because the human runs the passes and then asks for the page; the split exists so the
+    arithmetic does not quietly depend on that habit.
+    """
+    proc = subprocess.run(
+        [sys.executable, str(PASSES), "--session", session, "--json"],
+        capture_output=True, text=True,
+    )
+    if not proc.stdout.strip():
+        return {"measured": False, "groups": {}, "inline": 0}
+    try:
+        found = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return {"measured": False, "groups": {}, "inline": 0}
+
+    groups: dict[str, dict] = {}
+    inline = 0
+    seen: set[str] = set()
+    for p in found.get("passes") or []:
+        src = Path(p.get("source") or "")
+        forked = str(p.get("how", "")).startswith("subagent")
+        if not forked:
+            inline += 1
+            continue
+        if not src.is_file() or str(src) in seen:
+            continue
+        invoked = str(p.get("invoked_as") or "")
+        # Only an actual invocation counts. `review-passes.py` also recognises a forked
+        # agent by its *type*, which sweeps up every subagent a code-review-shaped agent
+        # ever ran -- on this repo that meant two implementation tasks ("Fix ds-audit
+        # asset-prefix bug") being billed to the review. A pass the human asked for is
+        # spelled `/code-review` or `/simplify`; a description in prose is somebody else's
+        # errand.
+        if not invoked.startswith("/"):
+            continue
+        # Deliberately NOT filtered by the run's start marker. The passes run *before*
+        # `/human-review` does -- that is the whole design, the guide harvests a review
+        # rather than paying to re-derive one -- so every pass on this change set is
+        # earlier than the run whose page reports it.
+        seen.add(str(src))
+        kind = "fixing" if any(m in invoked for m in FIXING) else "finding"
+        # `include_subagents=False`: a subagent transcript is a leaf. Asking for its own
+        # agents would send `subagent_transcripts` hunting for ids in a file that names
+        # none, and any it did find would be double-counted against the parent run.
+        c = collect(src, None, include_subagents=False)
+        earlier = (collect(src, None, include_subagents=False, until=since)["cost"]
+                   if since is not None else c["cost"])
+        row = groups.setdefault(kind, {"cost": 0.0, "earlier": 0.0, "tokens": 0,
+                                       "messages": 0, "passes": 0, "invoked": []})
+        row["cost"] += c["cost"]
+        row["earlier"] += earlier
+        row["tokens"] += c["tokens"]
+        row["messages"] += c["messages"]
+        row["passes"] += 1
+        if invoked and invoked not in row["invoked"]:
+            row["invoked"].append(invoked)
+    return {"measured": True, "groups": groups, "inline": inline}
+
+
+def ledger(session: str | None, since: "dt.datetime | None", steps_path: Path,
+           tabs: list[str], base: str, root: Path,
+           include_subagents: bool = True) -> dict:
+    """The whole bill for this change set, in the order the money was spent.
+
+    The page used to state one number — what the review run cost — in a chip, with a
+    per-tab breakdown hanging off it. That answered "what did this page cost to make",
+    which is the least interesting of the questions a reader has. The one they actually
+    arrive with is "what did this change cost", and the review is the smaller half of it:
+    somebody wrote the code first, in a conversation that is on the same disk.
+
+    Four sources, each measured by whatever can actually see it, and each saying so:
+
+      * **writing** — `authoring_cost`, the conversation that edited these files;
+      * **finding / fixing** — `pass_costs`, the review passes that forked;
+      * **the tabs** — `tab_cost_report`, every step the ledger timed;
+      * **the rest of the run** — the residual, already broken into guide, subagent and
+        conversation by `tab_costs`.
+
+    They are not disjoint by construction and the report does not pretend otherwise:
+    `run` is the review run's own measured total, and the tab and residual rows sum to it.
+    The passes are a *view inside* that total, not an addition to it, which is why they are
+    reported separately rather than added — the grand total is writing plus the run.
+    """
+    run = {"measured": False, "cost": 0.0, "tokens": 0, "messages": 0, "models": []}
+    passes = {"measured": False, "groups": {}, "inline": 0}
+    turns = n_agents = None
+    path = transcript(session) if session else None
+    if path is not None:
+        turns, n_agents = gather_turns(path, since, include_subagents)
+        c = collect(path, since, include_subagents=include_subagents,
+                    turns=turns, n_agents=n_agents)
+        run = {"measured": True, "cost": c["cost"], "tokens": c["tokens"],
+               "messages": c["messages"], "subagent_cost": c["subagent_cost"],
+               "subagents": c["subagents"], "models": list(c["models"])}
+        passes = pass_costs(session, since)
+    tabs_report = tab_cost_report(session, since, steps_path, tabs,
+                                  include_subagents=include_subagents, turns=turns)
+    writing = authoring_cost(base, root, exclude=session)
+    # Only the part of the passes that predates the run is added; the rest is already
+    # inside `run`. See `pass_costs` for why that distinction is kept rather than assumed.
+    earlier = sum(g.get("earlier") or 0.0 for g in (passes.get("groups") or {}).values())
+    total = (writing.get("cost") or 0.0) + (run.get("cost") or 0.0) + earlier
+    return {"writing": writing, "run": run, "passes": passes, "tabs": tabs_report,
+            "passes_added": earlier, "total": total,
+            "total_tokens": (writing.get("tokens") or 0) + (run.get("tokens") or 0)}
+
+
 def _resolve_since(since_file: str, since_raw: str | None) -> "dt.datetime | None":
     """The run's own start marker, or an explicit override — shared by every mode, so the
     `{"auto":"cost"}` chip and the per-tab report never disagree about where "this run"
@@ -481,7 +706,20 @@ def main(argv=None) -> int:
     ap.add_argument("--tabs", help="comma-separated tab ids to report on, with --tab-costs")
     ap.add_argument("--steps-file", default=".human-review/.steps.json",
                     help="the start/end ledger steps-ledger.py writes")
+    ap.add_argument("--ledger", action="store_true",
+                    help="emit the whole bill — writing the code, the review passes, "
+                         "every tab and the residual — as JSON (needs --tabs)")
+    ap.add_argument("--base", default="origin/main",
+                    help="what the change set is measured against, for --ledger")
     args = ap.parse_args(argv)
+
+    if args.ledger:
+        since = _resolve_since(args.since_file, args.since)
+        tabs = [t.strip() for t in (args.tabs or "").split(",") if t.strip()]
+        print(json.dumps(ledger(args.session, since, Path(args.steps_file), tabs,
+                                args.base, Path.cwd(),
+                                include_subagents=not args.no_subagents), indent=1))
+        return 0
 
     if args.tab_costs:
         since = _resolve_since(args.since_file, args.since)

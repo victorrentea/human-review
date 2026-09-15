@@ -188,8 +188,8 @@ defect, it is the defect, quoted.
 - **An applied fix shows its diff.** A fix described in a sentence with no diff is a claim
   the reader has to take on trust; the build warns when it finds one.
 - **Never retype code** — `extract-snippet.py path:from-to` cuts it verbatim at build time.
-- **Never type a number the page computes** (the diffstat, the cost chip, the auto-fixed
-  count, the test balance, the Code City count, tab costs). A hand-typed number goes stale
+- **Never type a number the page computes** (the diffstat, the cost tab and its label, the
+  auto-fixed count, the test balance, the Code City count, tab costs). A hand-typed number goes stale
   with nothing noticing — `unit tests · 125 green (20 new)` was true until somebody wrote
   the next test, and `lines +1198 / −863` sat on a page for six days matching no range in
   the repository at all. `files` and `lines` come from `{"auto": "diffstat"}`, which
@@ -271,7 +271,10 @@ CLAUDE_CODE_SESSION_ID=$(cat .human-review/.session) \
 ```
 
 If that id is gone, publish no number rather than a measured-looking one: delete
-`.human-review/.steps.json` and drop `{"auto": "cost"}` from `scope`.
+`.human-review/.steps.json`. With no session to ask, the cost tab reports what it still
+can — what the conversation that wrote the code spent — and says in words why the run's own
+half is missing. If neither half is measurable the tab drops itself: a pill reading `$0` is
+a claim that this change was free, which is not what an absence means.
 
 ## Wrap-up
 
