@@ -148,53 +148,71 @@ def test_the_runtime_bar_carries_the_command_and_the_fallback(tmp_path):
     out = build.video_html(s, tmp_path)
     assert '<div class="appenv" data-fallback="http://localhost:4200"' in out
     assert "./start-docker.sh up --ref abc123" in out
-    # The front door of the app, in a tab of its own, and dead until the probe has heard
-    # the app answer.
-    assert ('<a class="appenv-open" target="_blank" rel="noopener" aria-disabled="true"'
-            in out)
+    # The address is the front door, in a tab of its own — and it is not in the page:
+    # the port is the host's to pick, so the script fills href and text alike, and only
+    # once something has answered there.
+    assert '<a class="appenv-url" target="_blank" rel="noopener" hidden></a>' in out
     # Both opt-in controls stay away until the environment says it offers them: a button
     # that always fails is worse than no button.
     assert "appenv-stop" not in out
     assert "appenv-reset" not in out and "data-reset" not in out
 
 
-def test_the_row_reads_start_open_stop_reset_then_the_address(tmp_path):
-    """The order the reviewer uses them in — and Open sits where their eye already is
-    after the click that produced something to open.
+def test_the_row_reads_the_state_first_then_the_verbs_that_act_on_it(tmp_path):
+    """"Offline", and the verb that changes that — or the address, and the verbs that act
+    on what is answering there. The state is the subject of the row, so it leads it.
 
-    The address comes last because "live at http://localhost:53421" is one phrase, and
-    leading the row with an empty box made the bar look like a form to fill in."""
+    The address used to be pushed to the far right in a text box of its own, which made
+    the bar read as a form with a field waiting to be filled in."""
     s = _video_dir(tmp_path, filmed=True)
     s["runtime"] = {"command": "up", "stop": "down", "reset": "/__reset"}
     out = build.video_html(s, tmp_path)
-    order = ["appenv-title", "appenv-start", "appenv-open", "appenv-stop",
-             "appenv-reset", "appenv-state", "appenv-base"]
+    order = ["appenv-title", "appenv-state", "appenv-url", "appenv-start",
+             "appenv-stop", "appenv-reset"]
     assert [out.index(c) for c in order] == sorted(out.index(c) for c in order)
     assert ">Deployed app<" in out
+    rule = build.CSS[build.CSS.index(".appenv .appenv-at"):]
+    assert "margin-left:auto" not in rule[:rule.index("}")], "not off in the corner"
 
 
-def test_start_and_stop_say_why_they_are_dead_rather_than_disappearing(tmp_path):
-    """Off disk there is no process here to run a command. A control that vanishes between
-    two copies of the same report teaches the reader the report is unreliable; one that
-    explains what it needs teaches them what served mode is."""
+def test_every_verb_starts_hidden_and_is_raised_by_the_probe(tmp_path):
+    """A verb drawn live that turns out not to apply has already been clicked by the time
+    the probe corrects it. `hidden` *and* aria-disabled: the second is the guard the script
+    itself reads, and it survives a stylesheet that never loaded."""
     s = _video_dir(tmp_path, filmed=True)
-    s["runtime"] = {"command": "up", "stop": "down"}
+    s["runtime"] = {"command": "up", "stop": "down", "reset": "/__reset"}
     out = build.video_html(s, tmp_path)
-    for cls in ("appenv-start", "appenv-stop"):
+    for cls in ("appenv-start", "appenv-stop", "appenv-reset"):
         at = out.index(cls)
         tag = out[out.rindex("<button", 0, at):out.index(">", at) + 1]
-        assert 'aria-disabled="true"' in tag
-        assert "Serve this report" in tag
+        assert " hidden " in tag and 'aria-disabled="true"' in tag
 
 
-def test_the_command_sits_on_its_own_line_under_the_buttons(tmp_path):
-    """Served, it is the escape hatch; off disk it is the only route. Either way it is a
-    line of its own rather than a column competing with the controls."""
+def test_off_disk_the_command_replaces_the_verbs_instead_of_standing_beside_them(tmp_path):
+    """Off disk nothing in the row can run: no process here runs a command, and Reset has
+    nothing to reset until one has. One offer in the register that copy of the report can
+    honour — not greyed buttons above the command that replaces them.
+
+    Both halves are in the markup because the same file is opened both ways and only the
+    script knows which; the stylesheet hides the half that would be lying."""
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "up", "stop": "down", "reset": "/__reset"}
+    out = build.video_html(s, tmp_path)
+    assert "appenv-start" in out and "appenv-manual" in out
+    for cls in ("appenv-start", "appenv-stop", "appenv-reset"):
+        assert f".appenv:not(.appenv-served) .{cls}" in build.CSS
+    assert ".appenv.appenv-served .appenv-manual { display:none; }" in build.CSS
+
+
+def test_the_command_sits_on_its_own_line_with_nothing_introducing_it(tmp_path):
+    """A line that is visibly a shell command does not need "run this in a terminal to
+    start it" in front of it — that was the page reading itself out loud."""
     s = _video_dir(tmp_path, filmed=True)
     s["runtime"] = {"command": "./start-docker.sh up"}
     out = build.video_html(s, tmp_path)
     assert out.index("appenv-run") < out.index("appenv-manual")
-    assert "Run this in a terminal to start it:" in out, "the static wording leads"
+    assert "Run this in a terminal" not in out
+    assert '<p class="appenv-manual"><code>./start-docker.sh up</code>' in out
     assert "appenv-copy" in out
 
 
@@ -216,7 +234,9 @@ def test_the_reset_control_appears_only_when_an_endpoint_is_declared(tmp_path):
     assert "appenv-reset" not in out
     s["runtime"] = {"command": "x", "base": "http://localhost:4200", "reset": "/__reset"}
     out = build.video_html(s, tmp_path)
-    assert 'data-reset="/__reset"' in out and "appenv-reset" in out
+    # "Reset DB" and not "Reset data": what it puts back is the database the demo runs
+    # on, and the reviewer who is about to press it is deciding whether they mind.
+    assert 'data-reset="/__reset"' in out and ">Reset DB<" in out
 
 
 def test_a_recorded_video_gets_a_player(tmp_path):
