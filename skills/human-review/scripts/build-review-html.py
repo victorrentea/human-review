@@ -553,8 +553,8 @@ pre.code code { white-space:pre; }
 .cmlegend { display:flex; gap:1rem; flex-wrap:wrap; margin:.55rem .6rem .1rem;
             color:var(--muted); font-size:.78rem; line-height:1.6; }
 /* An entry is a run of text with a swatch at its head, not a flex row: made a flex
-   container, it turns each inline <b> in the sentence into a cell of its own, so the
-   to-do row's "turn <b>every</b> line black" came out as four columns with "every"
+   container, it turns each inline <b> in the sentence into a cell of its own, so a row
+   whose sentence emphasised a word mid-way came out as four columns with that word
    standing alone in one of them. The swatch sits on the text baseline as an
    inline-block, and the ordinary space after it is the gap. */
 .cmlegend i { display:inline-block; width:1.1rem; height:0; border-top:3px solid currentColor;
@@ -1854,13 +1854,54 @@ FRAME_JS = """<script>
 // A framed report sizes itself: it posts its height and we grow the frame to fit, so
 // the page keeps the only scrollbar. A frame that scrolls internally traps the wheel
 // and hides how much of it is left.
+var dvFrames = [];
 window.addEventListener('message', function (e) {
   var d = e.data;
   if (!d || d.type !== 'dv-height' || !d.height) return;
   Array.prototype.forEach.call(document.querySelectorAll('iframe'), function (f) {
-    if (f.contentWindow === e.source) f.style.height = (d.height + 4) + 'px';
+    if (f.contentWindow !== e.source) return;
+    f.style.height = (d.height + 4) + 'px';
+    if (dvFrames.indexOf(f) < 0) dvFrames.push(f);
   });
+  dvStick();
 });
+
+// The price of that bargain: a frame grown to its full height has no scrollport, so a
+// toolbar inside it cannot pin itself -- `sticky` never fires and `fixed` pins to the
+// same full-height box. We are the document that scrolls, so we are the one that knows.
+// Post how far our own pinned masthead has run past the top of each frame and let it
+// slide its toolbar down by that much; the frame clamps the number to its own height.
+// Only frames that have announced themselves with a `dv-height` are talked to, so an
+// embedded report that knows nothing of this is never sent anything.
+function dvStick() {
+  if (!dvFrames.length) return;
+  var top = parseFloat(getComputedStyle(document.documentElement)
+                       .getPropertyValue('--strip-h')) || 0;
+  dvFrames.forEach(function (f) {
+    var r = f.getBoundingClientRect();
+    // A frame in a hidden panel measures as nothing; there is nothing to pin over.
+    if (!r.height) return;
+    // `clientTop` is the frame's own top border: the rect is the border box, but the
+    // offset we are posting is measured from inside it, and the one pixel between the
+    // two is a pixel of the frame's content showing above a bar that looked flush.
+    // Floored, not rounded, for the same reason -- at a fractional scroll position the
+    // bar is better a hair under the masthead than a hair below it.
+    var y = Math.floor(top - r.top - (f.clientTop || 0));
+    f.contentWindow.postMessage({type: 'dv-stick', top: Math.max(0, y)}, '*');
+  });
+}
+var dvStickQueued = false;
+function dvQueueStick() {
+  if (dvStickQueued) return;
+  dvStickQueued = true;
+  requestAnimationFrame(function () { dvStickQueued = false; dvStick(); });
+}
+window.addEventListener('scroll', dvQueueStick, {passive: true});
+window.addEventListener('resize', dvQueueStick);
+// Switching tabs, or opening `show all`, moves a frame without scrolling the page. The
+// listener is on capture so it is queued before the tab handler runs; the frame is
+// re-measured in the animation frame after, by which time the panel has swapped.
+document.addEventListener('click', dvQueueStick, true);
 </script>"""
 
 
@@ -3721,19 +3762,17 @@ DRAWIO_TOKEN = re.compile(r"\{\{drawio:(?P<name>[A-Za-z0-9_.-]+)\}\}")
 # Meanings, not colours: the swatch is already the colour, so the bold goes on the one
 # thing the reader cannot see.
 #
-# The to-do row carries the whole instruction — what the red *is* and what to do about it
-# — because this is the one place on the page that is guaranteed to disappear with the
-# red. Those sentences used to be a paragraph above the picture, written by hand into
-# `content.json`, and a hand-written paragraph about red outlives the red: the layout gets
-# drawn, the colour goes, and the prose still tells the next reader to go and turn lines
-# black. Both rows are read off the verdict, so the page stops saying it the moment it
-# stops being true.
+# The to-do row names the state and stops. It used to carry the whole instruction as well
+# — what the red is, and to go open it in draw.io and turn every line black — and that
+# sentence read as a puzzle at the size a legend is read at: the reader is standing in
+# front of a picture, and the legend was explaining a workflow. The instruction is not
+# lost, it is written on the map itself, in red, by `conceptual-model-patch.py`, where
+# the person who can act on it is already looking. Both rows are read off the verdict, so
+# the page stops saying it the moment it stops being true.
 CM_LEGEND_NEW = ('<span class="new"><i></i><b>added by this PR</b> '
                  "— new against the base branch</span>")
-CM_LEGEND_TODO = ('<span class="todo"><i></i><b>still waiting for a hand-drawn layout</b> '
-                  "— a line the drawing lacked, drawn by automation to keep the guardrail "
-                  "green: open it in draw.io, re-lay it out by hand, and turn "
-                  "<b>every</b> line black while you are in there</span>")
+CM_LEGEND_TODO = ('<span class="todo"><i></i>'
+                  "<b>still waiting for a manual re-layout</b></span>")
 
 
 def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -> str:

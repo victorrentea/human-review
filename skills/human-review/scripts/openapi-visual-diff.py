@@ -76,6 +76,47 @@ MERGE_RULES = (
 )
 
 
+# oasdiff writes a response-property change as
+#     added the optional property `items/pets/items/visits/items/vetId`
+#     to the response with the `200` status
+# which buries the one thing the line is about -- the path -- in the middle, and then
+# trails eleven characters of ceremony behind it. Two edits fix the shape. `response`
+# moves in front of `property`, where it belongs: it qualifies the property, it is not
+# somewhere the property was sent. And the path goes last, so a column of these lines can
+# be read straight down the field names instead of hunting for them at a different offset
+# on every row. The result reads the way oasdiff already writes the request side --
+# "added the new optional request property `vetId`".
+RESPONSE_PROPERTY_RE = re.compile(
+    r"^(?P<verb>added|removed) the (?P<quals>(?:[\w-]+ )*?)property "
+    r"`(?P<path>[^`]+)` (?:to|from) the response with the `(?P<status>[^`]+)` status$"
+)
+
+# A 2xx is the response everybody means; naming it on every line is ceremony, and there
+# are twenty such lines on a single endpoint. Any other status IS the news in the line
+# and stays -- which is rare enough that the long form costs nothing when it happens.
+SUCCESS_STATUS = re.compile(r"^2(?:\d\d|XX|xx)$")
+
+# The same clause trailing any of oasdiff's other response wordings, in either of the two
+# word orders it uses ("with the `200` status", "for the status `200`").
+TRAILING_STATUS_RE = re.compile(
+    r"\s(?:with|for)(?: the)? (?:status `(?P<s1>[^`]+)`|`(?P<s2>[^`]+)` status)$"
+)
+
+
+def rephrase(text: str) -> str:
+    """oasdiff's wording, with the response-status ceremony taken out of the way."""
+    m = RESPONSE_PROPERTY_RE.match(text)
+    if m:
+        status = ("" if SUCCESS_STATUS.match(m["status"])
+                  else f"`{m['status']}` ")
+        return (f"{m['verb']} the {m['quals']}{status}response property "
+                f"`{m['path']}`")
+    m = TRAILING_STATUS_RE.search(text)
+    if m and SUCCESS_STATUS.match(m["s1"] or m["s2"]):
+        return text[:m.start()]
+    return text
+
+
 def merge_pairs(changes: list) -> list:
     """Collapse remove+add pairs on the same thing into a single 'changed' line."""
     out = list(changes)
@@ -311,7 +352,10 @@ def build_model(old_spec: dict, new_spec: dict, changes: list):
             state = "untouched"
         op_obj = merged_ops.get((m, p)) or {}
         listed = [
-            {"text": c["text"], "level": c["level"], "id": c["id"],
+            # `rephrase` only here, at the point the line is written out: change_target()
+            # below still reads oasdiff's own wording to work out which backticked token
+            # is the schema path.
+            {"text": rephrase(c["text"]), "level": c["level"], "id": c["id"],
              "mark": change_mark(c["id"]), "target": change_target(op_obj, c)}
             for c in sorted(ch, key=lambda c: -c["level"])
             # an added endpoint's only "change" is that it exists — no need to say it
@@ -358,7 +402,7 @@ def render(model, entries, global_changes, tags, old_label, new_label) -> str:
             "spec": model,
             "ops": entries,
             "global": [
-                {"text": c["text"], "level": c["level"], "id": c["id"],
+                {"text": rephrase(c["text"]), "level": c["level"], "id": c["id"],
                  "section": c.get("section", "")}
                 for c in sorted(global_changes, key=lambda c: -c["level"])
             ],
@@ -394,6 +438,10 @@ TEMPLATE = r"""<!doctype html>
     --dv-line:  #e2e2ea;
     --dv-card:  #ffffff;
     --dv-code:  rgba(0,0,0,.06);
+    /* Two more, used by the JSON-Schema block far below: `dim` is what that renderer
+       paints an `x-` extension in, `attr` the blue it paints a type attribute in. */
+    --dv-dim:   #8a8a95;
+    --dv-attr:  #5555aa;
   }
   /* System theme by default; ?theme=dark|light pins it, which is what the
      embedding page uses when it wants the frame to match rather than guess. */
@@ -403,6 +451,7 @@ TEMPLATE = r"""<!doctype html>
       --dv-removed: #9aa0aa;
       --dv-bg: #15151a; --dv-fg: #e8e8ef; --dv-muted: #9a9aa8;
       --dv-line: #2c2c36; --dv-card: #1d1d24; --dv-code: rgba(255,255,255,.10);
+      --dv-dim: #82828e; --dv-attr: #97a9ee;
     }
   }
   :root[data-theme="dark"] {
@@ -410,13 +459,22 @@ TEMPLATE = r"""<!doctype html>
     --dv-removed: #9aa0aa;
     --dv-bg: #15151a; --dv-fg: #e8e8ef; --dv-muted: #9a9aa8;
     --dv-line: #2c2c36; --dv-card: #1d1d24; --dv-code: rgba(255,255,255,.10);
+    --dv-dim: #82828e; --dv-attr: #97a9ee;
   }
   body { margin: 0; background: var(--dv-bg); color: var(--dv-fg);
          color-scheme: light dark; }
 
   /* ---------- toolbar ---------- */
   .dv-bar {
+    /* `sticky` is for this page opened on its own. Framed -- which is how it is nearly
+       always read -- the host grows the frame to our full height so that the outer page
+       keeps the only scrollbar, and a frame with no scrollport of its own has nothing
+       for `sticky` to stick to (nor for `fixed`, which pins to the same full-height
+       box). So the host, which is the thing that actually scrolls, tells us how far its
+       masthead has run past our top and we ride the bar down by exactly that much. The
+       filters and the counts are wanted at the fortieth endpoint, not just the first. */
     position: sticky; top: 0; z-index: 50;
+    transform: translateY(var(--dv-stick, 0px));
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     padding: 10px 20px;
     background: #1b1b1f; color: #eaeaea;
@@ -424,8 +482,6 @@ TEMPLATE = r"""<!doctype html>
     box-shadow: 0 2px 10px rgba(0,0,0,.25);
   }
   .dv-bar h1 { font-size: 14px; margin: 0 8px 0 0; font-weight: 600; letter-spacing: .01em; }
-  .dv-bar .dv-vs { opacity: .65; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  .dv-bar .dv-vs b { color: #fff; font-weight: 600; }
   .dv-chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 3px 10px; border-radius: 999px;
@@ -586,7 +642,14 @@ TEMPLATE = r"""<!doctype html>
   .swagger-ui .parameter__in, .swagger-ui .response-col_status,
   .swagger-ui .response-col_description, .swagger-ui .responses-inner h4,
   .swagger-ui .responses-inner h5, .swagger-ui .model-title, .swagger-ui .model,
-  .swagger-ui .tab li, .swagger-ui label, .swagger-ui .btn {
+  .swagger-ui .tab li, .swagger-ui label, .swagger-ui .btn,
+  /* The section headings inside an operation -- `Parameters`, `Responses`, and the
+     `Try it out` label riding beside them. Swagger paints all three #3b4151, which on
+     the dark card we repaint the header to is very nearly the card itself: the two words
+     that say what you are looking at were the least readable thing on the tab. */
+  .swagger-ui .opblock .opblock-section-header h4,
+  .swagger-ui .opblock .opblock-section-header h4 span,
+  .swagger-ui .opblock .opblock-section-header > label {
     color: var(--dv-fg);
   }
   .swagger-ui .opblock .opblock-summary-description,
@@ -618,6 +681,62 @@ TEMPLATE = r"""<!doctype html>
   .swagger-ui .json-schema-2020-12__constraint--string {
     background: var(--dv-code); color: var(--dv-muted);
   }
+  /* ---------- Swagger UI's JSON-Schema 2020-12 renderer ----------
+     The component that draws the response body -- the tree of `firstName`, `telephone`,
+     `pets` this page exists to point into -- is painted with literal light-theme hex
+     values throughout: #3b4151 for a property name, #6b6b6b for its type and
+     description, and a `rgba(0,0,0,.05)` tint behind the whole box. In dark mode the
+     tint darkens the card and the names go down with it, so the one column a reader
+     scans is the one they cannot read. Remap the palette to the page's own vars, which
+     leaves light mode where it was and gives dark mode the same contrast the rest of the
+     report has. Nothing but colour is touched. */
+  .swagger-ui .json-schema-2020-12 { background-color: var(--dv-code); }
+  .swagger-ui .json-schema-2020-12--embedded,
+  .swagger-ui .model-box .json-schema-2020-12 { background-color: transparent; }
+  .swagger-ui .json-schema-2020-12__title,
+  .swagger-ui .json-schema-2020-12-property .json-schema-2020-12__title,
+  .swagger-ui .json-schema-2020-12__attribute,
+  .swagger-ui .json-schema-2020-12-keyword__name--primary,
+  .swagger-ui .json-schema-2020-12-keyword__value--primary,
+  .swagger-ui .json-schema-2020-12-json-viewer__name--primary,
+  .swagger-ui .json-schema-2020-12-json-viewer__value--primary,
+  .swagger-ui .json-schema-2020-12-keyword--const .json-schema-2020-12-json-viewer__name,
+  .swagger-ui .json-schema-2020-12-keyword--const .json-schema-2020-12-json-viewer__value,
+  .swagger-ui .json-schema-2020-12-keyword--default .json-schema-2020-12-json-viewer__name,
+  .swagger-ui .json-schema-2020-12-keyword--default .json-schema-2020-12-json-viewer__value,
+  .swagger-ui .json-schema-2020-12-keyword--enum .json-schema-2020-12-json-viewer__name,
+  .swagger-ui .json-schema-2020-12-keyword--enum .json-schema-2020-12-json-viewer__value,
+  .swagger-ui .json-schema-2020-12-keyword--examples .json-schema-2020-12-json-viewer__name,
+  .swagger-ui .json-schema-2020-12-keyword--examples .json-schema-2020-12-json-viewer__value {
+    color: var(--dv-fg);
+  }
+  .swagger-ui .json-schema-2020-12-keyword--description,
+  .swagger-ui .json-schema-2020-12-keyword__name--secondary,
+  .swagger-ui .json-schema-2020-12-keyword__value,
+  .swagger-ui .json-schema-2020-12-keyword__value--secondary,
+  .swagger-ui .json-schema-2020-12-json-viewer__name--secondary,
+  .swagger-ui .json-schema-2020-12-json-viewer__value,
+  .swagger-ui .json-schema-2020-12-json-viewer__value--secondary,
+  .swagger-ui .json-schema-2020-12-expand-deep-button,
+  .swagger-ui .json-schema-2020-12__attribute--muted {
+    color: var(--dv-muted);
+  }
+  .swagger-ui .json-schema-2020-12-keyword__name--extension,
+  .swagger-ui .json-schema-2020-12-keyword__value--extension,
+  .swagger-ui .json-schema-2020-12-json-viewer__name--extension,
+  .swagger-ui .json-schema-2020-12-json-viewer__value--extension,
+  .swagger-ui .json-schema-2020-12-json-viewer-extension-keyword .json-schema-2020-12-json-viewer__name,
+  .swagger-ui .json-schema-2020-12-json-viewer-extension-keyword .json-schema-2020-12-json-viewer__value {
+    color: var(--dv-dim);
+  }
+  .swagger-ui .json-schema-2020-12__attribute--primary { color: var(--dv-attr); }
+  /* The required-field asterisk is literal `red`, which on the dark card reads as a
+     smudge rather than a mark. The page already owns a red that survives there. */
+  .swagger-ui .json-schema-2020-12-property--required
+      > .json-schema-2020-12:first-of-type
+      > .json-schema-2020-12-head .json-schema-2020-12__title:after {
+    color: var(--dv-breaking);
+  }
   .swagger-ui .opblock.opblock-deprecated { opacity: .7; }
   .dv-count-hidden { font-size: 12px; opacity: .6; }
 </style>
@@ -625,9 +744,10 @@ TEMPLATE = r"""<!doctype html>
 <body>
 <div class="dv-bar">
   <h1>OpenAPI visual diff</h1>
-  <!-- revision first: the reader came to see what the branch does, and the page's own
-       title says "test-pr vs main". Each label still names its true side. -->
-  <span class="dv-vs"><b id="dv-new"></b> vs <b id="dv-old"></b></span>
+  <!-- The pair of refs used to sit here, between the title and the chips. Framed in the
+       review -- which is how this page is read -- the masthead two inches above already
+       says which branch is against which base, on every tab, and saying it again here
+       only cost the chips their room. Standalone it is not lost: it is the tab title. -->
   <span id="dv-chips"></span>
   <span class="dv-spacer"></span>
   <!-- No tooltip here on purpose. The report's one tooltip component (TIP_JS, driven by
@@ -652,8 +772,9 @@ const LABELS = { breaking: 'breaking', modified: 'modified', added: 'added',
                  removed: 'removed', untouched: 'untouched' };
 const ORDER = ['breaking', 'modified', 'added', 'removed', 'untouched'];
 
-document.getElementById('dv-old').textContent = DATA.old;
-document.getElementById('dv-new').textContent = DATA.new;
+// The one place the two refs are still named: the browser tab, where it costs no room
+// and answers "which of these did I leave open?".
+document.title = DATA.new + ' vs ' + DATA.old + ' \u2014 OpenAPI visual diff';
 
 // backticked oasdiff prose -> <code>
 function md(s) {
@@ -1017,6 +1138,22 @@ new MutationObserver(() => {
 }).observe(document.body, { childList: true, subtree: true, attributes: true });
 window.addEventListener('load', postHeight);
 window.addEventListener('resize', postHeight);
+
+// The other half of that bargain. Having given up our scrollport we cannot pin our own
+// toolbar, so the host posts how far down this frame its pinned masthead now sits and we
+// slide the bar by that much -- clamped to the frame, so it stops at the bottom of the
+// diff rather than riding on into whatever follows. The offset is set on <html>, which
+// the observer above does not watch: on `.dv-bar` it would re-arm postHeight on every
+// scrolled frame.
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.type !== 'dv-stick') return;
+  const bar = document.querySelector('.dv-bar');
+  if (!bar) return;
+  const room = document.documentElement.scrollHeight - bar.offsetTop - bar.offsetHeight;
+  const y = Math.max(0, Math.min(d.top || 0, room));
+  document.documentElement.style.setProperty('--dv-stick', y + 'px');
+});
 </script>
 </body>
 </html>
