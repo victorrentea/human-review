@@ -78,6 +78,14 @@ def have(binary: str) -> bool:
     return shutil.which(binary) is not None
 
 
+def has_java() -> bool:
+    """Whether this project has Java main sources — asked of the index, not of the disk,
+    so `node_modules` and a build's output cost nothing to walk past."""
+    listed = subprocess.run(["git", "ls-files", "*/src/main/java/*.java", "src/main/java/*.java"],
+                            capture_output=True, text=True)
+    return bool(listed.stdout.strip())
+
+
 def answers(url: str, timeout: float = 3.0) -> bool:
     """Whether *anything* is serving at `url` — the running-app twin of `have()`.
 
@@ -199,12 +207,20 @@ def _video(ctx: Ctx):
 
 
 def _complexity(ctx: Ctx):
+    """Both sides of the entry-point complexity, then the bars between them.
+
+    A project that measures this itself keeps doing so — `complexity.extract` runs, and
+    `before`/`after` name its two snapshots. With nothing configured, the built-in
+    extractor reads both sides out of the Java sources, the baseline straight from the
+    merge-base, and the step needs no build, no plugin and no test in the project."""
     c = ctx.step_cfg("complexity")
     if c.get("extract"):
         sh(c["extract"], ctx)
     before, after = c.get("before"), c.get("after")
     if not (before and after):
-        raise LookupError("complexity.before / complexity.after not configured")
+        before, after = f"{ART}/complexity-before.json", f"{ART}/complexity-after.json"
+        sh(f"{HERE}/endpoint-complexity.py --base {ctx.base} --out {before}", ctx)
+        sh(f"{HERE}/endpoint-complexity.py --out {after}", ctx)
     sh(f"{HERE}/endpoint-complexity-delta.py {before} {after} --base {ctx.base} "
        f"--out {ART}/complexity-delta.html", ctx)
     sh(f"{HERE}/endpoint-complexity-delta.py --css > {ART}/complexity-delta.css", ctx)
@@ -479,7 +495,9 @@ STEPS = [
      lambda c: have("google-chrome") or have("chromium") or True, _city),
     ("video",       "behaviour",     "feature recording",         None,              _video),
     ("complexity",  "complexity",    "entry-point complexity",
-     lambda c: bool(c.step_cfg("complexity")) or "complexity not configured", _complexity),
+     lambda c: bool(c.step_cfg("complexity")) or has_java()
+     or "no Java main sources here — nothing this step knows how to read entry points from",
+     _complexity),
     ("api",         "api",           "REST contract diff",
      lambda c: Path(c.cfg.get("spec", "openapi.yaml")).is_file()
      or f"no spec at {c.cfg.get('spec', 'openapi.yaml')}", _api),

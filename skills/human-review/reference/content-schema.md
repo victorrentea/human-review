@@ -564,7 +564,8 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
   {"id":"city","label":"Code City","blocks":[{"type":"codecity"}]},
   {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",
    "blocks":[{"type":"section","id":"ds-audit"}]},
-  {"id":"complexity","label":"Complexity","blocks":[{"type":"section","id":"complexity-delta"}]},
+  {"id":"complexity","label":"Complexity","tip":"Cognitive complexity of the whole flow behind each entry point, read from source at both ends of the branch.",
+   "blocks":[{"type":"section","id":"complexity-delta"}]},
   {"id":"logging","label":"Logging","tip":"Every logging statement the change set added — found by syntax, not by grep.",
    "blocks":[{"type":"logging","base":"origin/main","paths":["petclinic-backend"],
               "id":"logging-added",
@@ -601,6 +602,13 @@ table, and `test_tab_ledger_wiring.py` fails until the two agree.
 
 A step naming two tabs has its cost **split evenly**, so never widen a step to a tab that did
 none of the work.
+
+**Complexity is a fragment and nothing else.** Its section carries
+`"includeHtml": "assets/complexity-delta.html"` and no `embed`. The page once framed an
+`endpoint-complexity-explained.html` that the reviewed project's own extractor test wrote
+beside the JSON; that test was deleted from the project in September 2026 and the tab went
+with it, so the measurement now lives in `scripts/endpoint-complexity.py` and the bars are
+the whole tab. A section that embeds a report nothing produces renders as an apology.
 
 Default order, worth departing from only with a reason — **Review, Demo, API, Data,
 Tests, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the

@@ -65,11 +65,14 @@
     "video": {
       "out": ".human-review/assets/feature.webm"
     },
-    "complexity": {
-      "extract": "cd petclinic-backend && mvn -q test -Dtest=EndpointComplexityExtractorTest",
-      "before": ".human-review/assets/complexity-before.json",
-      "after": "petclinic-backend/docs/generated/endpoint-complexity.json"
-    },
+    "//complexity": [
+      "Nothing to configure: with no `complexity` key at all, the step reads both sides",
+      "itself out of the Java sources (endpoint-complexity.py), the baseline straight from",
+      "the merge-base. Configure it only to override that with a measurement the project",
+      "already makes — `extract` is a command that writes the two snapshots, `before` and",
+      "`after` are where they land, in the schema endpoint-complexity-delta.py reads:",
+      "[{kind, httpMethod, path, handler, flowCc, flow:[{method, cognitive}]}, ...]."
+    ],
     "logging": {
       "paths": ["petclinic-backend"]
     },
