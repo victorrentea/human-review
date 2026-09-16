@@ -1,5 +1,12 @@
 
 .cow { --cow-bad:#c62828; --cow-ok:#2e7d32; --cow-warn:#b56b00; --cow-flat:#6b6b78;
+       /* The status marks get their own three tokens rather than borrowing the row
+          colours above: those also paint 1px borders and small caps, which read fine at
+          #2e7d32 on a dark card, while a 16px block of it does not. Same values the
+          requirements map uses for the very same three marks, so the page has one green,
+          one orange and one red for "added / edited / deleted" wherever it says it. */
+       --cow-mark-a:rgba(19,120,58,.85); --cow-mark-m:rgba(190,105,0,.9);
+       --cow-mark-d:rgba(168,22,22,.9);
        margin:.4rem 0 1rem; }
 .cow-verdict { display:flex; align-items:center; gap:.9rem; border:1px solid var(--line);
                border-left:4px solid var(--cow-flat); border-radius:10px; padding:.8rem 1rem;
@@ -26,11 +33,15 @@
 .cow-files { list-style:none; margin:.45rem 0 0; padding:0; display:grid; gap:.3rem; }
 .cow-files li { font-size:.86rem; line-height:1.6; display:flex; align-items:baseline;
                 gap:.5rem; flex-wrap:wrap; }
-.cow-st { font:700 9.5px/1.7 ui-monospace,Menlo,monospace; text-transform:uppercase;
-          letter-spacing:.05em; border-radius:4px; padding:0 .35rem; color:#fff;
-          background:var(--cow-flat); }
-.cow-st-a { background:#2e7d32; } .cow-st-m { background:#b56b00; }
-.cow-st-d { background:#c62828; }
+/* One fixed 16px box on every row, centred against the file name's line rather than sat
+   on its baseline — which is what finally lines the file names up into a column. */
+.cow-st { flex:0 0 auto; align-self:center; display:inline-flex; cursor:help;
+          --st:var(--cow-flat); }
+.cow-st[data-st="added"] { --st:var(--cow-mark-a); }
+.cow-st[data-st="edited"] { --st:var(--cow-mark-m); }
+.cow-st[data-st="deleted"] { --st:var(--cow-mark-d); }
+.cow-st svg { display:block; width:16px; height:16px; }
+.cow-st .cow-page, .cow-st .cow-badge { fill:var(--st); }
 .cow-file, .cow-gone { font:500 12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .cow-gone { color:var(--muted); text-decoration:line-through; }
 .cow-by { color:var(--muted); font-size:.78rem; }
@@ -43,6 +54,8 @@
 .cow-rest summary { cursor:pointer; color:var(--muted); font-size:.85rem; }
 .cow-rest .cow-files { margin-top:.5rem; }
 @media (prefers-color-scheme: dark) {
+  .cow { --cow-mark-a:rgba(110,225,155,.85); --cow-mark-m:rgba(255,190,110,.9);
+         --cow-mark-d:rgba(255,140,140,.92); }
   .cow-seal { background:#26262f; color:#a5a5b4; }
   .cow-approval_required .cow-seal { background:#3a1f1f; color:#f2a0a0; }
   .cow-no_owners_touched .cow-seal { background:#1b2c1f; color:#9ad3a5; }

@@ -264,6 +264,41 @@ def analyse(root: Path, base: str, untracked: bool) -> dict:
 # ── rendering ─────────────────────────────────────────────────────────────────────
 STATUS_LABEL = {"A": "added", "M": "modified", "D": "deleted", "C": "copied", "T": "retyped"}
 
+# The same alphabet the Tests tab teaches one level down: VS Code's `new-file` page with a
+# plus, a pencil or a cross in its cut corner, green wrote it, orange changed it, red took
+# it away. There the mark rides a badge because the subject really is a file — and here the
+# subject is a file too, so it is the file badge, not the bare glyph a test row wears.
+# A reader who has learned the marks on the test excerpts reads this list without a legend.
+#
+# What it replaces: `ADDED` / `MODIFIED` / `DELETED` in coloured pills. The word was louder
+# than the filename beside it — read first, though it is the lesser fact — and, worse, each
+# word is a different width, so every file name in the list started at its own indent and
+# the column could not be scanned. A 16px box is the same 16px on every row.
+PAGE = ('<path class="cow-page" d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8V2H3v11h4v1H2.5l-.5-.5'
+        'v-12l.5-.5h6.7l.3.1zM9 2v3h2.9L9 2z"/>')
+PLUS = '<path class="cow-badge" d="M13 16h-1v-3H9v-1h3V9h1v3h3v1h-3v3z"/>'
+PENCIL = ('<path class="cow-badge" d="M8.65 13.65 13.65 8.65 15.55 10.55 10.55 15.55Z'
+          'M8.65 13.65 10.55 15.55 7.9 16.3Z"/>'
+          '<path class="cow-badge" d="M12.5 9.8 14.4 11.7 13.75 12.35 11.85 10.45Z"/>')
+# The plus turned 45 degrees — the same fact with the sign flipped.
+CROSS = ('<path class="cow-badge" d="M16 9.7 15.3 9 12.5 11.8 9.7 9 9 9.7 11.8 12.5'
+         ' 9 15.3 9.7 16 12.5 13.2 15.3 16 16 15.3 13.2 12.5Z"/>')
+# [badge, `data-st` — which is also the colour the badge wears, so a status added here
+#  cannot end up in another one's colour.]
+STATUS_MARK = {"A": (PLUS, "added"), "C": (PLUS, "added"),
+               "M": (PENCIL, "edited"), "T": (PENCIL, "edited"),
+               "D": (CROSS, "deleted")}
+
+
+def status_mark(status: str) -> str:
+    badge, st = STATUS_MARK.get(status, (PENCIL, "edited"))
+    # The word is gone from the page but not from the accessibility tree, and not from the
+    # hover: a reader who does not know the mark yet asks it once and never again.
+    label = STATUS_LABEL.get(status, status)
+    return (f'<span class="cow-st" data-st="{st}" role="img" aria-label="{label}"'
+            f' data-tip="This branch {label} the file">'
+            f'<svg viewBox="0 0 16 16" aria-hidden="true">{PAGE}{badge}</svg></span>')
+
 
 def file_link(root: Path, path: str, status: str, line: int = 1, label: str = None) -> str:
     label = html.escape(label if label is not None else path)
@@ -315,8 +350,7 @@ def render(root: Path, data: dict) -> str:
             patterns = [r for r in e["rules"] if r["pattern"].lstrip("/") != e["path"]]
             by = (f'<span class="cow-by">claimed by {rules}</span>' if patterns else "")
             shown = Path(e["path"]).name if patterns else e["path"]
-            rows.append(f'<li><span class="cow-st cow-st-{e["status"].lower()}">'
-                        f'{STATUS_LABEL.get(e["status"], e["status"])}</span>'
+            rows.append(f'<li>{status_mark(e["status"])}'
                         f'{file_link(root, e["path"], e["status"], label=shown)}'
                         f'{by}</li>')
         owner_sev = owner_severity(owner)
@@ -330,8 +364,7 @@ def render(root: Path, data: dict) -> str:
     advisory = [o for o in owned if not o["blocking"]]
     if advisory:
         rows = "".join(
-            f'<li><span class="cow-st cow-st-{e["status"].lower()}">'
-            f'{STATUS_LABEL.get(e["status"], e["status"])}</span>'
+            f'<li>{status_mark(e["status"])}'
             f'{file_link(root, e["path"], e["status"])}'
             f'<span class="cow-by">{", ".join(html.escape(o) for o in e["owners"])}</span></li>'
             for e in sorted(advisory, key=lambda x: x["path"]))
@@ -351,6 +384,13 @@ def render(root: Path, data: dict) -> str:
 
 CSS = """
 .cow { --cow-bad:#c62828; --cow-ok:#2e7d32; --cow-warn:#b56b00; --cow-flat:#6b6b78;
+       /* The status marks get their own three tokens rather than borrowing the row
+          colours above: those also paint 1px borders and small caps, which read fine at
+          #2e7d32 on a dark card, while a 16px block of it does not. Same values the
+          requirements map uses for the very same three marks, so the page has one green,
+          one orange and one red for "added / edited / deleted" wherever it says it. */
+       --cow-mark-a:rgba(19,120,58,.85); --cow-mark-m:rgba(190,105,0,.9);
+       --cow-mark-d:rgba(168,22,22,.9);
        margin:.4rem 0 1rem; }
 .cow-verdict { display:flex; align-items:center; gap:.9rem; border:1px solid var(--line);
                border-left:4px solid var(--cow-flat); border-radius:10px; padding:.8rem 1rem;
@@ -380,11 +420,15 @@ CSS = """
 .cow-files { list-style:none; margin:.45rem 0 0; padding:0; display:grid; gap:.3rem; }
 .cow-files li { font-size:.86rem; line-height:1.6; display:flex; align-items:baseline;
                 gap:.5rem; flex-wrap:wrap; }
-.cow-st { font:700 9.5px/1.7 ui-monospace,Menlo,monospace; text-transform:uppercase;
-          letter-spacing:.05em; border-radius:4px; padding:0 .35rem; color:#fff;
-          background:var(--cow-flat); }
-.cow-st-a { background:#2e7d32; } .cow-st-m { background:#b56b00; }
-.cow-st-d { background:#c62828; }
+/* One fixed 16px box on every row, centred against the file name's line rather than sat
+   on its baseline — which is what finally lines the file names up into a column. */
+.cow-st { flex:0 0 auto; align-self:center; display:inline-flex; cursor:help;
+          --st:var(--cow-flat); }
+.cow-st[data-st="added"] { --st:var(--cow-mark-a); }
+.cow-st[data-st="edited"] { --st:var(--cow-mark-m); }
+.cow-st[data-st="deleted"] { --st:var(--cow-mark-d); }
+.cow-st svg { display:block; width:16px; height:16px; }
+.cow-st .cow-page, .cow-st .cow-badge { fill:var(--st); }
 .cow-file, .cow-gone { font:500 12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .cow-gone { color:var(--muted); text-decoration:line-through; }
 .cow-by { color:var(--muted); font-size:.78rem; }
@@ -397,6 +441,8 @@ CSS = """
 .cow-rest summary { cursor:pointer; color:var(--muted); font-size:.85rem; }
 .cow-rest .cow-files { margin-top:.5rem; }
 @media (prefers-color-scheme: dark) {
+  .cow { --cow-mark-a:rgba(110,225,155,.85); --cow-mark-m:rgba(255,190,110,.9);
+         --cow-mark-d:rgba(255,140,140,.92); }
   .cow-seal { background:#26262f; color:#a5a5b4; }
   .cow-approval_required .cow-seal { background:#3a1f1f; color:#f2a0a0; }
   .cow-approval_required.cow-severity-standard .cow-seal { background:#3a3018; color:#e6c07b; }

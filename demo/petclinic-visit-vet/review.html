@@ -1278,6 +1278,13 @@ a.srcref:hover svg.ico-vsc, a.srcref:focus-visible svg.ico-vsc { fill:#0098ff; }
 
 
 .cow { --cow-bad:#c62828; --cow-ok:#2e7d32; --cow-warn:#b56b00; --cow-flat:#6b6b78;
+       /* The status marks get their own three tokens rather than borrowing the row
+          colours above: those also paint 1px borders and small caps, which read fine at
+          #2e7d32 on a dark card, while a 16px block of it does not. Same values the
+          requirements map uses for the very same three marks, so the page has one green,
+          one orange and one red for "added / edited / deleted" wherever it says it. */
+       --cow-mark-a:rgba(19,120,58,.85); --cow-mark-m:rgba(190,105,0,.9);
+       --cow-mark-d:rgba(168,22,22,.9);
        margin:.4rem 0 1rem; }
 .cow-verdict { display:flex; align-items:center; gap:.9rem; border:1px solid var(--line);
                border-left:4px solid var(--cow-flat); border-radius:10px; padding:.8rem 1rem;
@@ -1302,11 +1309,15 @@ a.srcref:hover svg.ico-vsc, a.srcref:focus-visible svg.ico-vsc { fill:#0098ff; }
 .cow-files { list-style:none; margin:.45rem 0 0; padding:0; display:grid; gap:.3rem; }
 .cow-files li { font-size:.86rem; line-height:1.6; display:flex; align-items:baseline;
                 gap:.5rem; flex-wrap:wrap; }
-.cow-st { font:700 9.5px/1.7 ui-monospace,Menlo,monospace; text-transform:uppercase;
-          letter-spacing:.05em; border-radius:4px; padding:0 .35rem; color:#fff;
-          background:var(--cow-flat); }
-.cow-st-a { background:#2e7d32; } .cow-st-m { background:#b56b00; }
-.cow-st-d { background:#c62828; }
+/* One fixed 16px box on every row, centred against the file name's line rather than sat
+   on its baseline — which is what finally lines the file names up into a column. */
+.cow-st { flex:0 0 auto; align-self:center; display:inline-flex; cursor:help;
+          --st:var(--cow-flat); }
+.cow-st[data-st="added"] { --st:var(--cow-mark-a); }
+.cow-st[data-st="edited"] { --st:var(--cow-mark-m); }
+.cow-st[data-st="deleted"] { --st:var(--cow-mark-d); }
+.cow-st svg { display:block; width:16px; height:16px; }
+.cow-st .cow-page, .cow-st .cow-badge { fill:var(--st); }
 .cow-file, .cow-gone { font:500 12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .cow-gone { color:var(--muted); text-decoration:line-through; }
 .cow-by { color:var(--muted); font-size:.78rem; }
@@ -1319,6 +1330,8 @@ a.srcref:hover svg.ico-vsc, a.srcref:focus-visible svg.ico-vsc { fill:#0098ff; }
 .cow-rest summary { cursor:pointer; color:var(--muted); font-size:.85rem; }
 .cow-rest .cow-files { margin-top:.5rem; }
 @media (prefers-color-scheme: dark) {
+  .cow { --cow-mark-a:rgba(110,225,155,.85); --cow-mark-m:rgba(255,190,110,.9);
+         --cow-mark-d:rgba(255,140,140,.92); }
   .cow-seal { background:#26262f; color:#a5a5b4; }
   .cow-approval_required .cow-seal { background:#3a1f1f; color:#f2a0a0; }
   .cow-no_owners_touched .cow-seal { background:#1b2c1f; color:#9ad3a5; }
@@ -2806,7 +2819,7 @@ pre.code .ln-row.xr-hit { animation:xr-flash 1.8s ease-out 1; }
 <div class="privacy-legend"><p class="privacy-legend-title">🤖 AI Evaluation:</p><p class="privacy-legend-note">The code block is the evidence: alongside each statement it quotes the lines its logged values came from, walked back structurally by <code>ast-grep</code> and cut from the working tree with their real line numbers.</p><ul class="privacy-legend-list"><li>✅ <b>SAFE</b> — nothing traced reads as personal data</li><li>🤔 <b>DOUBT</b> — could not trace it with confidence, and an unresolved case is read as DOUBT on purpose rather than guessed SAFE</li><li>❌ <b>PRIVACY</b> — a value traced back to personal data, on its way to a log aggregator kept for months</li><li>⚠️ <b>NOT EVALUATED</b> — the model could not be reached; never silently read as SAFE</li></ul></div></section>
 <section class="panel" id="owners" role="tabpanel" aria-labelledby="tabbtn-owners"><p class="paneltag">CODEOWNERS</p><div class="cow cow-approval_required">
 <div class="cow-verdict"><span class="cow-seal">&#128681; APPROVAL REQUIRED</span></div>
-<div class="cow-row"><div class="cow-head"><span class="cow-owner">@victorrentea/elders</span><span class="cow-note">have to approve 4 files:</span></div><ul class="cow-files"><li><span class="cow-st cow-st-m">modified</span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/openapi.yaml:1:1">openapi.yaml</a></li><li><span class="cow-st cow-st-m">modified</span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/generated/DB.sql:1:1">petclinic-backend/docs/generated/DB.sql</a></li><li><span class="cow-st cow-st-m">modified</span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/generated/DomainModel.puml:1:1">petclinic-backend/docs/generated/DomainModel.puml</a></li><li><span class="cow-st cow-st-a">added</span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:1:1">V9__link_visit_to_vet.sql</a><span class="cow-by">claimed by <a class="cow-rule" data-tip="The rule that claimed this file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/.github/CODEOWNERS:16:1">/petclinic-backend/src/main/resources/db/migration/</a></span></li></ul></div>
+<div class="cow-row"><div class="cow-head"><span class="cow-owner">@victorrentea/elders</span><span class="cow-note">have to approve 4 files:</span></div><ul class="cow-files"><li><span class="cow-st" data-st="edited" role="img" aria-label="modified" data-tip="This branch modified the file"><svg viewBox="0 0 16 16" aria-hidden="true"><path class="cow-page" d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8V2H3v11h4v1H2.5l-.5-.5v-12l.5-.5h6.7l.3.1zM9 2v3h2.9L9 2z"/><path class="cow-badge" d="M8.65 13.65 13.65 8.65 15.55 10.55 10.55 15.55ZM8.65 13.65 10.55 15.55 7.9 16.3Z"/><path class="cow-badge" d="M12.5 9.8 14.4 11.7 13.75 12.35 11.85 10.45Z"/></svg></span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/openapi.yaml:1:1">openapi.yaml</a></li><li><span class="cow-st" data-st="edited" role="img" aria-label="modified" data-tip="This branch modified the file"><svg viewBox="0 0 16 16" aria-hidden="true"><path class="cow-page" d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8V2H3v11h4v1H2.5l-.5-.5v-12l.5-.5h6.7l.3.1zM9 2v3h2.9L9 2z"/><path class="cow-badge" d="M8.65 13.65 13.65 8.65 15.55 10.55 10.55 15.55ZM8.65 13.65 10.55 15.55 7.9 16.3Z"/><path class="cow-badge" d="M12.5 9.8 14.4 11.7 13.75 12.35 11.85 10.45Z"/></svg></span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/generated/DB.sql:1:1">petclinic-backend/docs/generated/DB.sql</a></li><li><span class="cow-st" data-st="edited" role="img" aria-label="modified" data-tip="This branch modified the file"><svg viewBox="0 0 16 16" aria-hidden="true"><path class="cow-page" d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8V2H3v11h4v1H2.5l-.5-.5v-12l.5-.5h6.7l.3.1zM9 2v3h2.9L9 2z"/><path class="cow-badge" d="M8.65 13.65 13.65 8.65 15.55 10.55 10.55 15.55ZM8.65 13.65 10.55 15.55 7.9 16.3Z"/><path class="cow-badge" d="M12.5 9.8 14.4 11.7 13.75 12.35 11.85 10.45Z"/></svg></span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/docs/generated/DomainModel.puml:1:1">petclinic-backend/docs/generated/DomainModel.puml</a></li><li><span class="cow-st" data-st="added" role="img" aria-label="added" data-tip="This branch added the file"><svg viewBox="0 0 16 16" aria-hidden="true"><path class="cow-page" d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8V2H3v11h4v1H2.5l-.5-.5v-12l.5-.5h6.7l.3.1zM9 2v3h2.9L9 2z"/><path class="cow-badge" d="M13 16h-1v-3H9v-1h3V9h1v3h3v1h-3v3z"/></svg></span><a class="cow-file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/resources/db/migration/V9__link_visit_to_vet.sql:1:1">V9__link_visit_to_vet.sql</a><span class="cow-by">claimed by <a class="cow-rule" data-tip="The rule that claimed this file" href="vscode://file//Users/victorrentea/workspace/petclinic-pr/.github/CODEOWNERS:16:1">/petclinic-backend/src/main/resources/db/migration/</a></span></li></ul></div>
 </div></section>
 <footer><div class="footrow"><span>Built by <a href="https://github.com/victorrentea/human-review" target="_blank" rel="noopener">https://github.com/victorrentea/human-review</a> on 2 Sep 2026. Tell your agent to adapt this to your environment.</span><span class="takeaway"><a href="https://github.com/victorrentea/human-review/releases/tag/demo" target="_blank" rel="noopener" data-tip="Sample review pages on GitHub, one zip each. Unzip it and open review.html — no install, no server.">Download here</a> a standalone demo zip.</span></div><div class="allbar"><button type="button" class="allbtn" aria-pressed="false" data-label-off="show single page" data-label-on="back to one tab at a time" data-tip="Every tab on one page. Makes ⌘F search all of it.">show single page</button></div></footer>
 </div>

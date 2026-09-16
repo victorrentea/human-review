@@ -4302,28 +4302,55 @@ GENSEQ_CHAPTER = re.compile(
     r"(?:\{(?P<tip>[^}]*)\})?\s*(?P<title>[^\]]*?)\s*\]\]")
 
 
-def pair_anchor(test_rel: str) -> str:
-    """The id of the pair a test's sequence is drawn in, derived from the test's path.
+def test_of_genseq(source: str, root: Path) -> str:
+    """Which test a generated sequence was drawn from.
+
+    It used to be the file name with `.genseq.puml` cut off, because there was one diagram
+    per test file. There is now one per scenario, named `<test>.<scenario-slug>.genseq.puml`
+    — and a test file has dots of its own (`add-visit.spec.ts`), so the slug cannot be told
+    from the extension by looking. The checkout is asked instead: cut the suffix, and if
+    what is left is not a file, cut one more dotted segment and try again.
+
+    A diagram whose test is not in this checkout at all — the case `_unquoted_note` exists
+    for — cannot be checked that way, so the slug is cut on its shape: all lowercase,
+    digits and dashes, over something that still has an extension.
+    """
+    rel = source[: -len(".genseq.puml")] if source.endswith(".genseq.puml") else source
+    if (root / rel).is_file():
+        return rel
+    head, dot, slug = rel.rpartition(".")
+    if dot and (root / head).is_file():
+        return head
+    if dot and "." in head and re.fullmatch(r"[a-z0-9-]+", slug):
+        return head
+    return rel
+
+
+def pair_anchor(rel: str) -> str:
+    """The id of the pair a sequence is drawn in, derived from the diagram's own path.
 
     Derived rather than counted, because the thing that links to it — the 🕵️ on a
     covering-tests row, a tab away — knows the test and nothing else about this tab. A
-    path is unique inside a checkout, so the slug is too."""
-    return "seq-" + re.sub(r"[^a-z0-9]+", "-", test_rel.lower()).strip("-")
+    path is unique inside a checkout, so the slug is too. It is the *diagram's* path that
+    is passed now, one per scenario, so two scenarios of one file get two anchors."""
+    return "seq-" + re.sub(r"[^a-z0-9]+", "-", rel.lower()).strip("-")
 
 
-def _scenarios_drawn(test_rel: str, root: Path) -> list[tuple[int, str]]:
-    """Which scenarios of this test the generator actually drew, as (line, title).
+def _scenarios_drawn(puml_rel: str, test_rel: str, root: Path) -> list[tuple[int, str]]:
+    """Which scenarios this diagram actually drew, as (line, title).
 
     Read from the committed `.puml` rather than by looking for `@generate_sequence` in the
     test: the tag is a request, the chapter is the record that the request was granted and
-    that there is a picture on this page to link to. A file the generator skipped — or a
-    scenario inside it that it skipped — has no chapter and gets no 🕵️.
+    that there is a picture on this page to link to. A scenario the generator skipped has
+    no chapter and gets no 🕵️. One per file since the generator started drawing a picture
+    per scenario — the list survives because a diagram this page was built before that
+    still has several, and reading it is how this page keeps working on both.
 
-    Only the file's own chapters count. The same `src://` handle is on every class and
+    Only the test's own chapters count. The same `src://` handle is on every class and
     endpoint the diagram names, and a line number from `OwnerRepository.java` resolved
     against a feature file would point at nothing."""
     try:
-        text = (root / (test_rel + ".genseq.puml")).read_text(encoding="utf-8")
+        text = (root / puml_rel).read_text(encoding="utf-8")
     except OSError:
         return []
     found = {}
@@ -4334,8 +4361,9 @@ def _scenarios_drawn(test_rel: str, root: Path) -> list[tuple[int, str]]:
     return sorted(found.items())
 
 
-def _folded_pair(test_rel: str, pieces: list[str], quoted: list[str] = (),
-                 ranges: str = "", scenarios: list[tuple[int, str]] = ()) -> str:
+def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
+                 quoted: list[str] = (), ranges: str = "",
+                 scenarios: list[tuple[int, str]] = ()) -> str:
     """The test and the sequence its run recorded, foldable together — with the quoted
     test folded closed inside it, and the whole pair folded closed too.
 
@@ -4367,12 +4395,51 @@ def _folded_pair(test_rel: str, pieces: list[str], quoted: list[str] = (),
                f'<summary>the test{" · lines " + html.escape(ranges) if ranges else ""}</summary>'
                + "\n".join(x.strip("\n") for x in quoted)
                + "</details>\n")
-    return (f'<details class="testpair" open id="{pair_anchor(test_rel)}"'
+    return (f'<details class="testpair" open id="{pair_anchor(puml_rel)}"'
             f' data-test="{html.escape(test_rel)}">'
             f'<summary data-tip="{html.escape(test_rel)}">{name}</summary>'
             + src
             + "\n".join(x.strip("\n") for x in pieces)
             + "</details>")
+
+
+def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
+    """Hand each of one test file's pictures the excerpts that belong to it.
+
+    One diagram per test file needed no sharing: every excerpt quoting the file went under
+    the one picture. Per scenario, four pictures of `owner-search.feature` would each have
+    repeated the same thirty lines, or — the way it worked out before this — the first
+    would have taken all of them and the rest would have shown none.
+
+    The split is derived, not authored. An excerpt is a line range in the content file, and
+    a range that contains a scenario's declaration line is an excerpt *of* that scenario;
+    the generator already told us which line each picture starts at. What matches nothing
+    — a Background, a set of imports, a helper below the last scenario — goes under the
+    first picture, where a reader meets it before the scenarios that use it. Nothing is
+    dropped and nothing is shown twice.
+    """
+    mine = [x for x in snippets if x["ref"].rpartition(":")[0] == test_rel]
+    used.update(id(x) for x in mine)
+    quoted = {rel: [] for rel, _ in entries}
+    lines_of = {rel: [ln for ln, _ in _scenarios_drawn(rel, test_rel, root)]
+                for rel, _ in entries}
+    first = entries[0][0]
+    for x in mine:
+        span = x["ref"].rpartition(":")[2]
+        lo, _, hi = span.partition("-")
+        try:
+            lo, hi = int(lo), int(hi or lo)
+        except ValueError:
+            lo, hi = 0, -1
+        owner = next((rel for rel, _ in entries
+                      if any(lo <= ln <= hi for ln in lines_of[rel])), first)
+        quoted[owner].append(x)
+    return (
+        {rel: [snippet_html(x["ref"], x.get("caption"), root) for x in xs]
+         for rel, xs in quoted.items()},
+        {rel: ", ".join(x["ref"].rpartition(":")[2].replace("-", "–") for x in xs)
+         for rel, xs in quoted.items()},
+    )
 
 
 def _unquoted_note(test_rel: str, root: Path) -> str:
@@ -4393,7 +4460,7 @@ def _unquoted_note(test_rel: str, root: Path) -> str:
             f'left.</span></p>')
 
 
-def _unchanged_sequence(test_rel: str, root: Path, out_dir: Path) -> str:
+def _unchanged_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path) -> str:
     """The card for a sequence the branch left alone, inside its test's pair.
 
     The same bare card `render_diagrams` draws for a delta — no title, no provenance line,
@@ -4402,7 +4469,7 @@ def _unchanged_sequence(test_rel: str, root: Path, out_dir: Path) -> str:
     wears, and there is no Diff/New/Old bar, because there is nothing to diff against.
     The picture is drawn from the committed `.puml` by the `puml` block's own renderer,
     and the generator's sidecar rides along so the handles in it still expand."""
-    rel = test_rel + ".genseq.puml"
+    rel = puml_rel
     cache, why_not = _context_svg(rel, root, out_dir)
     body = f'<div class="svgbox">{inline_svg(cache, root)}</div>' if cache else why_not
     return (f'<div class="diagram dgm-bare"'
@@ -4443,47 +4510,59 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     # not be linkable from the other one.
     index = []
 
-    def register(test_rel, scenarios):
+    def register(puml_rel, scenarios):
         for line, title in scenarios:
-            index.append({"test": f"{test_rel}:{line}", "pair": pair_anchor(test_rel),
-                          "title": title})
+            index.append({"test": f"{test_of_genseq(puml_rel, root)}:{line}",
+                          "pair": pair_anchor(puml_rel), "title": title})
 
-    def take(test_rel):
-        """The snippets that quote this test file, removed from the pool, and the line
-        ranges they quote — `35-48, 52-65` — for the fold that hides them."""
-        mine = [x for x in snippets if x["ref"].rpartition(":")[0] == test_rel]
-        used.update(id(x) for x in mine)
-        ranges = ", ".join(x["ref"].rpartition(":")[2].replace("-", "–") for x in mine)
-        return [snippet_html(x["ref"], x.get("caption"), root) for x in mine], ranges
+    # Every diagram on this tab, in page order, grouped by the test it was drawn from —
+    # because the excerpts are quoted per test file and have to be shared out among that
+    # file's pictures. A changed one is a manifest row; an unchanged one is a `.puml` on
+    # disk that no row mentions, found below.
+    plan: dict[str, list[tuple[str, object]]] = {}
+
+    def plan_add(puml_rel, what):
+        plan.setdefault(test_of_genseq(puml_rel, root), []).append((puml_rel, what))
 
     merged = dict(dspec)
     merged.pop("only", None)
     for r in rows:
-        test_rel = r["source"][: -len(".genseq.puml")] if r["source"].endswith(".genseq.puml") \
-            else r["source"]
-        # No lead. The scenario names used to be printed here as deep links, and every
-        # one of them was said again a few hundred pixels lower: the diagram's own
-        # section headers are those same titles, linked to those same lines, drawn by
-        # the generator. Two copies of one list, and the one on the picture is the one
-        # that sits where the reader is already looking.
-        quoted, ranges = take(test_rel)
-        scenarios = _scenarios_drawn(test_rel, root)
-        pieces = [] if quoted else [_unquoted_note(test_rel, root)]
-        pieces.append(render_diagrams(merged, root, out_dir, [r], bare=test_rel))
-        parts.append(_folded_pair(test_rel, pieces, quoted, ranges, scenarios))
-        register(test_rel, scenarios)
+        plan_add(r["source"], r)
 
     unchanged = 0
-    for test_rel in dict.fromkeys(x["ref"].rpartition(":")[0] for x in snippets
-                                  if id(x) not in used):
-        if not (root / (test_rel + ".genseq.puml")).is_file():
-            continue
-        quoted, ranges = take(test_rel)
-        scenarios = _scenarios_drawn(test_rel, root)
-        parts.append(_folded_pair(test_rel, [_unchanged_sequence(test_rel, root, out_dir)],
-                                  quoted, ranges, scenarios))
-        register(test_rel, scenarios)
-        unchanged += 1
+    for test_rel in dict.fromkeys(x["ref"].rpartition(":")[0] for x in snippets):
+        here = (root / test_rel).parent
+        # Both spellings: one picture per scenario, and the one-per-file a page built
+        # before the generator was split still has beside it.
+        found = set(here.glob(Path(test_rel).name + ".*.genseq.puml"))
+        legacy = root / (test_rel + ".genseq.puml")
+        if legacy.is_file():
+            found.add(legacy)
+        for puml in sorted(found):
+            rel = str(puml.relative_to(root))
+            if any(rel == q for q, _ in plan.get(test_rel, [])):
+                continue          # this branch changed it: it is already a row above
+            plan_add(rel, None)
+            unchanged += 1
+
+    for test_rel, entries in plan.items():
+        quoted_by_pair, ranges_by_pair = _share_excerpts(
+            test_rel, entries, snippets, used, root)
+        for puml_rel, row in entries:
+            scenarios = _scenarios_drawn(puml_rel, test_rel, root)
+            quoted = quoted_by_pair[puml_rel]
+            # No lead. The scenario names used to be printed here as deep links, and every
+            # one of them was said again a few hundred pixels lower: the diagram's own
+            # section headers are those same titles, linked to those same lines, drawn by
+            # the generator. Two copies of one list, and the one on the picture is the one
+            # that sits where the reader is already looking.
+            pieces = [] if quoted else [_unquoted_note(test_rel, root)]
+            pieces.append(render_diagrams(merged, root, out_dir, [row], bare=test_rel)
+                          if row is not None
+                          else _unchanged_sequence(puml_rel, test_rel, root, out_dir))
+            parts.append(_folded_pair(puml_rel, test_rel, pieces, quoted,
+                                      ranges_by_pair[puml_rel], scenarios))
+            register(puml_rel, scenarios)
 
     orphaned = [x for x in snippets if id(x) not in used]
     tail = block.get("unpaired") or {}
