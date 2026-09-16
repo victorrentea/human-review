@@ -608,14 +608,18 @@ pre.code code { white-space:pre; }
 /* A sentence of its own, and a sentence's worth of air before it: the offer that throws
    work away is found by the reader who goes looking for it rather than met by the reader
    who does not. */
-.rerun .rerun-undo::before, .rerun .rerun-redraw::before { content:"\\00a0\\00a0"; }
-/* The second route, in brackets and quieter than the first: `(or run this)` is the aside
-   for the reader who wants to read the command, paste it elsewhere, or is holding a
-   static copy where nothing runs. The brackets keep their own colour so the offer inside
-   them still reads as a control. No chevron — the fold's state is the command box itself,
-   which is either under the sentence or not, and a mark repeating that is the page
-   narrating itself. */
-.rerun .cmdalt { color:var(--muted); font-weight:400; }
+.rerun .rerun-back::before { content:"\\00a0\\00a0"; }
+/* One route on show, and it is the one that works where the page is being read. `click
+   here (or run this)` offered both at once, which meant every reader was shown the route
+   they could not take: off disk the button is a promise the page cannot keep, and served,
+   the shell command is a line of noise beside a control that already runs it. So the pair
+   is rendered and the probe picks — `run this` until a server answers for that action,
+   `click here` after. No chevron on the fold: its state is the command box itself, which
+   is either under the sentence or not, and a mark repeating that is the page narrating
+   itself. */
+.rerun .offer .runhere { display:none; }
+.rerun .offer.served .runhere { display:inline; }
+.rerun .offer.served .cmdpeek, .rerun .offer.served .plainword { display:none; }
 /* Progressive disclosure: the diagram arrives simplified, and an arrow that has more
     to say is clickable. The hit area is a transparent rect the script lays under each
     such arrow, so the whole band — label, line, marker — answers to one click. */
@@ -1496,15 +1500,18 @@ window.HR = (function () {
     chip.removeAttribute('data-copy');
     chip.setAttribute('data-tip', 'Served by the review server: buttons run their command '
       + 'from this page, and recordings play in it.');
-    // The diagram blocks read the same in both worlds — "click here to update the report"
-    // is what the reader wants either way, and a sentence that is quietly different in the
-    // two copies of the same report teaches them the report is unreliable. Only the hover
-    // changes: off disk the button explains what it needs, here it says what it does.
+    // Where an action can actually run, the offer under the diagram changes from `run
+    // this` to `click here` and the command stops being shown: the button does the job,
+    // and a shell line beside it is for a reader who is not here. Per action and not per
+    // page — one block can carry four, and a server that answers for the re-render does
+    // not necessarily answer for the rest.
     [].forEach.call(document.querySelectorAll('.rerun button.runhere[data-action]'),
         function (b) {
       if (!can(b.getAttribute('data-action'))) return;
       b.setAttribute('data-tip', b.getAttribute('data-tip-served')
         || b.getAttribute('data-tip'));
+      var offer = b.closest ? b.closest('.offer') : null;
+      if (offer) offer.classList.add('served');
     });
   });
 
@@ -3945,8 +3952,12 @@ DRAWIO_TOKEN = re.compile(r"\{\{drawio:(?P<name>[A-Za-z0-9_.-]+)\}\}")
 # lost, it is written on the map itself, in red, by `conceptual-model-patch.py`, where
 # the person who can act on it is already looking. Both rows are read off the verdict, so
 # the page stops saying it the moment it stops being true.
-CM_LEGEND_NEW = ('<span class="new"><i></i><b>added by this PR</b> '
-                 "— new against the base branch</span>")
+#
+# The green row stops at "added by this PR" for the same reason. "New against the base
+# branch" was the definition of "added by this PR" — the same fact, restated for a reader
+# who has evidently understood it, since they are reading a legend on a diff.
+CM_LEGEND_NEW = '<span class="new"><i></i><b>added by this PR</b></span>'
+
 CM_LEGEND_TODO = ('<span class="todo"><i></i>'
                   "<b>still waiting for a manual re-layout</b></span>")
 
@@ -3989,7 +4000,8 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
             + rerun_html(verdict.get("rerun"), rebuild, name,
                          verdict.get("drawio_url") or "",
                          verdict.get("drawio_web_url") or "",
-                         verdict.get("redraw"), verdict.get("revert")))
+                         verdict.get("redraw"), verdict.get("revert"),
+                         verdict.get("reveal")))
 
 
 def drawio_open_html(app_url: str, web_url: str = "") -> str:
@@ -4009,11 +4021,14 @@ def drawio_open_html(app_url: str, web_url: str = "") -> str:
     """
     links = []
     if app_url:
-        links.append(f'<a href="{html.escape(app_url, quote=True)}">draw.io App ↗</a>')
+        links.append(f'<a href="{html.escape(app_url, quote=True)}">App ↗</a>')
     if web_url:
         links.append(f'<a href="{html.escape(web_url, quote=True)}" '
-                     'target="_blank" rel="noopener">draw.io Web ↗</a>')
-    return " or ".join(links)
+                     'target="_blank" rel="noopener">Web ↗</a>')
+    # The product is named once and the two editors are named after it — `draw.io App or
+    # draw.io Web` said the brand twice in six words, which is the half of the phrase that
+    # carries no information: the choice the reader is making is App or Web.
+    return "draw.io " + " or ".join(links) if links else ""
 
 
 # What a click-to-run offer says on a static page — where it stays visible and explains
@@ -4023,6 +4038,40 @@ def drawio_open_html(app_url: str, web_url: str = "") -> str:
 STATIC_RUN_TIP = ("This copy of the report is static, so nothing here can run: serve the "
                   "page — the static badge at the top copies the line that does — and "
                   "this button does the job.")
+
+
+def reveal_html(reveal: dict | None, name: str) -> str:
+    """"this diagram" as a handle on the file, rather than as a noun.
+
+    The sentence already says *edit* it and *re-render* it; the one thing it says nothing
+    about is where the thing actually is. And the two words that name it were sitting right
+    there, unclickable, at the front of the line. So the subject of the sentence became the
+    control: press it and the file is selected on disk, in the window the reader would have
+    gone looking for it in.
+
+    Not folded, and not paired with a command to read: revealing a file changes nothing and
+    costs nothing to press, which is the one offer under this picture that needs no second
+    click and no `reload`. Where it cannot run — a static copy, or a verdict written before
+    the command was recorded — the two words are two words again, and the sentence reads
+    exactly as it did before any of this.
+    """
+    if not reveal or not reveal.get("command") or not name:
+        return "this diagram"
+    aid = declare_action(f"drawio-reveal:{name}", reveal["command"],
+                         label=f"Show {name} on disk")
+    where = reveal.get("in") or "the file manager"
+    # Two words and a plain copy of them, and the same rule as every other offer on this
+    # line picks: where nothing can run, the subject of the sentence is a noun again rather
+    # than a control that explains why it does not work. There is no `run this` fallback
+    # here because there is nothing to fall back to — `open -R` is not a step in anyone's
+    # workflow, it is a shortcut for one, and a reader without a server has their own.
+    return ('<span class="offer">'
+            f'<button type="button" class="runhere" '
+            f'data-action="{html.escape(aid, quote=True)}" '
+            f'data-tip="{html.escape(STATIC_RUN_TIP, quote=True)}" '
+            f'data-tip-served="Selects the file on disk, in {html.escape(where, quote=True)}"'
+            '>this diagram</button>'
+            '<span class="plainword">this diagram</span></span>')
 
 
 def _cmdfold(fold_id: str, line: str) -> str:
@@ -4038,28 +4087,43 @@ def _cmdfold(fold_id: str, line: str) -> str:
 
 
 def _run_or_read(fold_id: str, act: str, static_tip: str, served_tip: str,
-                 running: str = "") -> str:
-    """`click here (or run this)` — one offer, two ways to take it.
+                 running: str = "", run_label: str = "click here",
+                 read_label: str = "run this") -> str:
+    """One offer, worded for the copy of the report it is being read in.
 
-    Both offers under this diagram have the same shape, so they get the same four words.
-    The first runs the command through the review server, which is what a reader wants
-    nine times in ten; the parenthetical opens the command underneath for the tenth, who
-    wants to read it, paste it somewhere, or is reading a static copy where nothing runs.
+    Both routes are in the markup and only one of them is on screen. Off disk the page
+    says `run this` and opens the command to copy; served, the probe finds the action and
+    the words become `click here`, which runs it — and the command is not shown at all,
+    because a shell line beside a control that already runs it is noise.
 
-    The parenthesis is the compacting. Spelling out both routes as full clauses — *click
-    here to update the report or run one command in the terminal* — made the middle of the
-    sentence about this page's plumbing; in brackets the second route reads as the aside
-    it is, and the two offers under the picture come out the same length.
+    It used to offer both at once, `click here (or run this)`, on the reasoning that a
+    control missing from one copy of the report teaches the reader the report is
+    unreliable. What it actually taught them was that half of every offer on the page was
+    for somebody else: on a static copy the button is a promise the page cannot keep, and
+    a reader who has a server does not want a command to paste. The honest version of that
+    principle is that *an* offer is always there, in the same place, in the same words'
+    worth of line — not that both are.
+
+    The two labels are the same word for most callers: `undo your edits` names what the
+    offer does, so it reads correctly whether the click runs the command or opens it. Only
+    the re-render offer, whose words are a place to press rather than a name, has to say
+    `click here` served and `run this` off disk.
+
+    `static_tip` is therefore the tooltip of nothing: the button carrying it is not on
+    screen where it would apply. It stays in the signature because the probe swaps it in
+    the same pass either way, and a served page that loses its server mid-visit falls back
+    to a button that explains itself rather than to one that lies.
     """
-    return (f'<button type="button" class="runhere"{act} '
+    return ('<span class="offer">'
+            f'<button type="button" class="runhere"{act} '
             f'data-tip="{html.escape(static_tip, quote=True)}" '
             f'data-tip-served="{html.escape(served_tip, quote=True)}"'
             + (f' data-run-say="{html.escape(running, quote=True)}"' if running else "")
-            + '>click here</button> <span class="cmdalt">(or '
+            + f'>{html.escape(run_label)}</button>'
             f'<button type="button" class="cmdpeek" aria-expanded="false" '
             f'aria-controls="{html.escape(fold_id, quote=True)}" '
             'data-tip="Show the command, to read or to paste in a terminal">'
-            "run this</button>)</span>")
+            f'{html.escape(read_label)}</button></span>')
 
 
 def revert_html(revert: dict | None, rerun: dict, rebuild: str,
@@ -4097,12 +4161,11 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
            "it does not go near the base and it runs no script. Your own edits are not "
            "lost: they go to the git stash, and `git stash pop` brings them back.")
     fold = f"undo-{name or 'diagram'}"
-    return ('<span class="rerun-undo">To put the drawing back as this branch '
-            'committed it, '
-            + _run_or_read(fold, act, tip,
-                           "Runs it here, then reloads with the committed drawing back",
-                           "Putting the committed drawing back…")
-            + ".</span>", _cmdfold(fold, line))
+    return (_run_or_read(fold, act, tip,
+                         "Runs it here, then reloads with the committed drawing back",
+                         "Putting the committed drawing back…",
+                         run_label="undo your edits", read_label="undo your edits"),
+            _cmdfold(fold, line))
 
 
 def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
@@ -4145,17 +4208,37 @@ def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
            "the repository's own script over it, which draws what the code has and the "
            "map lacks — in red, as a to-do — again.")
     fold = f"redraw-{name or 'diagram'}"
-    return ('<span class="rerun-redraw">To start over from the base and let the '
-            'script redraw it in red, '
-            + _run_or_read(fold, act, tip,
-                           "Runs it here, then reloads with automation's drawing back",
-                           "Putting automation's drawing back…")
-            + ".</span>", _cmdfold(fold, line))
+    return (_run_or_read(fold, act, tip,
+                         "Runs it here, then reloads with automation's drawing back",
+                         "Putting automation's drawing back…",
+                         run_label="start over", read_label="start over"),
+            _cmdfold(fold, line))
+
+
+def _ways_back(undo: str, over: str) -> str:
+    """`You can undo your edits or start over.` — both ways back in one short sentence.
+
+    They were a clause each, and each clause spelled its destination out: *to put the
+    drawing back as this branch committed it*, *to start over from the base and let the
+    script redraw it in red*. That was written to answer a reader who could not tell the
+    two apart from `undo` and `start over` alone — and it answered them by putting two
+    lines of tooling under a picture, permanently, for the one visit in twenty where
+    anything goes back at all.
+
+    The distinction belongs in the hover, where it is read once by the reader who is
+    actually choosing, and the line stays a line. What the sentence owes them is that the
+    two offers are *different* and that both are here; which one they want is a question
+    they are already asking by the time they are pointing at it.
+    """
+    ways = [w for w in (undo, over) if w]
+    if not ways:
+        return ""
+    return '<span class="rerun-back">You can ' + " or ".join(ways) + ".</span>"
 
 
 def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
                app_url: str = "", web_url: str = "", redraw: dict | None = None,
-               revert: dict | None = None) -> str:
+               revert: dict | None = None, reveal: dict | None = None) -> str:
     """One line under the drawing: where to edit it, and the two ways to pick the edit up.
 
     The command is not a convenience. The picture above is inlined into the HTML, and it
@@ -4179,8 +4262,9 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     not work is worse than no command, because it is tried first.
     """
     edit = drawio_open_html(app_url, web_url)
+    it = reveal_html(reveal, name)
     if not rerun or not rerun.get("command"):
-        return f'<p class="dgm-open">Edit this diagram in {edit}</p>' if edit else ""
+        return f'<p class="dgm-open">Edit {it} in {edit}</p>' if edit else ""
     line = f'cd {shlex.quote(rerun["cwd"])} \\\n  && {rerun["command"]} \\\n  && {rebuild}'
     # Per diagram, because a page can carry several and each one reruns its own. The id
     # is the diagram's name for the same reason every other handle on this page is: so a
@@ -4215,14 +4299,14 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     undo, undo_fold = revert_html(revert, rerun, rebuild, name)
     over, over_fold = redraw_html(redraw, rerun, rebuild, name)
     return ('<div class="rerun">'
-            f'<p class="dgm-open">{f"Edit this diagram in {edit}, then " if edit else ""}'
+            f'<p class="dgm-open">{f"Edit {it} in {edit}, then " if edit else ""}'
             + _run_or_read(fold, act, STATIC_RUN_TIP,
                            "Runs it here, then reloads with the new picture")
             + " to update the report."
             # Second sentence, same line: it is the same subject — this drawing, and what
             # you can do to it — and a paragraph of its own would put the offer nobody
             # takes on most visits on a line of its own under the picture.
-            + undo + over + '</p>'
+            + _ways_back(undo, over) + '</p>'
             + _cmdfold(fold, line) + undo_fold + over_fold + '</div>')
 
 

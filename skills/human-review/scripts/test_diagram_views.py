@@ -477,14 +477,15 @@ def test_the_whole_pair_folds_away_and_starts_open(tmp_path):
 def test_the_quoted_test_starts_closed_and_the_diagram_is_in_view(tmp_path):
     """The tab is called Sequence. A thirty-line block of the spec above every diagram put
     the picture below the fold on each exhibit; now the source is a closed fold inside the
-    open pair, its summary names the lines it quotes, and the diagram is outside it."""
+    open pair, its one row is the block's own source bar, and the diagram is outside it."""
     html_out = _pairs_fixture(tmp_path)
     assert '<details class="testsrc">' in html_out
     assert '<details class="testsrc" open>' not in html_out
     src = html_out[html_out.index('<details class="testsrc">'):]
     src = src[:src.index("</details>")]
     assert "snippet" in src and 'class="diagram' not in src
-    assert "<summary>the test · lines " in src
+    assert '<summary><span class="foldlbl"></span><div class="srcbar">' in src
+    assert "the test · lines " not in html_out
     after = html_out[html_out.index('<details class="testsrc">'):]
     after = after[after.index("</details>"):]
     assert 'class="diagram' in after
@@ -711,15 +712,14 @@ def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
 
 
 def test_the_command_says_what_it_is_for(tmp_path):
-    """Where to edit, and the two ways to pick the edit up, are one sentence — not a
-    paragraph, a sentence and a code block stacked under the picture they explain."""
+    """Where to edit, and how to pick the edit up, are one sentence — not a paragraph, a
+    sentence and a code block stacked under the picture they explain."""
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
     line = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert "click here</button> <span class=\"cmdalt\">(or " in line
-    assert "run this</button>)</span> to update the report." in line
+    assert "run this</button></span> to update the report." in line
 
 
 def test_the_command_itself_is_folded_away_until_it_is_asked_for(tmp_path):
@@ -733,15 +733,19 @@ def test_the_command_itself_is_folded_away_until_it_is_asked_for(tmp_path):
     assert 'class="cmdpeek" aria-expanded="false"' in out
 
 
-def test_the_run_here_offer_is_on_the_static_page_too_and_says_what_it_needs(tmp_path):
-    """A control that is simply absent from one copy of the report teaches the reader the
-    report is unreliable; one that explains itself teaches them what served mode is."""
+def test_each_copy_of_the_report_shows_the_route_it_can_actually_take(tmp_path):
+    """Both routes are in the markup and CSS picks: `run this` until the probe finds a
+    server for that action, `click here` after. Off disk the button is a promise the page
+    cannot keep; served, the shell line is noise beside a control that already runs it."""
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
     assert 'class="runhere" data-action="drawio:conceptual"' in out
-    assert "static" in re.search(r'class="runhere"[^>]*data-tip="([^"]*)"', out).group(1)
+    assert ".rerun .offer .runhere { display:none; }" in build.CSS, "static by default"
+    assert ".rerun .offer.served .runhere { display:inline; }" in build.CSS
+    assert ".rerun .offer.served .cmdpeek" in build.CSS, "served, no command is shown"
+    assert "offer.classList.add('served')" in build.SERVER_JS, "the probe is what flips it"
 
 
 def test_both_editors_are_offered_and_named(tmp_path):
@@ -753,9 +757,34 @@ def test_both_editors_are_offered_and_named(tmp_path):
         "drawio_url": "drawio:///repo/C.drawio.png",
         "drawio_web_url": "https://app.diagrams.net/?splash=0&title=C#R%3Cmx%3E"}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert "Edit this diagram in" in out
-    assert ">draw.io App ↗</a>" in out and ">draw.io Web ↗</a>" in out
+    assert "in draw.io " in out
+    assert ">App ↗</a>" in out and ">Web ↗</a>" in out
+    assert out.count("draw.io ") == 1, "the brand is named once, the two editors after it"
     assert "drawio:///repo/C.drawio.png" in out and "app.diagrams.net" in out
+
+
+REVEAL = {"command": "open -R /repo/docs/C.drawio.png", "in": "the Finder"}
+
+
+def test_the_subject_of_the_sentence_shows_the_file_on_disk(tmp_path):
+    """The line says how to edit the drawing and how to pick the edit up, and said nothing
+    about where the file is — while the two words naming it sat unclickable at the front."""
+    out = _widget_with(tmp_path, rerun=RERUN, reveal=REVEAL,
+                       drawio_url="drawio:///repo/docs/C.drawio.png")
+    assert '>this diagram</button>' in out
+    assert build.ACTIONS["drawio-reveal:conceptual"]["command"] == REVEAL["command"]
+    assert not build.ACTIONS["drawio-reveal:conceptual"]["reload"], \
+        "revealing a file changes nothing on the page"
+    tip = re.search(r'data-action="drawio-reveal:conceptual"[^>]*'
+                    r'data-tip-served="([^"]*)"', out).group(1)
+    assert "the Finder" in tip
+
+
+def test_a_verdict_with_no_reveal_leaves_the_words_as_words(tmp_path):
+    """An older verdict, or a run from before the command was recorded: the sentence reads
+    exactly as it did, with nothing half-rendered where the control would have been."""
+    out = _widget_with(tmp_path, rerun=RERUN, drawio_url="drawio:///repo/docs/C.drawio.png")
+    assert "Edit this diagram in" in out and "drawio-reveal" not in out
 
 
 def test_the_web_link_is_dropped_when_the_verdict_has_none(tmp_path):
@@ -766,8 +795,8 @@ def test_the_web_link_is_dropped_when_the_verdict_has_none(tmp_path):
         "added": [], "removed": [], "changed": [], "moved": [], "red": [],
         "drawio_url": "drawio:///repo/C.drawio.png"}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert ">draw.io App ↗</a>" in out
-    assert "draw.io Web" not in out and " or " not in out
+    assert ">App ↗</a>" in out
+    assert ">Web ↗</a>" not in out and " or " not in out
 
 
 def test_the_copy_button_reuses_the_one_clipboard_and_the_one_toast():
@@ -843,6 +872,20 @@ REDRAW = {"cwd": "/repo", "base": "origin/main", "diagram": "docs/CM.drawio.png"
           "command": "git checkout origin/main -- docs/CM.drawio.png && docs/patch.py"}
 
 
+def _as_read(html_out: str, served: bool) -> str:
+    """What a reader actually sees, once the CSS has hidden the route they cannot take.
+
+    Both are in the markup — `click here` and `run this`, the reveal control and the two
+    plain words behind it — so stripping the tags off the raw line renders every label
+    twice. The tests read the sentence the way the browser lays it out, in one world or
+    the other, because that is the thing being asserted about."""
+    drop = (r'class="cmdpeek"', r'class="plainword"') if served else (r'class="runhere"',)
+    for cls in drop:
+        html_out = re.sub(r'<(button|span)[^>]*' + cls + r'[^>]*>.*?</\1>', '',
+                          html_out, flags=re.S)
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html_out)).strip()
+
+
 def _widget_with(tmp_path, **verdict):
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps(
@@ -863,11 +906,11 @@ def test_the_offer_to_start_over_runs_the_restore_the_redraw_and_the_re_render(t
 
 
 def test_starting_over_is_the_same_offer_in_the_same_shape(tmp_path):
-    """Both offers under the picture read `click here (or run this)` and both run through
-    the review server; only the command behind the bracket differs."""
+    """Both ways back are named after what they do, so the words read correctly whether the
+    click runs the command or opens it — and both run through the review server."""
     out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
     sentence = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert "To start over from the base" in sentence
+    assert ">start over</button>" in sentence
     assert 'data-action="drawio-redraw:conceptual"' in sentence, \
         "it runs through the review server like the other offer, not only in a terminal"
     fold = re.search(r'id="redraw-conceptual".*?</div>', out, re.S).group(0)
@@ -922,27 +965,39 @@ def test_the_gentler_way_back_is_offered_first(tmp_path):
     line = re.search(r'<p class="dgm-open">(.*?)</p>',
                      _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW),
                      re.S).group(1)
-    assert (line.index("To put the drawing back as this branch committed it,")
-            < line.index("To start over from the base"))
+    assert line.index(">undo your edits</button>") < line.index(">start over</button>")
 
 
-def test_neither_offer_is_worded_as_a_bare_going_back(tmp_path):
-    """"Undo" and "start over" are the same four words to a reader who has not read this
-    code, and the two of them land in opposite places — the branch's own layout, or the
-    base with the script's to-do restaged in red. Each offer says which, in the sentence,
-    because that is where the reader decides between them."""
+def test_both_ways_back_are_one_short_sentence(tmp_path):
+    """`You can undo your edits or start over.` Two clauses spelling their destinations out
+    put two lines of tooling under a picture, permanently, for the one visit in twenty
+    where anything goes back at all."""
     line = re.search(r'<p class="dgm-open">(.*?)</p>',
                      _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW),
                      re.S).group(1)
-    assert "as this branch committed it" in line
-    assert "from the base" in line and "in red" in line
+    assert _as_read(line, served=True).endswith(
+        "click here to update the report.You can undo your edits or start over.")
+    assert _as_read(line, served=False).endswith(
+        "run this to update the report.You can undo your edits or start over.")
+
+
+def test_the_hover_is_where_the_two_ways_back_are_told_apart(tmp_path):
+    """"Undo" and "start over" are both just "go back" until you read what they do, and the
+    line no longer says. So the tooltips have to: one keeps the branch's own layout and
+    banks the edits, the other goes to the base and lets the script restage its to-do."""
+    out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW)
+    undo = re.search(r'data-action="drawio-undo:conceptual" data-tip="([^"]*)"', out).group(1)
+    over = re.search(r'data-action="drawio-redraw:conceptual" data-tip="([^"]*)"', out).group(1)
+    assert "committed" in undo and "stash" in undo
+    assert REDRAW["base"] not in undo, "the one way back that names no base ref"
+    assert REDRAW["base"] in over and "red" in over
 
 
 def test_no_undo_is_offered_for_a_diagram_with_nothing_committed(tmp_path):
     """`drawio-diff.py` leaves `revert` out when the branch introduces the drawing. The
     page must then be silent about it rather than assemble a command from what it has."""
     out = _widget_with(tmp_path, rerun=RERUN)
-    assert "To put the drawing back" not in out and "drawio-undo" not in out
+    assert "undo your edits" not in out and "drawio-undo" not in out
 
 
 def test_a_folded_command_is_actually_folded(tmp_path):

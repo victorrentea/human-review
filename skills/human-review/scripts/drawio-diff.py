@@ -529,6 +529,31 @@ def drawio_url(diagram: Path) -> str:
 DRAWIO_WEB = "https://app.diagrams.net/?splash=0&title={name}#R{data}"
 
 
+def reveal_in_file_manager(diagram: Path) -> dict:
+    """Show the file where it lives on disk, selected, in whatever the OS calls Finder.
+
+    The two editor links open the drawing; neither of them answers "where *is* this file".
+    That question gets asked the moment the reader wants to commit the edit, copy the
+    diagram somewhere, or look at what else is in that folder — and answering it from the
+    page beats reading an absolute path out of a folded shell command and pasting it.
+
+    Recorded here and not assembled by the report, for the same reason every other command
+    in this verdict is: the machine that ran this diff is the machine the review server
+    will run the command on, so this is the one place that knows which OS it has to be
+    phrased for. `open -R` and `explorer /select,` select the file in an already-open
+    window; `xdg-open` has no such verb anywhere it is implemented, so on the rest the
+    honest offer is the folder.
+    """
+    path = Path(diagram).resolve()
+    if sys.platform == "darwin":
+        return {"command": f"open -R {shlex.quote(str(path))}", "in": "the Finder"}
+    if sys.platform.startswith("win"):
+        return {"command": f"explorer /select,{shlex.quote(str(path))}",
+                "in": "File Explorer"}
+    return {"command": f"xdg-open {shlex.quote(str(path.parent))}",
+            "in": "the file manager"}
+
+
 def drawio_web_url(xml: str, diagram: Path) -> str:
     """The same drawing, opened in the browser editor.
 
@@ -889,6 +914,7 @@ def main():
     verdict["drawio_url"] = drawio_url(source)
     verdict["diagram"] = str(source)
     verdict["drawio_web_url"] = drawio_web_url(new_xml, source)
+    verdict["reveal"] = reveal_in_file_manager(source)
     # How to run this again, recorded by the run itself. The report inlines these SVGs at
     # build time — it has to, or the links drawn inside them go inert — so a reader who
     # has just re-laid the diagram out by hand needs a command, and the reader is not the
