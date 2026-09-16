@@ -744,65 +744,6 @@ def test_the_run_here_offer_is_on_the_static_page_too_and_says_what_it_needs(tmp
     assert "static" in re.search(r'class="runhere"[^>]*data-tip="([^"]*)"', out).group(1)
 
 
-REVERT = {"cwd": "/repo", "ref": "HEAD", "diagram": "docs/C.drawio.png",
-          "command": "git stash push -m 'human-review: hand edits to docs/C.drawio.png' "
-                     "-- docs/C.drawio.png"}
-
-
-def _with(assets: Path, **extra):
-    (assets / "conceptual-diff.json").write_text(json.dumps({
-        "added": [], "removed": [], "changed": [], "moved": [], "red": [], **extra}))
-    return assets
-
-
-# ── Undo my edits ─────────────────────────────────────────────────────────────────
-#
-# The page tells the reader to go and drag boxes around in draw.io, and dragging boxes
-# around is how a guardrail that was green stops being green. The way back is one command,
-# but it is one command the reader has to know exists — so it is an offer on the same line
-# as the one that sent them to draw.io in the first place.
-
-def test_the_undo_offer_names_all_four_stages(tmp_path):
-    """Putting the file back is not enough on its own: the picture in the page is inlined
-    at build time, so an undo that stopped at the file would leave the reader looking at
-    their own layout with the committed one on disk."""
-    assets = _with(_drawio_set(tmp_path / "assets"), rerun=RERUN, revert=REVERT)
-    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    fold = re.search(r'id="undo-conceptual" hidden><code>(.*?)</code>', out, re.S).group(1)
-    assert "cd /repo" in fold and "git stash push" in fold
-    assert RERUN["command"] in fold and REBUILD in fold
-
-
-def test_the_undo_offer_says_where_the_layout_goes_before_it_is_clicked(tmp_path):
-    """The reassurance is the whole reason this is a stash and not a checkout, and a reader
-    weighing an undo needs it *before* pressing, not in a paragraph underneath."""
-    assets = _with(_drawio_set(tmp_path / "assets"), rerun=RERUN, revert=REVERT)
-    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    tip = re.search(r'data-action="drawio-undo:conceptual" data-tip="([^"]*)"', out).group(1)
-    assert "stash" in tip
-
-
-def test_the_gentler_way_back_is_offered_first(tmp_path):
-    """Refresh, undo, start over. A reader who stops reading partway along the line has
-    stopped on the offer that keeps the branch's drawing, not on the one that throws it
-    away along with their own."""
-    assets = _with(_drawio_set(tmp_path / "assets"), rerun=RERUN, revert=REVERT,
-                   redraw={"cwd": "/repo", "base": "origin/main",
-                           "command": "git checkout origin/main -- d && patch.py"})
-    line = re.search(r'<p class="dgm-open">(.*?)</p>',
-                     build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD),
-                     re.S).group(1)
-    assert line.index("To undo your own edits,") < line.index("To start over,")
-
-
-def test_no_undo_is_offered_for_a_diagram_with_nothing_committed(tmp_path):
-    """`drawio-diff.py` leaves `revert` out when the branch introduces the drawing. The
-    page must then be silent about it rather than assemble a command from what it has."""
-    assets = _with(_drawio_set(tmp_path / "assets"), rerun=RERUN)
-    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert "To undo your own edits" not in out and "drawio-undo" not in out
-
-
 def test_both_editors_are_offered_and_named(tmp_path):
     """Two links, not one: the app edits the file on disk, the web editor edits a copy in
     the URL. A reader has to be able to tell which is which before clicking."""
@@ -894,6 +835,10 @@ def test_shortening_twice_changes_nothing(tmp_path):
 # on this page with no way back: the layout is in the file, the file is in the repository,
 # and "let me see what the machine drew" meant going and finding a revision by hand.
 
+REVERT = {"cwd": "/repo", "ref": "HEAD", "diagram": "docs/C.drawio.png",
+          "command": "git stash push -m 'human-review: hand edits to docs/C.drawio.png' "
+                     "-- docs/C.drawio.png"}
+
 REDRAW = {"cwd": "/repo", "base": "origin/main", "diagram": "docs/CM.drawio.png",
           "command": "git checkout origin/main -- docs/CM.drawio.png && docs/patch.py"}
 
@@ -922,7 +867,7 @@ def test_starting_over_is_the_same_offer_in_the_same_shape(tmp_path):
     the review server; only the command behind the bracket differs."""
     out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
     sentence = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert "To start over, " in sentence
+    assert "To start over from the base" in sentence
     assert 'data-action="drawio-redraw:conceptual"' in sentence, \
         "it runs through the review server like the other offer, not only in a terminal"
     fold = re.search(r'id="redraw-conceptual".*?</div>', out, re.S).group(0)
@@ -943,6 +888,61 @@ def test_a_repository_that_declared_no_redraw_is_offered_none(tmp_path):
     naming convention and running it on a reader's click is not a trade worth making."""
     out = _widget_with(tmp_path, rerun=RERUN)
     assert "start over" not in out and "redraw-conceptual" not in out
+
+
+# ── Undo my edits ─────────────────────────────────────────────────────────────────
+#
+# The page tells the reader to go and drag boxes around in draw.io, and dragging boxes
+# around is how a guardrail that was green stops being green. The way back is one command,
+# but it is one command the reader has to know exists — so it is an offer on the same line
+# as the one that sent them to draw.io in the first place.
+
+def test_the_undo_offer_names_all_four_stages(tmp_path):
+    """Putting the file back is not enough on its own: the picture in the page is inlined
+    at build time, so an undo that stopped at the file would leave the reader looking at
+    their own layout with the committed one on disk."""
+    out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
+    fold = re.search(r'id="undo-conceptual" hidden><code>(.*?)</code>', out, re.S).group(1)
+    assert "cd /repo" in fold and "git stash push" in fold
+    assert RERUN["command"] in fold and REBUILD in fold
+
+
+def test_the_undo_offer_says_where_the_layout_goes_before_it_is_clicked(tmp_path):
+    """The reassurance is the whole reason this is a stash and not a checkout, and a reader
+    weighing an undo needs it *before* pressing, not in a paragraph underneath."""
+    out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
+    tip = re.search(r'data-action="drawio-undo:conceptual" data-tip="([^"]*)"', out).group(1)
+    assert "stash" in tip
+
+
+def test_the_gentler_way_back_is_offered_first(tmp_path):
+    """Refresh, undo, start over. A reader who stops reading partway along the line has
+    stopped on the offer that keeps the branch's drawing, not on the one that throws it
+    away along with their own."""
+    line = re.search(r'<p class="dgm-open">(.*?)</p>',
+                     _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW),
+                     re.S).group(1)
+    assert (line.index("To put the drawing back as this branch committed it,")
+            < line.index("To start over from the base"))
+
+
+def test_neither_offer_is_worded_as_a_bare_going_back(tmp_path):
+    """"Undo" and "start over" are the same four words to a reader who has not read this
+    code, and the two of them land in opposite places — the branch's own layout, or the
+    base with the script's to-do restaged in red. Each offer says which, in the sentence,
+    because that is where the reader decides between them."""
+    line = re.search(r'<p class="dgm-open">(.*?)</p>',
+                     _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW),
+                     re.S).group(1)
+    assert "as this branch committed it" in line
+    assert "from the base" in line and "in red" in line
+
+
+def test_no_undo_is_offered_for_a_diagram_with_nothing_committed(tmp_path):
+    """`drawio-diff.py` leaves `revert` out when the branch introduces the drawing. The
+    page must then be silent about it rather than assemble a command from what it has."""
+    out = _widget_with(tmp_path, rerun=RERUN)
+    assert "To put the drawing back" not in out and "drawio-undo" not in out
 
 
 def test_a_folded_command_is_actually_folded(tmp_path):

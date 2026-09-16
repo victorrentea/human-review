@@ -919,8 +919,8 @@ def main():
     # what the branch added — in red, deliberately unplaced, so the guardrail keeps failing
     # until a human drags it somewhere. That is the to-do state, and it is not a green one.
     # A reader who has just made a mess of a layout wants neither the base nor a to-do:
-    # they want the drawing this branch already committed, which is the last one that
-    # passed. That is derivable from nothing but the path — no flag, no script, no naming
+    # they want the drawing this branch already committed, which is the last one anyone
+    # deliberately kept. That is derivable from nothing but the path — no flag, no naming
     # convention — so unlike the redraw it is recorded on every run.
     #
     # `git stash push` and not `git checkout --`, though both put the file back: only one

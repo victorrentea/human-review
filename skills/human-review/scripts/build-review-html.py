@@ -4069,9 +4069,14 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
     The sibling offer below this one starts over — base plus the repository's patch script
     — and that lands on a diagram whose new boxes are staged and red *on purpose*, with the
     guardrail still failing. It is the to-do state, and a reader who has just dragged a box
-    somewhere wrong is not asking for a to-do; they are asking for the last state that
-    passed. That is the committed one, and nothing but the path is needed to name it, which
-    is why this offer needs no flag while the redraw needs `--redraw`.
+    somewhere wrong is not asking for a to-do; they are asking for the drawing as this
+    branch committed it. Nothing but the path is needed to name that, which is why this
+    offer needs no flag while the redraw needs `--redraw`.
+
+    Both offers are worded by where they land, and neither says "undo" or "start over" on
+    its own: to a reader who has not read this file those are the same four words, and the
+    two of them land in opposite places — one on the branch's own layout, the other on the
+    base with the script's to-do restaged in red.
 
     Folded like the redraw, and for the same reason: it throws a layout away. The
     difference is where the layout goes. `drawio-diff.py` records a `git stash push`
@@ -4088,11 +4093,12 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
         aid = declare_action(f"drawio-undo:{name}", line, reload=True,
                              label=f"Undo hand edits to {name} and rebuild this page")
         act = f' data-action="{html.escape(aid, quote=True)}"'
-    tip = ("Puts back the drawing this branch committed — the last one its guardrail "
-           "passed. Your layout is not lost: it goes to the git stash, and "
-           "`git stash pop` brings it back.")
+    tip = ("Puts the drawing back exactly as this branch committed it, layout and all — "
+           "it does not go near the base and it runs no script. Your own edits are not "
+           "lost: they go to the git stash, and `git stash pop` brings them back.")
     fold = f"undo-{name or 'diagram'}"
-    return ('<span class="rerun-undo">To undo your own edits, '
+    return ('<span class="rerun-undo">To put the drawing back as this branch '
+            'committed it, '
             + _run_or_read(fold, act, tip,
                            "Runs it here, then reloads with the committed drawing back",
                            "Putting the committed drawing back…")
@@ -4139,7 +4145,8 @@ def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
            "the repository's own script over it, which draws what the code has and the "
            "map lacks — in red, as a to-do — again.")
     fold = f"redraw-{name or 'diagram'}"
-    return ('<span class="rerun-redraw">To start over, '
+    return ('<span class="rerun-redraw">To start over from the base and let the '
+            'script redraw it in red, '
             + _run_or_read(fold, act, tip,
                            "Runs it here, then reloads with automation's drawing back",
                            "Putting automation's drawing back…")
