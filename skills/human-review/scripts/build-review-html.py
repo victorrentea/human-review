@@ -367,6 +367,13 @@ span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
    the replay in a window of its own; off disk it copies the line that does. */
 .rm-tv { flex:0 0 auto; text-decoration:none; font-size:12px; line-height:1; }
 .rm-tv:hover { filter:brightness(1.2); }
+/* The 🕵️ beside it, on a row whose test is tagged @generate_sequence: the way from the
+   test to the sequence that test's own run drew, in the tab that holds it. Deliberately
+   the same furniture as the 📺 — both are doors out of the row into a recording of the
+   same run, and a second vocabulary for "there is more of this elsewhere" would be a
+   second thing to learn. */
+.rm-seq { flex:0 0 auto; text-decoration:none; font-size:12px; line-height:1; }
+.rm-seq:hover { filter:brightness(1.2); }
 ul.fixlist { margin:.5rem 0 .8rem; padding-left:1.1rem; display:grid; gap:.3rem; }
 ul.fixlist li { font-size:.93rem; }
 ul.fixlist .srcref { margin-bottom:0; font-size:11.5px; }
@@ -1089,6 +1096,17 @@ body.showall .panel:first-of-type { border-top:0; }
    one fold puts the whole exhibit away — closing over the test alone used to leave its
    diagram standing there with nothing above it to explain what it draws. */
 .testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
+/* Shut, a pair is one line of a table of contents, and the air an exhibit needs around it
+   is exactly what makes a list of five unreadable — they were a screen apart with nothing
+   in between. Open, the old spacing comes back: then it really is an exhibit again. */
+details.testpair:not([open]) { margin:.3rem 0; }
+/* Where the 🕵️ landed. A pair looks exactly like the three pairs around it, and the
+   reader arrives a whole tab away from the row they clicked, so the pair says once that
+   it is the one that was asked for. Its own left border does the saying — nothing moves,
+   nothing is added, and a second click on a second row can say it again. A permanent
+   mark would still be there then, pointing at the previous question. */
+@keyframes seq-flash { from { border-left-color:var(--link); } to { border-left-color:var(--line); } }
+.testpair.seq-hit { animation:seq-flash 2s ease-out 1; }
 .testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
 /* The quoted test and the diagram under it are one card in two halves — the test, then
    the test drawn as a sequence. The test half is its own fold, closed on load: the tab
@@ -1108,12 +1126,14 @@ details.testsrc > .snippet ~ .snippet { margin-top:0; border-top:0; border-radiu
 details.testpair > details.testsrc[open] ~ .diagram { margin-top:0; border-top:0; border-radius:0 0 8px 8px; }
 details.testpair > details.testsrc:not([open]) ~ .diagram { margin-top:.4rem; }
 .testlead { margin:.7rem 0 0; }
-/* The fold's own summary: the test's file name, quiet on purpose. It is a control for
-   getting an exhibit out of the way while comparing two others, not a heading competing
-   with the picture below it. */
-details.testpair > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.35rem;
-  align-items:center; color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace;
-  padding:.2rem 0; }
+/* The fold's own summary: the names of the scenarios drawn inside it. It used to be the
+   file name, set quiet and monospace because it was a control beside a picture that was
+   already on screen. Folded shut, it is the only thing on screen — the tab's table of
+   contents, one line per test — so it is set as what it now is: prose, at the page's own
+   weight, in the page's own face. Monospace was for a path; these are sentences. */
+details.testpair > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.4rem;
+  align-items:baseline; color:var(--fg); font-size:.95rem; font-weight:600;
+  padding:.25rem 0; }
 details.testpair > summary::-webkit-details-marker { display:none; }
 details.testpair > summary::before { content:"▾"; font-size:.75rem; }
 details.testpair:not([open]) > summary::before { content:"▸"; }
@@ -1121,6 +1141,17 @@ details.testpair > summary:hover { color:var(--link); }
 /* With the title gone, the .puml path is the only thing left in a paired diagram's
    header row, and `space-between` would park it on the left under the fold arrow. */
 .diagram.dgm-bare .head .dgm-src { margin-left:auto; }
+/* …and then the header row went away entirely. A paired card had two rows of furniture
+   stacked on top of each other, each half empty: Diff/New/Old hard left on one, the
+   `.puml` path hard right on the other, a band of nothing between them. They are one
+   line about one picture — the controls, then what the picture is — so `DGM_VIEWS_JS`
+   moves the header's contents into the button bar and drops the empty row. The pieces
+   keep their own alignment; only the row they sit on changed. */
+.dgmbar .badge { margin-left:.2rem; }
+.dgmbar .dgm-src { margin-left:auto; color:var(--muted); font:inherit; text-decoration:none;
+  border-bottom:1px dotted var(--line); }
+.dgmbar .dgm-src:hover { color:var(--link); border-bottom-color:currentColor; }
+.diagram.dgm-bare > .head:empty { display:none; }
 @media print {
   .tabstrip { display:none; }
   .panel[hidden] { display:block !important; }
@@ -1283,13 +1314,15 @@ DGM_VIEWS_JS = """<script>
     views.querySelectorAll(':scope > .dgmpane').forEach(function (pane) {
       pane.hidden = pane.getAttribute('data-view') !== state;
     });
-    var pair = views.querySelector('.dgm-newold');
+    var pair = (views.closest('.diagram') || views).querySelector('.dgm-newold');
     if (pair) {
       pair.querySelectorAll('u[data-view]').forEach(function (word) {
         word.classList.toggle('on', word.getAttribute('data-view') === state);
       });
     }
-    views.querySelectorAll('.dgmbar button[data-go]').forEach(function (b) {
+    // From the card, not from `views`: on a paired diagram the bar has been lifted out
+    // of `.dgmviews` and into the header's row (see the merge below).
+    (views.closest('.diagram') || views).querySelectorAll('.dgmbar button[data-go]').forEach(function (b) {
       var go = b.getAttribute('data-go');
       b.setAttribute('aria-pressed',
         String(go === 'diff' ? state === 'diff' : state !== 'diff'));
@@ -1308,7 +1341,8 @@ DGM_VIEWS_JS = """<script>
   document.addEventListener('click', function (ev) {
     var button = ev.target.closest('.dgmbar button[data-go]');
     if (button) {
-      var views = button.closest('.dgmviews');
+      var views = button.closest('.dgmviews')
+        || (button.closest('.diagram') || document).querySelector('.dgmviews');
       if (button.getAttribute('data-go') === 'diff') show(views, 'diff');
       else flip(views);
       return;
@@ -1316,6 +1350,26 @@ DGM_VIEWS_JS = """<script>
     // The header, but never a link inside it: the source path opens an editor.
     var head = ev.target.closest('.diagram.dgm-toggles > .head');
     if (head && !ev.target.closest('a')) flip(head.parentElement.querySelector('.dgmviews'));
+    // Same bargain for the merged row: its empty middle is the large hit area the header
+    // used to be, and a click on the path still opens the editor rather than swapping the
+    // picture out from under it.
+    var bar = ev.target.closest('.diagram.dgm-toggles .dgmbar');
+    if (bar && !ev.target.closest('a')) flip(bar.closest('.diagram').querySelector('.dgmviews'));
+  });
+
+  // The merge. Only on a paired card (`dgm-bare`), which is the one that lost its title
+  // and was left with a header row holding a single right-aligned path — a whole row of
+  // page for one filename. Elsewhere the header still carries a real heading and earns
+  // its own line.
+  //
+  // The bar keeps its place inside `.dgmviews`, because the stylesheet paints the buttons
+  // off `[data-state]` on that element; what travels is the header's contents. `show` and
+  // the click handler are the two places that then have to look the bar up from the card
+  // instead of from `views`, and they do.
+  document.querySelectorAll('.diagram.dgm-bare > .head').forEach(function (head) {
+    var bar = head.parentElement.querySelector('.dgmviews > .dgmbar');
+    if (!bar) return;
+    while (head.firstChild) bar.appendChild(head.firstChild);
   });
 })();
 </script>"""
@@ -1989,6 +2043,118 @@ TRACE_JS = """<script>
 })();
 </script>"""
 
+
+SEQLINK_JS = """<script>
+// The 🕵️ on a covering-tests row whose test drew a sequence: the way from the test to
+// the picture of what its run actually did, over on the Sequence tab.
+//
+// The 📺 beside it opens the same run as a Playwright recording — frame by frame, from
+// the browser's side. This opens the other account of it: the calls the run made, in
+// order, across the stack. Two doors out of one row, which is why they look alike.
+//
+// Same shape as TRACE_JS, and for the same reason: the map's rows are drawn by the
+// requirements map's own inline script, which knows nothing about diagrams and should
+// not have to. The pairing is done from the outside, after the map has drawn, off a
+// registry `render_testpairs` writes while it renders the pairs — so a row can only
+// ever link to a pair that is really on the page.
+(function () {
+  var el = document.getElementById('hr-genseq');
+  if (!el) return;
+  var reg; try { reg = JSON.parse(el.textContent); } catch (e) { return; }
+  var byKey = {}, byName = {}, dup = {};
+  reg.forEach(function (e) {
+    if (!byKey[e.test]) byKey[e.test] = e;
+    // The map addresses a row by repo-relative path, and so does the registry, so the
+    // lookup above is the one that fires. The basename is a fallback for a map that
+    // addresses rows the short way — taken only while it is unambiguous, because two
+    // `add-visit.feature` under different modules are two different tests.
+    var name = e.test.split('/').pop();
+    if (byName[name] && byName[name].pair !== e.pair) dup[name] = true;
+    else byName[name] = e;
+  });
+
+  function lookup(id) {
+    if (byKey[id]) return byKey[id];
+    var name = id.split('/').pop();
+    return dup[name] ? null : byName[name];
+  }
+
+  // Everything the click has to do that a plain hash link would do for us, minus the one
+  // thing it cannot: the row it sits on toggles open on a click anywhere that is not the
+  // editor link, so the event has to stop here — and stopping it also keeps it from
+  // reaching the tab strip's own document-level handler for links into another panel.
+  function jump(pair) {
+    var target = document.getElementById(pair);
+    if (!target) return;
+    var panel = target.closest && target.closest('.panel');
+    if (panel && !document.body.classList.contains('showall')) {
+      var tab = document.querySelector('.tabstrip button.tab[aria-controls="' + panel.id + '"]');
+      if (tab && tab.getAttribute('aria-selected') !== 'true') tab.click();
+    }
+    // A pair the reader folded away earlier is still the answer to this click.
+    if (target.tagName === 'DETAILS') target.open = true;
+    // After the tab has painted: scrolling to a panel that is still `hidden` measures
+    // nothing and lands at the top of the page.
+    requestAnimationFrame(function () {
+      target.scrollIntoView({block: 'start'});
+      target.classList.remove('seq-hit');
+      void target.offsetWidth;            // restart the flash on a second click
+      target.classList.add('seq-hit');
+      if (history.replaceState) history.replaceState(null, '', '#' + pair);
+    });
+  }
+
+  function decorate() {
+    var rows = document.querySelectorAll('.rm-t[data-id]');
+    Array.prototype.forEach.call(rows, function (row) {
+      if (row.querySelector('.rm-seq')) return;
+      var entry = lookup(row.getAttribute('data-id') || '');
+      if (!entry) return;
+      var where = row.querySelector('.rm-tw');
+      if (!where) return;
+      var a = document.createElement('a');
+      a.className = 'rm-seq';
+      a.textContent = '\\uD83D\\uDD75\\uFE0F';
+      a.href = '#' + entry.pair;
+      a.setAttribute('aria-label', 'open the sequence this test drew');
+      a.setAttribute('data-tip', 'Trace it: the calls this test made, on the Sequence tab');
+      a.addEventListener('click', function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        jump(entry.pair);
+      });
+      where.parentNode.insertBefore(a, where);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', decorate);
+  else decorate();
+})();
+</script>"""
+
+
+SEQFOLD_JS = """<script>
+// The Sequence tab opens on its table of contents: every test pair folded shut, so the
+// tab's first screen is one line per test instead of the top of whichever sequence happens
+// to be first. A sequence is three or four screens of arrows; four of them stacked is a
+// wall the reader has to scroll past to find out what is on the tab at all.
+//
+// Why here and not `<details>` without `open` in the markup, which is the obvious way: the
+// click targets inside every diagram are transparent rects sized from `getBBox()`, and
+// `getBBox()` on anything inside a `display:none` subtree returns zeros. A pair born shut
+// would cost its sequence every handle on it, silently. So the pairs are born open, every
+// script that measures them runs, and the folding happens after — the same bargain TABS_JS
+// makes with the panels, for the same reason, and this runs before it for the same one.
+//
+// A reader arriving on a deep link is the exception: the pair the link names is what they
+// asked for, and it stays open.
+(function () {
+  var wanted = decodeURIComponent((location.hash || '').slice(1));
+  // Not scoped to a panel id: the tab this block lands on is named by the content file.
+  document.querySelectorAll('details.testpair[open]').forEach(function (pair) {
+    if (pair.id && pair.id === wanted) return;
+    pair.open = false;
+  });
+})();
+</script>"""
 
 HSCROLL_JS = """<script>
 // Shift+wheel scrolls sideways. Chrome on macOS hands a shifted wheel to the page as an
@@ -4127,38 +4293,83 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
     )
 
 
+#: `== [[src://<test>:<line>{tip} <scenario title>]] ==` — the chapter header the sequence
+#: generators put above each scenario they drew. It is the only record of *which* tests in
+#: a file carry `@generate_sequence`: the tag is in the source, but the generator is what
+#: decides it produced a drawing, and the drawing is what this page can link to.
+GENSEQ_CHAPTER = re.compile(
+    r"^==\s*\[\[src://(?P<path>[^\s:{\]]+):(?P<line>\d+)"
+    r"(?:\{(?P<tip>[^}]*)\})?\s*(?P<title>[^\]]*?)\s*\]\]")
+
+
+def pair_anchor(test_rel: str) -> str:
+    """The id of the pair a test's sequence is drawn in, derived from the test's path.
+
+    Derived rather than counted, because the thing that links to it — the 🕵️ on a
+    covering-tests row, a tab away — knows the test and nothing else about this tab. A
+    path is unique inside a checkout, so the slug is too."""
+    return "seq-" + re.sub(r"[^a-z0-9]+", "-", test_rel.lower()).strip("-")
+
+
+def _scenarios_drawn(test_rel: str, root: Path) -> list[tuple[int, str]]:
+    """Which scenarios of this test the generator actually drew, as (line, title).
+
+    Read from the committed `.puml` rather than by looking for `@generate_sequence` in the
+    test: the tag is a request, the chapter is the record that the request was granted and
+    that there is a picture on this page to link to. A file the generator skipped — or a
+    scenario inside it that it skipped — has no chapter and gets no 🕵️.
+
+    Only the file's own chapters count. The same `src://` handle is on every class and
+    endpoint the diagram names, and a line number from `OwnerRepository.java` resolved
+    against a feature file would point at nothing."""
+    try:
+        text = (root / (test_rel + ".genseq.puml")).read_text(encoding="utf-8")
+    except OSError:
+        return []
+    found = {}
+    for line in text.splitlines():
+        m = GENSEQ_CHAPTER.match(line.strip())
+        if m and m["path"] == test_rel:
+            found.setdefault(int(m["line"]), (m["title"] or "").strip())
+    return sorted(found.items())
+
+
 def _folded_pair(test_rel: str, pieces: list[str], quoted: list[str] = (),
-                 ranges: str = "") -> str:
-    """The test and the sequence its run recorded, foldable together, and open — with the
-    quoted test itself folded *closed* inside, so the picture is what the page opens on.
+                 ranges: str = "", scenarios: list[tuple[int, str]] = ()) -> str:
+    """The test and the sequence its run recorded, foldable together — with the quoted
+    test folded closed inside it, and the whole pair folded closed too.
 
-    Open, because the pair is what the reader came for, and a tab that opens on nothing
-    but summaries makes them click before it says anything. Foldable, because this tab's
-    argument is made by putting several exhibits beside each other, and a reader comparing
-    two of them wants the rest out of the way.
+    Closed, because a sequence is tall. One of them is three or four screens of arrows, and
+    a tab that opens on four of those opens on a wall: the reader scrolls past pictures
+    they did not ask for to find out what is even on the tab. Closed, the tab opens on its
+    own table of contents — one line per test — and the reader picks. The folding is done
+    by `SEQFOLD_JS` rather than by leaving out this `open`, because the click targets
+    inside every diagram are measured with `getBBox()` while the page loads, and
+    `getBBox()` inside a closed `<details>` returns zeros; see that script.
 
-    Both halves fold, which is the correction: the fold used to close over the quoted test
-    alone and leave the diagram standing underneath, orphaned. A sequence is a drawing of
-    one test — without the test above it, it is a picture of nothing, and the reader who
-    just put the test away is the last person who wants it left on screen.
+    Both halves fold, which is the older correction: the fold used to close over the quoted
+    test alone and leave the diagram standing underneath, orphaned. A sequence is a drawing
+    of one test — without the test above it, it is a picture of nothing.
 
-    Inside the pair the test source starts closed. This tab is called Sequence: the reader
-    came to see what the run *did*, and a thirty-line block of the spec above every
-    diagram put the picture below the fold on every exhibit. The source is one click away
-    under a summary that says which lines it quotes; the diagram is in view at once.
-
-    The outer summary is the file's basename and nothing more: the quoted block under it
-    already prints the path and the line ranges in its own header bar.
+    The summary names the *scenarios*, not the file. A reader on this tab is looking for
+    "the one where the vet is remembered", which is the name it has on the Tests tab and
+    in the diagram's own chapter headers; `AddVisitSequenceTest.java` is the name of the
+    box those live in and answers a question nobody asked. The path is not lost — it is
+    the summary's tooltip, and the quoted block under it prints it in full. A pair whose
+    generator recorded no chapter falls back to the basename, which is all there is.
     """
-    name = html.escape(test_rel.rsplit("/", 1)[-1])
+    titles = [t for _, t in scenarios if t]
+    name = (" · ".join(html.escape(t) for t in titles) if titles
+            else html.escape(test_rel.rsplit("/", 1)[-1]))
     src = ""
     if quoted:
         src = ('<details class="testsrc">'
                f'<summary>the test{" · lines " + html.escape(ranges) if ranges else ""}</summary>'
                + "\n".join(x.strip("\n") for x in quoted)
                + "</details>\n")
-    return ('<details class="testpair" open>'
-            f'<summary>{name}</summary>'
+    return (f'<details class="testpair" open id="{pair_anchor(test_rel)}"'
+            f' data-test="{html.escape(test_rel)}">'
+            f'<summary data-tip="{html.escape(test_rel)}">{name}</summary>'
             + src
             + "\n".join(x.strip("\n") for x in pieces)
             + "</details>")
@@ -4226,6 +4437,16 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     rows = [r for r in select_rows(manifest_rows, block) if r["kind"] == "sequence"]
     snippets = list(block.get("snippets", []))
     parts, used = [], set()
+    # The registry the 🕵️ on the covering-tests rows reads: one entry per scenario the
+    # generator drew, keyed the way that map addresses a row, so the jump is a lookup and
+    # not a guess. Filled as the pairs are rendered — a pair that is not on this tab must
+    # not be linkable from the other one.
+    index = []
+
+    def register(test_rel, scenarios):
+        for line, title in scenarios:
+            index.append({"test": f"{test_rel}:{line}", "pair": pair_anchor(test_rel),
+                          "title": title})
 
     def take(test_rel):
         """The snippets that quote this test file, removed from the pool, and the line
@@ -4246,9 +4467,11 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
         # the generator. Two copies of one list, and the one on the picture is the one
         # that sits where the reader is already looking.
         quoted, ranges = take(test_rel)
+        scenarios = _scenarios_drawn(test_rel, root)
         pieces = [] if quoted else [_unquoted_note(test_rel, root)]
         pieces.append(render_diagrams(merged, root, out_dir, [r], bare=test_rel))
-        parts.append(_folded_pair(test_rel, pieces, quoted, ranges))
+        parts.append(_folded_pair(test_rel, pieces, quoted, ranges, scenarios))
+        register(test_rel, scenarios)
 
     unchanged = 0
     for test_rel in dict.fromkeys(x["ref"].rpartition(":")[0] for x in snippets
@@ -4256,8 +4479,10 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
         if not (root / (test_rel + ".genseq.puml")).is_file():
             continue
         quoted, ranges = take(test_rel)
+        scenarios = _scenarios_drawn(test_rel, root)
         parts.append(_folded_pair(test_rel, [_unchanged_sequence(test_rel, root, out_dir)],
-                                  quoted, ranges))
+                                  quoted, ranges, scenarios))
+        register(test_rel, scenarios)
         unchanged += 1
 
     orphaned = [x for x in snippets if id(x) not in used]
@@ -4283,6 +4508,11 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     head = ((f'<h3 id="{html.escape(block.get("id", "sequences"))}">'
              f'{html.escape(title)}</h3>') if title else "")
     head += f'<p>{block["body"]}</p>' if block.get("body") else ""
+    # Invisible, and last: nothing to look at, only the map's way back in. `</` cannot
+    # appear inside a script element, whatever its type.
+    if index:
+        parts.append('<script type="application/json" id="hr-genseq">'
+                     + json.dumps(index).replace("</", "<\\/") + "</script>")
     # Weight counts every exhibit; changes count only the manifest's rows. An unchanged
     # pair is context, exactly as a `puml` block is, and must not un-strike the tab.
     return ("\n".join(([head] if head else []) + parts) + "\n",
@@ -7902,7 +8132,7 @@ def main(argv=None) -> int:
 {DGM_VIEWS_JS}
 {XREF_JS}
 {EDITOR_JS}
-{FRAME_JS}\n{TRACE_JS}\n{HSCROLL_JS}\n{TABS_JS}
+{FRAME_JS}\n{TRACE_JS}\n{SEQLINK_JS}\n{SEQFOLD_JS}\n{HSCROLL_JS}\n{TABS_JS}
 {TIP_JS}
 </body></html>
 """

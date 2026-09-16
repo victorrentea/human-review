@@ -3176,3 +3176,90 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert "'Open test replay in a new window'" in page
     assert "tv.target = '_blank'" in page and "copy(t.cmd)" in page
     assert "traceview" not in page and 'class="traces"' not in page
+
+
+# --------------------------------------------------------------------------- #
+# the 🕵️: from a test on the Tests tab to the sequence it drew
+# --------------------------------------------------------------------------- #
+def _genseq_fixture(tmp_path: Path) -> str:
+    """A feature file with two scenarios, one of them tagged, and the .puml the generator
+    left beside it — which records a chapter for the tagged one only."""
+    rel = "test/add-visit.feature"
+    (tmp_path / "test").mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_text(
+        "Feature: visits\n\n  @generate_sequence\n  Scenario: remembers the vet\n"
+        "    Then it does\n\n  Scenario: says nobody attended\n    Then it does\n",
+        encoding="utf-8")
+    (tmp_path / (rel + ".genseq.puml")).write_text(
+        "@startuml\ntitle test/add-visit.feature\n"
+        "== [[src://test/add-visit.feature:4{Click to open the test} remembers the vet]] ==\n"
+        "Browser -> Backend: [[src://src/main/java/Owner.java:14{tip} Owner.find]]\n"
+        "@enduml\n", encoding="utf-8")
+    return rel
+
+
+def test_only_the_scenarios_the_generator_drew_are_addressable(tmp_path):
+    """`@generate_sequence` is a request; the chapter in the committed .puml is the record
+    that it was granted and that there is a picture on this page to point at. So the
+    chapters are what is read — and only this file's own, since the same `src://` handle
+    is on every class the diagram names."""
+    rel = _genseq_fixture(tmp_path)
+    assert build._scenarios_drawn(rel, tmp_path) == [(4, "remembers the vet")]
+    assert build._scenarios_drawn("test/nothing.feature", tmp_path) == []
+
+
+def test_a_pair_is_named_by_its_scenarios_and_addressed_by_its_test(tmp_path):
+    """Folded shut, the summary is the whole tab: it has to say which test this is, in the
+    words the Tests tab uses for it. The file name is the box those live in and answers a
+    question nobody asked — it stays as the tooltip."""
+    rel = _genseq_fixture(tmp_path)
+    out = build._folded_pair(rel, ["<p>picture</p>"], scenarios=[(4, "remembers the vet")])
+    assert f'id="{build.pair_anchor(rel)}"' in out
+    assert "<summary data-tip=\"test/add-visit.feature\">remembers the vet</summary>" in out
+    assert "add-visit.feature<" not in out, "the basename is not the heading any more"
+    # Two chapters in one file are two lines of the contents, on one row.
+    two = build._folded_pair(rel, [""], scenarios=[(4, "one"), (9, "two")])
+    assert ">one · two</summary>" in two
+    # Nothing recorded — the basename is all there is to call it.
+    assert ">add-visit.feature</summary>" in build._folded_pair(rel, [""])
+
+
+def test_a_pair_is_born_open_and_folded_by_a_script_that_runs_after_the_measuring(tmp_path):
+    """The tab opens on its table of contents, but the markup cannot say so: the click
+    targets inside every diagram are sized with getBBox(), which returns zeros inside a
+    closed <details>. Born shut, a sequence would silently lose every handle on it."""
+    rel = _genseq_fixture(tmp_path)
+    assert '<details class="testpair" open' in build._folded_pair(rel, [""])
+    js = build.SEQFOLD_JS
+    assert "details.testpair[open]" in js and "pair.open = false" in js
+    assert "pair.id === wanted" in js, "the pair a deep link names stays open"
+    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    assert src.index("{SEQFOLD_JS}") > src.index("{GENSEQ_JS}"), "after the measuring"
+    assert src.index("{SEQFOLD_JS}") < src.index("{TABS_JS}")
+
+
+def test_the_sequences_are_a_registry_the_detective_reads(tmp_path):
+    """The map addresses a row by repo-relative path and declaration line. The registry
+    carries the same key per drawn scenario, so the 🕵️ is a lookup and not a guess."""
+    js = build.SEQLINK_JS
+    assert "document.getElementById('hr-genseq')" in js
+    assert "querySelectorAll('.rm-t[data-id]')" in js
+    assert "'.rm-seq'" in js and "\\uD83D\\uDD75\\uFE0F" in js
+    # It must not toggle the row it sits on, and it must open a pair a reader folded away.
+    assert "ev.stopPropagation()" in js and "target.open = true" in js
+    assert "'seq-hit'" in js, "the pair says once that it is the one that was asked for"
+    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    assert "{SEQLINK_JS}" in src
+
+
+def test_the_paired_card_draws_its_controls_and_its_name_on_one_row():
+    """A paired card had two half-empty rows stacked: buttons hard left on one, the .puml
+    path hard right on the other. The bar stays inside .dgmviews — the stylesheet paints
+    the buttons off [data-state] there — and the header's contents move into it."""
+    js = build.DGM_VIEWS_JS
+    assert "document.querySelectorAll('.diagram.dgm-bare > .head')" in js
+    assert "while (head.firstChild) bar.appendChild(head.firstChild);" in js
+    # Both lookups that used to start from `views` now start from the card.
+    assert "(views.closest('.diagram') || views).querySelectorAll('.dgmbar button[data-go]')" in js
+    assert "bar.closest('.diagram').querySelector('.dgmviews')" in js, \
+        "the merged row keeps the large hit area the header used to be"
