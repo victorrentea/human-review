@@ -547,7 +547,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
   {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
   {"id":"api","label":"API","badge":"+4","blocks":[{"type":"section","id":"swaggerdiff"}]},
   {"id":"data","label":"Data",
-   "blocks":[{"type":"section","id":"conceptual"},{"type":"diagrams","only":["DomainModel","DB"]}]},
+   "blocks":[{"type":"diagrams","only":["DomainModel","DB"]},{"type":"section","id":"conceptual"}]},
   {"id":"requirements","label":"Tests",
    "blocks":[{"type":"section","id":"requirements"},{"type":"tests"}]},
   {"id":"sequence","label":"Sequence",
@@ -949,7 +949,11 @@ the one thing no amount of reading changes. Four tabs need something said about 
     what the branch wrote — it is the same list, in fewer words, further down.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
   backed by a snippet. It also carries the **conceptual model**, the one diagram on the
-  page a human drew, and three rules go with it:
+  page a human drew, and four rules go with it:
+  - **It goes last on the tab, under the generated diagrams.** The machine-extracted
+    pictures — `DomainModel`, `DB` — are what the branch did; the hand-drawn map is what
+    the team means, and it is the one the reader is asked to act on. Walking the tab ends
+    on it rather than opening on it, which is also the order it gets presented in.
   - **Head it the way the file names itself** — `Conceptual Model`, both words capital.
     It is the name of an artefact the team maintains, not a description of one.
   - **Write `{{drawio:conceptual}}` for the picture — never paste the SVG in.** The token
@@ -962,14 +966,14 @@ the one thing no amount of reading changes. Four tabs need something said about 
     `diagrams` step and rebuilding is then the whole refresh.
   - **The legend and the opening pane come with the token**, because both are readings of
     the verdict rather than choices: the *added by this PR* row appears when something is
-    added and not drawn red, the *still waiting for a hand-drawn layout* row when anything
+    added and not drawn red, the *still waiting for a manual re-layout* row when anything
     in the drawing is still red (repeated under the **New** pane, where the red is on
     screen with nothing else to explain it), and the widget opens on `New` while a layout
     is owed — the delta is a picture of automation's routing until someone draws it — and
     on `Diff` once it is not. Do not restate any of that in prose that will outlive it.
-  - **The colours explain themselves in the legend, so do not explain them in prose.** What
-    red *is* and what to do about it — open it in draw.io, re-lay it out by hand, turn every
-    line black — is part of the to-do row the token emits, and that row is gone the moment
+  - **The colours explain themselves, so do not explain them in prose.** The legend names
+    the state and the map itself carries the instruction, written in red by
+    `conceptual-model-patch.py` next to the red it is about — and both are gone the moment
     the layout is drawn. The same sentences written above the picture outlive the red: the
     colour goes, and the paragraph keeps telling the next reader to go and turn lines black.
   - **One sentence above the picture, about the artefact and not about this build.** What

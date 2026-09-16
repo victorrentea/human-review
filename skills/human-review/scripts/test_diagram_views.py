@@ -629,12 +629,12 @@ def test_the_legend_names_only_the_colours_the_drawing_actually_uses(tmp_path):
     drawn = build.drawio_widget_html(
         "conceptual", _drawio_set(tmp_path / "a", added=[("Vet-Visit", False)]), tmp_path)
     assert "added by this PR" in drawn
-    assert "still waiting for a hand-drawn layout" not in drawn
+    assert "still waiting for a manual re-layout" not in drawn
 
     owed = build.drawio_widget_html(
         "conceptual",
         _drawio_set(tmp_path / "b", red=["Vet-Visit"], added=[("Vet-Visit", True)]), tmp_path)
-    assert "still waiting for a hand-drawn layout" in owed
+    assert "still waiting for a manual re-layout" in owed
     assert "added by this PR" not in owed, "an addition drawn red renders red, not green"
 
 
@@ -647,7 +647,7 @@ def test_the_to_do_row_is_repeated_under_the_undiffed_new_pane(tmp_path):
         _drawio_set(tmp_path / "a", red=["Vet-Visit"], added=[("Vet-Visit", True)]), tmp_path)
     pane = re.search(r'<div class="dgmpane" data-view="new".*?(?=<div class="dgmpane")',
                      out, re.S).group(0)
-    assert "still waiting for a hand-drawn layout" in pane
+    assert "still waiting for a manual re-layout" in pane
 
 
 def test_a_section_body_expands_the_token(tmp_path):

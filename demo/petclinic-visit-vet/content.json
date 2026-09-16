@@ -78,15 +78,15 @@
       "label": "Data",
       "blocks": [
         {
-          "type": "section",
-          "id": "conceptual"
-        },
-        {
           "type": "diagrams",
           "only": [
             "DomainModel",
             "DB"
           ]
+        },
+        {
+          "type": "section",
+          "id": "conceptual"
         }
       ],
       "tip": "Structural diff of the committed .puml files."
