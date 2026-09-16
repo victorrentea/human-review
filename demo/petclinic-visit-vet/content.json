@@ -409,7 +409,7 @@
     }
   ],
   "codecity": {
-    "body": "<b>11 classes lit</b> — a clean vertical slice: domain, mapper, repository, controller, and the tests beside them.",
+    "body": "How this PR changed the size and complexity of the code.",
     "png": "assets/codecity.png",
     "href": "assets/codecity/codecity.html"
   },
@@ -474,8 +474,8 @@
     },
     {
       "id": "packages-note",
-      "title": "Neither picture moved on this branch",
-      "body": "<p><b>Packages</b> — the dependencies allowed between Java packages, written by hand as the rule and enforced on every build by <code>PackagesArchTest</code> (ArchUnit): the test fails when the code disagrees with it. This branch did briefly break it — the <code>[Mapper] → [DTO]</code> arrow had been commented out during a demo. Restoring it is in the fixed list on the Review tab.</p><p><b>Maven modules</b> — from <code>mvn dependency:tree</code> per project, filtered to this repo's own <code>groupId:artifactId</code> pairs: four standalone builds with nothing between them. There is no aggregator <code>pom.xml</code> at the root, and <code>petclinic-frontend</code> and <code>petclinic-test</code> have no <code>pom.xml</code> at all.</p>",
+      "title": "",
+      "body": "",
       "unchanged": true
     },
     {
