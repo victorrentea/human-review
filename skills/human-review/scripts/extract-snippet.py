@@ -63,9 +63,22 @@ LANG_BY_SUFFIX = {
 LIGHT_STYLE = "friendly"
 DARK_STYLE = "github-dark"
 
+# Plain `.html` is Pygments' plain HtmlLexer, which does not know Angular's binding
+# syntax — `[(ngModel)]="…"`, `[options]="…"`, `(click)="…"`, `*ngIf="…"` — and tags every
+# bracket and dot in it `Error`, which both styles above render as a red-bordered box.
+# Caught here, against the body, because the giveaway is the syntax, not the path: a
+# component's own `.html` carries no `ng2` or `component` marker a filename check could
+# key off.
+_ANGULAR_BINDING_RE = re.compile(r'\[\(?[\w.-]+\)?\]=|\(\w[\w.-]*\)=|\*ng[A-Z]\w*\s*=')
+
 
 def _lexer_for(path: Path, body: str):
     """Filename first (it is authoritative), guessing only as a fallback."""
+    if path.suffix == ".html" and _ANGULAR_BINDING_RE.search(body):
+        try:
+            return get_lexer_by_name("html+ng2")
+        except ClassNotFound:
+            pass
     try:
         return get_lexer_for_filename(path.name, body)
     except ClassNotFound:
