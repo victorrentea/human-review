@@ -3322,3 +3322,56 @@ def test_an_excerpt_quoting_two_scenarios_goes_under_both(tmp_path):
     quoted, _ = build._share_excerpts(
         rel, [(p, None) for p in pumls], [{"ref": f"{rel}:35-48,52-65"}], set(), tmp_path)
     assert quoted[pumls[0]] and quoted[pumls[1]]
+
+
+def test_the_scenario_handle_is_read_from_the_title_and_from_a_divider(tmp_path):
+    """A picture is one scenario, so the scenario names it: the handle moved from the
+    `== divider ==` up into `title`. Both are read — a repository that has not been
+    through the generator split still has the dividers, and so does any diagram drawn
+    from several scenarios at once."""
+    rel = "test/add-visit.feature"
+    (tmp_path / "test").mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_text("x\n" * 30, encoding="utf-8")
+    titled = rel + ".remembers.genseq.puml"
+    (tmp_path / titled).write_text(
+        "@startuml\n"
+        f"title [[src://{rel}:4{{Click to open the test}} remembers the vet]]\n"
+        f"footer @generate_sequence in {rel} — generated from real traces\n"
+        "Browser -> Backend: [[src://src/main/java/Owner.java:14{tip} Owner.find]]\n"
+        "@enduml\n", encoding="utf-8")
+    assert build._scenarios_drawn(titled, rel, tmp_path) == [(4, "remembers the vet")]
+    divided = rel + ".genseq.puml"
+    (tmp_path / divided).write_text(
+        "@startuml\n"
+        f"title {rel}\n"
+        f"== [[src://{rel}:4{{t}} remembers the vet]] ==\nA -> B: x\n"
+        f"== [[src://{rel}:9{{t}} nobody attended]] ==\nA -> B: y\n"
+        "@enduml\n", encoding="utf-8")
+    assert build._scenarios_drawn(divided, rel, tmp_path) == [
+        (4, "remembers the vet"), (9, "nobody attended")]
+
+
+def test_the_pictures_tooltip_is_the_heading_not_the_markup_that_made_it():
+    """PlantUML copies a title verbatim into the SVG's own <title>, which is what a
+    browser shows on hover. With the heading now a creole link, that tooltip was the raw
+    `[[src://…{…} Add a visit]]` — markup, over a heading already on screen."""
+    svg = ('<svg><title>[[src://petclinic-test/src/add-visit.spec.ts:52'
+           '{Click to open the test} Add a visit attended by a vet]]</title>'
+           '<text>[[keep this]]</text></svg>')
+    out = build._plain_svg_title(svg)
+    assert "<title>Add a visit attended by a vet</title>" in out
+    assert "<text>[[keep this]]</text>" in out, "only the <title> element is rewritten"
+    # The colours a structural delta puts in its title are still stripped, as before.
+    assert build._plain_svg_title("<svg><title>DB - <color:red>Diff</color></title></svg>") \
+        == "<svg><title>DB - Diff</title></svg>"
+
+
+def test_a_sequence_the_branch_deleted_gets_no_frame(tmp_path):
+    """A test that loses its `@generate_sequence` leaves a deleted row in the manifest.
+    There is no picture behind it, so a frame for it would be a heading with nothing under
+    it — on a tab whose frames are now the list of tests."""
+    rows = [{"kind": "sequence", "status": "deleted", "name": "gone.genseq",
+             "source": "test/gone.feature.gone.genseq.puml"}]
+    out, weight, changes = build.render_testpairs(
+        {"title": ""}, {}, rows, tmp_path, tmp_path / ".human-review")
+    assert out == "" and weight == 0 and changes == 0

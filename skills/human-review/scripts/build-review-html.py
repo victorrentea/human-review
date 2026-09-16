@@ -633,7 +633,6 @@ pre.code code { white-space:pre; }
 .genseq-hot:hover .genseq-hit { fill:#1a4fa0; fill-opacity:.07; }
 .genseq-hot.genseq-open .genseq-hit { fill:#1a4fa0; fill-opacity:.12; }
 .genseq-hot.genseq-open a[href^="genseq:"] text { font-weight:700; }
-.genseq-hint { margin:.45rem 0 0; color:var(--muted); font-size:.82rem; }
 #genseq-panel { position:absolute; z-index:40; max-width:min(38rem,92vw); min-width:16rem;
                 background:var(--card); color:var(--fg); border:1px solid var(--line);
                 border-left:3px solid var(--link); border-radius:8px;
@@ -2953,7 +2952,6 @@ GENSEQ_JS = """<script>
       for (var key in part) details[key] = part[key];
     }
     var href = sourceOf(diagram);
-    var revealable = 0;
 
     diagram.querySelectorAll('svg a[href^="' + SCENARIO_PREFIX + '"]').forEach(function (link) {
       var target = atLine(href, (link.getAttribute('href') || '').slice(SCENARIO_PREFIX.length));
@@ -2978,7 +2976,6 @@ GENSEQ_JS = """<script>
         unwrap(link);
         return;
       }
-      revealable++;
 
       var index = -1;
       var state = {reset: function () { index = -1; group.classList.remove('genseq-open'); }};
@@ -2999,17 +2996,12 @@ GENSEQ_JS = """<script>
       });
     });
 
-    if (!revealable) return;
-    var hint = document.createElement('p');
-    hint.className = 'genseq-hint';
-    // One line. Everything else this paragraph used to say is either visible (the \u2197 on
-    // a linked label), said by a tooltip at the moment it applies, or a second way to do
-    // something already reachable.
-    hint.textContent = 'Click any arrow marked \u2295 for the SQL or the JSON behind it.';
-    // Above the whole viewer where there is one, not above the first .svgbox — that one
-    // lives inside the Diff pane, so the instructions vanished on New and Old.
-    (diagram.querySelector('.dgmviews') || diagram.querySelector('.svgbox'))
-      .insertAdjacentElement('beforebegin', hint);
+    // No instructions above the picture. There used to be a line here — "Click any arrow
+    // marked \u2295 for the SQL or the JSON behind it" — printed once per diagram, and on a
+    // tab that is now one picture per test that is once per test. The \u2295 is on the label
+    // itself, the cursor changes over it, and its tooltip says what a click will get you,
+    // at the moment the reader is looking at it. A sentence above the diagram says the
+    // same thing to everyone, including the reader who has already clicked one.
   });
 
   // The panel is placed in page coordinates, so a diagram scrolled sideways under it
@@ -3527,11 +3519,19 @@ def resolve_source_links(svg: str, root: Path) -> str:
 # therefore reads correctly on the page and as raw markup in the tooltip. Escaped there,
 # hence both spellings.
 CREOLE_IN_TITLE = re.compile(r"(?:<|&lt;)/?(?:color(?::[^>&]*)?|s|b|i|u)(?:>|&gt;)", re.I)
+#: `[[src://path:12{Click to open the test} Add a visit]]` → `Add a visit`. Since a
+#: sequence diagram's title became the scenario — clickable, straight into the test — the
+#: verbatim copy PlantUML drops into `<title>` is the whole creole link, so hovering the
+#: picture showed a reader the markup that made the heading they were already looking at.
+CREOLE_LINK = re.compile(r"\[\[[^\]\s{]+(?:\{[^}]*\})?\s*([^\]]*?)\s*\]\]")
 SVG_TITLE = re.compile(r"(<title>)(.*?)(</title>)", re.S | re.I)
 
 
 def _plain_svg_title(svg: str) -> str:
-    return SVG_TITLE.sub(lambda m: m[1] + CREOLE_IN_TITLE.sub("", m[2]).strip() + m[3], svg)
+    def plain(text: str) -> str:
+        return CREOLE_IN_TITLE.sub("", CREOLE_LINK.sub(r"\1", text)).strip()
+
+    return SVG_TITLE.sub(lambda m: m[1] + plain(m[2]) + m[3], svg)
 
 
 # A class/entity PlantUML draws as `<g class="entity">`: a `<rect>` box, an optional
@@ -4293,12 +4293,18 @@ def _focus_views(row, assets: Path, full_svg: Path, root: Path) -> str:
     )
 
 
-#: `== [[src://<test>:<line>{tip} <scenario title>]] ==` — the chapter header the sequence
-#: generators put above each scenario they drew. It is the only record of *which* tests in
-#: a file carry `@generate_sequence`: the tag is in the source, but the generator is what
-#: decides it produced a drawing, and the drawing is what this page can link to.
-GENSEQ_CHAPTER = re.compile(
-    r"^==\s*\[\[src://(?P<path>[^\s:{\]]+):(?P<line>\d+)"
+#: `[[src://<test>:<line>{tip} <scenario title>]]` — the handle the sequence generators
+#: leave on the scenario a picture draws. It is the only record of *which* tests in a file
+#: carry `@generate_sequence`: the tag is in the source, but the generator is what decides
+#: it produced a drawing, and the drawing is what this page can link to.
+#:
+#: Two places carry it, and both are read. `title …` is where it lives now that a picture
+#: is one scenario — the scenario names the diagram. `== … ==` is the chapter divider a
+#: picture drawn per *file* put above each scenario inside it, which is still what the
+#: committed diagrams of a repository that has not been through the generator split look
+#: like, and what `renderDiagram` still writes when handed several scenarios at once.
+GENSEQ_HANDLE = re.compile(
+    r"^(?:title|==)\s*\[\[src://(?P<path>[^\s:{\]]+):(?P<line>\d+)"
     r"(?:\{(?P<tip>[^}]*)\})?\s*(?P<title>[^\]]*?)\s*\]\]")
 
 
@@ -4346,16 +4352,16 @@ def _scenarios_drawn(puml_rel: str, test_rel: str, root: Path) -> list[tuple[int
     per scenario — the list survives because a diagram this page was built before that
     still has several, and reading it is how this page keeps working on both.
 
-    Only the test's own chapters count. The same `src://` handle is on every class and
-    endpoint the diagram names, and a line number from `OwnerRepository.java` resolved
-    against a feature file would point at nothing."""
+    Only the test's own handles count, and only on a `title` or `==` line. The same
+    `src://` scheme is on every class and endpoint the diagram names, and a line number
+    from `OwnerRepository.java` resolved against a feature file would point at nothing."""
     try:
         text = (root / puml_rel).read_text(encoding="utf-8")
     except OSError:
         return []
     found = {}
     for line in text.splitlines():
-        m = GENSEQ_CHAPTER.match(line.strip())
+        m = GENSEQ_HANDLE.match(line.strip())
         if m and m["path"] == test_rel:
             found.setdefault(int(m["line"]), (m["title"] or "").strip())
     return sorted(found.items())
@@ -4519,7 +4525,13 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     every such page had to be corrected by hand. A diagram whose test is not quoted, or
     not in this checkout at all, says so under its own heading rather than sitting there
     looking like it came from nowhere."""
-    rows = [r for r in select_rows(manifest_rows, block) if r["kind"] == "sequence"]
+    # A diagram the branch DELETED has no picture to pair with a test, and a frame
+    # titled by the file it used to be drawn from is the worst of both: it reads as a
+    # test, on a tab whose frames ARE the list of tests. It happens whenever a test
+    # loses its `@generate_sequence` / `@GenerateSequence` — a fact about the source,
+    # visible where the source is quoted rather than as an empty exhibit here.
+    rows = [r for r in select_rows(manifest_rows, block)
+            if r["kind"] == "sequence" and r.get("status") != "deleted"]
     snippets = list(block.get("snippets", []))
     parts, used = [], set()
     # The registry the 🕵️ on the covering-tests rows reads: one entry per scenario the
