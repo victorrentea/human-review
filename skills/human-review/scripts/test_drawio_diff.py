@@ -720,3 +720,47 @@ def test_the_verdict_records_the_way_back_to_automation_s_own_drawing(tmp_path, 
     # Not guessed: a script that rewrites a checked-in file is not something to derive
     # from a naming convention and then offer a reader a button for.
     assert "redraw" not in run()
+
+
+def test_the_verdict_records_the_way_back_to_the_committed_drawing(tmp_path, branch_png):
+    """The other way back, and the one asked for far more often: undo *my* edits.
+
+    It carries no flag, because unlike the patch script the committed drawing needs nothing
+    but the path to name it — so every run records it. And it is a `git stash push` and not
+    a `git checkout --`: an undo offered as a button on a web page gets pressed by accident,
+    and the layout has to survive that.
+    """
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for setting in (("user.email", "t@t"), ("user.name", "t")):
+        subprocess.run(["git", "-C", str(tmp_path), "config", *setting], check=True)
+    puml = tmp_path / "DomainModel.puml"
+    puml.write_text(DOMAIN_PUML)
+    diagram = tmp_path / "docs" / "CM.drawio.png"
+    diagram.parent.mkdir()
+    diagram.write_bytes(png_with(BASE))
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "base"], check=True)
+    diagram.write_bytes(branch_png.read_bytes())
+
+    def run(path="docs/CM.drawio.png", out="out"):
+        proc = subprocess.run(
+            [sys.executable, str(HERE / "drawio-diff.py"), "--base", "HEAD",
+             "--diagram", path, "--out-dir", out, "--name", "conceptual",
+             "--renderer", "builtin", "--concepts", "DomainModel.puml"],
+            capture_output=True, text=True, cwd=tmp_path)
+        assert proc.returncode == 0, proc.stderr
+        return json.loads((tmp_path / out / "conceptual-diff.json").read_text())
+
+    revert = run()["revert"]
+    assert revert["command"] == ("git stash push -m 'human-review: hand edits to "
+                                "docs/CM.drawio.png' -- docs/CM.drawio.png")
+    assert revert["ref"] == "HEAD"
+    assert Path(revert["cwd"]).resolve() == tmp_path.resolve()
+
+    # A diagram this branch introduces has nothing committed to go back to, and the offer
+    # has to be absent rather than wrong: `git stash push` on a path git does not know
+    # fails, and "undo" would in any case mean deleting the picture the reader is looking
+    # at. A control that errors when pressed is worse than one that was never drawn.
+    fresh = tmp_path / "docs" / "NEW.drawio.png"
+    fresh.write_bytes(branch_png.read_bytes())
+    assert "revert" not in run("docs/NEW.drawio.png", "out-new")

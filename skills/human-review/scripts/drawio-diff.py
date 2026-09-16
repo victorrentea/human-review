@@ -799,6 +799,20 @@ def read_at(ref: str, path: str) -> str:
     return extract_xml(blob.stdout)
 
 
+def committed_at_head(path: str) -> bool:
+    """Is there a committed drawing to go back to?
+
+    The question the undo offer stands or falls on. A diagram this branch introduces has
+    no version at HEAD, so "put the committed one back" would mean deleting the file the
+    reader is looking at — and `git stash push` on a path git does not know fails outright,
+    which is worse: a control on the page that errors when pressed. Asked of HEAD and not
+    of the index, because the index is where a half-finished `git add` lives and that is
+    not a state anyone means by "what this branch committed".
+    """
+    return subprocess.run(["git", "cat-file", "-e", f"HEAD:{path}"],
+                          capture_output=True).returncode == 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -899,6 +913,27 @@ def main():
             "command": f"{restore} && {args.redraw}",
             "diagram": str(source),
             "base": args.base,
+        }
+    # The other way back, and the one wanted far more often than starting over: undo *my*
+    # edits. The redraw above goes all the way to the base and lets the patch script stage
+    # what the branch added — in red, deliberately unplaced, so the guardrail keeps failing
+    # until a human drags it somewhere. That is the to-do state, and it is not a green one.
+    # A reader who has just made a mess of a layout wants neither the base nor a to-do:
+    # they want the drawing this branch already committed, which is the last one that
+    # passed. That is derivable from nothing but the path — no flag, no script, no naming
+    # convention — so unlike the redraw it is recorded on every run.
+    #
+    # `git stash push` and not `git checkout --`, though both put the file back: only one
+    # of them keeps what it took. The undo is a button on a web page, it will be pressed
+    # by accident, and the difference between the two commands is whether that costs the
+    # reader an afternoon of layout or one `git stash pop`.
+    if args.base and committed_at_head(args.diagram):
+        stash = shlex.quote(f"human-review: hand edits to {args.diagram}")
+        verdict["revert"] = {
+            "cwd": str(Path.cwd()),
+            "command": f"git stash push -m {stash} -- {shlex.quote(str(source))}",
+            "diagram": str(source),
+            "ref": "HEAD",
         }
     (out_dir / f"{stem}-diff.json").write_text(json.dumps(verdict, indent=2))
 

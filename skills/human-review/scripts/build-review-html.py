@@ -608,7 +608,7 @@ pre.code code { white-space:pre; }
 /* A sentence of its own, and a sentence's worth of air before it: the offer that throws
    work away is found by the reader who goes looking for it rather than met by the reader
    who does not. */
-.rerun .rerun-redraw::before { content:"\\00a0\\00a0"; }
+.rerun .rerun-undo::before, .rerun .rerun-redraw::before { content:"\\00a0\\00a0"; }
 /* The second route, in brackets and quieter than the first: `(or run this)` is the aside
    for the reader who wants to read the command, paste it elsewhere, or is holding a
    static copy where nothing runs. The brackets keep their own colour so the offer inside
@@ -3989,7 +3989,7 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
             + rerun_html(verdict.get("rerun"), rebuild, name,
                          verdict.get("drawio_url") or "",
                          verdict.get("drawio_web_url") or "",
-                         verdict.get("redraw")))
+                         verdict.get("redraw"), verdict.get("revert")))
 
 
 def drawio_open_html(app_url: str, web_url: str = "") -> str:
@@ -4062,6 +4062,43 @@ def _run_or_read(fold_id: str, act: str, static_tip: str, served_tip: str,
             "run this</button>)</span>")
 
 
+def revert_html(revert: dict | None, rerun: dict, rebuild: str,
+                name: str) -> tuple[str, str]:
+    """Undo my edits: back to the drawing this branch committed, which is the green one.
+
+    The sibling offer below this one starts over — base plus the repository's patch script
+    — and that lands on a diagram whose new boxes are staged and red *on purpose*, with the
+    guardrail still failing. It is the to-do state, and a reader who has just dragged a box
+    somewhere wrong is not asking for a to-do; they are asking for the last state that
+    passed. That is the committed one, and nothing but the path is needed to name it, which
+    is why this offer needs no flag while the redraw needs `--redraw`.
+
+    Folded like the redraw, and for the same reason: it throws a layout away. The
+    difference is where the layout goes. `drawio-diff.py` records a `git stash push`
+    rather than a `git checkout --`, so the second click on this control is survivable —
+    the sentence says so, because a reader weighing an undo needs to know that before
+    pressing it, not afterwards.
+    """
+    if not revert or not revert.get("command"):
+        return "", ""
+    line = (f'cd {shlex.quote(revert["cwd"])} \\\n  && {revert["command"]} \\\n'
+            f'  && {rerun["command"]} \\\n  && {rebuild}')
+    act = ""
+    if name:
+        aid = declare_action(f"drawio-undo:{name}", line, reload=True,
+                             label=f"Undo hand edits to {name} and rebuild this page")
+        act = f' data-action="{html.escape(aid, quote=True)}"'
+    tip = ("Puts back the drawing this branch committed — the last one its guardrail "
+           "passed. Your layout is not lost: it goes to the git stash, and "
+           "`git stash pop` brings it back.")
+    fold = f"undo-{name or 'diagram'}"
+    return ('<span class="rerun-undo">To undo your own edits, '
+            + _run_or_read(fold, act, tip,
+                           "Runs it here, then reloads with the committed drawing back",
+                           "Putting the committed drawing back…")
+            + ".</span>", _cmdfold(fold, line))
+
+
 def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
                 name: str) -> tuple[str, str]:
     """The one offer under this picture that the reader cannot reconstruct: start over.
@@ -4110,7 +4147,8 @@ def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
 
 
 def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
-               app_url: str = "", web_url: str = "", redraw: dict | None = None) -> str:
+               app_url: str = "", web_url: str = "", redraw: dict | None = None,
+               revert: dict | None = None) -> str:
     """One line under the drawing: where to edit it, and the two ways to pick the edit up.
 
     The command is not a convenience. The picture above is inlined into the HTML, and it
@@ -4163,6 +4201,11 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     # them what served mode is; a sentence that quietly reads differently in the two copies
     # of the same report teaches them the report is unreliable.
     fold = f"cmd-{name or 'diagram'}"
+    # Gentlest first. The three offers on this line go one way only — refresh the report,
+    # undo my edits, start over — and a reader who stops reading partway through has
+    # stopped on the milder of the two ways back, not on the one that discards the branch's
+    # drawing as well as their own.
+    undo, undo_fold = revert_html(revert, rerun, rebuild, name)
     over, over_fold = redraw_html(redraw, rerun, rebuild, name)
     return ('<div class="rerun">'
             f'<p class="dgm-open">{f"Edit this diagram in {edit}, then " if edit else ""}'
@@ -4172,8 +4215,8 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
             # Second sentence, same line: it is the same subject — this drawing, and what
             # you can do to it — and a paragraph of its own would put the offer nobody
             # takes on most visits on a line of its own under the picture.
-            + over + '</p>'
-            + _cmdfold(fold, line) + over_fold + '</div>')
+            + undo + over + '</p>'
+            + _cmdfold(fold, line) + undo_fold + over_fold + '</div>')
 
 
 def expand_drawio(text: str, out_dir: Path, root: Path, rebuild: str) -> str:
