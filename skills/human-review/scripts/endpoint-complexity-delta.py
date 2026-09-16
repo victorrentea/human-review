@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """What the change cost in entry-point complexity, ranked against the whole app.
 
-`EndpointComplexityExtractorTest` answers "how complex is each entry point's whole flow
-right now" — REST endpoints, MCP tools, message listeners and jobs alike. A reviewer needs
-the derivative of that: which entry points this branch made heavier, by how much, and
-whether that lands on an already-expensive one or turns a cheap one into a hot spot. So
-this diffs two of its JSON snapshots and renders the full ranked list, grouped by kind —
-touched rows called out, untouched rows kept for scale, because "+3" only means something
-next to the numbers it is standing among.
+`endpoint-complexity.py` answers "how complex is each entry point's whole flow right now"
+— REST endpoints, MCP tools, message listeners and jobs alike. A reviewer needs the
+derivative of that: which entry points this branch made heavier, by how much, and whether
+that lands on an already-expensive one or turns a cheap one into a hot spot. So this diffs
+two of its JSON snapshots and renders the full ranked list, grouped by kind — touched rows
+called out, untouched rows kept for scale, because "+3" only means something next to the
+numbers it is standing among.
 
 Colour reads as authorship, not as judgement: green is what the branch ADDED, red is what
 it REMOVED.
 
-Get the two snapshots by running that test at the merge-base and at HEAD:
-    git show <merge-base>:petclinic-backend/docs/generated/endpoint-complexity.json > before.json
-    mvn -q test -Dtest=EndpointComplexityExtractorTest   # writes the "after" in place
+Take the two snapshots at the merge-base and at HEAD:
+    endpoint-complexity.py --base origin/main --out before.json
+    endpoint-complexity.py --out after.json
+Any producer of that schema will do — a project that measures its own entry points points
+`complexity.before` / `complexity.after` in human-review.json at its two files instead.
 
 Usage:
     endpoint-complexity-delta.py before.json after.json [--out fragment.html] [--json]
@@ -141,19 +143,18 @@ def _path_cell(r) -> str:
 # flow was, how big it is now, and which part of it this branch is responsible for. A
 # reviewer who hovers is asking exactly that, so each segment answers for itself — and says
 # where the baseline came from, because "12 on main" is a number people reasonably suspect
-# of being an estimate. It is not: it is the same extractor's committed output at the
+# of being an estimate. It is not: the same extractor read it off the source at the
 # merge-base. `{base}` is the real base branch, never the word "main" hardcoded — half the
 # repositories this runs in do not have one.
 TIP_BASELINE = ("{baseline} on {base} before this branch. Measured, not estimated — the "
-                "baseline is the committed complexity JSON at the merge-base, from the same "
-                "extractor as the new number.")
+                "same extractor read the merge-base's own source for this number.")
 TIP_UP = "+{delta} added by this branch — {baseline} → {total}."
 TIP_DOWN = "−{delta} removed by this branch — {baseline} → {total}."
 TIP_BAR = ("Whole-flow complexity behind this entry point: {baseline} on {base} "
            "→ {total} on this branch.")
 TIP_SAME = ("Unchanged at {total} — this branch did not touch this flow. Measured, not "
-            "estimated: the same number sits in the committed complexity JSON at the "
-            "merge-base with {base}.")
+            "estimated: the same extractor reads the same number at the merge-base "
+            "with {base}.")
 TIP_NEW = "New on this branch — {total}, none of it inherited: there was no such entry point on {base}."
 TIP_GONE = "Removed by this branch — {baseline} on {base}, gone here."
 

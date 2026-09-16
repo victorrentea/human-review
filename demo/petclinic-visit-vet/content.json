@@ -191,7 +191,7 @@
           "id": "complexity-delta"
         }
       ],
-      "tip": "Read from bytecode by the extractor test."
+      "tip": "Cognitive complexity of the whole flow behind each entry point, read from source at both ends of the branch."
     },
     {
       "id": "logging",
@@ -468,12 +468,6 @@
     },
     {
       "id": "complexity-delta",
-      "embed": {
-        "src": "assets/endpoint-complexity-explained.html",
-        "class": "oaviframe",
-        "label": "endpoint-complexity-explained — every increment, with a running total",
-        "missing": "run mvn test -Dtest=EndpointComplexityExtractorTest"
-      },
       "includeHtml": "assets/complexity-delta.html",
       "title": "",
       "body": ""
