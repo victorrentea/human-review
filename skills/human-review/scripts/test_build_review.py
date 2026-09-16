@@ -3276,3 +3276,49 @@ def test_the_paired_card_draws_its_controls_and_its_name_on_one_row():
     assert "(views.closest('.diagram') || views).querySelectorAll('.dgmbar button[data-go]')" in js
     assert "bar.closest('.diagram').querySelector('.dgmviews')" in js, \
         "the merged row keeps the large hit area the header used to be"
+
+
+def test_one_files_excerpts_are_shared_out_among_its_scenarios(tmp_path):
+    """One diagram per test file needed no sharing. Per scenario, four pictures of one
+    .feature would each have repeated the same thirty lines — or, the way it first worked
+    out, the first would have taken all of them and the rest shown none."""
+    rel = "test/two.feature"
+    (tmp_path / "test").mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_text("x\n" * 40, encoding="utf-8")
+    pumls = []
+    for slug, line, title in (("one", 10, "one"), ("two", 30, "two")):
+        puml = f"{rel}.{slug}.genseq.puml"
+        (tmp_path / puml).write_text(
+            f"@startuml\n== [[src://{rel}:{line}{{t}} {title}]] ==\nA -> B: x\n@enduml\n",
+            encoding="utf-8")
+        pumls.append(puml)
+    entries = [(p, None) for p in pumls]
+    snippets = [{"ref": f"{rel}:8-14"},          # around the first scenario
+                {"ref": f"{rel}:28-34"},          # around the second
+                {"ref": f"{rel}:1-4"}]            # a Background: nobody's in particular
+    used = set()
+    quoted, ranges = build._share_excerpts(rel, entries, snippets, used, tmp_path)
+    assert len(used) == 3, "every excerpt of a paired file counts as used"
+    assert ranges[pumls[0]] == "8–14, 1–4", "the unattached block leads, under the first"
+    assert ranges[pumls[1]] == "28–34"
+
+
+def test_an_excerpt_quoting_two_scenarios_goes_under_both(tmp_path):
+    """`35-48,52-65` is ONE snippet in the content file, not two. Giving it to one pair
+    leaves the other claiming its test is "not excerpted here", which is false."""
+    assert build._line_spans("35-48,52-65") == [(35, 48), (52, 65)]
+    assert build._line_spans("12") == [(12, 12)]
+    assert build._line_spans("what") == []
+    rel = "test/two.feature"
+    (tmp_path / "test").mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_text("x\n" * 70, encoding="utf-8")
+    pumls = []
+    for slug, line in (("one", 35), ("two", 52)):
+        puml = f"{rel}.{slug}.genseq.puml"
+        (tmp_path / puml).write_text(
+            f"@startuml\n== [[src://{rel}:{line}{{t}} {slug}]] ==\nA -> B: x\n@enduml\n",
+            encoding="utf-8")
+        pumls.append(puml)
+    quoted, _ = build._share_excerpts(
+        rel, [(p, None) for p in pumls], [{"ref": f"{rel}:35-48,52-65"}], set(), tmp_path)
+    assert quoted[pumls[0]] and quoted[pumls[1]]

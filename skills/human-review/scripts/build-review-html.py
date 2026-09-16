@@ -4403,6 +4403,23 @@ def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
             + "</details>")
 
 
+def _line_spans(ref_tail: str) -> list[tuple[int, int]]:
+    """`35-48,52-65` → [(35, 48), (52, 65)]; `12` → [(12, 12)].
+
+    One snippet reference can carry several ranges — that is how a test is quoted without
+    the forty lines of setup between its two halves. Anything unparseable yields nothing,
+    which is the honest answer: a reference this cannot read is a reference that cannot be
+    said to cover any scenario."""
+    spans = []
+    for part in ref_tail.split(","):
+        lo, _, hi = part.strip().partition("-")
+        try:
+            spans.append((int(lo), int(hi or lo)))
+        except ValueError:
+            continue
+    return spans
+
+
 def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
     """Hand each of one test file's pictures the excerpts that belong to it.
 
@@ -4411,12 +4428,17 @@ def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
     repeated the same thirty lines, or — the way it worked out before this — the first
     would have taken all of them and the rest would have shown none.
 
-    The split is derived, not authored. An excerpt is a line range in the content file, and
-    a range that contains a scenario's declaration line is an excerpt *of* that scenario;
-    the generator already told us which line each picture starts at. What matches nothing
-    — a Background, a set of imports, a helper below the last scenario — goes under the
-    first picture, where a reader meets it before the scenarios that use it. Nothing is
-    dropped and nothing is shown twice.
+    The split is derived, not authored. An excerpt is a set of line ranges in the content
+    file, and a range that contains a scenario's declaration line is an excerpt *of* that
+    scenario; the generator already told us which line each picture starts at. What matches
+    nothing — a Background, a set of imports, a helper below the last scenario — goes under
+    the first picture, where a reader meets it before the scenarios that use it.
+
+    One excerpt often quotes two scenarios at once (`35-48,52-65` is one snippet in the
+    content file, not two), and then it goes under *both*. The alternative is to pick one
+    and leave the other pair claiming its test is "not excerpted here", which is false —
+    and the pairs are folded shut, so a block quoted twice costs the reader nothing until
+    they ask for it.
     """
     mine = [x for x in snippets if x["ref"].rpartition(":")[0] == test_rel]
     used.update(id(x) for x in mine)
@@ -4425,15 +4447,11 @@ def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
                 for rel, _ in entries}
     first = entries[0][0]
     for x in mine:
-        span = x["ref"].rpartition(":")[2]
-        lo, _, hi = span.partition("-")
-        try:
-            lo, hi = int(lo), int(hi or lo)
-        except ValueError:
-            lo, hi = 0, -1
-        owner = next((rel for rel, _ in entries
-                      if any(lo <= ln <= hi for ln in lines_of[rel])), first)
-        quoted[owner].append(x)
+        spans = _line_spans(x["ref"].rpartition(":")[2])
+        owners = [rel for rel, _ in entries
+                  if any(lo <= ln <= hi for lo, hi in spans for ln in lines_of[rel])]
+        for owner in (owners or [first]):
+            quoted[owner].append(x)
     return (
         {rel: [snippet_html(x["ref"], x.get("caption"), root) for x in xs]
          for rel, xs in quoted.items()},
