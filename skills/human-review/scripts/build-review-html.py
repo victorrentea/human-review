@@ -1087,39 +1087,56 @@ body.showall .paneltag { display:block; }
 body.showall .panel { border-top:1px solid var(--line); }
 body.showall .panel:first-of-type { border-top:0; }
 /* A test and the sequence its run recorded are one exhibit, not two: the diagram is
-   evidence for the test directly above it. One ruled edge holds the pair together, and
+   evidence for the test directly above it. One rounded card holds the pair together, and
    one fold puts the whole exhibit away — closing over the test alone used to leave its
-   diagram standing there with nothing above it to explain what it draws. */
-.testpair { border-left:2px solid var(--line); padding-left:1rem; margin:1.5rem 0 2.4rem; }
-/* Shut, a pair is one line of a table of contents, and the air an exhibit needs around it
-   is exactly what makes a list of five unreadable — they were a screen apart with nothing
-   in between. Open, the old spacing comes back: then it really is an exhibit again. */
-details.testpair:not([open]) { margin:.3rem 0; }
+   diagram standing there with nothing above it to explain what it draws.
+   A card rather than the ruled left edge it used to be, because shut is the state this tab
+   opens in: six edges down the left of a page are six marks in a margin, while six cards
+   are six things to click, which is what they are. */
+.testpair { background:var(--card); border:1px solid var(--line); border-radius:12px;
+            padding:.4rem .95rem; margin:.55rem 0; }
+/* The same margin open and shut, deliberately. They used to differ — a shut pair took
+   .3rem and an open one 1.5rem above it — and opening the FIRST pair therefore pushed the
+   whole list down by the difference, which read as a gap appearing above a list nobody had
+   touched. The air an open exhibit needs goes inside the card, where it cannot move
+   anything but its own contents. */
+details.testpair[open] { padding-bottom:.8rem; }
 /* Where the 🕵️ landed. A pair looks exactly like the three pairs around it, and the
    reader arrives a whole tab away from the row they clicked, so the pair says once that
-   it is the one that was asked for. Its own left border does the saying — nothing moves,
+   it is the one that was asked for. Its own border does the saying — nothing moves,
    nothing is added, and a second click on a second row can say it again. A permanent
    mark would still be there then, pointing at the previous question. */
-@keyframes seq-flash { from { border-left-color:var(--link); } to { border-left-color:var(--line); } }
+@keyframes seq-flash { from { border-color:var(--link); } to { border-color:var(--line); } }
 .testpair.seq-hit { animation:seq-flash 2s ease-out 1; }
-.testpair > .snippet, .testpair > .diagram { margin-top:.7rem; margin-bottom:0; }
-/* The quoted test and the diagram under it are one card in two halves — the test, then
-   the test drawn as a sequence. The test half is its own fold, closed on load: the tab
-   is about the drawing, and the source is one click away under a summary naming the
-   lines it quotes. Opened, the snippets stack with no air between them and the diagram
-   continues straight down from the last one; only the outer corners are round. */
-details.testsrc { margin:.7rem 0 0; }
-details.testsrc > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.35rem;
-  align-items:center; color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace;
-  padding:.2rem 0; }
+.testpair > .snippet { margin:.5rem 0 0; }
+/* Inside the card the picture needs no frame of its own: a bordered box inside a bordered
+   box is two statements where the reader is looking at one thing. The card is the frame,
+   and what is left of the diagram is the diagram. */
+.testpair > .diagram { background:transparent; border:0; border-radius:0;
+  padding:0; margin:.55rem 0 0; }
+/* The quoted test, above the picture it explains, behind one control.
+   Closed on load: the tab is about the drawing, and the source is one click away.
+   That control is a single row — `Show Test`, then the file the bar names, the lines it
+   quotes and what changed in them — because the row that used to sit above the bar said
+   the line numbers a second time and nothing else. `SEQFOLD_JS` keeps a click on one of
+   the bar's own links from toggling the fold under it. */
+details.testsrc { margin:.55rem 0 0; }
+details.testsrc > summary { cursor:pointer; list-style:none; display:flex; gap:.5rem;
+  align-items:center; color:var(--muted); font-size:.82rem;
+  font-family:ui-monospace,Menlo,monospace; padding:.15rem 0; }
 details.testsrc > summary::-webkit-details-marker { display:none; }
 details.testsrc > summary::before { content:"▾"; font-size:.75rem; }
 details.testsrc:not([open]) > summary::before { content:"▸"; }
-details.testsrc > summary:hover { color:var(--link); }
-details.testsrc > .snippet { margin:.3rem 0 0; border-radius:8px 8px 0 0; }
-details.testsrc > .snippet ~ .snippet { margin-top:0; border-top:0; border-radius:0; }
-details.testpair > details.testsrc[open] ~ .diagram { margin-top:0; border-top:0; border-radius:0 0 8px 8px; }
-details.testpair > details.testsrc:not([open]) ~ .diagram { margin-top:.4rem; }
+details.testsrc > summary:hover > .foldlbl { color:var(--link); }
+/* Two words for two states, in the element's own content rather than in the markup: the
+   fold is a `<details>`, so the browser already knows which state it is in and nothing has
+   to be told about it when it changes. */
+.foldlbl { flex:0 0 auto; }
+details.testsrc > summary > .foldlbl::after { content:"Show Test"; }
+details.testsrc[open] > summary > .foldlbl::after { content:"Hide Test"; }
+/* The hoisted bar keeps its own right alignment and takes the rest of the row. */
+details.testsrc > summary > .srcbar { flex:1 1 auto; margin:0; }
+details.testsrc > .snippet { margin:.4rem 0 0; }
 .testlead { margin:.7rem 0 0; }
 /* The fold's own summary: the names of the scenarios drawn inside it. It used to be the
    file name, set quiet and monospace because it was a control beside a picture that was
@@ -2141,6 +2158,11 @@ SEQFOLD_JS = """<script>
 //
 // A reader arriving on a deep link is the exception: the pair the link names is what they
 // asked for, and it stays open.
+//
+// Which pair is open is in the URL, both ways round. A reader who opens one and sends the
+// address sends the picture they are looking at, not the tab it is on — the same handle
+// the 🕵️ on the Tests tab already jumps through. `replaceState`, not `location.hash`,
+// because assigning the hash scrolls the page out from under the click that caused it.
 (function () {
   var wanted = decodeURIComponent((location.hash || '').slice(1));
   // Not scoped to a panel id: the tab this block lands on is named by the content file.
@@ -2148,6 +2170,44 @@ SEQFOLD_JS = """<script>
     if (pair.id && pair.id === wanted) return;
     pair.open = false;
   });
+
+  function remember(id) {
+    if (history.replaceState) history.replaceState(null, '', '#' + id);
+    else location.hash = id;
+  }
+
+  document.querySelectorAll('details.testpair[id]').forEach(function (pair) {
+    // `toggle` fires asynchronously, so the folding above arrives here too — harmlessly:
+    // a pair being shut only rewrites the hash when the hash is naming that very pair,
+    // which at load is true of the one pair this loop leaves open.
+    pair.addEventListener('toggle', function () {
+      var hash = decodeURIComponent((location.hash || '').slice(1));
+      if (pair.open) remember(pair.id);
+      else if (hash === pair.id) {
+        var panel = pair.closest('.panel');
+        remember(panel && panel.id ? panel.id : '');
+      }
+    });
+  });
+
+  // The fold's row carries the quoted test's source bar, and those are links: to VS Code,
+  // to the compare page on github.com. A click on one is also a click inside a <summary>,
+  // which a browser may read as a request to toggle the fold — so the reader would open
+  // the file AND have the block they were reading fold away under them.
+  //
+  // The fold is put back rather than the click stopped. `stopPropagation` is the usual
+  // remedy and it is wrong here: the handler that turns a `vscode://` reference into an
+  // *open diff* is a listener on `document`, so silencing the event on its way there would
+  // trade one bug for a better-hidden one. This runs after the browser's own activation
+  // behaviour and before the next paint, so a fold that never moved is left alone and one
+  // that did is put back with nothing drawn in between.
+  document.addEventListener('click', function (ev) {
+    var link = ev.target.closest && ev.target.closest('details.testsrc > summary a');
+    if (!link) return;
+    var fold = link.closest('details.testsrc');
+    var was = fold.open;
+    requestAnimationFrame(function () { if (fold.open !== was) fold.open = was; });
+  }, true);
 })();
 </script>"""
 
@@ -4490,8 +4550,39 @@ def _scenarios_drawn(puml_rel: str, test_rel: str, root: Path) -> list[tuple[int
     return sorted(found.items())
 
 
+#: The header `extract-snippet.py` puts at the top of every quoted block: the two handles,
+#: the file name with the lines it quotes, and what changed in it. Matched rather than
+#: rebuilt, because only that module knows what the bar says — the window may have snapped
+#: past a leading comment, and the badge is computed against the review's own base. It has
+#: no nested `<div>`, so the first `</div>` is its own; anything else would need a parser.
+SRCBAR = re.compile(r'<div class="srcbar">.*?</div>', re.S)
+
+
+def _fold_over(quoted: list[str]) -> tuple[str, list[str]]:
+    """Move the first quoted block's source bar out of the block and onto the fold's row.
+
+    The row above a quoted test used to read `the test · lines 60–61,70–94,124–155`, and
+    the bar immediately below it read `AddVisitApiTest.java:60-61,70-94,124-155`. The same
+    line numbers twice, the second time beside the file they belong to — so the first copy
+    was saying nothing the second did not say better, and it cost a row on a tab whose
+    whole shape is one row per thing.
+
+    What is left of that row is the only thing it ever said that the bar does not: whether
+    the test is open. So the control and the bar become one line — `Show Test`, then the
+    file, its lines, and what changed in it — and the block underneath keeps the code
+    alone. Only the first block's bar moves: a second excerpt of the same file is a
+    different window and still has to name itself.
+    """
+    if not quoted:
+        return "", []
+    m = SRCBAR.search(quoted[0])
+    if not m:
+        return "", list(quoted)
+    return m.group(0), [quoted[0][: m.start()] + quoted[0][m.end():], *quoted[1:]]
+
+
 def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
-                 quoted: list[str] = (), ranges: str = "",
+                 quoted: list[str] = (),
                  scenarios: list[tuple[int, str]] = ()) -> str:
     """The test and the sequence its run recorded, foldable together — with the quoted
     test folded closed inside it, and the whole pair folded closed too.
@@ -4508,21 +4599,21 @@ def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
     test alone and leave the diagram standing underneath, orphaned. A sequence is a drawing
     of one test — without the test above it, it is a picture of nothing.
 
-    The summary names the *scenarios*, not the file. A reader on this tab is looking for
-    "the one where the vet is remembered", which is the name it has on the Tests tab and
-    in the diagram's own chapter headers; `AddVisitSequenceTest.java` is the name of the
-    box those live in and answers a question nobody asked. The path is not lost — it is
-    the summary's tooltip, and the quoted block under it prints it in full. A pair whose
-    generator recorded no chapter falls back to the basename, which is all there is.
+    The summary names the *scenarios*, not the file — `AddVisitApiTest: remembers the vet
+    who attended it`, which is what the generator wrote into the diagram's own title and
+    what the Tests tab calls it. The path is not lost: it is the summary's tooltip, and the
+    fold's row under it names the file, the lines it quotes and what changed in them. A
+    pair whose generator recorded no chapter falls back to the basename, all there is.
     """
     titles = [t for _, t in scenarios if t]
     name = (" · ".join(html.escape(t) for t in titles) if titles
             else html.escape(test_rel.rsplit("/", 1)[-1]))
     src = ""
-    if quoted:
+    bar, blocks = _fold_over(list(quoted))
+    if blocks:
         src = ('<details class="testsrc">'
-               f'<summary>the test{" · lines " + html.escape(ranges) if ranges else ""}</summary>'
-               + "\n".join(x.strip("\n") for x in quoted)
+               f'<summary><span class="foldlbl"></span>{bar}</summary>'
+               + "\n".join(x.strip("\n") for x in blocks)
                + "</details>\n")
     return (f'<details class="testpair" open id="{pair_anchor(puml_rel)}"'
             f' data-test="{html.escape(test_rel)}">'
@@ -4568,6 +4659,10 @@ def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
     and leave the other pair claiming its test is "not excerpted here", which is false —
     and the pairs are folded shut, so a block quoted twice costs the reader nothing until
     they ask for it.
+
+    The excerpts come back as they went in, unrendered: which excerpt belongs to which
+    picture is the decision this function exists to make, and it is one a test can check
+    by reading refs rather than by searching rendered HTML for line numbers.
     """
     mine = [x for x in snippets if x["ref"].rpartition(":")[0] == test_rel]
     used.update(id(x) for x in mine)
@@ -4581,12 +4676,7 @@ def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
                   if any(lo <= ln <= hi for lo, hi in spans for ln in lines_of[rel])]
         for owner in (owners or [first]):
             quoted[owner].append(x)
-    return (
-        {rel: [snippet_html(x["ref"], x.get("caption"), root) for x in xs]
-         for rel, xs in quoted.items()},
-        {rel: ", ".join(x["ref"].rpartition(":")[2].replace("-", "–") for x in xs)
-         for rel, xs in quoted.items()},
-    )
+    return quoted
 
 
 def _unquoted_note(test_rel: str, root: Path) -> str:
@@ -4699,11 +4789,11 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
             unchanged += 1
 
     for test_rel, entries in plan.items():
-        quoted_by_pair, ranges_by_pair = _share_excerpts(
-            test_rel, entries, snippets, used, root)
+        quoted_by_pair = _share_excerpts(test_rel, entries, snippets, used, root)
         for puml_rel, row in entries:
             scenarios = _scenarios_drawn(puml_rel, test_rel, root)
-            quoted = quoted_by_pair[puml_rel]
+            quoted = [snippet_html(x["ref"], x.get("caption"), root)
+                      for x in quoted_by_pair[puml_rel]]
             # No lead. The scenario names used to be printed here as deep links, and every
             # one of them was said again a few hundred pixels lower: the diagram's own
             # section headers are those same titles, linked to those same lines, drawn by
@@ -4713,8 +4803,7 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
             pieces.append(render_diagrams(merged, root, out_dir, [row], bare=test_rel)
                           if row is not None
                           else _unchanged_sequence(puml_rel, test_rel, root, out_dir))
-            parts.append(_folded_pair(puml_rel, test_rel, pieces, quoted,
-                                      ranges_by_pair[puml_rel], scenarios))
+            parts.append(_folded_pair(puml_rel, test_rel, pieces, quoted, scenarios))
             register(puml_rel, scenarios)
 
     orphaned = [x for x in snippets if id(x) not in used]

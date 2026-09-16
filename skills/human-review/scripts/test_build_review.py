@@ -3257,6 +3257,37 @@ def test_a_pair_is_named_by_its_scenarios_and_addressed_by_its_test(tmp_path):
     assert ">add-visit.feature</summary>" in build._folded_pair(puml, rel, [""])
 
 
+def test_the_fold_over_a_quoted_test_is_the_blocks_own_source_bar(tmp_path):
+    """`the test · lines 60–61,70–94,124–155` above a bar reading `AddVisitApiTest.java:
+    60-61,70-94,124-155` said the line numbers twice and the second copy said them beside
+    the file they belong to. What is left of the row is the one thing the bar does not
+    carry — whether the test is open — so the control and the bar are one line."""
+    rel, puml = _genseq_fixture(tmp_path)
+    fig = ('<figure class="snippet"><div class="srcbar"><a>x.feature:4</a>'
+           '<span class="code-badge">2 lines changed</span></div><pre>code</pre></figure>')
+    out = build._folded_pair(puml, rel, ["<p>picture</p>"], [fig],
+                             scenarios=[(4, "remembers the vet")])
+    assert '<summary><span class="foldlbl"></span><div class="srcbar">' in out
+    assert "the test · lines" not in out, "the row it replaced"
+    assert out.count('<div class="srcbar">') == 1, "hoisted, not copied"
+    assert "<pre>code</pre>" in out
+    # Two words for two states, and neither is in the markup: the <details> knows which.
+    assert 'content:"Show Test"' in build.CSS and 'content:"Hide Test"' in build.CSS
+    # A second excerpt of the same file is a different window and still names itself.
+    two = build._folded_pair(puml, rel, [""], [fig, fig])
+    assert two.count('<div class="srcbar">') == 2
+
+
+def test_which_pair_is_open_is_in_the_url(tmp_path):
+    """A reader who opens a sequence and sends the address sends the picture, not the tab
+    it is on. And a click on one of the bar's own links must not fold away the block it
+    was about — without silencing the event the editor handler is waiting for."""
+    js = build.SEQFOLD_JS
+    assert "history.replaceState" in js and "remember(pair.id)" in js
+    assert "pair.closest('.panel')" in js, "closing gives the hash back to the tab"
+    assert "requestAnimationFrame" in js and "stopPropagation()" not in js
+
+
 def test_a_pair_is_born_open_and_folded_by_a_script_that_runs_after_the_measuring(tmp_path):
     """The tab opens on its table of contents, but the markup cannot say so: the click
     targets inside every diagram are sized with getBBox(), which returns zeros inside a
@@ -3317,10 +3348,11 @@ def test_one_files_excerpts_are_shared_out_among_its_scenarios(tmp_path):
                 {"ref": f"{rel}:28-34"},          # around the second
                 {"ref": f"{rel}:1-4"}]            # a Background: nobody's in particular
     used = set()
-    quoted, ranges = build._share_excerpts(rel, entries, snippets, used, tmp_path)
+    quoted = build._share_excerpts(rel, entries, snippets, used, tmp_path)
     assert len(used) == 3, "every excerpt of a paired file counts as used"
-    assert ranges[pumls[0]] == "8–14, 1–4", "the unattached block leads, under the first"
-    assert ranges[pumls[1]] == "28–34"
+    assert [x["ref"] for x in quoted[pumls[0]]] == [f"{rel}:8-14", f"{rel}:1-4"], \
+        "the unattached block leads, under the first"
+    assert [x["ref"] for x in quoted[pumls[1]]] == [f"{rel}:28-34"]
 
 
 def test_an_excerpt_quoting_two_scenarios_goes_under_both(tmp_path):
@@ -3339,7 +3371,7 @@ def test_an_excerpt_quoting_two_scenarios_goes_under_both(tmp_path):
             f"@startuml\n== [[src://{rel}:{line}{{t}} {slug}]] ==\nA -> B: x\n@enduml\n",
             encoding="utf-8")
         pumls.append(puml)
-    quoted, _ = build._share_excerpts(
+    quoted = build._share_excerpts(
         rel, [(p, None) for p in pumls], [{"ref": f"{rel}:35-48,52-65"}], set(), tmp_path)
     assert quoted[pumls[0]] and quoted[pumls[1]]
 
