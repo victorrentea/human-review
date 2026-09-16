@@ -44,6 +44,26 @@ import sys
 from pathlib import Path
 
 APPROVAL_REQUIRED, CLEAR, NO_FILE = "approval_required", "no_owners_touched", "no_codeowners"
+# Not every required owner is the same phone call. A team named for the guardrail system
+# itself — "elders" in this project's own convention — is the escalation of last resort;
+# everyone else required by CODEOWNERS is an ordinary second pair of eyes. The banner and
+# each owner's row wear that distinction (red vs. amber) instead of flattening every
+# required reviewer into one color, which used to make a routine domain-model sign-off
+# look as alarming as someone reaching for the team that guards the guardrails.
+CRITICAL_OWNER = re.compile(r"elder", re.IGNORECASE)
+
+
+def owner_severity(owner: str) -> str:
+    return "critical" if CRITICAL_OWNER.search(owner) else "standard"
+
+
+def worst_severity(owners) -> str | None:
+    severities = {owner_severity(o) for o in owners}
+    if "critical" in severities:
+        return "critical"
+    if severities:
+        return "standard"
+    return None
 # Where hosts look, in the order GitHub resolves them. The first one that exists wins:
 # a repository with two of these has one that is being quietly ignored, and we say so.
 LOCATIONS = ("CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS", ".gitlab/CODEOWNERS")
@@ -212,8 +232,8 @@ def analyse(root: Path, base: str, untracked: bool) -> dict:
     found = [p for p in LOCATIONS if (root / p).is_file()]
     files, base_ref = changed_files(root, base, untracked)
     if not found:
-        return {"state": NO_FILE, "codeowners": None, "shadowed": [], "rules": 0,
-                "owned": [], "unowned": [f for f, _ in files], "problems": [],
+        return {"state": NO_FILE, "severity": None, "codeowners": None, "shadowed": [],
+                "rules": 0, "owned": [], "unowned": [f for f, _ in files], "problems": [],
                 "base_ref": base_ref, "sectioned": False, "changed": len(files)}
 
     rel = found[0]
@@ -233,18 +253,16 @@ def analyse(root: Path, base: str, untracked: bool) -> dict:
             # A file claimed only by optional sections suggests a reviewer, it does not block.
             "blocking": any(not r.optional for r in hits),
         })
-    state = APPROVAL_REQUIRED if any(o["blocking"] for o in owned) else CLEAR
-    return {"state": state, "codeowners": rel, "shadowed": found[1:], "rules": len(rules),
-            "owned": owned, "unowned": unowned, "problems": problems, "base_ref": base_ref,
-            "sectioned": sectioned, "changed": len(files)}
+    blocking = [o for o in owned if o["blocking"]]
+    state = APPROVAL_REQUIRED if blocking else CLEAR
+    severity = worst_severity(o for e in blocking for o in e["owners"])
+    return {"state": state, "severity": severity, "codeowners": rel, "shadowed": found[1:],
+            "rules": len(rules), "owned": owned, "unowned": unowned, "problems": problems,
+            "base_ref": base_ref, "sectioned": sectioned, "changed": len(files)}
 
 
 # ── rendering ─────────────────────────────────────────────────────────────────────
 STATUS_LABEL = {"A": "added", "M": "modified", "D": "deleted", "C": "copied", "T": "retyped"}
-
-
-def plural(n: int, noun: str) -> str:
-    return f"{n} {noun}" + ("" if n == 1 else "s")
 
 
 def file_link(root: Path, path: str, status: str, line: int = 1, label: str = None) -> str:
@@ -263,13 +281,17 @@ def render(root: Path, data: dict) -> str:
         for owner in entry["owners"]:
             by_owner.setdefault(owner, []).append(entry)
 
-    flag = {APPROVAL_REQUIRED: "&#128681; APPROVAL REQUIRED",
-            CLEAR: "NO OWNER TOUCHED", NO_FILE: "NOT CONFIGURED"}[state]
-    parts = [
-        f'<div class="cow cow-{state}">',
-        '<div class="cow-verdict">'
-        f'<span class="cow-seal">{flag}</span></div>',
-    ]
+    severity = data["severity"]
+    sev_class = f" cow-severity-{severity}" if severity else ""
+    parts = [f'<div class="cow cow-{state}{sev_class}">']
+    # The "APPROVAL REQUIRED" verdict used to be a banner of its own, above every row,
+    # saying the same word for every owner even when their severities differ. Now each
+    # row carries its own flag and its own "APPROVAL REQUIRED" — true per owner, not
+    # once for the whole box — so the state only needs a banner when there is no row to
+    # carry it: nothing touched, or no CODEOWNERS at all.
+    if state != APPROVAL_REQUIRED:
+        flag = {CLEAR: "NO OWNER TOUCHED", NO_FILE: "NOT CONFIGURED"}[state]
+        parts.append(f'<div class="cow-verdict"><span class="cow-seal">{flag}</span></div>')
 
     if data["shadowed"]:
         listed = ", ".join(f"<code>{html.escape(p)}</code>" for p in data["shadowed"])
@@ -297,10 +319,12 @@ def render(root: Path, data: dict) -> str:
                         f'{STATUS_LABEL.get(e["status"], e["status"])}</span>'
                         f'{file_link(root, e["path"], e["status"], label=shown)}'
                         f'{by}</li>')
-        parts.append(f'<div class="cow-row"><div class="cow-head">'
-                     f'<span class="cow-owner">{html.escape(owner)}</span>'
-                     f'<span class="cow-note">have to approve {plural(len(entries), "file")}:'
-                     "</span></div>"
+        owner_sev = owner_severity(owner)
+        owner_flag = "&#128681;" if owner_sev == "critical" else "&#9888;&#65039;"
+        parts.append(f'<div class="cow-row cow-row-{owner_sev}"><div class="cow-head">'
+                     f'<span class="cow-flag">{owner_flag}</span>'
+                     '<span class="cow-approval">APPROVAL REQUIRED</span>'
+                     f'<span class="cow-owner">{html.escape(owner)}</span></div>'
                      f'<ul class="cow-files">{"".join(rows)}</ul></div>')
 
     advisory = [o for o in owned if not o["blocking"]]
@@ -332,10 +356,12 @@ CSS = """
                border-left:4px solid var(--cow-flat); border-radius:10px; padding:.8rem 1rem;
                background:var(--card); }
 .cow-approval_required .cow-verdict { border-left-color:var(--cow-bad); }
+.cow-approval_required.cow-severity-standard .cow-verdict { border-left-color:var(--cow-warn); }
 .cow-no_owners_touched .cow-verdict { border-left-color:var(--cow-ok); }
 .cow-seal { font:800 .7rem/1.9 inherit; letter-spacing:.08em; border-radius:5px;
             padding:.1rem .55rem; white-space:nowrap; background:#f0f0f4; color:#5d5d6b; }
 .cow-approval_required .cow-seal { background:#fdeaea; color:#8a1c1c; }
+.cow-approval_required.cow-severity-standard .cow-seal { background:#fdf3e2; color:#6b4a0f; }
 .cow-no_owners_touched .cow-seal { background:#eef7ef; color:#245c30; }
 .cow-prov { color:var(--muted); font-size:.8rem; line-height:1.7; margin:.5rem 0 1rem; }
 .cow-kind { font:600 .82rem/1.6 inherit; text-transform:uppercase; letter-spacing:.06em;
@@ -345,9 +371,12 @@ CSS = """
              font-size:.72rem; }
 .cow-row { background:var(--card); border:1px solid var(--line); border-left:3px solid
            var(--cow-bad); border-radius:8px; padding:.55rem .8rem; margin:.5rem 0; }
+.cow-row-standard { border-left-color:var(--cow-warn); }
 .cow-head { display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
+.cow-flag { font-size:.9rem; line-height:1; }
+.cow-approval { font:800 .68rem/1.6 inherit; letter-spacing:.06em; color:var(--cow-bad); }
+.cow-row-standard .cow-approval { color:var(--cow-warn); }
 .cow-owner { font:700 13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg); }
-.cow-note { color:var(--muted); font-size:.8rem; }
 .cow-files { list-style:none; margin:.45rem 0 0; padding:0; display:grid; gap:.3rem; }
 .cow-files li { font-size:.86rem; line-height:1.6; display:flex; align-items:baseline;
                 gap:.5rem; flex-wrap:wrap; }
@@ -370,6 +399,7 @@ CSS = """
 @media (prefers-color-scheme: dark) {
   .cow-seal { background:#26262f; color:#a5a5b4; }
   .cow-approval_required .cow-seal { background:#3a1f1f; color:#f2a0a0; }
+  .cow-approval_required.cow-severity-standard .cow-seal { background:#3a3018; color:#e6c07b; }
   .cow-no_owners_touched .cow-seal { background:#1b2c1f; color:#9ad3a5; }
   .cow-warn { background:#3a3018; color:#e6c07b; border-color:#6b5520; }
 }

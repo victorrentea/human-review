@@ -1022,6 +1022,12 @@ button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
 button.tab.alarm { color:#c62828; }
 button.tab.alarm:hover { color:#a41f1f; background:var(--card); border-color:#c62828; }
 button.tab[aria-selected="true"].alarm { background:#c62828; color:#fff; border-color:#c62828; }
+/* Same alarm, one notch down: a required approval that is not the escalation of last
+   resort (an ordinary CODEOWNERS reviewer, not the team guarding the guardrails) reads
+   as amber rather than red, so the strip does not cry wolf on a routine sign-off. */
+button.tab.warn { color:#b56b00; }
+button.tab.warn:hover { color:#8f5500; background:var(--card); border-color:#b56b00; }
+button.tab[aria-selected="true"].warn { background:#b56b00; color:#fff; border-color:#b56b00; }
 /* A verdict the strip can carry without words: green nothing changed, amber changed
    but nothing breaks, red a caller breaks. A number there ("+3") counted changes,
    which is not the question anyone opens that tab with. */
@@ -1033,6 +1039,10 @@ button.tab .n.dot-green, button.tab .n.dot-amber, button.tab .n.dot-red {
   button.tab.alarm:hover { color:#ffb0b0; border-color:#ff8a8a; }
   button.tab[aria-selected="true"].alarm { background:#ff8a8a; color:#1d1d24;
                                            border-color:#ff8a8a; }
+  button.tab.warn { color:#e6c07b; }
+  button.tab.warn:hover { color:#f0d39a; border-color:#e6c07b; }
+  button.tab[aria-selected="true"].warn { background:#e6c07b; color:#1d1d24;
+                                          border-color:#e6c07b; }
 }
 button.tab .n.dot-green { background:#2e9e5b; }
 button.tab .n.dot-amber { background:#d98218; }
@@ -7552,7 +7562,7 @@ def main(argv=None) -> int:
                       file=sys.stderr)
                 return "", 0, 0
             if state == "approval_required":
-                auto_badge["tabClass"] = "alarm"
+                auto_badge["tabClass"] = "alarm" if summary.get("severity") == "critical" else "warn"
                 auto_badge["label"] = "approval required"
             # No default heading, for the reason `codecity` has none: the tab pill says
             # CODEOWNERS, its badge says "Code owners approval required", and the seal

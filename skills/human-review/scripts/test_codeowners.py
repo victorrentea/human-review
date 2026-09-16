@@ -58,6 +58,18 @@ def test_patterns():
         assert match(pattern, path) is expected, f"{pattern!r} vs {path!r}"
 
 
+def test_owner_severity():
+    # "elders" is this user's own naming convention for the team that guards the
+    # guardrail system (CODEOWNERS itself, CI, agent settings, the guardrail tests).
+    # Any other required owner is an ordinary second pair of eyes, not an escalation.
+    assert co.owner_severity("@victorrentea/elders") == "critical"
+    assert co.owner_severity("@org/Elders") == "critical"          # case-insensitive
+    assert co.owner_severity("@victorrentea/tech-leads") == "standard"
+    assert co.worst_severity(["@org/tech-leads"]) == "standard"
+    assert co.worst_severity(["@org/tech-leads", "@org/elders"]) == "critical"
+    assert co.worst_severity([]) is None
+
+
 FLAT = """
 # a flat GitHub file
 /openapi.yaml        @org/api
