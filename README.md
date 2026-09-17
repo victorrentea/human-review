@@ -428,6 +428,23 @@ the zip refuses a filter because its release notes name the commit the download 
 while an image is the snapshot bytes and nothing else, and rebuilding it on unrelated
 pushes would only mint a fresh immutable tag per push.
 
+Nothing is regenerated in the cloud: the workflow only packages what `publish-demo.sh`
+already committed, so publishing a new snapshot and pushing it *is* the trigger. The gap
+that leaves is the run you finished two minutes ago, which is in no image until it has
+been staged and pushed — and which is usually the one you want to show. For that:
+
+```sh
+skills/human-review/scripts/serve-image.sh [source-dir] [--port N] [--tag NAME] [--build-only]
+```
+
+It points the same `.github/snapshot.Dockerfile` at a local `.human-review/` (the default
+source), stages it with the same two exclusions `publish-demo.sh` makes — the run's own
+dot-prefixed bookkeeping, and `*.raw.webm` — builds, and starts the container, printing
+the URL and the command to stop it. It reuses the packaging files rather than carrying its
+own copy, because a local image that differs from the published one defeats the point of
+serving the page at all; installed as a plugin, where `.github/` is not shipped, it wants
+`HUMAN_REVIEW_REPO` pointed at the checkout.
+
 Two things still 404 and are meant to. The root-relative deep links into the reviewed
 application — `/owners/4` — have no application behind them here; the page's
 app-environment bar is what rewrites those, and it cannot until the page loads. And
