@@ -2433,6 +2433,32 @@ def test_the_content_file_can_add_exclusions_but_never_drop_the_default_ones(tmp
         "an `exclude` list must add to the built-in list, not replace it"
 
 
+def test_the_line_count_opens_the_compare_page_the_two_numbers_describe(tmp_path):
+    """The size of the change set is the one chip a reader wants to click through: "how
+    much is there to read" is followed by "show me". It links to the two *branches*, not
+    to the shas measured — a sha pair is only a URL once the branch has been pushed."""
+    r = _drifting_repo(tmp_path)
+    pr = {"repo": "https://github.com/victorrentea/petclinic",
+          "base": "origin/main", "branch": "test-pr"}
+    files, lines = build.diffstat_chips(r, build.base_state(r, "main"), None, pr)
+    assert lines["href"] == "https://github.com/victorrentea/petclinic/compare/main...test-pr", \
+        "`origin/` names a remote in this checkout; github.com has never heard of it"
+    assert "github.com" in lines["tip"], "a chip that links says where the click goes"
+    assert "href" not in files, \
+        "two identical-looking links to the same page teach the reader to ignore half the row"
+    assert 'class="chip chip-link"' in build.chip_html(lines)
+
+
+def test_a_diffstat_with_no_repository_to_point_at_stays_an_inert_pill(tmp_path):
+    """A 404 is worse than no link: the number is still true, and a click that lands
+    nowhere is read as the page being wrong about the rest of it too."""
+    r = _drifting_repo(tmp_path)
+    st = build.base_state(r, "main")
+    assert "href" not in build.diffstat_chips(r, st, None, None)[1]
+    assert "href" not in build.diffstat_chips(r, st, None, {"base": "main"})[1], \
+        "a base with no repo and no branch is not half a comparison, it is none"
+
+
 def test_no_base_means_no_chip_rather_than_a_number_measured_against_nothing(tmp_path):
     r = _drifting_repo(tmp_path)
     assert build.base_state(r, "does-not-exist") is None

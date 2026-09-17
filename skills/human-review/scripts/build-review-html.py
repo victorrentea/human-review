@@ -7076,7 +7076,30 @@ def _numstat(root: Path, rng: str, pathspecs: list[str]) -> tuple[int, int, int,
     return added, edited, deleted, adds, dels
 
 
-def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None) -> list[dict]:
+def _compare_href(pr: dict | None) -> str:
+    """`<repo>/compare/<base>...<branch>` — the diff the diffstat is a count of.
+
+    Built from the two refs the page already names rather than from the shas it
+    measured: a sha pair is only a URL once the branch has been pushed, and the number
+    in the chip is read off a working tree that may be a commit ahead of the remote. Two
+    branch names are the comparison github.com keeps current by itself — the same pair
+    the ref chips beside it link to, one page further in.
+
+    `origin/` is stripped: it names a remote in *this* checkout, and github.com has
+    never heard of it. Empty when anything is missing, and the chip stays an inert pill
+    rather than linking somewhere that 404s."""
+    pr = pr or {}
+    repo = (pr.get("repo") or "").rstrip("/")
+    base = (pr.get("base") or "").removeprefix("origin/")
+    branch = pr.get("branch") or ""
+    if not (repo and base and branch):
+        return ""
+    return (f"{repo}/compare/{urllib.parse.quote(base)}..."
+            f"{urllib.parse.quote(branch)}")
+
+
+def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None,
+                   pr: dict | None = None) -> list[dict]:
     """`{"auto": "diffstat"}` -- how much there is to read, measured rather than typed.
 
     The fourth chip to be taken away from the author, and the one with the clearest reason
@@ -7138,13 +7161,23 @@ def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None) -> l
     else:
         skipped = " No generated files to leave out."
 
+    # The line count is the one number on the bar a reader wants to *open*: "+921 / −68"
+    # is the size of what there is to read, and the next question is always what those
+    # lines are. So it carries the compare page, and the file count beside it stays an
+    # inert pill -- two identical-looking links to the same page is a row that teaches the
+    # reader to ignore half of it.
+    href = _compare_href(pr)
+    lines_tip = f"+{adds} / −{dels} {where}.{skipped}"
+    if href:
+        lines_tip += " Opens the whole diff on github.com."
     return [
         {"label": "files",
          "value": files_value,
          "tip": f"{a} added, {e} edited, {d} deleted {where}.{skipped}"},
         {"label": "lines",
          "value": lines_value,
-         "tip": f"+{adds} / −{dels} {where}.{skipped}"},
+         "tip": lines_tip,
+         **({"href": href} if href else {})},
     ]
 
 
@@ -8079,7 +8112,8 @@ def main(argv=None) -> int:
         # this always applies; there is no way to turn that list off, because a diffstat
         # dominated by regenerated diagrams is not a stricter answer, it is a wrong one.
         if c.get("auto") == "diffstat":
-            for computed in diffstat_chips(root, base_st, c.get("exclude")):
+            for computed in diffstat_chips(root, base_st, c.get("exclude"),
+                                           spec.get("pr")):
                 emit({**computed, **{k: v for k, v in c.items()
                                      if k not in ("auto", "exclude")}})
             continue
