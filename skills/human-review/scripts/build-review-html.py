@@ -5703,7 +5703,7 @@ def render_puml(block, root: Path, out_dir: Path) -> str:
         '<div class="diagram">'
         f'<div class="head"><b>{html.escape(block.get("name", src.stem))}</b>'
         f'<span class="badge sev-info">{html.escape(block.get("status", "unchanged"))}</span>'
-        f'<span>{html.escape(block["src"])}</span></div>'
+        + _source_link(block["src"], root) + '</div>'
         + (f'<p>{block["note"]}</p>' if block.get("note") else "")
         + _provenance(block["src"], root)
         + f'<div class="svgbox">{inline_svg(cache, root)}</div></div>'

@@ -911,6 +911,23 @@ def test_a_file_at_the_repository_root_is_left_alone(tmp_path):
     assert ">Model.drawio.png</a>" in out and "data-tip" not in out
 
 
+def test_an_unchanged_diagrams_header_links_into_vs_code_too(tmp_path, monkeypatch):
+    """The `puml` block draws the diagrams a branch did NOT touch, and its header used to
+    be the one on the page that was plain text: the full path, spelled out, opening
+    nothing. A reader who wants the rule behind `Packages` has to go and read the file."""
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "packages.puml").write_text("@startuml\n@enduml\n")
+    monkeypatch.setattr(build, "_context_svg",
+                        lambda rel, root, out_dir: (tmp_path / "x.svg", ""))
+    monkeypatch.setattr(build, "inline_svg", lambda cache, root: "<svg/>")
+    out = build.render_puml({"src": "docs/packages.puml", "name": "Packages"},
+                            tmp_path, tmp_path)
+    assert 'href="vscode://file/' + str(tmp_path / "docs" / "packages.puml") + ':1:1"' in out
+    assert ">packages.puml</a>" in out
+    assert 'data-tip="Open in VS Code: docs/packages.puml"' in out
+    assert ">docs/packages.puml<" not in out, "the path is the hover, not the face"
+
+
 def test_shortening_twice_changes_nothing(tmp_path):
     once = build.shorten_dgm_src(
         '<a class="dgm-src" href="x">b/docs/Model.puml</a>')
