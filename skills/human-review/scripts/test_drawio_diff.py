@@ -773,6 +773,44 @@ def test_the_undo_steps_back_one_drawing_and_skips_a_re_render(tmp_path, branch_
     assert Path(revert["cwd"]).resolve() == tmp_path.resolve()
 
 
+def test_pressing_undo_twice_goes_further_back_and_never_rocks_between_two(tmp_path):
+    """The walk starts from where the file already stands in its own history.
+
+    Without that, the second press finds the drawing the first press just left — it is the
+    newest thing that differs, after all — and the offer rocks between two revisions
+    forever. Pressing undo twice means *further back*, never *never mind*.
+    """
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for setting in (("user.email", "t@t"), ("user.name", "t")):
+        subprocess.run(["git", "-C", str(tmp_path), "config", *setting], check=True)
+    (tmp_path / "DomainModel.puml").write_text(DOMAIN_PUML)
+    diagram = tmp_path / "docs" / "CM.drawio.png"
+    diagram.parent.mkdir()
+
+    shas = {}
+    for name, xml in (("oldest", BASE), ("middle", BRANCH), ("newest", BLACKENED)):
+        diagram.write_bytes(png_with(xml))
+        subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", name], check=True)
+        shas[name] = subprocess.run(["git", "-C", str(tmp_path), "rev-parse", "HEAD"],
+                                    capture_output=True, text=True).stdout.strip()
+
+    def target(out):
+        proc = subprocess.run(
+            [sys.executable, str(HERE / "drawio-diff.py"), "--base", "HEAD",
+             "--diagram", "docs/CM.drawio.png", "--out-dir", out, "--name", "conceptual",
+             "--renderer", "builtin", "--concepts", "DomainModel.puml"],
+            capture_output=True, text=True, cwd=tmp_path)
+        assert proc.returncode == 0, proc.stderr
+        return json.loads((tmp_path / out / "conceptual-diff.json").read_text())["revert"]
+
+    # standing on the newest drawing: one step back is the middle one
+    assert target("out1")["sha"] == shas["middle"]
+    # now standing on the middle one, as a first press would have left it
+    diagram.write_bytes(png_with(BRANCH))
+    assert target("out2")["sha"] == shas["oldest"], "it went forward to what it just left"
+
+
 def test_no_undo_is_offered_when_every_revision_draws_the_same_thing(tmp_path, branch_png):
     """One commit, or a history of pure re-renders: there is no earlier drawing to step
     back to, and the offer has to be absent rather than a button that does nothing."""

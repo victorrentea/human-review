@@ -845,23 +845,45 @@ def last_distinct_revision(path: str, current: str) -> dict | None:
     That makes the offer repeatable, which is what an undo is: each press lands on a
     drawing, the next press steps past it to the one before, and a reader who has gone one
     step too far can read the sha in the fold and walk forward by hand.
+
+    "Past it" is why the walk starts from where the file already stands rather than from
+    the top. Once a press has landed, the drawing just left behind is the newest one that
+    differs — so a search that always started at HEAD would answer the second press with
+    the thing the first press undid, and the offer would rock between two revisions
+    forever. Pressing undo twice means *further back*, never *never mind*.
     """
     log = subprocess.run(
         ["git", "log", f"-{HISTORY_DEPTH}", "--format=%H%x09%as%x09%s", "--", path],
         capture_output=True, text=True)
     if log.returncode != 0:
         return None
+    entries = []
     for line in log.stdout.splitlines():
         sha, _, rest = line.partition("\t")
         date, _, subject = rest.partition("\t")
-        older = read_at(sha, path)
-        if older == EMPTY_MODEL:
-            continue
-        delta = diff_models(older, current)
+        xml = read_at(sha, path)
+        if xml != EMPTY_MODEL:
+            entries.append(({"sha": sha, "short": sha[:8], "date": date,
+                             "subject": subject}, xml))
+
+    def differs(xml: str) -> bool:
         # `moved` counts. Dragging a box somewhere wrong is a hand edit like any other,
         # and the one an undo is asked for most.
-        if any(delta[k] for k in ("added", "removed", "changed", "moved")):
-            return {"sha": sha, "short": sha[:8], "date": date, "subject": subject}
+        delta = diff_models(xml, current)
+        return any(delta[k] for k in ("added", "removed", "changed", "moved"))
+
+    # Where the file already stands in its own history, if it stands anywhere. Without
+    # this the offer ping-pongs: one press lands on the previous drawing, and the next
+    # press finds *the one just left* as the newest thing that differs and goes straight
+    # back to it. A reader pressing undo twice means "further", never "never mind".
+    start = 0
+    for i, (_, xml) in enumerate(entries):
+        if not differs(xml):
+            start = i + 1
+            break
+    for meta, xml in entries[start:]:
+        if differs(xml):
+            return meta
     return None
 
 
