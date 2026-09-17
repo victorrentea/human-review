@@ -203,6 +203,38 @@ def test_a_field_after_the_prose_is_refused(tmp_path):
     assert "comes after the prose" in str(bad.value)
 
 
+def test_a_wrapped_field_in_the_middle_continues_onto_the_indented_line(tmp_path):
+    doc = _doc(tmp_path, "## Assumptions\n### t\n- file: a.py:1\n"
+                         "- alternative: annotate bookVisit as asked — which would be a\n"
+                         "  silent no-op\n"
+                         "- why: Spring AOP ignores self-invoked private methods.\n")
+    item = doc["assumptions"][0]
+    assert item["alternative"] == ("annotate bookVisit as asked — which would be a silent "
+                                   "no-op")
+    assert item["why"] == "Spring AOP ignores self-invoked private methods."
+
+
+def test_a_wrapped_last_field_continues_instead_of_being_truncated_into_the_body(tmp_path):
+    doc = _doc(tmp_path, "## Ignored\n### t\n- file: a.py:1\n"
+                         "- why: out of scope for #37, and deleting the flat endpoint\n"
+                         "  is an API break.\n"
+                         "\n"
+                         "More context follows as ordinary prose.\n")
+    item = doc["findings"][0]
+    assert item["why"] == ("out of scope for #37, and deleting the flat endpoint is an "
+                           "API break.")
+    assert item["body"] == "More context follows as ordinary prose."
+
+
+def test_an_unindented_line_after_a_field_still_starts_the_body(tmp_path):
+    doc = _doc(tmp_path, "## Ignored\n### t\n- file: a.py:1\n"
+                         "- why: short.\n"
+                         "Not indented, so this is body, not a continuation.\n")
+    item = doc["findings"][0]
+    assert item["why"] == "short."
+    assert item["body"] == "Not indented, so this is body, not a continuation."
+
+
 def test_an_ordinary_markdown_bullet_in_the_body_is_not_mistaken_for_a_field(tmp_path):
     doc = _doc(tmp_path, "## Ignored\n### t\n- file: a.py:1\nBecause:\n"
                          "- the endpoint is public\n- the caller retries\n")

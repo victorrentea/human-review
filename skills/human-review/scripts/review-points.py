@@ -320,6 +320,16 @@ def parse(text: str) -> dict:
                             f"the prose of {title[:40]!r} — every field goes directly "
                             "under the `###` line, before the body")
             continue
+        indent = len(raw) - len(raw.lstrip(" "))
+        if not in_body and fields and stripped and indent >= 2:
+            # A wrapped field: the line right after `- key: value` continues it as long as
+            # it is indented and is not itself another `- key:` — the agent word-wraps a
+            # long `why:`/`alternative:` the way it wraps any other sentence, and the field
+            # is not done just because the line is. Glued with a space, not a newline: the
+            # field is one sentence, not a paragraph.
+            key, value = fields[-1]
+            fields[-1] = (key, f"{value} {stripped}".strip())
+            continue
         if stripped or body:
             in_body = True
             body.append(raw)

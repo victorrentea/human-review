@@ -110,6 +110,18 @@ fields.
 An unknown field key is an error too. `- fille:` typed once would otherwise drop a ref, and
 a dropped ref is what gets the whole item deleted by the rule below.
 
+A field wraps onto the line(s) right after it as long as each is indented (2+ spaces) and
+is not itself a `- key:` line; the continuation joins the value with a space, so it reads
+as one sentence. The first unindented line, as always, starts the body instead:
+
+```markdown
+- alternative: annotate `bookVisit` as the ticket asked — which would be a
+  silent no-op
+- why: Spring AOP ignores self-invoked private methods.
+```
+
+reads as `alternative: annotate \`bookVisit\` as the ticket asked — which would be a silent no-op`.
+
 Bodies may carry the same inline tokens as any other body on the page:
 `{{snippet:path:12-30|caption}}`, `{{diff:path@<sha>|caption}}`, `{{difflink:path@<sha>}}`.
 Backticked spans become `<code>`; everything else is escaped, so a stray `<` in prose cannot
