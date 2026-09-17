@@ -232,17 +232,149 @@ def _city(ctx: Ctx):
                          "image; never type one)")
 
 
+#: A loopback URL in a command's output. `start-docker.sh up` ends by printing the port
+#: the host gave this instance, and that port is the one thing nobody can know in advance:
+#: several branches are up at once on this machine, so the host picks. Same expression as
+#: `serve-review.py` scrapes with, for the same reason and against the same commands.
+APP_URL = re.compile(r"https?://(?:localhost|127\.0\.0\.1)(?::[0-9]{1,5})?(?:/\S*)?")
+
+#: How many lines of the recorder's own output a verdict carries. Enough for the note, the
+#: exit reason and the two or three lines before them; not the whole run.
+VERDICT_TAIL = 30
+
+
+def _app_slots(ctx: Ctx) -> dict:
+    """`{sha, shortsha}` for the commit this review is about, for `steps.video.app`.
+
+    Read from git rather than from the config, because the whole point of the block is
+    that the film is made against *this* commit: a sha written into `human-review.json`
+    would be a sha that is right until the next push.
+
+    `shortsha` is asked of git too, never sliced to a fixed width. The instance a host
+    names after a ref is named with git's own abbreviation (`rev-parse --short`), whose
+    length is `core.abbrev` — `auto` by default, which grows with the repository. This one
+    is at eight today; a hardcoded seven would have `down` naming an instance that does
+    not exist, and `down` failing is a whole stack left running after every film.
+    """
+    full = sh("git rev-parse HEAD", ctx, capture=True, check=False).stdout.strip()
+    short = sh("git rev-parse --short HEAD", ctx, capture=True, check=False).stdout.strip()
+    return {"sha": full, "shortsha": short or full[:8]}
+
+
 def _video(ctx: Ctx):
-    out = ctx.step_cfg("video").get("out", f"{ART}/feature.webm")
-    r = sh(f"{HERE}/record-feature-video.sh {out}", ctx, check=False)
+    """Film the feature — and, where the project says how, start the stack it is filmed
+    against and stop it afterwards.
+
+    Without `steps.video.app` this behaves as it always did: the recorder checks that
+    *something* answers on the URLs it was given and films whatever that is. That is the
+    arrangement that produced a review of `test-pr` illustrated with a film of `main`:
+    this machine keeps several checkouts of the same repository, each able to serve
+    :4200, and nothing in the pipeline asked which one. The captions said what the frames
+    denied, and the film is the one artifact on the page a reader believes without
+    checking.
+
+    With `app`, the run owns the instance: `up` builds the commit under review into its
+    own container set, the host's port comes out of what it printed, and `down` runs in a
+    `finally` so a film that crashed does not leave a stack behind. `{sha}`/`{shortsha}`
+    are filled from `git rev-parse HEAD`, never from the config.
+
+    And whatever happens, the recorder's own output is kept: `assets/feature.run.log`
+    always, plus `assets/feature.verdict.json` when it exited non-zero. Exit 3 — filmed,
+    and the feature did *not* hold — used to reach the page as a note in a status table a
+    human had to read and carry into the prose, and on 17 Sep 2026 it did not: the step
+    captured nothing, so three missed screens became a film that looked like any other
+    demo. The verdict file is what makes that impossible to lose; `video_html` draws it
+    over the player.
+    """
+    cfg = ctx.step_cfg("video")
+    out = cfg.get("out", f"{ART}/feature.webm")
+    app = cfg.get("app") or {}
+    logs = Path(f"{ART}/feature.run.log")
+    verdict_path = Path(f"{ART}/feature.verdict.json")
+    slots = _app_slots(ctx) if app else {}
+
+    def expand(template: str) -> str:
+        for name, value in slots.items():
+            template = template.replace("{" + name + "}", value)
+            # `{shortsha}` is spelt two ways in the wild and both mean the same thing.
+            template = template.replace("{" + name.replace("sha", "SHA") + "}", value)
+        return template
+
+    base = ""
+    started = False
+    env = ""
+    try:
+        if app.get("up"):
+            up = sh(expand(app["up"]), ctx, capture=True, check=False)
+            # Echoed, because a docker build's output is what a reader asks for when the
+            # step takes four minutes — and `capture` is only here to scrape the port.
+            print((up.stdout or "") + (up.stderr or ""), end="", flush=True)
+            if up.returncode != 0:
+                raise RuntimeError(f"the app would not start: {expand(app['up'])}")
+            started = True
+            found = APP_URL.findall(up.stdout or "")
+            base = found[-1].rstrip(".,)") if found else ""
+        if not base and app.get("url"):
+            got = sh(expand(app["url"]), ctx, capture=True, check=False)
+            found = APP_URL.findall(got.stdout or "")
+            base = found[-1].rstrip(".,)") if found else ""
+        if app and not base and not ctx.dry:
+            raise RuntimeError("the app started and printed no URL to film it at — "
+                               "`app.up` has to print it, or `app.url` has to")
+        if base:
+            # Both, and the same one: the container's nginx proxies `/api/` on its own
+            # origin, so the front end and the REST calls the feature script makes are
+            # the same host and port. Two different values here is how a film ends up
+            # driving one instance's screens against another instance's data.
+            env = (f"BASE_URL={shlex.quote(base)} API_URL={shlex.quote(base)} "
+                   f"HUMAN_REVIEW_APP_COMMIT={shlex.quote(slots.get('sha', ''))} "
+                   "HUMAN_REVIEW_APP_STARTED=1 ")
+            ctx.notes.append(f"filmed against {base}, started by this run from "
+                             f"{slots.get('shortsha', 'HEAD')} — not whatever was already "
+                             "listening on :4200")
+        r = sh(f"{env}{HERE}/record-feature-video.sh {out}", ctx, check=False, capture=True)
+    finally:
+        if started and app.get("down"):
+            # In a `finally`, and never `check`ed: a stack left up outlives the run, and
+            # the reason the film failed is a better thing to report than the teardown.
+            sh(expand(app["down"]), ctx, check=False)
+
+    # Written before anything is raised or noted, so the log survives every exit from here.
+    tail = ((r.stdout or "") + (r.stderr or ""))
+    print(tail, end="", flush=True)
+    logs.parent.mkdir(parents=True, exist_ok=True)
+    logs.write_text(tail, encoding="utf-8")
+
+    if r.returncode == 0:
+        # A verdict left behind by the previous run is worse than none: it would draw a
+        # red banner over a film that is now fine.
+        verdict_path.unlink(missing_ok=True)
+        return
+
+    lines = [l for l in tail.splitlines() if l.strip()]
+    note = next((l for l in reversed(lines) if "changed screens filmed" in l), "")
+    missed = []
+    for label in ("FAILED to reach: ", "not filmable: "):
+        for line in lines:
+            if label in line:
+                missed += [p.strip() for p in line.split(label, 1)[1].split(";") if p.strip()]
+    verdict_path.write_text(json.dumps({
+        "exit": r.returncode,
+        "note": note,
+        "missed": missed,
+        "log": lines[-VERDICT_TAIL:],
+    }, indent=1), encoding="utf-8")
+
     if r.returncode == 3:
         ctx.notes.append("EXIT 3 — filmed, and the feature did NOT hold. Embed it and lead "
                          "the review with what it shows; this is the most valuable film "
-                         "this pipeline can make")
-    elif r.returncode == 2:
-        raise LookupError("no feature script, or the stack is down")
-    elif r.returncode != 0:
-        raise RuntimeError(f"record-feature-video.sh exit {r.returncode}")
+                         "this pipeline can make"
+                         + (f" ({len(missed)} screen(s) missed)" if missed else ""))
+        return
+    if r.returncode == 2:
+        raise LookupError("no feature script, or the stack the film needs is not the "
+                          "commit under review — see assets/feature.run.log")
+    raise RuntimeError(f"record-feature-video.sh exit {r.returncode}")
 
 
 def _complexity(ctx: Ctx):

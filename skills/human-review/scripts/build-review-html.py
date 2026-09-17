@@ -264,6 +264,23 @@ button.chip-rerun.running::before { content:""; display:inline-block; width:.62e
             font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.78rem;
             line-height:1.55; color:var(--fg); }
 .rerunfail-log:empty { display:none; }
+/* The recorder's verdict, over the player. Red and full width above the picture, because
+   the picture is the thing it contradicts: a film of a feature failing looks exactly like
+   a film of one working, and every other mark on this page would be read after the reader
+   had already believed the footage. It is not dismissible for the same reason. */
+.vidverdict { border:1px solid #c62828; border-left-width:4px; border-radius:8px;
+            background:rgba(198,40,40,.07); padding:.6rem .85rem; margin:0 0 .7rem; }
+.vidverdict p { margin:0; font-size:.9rem; line-height:1.6; }
+.vidverdict p + p, .vidverdict details { margin-top:.4rem; }
+.vidverdict .vv-head b { color:#c62828; }
+.vidverdict .vv-missed, .vidverdict .vv-note { color:var(--muted); font-size:.85rem; }
+.vidverdict .vv-missed code { font-size:.95em; }
+.vidverdict summary { cursor:pointer; color:var(--muted); font-size:.82rem; }
+.vidverdict pre { margin:.4rem 0 0; max-height:12rem; overflow:auto; white-space:pre-wrap;
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.78rem;
+            line-height:1.55; }
+@media (prefers-color-scheme: dark) {
+  .vidverdict .vv-head b { color:#f0757f; } }
 table.costtab { border-collapse:collapse; width:100%; font-size:.85rem; }
 table.costtab caption { caption-side:top; text-align:left; color:var(--muted);
              font-size:.8rem; line-height:1.5; margin:0 0 .55rem; }
@@ -6394,6 +6411,70 @@ def _link_captions(cues, links, drive=False):
     return items, unplaced
 
 
+#: What `_video` writes beside the film when the recorder exited non-zero, named after the
+#: film so two sections cannot read each other's verdict.
+VIDEO_VERDICT = ".verdict.json"
+
+#: What the recorder's exit codes mean, in the words the banner uses. Exit 3 is the one
+#: worth the machinery: the film was made, it is on the page, and it shows the feature not
+#: working. Nothing about the footage says so — it is a normal-looking demo of a screen
+#: that did not do what the caption claims — which is why the page has to.
+VERDICT_FACE = {
+    3: ("The feature did not hold on film.",
+        "The recorder drove this branch's own walkthrough and it did not complete. "
+        "Everything below is the film of that: watch it before reading anything else "
+        "on this page."),
+    2: ("Nothing was filmed.",
+        "The recorder refused: no feature script, or the application answering was not "
+        "the commit under review. A film of another branch's screens under this branch's "
+        "narration is worse than no film."),
+}
+
+
+def video_verdict_html(rel: str, out_dir: Path) -> str:
+    """The recorder's non-zero exit, said over the player — or nothing at all.
+
+    This exists because the loudest thing this pipeline can produce was also the easiest
+    to lose. `record-feature-video.sh` exits 3 when the walkthrough did not complete, and
+    the film is kept *on purpose*: it is the most review-worthy artifact the whole page can
+    carry. But the footage of a feature failing looks like footage of a feature working —
+    a browser, a form, a list — and the exit code used to live only in a status table that
+    a human read once and then had to remember to write about. On 17 Sep 2026 that is
+    exactly what went wrong: exit 3 with three screens missed, and the page showed the
+    player with no mark on it at all.
+
+    So the step writes the verdict next to the film and this draws it. Missing file means
+    the recorder exited 0, which is the common case and renders nothing.
+    """
+    path = out_dir / (rel.replace(".webm", "") + VIDEO_VERDICT)
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    code = doc.get("exit")
+    title, why = VERDICT_FACE.get(code, (
+        f"The recorder failed (exit {code}).",
+        "There is no complete film of this change. Treat whatever plays below as partial."))
+    missed = [m for m in (doc.get("missed") or []) if isinstance(m, str)]
+    parts = [f'<p class="vv-head"><b>{html.escape(title)}</b> {html.escape(why)}</p>']
+    if missed:
+        # Named, not counted: "three screens missed" sends the reader back to the log,
+        # and the names are what tells them whether the gap is the one that matters.
+        parts.append('<p class="vv-missed"><b>Never reached:</b> '
+                     + " · ".join(f'<code>{html.escape(m)}</code>' for m in missed)
+                     + "</p>")
+    if doc.get("note"):
+        parts.append(f'<p class="vv-note">{html.escape(str(doc["note"]))}</p>')
+    log = [str(l) for l in (doc.get("log") or [])]
+    if log:
+        # Folded: the lines are the answer for whoever is fixing it and furniture for
+        # everybody else, and the summary above already says what happened.
+        parts.append('<details class="vv-log"><summary>the recorder’s last words'
+                     "</summary><pre>"
+                     + html.escape("\n".join(log[-14:])) + "</pre></details>")
+    return '<div class="vidverdict" role="alert">' + "".join(parts) + "</div>"
+
+
 def video_html(s, out_dir: Path) -> str:
     """The player and its transcript — or, when the recording failed, the transcript alone.
 
@@ -6427,7 +6508,11 @@ def video_html(s, out_dir: Path) -> str:
                   + " · ".join(_app_anchor(l["href"])
                                + f'{html.escape(l.get("label") or l["href"])}</a>'
                                for l in unplaced) + ".</span></li>")
-    return (runtime_html(rt)
+    # The verdict sits OUTSIDE the wrap, not inside it beside the player: `.vidwrap` is a
+    # two-column grid, so a band emitted as one of its children takes a column and stands
+    # next to the picture instead of across the top of it. What it contradicts is the
+    # picture, so it has to be the thing read first, full width.
+    return (runtime_html(rt) + video_verdict_html(rel, out_dir)
             + f'<div class="vidwrap">{player}<ol class="transcript">{items}</ol></div>')
 
 

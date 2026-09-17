@@ -80,6 +80,66 @@ API_URL="${API_URL:-http://127.0.0.1:8080}"
 curl -fsS -o /dev/null "$BASE_URL/" || { echo "[video] frontend not up at $BASE_URL" >&2; exit 2; }
 curl -fsS -o /dev/null "$API_URL/api/pettypes" || { echo "[video] backend not up at $API_URL" >&2; exit 2; }
 
+# Something answers — but WHICH something? The two checks above were the whole of the
+# liveness test for months, and they are a test of the port, not of the commit. This
+# machine keeps several checkouts of the same repository and any of them can serve
+# :4200, so on 17 Sep 2026 a review of `test-pr` was illustrated with a film of `main`:
+# the narration was generated from this branch's diff and the frames came from another
+# one, and every caption asserted something the picture denied. The film is the one
+# artifact on the page a reader believes without opening anything, so it is the one that
+# must never be of the wrong tree.
+#
+# So ask the application. Spring Boot's `/actuator/info` carries `git.commit.id` when the
+# build writes build-info; $HUMAN_REVIEW_APP_COMMIT_URL points at anything else that can
+# answer. A mismatch is fatal (exit 2, same as a stack that is down — the film cannot be
+# made), and short-vs-full sha is compared by prefix, either way round, because which of
+# the two a project publishes is not this script's business.
+#
+# An app that cannot say is NOT fatal: plenty of builds have no build-info, and refusing
+# them would take the film away from every project that never had this bug. It warns, and
+# the warning is louder when nothing in this run started the stack — that being exactly
+# the case where what is listening is anyone's guess.
+APP_COMMIT_URL="${HUMAN_REVIEW_APP_COMMIT_URL:-$API_URL/actuator/info}"
+APP_COMMIT="$(curl -fsS "$APP_COMMIT_URL" 2>/dev/null | python3 -c '
+import json, sys
+try:
+    doc = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+
+
+def dig(node, *path):
+    for key in path:
+        if not isinstance(node, dict):
+            return ""
+        node = node.get(key, "")
+    return node if isinstance(node, str) else ""
+
+
+print(dig(doc, "git", "commit", "id") or dig(doc, "git", "commit")
+      or dig(doc, "commit", "id") or dig(doc, "commit") or "")
+' 2>/dev/null || true)"
+APP_COMMIT="$(printf '%s' "$APP_COMMIT" | tr -d '[:space:]')"
+HEAD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
+if [ -n "$APP_COMMIT" ] && [ -n "$HEAD_SHA" ]; then
+  if [ "${HEAD_SHA:0:${#APP_COMMIT}}" != "$APP_COMMIT" ] \
+     && [ "${APP_COMMIT:0:${#HEAD_SHA}}" != "$HEAD_SHA" ]; then
+    echo "[video] the app answering at $BASE_URL is commit $APP_COMMIT, and this review is" >&2
+    echo "[video] about $HEAD_SHA. Filming it would caption another branch's screens with" >&2
+    echo "[video] this branch's narration. Point BASE_URL/API_URL at the right instance, or" >&2
+    echo "[video] give steps.video.app an 'up' command so the run starts its own." >&2
+    exit 2
+  fi
+  echo "[video] the app at $BASE_URL reports commit $APP_COMMIT — this branch" >&2
+elif [ "${HUMAN_REVIEW_APP_STARTED:-}" = "1" ]; then
+  echo "[video] the app cannot say which commit it is; this run started it itself, from" \
+       "${HUMAN_REVIEW_APP_COMMIT:-HEAD}" >&2
+else
+  echo "[video] ⚠ the app at $BASE_URL cannot say which commit it is ($APP_COMMIT_URL), and" >&2
+  echo "[video] ⚠ nothing in this run started it — so this film is of whatever was already" >&2
+  echo "[video] ⚠ listening there. Configure steps.video.app to have the run own the stack." >&2
+fi
+
 mkdir -p "$(dirname "$OUT")" "$VOICEDIR"
 rm -f "$VOICEDIR"/*.wav "$LEADFILE"
 # The flow being filmed belongs to the PROJECT, not to this skill. The skill owns the
@@ -105,10 +165,17 @@ root, or point $HUMAN_REVIEW_FEATURE_SCRIPT at it). It exports one async functio
   module.exports = async ({page, say, pause, get, app, apiUrl}) => {
     await page.goto(`${app}/some/screen`);
     const thing = page.locator("#the-new-thing");
+    await thing.waitFor();                       // ← say() asserts; this is the assertion
     await say("This is the new part.", thing);   // spoken, captioned, spotlit
     await pause(2000);                           // a FLOOR; the narration may stretch it
     return {ok: true, note: "one line for the run summary"};
   };
+
+Wait for the element BEFORE you narrate it. say() takes it only to draw a spotlight, so a
+locator that matches nothing still speaks the sentence — over a screen that does not
+contain the thing it names — and the film then looks like a normal demo. waitFor() turns
+that into a throw; catch it per screen, collect the names, and report them in `note` as
+`FAILED to reach: …`, which is the string run-steps.py reads back onto the page.
 
 Return {ok:false} when the feature did not work: the film is still kept and the recorder
 exits 3, because a film of the feature NOT working is the most valuable one it can make.

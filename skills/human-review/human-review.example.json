@@ -93,7 +93,28 @@
       "limit": 12
     },
     "video": {
-      "out": ".human-review/assets/feature.webm"
+      "//": "The film of the feature working. `out` is where it lands; `app` is how the",
+      "//2": "run gets the application it is filmed against, and it is the important half.",
+      "//3": "Without `app` the recorder only checks that SOMETHING answers on BASE_URL",
+      "//4": "and API_URL (:4200 / :8080 by default) — which is a test of the port, not of",
+      "//5": "the commit. This machine keeps several checkouts of one repository and any",
+      "//6": "of them can serve :4200, so on 17 Sep 2026 a review of `test-pr` shipped a",
+      "//7": "film of `main`: the narration came from this branch's diff and the frames",
+      "//8": "from another branch, and every caption asserted what the picture denied.",
+      "//9": "With `app`, the run owns its instance. `up` builds the commit under review",
+      "//10": "into containers of its own and prints the host port it got; `url` asks for",
+      "//11": "that port again; `down` runs in a finally, so a crashed film leaves nothing",
+      "//12": "behind. `{sha}` and `{shortsha}` are filled from `git rev-parse HEAD` — never",
+      "//13": "written here, or they would be right until the next push. The URL is",
+      "//14": "exported as BOTH BASE_URL and API_URL: the container's nginx proxies /api/",
+      "//15": "on its own origin, and two different values is how a film drives one",
+      "//16": "instance's screens against another instance's data.",
+      "out": ".human-review/assets/feature.webm",
+      "app": {
+        "up": "./start-docker.sh up --ref {sha} --ttl 1800",
+        "url": "./start-docker.sh url petclinic-{shortsha}",
+        "down": "./start-docker.sh down petclinic-{shortsha}"
+      }
     },
     "//complexity": [
       "Nothing to configure: with no `complexity` key at all, the step reads both sides",

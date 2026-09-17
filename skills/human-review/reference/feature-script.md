@@ -48,6 +48,40 @@ summary. A gap in the film's coverage is the one thing a reviewer cannot see for
 Give a screen a handler only to make its beat better: a screen with none is still filmed. The
 default has to be *filmed plainly*, because "no handler" must never quietly mean "not visited".
 
+## Every cue waits for what it asserts, before it says it
+
+A `say()` is a claim about what is on screen, spoken over the frame and burnt into it. So the
+element the claim is about has to be **waited for** first, and the cue has to be *missed*
+rather than spoken when it never arrives:
+
+```js
+const vetColumn = page.locator("#visitsTable th").filter({hasText: /^Vet$/});
+await vetColumn.waitFor();                       // ← the assertion
+await say("The all-visits page carries the same column.", vetColumn);
+```
+
+Not a precaution — this is the failure the recorder cannot catch for you. `say()` takes the
+element only to draw a spotlight, and a locator that matches nothing yields a null box: the
+caption is spoken anyway, burnt over a screen that does not contain the thing it names, and
+the film comes out looking like a normal demo. `waitFor()` is what turns that into a thrown
+error; a handler that lets the error out is a screen this run **missed**, which is a fact the
+reader can act on.
+
+So the loop that drives the handlers catches per screen, collects the misses, and returns
+`{ok: false}` when there are any:
+
+```js
+try { await handler(screen); visited.push(screen.route); }
+catch (e) { missed.push(`${screen.route} (${e.message.split("\n")[0]})`); }
+…
+return {ok: missed.length === 0, note: `${visited.length}/${ordered.length} filmed`
+        + (missed.length ? ` | FAILED to reach: ${missed.join("; ")}` : "")};
+```
+
+`FAILED to reach:` and `not filmable:` are read back out of the run's log by `run-steps.py`
+into `assets/feature.verdict.json`, which the page draws as a red band over the player. Keep
+the two labels — they are the handle between the script and the page.
+
 ## Environment
 
 `TITLE_CARD=off` films without a card; `$HUMAN_REVIEW_VIDEO_TITLE` and

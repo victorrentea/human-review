@@ -350,12 +350,22 @@ purpose.
 ```json
 "runtime": {
   "command": "cd ~/workspace/petclinic && ./start-docker.sh up --ref 9f3c1ab",
-  "stop": "cd ~/workspace/petclinic && ./start-docker.sh down --ref 9f3c1ab",
-  "urlCommand": "cd ~/workspace/petclinic && ./start-docker.sh url --ref 9f3c1ab",
+  "stop": "cd ~/workspace/petclinic && ./start-docker.sh down petclinic-9f3c1ab",
+  "urlCommand": "cd ~/workspace/petclinic && ./start-docker.sh url petclinic-9f3c1ab",
   "base": "http://localhost:4200",
   "reset": "/__reset"
 }
 ```
+
+`stop` and `urlCommand` name the **instance**, not the ref: `start-docker.sh up --ref <sha>`
+calls what it creates `petclinic-<shortsha>`, and `down`/`url` take that name. This example
+said `down --ref <sha>` for a while, which the host refuses — and it is refused *later*, on
+the click, not at build time, so the button looked fine and did nothing.
+
+The `runtime` block above is what the *reader* presses. What the **film** is recorded against
+is `steps.video.app` in `human-review.json` — see the recording section below — and the two
+are worth keeping in step, because a reader who presses Start expects the instance the film
+was made on.
 
 `drive` is optional and turns each caption into a way *into* the app at that moment: a
 `▸` on the row copies this command with `{n}` set to the caption's number (1-based, as
