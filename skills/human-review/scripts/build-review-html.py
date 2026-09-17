@@ -8293,6 +8293,20 @@ PASS_ROWS = [
     ("fixing", "the passes that applied what they found"),
 ]
 
+#: The phases `session-cost.py` dates, in the order the money was spent. They are a
+#: *replacement* for the two groups above, not an addition: the same dollars, cut by what
+#: the work was rather than by which program billed it. The reader's question is where the
+#: money went in the work — was the review the expensive part, or was acting on it — and
+#: `writing the code` + `reviewing it` cannot answer it, because taking the review's advice
+#: falls in neither.
+#:
+#: The keys are `session-cost.py`'s, and the labels are too: a second set of names here
+#: would let the table and the terminal disagree about what a row is. Order is fixed here
+#: rather than trusted to the file, so a phase nobody could date still holds its place in
+#: the sequence instead of vanishing from the middle of it.
+PHASE_ROWS = ["implementation", "code_review", "post_review_fixes", "review_points",
+              "demo_video", "view_images", "page_build"]
+
 
 def _when(raw: str | None) -> str:
     """`2026-09-02T15:41:21.4Z` as `2 Sep 15:41`. The date is there because the writing
@@ -8305,6 +8319,60 @@ def _when(raw: str | None) -> str:
     except ValueError:
         return ""
     return f"{t.day} {t.strftime('%b')} {t:%H:%M}"
+
+
+def phase_rows_html(phases: dict | None) -> str:
+    """What each phase of the work cost, or why it could not be dated.
+
+    This is the cut a reader actually arrives with, and nothing was in a position to make
+    it until the commits started carrying trailers saying which commit was which. With
+    `Implements:` and `Review-Points:` on the branch, `session-cost.py` can date the first
+    edit, the implementation commit, the review's first and last turn and the review
+    commit — and the four phases between them are the answer to "was the review the
+    expensive part, or was acting on it".
+
+    **A phase that cannot be dated prints its reason, never `$0.00`.** The two render
+    identically to a reader and mean opposite things: one is a phase that cost nothing, the
+    other is a phase whose cost is sitting in some other row of the same table.
+
+    **Every window is printed**, for the reason the authoring row already prints its own: a
+    window is a bound, not a fence. Work inside it that belonged to something else is
+    counted, and a table that hid the width of the bound would imply a precision the
+    transcript cannot support.
+    """
+    rows_by_key = {r.get("key"): r for r in (phases or {}).get("rows") or []
+                   if isinstance(r, dict)}
+    if not any(r.get("measured") for r in rows_by_key.values()):
+        return ""
+    out = []
+    for key in PHASE_ROWS:
+        r = rows_by_key.get(key)
+        if not r:
+            continue
+        label = html.escape(str(r.get("label") or key))
+        if not r.get("measured"):
+            why = html.escape(str(r.get("reason") or "not measured"))
+            out.append('<tr class="costquiet"><td><span class="costnote">'
+                       f'{label} — {why}</span></td><td>—</td><td>—</td></tr>')
+            continue
+        window = r.get("window") or []
+        sub = " &middot; ".join(x for x in (
+            html.escape(str(r.get("detail") or "")),
+            (f'{_when(window[0])} &rarr; {_when(window[1])}'
+             if len(window) == 2 and _when(window[0]) else ""),
+        ) if x)
+        out.append(f'<tr><td>{label}<span class="costsub">{sub}</span></td>'
+                   f'<td>{_cost_tokens(r.get("tokens") or 0)}</td>'
+                   f'<td>{_cost_money(r.get("cost") or 0.0)}</td></tr>')
+    # Anything the file dates that this table does not know the name of. Dropping it would
+    # make the rows stop summing to the total, silently, the first time a phase is added.
+    for key, r in rows_by_key.items():
+        if key in PHASE_ROWS or not r.get("measured"):
+            continue
+        out.append(f'<tr><td>{html.escape(str(r.get("label") or key))}</td>'
+                   f'<td>{_cost_tokens(r.get("tokens") or 0)}</td>'
+                   f'<td>{_cost_money(r.get("cost") or 0.0)}</td></tr>')
+    return "".join(out)
 
 
 def cost_ledger_html(led: dict | None, tabs: list[dict]) -> str:
@@ -8341,6 +8409,13 @@ def cost_ledger_html(led: dict | None, tabs: list[dict]) -> str:
             or (led.get("run") or {}).get("measured")):
         return ""
     rows = []
+    # The phase cut, when the branch's trailers made it datable. It *replaces* the two
+    # groups below rather than joining them: the same money, cut by what the work was, and
+    # printing both cuts of one total in one table is how a reader ends up adding a number
+    # to itself. The per-tab group stays either way — it answers a different question
+    # (which part of this page cost what), and it is the only one of the three that is
+    # about the page rather than about the change.
+    phases = phase_rows_html(led.get("phases"))
 
     def row(label: str, tokens, cost, cls: str = "") -> None:
         tok = _cost_tokens(tokens) if tokens is not None else "—"
@@ -8353,8 +8428,11 @@ def cost_ledger_html(led: dict | None, tabs: list[dict]) -> str:
 
     # --- writing it ---------------------------------------------------------
     writing = led.get("writing") or {}
-    group("writing the code")
-    if writing.get("measured"):
+    if phases:
+        group("phase by phase, from the first edit to this build")
+        rows.append(phases)
+    elif writing.get("measured"):
+        group("writing the code")
         for sess in writing.get("sessions") or []:
             where = " &middot; ".join(x for x in (
                 f'{sess["edits"]} edits across {sess["files"]} files' if sess.get("edits")
@@ -8377,11 +8455,16 @@ def cost_ledger_html(led: dict | None, tabs: list[dict]) -> str:
                 "files — this is the strongest shell-only match, and may be the wrong "
                 "one</span>", None, None, "costquiet")
     else:
+        group("writing the code")
         why = writing.get("reason") or "not measured"
         row(f'<span class="costnote">{html.escape(str(why))}</span>', None, None, "costquiet")
 
     # --- reviewing it -------------------------------------------------------
-    passes = led.get("passes") or {}
+    # Skipped entirely under the phase cut, and not as a tidy-up: `the passes that read the
+    # diff` and `code-review agents` are the SAME dollars counted a second way, and two
+    # cuts of one total under one `total` row is how a reader ends up adding a number to
+    # itself. The finding/fixing split survives where phases could not be dated.
+    passes = {} if phases else (led.get("passes") or {})
     groups = passes.get("groups") or {}
     if groups or passes.get("inline"):
         group("reviewing it")

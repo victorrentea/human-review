@@ -635,3 +635,90 @@ def test_the_caption_says_what_the_change_cost_not_what_the_page_cost():
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+# ── the phase cut, when the branch's trailers made it datable ──────────────────────
+# "What did writing it cost and what did reviewing it cost" cannot answer the question a
+# reader arrives with, because taking the review's advice falls in neither. The phases do,
+# and they are the same dollars — so they REPLACE the two groups rather than joining them.
+
+PHASES = {"rows": [
+    {"key": "implementation", "label": "implementation", "measured": True,
+     "cost": 23.37, "tokens": 36_934_793, "messages": 191,
+     "detail": "first edit to the change set → commit #1",
+     "window": ["2026-09-02T15:41:21.413000+00:00", "2026-09-17T21:29:54+03:00"]},
+    {"key": "code_review", "label": "code-review agents", "measured": True,
+     "cost": 5.98, "tokens": 6_757_796, "messages": 66,
+     "detail": "1 forked reviewer(s), whole transcripts",
+     "window": ["2026-09-17T18:30:12+00:00", "2026-09-17T18:34:27+00:00"]},
+    {"key": "review_points", "label": "review-points", "measured": True,
+     "cost": 0.27, "tokens": 341_850, "messages": 1, "detail": "first → last write"},
+    {"key": "demo_video", "label": "demo video", "measured": False,
+     "reason": "no step in the ledger named it"},
+]}
+
+
+def test_a_phase_that_cannot_be_dated_says_so_rather_than_printing_zero():
+    """`$0.00` and "we could not date this" render identically to a reader and mean
+    opposite things: one is a phase that cost nothing, the other is a phase whose cost is
+    sitting in some other row of the same table."""
+    out = build.phase_rows_html(PHASES)
+    assert "demo video — no step in the ledger named it" in out
+    assert "costquiet" in out
+    # …and the row carries no money at all, not a zero.
+    row = [r for r in out.split("<tr") if "demo video" in r][0]
+    assert "$0.00" not in row and "<td>—</td>" in row
+
+
+def test_every_phase_prints_its_window_because_a_window_is_not_a_fence():
+    out = build.phase_rows_html(PHASES)
+    assert "2 Sep 15:41" in out and "17 Sep" in out
+    assert "first edit to the change set" in out
+
+
+def test_phases_appear_in_the_order_the_money_was_spent_not_the_files():
+    out = build.phase_rows_html({"rows": list(reversed(PHASES["rows"]))})
+    assert out.index("implementation") < out.index("code-review agents") \
+        < out.index("review-points")
+
+
+def test_a_phase_this_build_does_not_know_still_reaches_the_table():
+    """Dropping it would make the rows stop summing to the total, silently, the first time
+    a phase is added to session-cost.py."""
+    out = build.phase_rows_html({"rows": [
+        {"key": "something_new", "label": "something new", "measured": True,
+         "cost": 1.5, "tokens": 1000}]})
+    assert "something new" in out and "$1.50" in out
+
+
+def test_nothing_datable_means_no_phase_group_at_all():
+    assert build.phase_rows_html(None) == ""
+    assert build.phase_rows_html({"rows": [
+        {"key": "implementation", "measured": False, "reason": "no session"}]}) == ""
+
+
+def test_the_phase_cut_replaces_the_two_groups_rather_than_joining_them():
+    """The same dollars, cut two ways, under one `total` row is how a reader ends up adding
+    a number to itself."""
+    led = {
+        "writing": {"measured": True, "sessions": [
+            {"session": "abcdef12", "edits": 9, "files": 3, "tokens": 100, "cost": 1.0,
+             "first": "2026-09-02T15:41:00+00:00", "last": "2026-09-02T16:00:00+00:00"}]},
+        "passes": {"groups": {"finding": {"cost": 5.98, "tokens": 6_757_796,
+                                          "invoked": ["/code-review"]}}},
+        "run": {"measured": True},
+        "tabs": {}, "total": 29.62, "total_tokens": 44_034_439,
+        "phases": PHASES,
+    }
+    out = build.cost_ledger_html(led, [])
+    assert "phase by phase" in out
+    assert "writing the code" not in out, "the phase cut already covers it"
+    assert "the passes that read the diff" not in out, "same dollars, counted twice"
+    # The per-tab group stays: it answers which part of the PAGE cost what, which is a
+    # different question and the only one of the three that is about the page.
+    assert "building this guide" in out
+
+    # …and without phases, both groups are exactly as they were.
+    plain = build.cost_ledger_html({**led, "phases": None}, [])
+    assert "writing the code" in plain and "the passes that read the diff" in plain
+    assert "phase by phase" not in plain
