@@ -2,6 +2,39 @@
 
 Loaded on demand from Step 9. The runbook names the keys; this file says what goes in them.
 
+**This file is the page's layout and its ledes — not its judgement.** The three piles on
+the Review tab are the *branch's*: `/implement-ticket` writes `review-points.md` at the
+repository root, commits it with the fixes, and `review-points.py` parses it into
+`.human-review/review-points.json`. A content file asks for that with
+
+```json
+"findings":    {"auto": "review-points"},
+"autofixes":   {"auto": "review-points"},
+"assumptions": {"auto": "review-points"}
+```
+
+and writes no item of its own. The shapes below are still exactly what arrives — the
+parser emits them, which is why no renderer changed — so they remain the contract for
+anyone reading the page's markup or writing a pile by hand. What is left for a model is
+`assets/requirements-map.html` and `test-index/`: the requirements↔tests matrix, which is
+the one claim on the page a reviewer cannot check by hand and which `review-points.md`
+says nothing about.
+
+`{"auto": "review-points"}` behaves like the other `auto` keys — computed, never typed —
+with one addition: **an absent file empties the piles and says so.** The Review tab grows
+a grey band reading *no `review-points.md` on this branch — nothing records what was
+reviewed or declined*, and the assumptions block is forced to mode C whatever it declares.
+It must never render as *"Nothing outstanding — the automated passes came back clean"*: a
+missing record is not a clean review, and those are the two states a reviewer most needs
+told apart. An empty pile in a file that *is* there says which kind of empty it is — no
+such section, or a section with nothing in it.
+
+With the piles delegated, the counts line reads **`3 fixed · 6 declined · 7 assumptions`**
+— `declined` because the items are closed, by the agent, and the reader's job is to agree
+or disagree rather than to triage. A content file that writes its own piles keeps the old
+wording (`6 open LLM review issues · 4 auto-fixed · 6 assumptions`), which is right for a
+list nobody has answered yet.
+
 ## A finding / autofix item
 
 ```json

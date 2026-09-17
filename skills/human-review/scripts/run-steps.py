@@ -129,6 +129,73 @@ def merge_base(ctx: Ctx) -> str:
 
 # --------------------------------------------------------------------------- steps
 
+def _reviewpoints(ctx: Ctx):
+    """Read `review-points.md` off the branch, and work out which commit is which.
+
+    This is the step that turns the Review tab from something a model wrote at the end of
+    a review into something the branch carries. `review-points.md` is committed with the
+    fixes, so what the coding agent accepted, declined and assumed arrives in the pull
+    request's own file list; this step parses it into `.human-review/review-points.json`
+    and resolves the two commits into `.human-review/review-commits.json`.
+
+    Both files are written, and the two halves fail differently on purpose:
+
+    * **no points file (parser exit 3)** is a `skipped`, not a failure. A branch nobody
+      ran `/implement-ticket` on is a normal branch, and the build renders the absence as
+      an absence — a band saying so — rather than as a clean review;
+    * **a points file that will not parse (4) or that anchors nothing (5)** is loud. Both
+      are a record that exists and says nothing checkable, and a silently skipped pile
+      reads on the page exactly like a pile nobody wrote, which is the one confusion this
+      whole flow exists to prevent.
+
+    A stale `review-points.json` is deleted whenever the parse does not produce a new one.
+    Leaving the previous run's copy in place would put items on the page that the branch
+    no longer records — the worst of the three states, because it looks like the good one.
+
+    `review-commits.py` runs whatever the parse did: `aftermath` needs the review commit
+    to date from, and a branch can carry the trailers without the file still being there
+    (a rebase that dropped it), which is itself worth reporting.
+    """
+    out = Path(".human-review/review-points.json")
+    rp = sh(f"{HERE}/review-points.py --root . --out {out}", ctx, check=False, capture=True)
+    print((rp.stdout or "") + (rp.stderr or ""), end="", flush=True)
+
+    base = merge_base(ctx)
+    rc = sh(f"{HERE}/review-commits.py --base {base} --json", ctx, check=False, capture=True)
+    print(rc.stderr or "", end="", file=sys.stderr, flush=True)
+    commits = Path(".human-review/review-commits.json")
+    if (rc.stdout or "").strip():
+        commits.parent.mkdir(parents=True, exist_ok=True)
+        commits.write_text(rc.stdout, encoding="utf-8")
+    elif not ctx.dry:
+        # No answer at all (not a repository, an empty range): the previous run's answer
+        # would date the aftermath band from a commit this range does not contain.
+        commits.unlink(missing_ok=True)
+    if rc.returncode == 3:
+        ctx.notes.append("no commit on this branch carries a Review-Points: trailer, so "
+                         "which commit the agent finished on is not recorded — the "
+                         "aftermath band cannot be drawn and nothing dates the phases")
+    elif rc.returncode != 0 and not ctx.dry:
+        ctx.notes.append(f"review-commits.py exit {rc.returncode} — the two commits could "
+                         "not be resolved; say so rather than reading the page's phases")
+
+    if rp.returncode != 0 and not ctx.dry:
+        out.unlink(missing_ok=True)
+    if rp.returncode == 3:
+        raise LookupError("no review-points.md on this branch — nothing records what the "
+                          "agent fixed, declined or assumed. The Review tab says so; do "
+                          "not write the piles by hand to fill the gap")
+    if rp.returncode == 4:
+        raise RuntimeError("review-points.md is on the branch and cannot be parsed — see "
+                           "the problems above. A pile the parser skipped reads exactly "
+                           "like a pile nobody wrote")
+    if rp.returncode == 5:
+        raise RuntimeError("every item in review-points.md is unanchored — the file is "
+                           "there and says nothing a reader can go and look at")
+    if rp.returncode != 0:
+        raise RuntimeError(f"review-points.py exit {rp.returncode}")
+
+
 def _diagrams(ctx: Ctx):
     sh(f"{HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
     d = ctx.step_cfg("diagrams").get("drawio")
@@ -658,6 +725,12 @@ def _traces(ctx: Ctx):
 
 # name, tabs (None = feeds no tab), label, prerequisite, runner
 STEPS = [
+    # First, because it is the only step whose subject is the *branch's own record* of the
+    # review rather than the code: everything below measures what the change did, and this
+    # reads what the agent said it decided. It also resolves the two commits the later
+    # steps and the cost phases date themselves from.
+    ("reviewpoints", "review",       "review-points.md and the two commits",
+     None,                                                                        _reviewpoints),
     ("diagrams",    "data,packages", "diagram deltas",            None,              _diagrams),
     ("sequence",    "sequence",      "sequence diagrams from traces",
      lambda c: bool(c.step_cfg("sequence").get("commands")) or "sequence.commands not configured",

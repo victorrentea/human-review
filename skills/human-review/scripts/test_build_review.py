@@ -3609,3 +3609,162 @@ def test_a_sequence_the_branch_deleted_gets_no_frame(tmp_path):
     out, weight, changes = build.render_testpairs(
         {"title": ""}, {}, rows, tmp_path, tmp_path / ".human-review")
     assert out == "" and weight == 0 and changes == 0
+
+
+# ── the three piles, read off the branch instead of out of the content file ─────────
+# `{"auto": "review-points"}` is the point at which content.json stops being the
+# judgement. What is checked here is the part a reader cannot check: that an absent
+# record renders as an absence rather than as a clean review, which is the one
+# substitution that would make the page confidently wrong.
+
+POINTS_SPEC = {
+    "findings": {"auto": "review-points"},
+    "autofixes": {"auto": "review-points"},
+    "assumptions": {"auto": "review-points"},
+    "tabs": [{"id": "review", "label": "Review", "blocks": [
+        {"type": "assumptions"}, {"type": "findings"}, {"type": "autofixes"}]}],
+}
+
+POINTS_DOC = {
+    "mode": "points", "source": "review-points.md", "fixed_in": "HEAD",
+    "sections": {"Fixed": "Fixed", "Ignored": "Ignored", "Assumptions": "Assumptions"},
+    "autofixes": [{"title": "fixed one", "refs": ["a.py:1"]}],
+    "findings": [{"title": "declined one", "why": "out of scope", "refs": ["b.py:2"],
+                  "severity": "medium"}],
+    "assumptions": [{"title": "assumed one", "alternative": "the other reading",
+                     "refs": ["c.py:3"]}, {"title": "assumed two", "why": "because",
+                                           "refs": ["c.py:9"]}],
+    "warnings": [],
+}
+
+
+def _points_spec(doc, tmp_path):
+    """A spec whose piles are delegated, and the parser's JSON beside it (or not)."""
+    import copy
+    spec = copy.deepcopy(POINTS_SPEC)
+    if doc is not None:
+        (tmp_path / "review-points.json").write_text(json.dumps(doc), encoding="utf-8")
+    return spec, build.resolve_review_points(spec, tmp_path)
+
+
+def test_the_piles_come_from_the_parsers_json(tmp_path):
+    spec, points = _points_spec(POINTS_DOC, tmp_path)
+    assert points["missing"] is False
+    assert [f["title"] for f in spec["autofixes"]] == ["fixed one"]
+    assert [f["title"] for f in spec["findings"]] == ["declined one"]
+    assert len(spec["assumptions"]) == 2
+
+
+def test_a_content_file_that_writes_its_own_piles_is_untouched(tmp_path):
+    """The delegation is opt-in: an older content file keeps rendering as it always did,
+    and must not be handed an empty pile because a file it never asked for is absent."""
+    spec = {"findings": [{"title": "typed by hand", "body": "x"}], "tabs": []}
+    assert build.resolve_review_points(spec, tmp_path) is None
+    assert spec["findings"][0]["title"] == "typed by hand"
+
+
+def test_an_absent_record_empties_the_piles_rather_than_keeping_stale_ones(tmp_path):
+    """A page rendering last week's findings under this week's diff is worse than one
+    rendering none, and it is what would happen if the delegation silently fell back to
+    whatever the content file carried."""
+    spec = {"findings": {"auto": "review-points"},
+            "autofixes": [{"title": "left over from an older run"}],
+            "assumptions": {"auto": "review-points"}, "tabs": []}
+    points = build.resolve_review_points(spec, tmp_path)
+    assert points["missing"] is True
+    assert spec["findings"] == [] and spec["assumptions"] == []
+    # Not delegated, so not touched: the author still owns what they typed.
+    assert spec["autofixes"][0]["title"] == "left over from an older run"
+
+
+def test_an_absent_record_never_reads_as_a_clean_review(tmp_path):
+    """`render_findings([])` says *the automated passes came back clean*. That sentence is
+    true of a review that found nothing and false — confidently, unfalsifiably — of a
+    branch whose record is simply not there."""
+    spec, points = _points_spec(None, tmp_path)
+    build.reset_list()
+    build.set_bands([build.POINTS_MISSING_BAND])
+    out = "".join(build.render_pile_block(spec, b)[0]
+                  for b in spec["tabs"][0]["blocks"])
+    assert "the automated passes came back clean" not in out
+    assert "Nothing was applied automatically" not in out
+    assert "rband-none" in out
+    assert "nothing records what was reviewed or declined" in out
+    assert "Not recorded" in out
+
+
+def test_an_absent_record_forces_the_assumptions_block_to_mode_c(tmp_path):
+    """So the counts line and the pile agree. `0 assumptions` says the conversation *was*
+    asked and named nothing, which is good news; mode C says nobody could be asked."""
+    spec = {"assumptions": {"auto": "review-points"},
+            "tabs": [{"id": "review", "label": "Review",
+                      "blocks": [{"type": "assumptions", "mode": "A"}]}]}
+    build.resolve_review_points(spec, tmp_path)
+    assert build._assumptions_block(spec)["mode"] == "C"
+    build.reset_list()
+    assert "coder could not be asked" in build.opening_lede(spec)
+
+
+def test_an_empty_pile_says_which_kind_of_empty_it_is(tmp_path):
+    """A section that is not in the file and a section that is there and empty are two
+    different facts about the review, and only the second one is news about the code."""
+    doc = dict(POINTS_DOC, findings=[], autofixes=[],
+               sections={"Fixed": "Fixed", "Assumptions": "Assumptions"})
+    spec, points = _points_spec(doc, tmp_path)
+    no_section = build.points_empty_html("findings", points)
+    assert "has no <b>Ignored</b> section" in no_section
+    was_empty = build.points_empty_html("autofixes", points)
+    assert "records no fix" in was_empty
+
+
+def test_the_counts_line_says_declined_not_open(tmp_path):
+    """Read out of review-points.md, `findings` is what the agent read and said no to —
+    a closed decision the reviewer is invited to disagree with, not an untriaged item."""
+    spec, points = _points_spec(POINTS_DOC, tmp_path)
+    build.reset_list()
+    lede = build.opening_lede(spec)
+    assert "1 fixed" in lede and "1 declined" in lede and "2 assumptions" in lede
+    assert "open LLM review issue" not in lede
+    # Fixed leads: the review is finished, so the line reads in the order it happened.
+    assert lede.index("1 fixed") < lede.index("1 declined")
+
+
+def test_a_content_file_that_writes_its_own_piles_keeps_the_old_wording():
+    spec = {"findings": [{"title": "a", "body": "x"}] * 6,
+            "autofixes": [{"title": "b"}] * 4,
+            "tabs": [{"id": "review", "label": "R", "blocks": [
+                {"type": "findings"}, {"type": "autofixes"},
+                {"type": "assumptions", "mode": "A"}]}],
+            "assumptions": [{"title": "c", "body": "y"}] * 6}
+    build.reset_list()
+    lede = build.opening_lede(spec)
+    assert "6 open LLM review issues" in lede
+    assert "4 auto-fixed" in lede
+    assert "6 assumptions" in lede
+
+
+def test_a_band_is_drained_not_repeated():
+    """Three piles on one tab each ask for the lede; only the first gets it, and the band
+    rides with it. A band printed once per pile would be the same alarm three times."""
+    build.set_bands(["<div class='rband'>once</div>"])
+    assert "once" in build._lede_above("<h2>a</h2>", "<p>lede</p>")
+    assert "once" not in build._lede_above("<h2>b</h2>", "")
+
+
+# ── an item has to say something past its title, wherever it says it ───────────────
+# `body` used to be the only accepted place, which is where a model writing content.json
+# put its prose. An item parsed out of review-points.md often carries its whole argument
+# in `why:` (declined, with a reason) or `alternative:` (a reading not taken).
+def test_a_declined_item_may_argue_in_why_instead_of_body():
+    assert build.validate({"findings": [{"title": "a", "why": "out of scope"}]},
+                          Path(".")) == []
+
+
+def test_an_assumption_may_argue_in_alternative_alone():
+    assert build.validate({"assumptions": [{"title": "a", "alternative": "the other"}]},
+                          Path(".")) == []
+
+
+def test_an_item_that_is_only_a_title_is_still_refused():
+    problems = build.validate({"findings": [{"title": "a"}]}, Path("."))
+    assert any("has none of" in p and "something past its title" in p for p in problems)

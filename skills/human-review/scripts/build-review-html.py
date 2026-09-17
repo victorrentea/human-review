@@ -281,6 +281,29 @@ button.chip-rerun.running::before { content:""; display:inline-block; width:.62e
             line-height:1.55; }
 @media (prefers-color-scheme: dark) {
   .vidverdict .vv-head b { color:#f0757f; } }
+/* The Review tab's bands: what the branch does not record, and what changed after the
+   agent stopped. Same shape as .vidverdict — a left-weighted rule, a tinted panel, one
+   sentence in colour — because they are the same kind of statement in the same place, and
+   a second visual vocabulary for "read the rest of this differently" would read as a
+   second meaning. `rband-none` is grey (an absence, not an alarm), `rband-warn` amber
+   (only generated files moved), `rband-alert` red (somebody changed the code). */
+.rband { border:1px solid var(--line); border-left-width:4px; border-radius:8px;
+            background:var(--code-bg); padding:.6rem .85rem; margin:0 0 .8rem; }
+.rband p { margin:0; font-size:.9rem; line-height:1.6; }
+.rband p + p, .rband ul { margin-top:.4rem; }
+.rband .rb-sub { color:var(--muted); font-size:.85rem; }
+.rband ul { margin:.45rem 0 0; padding-left:1.15rem; }
+.rband li { font-size:.86rem; line-height:1.65; }
+.rband li + li { margin-top:.35rem; }
+.rband code { font-size:.95em; }
+.rband .rb-files { color:var(--muted); font-size:.82rem; display:block; }
+.rband .rb-gen { color:var(--muted); }
+.rband-alert { border-color:#c62828; background:rgba(198,40,40,.07); }
+.rband-alert > p:first-child b, .rband-alert > p:first-child { color:#c62828; }
+.rband-warn { border-color:var(--drift); background:rgba(181,115,10,.07); }
+.rband-warn > p:first-child { color:var(--drift); }
+@media (prefers-color-scheme: dark) {
+  .rband-alert > p:first-child b, .rband-alert > p:first-child { color:#f0757f; } }
 table.costtab { border-collapse:collapse; width:100%; font-size:.85rem; }
 table.costtab caption { caption-side:top; text-align:left; color:var(--muted);
              font-size:.8rem; line-height:1.5; margin:0 0 .55rem; }
@@ -5572,6 +5595,133 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") 
     return "\n".join(parts)
 
 
+#: Where `review-points.py` leaves what it parsed off the branch. A content file asks for
+#: it with `{"auto": "review-points"}` on `findings` / `autofixes` / `assumptions` — the
+#: same convention `diffstat` and `tests` already use for a number nobody should type.
+REVIEW_POINTS_JSON = "review-points.json"
+
+#: Which pile each `{"auto": …}` key fills, and the heading `review-points.md` writes it
+#: under. Kept here rather than imported from the parser: this is the build's side of the
+#: contract, and a rename in either file has to be a deliberate change in both.
+POINTS_PILES = {"autofixes": "Fixed", "findings": "Ignored", "assumptions": "Assumptions"}
+
+
+def resolve_review_points(spec: dict, out_dir: Path) -> dict | None:
+    """Fill the piles the content file delegated to `review-points.md`, in place.
+
+    `content.json` stops being the judgement here. Before this, a model read the passes,
+    decided what to fix and what to leave, wrote the three piles into the content file,
+    and the page rendered its prose — so the record of the review was produced by the same
+    conversation that produced the page, minutes after the fact, and nothing outside that
+    file could corroborate a word of it. Now the coding agent writes `review-points.md`
+    and commits it with the fixes, and this reads it: the content file keeps the layout and
+    the ledes, which are the page's, and hands over the three piles, which are the
+    branch's.
+
+    The answer is recorded on the spec as `_reviewPoints` as well as returned, because
+    every reader of it is downstream of one dict being threaded through eight call layers:
+    the ledes, the piles and the band all have to agree about whether the record exists,
+    and the spec is the thing all three already have in hand.
+
+    None when no pile asked for it — an older content file with its piles written out is
+    rendered exactly as it always was. Otherwise the dict says what the page now has to be
+    honest about: `missing` when the file is not on the branch at all (and the piles are
+    emptied, so nothing renders items nobody recorded), `sections` so an empty pile can
+    say whether the file had no such section or an empty one.
+
+    An absent file empties the piles rather than leaving whatever the content file happened
+    to carry. A page that renders last week's findings under this week's diff is the one
+    failure mode worse than a page that renders none.
+    """
+    asked = {k for k in POINTS_PILES
+             if isinstance(spec.get(k), dict) and spec[k].get("auto") == "review-points"}
+    if not asked:
+        spec["_reviewPoints"] = None
+        return None
+    path = out_dir / (spec.get("reviewPoints") or REVIEW_POINTS_JSON)
+    doc = None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        doc = None
+    if not isinstance(doc, dict):
+        for key in asked:
+            spec[key] = []
+        # Mode C, in the layout itself rather than at render time, so the counts line and
+        # the pile agree. With no record on the branch the conversation that wrote the code
+        # genuinely could not be asked — the thing that would have answered was never
+        # written down — and the lede has to say that instead of counting an empty pile to
+        # zero. `0 assumptions` is the good news ("it was asked, and named nothing"); this
+        # is the other one.
+        block = _assumptions_block(spec)
+        if block is not None:
+            block["mode"] = "C"
+        print(f"[review] no {path.name} — the Review tab will say that nothing on this "
+              "branch records what was reviewed, fixed or declined. Run "
+              "run-steps.py --only reviewpoints, or accept the band: a branch nobody "
+              "reviewed is a real state.", file=sys.stderr)
+        spec["_reviewPoints"] = {"missing": True, "asked": asked, "sections": {},
+                                 "path": path.name}
+        return spec["_reviewPoints"]
+    for key in asked:
+        items = doc.get(key)
+        spec[key] = items if isinstance(items, list) else []
+    for warning in doc.get("warnings") or []:
+        print(f"[review] review-points: {warning}", file=sys.stderr)
+    spec["_reviewPoints"] = {
+        "missing": False, "asked": asked, "sections": doc.get("sections") or {},
+        "source": doc.get("source") or "review-points.md",
+        "fixed_in": doc.get("fixed_in"), "meta": doc.get("meta") or {},
+        "path": path.name}
+    return spec["_reviewPoints"]
+
+
+#: The band that goes where the piles would have been. Not `render_findings([])`'s
+#: "Nothing outstanding — the automated passes came back clean", which is the confident-
+#: wrong page: no file is not a clean review, it is no review recorded.
+POINTS_MISSING_BAND = (
+    '<div class="rband rband-none" role="status">'
+    '<p>No <code>review-points.md</code> on this branch — nothing records what was '
+    'reviewed or declined.</p>'
+    '<p class="rb-sub">The piles below are empty because the record is absent, not '
+    'because the review was clean. <code>/implement-ticket</code> is what writes the '
+    'file; a branch it never ran on has nothing to read.</p></div>')
+
+
+def points_empty_html(kind: str, points: dict) -> str:
+    """The sentence an empty pile gets when the pile is `review-points.md`'s to fill.
+
+    Three different silences, and the reader has to be able to tell them apart: the file is
+    not there, the file has no such section, or the section is there and empty. Only the
+    third is news about the review; the first two are news about the record. The renderers
+    are left alone — their empty states are about a *content file* that listed nothing,
+    which is a fourth thing again — so the substitution happens here, at the block.
+    """
+    if points.get("missing"):
+        return {
+            "findings": '<p class="sub">Not recorded — with no <code>review-points.md</code>'
+                        ' on this branch, nothing says which findings were read and '
+                        'declined.</p>',
+            "autofixes": '<p class="sub">Not recorded — with no <code>review-points.md</code>'
+                         ' on this branch, nothing says which findings were accepted and '
+                         'fixed.</p>',
+        }.get(kind, "")
+    heading = POINTS_PILES.get(kind, kind)
+    src = html.escape(points.get("source") or "review-points.md")
+    if heading not in (points.get("sections") or {}):
+        return (f'<p class="sub"><code>{src}</code> has no <b>{html.escape(heading)}</b> '
+                f'section, so nothing on this branch records this pile either way.</p>')
+    return {
+        "findings": f'<p class="sub"><code>{src}</code> declines nothing — every finding '
+                    'the review raised was accepted.</p>',
+        "autofixes": f'<p class="sub"><code>{src}</code> records no fix — the review '
+                     'raised nothing the agent accepted.</p>',
+        "assumptions": f'<p class="sub"><code>{src}</code> records no assumption: the '
+                       'agent was asked what it had to decide for itself, and named '
+                       'nothing.</p>',
+    }.get(kind, "")
+
+
 # The one list. Everything the reviewer has to act on, numbered straight through, because
 # a reviewer asking "how much is there for me here?" should get one answer and not three.
 # What separates the piles is the card's colour and one badge — not a restart of the
@@ -5761,24 +5911,42 @@ def opening_lede(spec) -> str:
         at = _pile_anchor(spec, kind, fallback)
         return f'<a href="#{html.escape(at)}">{text}</a>' if at else text
 
-    if spec.get("findings"):
-        # "open LLM review issues", not "open, worst first": the ordering fact was the one
-        # clause here that a reader could not have counted themselves, and it was also the
-        # one nobody acts on — the list is in front of them, worst first or not. What they
-        # do act on is *who raised these*, because the page carries two piles a machine
-        # produced and one a human owns, and the clause that opens the line is the one that
-        # has to say which of them it is counting.
-        n_open = len(spec["findings"])
-        parts.append(clause(
-            f"{n_open} open LLM review issue{'' if n_open == 1 else 's'}",
-            "findings", "first"))
-    if spec.get("autofixes"):
-        # `auto-fixed`, the same word the badge on every one of those items already wears.
-        # "auto-applied" was a second name for one thing, and a reader who scrolls to the
-        # pile has to satisfy themselves the two words mean the same before they can trust
-        # the count.
-        parts.append(clause(f"{len(spec['autofixes'])} auto-fixed",
-                            "autofixes", "fixed"))
+    # Two vocabularies, because the two sources mean different things by the same pile.
+    # With the piles written into the content file, `findings` is what a review pass raised
+    # and nobody has answered yet — *open*. Read out of `review-points.md`, the same array
+    # is what the agent read and said no to, which is not open at all: it is closed, by the
+    # agent, and the reader's job is to disagree or agree. Calling that "open" would ask
+    # the reviewer to triage a decision that has already been made, and would hide the one
+    # fact the file exists to carry.
+    points = spec.get("_reviewPoints")
+    if points:
+        # Fixed first, then declined. The old order led with what is still open because
+        # that was the pile with work in it; here the reader is being shown a review that
+        # is already finished, and it reads in the order it happened — accepted, declined,
+        # and then the decisions nobody was asked about.
+        if spec.get("autofixes"):
+            parts.append(clause(f"{len(spec['autofixes'])} fixed", "autofixes", "fixed"))
+        if spec.get("findings"):
+            parts.append(clause(f"{len(spec['findings'])} declined", "findings", "first"))
+    else:
+        if spec.get("findings"):
+            # "open LLM review issues", not "open, worst first": the ordering fact was the
+            # one clause here that a reader could not have counted themselves, and it was
+            # also the one nobody acts on — the list is in front of them, worst first or
+            # not. What they do act on is *who raised these*, because the page carries two
+            # piles a machine produced and one a human owns, and the clause that opens the
+            # line is the one that has to say which of them it is counting.
+            n_open = len(spec["findings"])
+            parts.append(clause(
+                f"{n_open} open LLM review issue{'' if n_open == 1 else 's'}",
+                "findings", "first"))
+        if spec.get("autofixes"):
+            # `auto-fixed`, the same word the badge on every one of those items already
+            # wears. "auto-applied" was a second name for one thing, and a reader who
+            # scrolls to the pile has to satisfy themselves the two words mean the same
+            # before they can trust the count.
+            parts.append(clause(f"{len(spec['autofixes'])} auto-fixed",
+                                "autofixes", "fixed"))
     # Last, because the first two clauses count what a review pass produced and this one
     # counts what it could not: a reader who has just been told how many items are open
     # and how many were applied is at exactly the point where "and here is what nobody
@@ -5814,6 +5982,27 @@ def opening_lede(spec) -> str:
             + "</p>")
 
 
+#: Bands the Review tab owes the reader before its first heading: what is not recorded,
+#: and what changed after the agent stopped. Module state for the same reason
+#: `_LIST_OFFSET` is — they are emitted by a leaf of a render tree eight calls deep, and
+#: they belong to the *tab*, not to whichever pile happens to open it. `main` fills the
+#: list before rendering; the first pile drains it.
+_BANDS: list[str] = []
+
+
+def set_bands(bands) -> None:
+    """Replace the pending bands. Called once per page, beside `reset_list`."""
+    _BANDS[:] = [b for b in bands if b]
+
+
+def _flush_bands() -> str:
+    """Every pending band, once. Drained rather than read, so a tab with three piles in it
+    does not print the same red band three times."""
+    out = "".join(_BANDS)
+    _BANDS.clear()
+    return out
+
+
 def _lede_above(head: str, lede: str) -> str:
     """Above the first pile's heading, not tucked under it.
 
@@ -5821,8 +6010,14 @@ def _lede_above(head: str, lede: str) -> str:
     description of the findings and the reader meets `4 coder assumptions to check` as a
     footnote to a heading that has nothing to do with them. Hoisted above, it is what it
     is: the shape of the whole list, before the list starts. Which pile happens to open
-    the list is then an editorial choice that cannot move the line."""
-    return lede + head if lede else head
+    the list is then an editorial choice that cannot move the line.
+
+    The tab's bands land between the two: under the counts line, which is sticky and has
+    to stay the topmost thing in the tab, and above the first heading, because what a band
+    says ("nothing records this review", "someone changed the code after the agent
+    finished") governs how every item under it should be read.
+    """
+    return (lede + _flush_bands() + head) if lede else (_flush_bands() + head)
 
 
 def render_findings(findings) -> str:
@@ -5928,6 +6123,62 @@ def render_autofixes(fixes) -> str:
             + "</li>"
         )
     return _open_list(len(fixes)) + "\n".join(items) + "</ol>"
+
+
+#: The three block types that render the one list. Named so `render_block` can hand all
+#: three to one function: they share the lede, the numbering, the band and — since
+#: `{"auto": "review-points"}` — the question of what an empty one is allowed to say.
+PILE_BLOCKS = ("findings", "assumptions", "autofixes")
+
+
+def render_pile_block(spec, block, heading=None):
+    """One of the three piles, as `(html, weight, changes)`.
+
+    Lifted out of `render_block` when the piles stopped being the content file's own list.
+    The decision it now makes is not about layout at all — it is *whose* silence an empty
+    pile is, the author's or the branch's — and that is worth testing directly rather than
+    through a page build with a repository, a manifest and PlantUML behind it.
+
+    `heading` is `render_block`'s local heading emitter; without one (a test, a caller
+    rendering a pile on its own) the piles render bare.
+    """
+    def head_of(fallback_id, fallback_title):
+        if heading is None:
+            return ""
+        return heading(block, fallback_id, fallback_title)
+
+    kind = block.get("type", "section")
+    # Whether these three piles are the branch's record or the content file's own list. It
+    # changes what an empty one is allowed to say, and nothing else: the item shapes are
+    # identical, which is the whole reason `review-points.md` could be bolted on without
+    # touching a renderer.
+    points = spec.get("_reviewPoints")
+    if kind == "findings":
+        items = spec.get("findings", [])
+        head = _lede_above(head_of("first", "Requires human review"), opening_lede(spec))
+        if points and not items:
+            # Weight 1: the sentence saying which kind of empty this is has to keep the
+            # tab alive, exactly as the assumptions pile's always has.
+            return (head + points_empty_html("findings", points), 1, 0)
+        return (head + render_findings(items), len(items), len(items))
+    if kind == "assumptions":
+        items = spec.get("assumptions", [])
+        # `resolve_review_points` has already forced this block to mode C when the branch
+        # carries no record, so the mode read here is the one the counts line read too.
+        mode = block.get("mode", "")
+        head = _lede_above(head_of("assumed", "Decided without asking you"),
+                           opening_lede(spec))
+        if points and not items and not points.get("missing"):
+            return (head + points_empty_html("assumptions", points), 1, 0)
+        # Weight 1 even with nothing in it: an empty pile still carries the sentence
+        # saying *which* kind of empty it is, and that sentence is the point.
+        return (head + render_assumptions(items, mode),
+                1 if (items or mode) else 0, len(items))
+    items = spec.get("autofixes", [])
+    head = _lede_above(head_of("fixed", "Auto-fixed"), opening_lede(spec))
+    if points and not items:
+        return (head + points_empty_html("autofixes", points), 1, 0)
+    return (head + render_autofixes(items), len(items), len(items))
 
 
 # What happened to a test, and what the page calls it. The colour classes are the page's
@@ -7391,11 +7642,19 @@ def logging_fragment(block, root: Path):
     return frag, 1, 1
 
 
+# What an entry must carry. A nested tuple means *any one of these* — the rule is that an
+# item has to say something past its title, not that it has to say it in a particular key.
+# `body` was the only accepted place for months, because a model writing the content file
+# put its prose there; an item parsed out of `review-points.md` often has no prose at all
+# and carries its whole argument in `why:` (a finding that was declined) or in
+# `alternative:` (a reading that was not taken). Both are the item saying something
+# checkable, and refusing them would mean the branch's own record could not satisfy a rule
+# written for a different author.
 REQUIRED = {
     "sections": ("id", "title"),
     "tabs": ("id", "label"),
-    "findings": ("title", "body"),
-    "assumptions": ("title", "body"),
+    "findings": ("title", ("body", "why")),
+    "assumptions": ("title", ("body", "why", "alternative")),
     "autofixes": ("title",),
 }
 
@@ -8085,6 +8344,13 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
     for key, fields in REQUIRED.items():
         for i, item in enumerate(spec.get(key) or []):
             for f in fields:
+                if isinstance(f, tuple):
+                    if not any(item.get(alt) for alt in f):
+                        problems.append(
+                            f"{key}[{i}] has none of "
+                            + ", ".join(repr(alt) for alt in f)
+                            + " — an item has to say something past its title")
+                    continue
                 # An explicit empty title is a decision, not an omission: a section whose
                 # content announces itself does not need a heading repeating the tab name
                 # above it. A *missing* key is still the mistake it always was.
@@ -8442,6 +8708,12 @@ def main(argv=None) -> int:
     # How to start this build again, for the copy button under the hand-drawn diagram.
     rebuild_cmd = " ".join([rebuild_interpreter(), shlex.quote(str(Path(__file__).resolve())),
                             shlex.quote(args.content), "--out", shlex.quote(args.out)])
+
+    # Before `validate`, and before anything walks the piles: the three arrays may be a
+    # delegation (`{"auto": "review-points"}`) rather than a list, and everything
+    # downstream — the validator, the ref resolution, the ledes, the renderers — takes
+    # them as lists. This is the point at which the branch's own record becomes the page's.
+    resolve_review_points(spec, out_dir)
 
     problems = validate(spec, out_dir)
     if problems:
@@ -8822,6 +9094,11 @@ def main(argv=None) -> int:
     # a content file written before this block existed must not silently lose it.
     placed_ledger: list[bool] = []
     reset_list()
+    # What the Review tab owes the reader above its first heading. Both are facts about the
+    # branch rather than about any pile, so they are set once here and drained by whichever
+    # pile renders first.
+    set_bands([POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
+               else ""])
 
     def render_block(block):
         """One block of a tab, as (html, weight, changes).
@@ -8832,24 +9109,8 @@ def main(argv=None) -> int:
         through on the strip. A picture of the current state is not a change; that is
         why `puml` and `codecity` carry weight but no changes."""
         kind = block.get("type", "section")
-        if kind == "findings":
-            items = spec.get("findings", [])
-            head = _lede_above(heading(block, "first", "Requires human review"), opening_lede(spec))
-            return (head + render_findings(items), len(items), len(items))
-        if kind == "assumptions":
-            items = spec.get("assumptions", [])
-            mode = block.get("mode", "")
-            head = _lede_above(heading(block, "assumed", "Decided without asking you"),
-                              opening_lede(spec))
-            # Weight 1 even with nothing in it: an empty pile still carries the sentence
-            # saying *which* kind of empty it is, and that sentence is the point.
-            return (head + render_assumptions(items, mode),
-                    1 if (items or mode) else 0, len(items))
-        if kind == "autofixes":
-            items = spec.get("autofixes", [])
-            head = _lede_above(heading(block, "fixed", "Auto-fixed"),
-                              opening_lede(spec))
-            return (head + render_autofixes(items), len(items), len(items))
+        if kind in PILE_BLOCKS:
+            return render_pile_block(spec, block, heading)
         if kind == "diagrams":
             # A block may name a manifest of its own. One producer does: the C2 view is
             # projected from the sequence diagrams rather than diffed out of a .puml that
