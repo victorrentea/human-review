@@ -18,6 +18,16 @@ exactly what happens to a demo branch between the run and the page. A subject-li
 convention ("fix: review fixes") survives none of it, and `.human-review/.session` is
 gitignored and dies with the directory.
 
+**Read out of the body, not only out of `%(trailers)`.** Git's trailer parser only looks
+at the *last* paragraph of the message, and the harness appends its own paragraph —
+`Co-Authored-By: Claude …` — after whatever the agent wrote. The three keys then sit in
+the penultimate paragraph and `%(trailers:key=…)` returns empty for all of them, which is
+what the first `/implement-ticket` run produced: two perfectly trailered commits reported
+as "not recorded". So `%(trailers)` is the first pass and the message body is the second,
+matched line by line anywhere in the message. That is the normal case, not a degraded one,
+and it warns about nothing: a key on its own line IS the record, wherever the harness
+ended up putting it.
+
 **The fallback is a guess and says so.** With no trailer anywhere, the single commit in
 the range that touches the points file is taken as the review commit, with a warning. Two
 such commits, or none, is not guessed at all: an ambiguous answer here silently mis-bases
@@ -34,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -42,13 +53,21 @@ DEFAULT_FILE = "review-points.md"
 CONFIG = "human-review.json"
 
 # One record per commit, NUL-ish delimited: a trailer value can itself contain newlines,
-# so neither field nor record separator may be one.
-FIELDS = ("sha", "when", "points", "implements", "session", "subject")
+# so neither field nor record separator may be one. `%B` is last because it is the only
+# multi-line field and keeping it at the end makes a short record obvious.
+FIELDS = ("sha", "when", "points", "implements", "session", "subject", "body")
 FMT = ("%H%x1F%cI%x1F"
        "%(trailers:key=Review-Points,valueonly,separator=%x2C)%x1F"
        "%(trailers:key=Implements,valueonly,separator=%x2C)%x1F"
        "%(trailers:key=Claude-Session,valueonly,separator=%x2C)%x1F"
-       "%s%x1E")
+       "%s%x1F%B%x1E")
+
+# The same three keys, read off any line of the message. `git interpret-trailers` would
+# not help here: it has the same last-paragraph rule that loses them.
+BODY_KEYS = {"Review-Points": "points", "Implements": "implements",
+             "Claude-Session": "session"}
+BODY_RE = re.compile(r"^(Review-Points|Implements|Claude-Session):[ \t]*(\S.*?)[ \t]*$",
+                     re.MULTILINE)
 
 
 def git(root: Path, *args: str) -> tuple[int, str]:
@@ -69,8 +88,29 @@ def points_file(root: Path) -> str:
     return DEFAULT_FILE
 
 
+def from_body(body: str) -> dict[str, str]:
+    """The three keys as they appear on their own lines, anywhere in the message.
+
+    Multiple values for one key are joined with a comma, which is exactly what
+    `%(trailers:…,separator=%x2C)` emits, so every reader downstream keeps working
+    unchanged — `.split(",")[0]` means the same thing either way.
+    """
+    found: dict[str, list[str]] = {}
+    for key, value in BODY_RE.findall(body or ""):
+        bucket = found.setdefault(BODY_KEYS[key], [])
+        if value not in bucket:
+            bucket.append(value)
+    return {k: ",".join(v) for k, v in found.items()}
+
+
 def log(root: Path, base: str, head: str = "HEAD") -> list[dict]:
-    """`base..head`, oldest first, with the three trailers read out by git itself."""
+    """`base..head`, oldest first, with the three trailers read out of each message.
+
+    Git first, because when the keys really are the last paragraph its parser handles
+    continuation lines and folding that a regex would not. The body second, because the
+    harness's own `Co-Authored-By:` paragraph routinely lands after them and git then sees
+    no trailer block at all.
+    """
     rng = f"{base}..{head}" if base else head
     code, out = git(root, "log", "--reverse", f"--format={FMT}", rng)
     if code != 0:
@@ -84,6 +124,10 @@ def log(root: Path, base: str, head: str = "HEAD") -> list[dict]:
         if len(parts) < len(FIELDS):
             continue
         row = dict(zip(FIELDS, (p.strip() for p in parts)))
+        scanned = from_body(row.get("body", ""))
+        for field, value in scanned.items():
+            if not row.get(field):
+                row[field] = value
         rows.append(row)
     return rows
 

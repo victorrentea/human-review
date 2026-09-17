@@ -65,6 +65,15 @@ loss of exactly one row on the page:
 | `Review-Points:` + `Implements:` trailers | `scripts/review-commits.py` | which commit is the implementation and which is the review is guessed from the file's history, or not at all |
 | `Claude-Session:` on both commits | `scripts/session-cost.py` | the phase costs fall back to `.human-review/.session`, which is gitignored and dies with the directory |
 
+**The trailers are the last lines the agent writes, and the harness writes after them.**
+Claude Code appends `Co-Authored-By: Claude …` as a paragraph of its own, which puts the
+three keys in the *penultimate* paragraph — and git's `%(trailers:key=…)` only parses the
+last one, so it returns empty for all three. The first real run of this flow produced two
+correctly trailered commits that the page reported as "not recorded" for exactly that
+reason. `review-commits.py` therefore reads the keys off any line of `%B`, with
+`%(trailers)` as the first pass only. Nothing is asked of the agent beyond one key per
+line: a paragraph landing after them is expected and harmless.
+
 **Two commits, not one and not three.** The first is the feature alone; the second is the
 accepted fixes plus `review-points.md`. That split is what makes "what did reviewing cost,
 against writing it" a measurement instead of an estimate — the two commits are the only

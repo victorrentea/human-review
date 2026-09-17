@@ -4,7 +4,7 @@ Implement the ticket you were given, then record the review of your own work.
    one — and follow them. Do not ask for clarification: where the ticket is ambiguous,
    pick a reading, write it down in step 4, and move on.
 2. When the feature works and the repo's own checks pass, commit it. Nothing else in
-   that commit. End the message with:
+   that commit. The last lines you write in the message are:
        Claude-Session: <this session's id>
 3. Then run  /code-review high  over that commit. Do NOT pass --fix: you decide what to
    accept, one finding at a time, and that decision is the artifact this flow exists for.
@@ -20,10 +20,16 @@ Implement the ticket you were given, then record the review of your own work.
                    the diff.
    Every entry names a file:line. An unanchored entry is dropped by the build.
    Check it parses before you commit:  review-points.py --check
-5. Commit the fixes and review-points.md together, with the trailers:
+5. Commit the fixes and review-points.md together.
+   The last lines you write in the message are:
        Review-Points: review-points.md
        Implements: <sha from step 2>
        Claude-Session: <this session's id>
+   Write them as the final lines of your message, one key per line, nothing between
+   them. If the harness then appends a paragraph of its own — it adds
+   `Co-Authored-By: Claude …` — leave it alone: the parser reads these keys out of the
+   whole message body, not only out of git's trailer block, so a paragraph after them
+   changes nothing. Do not move them, do not repeat them below it.
 6. Stop. Do not push, do not open a PR, do not build a review page.
 
 ---

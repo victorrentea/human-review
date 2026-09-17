@@ -406,6 +406,71 @@ def test_a_short_implements_sha_is_resolved_to_the_full_one(tmp_path):
     assert rc.detect(repo, base)["implementation"] == impl
 
 
+HARNESS_TRAILER = "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+
+
+def test_the_trailers_are_read_out_of_the_body_when_the_harness_appends_its_own(tmp_path):
+    """The case the first real `/implement-ticket` run produced, and the reason this reads
+    the body at all: Claude Code adds `Co-Authored-By:` as a paragraph of its own *after*
+    whatever the agent wrote, so git's trailer parser — which only looks at the last
+    paragraph — finds none of the three keys and the page reports two perfectly trailered
+    commits as "not recorded"."""
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    impl = _commit(repo, "a.py", "one\n",
+                   f"feature\n\nClaude-Session: {SESSION}\n\n{HARNESS_TRAILER}\n")
+    (repo / "review-points.md").write_text(FULL)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm",
+         "fixes\n\nReview-Points: review-points.md\n"
+         f"Implements: {impl}\nClaude-Session: {SESSION}\n\n{HARNESS_TRAILER}\n")
+    review = _git(repo, "rev-parse", "HEAD")
+
+    assert _git(repo, "log", "-1",
+                "--format=%(trailers:key=Review-Points,valueonly)").strip() == "", \
+        "git itself sees no trailer here — that is the whole point of the fallback"
+
+    found = rc.detect(repo, base)
+    assert found["review"] == review
+    assert found["implementation"] == impl
+    assert found["session"] == SESSION
+    assert found["fallback"] is False, "a key on its own line IS the record, not a guess"
+    assert found["warnings"] == [], "reading the body is the normal case, not a complaint"
+
+
+def test_a_trailer_line_is_recognised_wherever_in_the_message_it_sits(tmp_path):
+    """Not only the penultimate paragraph: an agent that writes the keys mid-message, or a
+    squash that buries them, still recorded them."""
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    impl = _commit(repo, "a.py", "one\n", "feature")
+    (repo / "review-points.md").write_text(FULL)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm",
+         f"fixes\n\nReview-Points: review-points.md\nImplements: {impl}\n"
+         f"Claude-Session: {SESSION}\n\nand then some prose about what changed, which\n"
+         "makes the keys neither the last paragraph nor a trailer block.\n")
+    found = rc.detect(repo, base)
+    assert (found["review"], found["implementation"], found["session"]) == (
+        _git(repo, "rev-parse", "HEAD"), impl, SESSION)
+    assert found["warnings"] == []
+
+
+def test_a_key_inside_the_prose_is_not_a_record(tmp_path):
+    """`Implements:` has to start the line. Quoted mid-sentence it is somebody describing
+    the convention, and taking it as the record would base every fix diff on a sha the
+    sentence merely mentioned."""
+    assert rc.from_body("we agreed the commit Implements: abc123 the ticket\n") == {}
+    assert rc.from_body("Implements:\n") == {}, "a key with no value records nothing"
+    assert rc.from_body(f"Implements: {'a' * 40}\n") == {"implements": "a" * 40}
+
+
+def test_two_body_lines_for_one_key_arrive_the_way_git_would_have_joined_them(tmp_path):
+    """`%(trailers:…,separator=%x2C)` comma-joins repeats, and every reader downstream
+    takes `.split(",")[0]` — so the body path has to produce the same shape."""
+    assert rc.from_body("Implements: aaa\nImplements: bbb\n") == {"implements": "aaa,bbb"}
+
+
 def test_commits_after_the_review_commit_are_listed_because_nothing_else_shows_them(tmp_path):
     """A page built from the diff cannot see that somebody kept committing once the agent
     stopped — and that is the one change that can make every other claim on it stale."""
@@ -523,6 +588,27 @@ def test_the_prompt_names_all_three_trailers_the_scripts_read():
     prompt = _prompt()
     for trailer in ("Review-Points:", "Implements:", "Claude-Session:"):
         assert trailer in prompt, f"{trailer} is read by a script and named nowhere"
+
+
+def test_the_prompt_says_where_the_trailers_go_and_that_a_later_paragraph_is_fine():
+    """Both halves matter. Without "last lines" an agent scatters them mid-message; without
+    the reassurance about the harness's own paragraph, an agent that notices
+    `Co-Authored-By:` landing underneath starts moving them or repeating them, and a
+    repeated `Implements:` is two shas for one slot."""
+    prompt = _prompt()
+    assert prompt.count("The last lines you write in the message are:") == 2, (
+        "both commits need it — commit #1 carries Claude-Session, commit #2 all three")
+    assert "Co-Authored-By" in prompt, (
+        "the paragraph that broke the first run has to be named, or the agent will try to "
+        "make room for it")
+    assert "whole message body" in prompt
+    assert "Do not move them, do not repeat them below it." in prompt
+
+
+def test_the_skill_explains_why_the_body_is_read_and_not_just_the_trailer_block():
+    skill = (SKILLS / "implement-ticket" / "SKILL.md").read_text(encoding="utf-8")
+    assert "penultimate" in skill and "Co-Authored-By" in skill
+    assert "%(trailers" in skill, "the git construct that returns empty here is the fact"
 
 
 def test_the_prompt_names_the_file_and_the_checker_the_parser_actually_is():
