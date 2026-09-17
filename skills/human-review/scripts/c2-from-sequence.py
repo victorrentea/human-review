@@ -67,6 +67,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import json
 import re
 import subprocess
@@ -82,6 +83,9 @@ ADDED = "#2E7D32"
 REMOVED = "#C62828"
 ADDED_DARK = "#1B5E20"
 REMOVED_DARK = "#8E0000"
+#: What the page themes a diagram's hyperlinks with (`--dgm-link`), and what the sequence
+#: generator already writes. Anything else is a colour dark mode does not know to move.
+LINK_COLOR = "#1A4FA0"
 
 # Where the sequence diagrams are, and where they are not. The defaults name the generator's
 # own convention (`<test file>.genseq.puml`, filed beside the test) and then rule out every
@@ -172,12 +176,20 @@ MSG_TIGHT = re.compile(
 # instructions for clicking it. Both would poison the protocol sniffing below.
 LINK = re.compile(r'\[\[[^\]\s{]*(?:\{[^}]*\})?\s*([^\]]*?)\s*\]\]')
 
-# The protocol a message announces, read off the message and nothing else. Ordered: an
-# HTTP verb beats everything, because `POST /api/visits` is unambiguous, and the async
-# words are tested before the generic ones so `publish OrderPlaced` does not read as SQL.
+#: An HTTP request line: a verb, a space, and a path. It does double duty — `split_operation`
+#: uses it to tell the route apart from the prose above it, and `sniff_protocol` treats
+#: having found one as the answer. That is the whole reason the two are the same regex: a
+#: message the popup lists a route for and the diagram labels `calls` would be two parts of
+#: the page disagreeing about the same line.
+ROUTE = re.compile(r"^(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S")
+
+# What a message announces when it carries no request line. Ordered, and matched against the
+# NAME rather than the whole label, so `publish OrderPlaced` does not read as SQL and a URL
+# is recognised without relying on a word boundary before a slash — `\b/api/` never matches
+# after a space, since neither character is a word character, which is precisely how
+# `List owners GET /api/owners` came out labelled `calls`.
 PROTOCOLS: list[tuple[str, str]] = [
-    (r"^(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b", "HTTP"),
-    (r"\b(?:https?://|/api/)", "HTTP"),
+    (r"(?:^|\s)https?://|(?:^|\s)/[\w{]", "HTTP"),
     (r"^(?:select|insert|update|delete|merge|upsert|call|begin|commit|rollback)\b", "SQL"),
     (r"\b(?:publish|publishes|produce|produces|emit|emits|send to|enqueue|dequeue|"
      r"consume|consumes|subscribe|subscribes|ack|nack)\b", "message"),
@@ -199,7 +211,8 @@ class Graph:
     def __init__(self) -> None:
         #: name -> {"kind", "tech", "descr", "inferredBy", "decl"}
         self.nodes: dict[str, dict] = {}
-        #: (src, dst) -> {"ops": Counter(label -> times), "protocols": Counter, "async": bool}
+        #: (src, dst) -> {"ops": Counter((name, path) -> times), "protocols": Counter,
+        #:                "async": bool}
         self.edges: dict[tuple[str, str], dict] = {}
         #: which diagrams this was projected from, for the caption
         self.sources: list[str] = []
@@ -213,38 +226,71 @@ class Graph:
             (src, dst), {"ops": Counter(), "protocols": Counter(), "async": False})
 
     def as_dict(self) -> dict:
+        """The graph as the sidecar records it — edges in the SAME shape `render` reads.
+
+        Not a second shape that happens to look similar. The first version had one: its
+        `operations` was the list of calls while the delta's was their count, `render`
+        wanted the count, and the plain New and Old sides therefore went out with a Python
+        list repr spread across the middle of the picture while the Diff pane — the one
+        being looked at — was perfectly fine. There is now exactly one edge dict in this
+        file, built in one place, and `diff(g, g)` is how a single side gets it."""
         return {
             "sources": self.sources,
             "nodes": {n: dict(v) for n, v in sorted(self.nodes.items())},
-            "edges": [
-                {"from": s, "to": d,
-                 "operations": sorted(e["ops"]),
-                 "calls": sum(e["ops"].values()),
-                 "protocol": edge_protocol(e),
-                 "async": e["async"]}
-                for (s, d), e in sorted(self.edges.items())
-            ],
+            "edges": one_side(self)["edges"],
         }
+
+
+def operations(e: dict) -> list[dict]:
+    """The calls behind one line of the diagram, as the popup lists them.
+
+    Sorted by name rather than by frequency: the panel is read as an inventory of what one
+    container asks another for, and a list that reorders itself between two runs because
+    one endpoint was hit twice more cannot be compared against the run before it."""
+    return [{"name": name, "path": path, "calls": n}
+            for (name, path), n in sorted(e["ops"].items())]
 
 
 def clean_label(text: str) -> str:
     """The words a message actually says, with PlantUML's decoration taken off.
 
-    Links collapse to their visible text, the generator's `⊕`/`↗` affordance glyphs go (they
-    mean "there is a payload behind this", not anything about the call), and a two-line
-    label — `Get an owner by ID\\nGET /api/owners/{ownerId}` — keeps both lines, separated
-    by a space, because the protocol lives on the second one."""
+    Links collapse to their visible text and the generator's `⊕`/`↗` affordance glyphs go —
+    they mean "there is a payload behind this", not anything about the call. The line break
+    STAYS: the generator writes an HTTP call as `Get an owner by ID\\nGET /api/owners/{id}`,
+    two facts on two lines, and flattening them into one string is what made the popup's
+    inventory unreadable — a bullet list has to be able to put the name above the route."""
     text = LINK.sub(r"\1", text)
-    text = text.replace("\\n", " ")
+    text = text.replace("\\n", "\n")
     text = re.sub(r"[⊕↗]", "", text)
     text = re.sub(r"<[^>]+>", "", text)          # <b>, <color:red>, PlantUML creole
-    return " ".join(text.split()).strip()
+    return "\n".join(" ".join(line.split()) for line in text.split("\n")).strip()
 
 
-def sniff_protocol(label: str) -> str:
-    for pattern, name in PROTOCOLS:
-        if re.search(pattern, label, re.I):
-            return name
+def split_operation(label: str) -> tuple[str, str]:
+    """One message label as (what it is called, where it goes).
+
+    The route is whichever line starts with an HTTP verb — the generator puts it second,
+    but nothing guarantees that, and a `GET /api/owners` with no prose above it is a whole
+    label. Everything that is not the route is the name, which for a database call is the
+    statement's own summary (`select owners`) and for a queue is the event."""
+    lines = [l for l in label.split("\n") if l]
+    for i, line in enumerate(lines):
+        if ROUTE.match(line):
+            return " ".join(lines[:i] + lines[i + 1:]), line
+    return " ".join(lines), ""
+
+
+def sniff_protocol(name: str, path: str = "") -> str:
+    """What one message announces, decided on the parts rather than on the sentence.
+
+    A route found is the answer: `split_operation` only calls something a route when it is
+    a verb followed by a path, and there is nothing else that can be. Everything else is
+    read off the name, where the words are."""
+    if path:
+        return "HTTP"
+    for pattern, protocol in PROTOCOLS:
+        if re.search(pattern, name, re.I):
+            return protocol
     return ""
 
 
@@ -351,8 +397,11 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
         graph.node(a), graph.node(b)
         e = graph.edge(a, b)
         text_label = clean_label(label)
-        e["ops"][text_label or "(unlabelled)"] += 1
-        e["protocols"][sniff_protocol(text_label)] += 1
+        name, path = split_operation(text_label)
+        # "(unlabelled)" only when there is nothing at all. A bare `GET /api/owners` is
+        # not unlabelled: the route IS the label, and the popup prints it as one.
+        e["ops"][(name or ("" if path else "(unlabelled)"), path)] += 1
+        e["protocols"][sniff_protocol(name, path)] += 1
         if ">>" in arrow:
             e["async"] = True
 
@@ -418,7 +467,8 @@ def _evidence(graph: Graph, name: str) -> str:
     served = set()
     for (_src, dst), e in graph.edges.items():
         if dst == name:
-            served |= set(e["ops"])
+            served |= set(e["ops"])          # keyed (name, route), so /pets/1 and /pets/2
+                                             # are one operation, which is the point
     if not served:
         return "entry point" if any(s == name for s, _ in graph.edges) else ""
     return f"{len(served)} operation{'s' if len(served) != 1 else ''}"
@@ -451,11 +501,22 @@ def diff(old: Graph, new: Graph) -> dict:
             "from": key[0], "to": key[1],
             "status": "same" if o and n else "added" if n else "removed",
             "protocol": edge_protocol(side),
-            "operations": ops_new if n else ops_old,
+            "operations": len(side["ops"]),
             "operationsDelta": ops_new - ops_old if (o and n) else 0,
             "calls": sum(side["ops"].values()),
+            "detail": operations(side),
         })
     return {"nodes": nodes, "edges": edges}
+
+
+def one_side(graph: Graph) -> dict:
+    """The undiffed picture of a single graph, in the shape `render` reads.
+
+    `diff(g, g)` and not a second shape built by hand: the two used to be separate, and the
+    plain sides went out with a Python list repr where the operation count belonged —
+    `['List owners GET /api/owners', …] operations, 13 calls` across the middle of the
+    diagram. One producer of the edge shape is what makes that unrepresentable."""
+    return diff(graph, graph)
 
 
 # --------------------------------------------------------------------------- rendering
@@ -471,9 +532,70 @@ def _q(s: str) -> str:
     return (s or "").replace('"', "'")
 
 
+def op_id(e: dict) -> str:
+    """A stable handle for one line's inventory of calls, derived from its CONTENT.
+
+    Content and not position, for the reason the sequence generator's own ids are: the same
+    card holds three renders of this diagram — Diff, New and Old — and each carries its own
+    copy of the handle. An id derived from the content means an edge nothing touched
+    resolves to ONE entry across all three, while a line whose calls did change gets two,
+    and the Old pane opens the inventory as it was rather than as it is now."""
+    body = "\u0000".join(f'{o["name"]}\u0001{o["path"]}' for o in e.get("detail") or [])
+    return "c2-" + hashlib.sha1(
+        f'{e["from"]}\u0002{e["to"]}\u0002{body}'.encode()).hexdigest()[:10]
+
+
+def inventory(e: dict) -> str:
+    """The bullet list behind one line: every call it stands for, name above route.
+
+    This is the whole reason the edge label is a handle at all. A C2 line says *Backend
+    talks HTTP to Payments*, which is the right altitude for the picture and exactly one
+    level too coarse for the reviewer asking "yes, but which endpoints?". The answer is
+    already in the traces; before this it was either absent or — briefly, and much worse —
+    spilled across the middle of the diagram as a Python list repr."""
+    lines = []
+    for o in e.get("detail") or []:
+        row = f'• {o["name"] or "(unlabelled)"}'
+        if o["path"]:
+            row += f'\n    {o["path"]}'
+        if o["calls"] > 1:
+            row += f'   ×{o["calls"]}'
+        lines.append(row)
+    return "\n".join(lines)
+
+
+def handle(e: dict, details: dict | None) -> str:
+    """The edge's label, as a PlantUML link when there is an inventory to open.
+
+    The ⊕ and the `genseq://` scheme are not a coincidence and not a copy: they are the
+    page's existing affordance for "there is more behind this", already wired by
+    `GENSEQ_JS` and already styled. A reader who has learnt it one tab earlier, on the
+    sequence diagrams, does not have to learn it again here."""
+    if details is None or not (e.get("detail") or []):
+        return e["protocol"]
+    key = op_id(e)
+    details[key] = {
+        "title": f'{e["from"]} → {e["to"]}',
+        "steps": [{
+            "label": f'{e["operations"]} operation'
+                     f'{"s" if e["operations"] != 1 else ""}, '
+                     f'{e["calls"]} call{"s" if e["calls"] != 1 else ""}',
+            "text": inventory(e),
+        }],
+    }
+    return (f'[[genseq://{key}{{Click for the calls behind this line}} '
+            f'{e["protocol"]} ⊕]]')
+
+
 def render(nodes: dict, edges: list, *, title: str, system: str, caption: str,
-           coloured: bool) -> str:
+           coloured: bool, details: dict | None = None) -> str:
     """One C4 container view.
+
+    `details` is the popup index this render fills as it goes — pass a dict and every edge
+    label becomes a `⊕` handle onto its own inventory of calls; pass None and the labels are
+    plain text. It is an out-parameter because the ids are content-derived and the same
+    entry is legitimately written by two of the three renders; letting them collide in one
+    dict is the merge.
 
     `coloured` is what separates the delta from the two plain sides. It is not "add colours
     to the same drawing": an uncoloured render is of ONE side and has no removed elements in
@@ -490,7 +612,16 @@ def render(nodes: dict, edges: list, *, title: str, system: str, caption: str,
     out = ["@startuml",
            "' ⚠️  GENERATED — projected from the sequence diagrams by c2-from-sequence.py.",
            "!include <C4/C4_Container>",
-           "HIDE_STEREOTYPE()"]
+           "HIDE_STEREOTYPE()",
+           # The same two lines the sequence generator writes, for the same two reasons.
+           # PlantUML's default link colour is pure #0000FF, which is not in the page's
+           # `DIAGRAM_COLOR_VARS`, so it would stay a hard blue on a near-black canvas in
+           # dark mode while every other colour on the diagram moved. #1A4FA0 *is* mapped
+           # (`--dgm-link`). And the underline is the page's to draw, not PlantUML's: it
+           # styles genseq handles itself, so a diagram that brings its own arrives with
+           # two.
+           "skinparam hyperlinkUnderline false",
+           f"skinparam hyperlinkColor {LINK_COLOR}"]
     if coloured and "added" in used:
         out += [
             f'AddElementTag("added", $bgColor="{ADDED}", $fontColor="#FFFFFF", '
@@ -537,7 +668,7 @@ def render(nodes: dict, edges: list, *, title: str, system: str, caption: str,
         if delta:
             ops += f' ({delta:+d})'
         techn = f'{ops}, {e["calls"]} call{"s" if e["calls"] != 1 else ""}'
-        out.append(f'Rel({_pid(e["from"])}, {_pid(e["to"])}, "{_q(e["protocol"])}", '
+        out.append(f'Rel({_pid(e["from"])}, {_pid(e["to"])}, "{_q(handle(e, details))}", '
                    f'"{_q(techn)}"{tag})')
 
     if coloured:
@@ -692,24 +823,46 @@ def main(argv=None) -> int:
     caption = (f"projected from {len(rels)} sequence diagram"
                f"{'s' if len(rels) != 1 else ''} generated from test traces")
 
-    def side(graph: Graph, stem: str) -> str:
+    # Two popup indexes, not one, and they are the two the manifest's `new_details` /
+    # `old_details` columns name. The page inlines both and merges them work-tree-first,
+    # keyed by ids this file derives from content — so a line the branch did not touch
+    # resolves to one entry from either carrier, and a line whose calls changed opens the
+    # NEW inventory on Diff and New, and the OLD one on Old. The diff render writes into
+    # the new carrier because that is the pane it belongs to, removed edges included:
+    # their inventory is the only record left of what this branch stopped calling.
+    new_details: dict = {}
+    old_details: dict = {}
+
+    def side(graph: Graph, stem: str, into: dict) -> str:
         if not graph.edges:
             return ""
+        d = one_side(graph)
         (out / f"{stem}.puml").write_text(
-            render({n: {**v, "status": "same"} for n, v in graph.nodes.items()},
-                   graph.as_dict()["edges"], title=title, system=system,
-                   caption=caption, coloured=False), encoding="utf-8")
+            render(d["nodes"], d["edges"], title=title, system=system,
+                   caption=caption, coloured=False, details=into), encoding="utf-8")
         return plantuml(out / f"{stem}.puml")
 
-    new_svg = side(new, f"{a.name}.new")
-    old_svg = side(old, f"{a.name}.old")
+    new_svg = side(new, f"{a.name}.new", new_details)
+    old_svg = side(old, f"{a.name}.old", old_details)
 
     changed = any(n["status"] != "same" for n in delta["nodes"].values()) or \
         any(e["status"] != "same" or e["operationsDelta"] for e in delta["edges"])
     (out / f"{a.name}.diff.puml").write_text(
         render(delta["nodes"], delta["edges"], title=title, system=system,
-               caption=caption, coloured=bool(old.edges)), encoding="utf-8")
+               caption=caption, coloured=bool(old.edges), details=new_details),
+        encoding="utf-8")
     diff_svg = plantuml(out / f"{a.name}.diff.puml")
+
+    def carrier(stem: str, index: dict) -> str:
+        if not index:
+            return ""
+        (out / f"{stem}.json").write_text(
+            json.dumps({"version": 2, "details": index}, ensure_ascii=False, indent=1)
+            + "\n", encoding="utf-8")
+        return f"{stem}.json"
+
+    new_json = carrier(f"{a.name}.details.new", new_details)
+    old_json = carrier(f"{a.name}.details.old", old_details)
 
     (out / f"{a.name}.json").write_text(
         json.dumps({"new": new.as_dict(), "old": old.as_dict(), "diff": delta,
@@ -722,7 +875,8 @@ def main(argv=None) -> int:
         "name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\t"
         "old_details\tnew_details\n"
         + "\t".join([a.name, src_rel, "structural", status,
-                     f"{a.name}.diff.puml", diff_svg, "", new_svg, old_svg, "", ""])
+                     f"{a.name}.diff.puml", diff_svg, "", new_svg, old_svg,
+                     old_json, new_json])
         + "\n", encoding="utf-8")
 
     print(f"[c2] {len(new.nodes)} container(s), {len(new.edges)} call(s), projected from "

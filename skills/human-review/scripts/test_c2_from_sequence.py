@@ -14,6 +14,11 @@ happened already in development and both are covered here:
     labelled hyperlink. Stopping the URL at the first whitespace left `for the statement
     behind this call} select owners` as the message text, which sniffs as no protocol at
     all, and the Backend→DB line went out labelled `calls` instead of `SQL`.
+  * The delta and a single side were two edge shapes: one counted operations, the other
+    listed them, and `render` wanted the count. So the Diff pane — the one being looked at
+    while developing — was right, and the New and Old panes went out with a Python list
+    repr spread across the middle of the picture. There is one shape now, and the tests
+    below render every pane rather than only the delta.
 
 Run it directly (`python3 test_c2_from_sequence.py`) or under pytest.
 """
@@ -141,6 +146,17 @@ def test_an_alias_resolves_to_the_name_a_reader_sees():
 
 
 # --------------------------------------------------------------------------- protocols
+
+
+def test_a_route_is_recognised_wherever_the_prose_above_it_ends():
+    """The third regression, and the reason the protocol is decided on the split parts
+    rather than on the joined sentence: `\\b/api/` never matches after a space — neither
+    character is a word character — so `List owners GET /api/owners` came out `calls`
+    while `Get an owner by ID GET /api/owners/{id}` beside it came out `HTTP`. Two lines
+    into the same box, labelled two different things, for no reason a reader could see."""
+    for prose in ("List owners", "Get an owner by ID", "", "getPet"):
+        g = graph(f"@startuml\nBrowser -> Backend: {prose}\\nGET /api/owners\n@enduml")
+        assert c2.edge_protocol(g.edges[("Browser", "Backend")]) == "HTTP", prose
 
 
 def test_the_protocol_is_read_off_the_message_through_plantumls_link_markup():
@@ -318,6 +334,108 @@ def test_a_chattier_call_is_a_count_not_a_colour():
     assert e["operationsDelta"] == 2
 
 
+# --------------------------------------------------------------------------- the popup
+
+
+def test_an_operation_is_its_name_and_its_route_kept_apart():
+    """The generator writes an HTTP call on two lines — what it is called, then where it
+    goes. Flattened into one string there is no bullet list to draw, only a sentence."""
+    g = graph("@startuml\nBrowser -> Backend: Get an owner by ID\\nGET /api/owners/{id}\n@enduml")
+    assert c2.operations(g.edges[("Browser", "Backend")]) == [
+        {"name": "Get an owner by ID", "path": "GET /api/owners/{id}", "calls": 1}]
+
+
+def test_a_call_with_no_prose_above_it_is_all_route():
+    g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
+    assert c2.operations(g.edges[("Browser", "Backend")]) == [
+        {"name": "", "path": "GET /api/owners", "calls": 1}]
+
+
+def test_a_statement_has_no_route_and_says_so_rather_than_inventing_one():
+    g = graph("@startuml\nBackend -> DB: select owners\n@enduml")
+    assert c2.operations(g.edges[("Backend", "DB")]) == [
+        {"name": "select owners", "path": "", "calls": 1}]
+
+
+def test_the_same_endpoint_hit_twice_is_one_bullet_with_a_count():
+    """`GET /api/pets/1` and `GET /api/pets/2` are one operation: the generator writes the
+    template, and a C2 that listed every instance would be a log, not an inventory."""
+    g = graph("""
+        @startuml
+        Browser -> Backend: getPet\\nGET /api/pets/{petId}
+        Browser -> Backend: getPet\\nGET /api/pets/{petId}
+        @enduml
+    """)
+    d = c2.one_side(g)["edges"][0]
+    assert d["operations"] == 1 and d["calls"] == 2
+    assert "×2" in c2.inventory(d)
+
+
+def test_the_label_becomes_a_handle_onto_its_own_inventory():
+    g = graph("""
+        @startuml
+        Browser -> Backend: List owners\\nGET /api/owners
+        Browser -> Backend: getPet\\nGET /api/pets/{petId}
+        @enduml
+    """)
+    details = {}
+    out = c2.render(**c2.one_side(g), title="", system="", caption="", coloured=False,
+                    details=details)
+    key, = details
+    assert f"[[genseq://{key}" in out and "HTTP ⊕]]" in out
+    entry = details[key]
+    assert entry["title"] == "Browser → Backend"
+    assert entry["steps"][0]["label"] == "2 operations, 2 calls"
+    assert entry["steps"][0]["text"] == (
+        "• List owners\n    GET /api/owners\n• getPet\n    GET /api/pets/{petId}")
+
+
+def test_the_handles_are_themed_the_way_the_page_themes_a_diagram():
+    """PlantUML's default link colour is pure #0000FF, which the page's palette does not
+    name — so it would stay a hard blue on a near-black canvas while every other colour on
+    the diagram followed the theme. #1A4FA0 is `--dgm-link`, and the sequence generator
+    already writes it, which is also why the handles look identical across the two tabs."""
+    g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
+    out = c2.render(**c2.one_side(g), title="", system="", caption="", coloured=False,
+                    details={})
+    assert f"skinparam hyperlinkColor {c2.LINK_COLOR}" in out
+    assert "skinparam hyperlinkUnderline false" in out
+
+    _spec = importlib.util.spec_from_file_location("build_review", HERE / "build-review-html.py")
+    build = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(build)
+    assert build.DIAGRAM_COLOR_VARS[c2.LINK_COLOR] == "--dgm-link"
+
+
+def test_no_index_no_handle():
+    """The `.puml` is committed and read on its own, outside the page. A link into a popup
+    that only exists inside review.html would render there as a dead affordance."""
+    g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
+    out = c2.render(**c2.one_side(g), title="", system="", caption="", coloured=False)
+    assert "genseq://" not in out and 'Rel(Browser, Backend, "HTTP"' in out
+
+
+def test_an_untouched_line_opens_one_entry_from_either_pane():
+    """The ids are derived from content precisely so the three renders in one card do not
+    each need their own copy: same calls, same id, one entry after the page merges them."""
+    old = graph("@startuml\nBackend -> DB: select owners\n@enduml")
+    new = graph("@startuml\nBackend -> DB: select owners\n@enduml")
+    a, b = {}, {}
+    c2.render(**c2.one_side(old), title="", system="", caption="", coloured=False, details=a)
+    c2.render(**c2.one_side(new), title="", system="", caption="", coloured=False, details=b)
+    assert set(a) == set(b)
+
+
+def test_a_line_whose_calls_changed_keeps_both_inventories_apart():
+    """...and the converse: the Old pane has to open what was there, not what is there."""
+    old = graph("@startuml\nBackend -> DB: select owners\n@enduml")
+    new = graph("@startuml\nBackend -> DB: select owners\nBackend -> DB: select pets\n@enduml")
+    a, b = {}, {}
+    c2.render(**c2.one_side(old), title="", system="", caption="", coloured=False, details=a)
+    c2.render(**c2.one_side(new), title="", system="", caption="", coloured=False, details=b)
+    assert set(a).isdisjoint(set(b))
+
+
 # --------------------------------------------------------------------------- rendering
 
 
@@ -364,9 +482,12 @@ def test_the_render_is_c4_container_dialect():
         Backend -> DB: select vets
         @enduml
     """)
-    out = c2.render({n: {**v, "status": "same"} for n, v in g.nodes.items()},
-                    g.as_dict()["edges"], title="Containers", system="PetClinic",
+    out = c2.render(**c2.one_side(g), title="Containers", system="PetClinic",
                     caption="from 1 sequence diagram", coloured=False)
+    # The regression that shipped: a plain side printing `['select vets'] operations`.
+    # Asserted on every render, not only the delta, because the delta was the pane that
+    # was right.
+    assert "[" not in out.split("System_Boundary")[1]
     assert "!include <C4/C4_Container>" in out
     assert 'Person(Vet, "Vet"' in out
     assert 'ContainerDb(DB, "DB"' in out
@@ -380,8 +501,7 @@ def test_the_render_is_c4_container_dialect():
 
 def test_a_lifeline_named_anything_at_all_still_yields_a_plantuml_identifier():
     g = graph('@startuml\n"Pet Clinic UI" -> "Order/Billing API": GET /x\n@enduml')
-    out = c2.render({n: {**v, "status": "same"} for n, v in g.nodes.items()},
-                    g.as_dict()["edges"], title="", system="", caption="", coloured=False)
+    out = c2.render(**c2.one_side(g), title="", system="", caption="", coloured=False)
     assert "Pet_Clinic_UI" in out and "Order_Billing_API" in out
 
 

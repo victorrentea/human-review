@@ -635,7 +635,19 @@ call to a service nobody documented shows up here the first time a test makes it
 after the sequences, not before: the sequences are the evidence, and this is what they add up
 to.
 
-Three things follow from its being derived, and all three are visible on the page:
+**Every line carries a `⊕`, and it opens the calls behind it.** A C2 line says *Backend
+talks HTTP to Payments*, which is the right altitude for the picture and exactly one level
+too coarse for the reviewer who then asks *which endpoints?*. The answer is already in the
+traces, so the protocol on each line is a handle: clicking it opens a bullet list of every
+operation that line stands for — the name above the route, with `×7` where one was called
+more than once. It is the page's existing `genseq://` affordance and `GENSEQ_JS` drives it
+unchanged, which is the point: a reader who learnt it one tab earlier, on the sequence
+diagrams, does not learn it again here. The inventories ride in two sidecars the manifest
+names in `new_details` / `old_details`, keyed by ids derived from content, so an untouched
+line opens one entry from whichever pane it is clicked in, while a line whose calls changed
+opens the old inventory on `Old` and the new one on `Diff` and `New`.
+
+Four things follow from its being derived, and all four are visible on the page:
 
 - **Its rows are in a manifest of its own**, `assets/c2/MANIFEST.tsv`, named by the block —
   `{"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2"]}`. Give it an
@@ -651,6 +663,13 @@ Three things follow from its being derived, and all three are visible on the pag
   this branch introduced; red is one it removed; a surviving edge whose traffic changed
   stays neutral and says `(+3)` on its technology line, because a chattier call is news and
   is not a change of shape.
+- **The label is decided on the parts of a message, never on the sentence.** A generated
+  HTTP call is two lines — what it is called, then where it goes — and the route is
+  whichever line is a verb followed by a path. `split_operation` finds it, the popup prints
+  it under the name, and finding one *is* the protocol. Deciding it by regex over the
+  joined string is what once labelled `List owners GET /api/owners` as `calls` and
+  `Get an owner by ID GET /api/owners/{id}` beside it as `HTTP`: two lines into the same
+  box, labelled two different things, for no reason a reader could see.
 - **What is guessed is written down.** A sequence diagram does not say whether a lifeline is
   a datastore or a queue, so `steps.c2.containers` in `human-review.json` decides it first,
   the PlantUML keyword (`database`, `queue`, `actor`) second, the name third, and a plain
