@@ -333,9 +333,27 @@ def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict,
         # collapsing them into one value the way `key` does would silently misfile a
         # timestamp-less turn into whichever window happens to be open-ended.
         key = when or dt.datetime.max.replace(tzinfo=dt.timezone.utc)
-        if prev is None or key < prev[0]:
-            best[mid] = (key, msg.get("model"), usage,
-                         force_side or bool(d.get("isSidechain")), when)
+        side = force_side or bool(d.get("isSidechain"))
+        if prev is None:
+            best[mid] = (key, msg.get("model"), usage, side, when)
+        else:
+            # Claude Code writes several rows per message.id as a turn streams, each
+            # carrying `usage` so far — `output_tokens` grows row over row. Keeping
+            # whichever row arrived first (the old rule) kept whichever was earliest in
+            # the file, which is typically the smallest, understating the bill by however
+            # much the turn still had left to stream. The earliest `when` still wins,
+            # because the phase windows need the turn placed at its start, not its end;
+            # but the usage/model kept is whichever row has the most output_tokens, and a
+            # tie favours the row seen later — the one still being scanned right now.
+            prev_key, prev_model, prev_usage, prev_side, prev_when = prev
+            best_key = prev_key if prev_key <= key else key
+            best_when = prev_when if prev_key <= key else when
+            out = usage.get("output_tokens") or 0
+            prev_out = prev_usage.get("output_tokens") or 0
+            if out >= prev_out:
+                best[mid] = (best_key, msg.get("model"), usage, side, best_when)
+            else:
+                best[mid] = (best_key, prev_model, prev_usage, prev_side, best_when)
 
 
 def gather_turns(path: Path, since: dt.datetime | None, include_subagents: bool = True,

@@ -95,6 +95,37 @@ def test_an_open_record_parses_with_end_none(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# _scan / gather_turns — dedupe by message.id keeps the richest usage
+# --------------------------------------------------------------------------- #
+
+def test_dedupe_keeps_the_earliest_when_but_the_richest_usage(tmp_path):
+    """Claude Code writes several rows per message.id as a turn streams, each carrying
+    `usage` so far, with `output_tokens` growing row over row. Keeping whichever row
+    arrived first (the old rule) kept the smallest one — understating the bill by
+    whatever the turn still had left to stream when that row was written. The fix keeps
+    the earliest `when` (the phase windows need the turn placed at its start) but the
+    usage with the most output_tokens, wherever in the stream it landed."""
+    fake = _fake_transcript(tmp_path, [
+        {"type": "assistant", "timestamp": "2026-09-02T10:05:00Z",
+         "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
+                     "usage": {"input_tokens": 100, "output_tokens": 10}}},
+        {"type": "assistant", "timestamp": "2026-09-02T10:05:03Z",
+         "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
+                     "usage": {"input_tokens": 100, "output_tokens": 50}}},
+        {"type": "assistant", "timestamp": "2026-09-02T10:05:07Z",
+         "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
+                     "usage": {"input_tokens": 100, "output_tokens": 80}}},
+    ])
+    best: dict = {}
+    rc._scan(fake, None, False, best)
+    assert len(best) == 1
+    key, model, usage, side, when = best["m1"]
+    assert usage["output_tokens"] == 80
+    assert when == _ts("2026-09-02T10:05:00+00:00"), \
+        "the turn is still placed at its first row, not its last"
+
+
+# --------------------------------------------------------------------------- #
 # tab_costs — the window arithmetic
 # --------------------------------------------------------------------------- #
 
