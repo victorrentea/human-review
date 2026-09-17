@@ -298,6 +298,25 @@ button.chip-rerun.running::before { content:""; display:inline-block; width:.62e
 .rband code { font-size:.95em; }
 .rband .rb-files { color:var(--muted); font-size:.82rem; display:block; }
 .rband .rb-gen { color:var(--muted); }
+/* The revert offer inside a commit's row. The display rules are the same pair the offers
+   under a diagram use — one route on show, and the probe picks which — but those are
+   scoped to `.rerun`, and a control that looks like two controls off disk is exactly the
+   failure that scoping caused here the first time. */
+.rband .offer .runhere { display:none; }
+.rband .offer.served .runhere { display:inline; }
+.rband .offer.served .cmdpeek { display:none; }
+.rband .runhere, .rband .cmdpeek { cursor:pointer; font:inherit; font-size:.84rem;
+            color:var(--fg); font-weight:600; background:none; border:0; padding:0;
+            margin-left:.5rem; text-decoration:underline; text-underline-offset:2px; }
+.rband .runhere:hover, .rband .cmdpeek:hover { text-decoration-thickness:2px; }
+.rband .cmdline { display:flex; align-items:flex-start; gap:.5rem; margin-top:.35rem; }
+.rband .cmdline[hidden] { display:none; }
+.rband .cmdline code { flex:1; min-width:0; overflow-x:auto; white-space:pre;
+            display:block; background:var(--card); border:1px solid var(--line);
+            border-radius:5px; padding:.35rem .5rem; font-size:.78rem; }
+.rband .cmdline button { flex:none; margin:0; font-weight:400; color:var(--muted);
+            text-decoration:none; background:var(--card); border:1px solid var(--line);
+            border-radius:5px; padding:.35rem .55rem; }
 .rband-alert { border-color:#c62828; background:rgba(198,40,40,.07); }
 .rband-alert > p:first-child b, .rband-alert > p:first-child { color:#c62828; }
 .rband-warn { border-color:var(--drift); background:rgba(181,115,10,.07); }
@@ -1752,7 +1771,10 @@ window.HR = (function () {
     // and a shell line beside it is for a reader who is not here. Per action and not per
     // page — one block can carry four, and a server that answers for the re-render does
     // not necessarily answer for the rest.
-    [].forEach.call(document.querySelectorAll('.rerun button.runhere[data-action]'),
+    // Every offer on the page, not only the ones under a diagram: the aftermath band's
+    // revert is the same control in a different place, and a selector naming one of the
+    // two places is how the second one silently ships with both buttons on screen.
+    [].forEach.call(document.querySelectorAll('button.runhere[data-action]'),
         function (b) {
       if (!can(b.getAttribute('data-action'))) return;
       b.setAttribute('data-tip', b.getAttribute('data-tip-served')
@@ -5740,6 +5762,14 @@ def points_empty_html(kind: str, points: dict) -> str:
 # follows the order the content file puts the blocks in, whatever that order is.
 _LIST_OFFSET = 0
 
+#: Whether the counts line has already been printed on this page. The offset used to
+#: answer that question on its own — it is zero exactly until the first pile renders an
+#: `<ol>` — but a pile with no items renders no list and leaves it at zero, so all three
+#: piles got the line. With one empty pile that was a repeated sentence; with all three
+#: empty (a branch carrying no `review-points.md`, which is the common case for a branch
+#: nobody ran the flow on) it was the line three times down one short tab.
+_LEDE_SHOWN = False
+
 
 def reset_list() -> None:
     """Start the numbering over, once per page.
@@ -5747,8 +5777,9 @@ def reset_list() -> None:
     The offset is module state, so without this the second page built in one process
     continues the first one's numbering — which no build does, and every test that renders
     a pile directly would otherwise have to know about."""
-    global _LIST_OFFSET
+    global _LIST_OFFSET, _LEDE_SHOWN
     _LIST_OFFSET = 0
+    _LEDE_SHOWN = False
 
 
 def _open_list(n: int) -> str:
@@ -5893,7 +5924,8 @@ def opening_lede(spec) -> str:
     `_LIST_OFFSET` is still zero exactly until the first pile renders, so the question
     "am I the top of the list?" is already answered and does not need a second flag.
     """
-    if _LIST_OFFSET:
+    global _LEDE_SHOWN
+    if _LIST_OFFSET or _LEDE_SHOWN:
         return ""
     # Counts, and nothing else. Every clause that described how the list *looks* has been
     # cut — "greyed out", "yours to confirm", and finally "worst first" itself: the
@@ -5975,6 +6007,7 @@ def opening_lede(spec) -> str:
             "assumptions", "assumed"))
     if not parts:
         return ""
+    _LEDE_SHOWN = True
     # The stamp clause went the same way as "greyed out" and "yours to confirm": every
     # item carries its source beside its own title, so a line announcing that they do
     # describes the thing directly under it. What is left is three counts and the jump to
@@ -6097,7 +6130,7 @@ def render_assumptions(items, mode: str = "") -> str:
     return _open_list(len(items)) + "\n".join(out) + "</ol>"
 
 
-def render_autofixes(fixes) -> str:
+def render_autofixes(fixes, badge: str = "auto-fixed") -> str:
     """What the agent already fixed \u2014 the tail of the same list.
 
     It continues the open findings' numbering on purpose. The two piles are one decision
@@ -6108,7 +6141,13 @@ def render_autofixes(fixes) -> str:
 
     Each item shows its diff rather than describing it. That is the whole difference between
     this and a changelog: the reader sees what was done to their code without leaving the
-    page or trusting a sentence about it."""
+    page or trusting a sentence about it.
+
+    `badge` is the word on each card, and it is a parameter because the same pile now
+    arrives two ways. `auto-fixed` is right for a pass that applied its own findings with
+    nobody in between. Read off `review-points.md` it would be a small lie in the one place
+    a reader looks first: the agent read each finding and *chose* to accept it, which is the
+    fact the pile exists to record, so there the word is `fixed`."""
     if not fixes:
         return '<p class="sub">Nothing was applied automatically \u2014 every finding needed a human.</p>'
     items = []
@@ -6116,7 +6155,7 @@ def render_autofixes(fixes) -> str:
         refs = _finding_refs(f)
         items.append(
             '<li class="fixed">'
-            '<span class="badge sev-fixed">auto-fixed</span>'
+            f'<span class="badge sev-fixed">{html.escape(badge)}</span>'
             + _finding_source(f)
             + f' <span class="f-title">{f["title"]}</span>'
             + (f'<p class="f-why">{f["why"]}</p>' if f.get("why") else "")
@@ -6275,13 +6314,16 @@ def render_pile_block(spec, block, heading=None):
 
     kind = block.get("type", "section")
     # Whether these three piles are the branch's record or the content file's own list. It
-    # changes what an empty one is allowed to say, and nothing else: the item shapes are
-    # identical, which is the whole reason `review-points.md` could be bolted on without
-    # touching a renderer.
+    # changes what an empty one is allowed to say, and what the two defect piles are
+    # *called* — a content file's `findings` are untriaged and a branch's are declined —
+    # and nothing else: the item shapes are identical, which is the whole reason
+    # `review-points.md` could be bolted on without touching a renderer.
     points = spec.get("_reviewPoints")
     if kind == "findings":
         items = spec.get("findings", [])
-        head = _lede_above(head_of("first", "Requires human review"), opening_lede(spec))
+        head = _lede_above(
+            head_of("first", "Read and declined" if points else "Requires human review"),
+            opening_lede(spec))
         if points and not items:
             # Weight 1: the sentence saying which kind of empty this is has to keep the
             # tab alive, exactly as the assumptions pile's always has.
@@ -6301,10 +6343,12 @@ def render_pile_block(spec, block, heading=None):
         return (head + render_assumptions(items, mode),
                 1 if (items or mode) else 0, len(items))
     items = spec.get("autofixes", [])
-    head = _lede_above(head_of("fixed", "Auto-fixed"), opening_lede(spec))
+    head = _lede_above(head_of("fixed", "Fixed" if points else "Auto-fixed"),
+                       opening_lede(spec))
     if points and not items:
         return (head + points_empty_html("autofixes", points), 1, 0)
-    return (head + render_autofixes(items), len(items), len(items))
+    return (head + render_autofixes(items, badge="fixed" if points else "auto-fixed"),
+            len(items), len(items))
 
 
 # What happened to a test, and what the page calls it. The colour classes are the page's
@@ -9020,6 +9064,13 @@ def main(argv=None) -> int:
         # outlived the ninth finding being added, and nothing caught it, because nothing
         # was looking. `href` (and any label or tip) still comes from the content file.
         if c.get("auto") == "autofixed":
+            # No record, no chip. `🤖 LLM review: 0 open, 0 auto-fixed` is the whole
+            # failure this flow exists to end, in eleven characters: two measured-looking
+            # zeros asserting a review that found nothing, where the truth is that nothing
+            # says a review happened. Every other computed chip drops itself rather than
+            # print a number it cannot stand behind; this one now does too.
+            if (spec.get("_reviewPoints") or {}).get("missing"):
+                continue
             fixed = len(spec.get("autofixes", []))
             total = len(spec.get("findings", [])) + fixed
             # Who reviewed is half of what this chip says, and it used to sit in a
@@ -9056,8 +9107,17 @@ def main(argv=None) -> int:
                 # it, not so they can act on it, and at full contrast it competes with the
                 # number that IS the work. Grey is the page's own "already handled" —
                 # the same treatment the fixes themselves get in the list below.
-                "value": f'{total - fixed} open, '
-                         f'<span class="sub">{fixed} auto-fixed</span>',
+                # Read off `review-points.md`, the two halves swap round and change
+                # name: the items are not open, they were declined, by the agent, with a
+                # reason — and the fixed pile leads because it is what the agent did
+                # rather than what it left. The same distinction the counts line in the
+                # tab draws, in the same words, so a reader who compares the chip with
+                # the line is not asked which of them to believe.
+                "value": (f'{fixed} fixed, <span class="sub">{total - fixed} '
+                          'declined</span>'
+                          if (spec.get("_reviewPoints") or {}).get("missing") is False
+                          else f'{total - fixed} open, '
+                               f'<span class="sub">{fixed} auto-fixed</span>'),
                 # The total, which the face no longer carries, split by the pass that
                 # raised each item. `by /code-review and /simplify` named the two passes
                 # and left the reader to guess the split — which is the only thing the

@@ -3768,3 +3768,59 @@ def test_an_assumption_may_argue_in_alternative_alone():
 def test_an_item_that_is_only_a_title_is_still_refused():
     problems = build.validate({"findings": [{"title": "a"}]}, Path("."))
     assert any("has none of" in p and "something past its title" in p for p in problems)
+
+
+def test_the_piles_are_named_for_what_they_are_in_each_mode(tmp_path):
+    """A content file's `findings` are untriaged and a branch's are declined; a pass's
+    fixes were applied automatically and a branch's were chosen one at a time. The default
+    heading and the badge say which, so a page that names neither still reads correctly."""
+    spec, points = _points_spec(POINTS_DOC, tmp_path)
+    build.reset_list()
+    build.set_bands([])
+    out = "".join(build.render_pile_block(spec, b, heading=lambda b, i, t: f"<h2>{t}</h2>")[0]
+                  for b in spec["tabs"][0]["blocks"])
+    assert "<h2>Read and declined</h2>" in out
+    assert "<h2>Fixed</h2>" in out and "<h2>Auto-fixed</h2>" not in out
+    assert ">fixed<" in out and ">auto-fixed<" not in out
+    # A content file that writes its own piles keeps both words.
+    old = {"findings": [{"title": "a", "body": "x"}], "autofixes": [{"title": "b"}],
+           "tabs": [{"id": "review", "label": "R", "blocks": [
+               {"type": "findings"}, {"type": "autofixes"}]}]}
+    build.resolve_review_points(old, tmp_path)
+    build.reset_list()
+    out = "".join(build.render_pile_block(old, b, heading=lambda b, i, t: f"<h2>{t}</h2>")[0]
+                  for b in old["tabs"][0]["blocks"])
+    assert "<h2>Requires human review</h2>" in out and "<h2>Auto-fixed</h2>" in out
+    assert ">auto-fixed<" in out
+
+
+def test_the_scope_chip_says_the_same_thing_as_the_counts_line(tmp_path):
+    """Two numbers over one review, in two places on the same screen. `6 open, 3
+    auto-fixed` beside `3 fixed · 6 declined` asks the reader which of them to believe."""
+    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    assert 'f\'{fixed} fixed, <span class="sub">{total - fixed} \'' in src
+
+
+def test_the_counts_line_is_printed_once_even_when_every_pile_is_empty(tmp_path):
+    """The offset used to answer "am I the top of the list?" on its own — it is zero
+    exactly until the first pile renders an `<ol>`. A pile with no items renders no list,
+    so with all three empty (a branch carrying no record, which is the common case for a
+    branch nobody ran the flow on) the line appeared three times down one short tab."""
+    spec, _ = _points_spec(None, tmp_path)
+    build.reset_list()
+    build.set_bands([])
+    out = "".join(build.render_pile_block(spec, b)[0]
+                  for b in spec["tabs"][0]["blocks"])
+    assert out.count("pilelede") == 1
+
+
+def test_the_review_chip_drops_itself_when_nothing_records_a_review(tmp_path):
+    """`🤖 LLM review: 0 open, 0 auto-fixed` is the whole failure this flow exists to end,
+    in eleven characters: two measured-looking zeros asserting a review that found nothing.
+    Every other computed chip drops itself rather than print a number it cannot stand
+    behind."""
+    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    i = src.index('if c.get("auto") == "autofixed":')
+    head = src[i:i + 900]
+    assert '(spec.get("_reviewPoints") or {}).get("missing")' in head
+    assert "continue" in head
