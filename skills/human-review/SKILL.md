@@ -220,25 +220,30 @@ Then commit whatever was already in the working tree, and **leave your own fixes
 uncommitted**: their whole value is that `git diff` shows exactly what an agent touched. Do
 not comment your decisions into the code — that belongs in **Requires human review**.
 
-## Step 5 — Close, check, build, serve
-
-In this order, and only this order:
+## Step 5 — Close, check, refresh
 
 ```sh
 ${SKILL}/scripts/steps-ledger.py end "$(cat .human-review/.step-guide)"
 ${SKILL}/scripts/steps-ledger.py check          # exits non-zero on a renamed tab
-${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-review/review.html
-URL=$(${SKILL}/scripts/serve-review.py .human-review)
+URL=$(${SKILL}/scripts/refresh-report.py | tail -1)
 ```
 
 `end` before `check`, so the guide record is closed when the check reads it. `check` before
-the build, so a `DRIFT:` line is still actionable — once the page is written, a renamed tab
-is a column of blanks nobody can tell from a step never instrumented. The build before the
-serve for a second reason now: it writes `.human-review/.actions.json` beside the page, and
-that file is the only thing that lets the served copy *run* the commands its buttons
-describe — the environment, the drive-to-cue, the diagram rerun. A page read off disk, or
-out of the zip, has no manifest next to it and copies them to the clipboard as it always
-did.
+the refresh, so a `DRIFT:` line is still actionable — once the page is written, a renamed tab
+is a column of blanks nobody can tell from a step never instrumented.
+
+`refresh-report.py` is the build and the server, in that order and for a reason: the build
+writes `.human-review/.actions.json` beside the page, and that file is the only thing that
+lets the served copy *run* the commands its buttons describe — the environment, the
+drive-to-cue, the diagram rerun. A page read off disk, or out of the zip, has no manifest
+next to it and copies them to the clipboard as it always did.
+
+It is also the whole of the machine half of this skill, which is why it is one command and
+not three to retype. It pins the build to the session that did the work, it builds
+`--no-model` so a refresh cannot quietly buy a privacy verdict nobody asked for, and it
+**refuses** to build when `content.json`, the requirements matrix or the test catalogue are
+missing — those are the judgement, and this skill's rule is that a judgement is produced
+once, when the human asks for it.
 
 **Never `open review.html`** — that hands it to whatever the OS thinks owns `.html`, on
 another desktop. With `$TERM_PROGRAM = vscode` and
@@ -253,30 +258,50 @@ checkout, open the screen the change affects, and start `/relay` so they can dic
 
 Most invocations after the first are not reviews — the page is on disk and what is wanted is
 a change to the *page*. **Has the code changed since the page was built?** New commits, a
-force-push, a finding fixed → re-review, start at Step 1. Only the report changed →
-iteration, and an iteration runs almost nothing:
+force-push, a finding fixed → re-review, start at Step 1. Otherwise it is an iteration, and
+an iteration is one command:
 
-1. Edit the keys in `content.json` the request names, and nothing else.
-2. Re-run only the producers that read files you touched: `run-steps.py --only <step>`.
-3. Rebuild. The server is sticky, so print the same URL again — and a tab already
-   open on that URL reloads itself once the build stops writing, so an iteration
-   lands in front of the reader without anybody pressing F5.
+```sh
+${SKILL}/scripts/refresh-report.py                  # the page changed: rebuild, re-serve
+${SKILL}/scripts/refresh-report.py --steps cheap    # the branch changed: re-derive the fast evidence too
+${SKILL}/scripts/refresh-report.py --steps all      # …including the film, the city and the traced suites
+```
+
+**Never hand-run the build, the server or `run-steps.py` to satisfy a request.** Edit
+`content.json` if the request is about its words, then run the program. That is the point of
+it: the machine half of this skill is reproducible and free, the model half is neither, and
+typing the commands by hand is how the two ended up being run together every time somebody
+wanted a page refreshed. `--steps` exists so "refresh the page" never silently means
+"record the feature film again".
+
+The refresh pins the build to the session that did the work (`.human-review/.session`),
+because a build run in a later session cannot recompute what the first one spent and a page
+that drops the number silently is a page claiming the review was free. If that id is gone,
+publish no number rather than a measured-looking one: delete `.human-review/.steps.json`.
+With no session to ask, the cost tab reports what it still can — what the conversation that
+wrote the code spent — and says in words why the run's own half is missing. If neither half
+is measurable the tab drops itself: a pill reading `$0` is a claim that this change was free,
+which is not what an absence means.
 
 **Do not re-run Step 1's passes, do not `steps-ledger.py reset`, do not rewrite `.started`,
 do not wipe `assets/`, and do not open ledger records for the iteration's own edits.** They
-belong to the run they timed. In a *new session* the cost cannot be recomputed and will not
-say so, so pin the build to the session that did the work:
+belong to the run they timed.
 
-```sh
-CLAUDE_CODE_SESSION_ID=$(cat .human-review/.session) \
-  ${SKILL}/scripts/build-review-html.py .human-review/content.json --out .human-review/review.html
-```
+The server is sticky, so the URL does not change — and a tab already open on it reloads
+itself once the build stops writing, so an iteration lands in front of the reader without
+anybody pressing F5.
 
-If that id is gone, publish no number rather than a measured-looking one: delete
-`.human-review/.steps.json`. With no session to ask, the cost tab reports what it still
-can — what the conversation that wrote the code spent — and says in words why the run's own
-half is missing. If neither half is measurable the tab drops itself: a pill reading `$0` is
-a claim that this change was free, which is not what an absence means.
+### What the model half is, so the program half can never be asked to fake it
+
+Written by a model, once, when the human asks — and restored, never regenerated, if it goes
+missing: `content.json` (the findings, the prose, the tab layout), `assets/requirements-map.html`
+(the requirements↔tests matrix) and `test-index/` (the per-test catalogue it reads).
+`refresh-report.py` exits 3 rather than build a page without them.
+
+Everything else under `.human-review/` is the output of a program and may be re-run at any
+time. The one model call that hides inside a *build* — the Logging tab's privacy verdicts —
+is cached by a hash of what was sent, and a refresh runs `--no-model`: cached verdicts
+render, uncached statements say *not evaluated*, and nothing is bought.
 
 ## Wrap-up
 

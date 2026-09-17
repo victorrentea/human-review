@@ -6367,6 +6367,17 @@ def _save_verdict_cache(root: Path, cache: dict) -> None:
     p.write_text(json.dumps(cache, indent=2, sort_keys=True), encoding="utf-8")
 
 
+#: Set by `--no-model`. A build that cannot ask is not the same as a model that could not
+#: be reached, and the page says so in those words — the Logging tab already has a state
+#: for "nobody was ever asked", and this is one honest way of arriving in it.
+OFFLINE = False
+
+
+def _offline_call(prompt: str) -> dict:
+    raise RuntimeError("not evaluated: this build ran with --no-model, so the Logging "
+                       "tab shows only verdicts an earlier run already paid for")
+
+
 def privacy_verdict(h: dict, root: Path, cache: dict, call=None) -> dict:
     """SAFE / DOUBT / PRIVACY / error, with one clause per interpolated value — a live
     model call over the statement's enclosing method, cached by a hash of exactly what
@@ -6386,7 +6397,7 @@ def privacy_verdict(h: dict, root: Path, cache: dict, call=None) -> dict:
     for a test (`monkeypatch.setattr(build, "_call_privacy_model", fake)`) would
     silently do nothing here; every caller that does not pass its own `call` needs the
     patch to actually take."""
-    call = call or _call_privacy_model
+    call = call or (_offline_call if OFFLINE else _call_privacy_model)
     context = _statement_context(h)
     key = hashlib.sha256(
         (VERDICT_SYSTEM_PROMPT + "\n" + h["text"] + "\n" + context).encode("utf-8")
@@ -7767,7 +7778,18 @@ def main(argv=None) -> int:
     )
     ap.add_argument("content", help="JSON content file")
     ap.add_argument("--out", required=True, help="where to write the HTML")
+    # The one thing in a build that is not a program: the Logging tab asks a model whether
+    # a logged value is a privacy problem. Cached by a hash of what was sent, so a rebuild
+    # of unchanged code neither re-asks nor re-pays — but a *new* statement would, and a
+    # refresh that quietly buys an answer is exactly the thing `refresh-report.py` exists
+    # to keep separate from the half a human asked for.
+    ap.add_argument("--no-model", action="store_true",
+                    help="use only cached privacy verdicts; render the rest as "
+                         "not evaluated instead of calling the model")
     args = ap.parse_args(argv)
+
+    global OFFLINE
+    OFFLINE = args.no_model
 
     root = Path(
         subprocess.run(
