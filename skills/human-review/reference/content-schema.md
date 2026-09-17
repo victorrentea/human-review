@@ -671,7 +671,10 @@ traces, so the protocol on each line is a handle: clicking it opens a bullet lis
 operation that line stands for, the name above the route. Distinct operations only, and no
 tally of how often each ran: a route hit seven times instead of three is a fact about which
 test happened to run, not about the architecture. For the same reason the arrow reads
-`4 ops` and not `4 operations, 13 calls` — it also has to fit between two boxes. It is the page's existing `genseq://` affordance and `GENSEQ_JS` drives it
+`4 ops` and not `4 operations, 13 calls` — it also has to fit between two boxes. On the
+delta, a line whose count moved reads `4 ops (was 5)`: `(-1)` is shorter and needs a legend
+the picture has no room for, since the first question anyone asks of it is *minus one what,
+against what?*. It is the page's existing `genseq://` affordance and `GENSEQ_JS` drives it
 unchanged, which is the point: a reader who learnt it one tab earlier, on the sequence
 diagrams, does not learn it again here. The inventories ride in two sidecars the manifest
 names in `new_details` / `old_details`, keyed by ids derived from content, so an untouched

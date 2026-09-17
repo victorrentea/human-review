@@ -323,6 +323,25 @@ def test_a_removed_container_survives_into_the_delta_to_be_drawn_red():
     assert [e["status"] for e in d["edges"] if e["to"] == "Legacy"] == ["removed"]
 
 
+def test_a_line_whose_count_moved_says_what_it_moved_from():
+    """`(-1)` needs a legend the picture has no room for — the first question anyone asks
+    of it is "minus one what, against what?". `was 5` answers both without being told, and
+    only the delta ever prints it: a single side compares against itself."""
+    old = graph("""
+        @startuml
+        Browser -> Backend: GET /api/owners
+        Browser -> Backend: GET /api/pets
+        Browser -> Backend: GET /api/vets
+        @enduml
+    """)
+    new = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
+    d = c2.diff(old, new)
+    out = c2.render(d["nodes"], d["edges"], title="", system="", caption="", coloured=True)
+    assert '"1 ops (was 3)"' in out
+    plain = c2.render(**c2.one_side(new), title="", system="", caption="", coloured=False)
+    assert '"1 ops"' in plain and "was" not in plain
+
+
 def test_a_chattier_call_is_a_count_not_a_colour():
     """Green would say the branch introduced an integration it did not. The number moved;
     the architecture did not, and the line carries the delta instead of the paint."""

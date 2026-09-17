@@ -701,9 +701,15 @@ def render(nodes: dict, edges: list, *, title: str, system: str, caption: str,
         # three is a fact about which test happened to run, not about the architecture,
         # and it was the longest thing on the busiest label. `ops` rather than
         # `operations` for the same reason — the label has to fit between two boxes.
+        #
+        # A line whose count moved says what it moved FROM, not by how much. `(-1)` is
+        # four characters shorter than `(was 5)` and needs a legend the picture has no
+        # room for: the first question anyone asks of it is "minus one what, against
+        # what?". `was 5` answers both without being told, and only ever appears on the
+        # delta — a single side compares against itself and prints nothing.
         delta = e.get("operationsDelta") or 0
         techn = "" if is_datastore_edge(e) else \
-            f'{e["operations"]} ops' + (f' ({delta:+d})' if delta else '')
+            f'{e["operations"]} ops' + (f' (was {e["operations"] - delta})' if delta else '')
         out.append(f'Rel({_pid(e["from"])}, {_pid(e["to"])}, "{_q(handle(e, details))}", '
                    f'"{_q(techn)}"{tag})')
 
