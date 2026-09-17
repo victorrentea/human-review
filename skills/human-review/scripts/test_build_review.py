@@ -3278,6 +3278,31 @@ def test_the_fold_over_a_quoted_test_is_the_blocks_own_source_bar(tmp_path):
     assert two.count('<div class="srcbar">') == 2
 
 
+def test_the_fold_row_draws_what_happened_to_the_file_instead_of_shouting_it(tmp_path):
+    """`NEW FILE` in caps beside a file name is read before the name it is a fact about.
+    The Tests tab settled this already, one level down, with a page glyph marked in its
+    corner — so the row uses that same drawing, and the words move to the hover."""
+    rel, puml = _genseq_fixture(tmp_path)
+
+    def row(label, diff="new"):
+        fig = ('<figure class="snippet"><div class="srcbar"><a>x.feature:4</a>'
+               f'<span class="code-badge" data-diff="{diff}" data-tip="since origin/main">'
+               f'{label}</span></div><pre>code</pre></figure>')
+        return build._folded_pair(puml, rel, [""], [fig])
+
+    new = row("new file")
+    assert "code-badge" not in new and 'class="filemark" data-kind="new"' in new
+    assert build.FILE_PLUS in new and build.FILE_PAGE in new
+    assert 'aria-label="new file"' in new, "the word is kept for a screen reader"
+    assert "New file &mdash; since origin/main" in new, "…and for the hover"
+    # `new file` and `new code` are both `new` to git and are not the same fact.
+    assert 'data-kind="edited"' in row("new code") and build.FILE_PENCIL in row("new code")
+    assert 'data-kind="edited"' in row("2 lines changed", "changed")
+    assert 'data-kind="unchanged"' in row("unchanged", "unchanged")
+    assert build.FILE_PLUS not in row("unchanged", "unchanged")
+    assert ".filemark" in build.CSS
+
+
 def test_which_pair_is_open_is_in_the_url(tmp_path):
     """A reader who opens a sequence and sends the address sends the picture, not the tab
     it is on. And a click on one of the bar's own links must not fold away the block it
