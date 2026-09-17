@@ -258,7 +258,9 @@ iteration, and an iteration runs almost nothing:
 
 1. Edit the keys in `content.json` the request names, and nothing else.
 2. Re-run only the producers that read files you touched: `run-steps.py --only <step>`.
-3. Rebuild. The server is sticky, so print the same URL again.
+3. Rebuild. The server is sticky, so print the same URL again — and a tab already
+   open on that URL reloads itself once the build stops writing, so an iteration
+   lands in front of the reader without anybody pressing F5.
 
 **Do not re-run Step 1's passes, do not `steps-ledger.py reset`, do not rewrite `.started`,
 do not wipe `assets/`, and do not open ledger records for the iteration's own edits.** They

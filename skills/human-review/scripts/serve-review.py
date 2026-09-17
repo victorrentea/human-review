@@ -18,6 +18,11 @@ The server is deliberately small and mortal:
   serves. Idle for `--idle-minutes` and it is gone.
 - **a second run reuses the first.** Re-rendering the report and re-serving it is
   the normal loop; each run leaving another listener behind is not.
+- **the open page follows the build.** Re-rendering is the normal loop, and the
+  page a reader is looking at is the *previous* render until somebody presses F5
+  — which, for the twenty seconds before they do, is a report that quietly
+  disagrees with the disk. The server watches the directory it serves and the
+  page reloads itself once the writing has stopped. `--no-watch` turns it off.
 
 It is also, since the action server, the thing that makes three of the page's buttons
 *do* what they otherwise only describe. `/__run__` runs a command — but never a command
@@ -35,8 +40,9 @@ Usage:
   serve-review.py .human-review                      # prints the base URL
   serve-review.py .human-review --page review.html   # prints the page URL
   serve-review.py .human-review --stop
+  serve-review.py .human-review --no-watch           # no live reload
 """
-import argparse, collections, functools, http.server, json, os, re, secrets, shlex, shutil, socket, socketserver, subprocess, sys, threading, time, urllib.error, urllib.parse, urllib.request
+import argparse, collections, functools, hashlib, http.server, json, os, re, secrets, shlex, shutil, socket, socketserver, subprocess, sys, threading, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 MARKER = "/__human_review__"
@@ -44,6 +50,7 @@ OPEN = "/__open__"
 OPEN_DIFF = "/__open_diff__"
 RUN = "/__run__"
 RUN_STATUS = "/__run_status__"
+WATCH = "/__watch__"
 
 # The page asks "is there a review server here?" and a *wrong* yes is expensive: the demo
 # published on GitHub Pages is https, so the protocol check this replaced said yes, and
@@ -317,6 +324,98 @@ def free(port):
             return True
         except OSError:
             return False
+
+
+# --------------------------------------------------------------------------- #
+# watching the served tree
+# --------------------------------------------------------------------------- #
+
+# Directories whose contents say nothing about the report. `.git` is the expensive one:
+# a review served out of a working tree would otherwise be re-hashed on every index
+# write, and every `git status` the reader runs in the terminal beside the page would
+# read as "the report changed".
+WATCH_SKIP = {".git", "__pycache__", "node_modules", ".pytest_cache"}
+
+# A ceiling rather than a promise. The served directory is a report, not a source tree,
+# and the biggest one so far is a few hundred files; a walk that finds twenty thousand
+# is being pointed at something this was never meant to watch, and stopping is better
+# than spending a third of a second of every second on it.
+WATCH_MAX_FILES = 20000
+
+WATCHER = None
+
+
+def fingerprint(root: Path) -> str:
+    """One short string for "the tree, as it is right now".
+
+    Name, size and mtime — not content. Hashing the bytes of a directory that holds a
+    12MB screencast is a different order of cost, and the thing being detected is a
+    build rewriting files, which cannot do so without moving an mtime."""
+    h = hashlib.blake2b(digest_size=12)
+    seen = 0
+    for base, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d not in WATCH_SKIP)
+        for name in sorted(files):
+            path = os.path.join(base, name)
+            try:
+                st = os.stat(path)
+            except OSError:
+                # Caught mid-rebuild: a file that vanished between the listing and the
+                # stat is itself a change, and the next tick will see the tree settled.
+                h.update(b"\0gone\0")
+                continue
+            h.update(f"{path}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
+            seen += 1
+            if seen >= WATCH_MAX_FILES:
+                return h.hexdigest()
+    return h.hexdigest()
+
+
+class Watcher:
+    """The published stamp changes once the tree has *finished* changing.
+
+    The page reloads itself when this string moves, so the quiet period is not a
+    nicety: `build-review-html.py` writes the html, then the diagrams, then the
+    manifest, over seconds. A watcher that published the first write would reload the
+    reader into a half-built report and then leave them there — the second write is not
+    a change *the page is still around to see*. So a fingerprint has to hold still for
+    `quiet` seconds before it is handed out.
+
+    The first fingerprint is published immediately, on purpose: it is the baseline the
+    page is served against, and a stamp that arrived empty and filled in half a second
+    later would spend that half-second looking like a change."""
+
+    def __init__(self, root, quiet=0.6):
+        self.root = Path(root)
+        self.quiet = quiet
+        self._lock = threading.Lock()
+        self._stamp = self._seen = fingerprint(self.root)
+        self._since = time.time()
+
+    @property
+    def stamp(self) -> str:
+        with self._lock:
+            return self._stamp
+
+    def tick(self, now=None) -> str:
+        now = time.time() if now is None else now
+        found = fingerprint(self.root)
+        with self._lock:
+            if found != self._seen:
+                self._seen, self._since = found, now
+            elif found != self._stamp and now - self._since >= self.quiet:
+                self._stamp = found
+            return self._stamp
+
+    def run(self, interval=0.4):
+        while True:
+            try:
+                self.tick()
+            except Exception:
+                # A watcher is a convenience; a watcher that can take the server down
+                # with it is not. Whatever went wrong, the next tick tries again.
+                pass
+            time.sleep(interval)
 
 
 # --------------------------------------------------------------------------- #
@@ -669,7 +768,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.reply_json(run.snapshot())
 
     def do_GET(self):
-        Handler.last_seen = time.time()
+        # Everything but the watch poll. The reaper asks "is anyone using this server?",
+        # and a tab parked on the report asks for the stamp every second whether or not
+        # anybody is in front of it. Counting that as use would mean a page left open on
+        # a second monitor keeps a server alive until the machine reboots, which is the
+        # exact artifact `--idle-minutes` exists to prevent.
+        watching = self.path.split("?")[0] == WATCH
+        if not watching:
+            Handler.last_seen = time.time()
+        if watching:
+            # Guarded like the rest: the answer is a fact about the reader's disk, and
+            # a stamp that moves is a side channel onto when they are building.
+            problem = refuse_reason(self.headers)
+            if problem:
+                self.reply_text(problem, 403)
+                return
+            self.reply_json({"stamp": WATCHER.stamp if WATCHER else ""})
+            return
         if self.path.split("?")[0] == MARKER:
             # `hits` is here so a caller can tell "the panel reloaded" from "the
             # panel is showing what it already had" — the two look identical from
@@ -693,6 +808,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              "pid": os.getpid(), "hits": Handler.hits,
                              "opens": Handler.opens, "runs": Handler.runs,
                              "token": Handler.token,
+                             # The baseline the page was served against. Empty when
+                             # nothing is watching, which is how the page knows not to
+                             # poll — a build that stopped watching takes the reload
+                             # away from a tab that is still open, same as the actions.
+                             "watch": WATCHER.stamp if WATCHER else "",
                              "actions": {name: {"params": e.get("params") or {},
                                                 "reload": bool(e.get("reload")),
                                                 "label": e.get("label") or ""}
@@ -832,11 +952,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def serve(directory, port, idle_minutes):
-    global ROOT
+def serve(directory, port, idle_minutes, watch=True):
+    global ROOT, WATCHER
     ROOT = git_root(directory) or Path(directory).parent
     Handler.root = directory
     Handler.token = secrets.token_urlsafe(16)
+    if watch:
+        WATCHER = Watcher(directory)
+        threading.Thread(target=WATCHER.run, daemon=True).start()
     handler = functools.partial(Handler, directory=directory)
     socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", port), handler)
@@ -863,6 +986,9 @@ def main():
                          "workbench.externalUriOpeners entry can name it (default: 7654)")
     ap.add_argument("--page", default="review.html")
     ap.add_argument("--idle-minutes", type=float, default=240)
+    ap.add_argument("--no-watch", dest="watch", action="store_false",
+                    help="do not watch the directory for changes; the page then keeps "
+                         "whatever it was served until somebody reloads it by hand")
     ap.add_argument("--stop", action="store_true")
     ap.add_argument("--_child", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
@@ -901,12 +1027,13 @@ def main():
     if args._child:
         # Already detached by the parent's `start_new_session`; calling setsid()
         # again here fails with EPERM, which is how this exited silently once.
-        serve(str(directory), port, args.idle_minutes)
+        serve(str(directory), port, args.idle_minutes, args.watch)
         return 0
 
     subprocess.Popen(
         [sys.executable, os.path.abspath(__file__), str(directory), "--port", str(port),
-         "--idle-minutes", str(args.idle_minutes), "--_child"],
+         "--idle-minutes", str(args.idle_minutes), "--_child"]
+        + ([] if args.watch else ["--no-watch"]),
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         start_new_session=True,
     )

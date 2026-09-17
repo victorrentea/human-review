@@ -1486,6 +1486,45 @@ window.HR = (function () {
     return lines.length ? lines[lines.length - 1].trim() : '';
   }
 
+  // Live reload, the way a dev server does it: the build rewrites `.human-review/`, and
+  // the tab showing it catches up on its own.
+  //
+  // It matters more here than on a dev server. This page is read *while* it is being
+  // rebuilt — a reviewer reads a finding, asks for the diagram to be re-rendered or the
+  // report to be regenerated, and goes on reading. Until now the only page that reloaded
+  // itself was the one whose own button did the rebuilding; a rebuild from the terminal
+  // beside it left the reader looking at a report that no longer matched the disk, with
+  // nothing on screen to say so. Silent staleness is the failure mode this whole page is
+  // built against.
+  //
+  // Polled, not streamed, and for the reason the run poller gives above: an EventSource
+  // is a second protocol and a connection held open across the reap, in exchange for a
+  // second of promptness on a page nobody is timing. The server does the debouncing —
+  // the stamp only moves once the tree has stopped being written — so a rebuild that
+  // takes twenty seconds reloads this tab once, at the end, and not on its first file.
+  onready(function (j) {
+    if (!j || !j.watch) return;
+    var seen = j.watch, misses = 0;
+    (function next() {
+      // Slower when the tab is in the background: it will be reloaded before anyone
+      // looks at it either way, and a dozen parked reports are a dozen pollers.
+      setTimeout(function () {
+        fetch('/__watch__', {cache: 'no-store'})
+          .then(function (r) { if (!r.ok) throw new Error('refused'); return r.json(); })
+          .then(function (w) {
+            misses = 0;
+            // `reload()` and not a cache-buster: the server sends no-store.
+            if (w.stamp && w.stamp !== seen) { location.reload(); return; }
+            next();
+          })
+          // The server is mortal by design — idle for `--idle-minutes` and it is gone,
+          // under a tab that is still open. That is not an error to report, it is the
+          // end of the poll: three tries so a blip does not end it, then silence.
+          .catch(function () { if (++misses < 3) next(); });
+      }, document.hidden ? 5000 : 1000);
+    })();
+  });
+
   onready(function (j) {
     if (!j) return;
     // A play mark in front of the tab's title, where the favicon already is. A reader

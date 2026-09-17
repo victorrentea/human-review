@@ -30,6 +30,7 @@ import html
 import http.client
 import importlib.util
 import json
+import os
 import re
 import socketserver
 import sys
@@ -493,3 +494,143 @@ def test_a_page_with_no_server_behind_it_resolves_the_probe_to_nothing():
     """`fetch` on a file:// page throws, and that throw is the normal path for a guide read
     off disk or out of the zip — not a failure to report."""
     assert ".catch(function () { return null; })" in build.SERVER_JS
+
+
+# --------------------------------------------------------------------------- #
+# and the page that follows the build
+# --------------------------------------------------------------------------- #
+#
+# The report is rebuilt under a tab that is already showing it. Every other part of this
+# file is about refusing things; this part is about the one thing the server volunteers —
+# a stamp that moves when the directory it serves has finished being rewritten, which is
+# the page's cue to reload itself.
+#
+# What is worth pinning is the *debounce*, not the detection. A build writes the html,
+# then eleven diagrams, then the manifest. Reloading on the first write drops the reader
+# into a half-built report and leaves them there, because the writes that follow are
+# changes the page is no longer around to see.
+
+
+def test_the_first_stamp_is_published_immediately(tmp_path):
+    """It is the baseline the page is served against. A stamp that arrived empty and
+    filled in half a second later would spend that half-second looking like a change,
+    and the first thing the reader would see is a reload they did not ask for."""
+    (tmp_path / "review.html").write_text("built", encoding="utf-8")
+    assert srv.Watcher(tmp_path).stamp
+
+
+def test_the_stamp_holds_still_while_the_build_is_still_writing(tmp_path):
+    (tmp_path / "review.html").write_text("built", encoding="utf-8")
+    watcher = srv.Watcher(tmp_path, quiet=5)
+    baseline = watcher.stamp
+
+    (tmp_path / "review.html").write_text("rebuilt, one", encoding="utf-8")
+    assert watcher.tick(now=100) == baseline
+    (tmp_path / "diagram.svg").write_text("<svg/>", encoding="utf-8")
+    assert watcher.tick(now=101) == baseline
+    # Quiet since 101, so at 103 the tree has only held still for two of the five
+    # seconds it owes. The reader is still reading the old page, correctly.
+    assert watcher.tick(now=103) == baseline
+
+    settled = watcher.tick(now=107)
+    assert settled != baseline
+    # And then it stays put: a stamp that keeps moving is a page that keeps reloading.
+    assert watcher.tick(now=108) == settled == watcher.stamp
+
+
+def test_a_file_the_build_rewrote_in_place_still_counts_as_a_change(tmp_path):
+    """Same name, same length — `build-review-html.py` overwriting review.html with a
+    report of the same size is not an exotic case, it is the common one."""
+    page = tmp_path / "review.html"
+    page.write_text("aaaa", encoding="utf-8")
+    watcher = srv.Watcher(tmp_path, quiet=0)
+    baseline = watcher.stamp
+    page.write_text("bbbb", encoding="utf-8")
+    os.utime(page, ns=(0, 1234567891))
+    watcher.tick(now=200)
+    assert watcher.tick(now=201) != baseline
+
+
+def test_the_git_directory_is_not_watched(tmp_path):
+    """A review is often served out of the working tree it describes. Every `git status`
+    the reader runs in the terminal beside the page writes the index — and a page that
+    reloaded itself on that would be reloading all afternoon, for nothing."""
+    (tmp_path / "review.html").write_text("built", encoding="utf-8")
+    (tmp_path / ".git").mkdir()
+    watcher = srv.Watcher(tmp_path, quiet=0)
+    baseline = watcher.stamp
+    (tmp_path / ".git" / "index").write_bytes(b"\x01\x02")
+    watcher.tick(now=300)
+    assert watcher.tick(now=301) == baseline
+
+
+@pytest.fixture
+def watched(tmp_path):
+    """The module-level watcher the handler answers out of."""
+    (tmp_path / "review.html").write_text("built", encoding="utf-8")
+    srv.WATCHER = srv.Watcher(tmp_path, quiet=0)
+    try:
+        yield srv.WATCHER
+    finally:
+        srv.WATCHER = None
+
+
+def test_the_probe_hands_the_page_the_baseline_it_was_served_against(server, watched):
+    status, payload = _call(server, "GET", srv.MARKER)
+    assert status == 200
+    assert json.loads(payload)["watch"] == watched.stamp
+
+
+def test_a_build_that_stopped_watching_takes_the_reload_away(server):
+    """Empty and not absent: the page reads it as "do not poll", the same way an action
+    it no longer declares stops being offered by a tab that is still open."""
+    srv.WATCHER = None
+    status, payload = _call(server, "GET", srv.MARKER)
+    assert status == 200 and json.loads(payload)["watch"] == ""
+
+
+def test_the_watch_endpoint_answers_with_the_stamp_that_moved(server, watched, tmp_path):
+    status, payload = _call(server, "GET", srv.WATCH)
+    assert status == 200
+    first = json.loads(payload)["stamp"]
+    assert first == watched.stamp
+
+    (tmp_path / "review.html").write_text("rebuilt", encoding="utf-8")
+    watched.tick(now=400)
+    watched.tick(now=401)
+    status, payload = _call(server, "GET", srv.WATCH)
+    assert status == 200
+    assert json.loads(payload)["stamp"] != first
+
+
+def test_a_cross_site_watch_is_refused(server, watched):
+    """Guarded like everything else here. The stamp is a fact about the reader's disk —
+    it moves when they build — and any tab in the browser could otherwise watch it."""
+    status, _ = _call(server, "GET", srv.WATCH, headers={"Sec-Fetch-Site": "cross-site"})
+    assert status == 403
+
+
+def test_a_tab_parked_on_the_report_does_not_keep_the_server_alive(server, watched):
+    """The idle clock measures use, and a poller is not a user. Without this, a report
+    left open on a second monitor pins a server until the machine reboots — which is the
+    artifact `--idle-minutes` exists to prevent."""
+    srv.Handler.last_seen = 0.0
+    _call(server, "GET", srv.WATCH)
+    assert srv.Handler.last_seen == 0.0
+    # While anything a person actually did still feeds it.
+    _call(server, "GET", "/review.html")
+    assert srv.Handler.last_seen > 0.0
+
+
+def test_the_page_only_polls_when_the_server_said_it_is_watching():
+    """A page off disk, out of the zip, or on GitHub Pages must not poll an endpoint
+    that is not there — that is the same bug as the editor handles on github.io."""
+    assert "if (!j || !j.watch) return;" in build.SERVER_JS
+    assert "fetch('/__watch__'" in build.SERVER_JS
+    assert "location.reload();" in build.SERVER_JS
+
+
+def test_the_poll_gives_up_when_the_server_has_been_reaped():
+    """The server is mortal by design, and it dies under tabs that are still open. That
+    is the end of the poll, not an error to report at somebody."""
+    assert "if (++misses < 3) next();" in build.SERVER_JS
