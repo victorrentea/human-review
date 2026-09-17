@@ -352,16 +352,34 @@ un-narrated capture nothing on the page plays. `.github/workflows/pages.yml`
 uploads the whole `demo/` directory and deploys it on every push to `main` that touches
 `demo/**` (or the workflow itself), and on `workflow_dispatch`.
 
-To add one:
+To add one, `/publish-demo` from the reviewed project, once the run has finished. It is
+one command and no judgement:
 
 ```sh
-skills/human-review/scripts/publish-demo.sh <slug> [source-dir]   # source-dir defaults to .human-review
+skills/human-review/scripts/publish-demo.sh [slug] [source-dir] [--card] [--push]
 ```
 
-It copies the snapshot into `demo/<slug>/` — the target checkout comes from
-`HUMAN_REVIEW_REPO`, defaulting to `~/workspace/human-review` — refuses any file over
-50 MB, and prints the commit-and-push commands rather than running them. Then add a card
-for it in `demo/index.html`.
+The slug defaults to the name of the project the snapshot belongs to — the source
+directory's parent, the same rule `publish-demo-shots.sh` uses, so both publishers file a
+change under one name — and the source defaults to `.human-review`. The target checkout
+comes from `HUMAN_REVIEW_REPO`, defaulting to `~/workspace/human-review`. It copies the
+snapshot into `demo/<slug>/`, refuses any file over 50 MB, and without `--push` prints the
+commit-and-push commands rather than running them.
+
+`--card` writes that snapshot's card on the landing page, and writes it *from the
+snapshot*: the headline numbers are the scope chips `review.html` itself draws, and the
+title, subtitle and verdict are the ones `content.json` carries. That is not tidiness. The
+card that stood there before this was written claimed ±33 files against a page that said
+±38, because the page had been rebuilt and the card had not — a landing page whose numbers
+are typed by hand is a landing page that lies within a week. Cards live between
+`<!-- live-snapshots:begin -->` and `<!-- live-snapshots:end -->`, one `<!-- snapshot:<slug> -->`
+block each, and only the block for the slug being published is rewritten. Anything outside
+the markers is prose and is never touched.
+
+One thing the card generator has to do, and anything hand-writing a card has to do too:
+strip links out of the subtitle. A card is itself an `<a>`, an `<a>` inside an `<a>` does
+not nest, and the parser closes the card at the inner link and re-parents the rest — which
+is how the screenshot gallery's four stats spent a while rendering outside their own card.
 
 **One caveat.** Every code reference in a review page is a `vscode://file/...` deep link
 holding an absolute path on the machine that generated it. Those links open nothing on a

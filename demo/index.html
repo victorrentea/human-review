@@ -60,6 +60,7 @@
   }
   .stats b { color: var(--fg); font-weight: 600; }
   .added { color: var(--added); font-weight: 600; }
+  .changed { color: var(--muted); font-weight: 600; }
   .download { margin: -.4rem 0 1.6rem; font-size: .9rem; color: var(--muted); }
   .removed { color: var(--removed); font-weight: 600; }
   .note {
@@ -83,26 +84,25 @@
 
   <h2>Published snapshots</h2>
 
+<!-- live-snapshots:begin -->
+  <!-- snapshot:petclinic-visit-vet -->
   <a class="card" href="petclinic-visit-vet/review.html">
     <h3>Attending vet on a visit</h3>
-    <p class="sub">Review guide for <code>test-pr</code> vs <code>main</code> on
-      victorrentea/petclinic — commit <code>5acf2472</code>, issue #37.</p>
+    <p class="sub"><code>test-pr</code> vs <code>main</code> — <code>5acf2472</code> · <span class="issue-ref">#37 Link Visit with Vet</span>. A visit now records the vet that attended it.</p>
     <ul class="stats">
-      <li>files <b>+4 / ±33</b></li>
-      <li>lines <span class="added">+730</span> / <span class="removed">−34</span></li>
-      <li>tests <span class="added">+10</span> / <b>±4</b></li>
-      <li>review <b>9 open · 3 autofixed</b></li>
+      <li>files <b><span class="added">+4</span> / <span class="changed">±38</span></b></li>
+      <li>lines <b><span class="added">+958</span> / <span class="removed">−44</span></b></li>
+      <li>tests <b><span class="added">+10</span> / <span class="changed">±4</span></b></li>
+      <li>Opus 5 review <b>9 open &middot; 2 autofixed</b></li>
       <li>verdict <b>not yet mergeable</b></li>
     </ul>
   </a>
-
-  <p class="download">Or
-    <a href="https://github.com/victorrentea/human-review/releases/download/demo/human-review-petclinic-visit-vet.zip">download
-    it as a zip</a> and open <code>review.html</code> off your own disk — the diagrams, the feature video, the
-    complexity report and the live 3D Code City all travel inside the folder. Nothing needs a server; only the
-    city wants a connection, since it pulls three.js and d3 from a CDN. The
-    <a href="https://github.com/victorrentea/petclinic/issues/37">issue</a> and the screenshot gallery below are
-    the same change.</p>
+  <p class="download">Or <a href="https://github.com/victorrentea/human-review/releases/download/demo/human-review-petclinic-visit-vet.zip">download it as a zip</a> and open
+    <code>review.html</code> off your own disk, or serve it exactly as it is here:
+    <code>docker run --rm -p 8642:80 ghcr.io/victorrentea/human-review:petclinic-visit-vet</code>, then open
+    <a href="http://localhost:8642">localhost:8642</a>.</p>
+  <!-- /snapshot -->
+<!-- live-snapshots:end -->
 
   <!-- shot-galleries:begin -->
   <h2>Screenshot galleries</h2>
@@ -110,7 +110,7 @@
   <!-- gallery:petclinic-pr -->
   <a class="card" href="petclinic-pr/">
     <h3>Attending vet on a visit — screenshots</h3>
-    <p class="sub"><code>test-pr</code> vs <code>main</code> — <code>5acf2472</code> · <span class="issue-ref"><a href="https://github.com/victorrentea/petclinic/issues/37">#37 Link Visit with Vet</a></span>. A visit now records the vet that attended it.</p>
+    <p class="sub"><code>test-pr</code> vs <code>main</code> — <code>5acf2472</code> · <span class="issue-ref">#37 Link Visit with Vet</span>. A visit now records the vet that attended it.</p>
     <ul class="stats">
       <li>tabs <b>11</b></li>
       <li>screenshots <b>22</b></li>
