@@ -405,9 +405,13 @@ container image, and running one is the only way to stand in front of exactly th
 being demoed without cloning anything:
 
 ```sh
-docker run --rm -p 8080:80 ghcr.io/victorrentea/human-review:petclinic-visit-vet
-# then open http://localhost:8080
+docker run --rm -p 8642:80 ghcr.io/victorrentea/human-review:petclinic-visit-vet
+# then open http://localhost:8642
 ```
+
+The host port is 8642 rather than 8080 for one reason: a demo machine usually already has
+something on 8080, and a port already taken is a terrible first second of a demo. Nginx
+listens on 80 inside the container, so the left-hand number is yours to change.
 
 Untagged — `ghcr.io/victorrentea/human-review` — you get `demo/` itself, the landing page
 listing every snapshot, which is the same thing Pages serves at its root. Beside each

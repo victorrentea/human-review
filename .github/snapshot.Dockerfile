@@ -20,7 +20,7 @@ ARG SNAPSHOT=demo
 # published but orphaned: it never appears in the repo's Packages sidebar and its page
 # carries no source link back here.
 LABEL org.opencontainers.image.source="https://github.com/victorrentea/human-review"
-LABEL org.opencontainers.image.description="A /human-review page, served as-is. Open http://localhost:8080 after `docker run -p 8080:80`."
+LABEL org.opencontainers.image.description="A /human-review page, served as-is. Open http://localhost:8642 after `docker run -p 8642:80`."
 LABEL org.opencontainers.image.licenses="MIT"
 
 COPY .github/snapshot.nginx.conf /etc/nginx/conf.d/default.conf
