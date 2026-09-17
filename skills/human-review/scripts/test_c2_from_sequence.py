@@ -336,6 +336,26 @@ def test_the_delta_is_the_only_side_that_is_painted():
     assert "$tags=" not in plain and c2.ADDED not in plain
 
 
+def test_a_delta_where_nothing_moved_carries_no_key_to_read():
+    """A legend listing two colours over a picture that uses neither costs the reader a
+    moment working out which box is the green one, and the answer is "none of them". A
+    branch that changed no integration should look exactly like the system does."""
+    g = graph("@startuml\nBackend -> DB: select owners\n@enduml")
+    d = c2.diff(g, g)
+    out = c2.render(d["nodes"], d["edges"], title="t", system="", caption="", coloured=True)
+    assert "AddElementTag" not in out and "SHOW_LEGEND" not in out
+
+
+def test_only_the_half_of_the_key_a_delta_uses_is_declared():
+    """A branch that only added something gets one entry, not two with one unused."""
+    old = graph("@startuml\nBackend -> DB: select owners\n@enduml")
+    new = graph("@startuml\nBackend -> DB: select owners\nBackend -> Pay: POST /charge\n@enduml")
+    d = c2.diff(old, new)
+    out = c2.render(d["nodes"], d["edges"], title="t", system="", caption="", coloured=True)
+    assert 'AddElementTag("added"' in out
+    assert 'AddElementTag("removed"' not in out
+
+
 def test_the_render_is_c4_container_dialect():
     g = graph("""
         @startuml

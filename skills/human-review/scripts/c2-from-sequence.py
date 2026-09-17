@@ -478,19 +478,30 @@ def render(nodes: dict, edges: list, *, title: str, system: str, caption: str,
     `coloured` is what separates the delta from the two plain sides. It is not "add colours
     to the same drawing": an uncoloured render is of ONE side and has no removed elements in
     it at all, so the legend, the tags and the dashed removed lines only exist in the delta
-    and would be a legend for a single entry anywhere else."""
+    and would be a legend for a single entry anywhere else.
+
+    And a delta where nothing moved is uncoloured too, tags and legend included. A key
+    listing two colours over a picture that uses neither is a reader spending a moment
+    working out which box is the green one — the answer being "none of them" — and a
+    branch that changed no integration should say so by looking exactly like the system."""
+    used = ({v.get("status") for v in nodes.values()}
+            | {e.get("status") for e in edges}) & {"added", "removed"}
+    coloured = coloured and bool(used)
     out = ["@startuml",
            "' ⚠️  GENERATED — projected from the sequence diagrams by c2-from-sequence.py.",
            "!include <C4/C4_Container>",
            "HIDE_STEREOTYPE()"]
-    if coloured:
+    if coloured and "added" in used:
         out += [
             f'AddElementTag("added", $bgColor="{ADDED}", $fontColor="#FFFFFF", '
             f'$borderColor="{ADDED_DARK}", $legendText="added by this branch")',
-            f'AddElementTag("removed", $bgColor="{REMOVED}", $fontColor="#FFFFFF", '
-            f'$borderColor="{REMOVED_DARK}", $legendText="removed by this branch")',
             f'AddRelTag("added", $textColor="{ADDED}", $lineColor="{ADDED}", '
             f'$legendText="call this branch introduced")',
+        ]
+    if coloured and "removed" in used:
+        out += [
+            f'AddElementTag("removed", $bgColor="{REMOVED}", $fontColor="#FFFFFF", '
+            f'$borderColor="{REMOVED_DARK}", $legendText="removed by this branch")',
             f'AddRelTag("removed", $textColor="{REMOVED}", $lineColor="{REMOVED}", '
             f'$lineStyle=DashedLine(), $legendText="call this branch removed")',
         ]
