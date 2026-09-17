@@ -449,7 +449,12 @@ it and strikes the label through.
 
 ## Rules the renderer enforces (so you do not have to)
 
-- `summary` and `verdict` **open the first tab**, above that tab's own `intro`. They are
+- **`verdict.bullets` render nowhere.** `verdict.score` is the pill beside the title (and
+  the band of colour it wears); the bullets are kept in the file and never drawn. The
+  full-bleed amber band that used to hold them said the pill again one screenful lower and
+  pushed the findings below the fold. Reasons a reader needs before the list go in
+  `summary`, in a sentence.
+- `summary` **opens the first tab**, above that tab's own `intro`. They are
   not a tab of their own: a tab is a question the reader chooses, and *what is this change,
   and is it mergeable* is not chosen — it is what the page opens with. So do not declare an
   Overview tab, and do not repeat the summary in the first tab's `intro`.
@@ -552,7 +557,6 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
 ```json
 "tabs": [
   {"id":"review","label":"Review","count":true,
-   "intro":"<p class=\"sub\">Both /code-review and /simplify ran, and their output was merged before it reached this page…</p>",
    "blocks":[{"type":"findings","title":"Requires human review","body":"…"},
              {"type":"autofixes","title":"Auto-fixed","body":"…"}]},
   {"id":"behaviour","label":"Demo","blocks":[{"type":"section","id":"video"}]},
@@ -722,23 +726,27 @@ Four tabs need something said about how they are written:
   fixes already applied, greyed out. Lists that each start at 1 make the reader do
   arithmetic. The numbering follows the order the blocks appear in here, so that order is
   an editorial choice — with one rule the build enforces: work already done is the tail.
-  Whichever pile opens the list writes its lede — `9 open, worst first · 3
-  auto-applied · 2 coder assumptions to check` — computed, so restate none of it. Each
+  Whichever pile opens the list writes its lede — `9 open LLM review issues · 3
+  auto-fixed · 2 assumptions` — computed, so restate none of it. It **pins under the
+  masthead** for the whole panel, because the three chapters it names are thousands of
+  pixels apart and the reader wants the second one from inside the first. Each
   clause links to the chapter it counts (`#first`, `#fixed`, `#assumed`, or the block's own
   `id`), so the line doubles as the tab's contents; a pile the layout never lays out keeps
   its count as plain text rather than offering a dead anchor. The coder's clause is the one
-  that renders at zero (`0 coder assumptions to check`), because that zero is a result: it says
+  that renders at zero (`0 assumptions`), because that zero is a result: it says
   the authoring conversation was asked. Mode C prints `coder could not be asked` instead,
   the one case where a zero would be claiming an answer nobody was there to give. It is counts and one ordering fact,
   and nothing that describes what is directly under it: the applied fixes are visibly
   grey, an assumption visibly says *your call*, and every item carries its source beside
   its own title, so `greyed out`, `yours to confirm` and `each stamped with the pass that
-  raised it` were all cut, one at a time, from the line that replaced the paragraph. Its `intro` names the passes **in the order
-  they ran, and stops on the last one** — `/code-review then /simplify.` A `then` is the
-  order, so *"in that order"* says it twice, and *"in separate turns"* is how the review
-  was operated, which is nothing the reader can act on. The paragraph that used to stand
-  above the list ("Twelve items came back. They are one list: the nine that need your
-  judgement first…") described the list it was standing on.
+  raised it` were all cut, one at a time, from the line that replaced the paragraph.
+  **Give this tab no `intro` at all.** It carried one sentence naming the passes that ran
+  (`/code-review ran against origin/main.`) and that sentence was both redundant — every
+  item is stamped with the pass that raised it, and the scope bar names the base — and
+  wrong as often as not: which passes ran, and what against, is not something the line was
+  ever computed from. The tab opens on the counts line, which *is* computed. The paragraph
+  that used to stand above the list ("Twelve items came back. They are one list: the nine
+  that need your judgement first…") described the list it was standing on.
 - **Tests** — two columns that read as a question and its answer, both built the same way:
   **a heading in the page's voice, then a framed card**.
   - **Left, the question**: the ticket the branch answers, its sentences coloured by

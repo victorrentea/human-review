@@ -206,8 +206,13 @@ body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-sys
 .wrap { max-width:1080px; margin:0 auto; padding:1.4rem 1.25rem 5rem; }
 /* With a masthead the strip is no longer the only thing that survives a scroll: title,
    refs, chips and tabs travel together, so the page opens with the title against the top
-   edge rather than behind a gutter that would then be pinned there for the whole read. */
-.wrap:has(.masthead) { padding-top:.25rem; }
+   edge rather than behind a gutter that would then be pinned there for the whole read.
+   Zero, and not the .25rem of air it used to be: that air was *above* a `top:0` sticky,
+   so the masthead sat 4px down the viewport unpinned and snapped flush the instant the
+   page moved — every word in it jumping up 4px on the first wheel click. The air is the
+   same, it is just paid inside the masthead's own padding now (below), where it is part
+   of the block that pins and therefore cannot be scrolled out from under it. */
+.wrap:has(.masthead) { padding-top:0; }
 h1 { font-size:1.5rem; margin:0 0 .15rem; letter-spacing:-.02em; }
 h2 { font-size:1.3rem; margin:2.8rem 0 .8rem; padding-bottom:.4rem; border-bottom:1px solid var(--line); }
 h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
@@ -800,7 +805,7 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
    none of them. Full-bleed like the strip was, padded back to the text column. */
 .masthead { position:sticky; top:0; z-index:31; background:var(--bg);
             margin-left:calc(50% - 50vw); width:100vw;
-            padding:.35rem max(1.25rem, calc(50vw - 540px + 1.25rem)) 0;
+            padding:.6rem max(1.25rem, calc(50vw - 540px + 1.25rem)) .3rem;
             border-bottom:1px solid var(--line); }
 .masthead .titlerow { align-items:baseline; gap:.3rem .9rem; }
 /* One line, always: the PR and its name on the left, the score hard right. Nothing here
@@ -840,10 +845,17 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .chip.refchip.drifted { border-color:var(--drift); }
 h1 .prref { text-decoration:none; }
 h1 .prref:hover { text-decoration:underline; }
-.titlescore { display:inline-flex; align-items:baseline; gap:.35rem; padding:.3rem .8rem;
-              border-radius:999px; white-space:nowrap; }
-.titlescore b { font-size:1.5rem; line-height:1; letter-spacing:-.02em; }
-.titlescore small { font-size:.8rem; opacity:.6; }
+/* One size, and it is the size of the `static` badge it sits next to. A 1.5rem `6`
+   against a .8rem `/10` made the numerator the loudest thing in the masthead and the
+   denominator its footnote — two halves of one fraction, set as if they were two facts.
+   The pill keeps its colour, its shape and its right edge; only the type is levelled,
+   down to the chip's own .82rem, and the padding and the transparent border are what
+   make it exactly as tall as a chip. */
+.titlescore { display:inline-flex; align-items:baseline; gap:.2rem; padding:.15rem .7rem;
+              border:1px solid transparent; border-radius:999px; white-space:nowrap;
+              font-size:.82rem; }
+.titlescore b { font-size:1em; line-height:1.6; letter-spacing:0; }
+.titlescore small { font-size:1em; opacity:.6; }
 .titlescore i { font-style:normal; font-size:.82rem; opacity:.85; margin-left:.25rem; }
 /* The score is a link now — to the tab holding the findings that produced it, which is
    the next thing anyone reading `5/10 not yet mergeable` wants. It keeps every colour it
@@ -859,36 +871,11 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
   .titlescore.v-good { color:#6fce93; } .titlescore.v-mid { color:#e0a44a; }
   .titlescore.v-bad { color:#f0757f; } }
 
-/* Full-bleed band: the verdict is the one thing that should not sit politely inside the
-    text column. It breaks out to the viewport edges and pads itself back to the column. */
-.verdict { margin:1.6rem 0 2.2rem; margin-left:calc(50% - 50vw); width:100vw;
-            padding:1.5rem max(1.25rem, calc(50vw - 540px + 1.25rem));
-            display:grid; grid-template-columns:auto 1fr; gap:2rem; align-items:center;
-            border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-.verdict .score { text-align:center; max-width:16rem; }
-/* The label sits in the score column, so a long one used to stretch that column across
-    most of the band — leaving the bullets in a ~180px gutter beside 600px of empty
-    gradient. Cap the column, and stop tracking-out a sentence: uppercase letter-spacing
-    is for a two-word verdict, not for a paragraph. */
-.verdict .score span { max-width:16rem; margin:.45rem auto 0; }
-.verdict .score b { display:block; font-size:3.4rem; line-height:1; letter-spacing:-.04em; }
-.verdict .score span { display:block; font-size:.78rem; line-height:1.35; opacity:.8;
-                        text-transform:none; letter-spacing:0; }
-.verdict .scale { display:flex; gap:2px; margin:.6rem 0 0; }
-.verdict .scale i { width:9px; height:9px; border-radius:2px; background:currentColor; opacity:.18; }
-.verdict .scale i.on { opacity:1; }
-.verdict ul { margin:0; padding:0; list-style:none; display:grid; gap:.42rem; }
-.verdict li { color:var(--fg); font-size:.95rem; padding-left:1rem; position:relative; }
-.verdict li::before { content:""; position:absolute; left:0; top:.62em; width:5px; height:5px;
-                      border-radius:50%; background:currentColor; }
-.v-bad  { color:#c62828; background:linear-gradient(90deg,#fbdcdc 0%,#fdefef 42%,transparent 88%); }
-.v-mid  { color:#b56b00; background:linear-gradient(90deg,#fbe8c9 0%,#fdf5e6 42%,transparent 88%); }
-.v-good { color:#2e7d32; background:linear-gradient(90deg,#d6ecd8 0%,#eef7ef 42%,transparent 88%); }
-@media (prefers-color-scheme: dark) {
-  .v-bad {color:#f08a8a;background:linear-gradient(90deg,#4a2020 0%,#2a1818 42%,transparent 88%)}
-  .v-mid {color:#e6b566;background:linear-gradient(90deg,#453515 0%,#282010 42%,transparent 88%)}
-  .v-good{color:#8fd39c;background:linear-gradient(90deg,#1e3d24 0%,#172318 42%,transparent 88%)}
-}
+/* The verdict band that used to stand here — a full-bleed amber strip holding the score a
+   second time, a ten-pip dial and the four bullets behind it — is gone. It repeated the
+   masthead's own pill one screenful lower and pushed the findings, which is what the
+   reader opened the page for, below the fold. `verdict.score` still colours and fills that
+   pill; `verdict.bullets` are no longer rendered anywhere. */
 .vidwrap { display:grid; grid-template-columns:minmax(0,1fr) 19rem; gap:.9rem;
             align-items:start; margin:1rem 0; }
 .vidwrap video { width:100%; display:block; border:1px solid var(--line);
@@ -1035,11 +1022,25 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
    reviewer who cannot see that it exists cannot tell it was considered. */
 button.tab.quiet { text-decoration:line-through; text-decoration-thickness:1px; opacity:.5; }
 button.tab.quiet:hover, button.tab.quiet[aria-selected="true"] { opacity:.85; }
-button.tab { border:1px solid transparent; background:none; color:var(--muted); border-radius:999px;
+/* Every tab wears its own edge, unpressed. They used to be bare words on the page's own
+   background, with a fill on the selected one and nothing at all on the other twelve: a
+   row of labels, one of which happened to be highlighted, which is what a *caption* looks
+   like. A reader cannot tell a label they can click from a label they cannot by reading
+   it, so the affordance is drawn — a card ground and a hairline each, the page's own chip
+   shape, so the strip reads as thirteen controls before anything is hovered. */
+button.tab { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:999px;
              cursor:pointer; font:600 .87rem/1.8 inherit; padding:0 .85rem; white-space:nowrap;
-             display:inline-flex; align-items:center; gap:.42rem; }
-button.tab:hover { color:var(--fg); background:var(--card); border-color:var(--line); }
-button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+             display:inline-flex; align-items:center; gap:.42rem;
+             transition:background .12s, border-color .12s, color .12s; }
+/* Hover now has to be a *different* state from resting, not the arrival of one: the card
+   ground is already there, so the pointer buys the accent wash and the link colour on the
+   edge — the same pair `a.chip-link` uses, for the same reason. */
+button.tab:hover { color:var(--fg); background:var(--accent-soft); border-color:var(--link); }
+/* Selected keeps the inversion — the strongest signal on the strip, and the one thing
+   thirteen outlined pills must not be able to be confused with — and gains the lift, so
+   the current tab reads as the one standing in front of the others. */
+button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg);
+             box-shadow:0 1px 3px rgba(0,0,0,.2); }
 button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
                 font-variant-numeric:tabular-nums; }
 /* A tab the reviewer must not skip — a blocked merge — is red. It used to wear a `!` in
@@ -1048,13 +1049,13 @@ button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
    The label *is* the alarm now. Selected, the strip inverts everything, so the red moves
    to the fill and the word turns white rather than losing the one thing marking it. */
 button.tab.alarm { color:#c62828; }
-button.tab.alarm:hover { color:#a41f1f; background:var(--card); border-color:#c62828; }
+button.tab.alarm:hover { color:#a41f1f; background:var(--accent-soft); border-color:#c62828; }
 button.tab[aria-selected="true"].alarm { background:#c62828; color:#fff; border-color:#c62828; }
 /* Same alarm, one notch down: a required approval that is not the escalation of last
    resort (an ordinary CODEOWNERS reviewer, not the team guarding the guardrails) reads
    as amber rather than red, so the strip does not cry wolf on a routine sign-off. */
 button.tab.warn { color:#b56b00; }
-button.tab.warn:hover { color:#8f5500; background:var(--card); border-color:#b56b00; }
+button.tab.warn:hover { color:#8f5500; background:var(--accent-soft); border-color:#b56b00; }
 button.tab[aria-selected="true"].warn { background:#b56b00; color:#fff; border-color:#b56b00; }
 /* A verdict the strip can carry without words: green nothing changed, amber changed
    but nothing breaks, red a caller breaks. A number there ("+3") counted changes,
@@ -1121,6 +1122,21 @@ button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--
    name a heading halfway down one, and `scrollIntoView` honours the target's own
    scroll-margin, not its ancestor's. */
 .panel, .panel [id] { scroll-margin-top: calc(var(--strip-h, 2.6rem) + .6rem); }
+/* The counts line is the tab's table of contents, and the three chapters it names are
+   thousands of pixels apart: by the time a reader is standing in `Auto-fixed`, the link
+   that would take them to the assumptions scrolled off the top ten screenfuls ago. So it
+   pins too, directly under the masthead — `--strip-h` is the masthead's OWN measured
+   height (TABS_JS keeps it in step, on load and on every resize), so the two never
+   overlap however many rows the tab strip wraps onto, and the z-index is deliberately
+   below the masthead's 31: it slides under the block that owns the top of the page.
+   Opaque, because a line of links over a code card is unreadable. */
+.panel .counts.pilelede { position:sticky; top:var(--strip-h, 2.6rem); z-index:20;
+            margin:0; padding:.45rem 0 .4rem; background:var(--bg); }
+/* And with a second pinned band above the panel, a deep link has to clear both of them --
+   otherwise `#fixed` lands its heading exactly behind the line that linked to it. Only in
+   the panel that actually carries the line: every other tab clears the masthead alone. */
+.panel:has(.counts.pilelede) [id] {
+            scroll-margin-top: calc(var(--strip-h, 2.6rem) + var(--lede-h, 0px) + .6rem); }
 .panel > h2:first-child, .panel > .paneltag + h2 { margin-top:.2rem; }
 /* Only meaningful once every panel is on screen at once, which is what "show all"
     (and printing) do — otherwise the heading names the tab you are already on. */
@@ -2399,6 +2415,13 @@ TABS_JS = """<script>
   function syncStripHeight() {
     var h = sticky.getBoundingClientRect().height;
     if (h > 0) document.documentElement.style.setProperty('--strip-h', h + 'px');
+    // The counts line pins under the masthead, so a deep link has to clear both. Same
+    // reasoning, same trick: publish the measurement, let the CSS add them up.
+    var lede = document.querySelector('.panel .counts.pilelede');
+    if (lede) {
+      var lh = lede.getBoundingClientRect().height;
+      if (lh > 0) document.documentElement.style.setProperty('--lede-h', lh + 'px');
+    }
   }
   syncStripHeight();
   if (window.ResizeObserver) new ResizeObserver(syncStripHeight).observe(sticky);
@@ -5382,7 +5405,7 @@ PASS_DOCS = {
 }
 
 
-def _finding_source(f, default: str = "") -> str:
+def _finding_source(f) -> str:
     """Which pass raised it, when the content file says so.
 
     Optional by design: nothing downstream of the two runs records provenance, so an item
@@ -5390,15 +5413,14 @@ def _finding_source(f, default: str = "") -> str:
     guess. See SKILL.md, step 1 — a `source` here has to be stamped while the pass that
     produced it is the one running.
 
-    The `default` is for the one pile whose provenance is not a pass and never varies: an
-    assumption came from the agent that wrote the code, so it is stamped `assumption` where
-    a finding is stamped `/code-review`, and the stamp is not left to be remembered.
+    The assumptions pile does not come through here at all: its provenance never varies,
+    so it is the card's one purple chip rather than a grey stamp behind a second badge.
 
     A stamp naming a documented pass is the link to that documentation. The stamp already
     is the question — *what is `/code-review`?* — and answering it in place costs the page
     nothing, where answering it in prose costs a line under the verdict that every reader
     who already knows has to read past."""
-    src = (f.get("source") or default).strip()
+    src = (f.get("source") or "").strip()
     if not src:
         return ""
     href = PASS_DOCS.get(src)
@@ -5504,11 +5526,12 @@ def opening_lede(spec) -> str:
     """
     if _LIST_OFFSET:
         return ""
-    # Counts, and the one ordering fact that counting cannot give. Every clause that
-    # described how the list *looks* has been cut: the applied fixes are visibly grey and
-    # an assumption visibly says "your call", so "greyed out" and "yours to confirm" were
-    # the paragraph-the-reader-can-see rule reappearing one clause at a time, inside the
-    # line that replaced the paragraph.
+    # Counts, and nothing else. Every clause that described how the list *looks* has been
+    # cut — "greyed out", "yours to confirm", and finally "worst first" itself: the
+    # applied fixes are visibly grey, an assumption visibly wears its purple chip, and an
+    # ordering is the one thing a reader can see without being told. Each was the
+    # paragraph-the-reader-can-see rule reappearing one clause at a time, inside the line
+    # that replaced the paragraph.
     block = _assumptions_block(spec)
     parts = []
 
@@ -5524,10 +5547,22 @@ def opening_lede(spec) -> str:
         return f'<a href="#{html.escape(at)}">{text}</a>' if at else text
 
     if spec.get("findings"):
-        parts.append(clause(f"{len(spec['findings'])} open, worst first",
-                            "findings", "first"))
+        # "open LLM review issues", not "open, worst first": the ordering fact was the one
+        # clause here that a reader could not have counted themselves, and it was also the
+        # one nobody acts on — the list is in front of them, worst first or not. What they
+        # do act on is *who raised these*, because the page carries two piles a machine
+        # produced and one a human owns, and the clause that opens the line is the one that
+        # has to say which of them it is counting.
+        n_open = len(spec["findings"])
+        parts.append(clause(
+            f"{n_open} open LLM review issue{'' if n_open == 1 else 's'}",
+            "findings", "first"))
     if spec.get("autofixes"):
-        parts.append(clause(f"{len(spec['autofixes'])} auto-applied",
+        # `auto-fixed`, the same word the badge on every one of those items already wears.
+        # "auto-applied" was a second name for one thing, and a reader who scrolls to the
+        # pile has to satisfy themselves the two words mean the same before they can trust
+        # the count.
+        parts.append(clause(f"{len(spec['autofixes'])} auto-fixed",
                             "autofixes", "fixed"))
     # Last, because the first two clauses count what a review pass produced and this one
     # counts what it could not: a reader who has just been told how many items are open
@@ -5541,24 +5576,27 @@ def opening_lede(spec) -> str:
         # news. Mode C is the case where a zero would be the lie instead — nobody was in a
         # position to be asked — so it says that rather than counting an empty pile.
         assumed = len(spec.get("assumptions", []))
-        # "to check" rather than "assumed by the coder": the first two clauses count work
-        # that is done, and this one counts work the reader still owes. Naming the pile
-        # after who produced it described its provenance, which the `your call` badge on
-        # every card already does; naming it after what is left to do says why it is in a
-        # line the reader skims on the way to the list.
+        # `6 assumptions`, flat. `coder` named who produced them, which the card's own
+        # purple `assumption` chip says where the reader is standing, and `to check` named
+        # the work — in a line whose other two clauses are bare counts, so the asymmetry
+        # read as a fourth fact rather than as the same shape said three times. Mode C is
+        # still the exception: there is no count to give, only the reason there is none.
         parts.append(clause(
             "coder could not be asked"
             if block.get("mode") == "C" and not assumed
-            else f"{assumed} coder assumption{'' if assumed == 1 else 's'} to check",
+            else f"{assumed} assumption{'' if assumed == 1 else 's'}",
             "assumptions", "assumed"))
     if not parts:
         return ""
-    # The stamp clause went the same way as "greyed out" and "yours to confirm", and it
-    # was the last of them: every item carries its source beside its own title, so a line
-    # announcing that they do describes the thing directly under it. What is left is
-    # counts and one ordering fact — the two things counting the list yourself would not
-    # have told you.
-    return '<p class="sub counts">' + " &middot; ".join(parts) + "</p>"
+    # The stamp clause went the same way as "greyed out" and "yours to confirm": every
+    # item carries its source beside its own title, so a line announcing that they do
+    # describes the thing directly under it. What is left is three counts and the jump to
+    # each — the only part of the list that counting it yourself would not have told you.
+    # `pilelede` is what the stylesheet pins: the line names three chapters that are
+    # thousands of pixels apart, so it has to still be on screen when the reader is inside
+    # one of them and wants the next. Sticky under the masthead, never over it.
+    return ('<p class="sub counts pilelede">' + " &middot; ".join(parts)
+            + "</p>")
 
 
 def _lede_above(head: str, lede: str) -> str:
@@ -5620,10 +5658,18 @@ def render_assumptions(items, mode: str = "") -> str:
     out = []
     for f in items:
         refs = _finding_refs(f)
+        # One chip, not two. Every card here used to open with a purple `your call` badge
+        # and then a grey monospaced `assumption` stamp — the badge naming what the reader
+        # owes, the stamp naming where the item came from, and the two of them together
+        # spending the whole first line of every card on the one thing all of them have in
+        # common. The provenance is the word worth keeping (`assumption` is what
+        # distinguishes this pile from `/code-review` and `/simplify`, which is exactly the
+        # distinction the counts line above now draws), and it wears the badge's purple so
+        # the pile still reads as the one the human owns.
         out.append(
             '<li class="n-assumed">'
-            '<span class="badge sev-assumed">your call</span>'
-            + _finding_source(f, default="assumption")
+            f'<span class="badge sev-assumed">'
+            f'{html.escape((f.get("source") or "assumption").strip())}</span>'
             + f' <span class="f-title">{f["title"]}</span>'
             + (f'<p>{f["body"]}</p>' if f.get("body") else "")
             + (f'<p class="f-alt"><b>Read the other way:</b> {f["alternative"]}</p>'
@@ -7982,25 +8028,13 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
     return "".join(out)
 
 
-def verdict_band_html(v: dict, n: int, cls: str) -> str:
-    """The full-bleed band under the masthead: the score, and the reasons for it.
-
-    **No reasons, no band.** The bullets are the reasons, and without them all the band
-    renders is `5/10 not yet mergeable` — the pill beside the title said a second time, one
-    screenful lower, inside two rules and beside a viewport of empty grid. The score is not
-    lost by dropping it: it is in the masthead, where it is the first thing on the page and
-    already links to the findings the band would have summarised."""
-    if not v.get("bullets"):
-        return ""
-    pips = "".join(f'<i class="{"on" if i < n else ""}"></i>' for i in range(10))
-    return (
-        f'<div class="verdict {cls}">'
-        f'<div class="score"><b>{n}<small style="font-size:.42em;opacity:.5">/10</small></b>'
-        f'<span>{html.escape(v.get("label", ""))}</span>'
-        f'<div class="scale">{pips}</div></div>'
-        + "<ul>" + "".join(f"<li>{b}</li>" for b in v["bullets"]) + "</ul>"
-        + "</div>"
-    )
+# There is no `verdict_band_html` any more, and that is the point of this note: the band
+# it built — full-bleed amber, the score at 3.4rem, a ten-pip dial, the bullets beside it —
+# said the masthead's pill again a screenful lower and spent the first screenful of a review
+# on a conclusion, so the list of findings the reader came for started below the fold. The
+# `verdict` block in the content file is still read: its `score` is the pill's number and
+# its band its colour. Its `bullets` are kept in the file and rendered nowhere; if the page
+# ever needs the reasons stated in prose again, that is what `summary` is for.
 
 
 def _score_target(spec) -> tuple[str, str]:
@@ -8447,7 +8481,6 @@ def main(argv=None) -> int:
               "the applied fixes are its tail", file=sys.stderr)
 
     v = spec.get("verdict")
-    verdict_html = ""
     title_score = ""
     if v:
         n = int(v["score"])
@@ -8466,7 +8499,6 @@ def main(argv=None) -> int:
             f'<a class="titlescore {band}" href="#{html.escape(target, quote=True)}" '
             f'data-tip="Open the {html.escape(target_label, quote=True)} tab">{face}</a>'
             if target else f'<span class="titlescore {band}">{face}</span>')
-        verdict_html = verdict_band_html(v, n, band)
 
     extra_css = "".join((out_dir / c).read_text(encoding="utf-8") for c in spec.get("extraCss", []))
     # The snippet extractor owns its own token colours, so the page asks it for them
@@ -8657,12 +8689,12 @@ def main(argv=None) -> int:
         # preamble (the summary is about the change; an intro is about the tab) and, like
         # every intro, carries no weight: the panel it opens is kept alive by its own
         # content, never by the page's lede leaning on it.
-        overview_html = lede_html + verdict_html
+        overview_html = lede_html
         summary_html = lede_html
         if overview_html:
             first, *rest = tabs
             tabs = [{**first, "intro": overview_html + first.get("intro", "")}, *rest]
-            lede_html = verdict_html = ""
+            lede_html = ""
     # The ledger is derived data, like the requirement lists it sits under: nobody writes
     # it, and a content file that predates the block would otherwise leave the manifest
     # computed and unread. So a page that has a manifest and no `tests` block gets one,
@@ -8924,7 +8956,6 @@ def main(argv=None) -> int:
 <body><div class="wrap">
 {masthead_html(spec, mode_html + title_score, chips, strip_html, base_st)}
 {lede_html}
-{verdict_html}
 
 {body_html}
 <footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{TAKEAWAY}</div>{allbtn_html}</footer>

@@ -1099,11 +1099,11 @@ def test_the_tab_count_token_is_filled_in_from_the_tabs_that_were_emitted(tmp_pa
     assert "{{tabcount}}" not in page
 
 
-def test_the_summary_and_verdict_open_the_first_tab_instead_of_owning_one(tmp_path):
-    """A tab is a question the reader chooses. "What is this change, and is it mergeable"
-    is not chosen — it is what the page opens with, so it cost a pill in the strip, a
-    click to leave and a click to come back. It is the first panel's lede now, above that
-    tab's own intro, and it brings no tab of its own."""
+def test_the_summary_opens_the_first_tab_instead_of_owning_one(tmp_path):
+    """A tab is a question the reader chooses. "What is this change" is not chosen — it is
+    what the page opens with, so it cost a pill in the strip, a click to leave and a click
+    to come back. It is the first panel's lede now, above that tab's own intro, and it
+    brings no tab of its own."""
     page, _ = _build(tmp_path, dict(
         BARE, verdict={"score": 5, "label": "not yet mergeable", "bullets": ["<b>why</b>"]},
         tabs=[{"id": "one", "label": "One", "intro": "<p class=sub>about this tab</p>",
@@ -1115,7 +1115,8 @@ def test_the_summary_and_verdict_open_the_first_tab_instead_of_owning_one(tmp_pa
     assert panel.index('class="lede"') < panel.index("about this tab"), \
         "the summary is about the change; an intro is about the tab"
     assert panel.index("about this tab") < panel.index("<h2"), "then the tab's own blocks"
-    assert 'class="verdict' in panel and "why" in panel
+    assert 'class="verdict' not in panel and "why" not in panel, \
+        "the bullets are kept in the content file and rendered nowhere"
     # Outside every panel is where it used to sit, above the strip, pushing the questions
     # below the fold — and that is the one place it must not come back to.
     assert 'class="lede"' not in page[:page.index('<section class="panel"')]
@@ -2240,17 +2241,21 @@ def test_a_source_with_no_documentation_stays_a_plain_stamp():
     assert '<span class="f-src">assumption</span>' in out
 
 
-def test_a_verdict_with_no_reasons_draws_no_band():
-    """The band exists to hold the reasons. With none, all it renders is the pill beside
-    the title said again, one screenful lower, inside two rules and a viewport of empty
-    grid — so the score stays in the masthead and the band does not open."""
-    assert build.verdict_band_html({"score": 5, "label": "not yet mergeable"}, 5, "v-mid") == ""
-
-
-def test_a_verdict_with_reasons_still_draws_them():
-    out = build.verdict_band_html({"score": 5, "label": "l", "bullets": ["because"]}, 5, "v-mid")
-    assert 'class="verdict v-mid"' in out and "<li>because</li>" in out
-    assert out.count('<i class="on">') == 5, "the dial still counts the score"
+def test_the_verdict_never_draws_a_band_however_many_reasons_it_carries(tmp_path):
+    """The band is gone, bullets and all. It held the masthead's own pill a second time,
+    one screenful lower, at 3.4rem and on a full-bleed amber ground — so the first
+    screenful of a review was spent on the conclusion and the list of findings the reader
+    came for started below the fold. The score keeps its pill; the bullets stay in the
+    content file and are drawn nowhere."""
+    page, _ = _build(tmp_path, dict(
+        BARE, verdict={"score": 5, "label": "not yet mergeable",
+                       "bullets": ["because of the thing", "and the other thing"]}))
+    assert 'class="verdict' not in page and ".verdict {" not in page, \
+        "no band, and no stylesheet for one"
+    assert "because of the thing" not in page and "and the other thing" not in page
+    assert '<i class="on">' not in page, "the ten-pip dial went with it"
+    assert not hasattr(build, "verdict_band_html"), "and so did the function that built it"
+    assert '<b>5</b><small>/10</small>' in page, "the pill is where the score lives now"
 
 
 def test_a_bare_ref_shows_the_name_and_keeps_the_path_on_hover():
@@ -2639,17 +2644,19 @@ def _assumption(**kw):
     return base
 
 
-def test_an_assumption_is_stamped_as_one_rather_than_borrowing_a_severity(tmp_path):
+def test_an_assumption_wears_one_purple_chip_naming_where_it_came_from(tmp_path):
     """`/code-review` is a provenance a pass earns by running. Nothing ran here — this came
-    from the side that wrote the code — so the stamp says so, and the badge asks for the one
-    thing the reader can supply that no pass can."""
+    from the side that wrote the code — so the chip says `assumption`, and it wears the
+    purple that used to be a second badge (`your call`) beside it. Two chips on every card
+    in the pile spent its whole first line on the one thing all of them have in common."""
     page, _ = _build(tmp_path, dict(
         BARE, assumptions=[_assumption()],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}]}]))
     item = re.search(r'<li class="n-assumed">.*?</li>', page, re.S).group(0)
-    assert ">assumption<" in item
-    assert "your call" in item
+    assert '<span class="badge sev-assumed">assumption</span>' in item
+    assert "your call" not in item, "one chip, not two"
+    assert "f-src" not in item, "and the grey monospaced stamp is the one that went"
     assert "sev-high" not in item and "sev-med" not in item
 
 
@@ -2757,17 +2764,17 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"},
                           {"type": "autofixes"}]}]))
-    assert "2 coder assumptions to check" in page
+    assert "2 assumptions" in page
     assert "yours to confirm" not in page, \
-        "the badge already says `your call`"
-    assert "9 open, worst first" in page
-    assert "3 auto-applied" in page
-    assert ('<a href="#first">9 open, worst first</a> &middot; '
-            '<a href="#fixed">3 auto-applied</a> &middot; '
-            '<a href="#assumed">2 coder assumptions to check</a>') in page, \
+        "the card's own purple chip already says which pile it is"
+    assert "9 open LLM review issues" in page
+    assert "3 auto-fixed" in page
+    assert ('<a href="#first">9 open LLM review issues</a> &middot; '
+            '<a href="#fixed">3 auto-fixed</a> &middot; '
+            '<a href="#assumed">2 assumptions</a>') in page, \
         "what a pass found comes first; what no pass could find comes after it — and every "\
         "clause is the jump to the chapter it counts"
-    assert page.index('class="sub counts"') < page.index("Requires human review"), \
+    assert page.index('class="sub counts pilelede"') < page.index("Requires human review"), \
         "the line counts all three piles, so it cannot sit under the heading of one"
     assert "greyed out" not in page, \
         "the applied fixes are visibly grey"
@@ -2783,8 +2790,8 @@ def test_the_lede_counts_the_coder_pile_at_zero_too(tmp_path):
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert "0 coder assumptions to check" in page
-    assert "1 open, worst first" in page
+    assert "0 assumptions" in page
+    assert "1 open LLM review issue" in page
 
 
 def test_the_lede_does_not_count_a_pile_nobody_could_be_asked_for(tmp_path):
@@ -2815,19 +2822,20 @@ def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path
         assumptions=[_assumption()],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert page.count("1 coder assumption to check") == 1, "said once, not once per pile"
-    assert page.index("1 coder assumption to check") < page.index("Requires human review")
+    assert page.count("1 assumption</a>") == 1, "said once, not once per pile"
+    assert page.index("1 assumption</a>") < page.index("Requires human review")
 
 
-def test_the_lede_is_counts_and_one_ordering_fact_and_nothing_else(tmp_path):
-    """The stamp clause was the last of the three that described how the list looks. Every
-    item carries its source beside its own title, so a line announcing that they do
-    describes the thing directly under it."""
+def test_the_lede_is_counts_and_nothing_else(tmp_path):
+    """The stamp clause was the last of the three that described how the list looks, and
+    `worst first` was the last of *those*: an ordering the reader can see, in a line whose
+    whole job is the numbers they cannot. What names a pile now names who raised it."""
     page, _ = _build(tmp_path, dict(
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
-    assert '<p class="sub counts"><a href="#first">1 open, worst first</a></p>' in page
-    assert "stamped with" not in page
+    assert ('<p class="sub counts pilelede">'
+            '<a href="#first">1 open LLM review issue</a></p>') in page
+    assert "stamped with" not in page and "worst first" not in page
 
 
 def test_a_count_with_no_chapter_to_jump_to_is_not_a_link(tmp_path):
@@ -2838,8 +2846,8 @@ def test_a_count_with_no_chapter_to_jump_to_is_not_a_link(tmp_path):
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         autofixes=[{"title": "x"}],
         tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
-    assert '<a href="#first">1 open, worst first</a>' in page
-    assert "1 auto-applied" in page and '<a href="#fixed">' not in page
+    assert '<a href="#first">1 open LLM review issue</a>' in page
+    assert "1 auto-fixed" in page and '<a href="#fixed">' not in page
 
 
 def test_the_github_link_tooltip_says_only_what_its_label_cannot():
