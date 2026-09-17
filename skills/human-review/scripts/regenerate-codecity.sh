@@ -29,6 +29,14 @@
 #                         both a meaningless diff and the end of the comparison. This
 #                         belongs to a merge into the default branch, nowhere else
 #   --no-pull             keep the vendored tool as it is (offline, or pinned)
+#
+# NOTE, since code-city a1d11c5: the generators no longer RUN the CRAP/coverage pass —
+# generate.sh step [3] is commented out there, and the four colours it fed stay in the
+# page's COLOR dropdown marked unavailable. So --acceptance and --baseline are accepted
+# and passed through but have nothing to read, and --write-baseline will always take the
+# "no coverage data in this run" branch below. The flags stay wired for the day step [3]
+# comes back; until then a project is better off not configuring city.acceptance /
+# city.baseline at all, the way petclinic no longer does.
 set -euo pipefail
 
 REPO="" ; OUT="" ; TITLE="Code City" ; BASELINE="" ; WRITE_BASELINE="" ; NO_PULL="" ; ACCEPTANCE=""
