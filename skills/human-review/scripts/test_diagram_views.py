@@ -377,11 +377,14 @@ def test_nothing_in_the_expander_resolves_by_document_wide_id():
     assert not _re.search(r"""querySelector(?:All)?\(['"]#""", js)
 
 
-def test_the_instructions_sit_above_the_viewer_not_inside_one_pane(tmp_path):
-    """Inserted before the first `.svgbox`, the hint lands inside the Diff pane and
-    disappears on New and Old — the same one-copy assumption, in the prose."""
-    assert "querySelector('.dgmviews') || diagram.querySelector('.svgbox')" \
-        in build.GENSEQ_JS
+def test_no_line_of_instructions_is_printed_above_the_picture(tmp_path):
+    """There used to be one — "Click any arrow marked ⊕ for the SQL or the JSON behind
+    it" — written once per diagram, which on a tab that is now one picture per test is
+    once per test: a column of identical sentences down the page. The ⊕ is on the label
+    itself, the cursor changes over it, and its own tooltip says what a click will get,
+    at the moment the reader is looking at it."""
+    assert "genseq-hint" not in build.GENSEQ_JS
+    assert "genseq-hint" not in _pairs_fixture(tmp_path)
 
 
 def test_puml_diff_carries_the_base_sidecar_for_the_old_render():
@@ -468,10 +471,11 @@ def test_the_whole_pair_folds_away_and_starts_open(tmp_path):
     Both halves fold: a sequence whose test has been put away is a picture of nothing, so
     the diagram must be *inside* the fold, not left standing under a closed summary."""
     html_out = _pairs_fixture(tmp_path)
-    assert '<details class="testpair" open>' in html_out
-    assert html_out.rstrip().endswith("</details>")
-    body = html_out[html_out.index("</summary>"):]
-    assert "snippet" in body and 'class="diagram' in body
+    assert '<details class="testpair" open id=' in html_out
+    # Both inside the fold: to the pair's own closing tag, which is the last one on the
+    # block — only the registry the tab writes for the 🕵️ comes after it.
+    pair = html_out[html_out.index('<details class="testpair"'):html_out.rindex("</details>")]
+    assert "snippet" in pair and 'class="diagram' in pair
 
 
 def test_the_quoted_test_starts_closed_and_the_diagram_is_in_view(tmp_path):
@@ -491,15 +495,13 @@ def test_the_quoted_test_starts_closed_and_the_diagram_is_in_view(tmp_path):
     assert 'class="diagram' in after
 
 
-def test_the_fold_is_labelled_with_the_file_and_not_the_path_again(tmp_path):
-    """The panel it opens prints the path and line range in its own header bar, and the
-    diagram under it prints the path too. A third copy in the summary is the habit this
-    tab was just pruned of."""
+def test_the_fold_is_labelled_with_the_scenario_and_keeps_the_path_as_its_tooltip(tmp_path):
+    """`spec.ts` is the name of the box; the reader is looking for "A scenario", which is
+    what the Tests tab calls it and what the diagram's own chapter header says. The path
+    is not lost — it is the summary's tooltip — and it is not printed a third time here,
+    because the fold's row under it and the diagram below both already carry it."""
     html_out = _pairs_fixture(tmp_path)
-    summary = html_out[html_out.index("<summary>") + len("<summary>"):
-                       html_out.index("</summary>")]
-    assert summary == "spec.ts", summary
-    assert "/" not in summary
+    assert '<summary data-tip="spec.ts">A scenario</summary>' in html_out
 
 
 def test_a_paired_diagram_does_not_repeat_the_name_the_fold_just_said(tmp_path):
@@ -569,7 +571,8 @@ def test_a_test_whose_sequence_did_not_change_is_paired_and_marked_not_orphaned(
     html, weight, changes = build.render_testpairs(block, {"manifest": "M.tsv"}, [],
                                                    tmp_path, tmp_path)
     assert "No diagram came back" not in html
-    assert '<details class="testpair" open><summary>same.ts</summary>' in html
+    # No chapter in that .puml, so the summary falls back to the basename — all there is.
+    assert '<summary data-tip="same.ts">same.ts</summary>' in html
     assert '<span class="badge sev-info">unchanged</span>' in html
     assert "<text>same</text>" in html and "untouched" in html
     assert "dgmviews" not in html and "dgm-diff" not in html

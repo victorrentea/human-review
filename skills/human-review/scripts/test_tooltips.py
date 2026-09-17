@@ -32,7 +32,11 @@ HERE = Path(__file__).resolve().parent
 # The attribute and the property: people grep for `title="` and never for `.title =`.
 OFFENDERS = (
     (re.compile(r'<[a-zA-Z][^>]*?\stitle="'), 'a native title="…" attribute'),
-    (re.compile(r"\.title\s*="), "a .title = … assignment"),
+    # `document.title` is the browser tab's own name, not a hint on an element: the page
+    # stamps a ▶️ on it while a step runs, and the OpenAPI viewer puts the two spec
+    # names there. It is the one `.title =` that can never be a tooltip, so it is excluded
+    # here rather than exempting the whole file it happens to sit in.
+    (re.compile(r"(?<!\bdocument)\.title\s*="), "a .title = … assignment"),
 )
 # build-review-html.py owns the rewrite that removes them, so it names them on purpose.
 EXEMPT = {"test_tooltips.py", "build-review-html.py"}

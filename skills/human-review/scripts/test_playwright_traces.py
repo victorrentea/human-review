@@ -262,6 +262,22 @@ def test_an_unreadable_envelope_says_so_instead_of_harvesting_nothing(tmp_path):
 
 
 # --------------------------------------------------------------------------- the renderer
+#
+# `render_traces` draws nothing. The list it used to write — one collapsible row per
+# recording, the viewer framed inside it — repeated the covering-tests map above it row
+# for row, so it was dropped; what it writes now is a registry the 📺 on those rows reads,
+# keyed by the file basename and declaration line the map already addresses a row with.
+# These tests therefore read the JSON, not markup: what the page *shows* for a recording
+# is the covering-tests row's business and is pinned in test_build_review.py.
+
+
+def _registry(frag):
+    """The registry as the 📺 parses it: the JSON inside the one script element.
+
+    No unescaping step here on purpose — the `<\\/` the renderer writes so that nothing in
+    the payload can close the element is a plain JSON escape, and a parser puts it back."""
+    return json.loads(frag[frag.index(">") + 1: frag.rindex("</script>")])
+
 
 def _manifest(tmp_path, **over):
     doc = {"viewer": "assets/traceviewer/index.html", "recorded": 1, "omitted": 0,
@@ -276,23 +292,33 @@ def _manifest(tmp_path, **over):
     return doc
 
 
-def test_a_row_carries_the_test_the_recording_is_of(tmp_path):
+def test_a_recording_is_keyed_by_the_test_the_map_addresses_it_by(tmp_path):
+    """`owners.spec.ts:15` is how the covering-tests row names its test, so pairing a row
+    with its recording is a lookup and never a guess at a title."""
     frag, weight = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
     assert weight == 1
-    assert "lists the visits of an owner" in frag
-    assert '<span class="trpath">Owner page › </span>' in frag
-    assert "owners.spec.ts:15" in frag and "1.7s" in frag
-    # The steps are the viewer's to show, with the screenshots; no strip of them on the row.
-    assert "Navigate to" not in frag and "trsteps" not in frag
+    reg = _registry(frag)
+    assert reg["viewer"] == "assets/traceviewer/index.html"
+    assert [t["test"] for t in reg["tests"]] == ["owners.spec.ts:15"]
+    assert reg["tests"][0]["trace"] == "assets/traces/001-owner-page.zip"
 
 
-def test_the_frame_is_a_path_on_the_row_and_never_an_iframe_in_the_markup(tmp_path):
+def test_a_result_that_recorded_nothing_is_not_in_the_registry(tmp_path):
+    """The 📺 is drawn from this list. An entry with no zip behind it would be a door
+    onto a viewer with nothing to show."""
+    doc = _manifest(tmp_path)
+    doc["tests"][0]["trace"] = ""
+    frag, weight = build.render_traces(doc, tmp_path, tmp_path / '.human-review')
+    assert weight == 0 and _registry(frag)["tests"] == []
+
+
+def test_the_viewer_is_named_once_and_no_frame_is_ever_written(tmp_path):
     """Eleven rows would otherwise boot eleven copies of a browser application on load,
-    each fetching its own multi-megabyte zip, to show the one the reader asked for."""
+    each fetching its own multi-megabyte zip, to show the one the reader asked for. The
+    📺 opens the viewer in a window of its own, so the page carries no frame at all."""
     frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
     assert "<iframe" not in frag
-    assert 'data-trace="assets/traces/001-owner-page.zip"' in frag
-    assert 'data-viewer="assets/traceviewer/index.html"' in frag
+    assert _registry(frag)["viewer"] == "assets/traceviewer/index.html"
 
 
 def test_every_row_offers_the_native_command_for_a_page_read_off_disk(tmp_path):
@@ -310,27 +336,14 @@ def test_the_command_names_the_directory_the_page_was_built_into(tmp_path):
     assert "npx playwright show-trace out/review/assets/traces/001-owner-page.zip" in frag
 
 
-def test_a_failed_run_is_flagged_and_its_headline_shown(tmp_path):
+def test_the_entry_carries_how_the_run_ended(tmp_path):
+    """The recording is of an attempt, and the page has to be able to say which attempt
+    it is about to open — a failure shown as a green replay is the single most expensive
+    thing this registry could get wrong."""
     doc = _manifest(tmp_path)
     doc["tests"][0].update(status="failed", error="expect(locator).toHaveText failed")
     frag, _ = build.render_traces(doc, tmp_path, tmp_path / '.human-review')
-    assert '<span class="tflag removed">failed</span>' in frag
-    assert 'class="trerr">expect(locator).toHaveText failed' in frag
-
-
-def test_a_retry_is_stamped_on_the_row(tmp_path):
-    """The row is one attempt. Attempt 2 shown unmarked reports a flaky test as a green
-    one, which is the single most expensive thing this tab could get wrong."""
-    doc = _manifest(tmp_path)
-    doc["tests"][0]["retry"] = 1
-    frag, _ = build.render_traces(doc, tmp_path, tmp_path / '.human-review')
-    assert "retry 1" in frag
-
-
-def test_the_lede_states_what_the_run_did_not_record(tmp_path):
-    frag, _ = build.render_traces(_manifest(tmp_path, untraced=38, omitted=4), tmp_path, tmp_path / '.human-review')
-    assert "38 result(s) ran with tracing off" in frag
-    assert "4 more not carried onto this page" in frag
+    assert _registry(frag)["tests"][0]["status"] == "failed"
 
 
 def test_a_manifest_with_no_recordings_renders_nothing_at_all(tmp_path):
@@ -339,25 +352,18 @@ def test_a_manifest_with_no_recordings_renders_nothing_at_all(tmp_path):
     assert build.render_traces({"tests": []}, tmp_path, tmp_path / '.human-review') == ("", 0)
 
 
-def test_a_title_from_the_suite_cannot_close_the_row_it_sits_in(tmp_path):
+def test_a_path_from_the_run_cannot_close_the_script_it_rides_in(tmp_path):
+    """The escaping the page depends on, and the one JSON does not do for us: inside a
+    script element `</script>` ends the element wherever it appears, whatever quoting it
+    is under, and the rest of the registry is then parsed as markup."""
     doc = _manifest(tmp_path)
-    doc["tests"][0]["title"] = '</summary><script>alert(1)</script>'
+    doc["tests"][0]["trace"] = "assets/traces/</script><b>oops</b>.zip"
     frag, _ = build.render_traces(doc, tmp_path, tmp_path / '.human-review')
-    assert "<script>alert(1)</script>" not in frag
-    assert "&lt;script&gt;" in frag
-
-
-def test_the_test_file_is_openable_when_it_is_still_on_disk(tmp_path):
-    (tmp_path / "src").mkdir()
-    (tmp_path / "src" / "owners.spec.ts").write_text("// here", encoding="utf-8")
-    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
-    assert f'href="vscode://file/{(tmp_path / "src/owners.spec.ts").resolve()}:15:1"' in frag
-
-
-def test_a_test_file_that_is_gone_leaves_no_dead_link(tmp_path):
-    """The one thing this page never emits is a custom URL that opens nothing."""
-    frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
-    assert "vscode://file/" not in frag
+    payload = frag[frag.index(">") + 1: frag.rindex("</script>")]
+    assert "</" not in payload
+    assert frag.count("</script>") == 1
+    # And it is still the path the harvester wrote, once the reader parses it back.
+    assert _registry(frag)["tests"][0]["trace"].endswith("</script><b>oops</b>.zip")
 
 
 # --------------------------------------------------------------------------- the wiring
