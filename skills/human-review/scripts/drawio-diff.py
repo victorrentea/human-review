@@ -824,18 +824,45 @@ def read_at(ref: str, path: str) -> str:
     return extract_xml(blob.stdout)
 
 
-def committed_at_head(path: str) -> bool:
-    """Is there a committed drawing to go back to?
+HISTORY_DEPTH = 60
 
-    The question the undo offer stands or falls on. A diagram this branch introduces has
-    no version at HEAD, so "put the committed one back" would mean deleting the file the
-    reader is looking at — and `git stash push` on a path git does not know fails outright,
-    which is worse: a control on the page that errors when pressed. Asked of HEAD and not
-    of the index, because the index is where a half-finished `git add` lives and that is
-    not a state anyone means by "what this branch committed".
+
+def last_distinct_revision(path: str, current: str) -> dict | None:
+    """The newest commit whose *drawing* is not the one on disk — the undo's real target.
+
+    "Back to what this branch committed" was the wrong target, and it failed the first
+    time it was pressed. A hand edit does not sit in the work tree waiting to be undone:
+    it gets swept into the next commit that touches the file, usually one made for some
+    other reason, and from then on HEAD *is* the mess. `git stash push` then finds nothing
+    to save, exits 0, and the reader watches a button do nothing.
+
+    So the undo walks back instead, and the step it takes is one *drawing*, never one
+    commit. The two are not the same thing here: a `.drawio.png` is re-rendered by
+    machinery — a PNG whose bytes move while every box stays where it was — and stepping
+    onto one of those would be the same no-op wearing a different sha. `diff_models` is
+    what already knows the difference, so it is what decides.
+
+    That makes the offer repeatable, which is what an undo is: each press lands on a
+    drawing, the next press steps past it to the one before, and a reader who has gone one
+    step too far can read the sha in the fold and walk forward by hand.
     """
-    return subprocess.run(["git", "cat-file", "-e", f"HEAD:{path}"],
-                          capture_output=True).returncode == 0
+    log = subprocess.run(
+        ["git", "log", f"-{HISTORY_DEPTH}", "--format=%H%x09%as%x09%s", "--", path],
+        capture_output=True, text=True)
+    if log.returncode != 0:
+        return None
+    for line in log.stdout.splitlines():
+        sha, _, rest = line.partition("\t")
+        date, _, subject = rest.partition("\t")
+        older = read_at(sha, path)
+        if older == EMPTY_MODEL:
+            continue
+        delta = diff_models(older, current)
+        # `moved` counts. Dragging a box somewhere wrong is a hand edit like any other,
+        # and the one an undo is asked for most.
+        if any(delta[k] for k in ("added", "removed", "changed", "moved")):
+            return {"sha": sha, "short": sha[:8], "date": date, "subject": subject}
+    return None
 
 
 def main():
@@ -945,21 +972,24 @@ def main():
     # what the branch added — in red, deliberately unplaced, so the guardrail keeps failing
     # until a human drags it somewhere. That is the to-do state, and it is not a green one.
     # A reader who has just made a mess of a layout wants neither the base nor a to-do:
-    # they want the drawing this branch already committed, which is the last one anyone
-    # deliberately kept. That is derivable from nothing but the path — no flag, no naming
-    # convention — so unlike the redraw it is recorded on every run.
+    # they want the last drawing that was not this one.
     #
-    # `git stash push` and not `git checkout --`, though both put the file back: only one
-    # of them keeps what it took. The undo is a button on a web page, it will be pressed
-    # by accident, and the difference between the two commands is whether that costs the
-    # reader an afternoon of layout or one `git stash pop`.
-    if args.base and committed_at_head(args.diagram):
+    # Two commands, because there are two ways an edit can be in the way. Anything still
+    # loose in the work tree is banked — `git stash push` and not `git checkout --`, since
+    # both put the file back and only one of them keeps what it took, and a button on a web
+    # page gets pressed by accident. Then the drawing itself comes out of history by sha.
+    # The stash is a no-op when there is nothing loose, which is the case that broke the
+    # first version of this offer: the hand edit had already been committed, so "back to
+    # HEAD" was "back to the mess".
+    revision = last_distinct_revision(args.diagram, new_xml) if args.base else None
+    if revision:
         stash = shlex.quote(f"human-review: hand edits to {args.diagram}")
         verdict["revert"] = {
             "cwd": str(Path.cwd()),
-            "command": f"git stash push -m {stash} -- {shlex.quote(str(source))}",
+            "command": (f"git stash push -m {stash} -- {shlex.quote(str(source))} "
+                        f"&& git checkout {revision['sha']} -- {shlex.quote(str(source))}"),
             "diagram": str(source),
-            "ref": "HEAD",
+            **revision,
         }
     (out_dir / f"{stem}-diff.json").write_text(json.dumps(verdict, indent=2))
 

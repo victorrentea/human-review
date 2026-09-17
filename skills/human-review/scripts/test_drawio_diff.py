@@ -722,45 +722,73 @@ def test_the_verdict_records_the_way_back_to_automation_s_own_drawing(tmp_path, 
     assert "redraw" not in run()
 
 
-def test_the_verdict_records_the_way_back_to_the_committed_drawing(tmp_path, branch_png):
-    """The other way back, and the one asked for far more often: undo *my* edits.
+def test_the_undo_steps_back_one_drawing_and_skips_a_re_render(tmp_path, branch_png):
+    """The undo's target is the newest commit whose *picture* differs — never simply HEAD.
 
-    It carries no flag, because unlike the patch script the committed drawing needs nothing
-    but the path to name it — so every run records it. And it is a `git stash push` and not
-    a `git checkout --`: an undo offered as a button on a web page gets pressed by accident,
-    and the layout has to survive that.
+    Aiming at HEAD failed the first time it was pressed: a hand edit does not wait in the
+    work tree, it gets swept into the next commit that touches the file, and from then on
+    HEAD is the mess and `git stash push` has nothing to save. Walking back fixes that, and
+    the step has to be one drawing rather than one sha, because a `.drawio.png` gets
+    re-rendered — new bytes, same boxes — and landing on one of those is the same no-op
+    wearing a different sha.
     """
+    def git(*args):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True,
+                       capture_output=True)
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     for setting in (("user.email", "t@t"), ("user.name", "t")):
-        subprocess.run(["git", "-C", str(tmp_path), "config", *setting], check=True)
-    puml = tmp_path / "DomainModel.puml"
-    puml.write_text(DOMAIN_PUML)
+        git("config", *setting)
+    (tmp_path / "DomainModel.puml").write_text(DOMAIN_PUML)
     diagram = tmp_path / "docs" / "CM.drawio.png"
     diagram.parent.mkdir()
-    diagram.write_bytes(png_with(BASE))
-    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "base"], check=True)
-    diagram.write_bytes(branch_png.read_bytes())
 
-    def run(path="docs/CM.drawio.png", out="out"):
+    diagram.write_bytes(png_with(BASE))
+    git("add", "-A"); git("commit", "-qm", "the drawing before")
+    before = subprocess.run(["git", "-C", str(tmp_path), "rev-parse", "HEAD"],
+                            capture_output=True, text=True).stdout.strip()
+
+    # the hand edit, committed — the state that broke the first version of this offer
+    diagram.write_bytes(branch_png.read_bytes())
+    git("add", "-A"); git("commit", "-qm", "swept the hand edit in")
+
+    # and a re-render on top: the PNG is rebuilt, the drawing is untouched
+    diagram.write_bytes(png_with(BRANCH, compressed_diagram=True))
+    git("add", "-A"); git("commit", "-qm", "re-render the recorded diagrams")
+
+    def run(out="out"):
         proc = subprocess.run(
             [sys.executable, str(HERE / "drawio-diff.py"), "--base", "HEAD",
-             "--diagram", path, "--out-dir", out, "--name", "conceptual",
+             "--diagram", "docs/CM.drawio.png", "--out-dir", out, "--name", "conceptual",
              "--renderer", "builtin", "--concepts", "DomainModel.puml"],
             capture_output=True, text=True, cwd=tmp_path)
         assert proc.returncode == 0, proc.stderr
         return json.loads((tmp_path / out / "conceptual-diff.json").read_text())
 
     revert = run()["revert"]
-    assert revert["command"] == ("git stash push -m 'human-review: hand edits to "
-                                "docs/CM.drawio.png' -- docs/CM.drawio.png")
-    assert revert["ref"] == "HEAD"
+    assert revert["sha"] == before, "it walked past the re-render AND past the hand edit"
+    assert revert["subject"] == "the drawing before"
+    assert f"git checkout {before} -- docs/CM.drawio.png" in revert["command"]
+    # Loose work is banked before the checkout overwrites it, never binned.
+    assert revert["command"].startswith("git stash push -m 'human-review: hand edits to ")
     assert Path(revert["cwd"]).resolve() == tmp_path.resolve()
 
-    # A diagram this branch introduces has nothing committed to go back to, and the offer
-    # has to be absent rather than wrong: `git stash push` on a path git does not know
-    # fails, and "undo" would in any case mean deleting the picture the reader is looking
-    # at. A control that errors when pressed is worse than one that was never drawn.
-    fresh = tmp_path / "docs" / "NEW.drawio.png"
-    fresh.write_bytes(branch_png.read_bytes())
-    assert "revert" not in run("docs/NEW.drawio.png", "out-new")
+
+def test_no_undo_is_offered_when_every_revision_draws_the_same_thing(tmp_path, branch_png):
+    """One commit, or a history of pure re-renders: there is no earlier drawing to step
+    back to, and the offer has to be absent rather than a button that does nothing."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for setting in (("user.email", "t@t"), ("user.name", "t")):
+        subprocess.run(["git", "-C", str(tmp_path), "config", *setting], check=True)
+    (tmp_path / "DomainModel.puml").write_text(DOMAIN_PUML)
+    diagram = tmp_path / "docs" / "CM.drawio.png"
+    diagram.parent.mkdir()
+    diagram.write_bytes(branch_png.read_bytes())
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "only"], check=True)
+    proc = subprocess.run(
+        [sys.executable, str(HERE / "drawio-diff.py"), "--base", "HEAD",
+         "--diagram", "docs/CM.drawio.png", "--out-dir", "out", "--name", "conceptual",
+         "--renderer", "builtin", "--concepts", "DomainModel.puml"],
+        capture_output=True, text=True, cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "revert" not in json.loads((tmp_path / "out" / "conceptual-diff.json").read_text())

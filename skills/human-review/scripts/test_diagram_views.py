@@ -864,9 +864,12 @@ def test_shortening_twice_changes_nothing(tmp_path):
 # on this page with no way back: the layout is in the file, the file is in the repository,
 # and "let me see what the machine drew" meant going and finding a revision by hand.
 
-REVERT = {"cwd": "/repo", "ref": "HEAD", "diagram": "docs/C.drawio.png",
+REVERT = {"cwd": "/repo", "diagram": "docs/C.drawio.png",
+          "sha": "450db720c62af1b8783f5c3e26606ead0bbe01ca", "short": "450db720",
+          "date": "2026-09-16", "subject": "Centre the re-layout note under the map",
           "command": "git stash push -m 'human-review: hand edits to docs/C.drawio.png' "
-                     "-- docs/C.drawio.png"}
+                     "-- docs/C.drawio.png && git checkout 450db720c62af1b8783f5c3e26606"
+                     "ead0bbe01ca -- docs/C.drawio.png"}
 
 REDRAW = {"cwd": "/repo", "base": "origin/main", "diagram": "docs/CM.drawio.png",
           "command": "git checkout origin/main -- docs/CM.drawio.png && docs/patch.py"}
@@ -947,6 +950,7 @@ def test_the_undo_offer_names_all_four_stages(tmp_path):
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
     fold = re.search(r'id="undo-conceptual" hidden><code>(.*?)</code>', out, re.S).group(1)
     assert "cd /repo" in fold and "git stash push" in fold
+    assert REVERT["sha"] in fold, "the fold names the revision, so a step too far is walkable"
     assert RERUN["command"] in fold and REBUILD in fold
 
 
@@ -988,7 +992,7 @@ def test_the_hover_is_where_the_two_ways_back_are_told_apart(tmp_path):
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW)
     undo = re.search(r'data-action="drawio-undo:conceptual" data-tip="([^"]*)"', out).group(1)
     over = re.search(r'data-action="drawio-redraw:conceptual" data-tip="([^"]*)"', out).group(1)
-    assert "committed" in undo and "stash" in undo
+    assert REVERT["short"] in undo and "stash" in undo
     assert REDRAW["base"] not in undo, "the one way back that names no base ref"
     assert REDRAW["base"] in over and "red" in over
 

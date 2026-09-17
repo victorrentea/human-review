@@ -4247,9 +4247,15 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
     The sibling offer below this one starts over — base plus the repository's patch script
     — and that lands on a diagram whose new boxes are staged and red *on purpose*, with the
     guardrail still failing. It is the to-do state, and a reader who has just dragged a box
-    somewhere wrong is not asking for a to-do; they are asking for the drawing as this
-    branch committed it. Nothing but the path is needed to name that, which is why this
-    offer needs no flag while the redraw needs `--redraw`.
+    somewhere wrong is not asking for a to-do; they are asking for the last drawing that
+    was not this one. Nothing but the path is needed to find that, which is why this offer
+    needs no flag while the redraw needs `--redraw`.
+
+    It used to aim at HEAD, and that failed the first time it was pressed: a hand edit does
+    not wait in the work tree to be undone, it gets swept into the next commit that touches
+    the file, and from then on HEAD is the mess. `drawio-diff.py` walks back for the newest
+    commit whose *drawing* differs, so the step is one picture rather than one sha — and
+    the offer is repeatable, which is the thing an undo has to be.
 
     Both offers are worded by where they land, and neither says "undo" or "start over" on
     its own: to a reader who has not read this file those are the same four words, and the
@@ -4271,9 +4277,13 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
         aid = declare_action(f"drawio-undo:{name}", line, reload=True,
                              label=f"Undo hand edits to {name} and rebuild this page")
         act = f' data-action="{html.escape(aid, quote=True)}"'
-    tip = ("Puts the drawing back exactly as this branch committed it, layout and all — "
-           "it does not go near the base and it runs no script. Your own edits are not "
-           "lost: they go to the git stash, and `git stash pop` brings them back.")
+    where = revert.get("short") or revert.get("sha", "")[:8]
+    subject = revert.get("subject") or ""
+    tip = ("Steps back one drawing, to " + (f"{where} — {subject} — " if where else "")
+           + "the newest commit whose picture is not the one on disk. It runs no script "
+           "and does not go near the base. Anything still loose in the work tree is "
+           "banked, not binned: `git stash pop` brings it back. Press it again to step "
+           "back another drawing.")
     fold = f"undo-{name or 'diagram'}"
     return (_run_or_read(fold, act, tip,
                          "Runs it here, then reloads with the committed drawing back",
