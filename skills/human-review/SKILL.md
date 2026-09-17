@@ -1,6 +1,6 @@
 ---
 name: human-review
-description: Assemble .human-review/review.html — a tabbed reviewer's guide for a change set — from review passes that have ALREADY run in this conversation (/code-review, /simplify, or your own), plus diagram deltas, a Code City shot, a feature video, the endpoint-complexity increment, the REST contract diff and deep-linked snippets. Explicit invocation only — user types /human-review.
+description: Assemble .human-review/review.html — a tabbed reviewer's guide for a change set — from the review-points.md the coding agent committed with its fixes (what it fixed, declined and assumed), plus diagram deltas, a Code City shot, a feature video, the endpoint-complexity increment, the REST contract diff and deep-linked snippets. Explicit invocation only — user types /human-review.
 disable-model-invocation: true
 ---
 
@@ -8,11 +8,23 @@ disable-model-invocation: true
 
 **This skill does not review the code. It writes up a review that already happened.**
 
-The passes that find things — `/code-review`, `/simplify`, a security pass, your own
-adversarial multi-agent review — are the human's to run, when *they* think they are done.
-This skill harvests what they produced, runs the deterministic evidence-gatherers around it,
-and assembles one page. Almost all of that is scripts; your job is the judgement and the
-prose. Do **not** commit or push.
+The review happened in the coding agent's own conversation, and it left a record:
+`/implement-ticket` implements the ticket, runs `/code-review` over its own commit, and
+writes **`review-points.md`** at the repository root — what it fixed because the review
+was right, what it read and **declined**, and what it **assumed** where the ticket was
+ambiguous — committed with the fixes, so the record arrives in the pull request's own file
+list. This skill reads that file. It does not run a review, and it does not write one.
+
+That is the whole division. The judgement is produced once, by the agent that made the
+decisions, while it still has them; the page is assembled by programs from the branch.
+What is left for you is one model-written artifact — the requirements↔tests matrix and the
+per-test catalogue behind it — plus the page's layout and its ledes. Everything else on
+these five steps is a script. Do **not** commit or push.
+
+A branch with no `review-points.md` is not an error and not a gate: the page says so, in a
+band, and the piles read *not recorded*. **Do not write the piles by hand to fill the
+gap** — a pile you compose at the end of a review is exactly the artifact this flow
+replaced, and it reads on the page identically to one the agent actually recorded.
 
 Resolve the skill's own directory once — a plugin install, an env override, a project
 symlink and a gitignored CI clone are all real layouts:
@@ -29,31 +41,38 @@ done
 Run everything from the repository root. Project-specific commands live in
 `human-review.json` there, not in this file — `human-review.example.json` is the template.
 
-## Step 1 — What review already ran? (do this before anything destructive)
+## Step 1 — What does the branch record about its own review?
 
 ```sh
-${SKILL}/scripts/review-passes.py --require --extract .human-review/passes
+${SKILL}/scripts/review-points.py --check
 ```
 
-**Exit 3 means nothing has been reviewed, and you stop here.** Do not run `/code-review` or
-`/simplify` yourself to fill the gap. Tell the human, in your own words:
+It prints what it understood: how many items in each pile, which reviewer raised each one,
+and what each is anchored to. **Read that output — it is the review.** Nothing below this
+line produces findings, and nothing below this line may add one.
 
-> I can't write up a review that hasn't happened. I don't see `/code-review`, `/simplify` or
-> any other review pass in this conversation. Run the ones you want — `/code-review`,
-> `/simplify`, your own adversarial pass, in any combination — and call `/human-review`
-> again. **Or say the word and I'll run them for you now.**
+Four answers, and none of them is a refusal:
 
-Then wait. If they say yes, run the passes they name, in separate turns, and start again at
-Step 1 — the page is built from a transcript, so the passes have to be *in* it.
+- **0** — the record is there and parses. Step 3 turns it into
+  `.human-review/review-points.json` and the page's three piles are filled from it.
+- **3** — no `review-points.md` on this branch. Say so to the human in one line and carry
+  on: the page renders a band reading *nothing records what was reviewed or declined*, the
+  assumptions pile says the coder could not be asked, and that is the honest page for this
+  branch. If they want the record, the thing to run is `/implement-ticket`, in the
+  repository, on a fresh implementation — not a review pass here, whose findings would be
+  nobody's decisions.
+- **4** — the file is there and will not parse. Print the problems; they name lines. This
+  one *does* stop Step 3, loudly, because a pile the parser skipped reads on the page
+  exactly like a pile nobody wrote.
+- **5** — every item is unanchored. The file exists and says nothing checkable, which is
+  not the same thing as a clean review.
 
-Otherwise read the files it extracted into `.human-review/passes/`. Those are your findings.
-Each carries the pass it came from; that becomes the item's `"source"`, and it is the only
-honest way to fill that field — provenance exists only where the pass actually ran.
-
-⚠️ **Never re-run a pass that already ran.** Two runs over the same diff word and rank their
-findings differently, so a second invocation does not confirm the first — it produces a
-*different* review at full price, and whichever ran last wins. The findings on this page are
-the ones the human watched happen.
+⚠️ **Never run `/code-review` or `/simplify` from here.** Not to fill a gap, not to
+corroborate the file, not to "check" it. A pass run now is a second opinion formed after
+the fact by an agent that did not write the code, and its findings carry no accept/decline
+decision at all — which is the one thing the Review tab exists to show. `review-passes.py`
+still runs, and is still worth reading, as a **cost** source: it finds the passes that ran
+in the *coding* session and prices them. It is not a gate any more.
 
 ## Step 2 — Resolve the change set, then gate and wipe
 
@@ -79,11 +98,26 @@ If `.human-review/review.html` already exists, ask what changed first — see *I
 ${SKILL}/scripts/run-steps.py --base "$BASE"
 ```
 
-One command runs every deterministic producer — diagram deltas, sequence diagrams, the
-container view projected from them, Code City, the feature film, complexity, the REST
-contract and its two second opinions, the logging scan, the design-system audit, code
-owners, the test manifest, the Playwright recordings — each gated on its own prerequisite,
-each ledger-wrapped, none of them able to skip its `end`.
+One command runs every deterministic producer — the branch's own review record, what
+landed after it, diagram deltas, sequence diagrams, the container view projected from
+them, Code City, the feature film, complexity, the REST contract and its two second
+opinions, the logging scan, the design-system audit, code owners, the test manifest, the
+Playwright recordings — each gated on its own prerequisite, each ledger-wrapped, none of
+them able to skip its `end`.
+
+The first two steps are the Review tab, and neither of them is yours to write:
+
+- **`reviewpoints`** parses `review-points.md` into `.human-review/review-points.json` and
+  resolves the two commits by trailer (`Review-Points:`, `Implements:`) into
+  `.human-review/review-commits.json`. Skipped, with a reason, when the file is absent;
+  **failed**, loudly, when it is there and will not parse. See Step 1.
+- **`aftermath`** measures `<review commit>..HEAD` and splits it by
+  `human-review.json`'s `"generated"` globs. Anything a human wrote after the agent
+  stopped opens the Review tab as a red band, each commit with a `revert` button that
+  stages an inverse and stops. This is the one fact on the page no diff can carry, and the
+  one you must not narrate around: if the band is red, say in the guide what those commits
+  were and why, because everything else on the page describes the branch as the agent left
+  it.
 
 Read the status table it prints. Three things in it are yours:
 
@@ -115,102 +149,68 @@ Read the status table it prints. Three things in it are yours:
   catalogue; only the screens whose DOM changed are drawn) and re-run `--only dsaudit`
   before writing the guide. The page prints the same warning in red at the top of UX.
 
-## Step 4 — Write the judgement
+## Step 4 — Write the layout, the ledes, and the matrix
 
-This is the only step that is yours, and it is why a model is here at all.
+This is the only step that is yours, and it is much smaller than it was. **The three piles
+are not in it.** `content.json` names them and nothing more:
+
+```json
+"findings":    {"auto": "review-points"},
+"autofixes":   {"auto": "review-points"},
+"assumptions": {"auto": "review-points"}
+```
+
+and the build fills them from the branch's own record, with the same item shapes the
+renderers already read. Do not type an item into any of the three. Do not "improve" one
+the parser produced — the file is committed, and the page disagreeing with it is worse
+than the page being terse.
 
 ```sh
 ${SKILL}/scripts/steps-ledger.py start guide --label "assemble content.json and build the page" \
   > .human-review/.step-guide
 ```
 
-Split every harvested finding in two, and say out loud which pile each landed in:
+### The matrix, and the model that writes it
 
-- **Non-disputable → fix it now.** One obvious right answer, no behaviour change, no product
-  call: a duplicated helper, a test that passes vacuously, a shared persistence context
-  hiding a missing `save()`, an uninitialised model field, a positional selector, a dead
-  import. Fix, then re-run the affected tests. These become **Auto-fixed**.
-- **Disputable → hand it to the human.** Anything that changes an API contract, a migration
-  already applied somewhere, a data-integrity trade-off, a performance/correctness tension,
-  or where two reasonable engineers would pick differently. These become **Requires human review**,
-  most critical first.
+What is left that only a model can write is the requirements↔tests matrix
+(`assets/requirements-map.html`) and the per-test catalogue behind it (`test-index/`).
+`review-points.md` says nothing about which sentence of the ticket which test pins, and
+that matrix is the one claim on the page a reviewer cannot check by hand.
 
-Never argue a finding away silently. If you skip one, it goes in the list with a reason.
+**Fork a subagent for it, and give that subagent `model: sonnet`.** Named here rather than
+left to the harness's default, because the two of them are the only paid, non-reproducible
+work left in this skill and their price is now a visible line on the cost tab: Opus writes
+this matrix no better and costs several times as much. A run that goes over a dollar for
+these two is accepted; a run that goes over a dollar because nobody said which model is
+not.
 
-### The third pile — what the agent that wrote the code assumed
+### The prose that is left
 
-Both piles above are found by reading the diff. This one cannot be. Where the coding agent
-guessed at an intent, took one of two readings of a requirement, or left something *for
-now*, that is knowable only from the side that made the call — and it exists in exactly one
-place, the transcript of the conversation that wrote the code. It is the only thing on this
-page no pass, script or reviewer can derive, and the reason it is worth the trouble.
-
-```sh
-${SKILL}/scripts/authoring-sessions.py --base "$BASE"
-```
-
-Its exit code says who can be asked, and there is no fourth answer:
-
-- **0 — mode A. This conversation wrote the code.** Read back over your own working turns
-  and name the calls you made without being told to. Not the ones you asked about and got
-  an answer to — the ones you settled yourself and moved on.
-- **4 — mode B. An earlier conversation wrote it.** `--paths` prints the transcripts, best
-  author first. Fork a subagent per transcript and have it read the file **verbatim, end to
-  end**: hedges are the first thing a summary loses, and a summary of a summary contains
-  none. Ask it for the decisions, not the story — *"list every point where the agent chose
-  between two readings, guessed at intent, deferred something, or said it was unsure; quote
-  the turn and name the file and line the decision landed on; return nothing you cannot
-  anchor."*
-- **5 — mode C. Nothing on disk wrote these files.** Somebody else's PR, or transcripts long
-  since swept. Declare the block with `"mode": "C"` and no items, and the page says the
-  conversation could not be asked — which is a different fact from it having had nothing to
-  say, and the reader must be able to tell the two apart.
-
-Three rules make the difference between a recollection and a plausible sentence about one:
-
-- **Anchor every one of them.** A `snippets` entry (or `refs`/`diffs`) pointing at the line
-  the decision landed on. Asked at the end of a long session what it was unsure about, a
-  model will write fluent, believable prose whether or not it ever hesitated; the anchor is
-  what a reader checks in five seconds. The build drops an unanchored one and says so.
-- **Name the reading you did not take**, in `alternative`. That is what lets the human
-  recognise their own intent without opening anything.
-- **Do not resolve them yourself.** An assumption is not a finding to be triaged into the
-  fix-it pile: the whole point is that the answer is not in the code. Leave every one of
-  them open, however small.
-- **Declare the block even when the pile is empty**, with its mode. The lede then counts it
-  at zero — `0 assumptions`, or `coder could not be asked` in mode C — and that
-  zero is a result the reader came for: it says the authoring conversation *was* asked. A
-  page that simply omits the pile is indistinguishable from one whose coder guessed at
-  nothing, so the build warns when no tab declares the block.
-
-Keep them to decisions with a consequence — a business rule guessed at, a contract invented,
-an edge case handled quietly, a `TODO` in all but name. Not the naming of a local variable.
+Everything else in the content file is layout and ledes: `title`, `subtitle`, `pr`,
+`scope`, `verdict`, the `tabs` array, and one short lede per non-Review tab.
 
 **The writing rule: show the code, do not narrate it.** A finding is not a story about a
-defect, it is the defect, quoted.
+defect, it is the defect, quoted. It still applies, to the tab ledes and the sections:
 
-- **Two or three sentences of prose, hard ceiling.** `title` says what is wrong; `body` says
-  what breaks and under which input; `why` says what the human has to decide. Past that, the
-  reviewer is reading your reasoning instead of their code.
-- **Then the code, and most of the item is code.** Prefer several short captioned snippets
-  over one long one; a caption names the *one thing* in the lines (`"the null branch that
-  never runs"`), not the block.
-- **An applied fix shows its diff.** A fix described in a sentence with no diff is a claim
-  the reader has to take on trust; the build warns when it finds one.
+- **Two or three sentences of prose, hard ceiling.** Past that, the reviewer is reading
+  your reasoning instead of their code.
+- **Then the code, and most of it is code.** Prefer several short captioned snippets over
+  one long one; a caption names the *one thing* in the lines (`"the null branch that never
+  runs"`), not the block.
 - **Never retype code** — `extract-snippet.py path:from-to` cuts it verbatim at build time.
 - **Never type a number the page computes** (the diffstat, the cost tab and its label, the
-  auto-fixed count, the test balance, the Code City count, tab costs). A hand-typed number goes stale
-  with nothing noticing — `unit tests · 125 green (20 new)` was true until somebody wrote
-  the next test, and `lines +1198 / −863` sat on a page for six days matching no range in
-  the repository at all. `files` and `lines` come from `{"auto": "diffstat"}`, which
-  measures the change set and leaves generated files out of it.
+  auto-fixed count, the test balance, the Code City count, tab costs, the pile counts). A
+  hand-typed number goes stale with nothing noticing — `unit tests · 125 green (20 new)`
+  was true until somebody wrote the next test, and `lines +1198 / −863` sat on a page for
+  six days matching no range in the repository at all. `files` and `lines` come from
+  `{"auto": "diffstat"}`, which measures the change set and leaves generated files out.
 - **Never say a test's state yourself.** Name the test under the requirement it pins;
   `test-changes.py` reads the code for whether it is new, edited, deleted, commented out
   or sitting under an `@Disabled`. It is the one thing on the page you would have had to
   check by hand, and the one a reviewer is least able to check behind you.
 - **Never name a specific artefact's absence.** *"`add-visit.genseq.puml` does not exist"*
-  stopped being true while it was being written. Describe the **case**; let the renderer say
-  which instances hit it.
+  stopped being true while it was being written. Describe the **case**; let the renderer
+  say which instances hit it.
 - **Never write a paragraph the reader can see.** *"Twelve items came back. They are one
   list: the nine that need your judgement first, then the three I applied, greyed out and
   numbered straight on."* — every clause of that is on screen underneath it. The reader is
@@ -226,9 +226,12 @@ Write `.human-review/content.json` against **`reference/content-schema.md`** —
 every block type, the tab vocabulary, and everything the renderer already enforces so you do
 not restate it.
 
-Then commit whatever was already in the working tree, and **leave your own fixes
-uncommitted**: their whole value is that `git diff` shows exactly what an agent touched. Do
-not comment your decisions into the code — that belongs in **Requires human review**.
+**Change no code in this step.** Not a fix, not a comment, not a rename. The page used to
+apply the non-disputable half of its own findings and leave them uncommitted for the human
+to inspect; it no longer triages anything, because the triage happened in the coding
+session and is recorded. An edit made here would land *after* the review commit, which is
+precisely what the aftermath band exists to report — so it would show up on the page, in
+red, attributed to a human.
 
 ## Step 5 — Close, check, refresh
 
@@ -251,9 +254,12 @@ next to it and copies them to the clipboard as it always did.
 It is also the whole of the machine half of this skill, which is why it is one command and
 not three to retype. It pins the build to the session that did the work, it builds
 `--no-model` so a refresh cannot quietly buy a privacy verdict nobody asked for, and it
-**refuses** to build when `content.json`, the requirements matrix or the test catalogue are
-missing — those are the judgement, and this skill's rule is that a judgement is produced
-once, when the human asks for it.
+**refuses** to build in two cases. One is a missing model-written part — `content.json`,
+the requirements matrix, the test catalogue — which it cannot re-run. The other is a commit
+carrying a `Review-Points:` trailer whose file is not on disk: the branch says it recorded
+its own review and the record is gone, so the band reading *nothing records what was
+reviewed* would be true of the disk and false about the run. Restore the file, or drop the
+trailer if the claim was never true.
 
 **Never `open review.html`** — that hands it to whatever the OS thinks owns `.html`, on
 another desktop. With `$TERM_PROGRAM = vscode` and
@@ -268,8 +274,9 @@ checkout, open the screen the change affects, and start `/relay` so they can dic
 
 Most invocations after the first are not reviews — the page is on disk and what is wanted is
 a change to the *page*. **Has the code changed since the page was built?** New commits, a
-force-push, a finding fixed → re-review, start at Step 1. Otherwise it is an iteration, and
-an iteration is one command:
+force-push, a finding fixed → re-review, start at Step 1. You will usually not have to ask:
+a commit that landed since the review commit is already on the page, in the aftermath band,
+in red. Otherwise it is an iteration, and an iteration is one command:
 
 ```sh
 ${SKILL}/scripts/refresh-report.py                  # the page changed: rebuild, re-serve
@@ -312,9 +319,9 @@ wrote the code spent — and says in words why the run's own half is missing. If
 is measurable the tab drops itself: a pill reading `$0` is a claim that this change was free,
 which is not what an absence means.
 
-**Do not re-run Step 1's passes, do not `steps-ledger.py reset`, do not rewrite `.started`,
-do not wipe `assets/`, and do not open ledger records for the iteration's own edits.** They
-belong to the run they timed.
+**Do not re-run the coding session's review passes, do not `steps-ledger.py reset`, do not
+rewrite `.started`, do not wipe `assets/`, and do not open ledger records for the
+iteration's own edits.** They belong to the run they timed.
 
 The server is sticky, so the URL does not change — and a tab already open on it reloads
 itself once the build stops writing, so an iteration lands in front of the reader without
@@ -323,9 +330,18 @@ anybody pressing F5.
 ### What the model half is, so the program half can never be asked to fake it
 
 Written by a model, once, when the human asks — and restored, never regenerated, if it goes
-missing: `content.json` (the findings, the prose, the tab layout), `assets/requirements-map.html`
-(the requirements↔tests matrix) and `test-index/` (the per-test catalogue it reads).
-`refresh-report.py` exits 3 rather than build a page without them.
+missing: `assets/requirements-map.html` (the requirements↔tests matrix), `test-index/` (the
+per-test catalogue it reads) and `content.json`. `refresh-report.py` exits 3 rather than
+build a page without them.
+
+`content.json` is on that list and no longer for the reason it used to be. It *was* the
+judgement — which findings were raised, which were fixed, which were left, what the coder
+assumed — written by a model at the end of a review and corroborated by nothing outside
+itself. That record belongs to the branch now: the coding agent writes `review-points.md`,
+commits it with the fixes, and the content file asks for the three piles with
+`{"auto": "review-points"}`. What is left in it is the layout and the ledes. Still a
+model's work, still not reproducible, still not something a program will invent for you; a
+much smaller claim.
 
 Everything else under `.human-review/` is the output of a program and may be re-run at any
 time. The one model call that hides inside a *build* — the Logging tab's privacy verdicts —
@@ -335,5 +351,8 @@ render, uncached statements say *not evaluated*, and nothing is bought.
 ## Wrap-up
 
 `.human-review/` is a throwaway artifact — remind the human to delete it rather than commit
-it (`serve-review.py --stop` first). Print the path and the URL, and list what you fixed vs
-what you left for them. Do not commit or push.
+it (`serve-review.py --stop` first). Print the path and the URL. **Do not list what you
+fixed**, because you fixed nothing: what was fixed and what was declined is in
+`review-points.md`, which is committed, and the page renders it. What is worth saying in the
+last lines is what the *run* could not do — a step that skipped, a tab named under the
+strip, a red aftermath band — and nothing else. Do not commit or push.

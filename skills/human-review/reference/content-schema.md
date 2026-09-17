@@ -49,9 +49,10 @@ being attributed to a guess. `/code-review` and `/simplify` render as **links to
 documentation** (`PASS_DOCS` in the renderer), so the page never needs a line of prose
 introducing the two commands; anything else is a plain stamp.
 
-`diffs` entries are `{"path": "…"}` and nothing more in the ordinary case — `base` defaults
-to the rev Step 1 recorded in the ledger, which is the only left side that shows a fix *on
-its own*. Add `"head"` when the fix is one commit and the file moved for other reasons
+`diffs` entries carry their own `base`, and an item parsed out of `review-points.md` always
+does: the file's frontmatter names the `implementation:` sha, so the diff shows the fix *on
+its own* and keeps doing so after a rebase. Written by hand, `{"path": "…"}` alone falls
+back to the rev the ledger recorded for the `review` tab. Add `"head"` when the fix is one commit and the file moved for other reasons
 afterwards: `{"path":"…","base":"bf26a0de^","head":"bf26a0de"}`. A pinned diff drops the
 editor link (which always compares against the working tree) and keeps the github.com one.
 Both drop the block and say so on stderr when the before-side is not real — a base that does
@@ -78,11 +79,16 @@ on a finding, the token the way to write it mid-paragraph.
 ```
 
 Same shape as a finding minus `severity` — an assumption is not a defect and must not be
-ranked as one. It renders with its own violet card, a `your call` badge and the stamp
+ranked as one, and the parser refuses the field outright rather than coercing it away. It renders with its own violet card, a `your call` badge and the stamp
 `assumption` where a finding carries `/code-review`, because it did not come from a pass:
-it came from the agent that wrote the code, via one of the three modes in SKILL.md's *third
-pile*. `alternative` is the reading that was not taken, and it is what makes the item
-checkable at a glance.
+it came from the agent that wrote the code, and it arrives from `review-points.md`'s
+`## Assumptions` section. `alternative` is the reading that was not taken, and it is what
+makes the item checkable at a glance.
+
+The block's `"mode"` (A / B / C) is only ever read for an **empty** pile, to say which kind
+of empty it is. With `{"auto": "review-points"}` you do not write it: a record on the branch
+says so itself, and an absent one is forced to mode C — *nobody could be asked* — because
+the thing that would have answered was never written down.
 
 **An assumption with no `snippets`, `refs` or `diffs` is dropped**, with a warning naming
 it. It is the one item on the page a reader cannot go and verify: a model asked at the end

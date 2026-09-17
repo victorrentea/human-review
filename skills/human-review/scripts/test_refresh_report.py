@@ -193,3 +193,121 @@ def test_the_skill_tells_the_reader_to_run_the_program_not_the_commands():
     skill = (HERE.parent / "SKILL.md").read_text(encoding="utf-8")
     assert "refresh-report.py" in skill
     assert skill.count("refresh-report.py") >= 2, "Step 5 and the iteration path"
+
+
+# ── what the skill no longer does ─────────────────────────────────────────────────
+# The judgement moved to the branch. These pin the removal rather than the addition,
+# because the failure mode is a skill that *also* still triages: the model would form a
+# second opinion, write it into content.json, and the page would carry two records of one
+# review with no way for a reader to tell which decisions were actually made.
+
+def _skill() -> str:
+    return (HERE.parent / "SKILL.md").read_text(encoding="utf-8")
+
+
+def test_the_skill_no_longer_gates_on_a_pass_having_run():
+    """`review-passes.py --require` refused to build a page when no pass was found in the
+    conversation. The passes now run in the *coding* session, so the gate was refusing
+    every honest run of the new flow."""
+    skill = _skill()
+    assert "--require" not in skill
+    assert "I can't write up a review that hasn't happened" not in skill
+    # It survives as a cost source, and the skill says which.
+    assert "review-passes.py" in skill and "cost" in skill
+
+
+def test_the_skill_no_longer_triages_or_edits_code():
+    skill = _skill()
+    for gone in ("Non-disputable", "Disputable",
+                 "leave your own fixes\nuncommitted", "leave your own fixes uncommitted"):
+        assert gone not in skill, gone
+    assert "Change no code in this step" in skill
+
+
+def test_the_skill_no_longer_reads_transcripts_for_the_third_pile():
+    """Modes A/B/C had a subagent read an authoring transcript verbatim to reconstruct
+    what the coder assumed. The coder writes them down now, while it still has them."""
+    skill = _skill()
+    assert "mode B" not in skill and "third pile" not in skill
+    assert "authoring-sessions.py" not in skill
+
+
+def test_the_skill_names_the_model_the_matrix_subagent_gets():
+    """The matrix and the catalogue are the only paid, non-reproducible work left, and
+    their price is a visible line on the cost tab. Left to a default, the run pays Opus
+    rates for a table Sonnet writes no worse."""
+    skill = _skill()
+    assert "model: sonnet" in skill
+
+
+def test_the_skill_points_at_the_branchs_own_record():
+    skill = _skill()
+    assert "review-points.md" in skill
+    assert "review-points.py --check" in skill
+    assert '{"auto": "review-points"}' in skill
+    assert "/implement-ticket" in skill
+
+
+def test_content_json_is_still_model_owned_but_no_longer_the_judgement():
+    """A page cannot be built without it, so the refusal stays. What it *claims* changed:
+    'the judgement' was a description of an artifact that no longer holds one."""
+    assert "content.json" in refresh.MODEL_OWNED
+    assert "judgement" not in refresh.MODEL_OWNED["content.json"]
+    assert "layout" in refresh.MODEL_OWNED["content.json"]
+    assert "review-points" in refresh.MODEL_OWNED["content.json"]
+    # The two that are still a model's whole output, unchanged.
+    assert "assets/requirements-map.html" in refresh.MODEL_OWNED
+    assert "test-index" in refresh.MODEL_OWNED
+
+
+def test_the_two_review_tab_producers_are_safe_to_rerun_from_the_page():
+    """Both need nothing but the repository, and both feed the tab a reader is looking at
+    when they press Rerun."""
+    assert "reviewpoints" in refresh.STATIC_STEPS
+    assert "aftermath" in refresh.STATIC_STEPS
+
+
+def test_a_commit_that_promises_a_points_file_it_does_not_have_is_refused(tmp_path,
+                                                                         monkeypatch):
+    """The branch says it recorded its own review and the file is gone — a rebase kept the
+    message and dropped the file. Every other missing input degrades to a named absence,
+    because 'this project has no such thing' is a real state; this one cannot be."""
+    monkeypatch.chdir(tmp_path)
+
+    class Proc:
+        returncode = 0
+        stdout = '{"review": "deadbeefcafe", "points_file": "review-points.md",' \
+                 ' "fallback": false}'
+        stderr = ""
+
+    monkeypatch.setattr(refresh.subprocess, "run", lambda *a, **k: Proc())
+    assert refresh.broken_points_promise("origin/main") == ("deadbeefcafe",
+                                                            "review-points.md")
+    # …and not when the file is there.
+    (tmp_path / "review-points.md").write_text("## Fixed\n", encoding="utf-8")
+    assert refresh.broken_points_promise("origin/main") is None
+
+
+def test_the_fallback_guess_never_triggers_the_refusal(tmp_path, monkeypatch):
+    """`review-commits.py`'s fallback *is* 'the one commit touching the points file', so a
+    fallback plus a missing file is a contradiction in terms — and refusing on it would
+    refuse every build on a branch that has neither."""
+    monkeypatch.chdir(tmp_path)
+
+    class Proc:
+        returncode = 3
+        stdout = '{"review": "deadbeefcafe", "points_file": "review-points.md",' \
+                 ' "fallback": true}'
+        stderr = ""
+
+    monkeypatch.setattr(refresh.subprocess, "run", lambda *a, **k: Proc())
+    assert refresh.broken_points_promise("origin/main") is None
+
+
+def test_the_base_the_check_asks_about_is_the_one_the_producers_use(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert refresh.config_base(None) == "origin/main"
+    (tmp_path / "human-review.json").write_text('{"base": "origin/release"}',
+                                                encoding="utf-8")
+    assert refresh.config_base(None) == "origin/release"
+    assert refresh.config_base("HEAD~3") == "HEAD~3", "the flag wins"

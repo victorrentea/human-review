@@ -3644,11 +3644,14 @@ def _parse_unified(diff_text: str):
 def review_step_rev(out_dir: Path) -> str | None:
     """The revision the review pass started from, as the ledger recorded it.
 
-    This is the left side of every applied-fix diff on the page, and step 1 takes it with
-    one `git rev-parse HEAD` before `/code-review` touches anything precisely because it
-    cannot be reconstructed afterwards. Absent — an older ledger, or a page re-rendered
-    somewhere the ledger did not travel — the caller drops the diffs rather than guessing
-    at a before-state."""
+    The fallback base for an applied-fix diff whose entry does not name its own. Items
+    parsed out of `review-points.md` always do — the file's frontmatter carries the
+    `implementation:` sha, which is the commit the fixes were applied on top of and which
+    survives a rebase — so this answers for a content file that still writes its own
+    `autofixes` by hand. There it is genuinely unrecoverable after the fact, because once
+    fixes are squashed or folded into a feature commit nothing says what the tree looked
+    like before. Absent, the caller drops the diffs rather than guessing at a
+    before-state."""
     ledger = out_dir / ".steps.json"
     if not ledger.is_file():
         return None
@@ -5773,10 +5776,11 @@ PASS_DOCS = {
 def _finding_source(f) -> str:
     """Which pass raised it, when the content file says so.
 
-    Optional by design: nothing downstream of the two runs records provenance, so an item
-    that does not claim a source renders without one rather than being attributed to a
-    guess. See SKILL.md, step 1 — a `source` here has to be stamped while the pass that
-    produced it is the one running.
+    Optional by design: an item that does not claim a source renders without one rather
+    than being attributed to a guess. Provenance exists only where the decision was made,
+    which is why it now arrives from the branch: `review-points.md`'s `source:` field is
+    written by the agent that read the finding and accepted or declined it, in the session
+    where the pass that raised it was the one running.
 
     The assumptions pile does not come through here at all: its provenance never varies,
     so it is the card's one purple chip rather than a grey stamp behind a second badge.

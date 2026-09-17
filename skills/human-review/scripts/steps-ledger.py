@@ -232,17 +232,23 @@ def check(path: Path, content: Path) -> tuple[int, list[str]]:
         lines.append(
             f"[steps-ledger] step {r.get('label') or r.get('tabs')} started and never "
             "recorded finishing — its tab reports a lower bound.")
-    # The pre-fix revision is the one piece of a run that cannot be recovered after the fact:
-    # once fixes are applied, squashed, or folded into a feature commit, no commit message or
-    # transcript reliably says what the tree looked like before. Warn rather than fail — a
-    # project with no Auto-fixed tab needs no such rev — but warn loudly, because the cost of
-    # noticing later is reconstructing it by hand and getting it wrong.
-    if any("review" in (r.get("tabs") or []) for r in records) and not any(
+    # The pre-fix revision is the left side of every applied-fix diff, and it used to be
+    # unrecoverable: a model applied the fixes itself, so only a `git rev-parse HEAD` taken
+    # before it started said what the tree had looked like. That is no longer how a fix gets
+    # onto the page — `review-points.md` carries the implementation sha in its frontmatter
+    # (and the review commit carries it as an `Implements:` trailer), so each item names its
+    # own base and survives a rebase, which a ledger entry does not. So the warning is only
+    # for a run with no such record: a content file that still writes its own `autofixes`
+    # with unbased diffs, where the ledger is the only answer there is.
+    if (path.parent / "review-points.json").is_file():
+        pass
+    elif any("review" in (r.get("tabs") or []) for r in records) and not any(
             r.get("rev") for r in records if "review" in (r.get("tabs") or [])):
         lines.append(
-            "[steps-ledger] the `review` step recorded no --rev — nothing says which revision "
-            "the automated fixes were applied on top of, so every before/after diff on the "
-            "Auto-fixed tab has to be reconstructed by guesswork.")
+            "[steps-ledger] no review-points.json, and the `review` step recorded no --rev "
+            "— nothing says which revision the fixes were applied on top of, so every "
+            "before/after diff on the Auto-fixed tab has to be reconstructed by guesswork. "
+            "The durable answer is a committed review-points.md naming its `implementation:`.")
 
     if GUIDE_TAB not in named:
         lines.append(

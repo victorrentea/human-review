@@ -42,45 +42,85 @@ gh repo sync <your-github-user>/human-review --source victorrentea/human-review
 /plugin marketplace update human-review
 ```
 
-Then, from inside the repository you want reviewed — **after** you have run whatever
-review passes you trust:
+There are two commands, and they are the two ends of one flow. In the repository you want
+the work done in:
 
 ```
-/code-review               # or /simplify, or your own adversarial pass, or all of them
+/implement-ticket 37       # build it, review it, write down what you decided
+```
+
+and then, in the same repository, when you want the page:
+
+```
 /human-review              # uncommitted work
 /human-review origin/main  # this branch vs a base
 /human-review 123          # a pull request
 ```
 
-## It writes up a review; it does not perform one
+## Two commands: one decides, the other writes it up
 
-This is the one thing worth knowing before installing it. `/human-review` **does not run
-`/code-review` or `/simplify`.** It reads the conversation, finds the passes that already
-ran, and assembles a page out of what they found.
+This is the one thing worth knowing before installing it. **The judgement is produced by
+the agent that wrote the code, and committed to the branch.** `/human-review` reads it and
+never forms one of its own.
 
-If none ran, it stops and says so, and offers to run them for you — it never simply does it.
-That is deliberate. The passes are the expensive part of the pipeline and they are a
-judgement call about when the work is done, which is yours; the write-up is the cheap part
-and the one worth automating. It also means the findings on the page are the ones you
-watched happen, rather than a second opinion that quietly replaced them: two runs of the
-same pass over the same diff word and rank their findings differently, so re-running one
-does not confirm it — it produces a different review, and whichever ran last wins.
+`/implement-ticket` implements the ticket, commits it, runs `/code-review` over that
+commit — deliberately *without* `--fix`, because applying findings automatically destroys
+the only information this flow exists to keep — and then writes **`review-points.md`** at
+the repository root:
 
-Detection is exact rather than inferred. A slash command is a recorded `<command-name>` row
-in the transcript; a pass that ran forked (which is how `/code-review` runs by default) is a
-subagent whose metadata names its type and model; and where a pass reported through the
-`ReportFindings` tool, the findings are harvested as structured data instead of being read
-back out of prose. Anything harvested from prose is labelled as such, so nothing on the page
-claims more fidelity than it has.
+| pile | what goes in it |
+| --- | --- |
+| **Fixed** | what it repaired because the review was right, with the reviewer that raised it and a diff of the fix |
+| **Declined** | what it read and said no to, with the reason. An empty Declined section after a five-agent review is not credible |
+| **Assumptions** | which reading of an ambiguous ticket it chose, and — under `alternative:` — the reading it did not take. This is the only pile nobody else can write, because it is not in the diff |
 
-So your own pass counts too. A house checklist, a lint-derived reviewer, a multi-agent
-adversarial run — if it left its output in the conversation, it is picked up and attributed
-by name.
+It commits that file *with* the fixes, so the record arrives in the pull request's own
+file list: a reviewer sees the artifact land in the diff rather than taking a generated
+page's word for it. Both commits carry trailers (`Review-Points:`, `Implements:`,
+`Claude-Session:`) rather than a message convention, because trailers survive a rebase, a
+cherry-pick and a squash, which is what happens to a branch between the run and the page.
+
+`/human-review` then parses it and fills the Review tab's three piles from it, with no
+model call at all. Two consequences worth stating:
+
+- **an accept/decline decision only exists where it was made.** A review pass run later,
+  by an agent that did not write the code, produces findings with no decision attached —
+  which is exactly the column a reviewer reads first. So the page never runs one.
+- **a branch with no `review-points.md` says so.** The tab opens with a band reading
+  *nothing records what was reviewed or declined*, the piles read *not recorded*, and the
+  assumptions pile says the coder could not be asked. It must never read as *"nothing
+  outstanding — the automated passes came back clean"*, which is true of a clean review and
+  confidently false about a missing record. Those are the two states a reviewer most needs
+  told apart.
 
 ```sh
-# what this conversation has actually reviewed, without building anything
-"$SKILL"/scripts/review-passes.py
+# what the branch records about its own review, without building anything
+"$SKILL"/scripts/review-points.py --check
+
+# which commit is the implementation, which is the review, and what came after
+"$SKILL"/scripts/review-commits.py --base origin/main
 ```
+
+Review passes are still *found*, and still priced: `review-passes.py` locates the
+`/code-review` forks in the coding session and the cost tab bills them as their own phase.
+Detection is exact rather than inferred — a slash command is a recorded `<command-name>`
+row in the transcript, and a forked pass is a subagent whose metadata names its type and
+model. What changed is that it is a cost source and no longer a gate.
+
+## What changed after the agent stopped
+
+Every number on the page is measured from a diff, and a diff cannot say when it was
+written. So the page can be accurate about a change set and misleading about the review it
+claims to be: the findings, the declined items, the assumptions, the film and the costs all
+describe the branch as the agent left it.
+
+The Review tab therefore opens with what landed after the review commit — each commit's
+sha, subject and files, and a button that runs `git revert --no-commit` on it and stops, so
+the click leaves a diff to look at rather than a commit made on your behalf. It is **red**
+when a file no generator owns has moved and **grey** when every path in the range is
+generated, which is what `"generated": [globs]` in `human-review.json` is for: on a
+repository whose hooks regenerate diagrams and a spec on every commit, a band that does not
+split is red on every branch, and a red band that is always on is one nobody reads.
 
 ## No green build, no review
 
@@ -103,9 +143,12 @@ Three outcomes:
   forever, and the guide says *"no build proved this"* on its face, so the page never
   reads as a pass it did not earn.
 
-Your own fixes are not part of the gate. The skill deliberately leaves what it changed
-uncommitted for you to inspect, so what gets pushed and gated is the *branch*, not the
-review's edits.
+Nothing the page produces is part of the gate, because the page changes no code. It used to
+apply the non-disputable half of its own findings and leave them uncommitted for you to
+inspect; the triage now happens in the coding session and is recorded there, so what gets
+pushed and gated is the branch and only the branch. An edit made while writing the page
+would land after the review commit — and would show up on the page itself, in red, in the
+band above.
 
 ## What it builds
 
@@ -115,7 +158,7 @@ whatever order the reviewer's doubt takes them, so the page is a strip of tabs:
 
 | tab | what it answers |
 | --- | --- |
-| Review | one list: the calls that are genuinely a human's, most critical first, then the fixes already applied — each stamped with the pass that raised it |
+| Review | one list, read off the branch's own `review-points.md`: what the agent declined and why, what it fixed (with the diff), and what it assumed where the ticket was ambiguous — each stamped with the reviewer that raised it, under a band saying what changed since |
 | Demo | a Playwright recording of the feature, narrated |
 | Sequence | sequence diagrams recorded from real traces, each beside the test that produced it — and the tests tagged for tracing that came back without one |
 | Tests | what the change set was supposed to do, the tests that pin each sentence of it, and what the branch did to the test run — including the tests it stopped running without deleting |
@@ -135,10 +178,11 @@ and `show all` (or printing) reveals every panel at once so `⌘F` searches the 
 
 ### Rerun, in the header
 
-The page has two halves and only one of them is reproducible. The findings, the prose, the
-requirements↔tests matrix and the per-test catalogue are written once, by a model, when a
-human asks — a second pass over the same diff does not confirm the first, it replaces it at
-full price. Everything else is the output of a program.
+The page has two halves and only one of them is reproducible. The requirements↔tests
+matrix, the per-test catalogue and the page's layout and ledes are written once, by a model,
+when a human asks — a second pass over the same diff does not confirm the first, it replaces
+it at full price. Everything else is the output of a program, the three Review piles
+included: those are parsed from the branch's own `review-points.md`.
 
 So on the served copy the masthead carries a **Rerun** beside the `served` badge: it runs
 `refresh-report.py --steps static` — the diagram deltas, the container view, the complexity
@@ -169,6 +213,9 @@ Hard requirements — nothing runs without these:
 
 Everything else buys a tab, and its absence costs only that tab:
 
+- **A `review-points.md`** at the repository root, written by `/implement-ticket` — the
+  Review tab's three piles. Without it the tab is still there and says so, which is the
+  point; with it, nothing on that tab was written by the agent building the page
 - **PyYAML** plus a JVM or Docker — the API contract diff; `oasdiff` (Homebrew) resolves
   `$ref`s the fallback cannot, and `openapi-changes` (pb33f) embeds a second opinion
 - **`ast-grep`** — the Logging tab, the only way to tell `log.info(x)` from `Math.log(x)`
@@ -180,7 +227,9 @@ Everything else buys a tab, and its absence costs only that tab:
   `.drawio.png` if you keep one
 - Your project's own commands, named in a **`human-review.json`** at its root: the traced
   test run, the Code City render, the filmable browser suite, the endpoint-complexity
-  extractor, the OpenAPI spec, the screens the design-system audit visits. Copy
+  extractor, the OpenAPI spec, the screens the design-system audit visits, and
+  `"generated"` — the globs for paths nobody types, which is what keeps the aftermath band
+  red only for a human's edits. Copy
   `skills/human-review/human-review.example.json` to start. Nothing in the skill knows
   anything about your project, and a step this file does not describe is skipped and named
   on the page rather than failing the run
