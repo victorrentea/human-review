@@ -506,5 +506,64 @@ def test_the_cli_reports_the_pair_and_exits_3_when_there_is_none(tmp_path, capsy
     assert json.loads(capsys.readouterr().out)["review"] is None
 
 
+# --------------------------------------------------------------------------- #
+# the prompt the coding agent follows — the one drift nobody would notice
+# --------------------------------------------------------------------------- #
+
+SKILLS = HERE.parent.parent          # <repo>/skills
+
+
+def _prompt() -> str:
+    return (SKILLS / "implement-ticket" / "prompt.md").read_text(encoding="utf-8")
+
+
+def test_the_prompt_names_all_three_trailers_the_scripts_read():
+    """Each trailer is read by a different script, so a missing one is a silent loss of
+    exactly one row on the page — not an error anybody would see."""
+    prompt = _prompt()
+    for trailer in ("Review-Points:", "Implements:", "Claude-Session:"):
+        assert trailer in prompt, f"{trailer} is read by a script and named nowhere"
+
+
+def test_the_prompt_names_the_file_and_the_checker_the_parser_actually_is():
+    prompt = _prompt()
+    assert "review-points.md at the repo root" in prompt
+    assert "review-points.py --check" in prompt, (
+        "the check is the last thing step 4 does — it is what rejects a malformed file "
+        "while the agent can still fix it")
+
+
+def test_the_prompt_points_at_paths_that_exist():
+    """A path in a prompt is never resolved by anything, so a wrong one fails as the agent
+    quietly skipping the step."""
+    prompt = _prompt()
+    for rel in ("skills/human-review/reference/review-points.md",
+                "skills/human-review/scripts/review-points.py"):
+        assert rel in prompt, f"{rel} is not the path the prompt gives"
+        assert (SKILLS.parent / rel).is_file(), f"{rel} does not exist"
+
+
+def test_the_prompt_still_refuses_fix():
+    """`--fix` applies the findings to the working tree, which destroys the accept/decline
+    record this whole flow exists to capture."""
+    assert "Do NOT pass --fix" in _prompt()
+
+
+def test_the_three_pile_names_are_the_ones_the_parser_accepts():
+    prompt = _prompt()
+    for heading in ("Fixed", "Ignored", "Assumptions"):
+        assert heading in prompt
+        assert rp.SECTIONS[heading.lower()]
+
+
+def test_the_skill_is_discoverable_as_a_skill():
+    skill = (SKILLS / "implement-ticket" / "SKILL.md").read_text(encoding="utf-8")
+    assert skill.startswith("---\n")
+    assert "name: implement-ticket" in skill
+    assert "disable-model-invocation: true" in skill, (
+        "it commits and reviews — it runs when somebody asks for it, never on a guess")
+    assert "prompt.md" in skill, "the two entry points must read one text"
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
