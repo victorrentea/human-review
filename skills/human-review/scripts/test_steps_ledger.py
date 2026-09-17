@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shlex
 import os
 import subprocess
 import sys
@@ -301,3 +302,60 @@ def test_a_project_with_no_review_step_is_not_nagged_for_a_rev(tmp_path):
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+# ── the drawio step's own flags ───────────────────────────────────────────────────
+
+_rs_spec = importlib.util.spec_from_file_location("run_steps", HERE / "run-steps.py")
+rs = importlib.util.module_from_spec(_rs_spec)
+_rs_spec.loader.exec_module(rs)
+
+
+class _Ctx:
+    """Just enough of `Ctx` to watch what the diagrams step composes."""
+
+    def __init__(self, drawio):
+        self.base, self.notes, self.ran = "origin/main", [], []
+        self._drawio = drawio
+
+    def step_cfg(self, _name):
+        return {"drawio": self._drawio} if self._drawio else {}
+
+
+def _composed(monkeypatch, drawio):
+    ctx = _Ctx(drawio)
+    monkeypatch.setattr(rs, "sh", lambda cmd, c, **kw: c.ran.append(cmd))
+    rs._diagrams(ctx)
+    return [c for c in ctx.ran if "drawio-diff.py" in c], ctx
+
+
+def test_the_patch_script_is_passed_through_when_the_project_names_one(monkeypatch):
+    """`--redraw` is the whole of the page's "start over" offer, and it went unwired for
+    weeks: `drawio-diff.py` accepted the flag, the report rendered the offer, and the one
+    line in between never passed it — so the button existed in the code and never once on
+    a page. A config key nothing reads is indistinguishable from a feature that is gone."""
+    ran, _ = _composed(monkeypatch, {
+        "diagram": "docs/CM.drawio.png", "concepts": "docs/DomainModel.puml",
+        "name": "conceptual", "redraw": "python3 docs/scripts/patch.py"})
+    assert len(ran) == 1
+    assert "--redraw 'python3 docs/scripts/patch.py'" in ran[0]
+
+
+def test_a_patch_script_with_a_space_in_its_path_survives_the_shell(monkeypatch):
+    ran, _ = _composed(monkeypatch, {
+        "diagram": "docs/CM.drawio.png", "concepts": "docs/DomainModel.puml",
+        "redraw": "python3 'my docs/patch.py'"})
+    assert "--redraw " + shlex.quote("python3 'my docs/patch.py'") in ran[0]
+
+
+def test_no_redraw_key_means_no_flag_and_no_guess(monkeypatch):
+    """A script that rewrites a checked-in file is not something to derive from a naming
+    convention and then hand a reader a button for."""
+    ran, _ = _composed(monkeypatch, {
+        "diagram": "docs/CM.drawio.png", "concepts": "docs/DomainModel.puml"})
+    assert "--redraw" not in ran[0]
+
+
+def test_a_project_with_no_drawio_diagram_is_named_not_crashed(monkeypatch):
+    ran, ctx = _composed(monkeypatch, None)
+    assert ran == [] and ctx.notes == ["no drawio diagram configured"]

@@ -11,6 +11,11 @@
       "drawio": {
         "diagram": "petclinic-backend/docs/ConceptualModel.drawio.png",
         "concepts": "petclinic-backend/docs/generated/DomainModel.puml",
+        "//redraw": "The repository's own patch script: what draws a concept or a link the",
+        "//redraw2": "code has and the map lacks, in red, as a to-do. Named here and never",
+        "//redraw3": "guessed — the page turns it into a button that rewrites a checked-in",
+        "//redraw4": "file. Leave it out and the page offers no way to start over.",
+        "redraw": "python3 petclinic-backend/docs/scripts/conceptual-model-patch.py",
         "name": "conceptual"
       }
     },

@@ -37,6 +37,7 @@ import json
 import os
 import shutil
 import re
+import shlex
 import subprocess
 import sys
 import urllib.error
@@ -134,8 +135,16 @@ def _diagrams(ctx: Ctx):
     if not d:
         ctx.notes.append("no drawio diagram configured")
         return
+    # `redraw` is the repository's own patch script — the thing that draws what the code
+    # has and the map lacks, in red, as a to-do. Passed through rather than guessed: the
+    # report turns it into a button that rewrites a checked-in file, and a command derived
+    # from a naming convention is not something to hand a reader a button for. Without it
+    # the page simply does not offer to start over, which is the honest rendering of "this
+    # project has no such script".
+    redraw = f" --redraw {shlex.quote(d['redraw'])}" if d.get("redraw") else ""
     sh(f"{HERE}/drawio-diff.py --base {ctx.base} --diagram {d['diagram']} "
-       f"--concepts {d['concepts']} --out-dir {ART} --name {d.get('name', 'conceptual')}", ctx)
+       f"--concepts {d['concepts']} --out-dir {ART} --name {d.get('name', 'conceptual')}"
+       + redraw, ctx)
 
 
 def _sequence(ctx: Ctx):
