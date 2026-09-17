@@ -521,8 +521,11 @@ STEPS = [
     ("sequence",    "sequence",      "sequence diagrams from traces",
      lambda c: bool(c.step_cfg("sequence").get("commands")) or "sequence.commands not configured",
      _sequence),
-    # Straight after `sequence`, and never before it: it reads what that step wrote.
-    ("c2",          "c2",            "container view projected from the sequences",
+    # Straight after `sequence`, and never before it: it reads what that step wrote. It
+    # stamps `packages` because the container view is the third diagram on the Structure
+    # tab, not a tab of its own — the id is a contract with the strip, and a step naming a
+    # tab the page does not contain reports its cost as "not measured".
+    ("c2",          "packages",      "container view projected from the sequences",
      lambda c: has_genseq() or "no *.genseq.puml in this repository — nothing to project "
                                "a container view from",
      _c2),

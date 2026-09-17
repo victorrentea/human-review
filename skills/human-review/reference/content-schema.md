@@ -240,6 +240,17 @@ should be. Omitting `title` is not the same thing — that still gets the defaul
 which diagram each belongs to, and you never name a diagram. **`unpaired`** names the group
 the leftovers land in; omitting it accepts the defaults rather than turning the group off.
 
+**The kind of test — `UI` / `API` / `unit` — is not authored.** Every pair leads with the
+Tests tab's own chip, read off the diagram it holds: the first lifeline is the end the run
+was driven from, `Browser` through the screens, `Client` from a `@SpringBootTest` in the
+same JVM, one lifeline alone for a test nobody else could observe. That is the distinction
+the tab's tip already draws, so reading it off the picture keeps badge and tip from
+disagreeing, and a `.spec.ts` that is a Playwright run in one module and a component test
+in the next is not settled by a guess at its path. A suite whose driver goes by a name this
+has never heard of can say so — **`"cat": "e2e" | "api" | "unit"`** on the snippet, one kind
+per test file — and a diagram this can read nothing out of gets no chip rather than a
+wrong one.
+
 A quoted test lands in one of three places, and the block decides which from the manifest
 and the checkout, never from the content file: **changed** — its diagram has a manifest row,
 so the pair opens on `New` with `Diff` and `Old` one click away; **unchanged** — no manifest
@@ -557,15 +568,14 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
               "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
               "unpaired":{"id":"tests-nosequence",
                           "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
-  {"id":"c2","label":"C2",
-   "tip":"Containers and the calls between them, projected from the sequence diagrams above — not drawn by hand.",
-   "blocks":[{"type":"section","id":"c2-note"},
-             {"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2"],
-              "id":"c2-containers","title":"Containers, as the traced runs call them"}]},
   {"id":"packages","label":"Structure",
    "blocks":[{"type":"section","id":"packages-note"},
              {"type":"diagrams","only":["Packages"],
-              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}}]},
+              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}},
+             {"type":"puml","src":"petclinic-backend/docs/generated/MavenModules.puml",
+              "name":"Maven modules","status":"unchanged"},
+             {"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2"],
+              "id":"c2-containers","title":"C2 Containers"}]},
   {"id":"city","label":"Code City","blocks":[{"type":"codecity"}]},
   {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",
    "blocks":[{"type":"section","id":"ds-audit"}]},
@@ -595,9 +605,8 @@ table, and `test_tab_ledger_wiring.py` fails until the two agree.
 | `review` | Review | the harvested passes (Step 1) |
 | `behaviour` | Demo | `video` |
 | `sequence` | Sequence | `sequence` |
-| `c2` | C2 | `c2` |
 | `requirements` | Tests | `tests` |
-| `data`, `packages` | Data, Structure | `diagrams` |
+| `data`, `packages` | Data, Structure | `diagrams`, and `c2` for the container view |
 | `api` | API | `api`, `specchanges` |
 | `city` | Code City | `city` |
 | `complexity` | Complexity | `complexity` |
@@ -617,30 +626,52 @@ with it, so the measurement now lives in `scripts/endpoint-complexity.py` and th
 the whole tab. A section that embeds a report nothing produces renders as an apology.
 
 Default order, worth departing from only with a reason — **Review, Demo, API, Data,
-Tests, Sequence, C2, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
+Tests, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
 order a review actually goes: what the passes raised, then the feature as a user meets it
 (the film, then the contract and the shape behind it), then what pins it — the tests, then
 the traces those runs recorded — then the code's own shape, where *Structure* and *Code
 City* are one question asked twice and stay adjacent, and CODEOWNERS last, because it is
 the one thing no amount of reading changes.
 
-**C2 sits immediately after Sequence, and that adjacency is the argument.** The tab is a C4
+**The container view is the last diagram on Structure, and it is not drawn.** It is a C4
 *container* view — boxes for the browser, the backend, the database, a queue, a
-microservice, and a line wherever one calls another — and every box and every line in it is
-**projected from the sequence diagrams on the tab before it** by
-`scripts/c2-from-sequence.py`. Nothing about it is drawn, which is the only reason it can be
+microservice, and a line wherever one calls another — **projected from the sequence diagrams
+on the Sequence tab** by `scripts/c2-from-sequence.py`. That is the only reason it can be
 trusted: an architecture diagram somebody maintains by hand is a claim about the system, and
 this one is a *measurement* of it, taken from the same traces the sequences came from. A
-call to a service nobody documented shows up here the first time a test makes it. Read it
-after the sequences, not before: the sequences are the evidence, and this is what they add up
-to.
+call to a service nobody documented shows up here the first time a test makes it. Its
+caption links out to **c4model.com**, because "C2" is jargon the page has no room to teach
+and Simon Brown's own site explains the four levels in a paragraph.
 
-**Every line carries a `⊕`, and it opens the calls behind it.** A C2 line says *Backend
+It sits **third on Structure, after Packages and Maven modules**, and not on a tab of its
+own. Structure is already the question *what shape is this thing*, asked at two altitudes —
+packages inside one module, then the modules themselves — and the containers are the third
+and widest. A pill of its own put one question in two places on the strip and made the
+reader choose between them; three diagrams down one panel is the ladder they were already
+climbing.
+
+**A test harness is not a container.** A `@SpringBootTest` driving controllers through
+MockMvc is a lifeline in every sequence it records and is deployed nowhere — no browser, no
+socket, no server — so `"drop": true` in `steps.c2.containers` keeps it out. A Playwright
+suite is the opposite and stays: it drives the real front end in a real browser, so that box
+is a container that genuinely ships. The rule is what runs in production, not what appears
+in a trace.
+
+**A line into a datastore says what it speaks and stops.** No inventory, no `⊕`, no counts,
+and nothing under the database box either. Between two systems the operations are a contract
+— a finite, named list, and knowing it is most of what the picture is for. Into a database
+it is not: one screen fires a hundred statements, the list is unbounded and half-generated,
+and `237 calls` on the arrow says only that the ORM did its job. That is the Sequence tab's
+question, asked at the wrong altitude.
+
+**Every line between two systems carries a `⊕`, and it opens the calls behind it.** A C2 line says *Backend
 talks HTTP to Payments*, which is the right altitude for the picture and exactly one level
 too coarse for the reviewer who then asks *which endpoints?*. The answer is already in the
 traces, so the protocol on each line is a handle: clicking it opens a bullet list of every
-operation that line stands for — the name above the route, with `×7` where one was called
-more than once. It is the page's existing `genseq://` affordance and `GENSEQ_JS` drives it
+operation that line stands for, the name above the route. Distinct operations only, and no
+tally of how often each ran: a route hit seven times instead of three is a fact about which
+test happened to run, not about the architecture. For the same reason the arrow reads
+`4 ops` and not `4 operations, 13 calls` — it also has to fit between two boxes. It is the page's existing `genseq://` affordance and `GENSEQ_JS` drives it
 unchanged, which is the point: a reader who learnt it one tab earlier, on the sequence
 diagrams, does not learn it again here. The inventories ride in two sidecars the manifest
 names in `new_details` / `old_details`, keyed by ids derived from content, so an untouched

@@ -39,10 +39,15 @@ _spec.loader.exec_module(c2)
 
 
 def graph(text: str, containers: dict | None = None) -> c2.Graph:
-    g = c2.Graph()
+    """One diagram, folded exactly the way `build()` folds a repository full of them.
+
+    Via `c2.folds` and not a local copy of the same two dict comprehensions: a helper that
+    computes the rewrites itself is a second implementation, and the first thing it does is
+    stop matching the one under test."""
     containers = containers or {}
-    rename = {n: v["as"] for n, v in containers.items() if v.get("as")}
-    c2.parse_sequence(textwrap.dedent(text).strip() + "\n", g, "t.genseq.puml", rename)
+    rename, drop = c2.folds(containers)
+    g = c2.Graph()
+    c2.parse_sequence(textwrap.dedent(text).strip() + "\n", g, "t.genseq.puml", rename, drop)
     c2.classify(g, containers)
     return g
 
@@ -357,9 +362,13 @@ def test_a_statement_has_no_route_and_says_so_rather_than_inventing_one():
         {"name": "select owners", "path": "", "calls": 1}]
 
 
-def test_the_same_endpoint_hit_twice_is_one_bullet_with_a_count():
+def test_the_same_endpoint_hit_twice_is_one_bullet_and_no_tally():
     """`GET /api/pets/1` and `GET /api/pets/2` are one operation: the generator writes the
-    template, and a C2 that listed every instance would be a log, not an inventory."""
+    template, and a C2 that listed every instance would be a log, not an inventory.
+
+    How MANY times is not on the page at all — not in the bullet, not on the arrow. A route
+    hit seven times instead of three is a fact about which test happened to run, and it was
+    the longest thing on the busiest label."""
     g = graph("""
         @startuml
         Browser -> Backend: getPet\\nGET /api/pets/{petId}
@@ -367,8 +376,10 @@ def test_the_same_endpoint_hit_twice_is_one_bullet_with_a_count():
         @enduml
     """)
     d = c2.one_side(g)["edges"][0]
-    assert d["operations"] == 1 and d["calls"] == 2
-    assert "×2" in c2.inventory(d)
+    assert d["operations"] == 1 and d["calls"] == 2      # still counted, just not drawn
+    assert c2.inventory(d) == "• getPet\n    GET /api/pets/{petId}"
+    out = c2.render(**c2.one_side(g), title="", system="", caption="", coloured=False)
+    assert '"1 ops"' in out and "call" not in out
 
 
 def test_the_label_becomes_a_handle_onto_its_own_inventory():
@@ -385,7 +396,7 @@ def test_the_label_becomes_a_handle_onto_its_own_inventory():
     assert f"[[genseq://{key}" in out and "HTTP ⊕]]" in out
     entry = details[key]
     assert entry["title"] == "Browser → Backend"
-    assert entry["steps"][0]["label"] == "2 operations, 2 calls"
+    assert entry["steps"][0]["label"] == "2 operations"
     assert entry["steps"][0]["text"] == (
         "• List owners\n    GET /api/owners\n• getPet\n    GET /api/pets/{petId}")
 
@@ -434,6 +445,79 @@ def test_a_line_whose_calls_changed_keeps_both_inventories_apart():
     c2.render(**c2.one_side(old), title="", system="", caption="", coloured=False, details=a)
     c2.render(**c2.one_side(new), title="", system="", caption="", coloured=False, details=b)
     assert set(a).isdisjoint(set(b))
+
+
+def test_a_line_into_a_datastore_says_what_it_speaks_and_stops():
+    """Between two systems the operations are a contract — a finite, named list, and
+    knowing it is most of what the picture is for. Into a database it is not: one screen
+    fires a hundred statements, the list is unbounded and half-generated, and a count on
+    the arrow says only that the ORM did its job. No handle, no inventory, no numbers —
+    and nothing under the box either."""
+    g = graph("""
+        @startuml
+        Browser -> Backend: GET /api/owners
+        Backend -> DB: select owners
+        Backend -> DB: select pets
+        @enduml
+    """)
+    details = {}
+    out = c2.render(**c2.one_side(g), title="", system="", caption="", coloured=False,
+                    details=details)
+    assert 'Rel(Backend, DB, "SQL", "")' in out
+    assert g.nodes["DB"]["descr"] == ""
+    # Exactly one handle on the page, and it is the one between the two systems.
+    assert len(details) == 1
+    assert next(iter(details.values()))["title"] == "Browser → Backend"
+
+
+def test_a_lifeline_the_project_drops_takes_its_calls_with_it():
+    """A C2 shows what is DEPLOYED. A @SpringBootTest calling controllers through MockMvc
+    is a lifeline in every sequence it records and is deployed nowhere — no browser, no
+    socket, no server — so the box would be one no operator could point at."""
+    g = graph("""
+        @startuml
+        Browser -> Backend: GET /api/owners
+        Client -> Backend: GET /api/vets
+        @enduml
+    """, containers={"Client": {"drop": True}})
+    assert set(g.nodes) == {"Browser", "Backend"}
+    assert edges(g) == {("Browser", "Backend")}
+
+
+def test_a_drop_is_read_after_a_rename_so_one_entry_covers_both_names():
+    """The base branch called it `Test` and this one calls it `Client`. Folding first means
+    the project writes one `drop`, not one per name the suite has ever used."""
+    g = graph("""
+        @startuml
+        Test -> Backend: GET /api/owners
+        Browser -> Backend: GET /api/vets
+        @enduml
+    """, containers={"Test": {"as": "Client"}, "Client": {"drop": True}})
+    assert set(g.nodes) == {"Browser", "Backend"}
+
+
+def test_the_caption_says_which_kind_of_diagram_this_is_and_links_out():
+    """"C2" is jargon, and the caption has one line — not enough to teach the four levels
+    and plenty to point at the page that does."""
+    g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
+    out = c2.render(**c2.one_side(g), title="C2 Containers", system="",
+                    caption=f"[[{c2.C4_URL} C4 model]] · projected from 1", coloured=False)
+    assert "title C2 Containers" in out
+    assert c2.C4_URL.startswith("https://c4model.com")
+    assert f"caption [[{c2.C4_URL}" in out
+
+
+def test_a_link_out_of_the_page_does_not_replace_the_page():
+    """PlantUML writes `target="_top"` on everything it draws. For an outward link that
+    means a reviewer three tabs deep loses where they were to a click they made to look
+    something up. Only outward links move: `genseq://` is handled inside the page."""
+    # No `title=` in the fixture: this repo's tooltip guard scans source lines for the
+    # native attribute, and a fake SVG carrying one trips it as loudly as the real thing.
+    svg = ('<a href="https://c4model.com/x" target="_top">c4</a>'
+           '<a href="genseq://c2-abc" target="_top">HTTP</a>')
+    out = c2._external_links_open_away(svg)
+    assert 'href="https://c4model.com/x" target="_blank" rel="noopener noreferrer"' in out
+    assert 'href="genseq://c2-abc" target="_top"' in out
 
 
 # --------------------------------------------------------------------------- rendering

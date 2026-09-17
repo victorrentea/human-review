@@ -1190,6 +1190,33 @@ details.testpair > summary::-webkit-details-marker { display:none; }
 details.testpair > summary::before { content:"▾"; font-size:.75rem; }
 details.testpair:not([open]) > summary::before { content:"▸"; }
 details.testpair > summary:hover { color:var(--link); }
+/* What kind of test drew the sequence, in the chip the Tests tab wears for the same three
+   words and in the same three colours — `.evi.e2e` / `.api` / `.unit` a few hundred lines
+   up are that palette, and the requirements map's own `--rm-*-bg` are the same hues again.
+   One vocabulary for "what level is this test at", drawn the same way wherever the page
+   says it, so a reader who learnt the blue pill on one tab is not taught it twice.
+   `baseline` alignment on the summary would hang the pill off the sentence's baseline and
+   leave its rounded bottom below the row; it is a mark ABOUT the line, so it centres.
+   No `cursor:help`, deliberately: it lives inside the summary, and a click on it opens the
+   fold like a click anywhere else on the row. The question mark is for a mark that only
+   explains itself — TIP_JS says so, and excludes everything inside a summary for it. */
+.testcat { flex:0 0 auto; align-self:center; min-width:2.6rem;
+  text-align:center; padding:2px 7px; border-radius:999px;
+  font:700 .62rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.08em; text-transform:uppercase;
+  background:color-mix(in srgb, var(--tc) 13%, transparent); color:var(--tc); }
+.testcat[data-cat=e2e]  { --tc:#164691; }
+.testcat[data-cat=api]  { --tc:#5c2c8e; }
+.testcat[data-cat=unit] { --tc:#0f5f5f; }
+/* The hover is the legend, so the chip must not also take the summary's link colour when
+   the row under it is hovered — a pill that changes colour reads as a second control. */
+details.testpair > summary:hover > .testcat { color:var(--tc); }
+@media (prefers-color-scheme: dark) {
+  .testcat { background:color-mix(in srgb, var(--tc) 16%, transparent); }
+  .testcat[data-cat=e2e]  { --tc:#a0c8ff; }
+  .testcat[data-cat=api]  { --tc:#d2b4ff; }
+  .testcat[data-cat=unit] { --tc:#87e4e4; }
+}
 /* With the title gone, the .puml path is the only thing left in a paired diagram's
    header row, and `space-between` would park it on the left under the fold arrow. */
 .diagram.dgm-bare .head .dgm-src { margin-left:auto; }
@@ -4641,6 +4668,108 @@ def pair_anchor(rel: str) -> str:
     return "seq-" + re.sub(r"[^a-z0-9]+", "-", rel.lower()).strip("-")
 
 
+#: The three kinds of test the page names, and what each one is — the Tests tab's own
+#: vocabulary, word for word, because a reader who learnt `UI` over there must not have to
+#: learn it again here. The words that follow each chip are that tab's legend line; they
+#: ride on the hover rather than being printed again under the tab title, since a second
+#: copy of a legend is a second place for the two to disagree.
+TEST_CATS = {
+    "e2e":  ("UI", "clicks the screen"),
+    "api":  ("API", "REST/MCP"),
+    "unit": ("unit", "one isolated component"),
+}
+
+#: A lifeline declaration in a generated sequence: `participant Browser`,
+#: `actor "A vet" as Vet`, `participant UI as "Pet Clinic UI"`. Only the declarations are
+#: read — an arrow can name a lifeline that was never declared, and the ORDER of the
+#: declarations is the part that matters here.
+SEQ_DECL = re.compile(
+    r'^(?:participant|actor|database|queue|collections|boundary|control|entity)\s+'
+    r'(?P<first>"[^"]*"|\S+)(?:\s+as\s+(?P<second>"[^"]*"|\S+))?\s*$')
+
+#: The first arrow, for a diagram that declares no lifelines at all — PlantUML lets a
+#: sender spring into existence on its first message, and a generator that leans on that
+#: still has a driver; it is just never announced.
+SEQ_ARROW = re.compile(r'^(?P<from>"[^"]*"|[^\s"<>-]+)\s*-+>+\s*'
+                       r'(?P<to>"[^"]*"|[^\s"<>:-]+)\s*:')
+
+#: What a driver lifeline is called when the run went through the screens. The generators
+#: name their own driver — Playwright's is `Browser`, a `@SpringBootTest`'s is `Client` —
+#: and this page already writes that convention down in `c2-from-sequence.py`. Anything
+#: not on this list is a synthetic client calling the contract directly, which is `api`.
+SEQ_UI_DRIVERS = re.compile(r"\b(browser|ui|frontend|front-end|chrome|playwright|page)\b",
+                            re.I)
+
+
+def _pair_cat(puml_rel: str, root: Path, authored: str | None = None) -> str | None:
+    """Which kind of test drew this sequence: `e2e`, `api` or `unit`.
+
+    Derived from the diagram, not from the file name, and for the same reason the pairing
+    itself is derived: a `.spec.ts` is a Playwright run in one module and a component test
+    in the next, and the page must not settle that by guessing at a path. The diagram is a
+    record of what the run actually did, and its first lifeline is the end the test was
+    driving from — `Browser` for a run through the screens, `Client` for a `@SpringBootTest`
+    calling the contract in the same JVM. That is the very distinction the tab's own tip
+    draws, so reading it off the picture keeps the badge and the tip from ever disagreeing.
+
+    One lifeline is `unit`: a test that made no call anyone else could observe is a test of
+    one isolated component, which is exactly what the Tests tab means by the word.
+
+    A diagram that declares nothing is read off its first arrow instead — PlantUML lets a
+    sender exist from its first message, and such a diagram has a driver too; it just never
+    announced one. A diagram with neither gets no chip rather than a guessed one: an empty
+    space says "not classified", and a wrong pill says something false in the page's own
+    confident voice.
+
+    `authored` wins when it is given. The classification above is a reading of a generated
+    file, and a suite that names its driver something this has never heard of should be
+    able to say so in the content file rather than wait for this list to grow.
+    """
+    if authored in TEST_CATS:
+        return authored
+    try:
+        text = (root / puml_rel).read_text(encoding="utf-8")
+    except OSError:
+        return None
+    lifelines = []
+    for raw in text.splitlines():
+        m = SEQ_DECL.match(raw.strip())
+        if not m:
+            continue
+        first, second = m["first"].strip('"'), (m["second"] or "").strip('"')
+        # `participant "Pet Clinic UI" as UI` and `participant UI as "Pet Clinic UI"` both
+        # exist; the quoted side is the label whichever order it came in, and with neither
+        # quoted PlantUML's own rule applies — the alias is the second.
+        label = first if not second or m["first"].startswith('"') else second
+        if label not in lifelines:
+            lifelines.append(label)
+    if not lifelines:
+        for raw in text.splitlines():
+            m = SEQ_ARROW.match(raw.strip())
+            if m:
+                lifelines = [m["from"].strip('"'), m["to"].strip('"')]
+                break
+    if not lifelines:
+        return None
+    if len(lifelines) == 1:
+        return "unit"
+    return "e2e" if SEQ_UI_DRIVERS.search(lifelines[0]) else "api"
+
+
+def _cat_chip(cat: str | None) -> str:
+    """The kind, as the chip the Tests tab wears — same words, same palette, same pill.
+
+    Copied rather than shared, like `FILE_PAGE` above it: the Tests tab is an included
+    asset that builds its own markup, and the two will not be made to import from each
+    other. What is shared is the decision, which is written down in `TEST_CATS`."""
+    if cat not in TEST_CATS:
+        return ""
+    label, what = TEST_CATS[cat]
+    return (f'<span class="testcat" data-cat="{cat}"'
+            f' data-tip="{html.escape(label, quote=True)} &mdash; '
+            f'{html.escape(what, quote=True)}">{html.escape(label)}</span>')
+
+
 def _scenarios_drawn(puml_rel: str, test_rel: str, root: Path) -> list[tuple[int, str]]:
     """Which scenarios this diagram actually drew, as (line, title).
 
@@ -4746,7 +4875,8 @@ def _fold_over(quoted: list[str]) -> tuple[str, list[str]]:
 
 def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
                  quoted: list[str] = (),
-                 scenarios: list[tuple[int, str]] = ()) -> str:
+                 scenarios: list[tuple[int, str]] = (),
+                 cat: str | None = None) -> str:
     """The test and the sequence its run recorded, foldable together — with the quoted
     test folded closed inside it, and the whole pair folded closed too.
 
@@ -4767,6 +4897,13 @@ def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
     what the Tests tab calls it. The path is not lost: it is the summary's tooltip, and the
     fold's row under it names the file, the lines it quotes and what changed in them. A
     pair whose generator recorded no chapter falls back to the basename, all there is.
+
+    It leads with the kind of test this is, in the Tests tab's own chip. Shut, this tab is
+    a list of sentences, and "which of these went through a browser?" was a question
+    the reader could only answer by opening each one and looking at the top lifeline —
+    which is where the chip reads it from anyway. Leading, not trailing: the chips line up
+    into a column the eye can run down, and a kind that arrives after the sentence arrives
+    after it was needed.
     """
     titles = [t for _, t in scenarios if t]
     name = (" · ".join(html.escape(t) for t in titles) if titles
@@ -4780,7 +4917,8 @@ def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
                + "</details>\n")
     return (f'<details class="testpair" open id="{pair_anchor(puml_rel)}"'
             f' data-test="{html.escape(test_rel)}">'
-            f'<summary data-tip="{html.escape(test_rel)}">{name}</summary>'
+            f'<summary data-tip="{html.escape(test_rel)}">'
+            f'{_cat_chip(cat)}{name}</summary>'
             + src
             + "\n".join(x.strip("\n") for x in pieces)
             + "</details>")
@@ -4951,6 +5089,12 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
             plan_add(rel, None)
             unchanged += 1
 
+    # An author's say on what kind of test a file holds, keyed by the file the snippet
+    # quotes — one kind per test file, which is the grain the content file already writes
+    # its references at. Absent, `_pair_cat` reads it off the diagram.
+    authored_cat = {x["ref"].rpartition(":")[0]: x.get("cat")
+                    for x in snippets if x.get("cat")}
+
     for test_rel, entries in plan.items():
         quoted_by_pair = _share_excerpts(test_rel, entries, snippets, used, root)
         for puml_rel, row in entries:
@@ -4966,7 +5110,9 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
             pieces.append(render_diagrams(merged, root, out_dir, [row], bare=test_rel)
                           if row is not None
                           else _unchanged_sequence(puml_rel, test_rel, root, out_dir))
-            parts.append(_folded_pair(puml_rel, test_rel, pieces, quoted, scenarios))
+            parts.append(_folded_pair(puml_rel, test_rel, pieces, quoted, scenarios,
+                                      _pair_cat(puml_rel, root,
+                                                authored_cat.get(test_rel))))
             register(puml_rel, scenarios)
 
     orphaned = [x for x in snippets if id(x) not in used]

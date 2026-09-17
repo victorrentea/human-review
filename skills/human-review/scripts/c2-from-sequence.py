@@ -86,6 +86,9 @@ REMOVED_DARK = "#8E0000"
 #: What the page themes a diagram's hyperlinks with (`--dgm-link`), and what the sequence
 #: generator already writes. Anything else is a colour dark mode does not know to move.
 LINK_COLOR = "#1A4FA0"
+#: Simon Brown's own description of the four levels. The page links out to it rather than
+#: explaining C4 in a caption, because the caption has one line and the site has the answer.
+C4_URL = "https://c4model.com/diagrams/container"
 
 # Where the sequence diagrams are, and where they are not. The defaults name the generator's
 # own convention (`<test file>.genseq.puml`, filed beside the test) and then rule out every
@@ -321,7 +324,8 @@ def _unquote(s: str) -> str:
 
 
 def parse_sequence(text: str, graph: Graph, source: str = "",
-                   rename: dict[str, str] | None = None) -> None:
+                   rename: dict[str, str] | None = None,
+                   drop: set[str] | None = None) -> None:
     """Fold one sequence diagram into the graph.
 
     Skips what is not the script: comments, and the free text inside `note`/`legend`
@@ -338,6 +342,7 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
     if source:
         graph.sources.append(source)
     rename = rename or {}
+    drop = drop or set()
     aliases: dict[str, str] = {}
     skipping = False
     for raw in text.splitlines():
@@ -370,6 +375,8 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
             else:
                 label = alias = first
             aliases[alias] = label
+            if rename.get(label, label) in drop:
+                continue
             node = graph.node(rename.get(label, label))
             node["decl"] = m["kw"]
             continue
@@ -384,6 +391,14 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
         a, b, arrow = _unquote(mm["a"]), _unquote(mm["b"]), mm["arrow"]
         a, b = aliases.get(a, a), aliases.get(b, b)
         a, b = rename.get(a, a), rename.get(b, b)
+        # A lifeline the project declared `"drop": true` never enters the graph, and
+        # neither do its calls. A C2 is a picture of what is DEPLOYED, and a MockMvc test
+        # is not deployed anywhere: it is a synthetic client standing where a real one
+        # would, calling controllers in-process with no browser, no socket and no server.
+        # It draws a beautiful sequence — that is the Sequence tab's business — and a box
+        # on the container diagram that no operator could point at.
+        if a in drop or b in drop:
+            continue
         # `B <- A` is the same call as `A -> B`; normalise before the edge is keyed, or the
         # same relationship lands in the graph twice pointing opposite ways.
         if "<" in arrow and ">" not in arrow:
@@ -456,14 +471,20 @@ def classify(graph: Graph, containers: dict) -> None:
         # Technology is never guessed. A box with no `techn` reads as "we did not say";
         # a box reading "PostgreSQL" because the lifeline was called DB reads as a fact.
         node["tech"] = cfg.get("tech", "")
-        node["descr"] = cfg.get("descr", "") or _evidence(graph, name)
+        node["descr"] = cfg.get("descr", "") or _evidence(graph, name, node["kind"])
 
 
-def _evidence(graph: Graph, name: str) -> str:
+def _evidence(graph: Graph, name: str, kind: str = "") -> str:
     """The one line under a box: what the traces saw this container do.
 
     Inbound operations, because that is what a container *offers* — the thing a reader of a
-    C2 wants from a box. A lifeline nothing calls is where the flows start, and says so."""
+    C2 wants from a box. A lifeline nothing calls is where the flows start, and says so.
+
+    A datastore gets nothing, for the same reason its arrow does: `11 operations` under a
+    database counts the statements one ORM happened to emit on one run, which no reader of
+    a container diagram is going to act on. See `is_datastore_edge`."""
+    if kind == "db":
+        return ""
     served = set()
     for (_src, dst), e in graph.edges.items():
         if dst == name:
@@ -505,8 +526,23 @@ def diff(old: Graph, new: Graph) -> dict:
             "operationsDelta": ops_new - ops_old if (o and n) else 0,
             "calls": sum(side["ops"].values()),
             "detail": operations(side),
+            # What the line points AT, because that decides whether any of the above is
+            # worth printing — see `is_datastore_edge`.
+            "toKind": nodes[key[1]]["kind"],
         })
     return {"nodes": nodes, "edges": edges}
+
+
+def is_datastore_edge(e: dict) -> bool:
+    """Whether this line goes into a datastore, where counting is noise.
+
+    A C2 line between two *systems* is a contract: the endpoints one asks the other for are
+    a finite, named list, and knowing it is most of what the picture is for. A line into a
+    database is not that. One page of one screen fires a hundred statements, the list is
+    unbounded and half-generated, and `237 calls` on the arrow says only that the ORM did
+    its job — it is the Sequence tab's question, asked at the wrong altitude. So the line
+    to a datastore says what it speaks and stops: no inventory, no handle, no counts."""
+    return e.get("toKind") == "db"
 
 
 def one_side(graph: Graph) -> dict:
@@ -558,8 +594,6 @@ def inventory(e: dict) -> str:
         row = f'• {o["name"] or "(unlabelled)"}'
         if o["path"]:
             row += f'\n    {o["path"]}'
-        if o["calls"] > 1:
-            row += f'   ×{o["calls"]}'
         lines.append(row)
     return "\n".join(lines)
 
@@ -571,15 +605,14 @@ def handle(e: dict, details: dict | None) -> str:
     page's existing affordance for "there is more behind this", already wired by
     `GENSEQ_JS` and already styled. A reader who has learnt it one tab earlier, on the
     sequence diagrams, does not have to learn it again here."""
-    if details is None or not (e.get("detail") or []):
+    if details is None or is_datastore_edge(e) or not (e.get("detail") or []):
         return e["protocol"]
     key = op_id(e)
     details[key] = {
         "title": f'{e["from"]} → {e["to"]}',
         "steps": [{
             "label": f'{e["operations"]} operation'
-                     f'{"s" if e["operations"] != 1 else ""}, '
-                     f'{e["calls"]} call{"s" if e["calls"] != 1 else ""}',
+                     f'{"s" if e["operations"] != 1 else ""}',
             "text": inventory(e),
         }],
     }
@@ -663,11 +696,14 @@ def render(nodes: dict, edges: list, *, title: str, system: str, caption: str,
     for e in edges:
         tag = (f', $tags="{e["status"]}"'
                if coloured and e.get("status") in ("added", "removed") else "")
+        # How many DISTINCT operations, and nothing about how often each ran. The call
+        # count went out with the ×N in the popup: a route hit seven times instead of
+        # three is a fact about which test happened to run, not about the architecture,
+        # and it was the longest thing on the busiest label. `ops` rather than
+        # `operations` for the same reason — the label has to fit between two boxes.
         delta = e.get("operationsDelta") or 0
-        ops = f'{e["operations"]} operation{"s" if e["operations"] != 1 else ""}'
-        if delta:
-            ops += f' ({delta:+d})'
-        techn = f'{ops}, {e["calls"]} call{"s" if e["calls"] != 1 else ""}'
+        techn = "" if is_datastore_edge(e) else \
+            f'{e["operations"]} ops' + (f' ({delta:+d})' if delta else '')
         out.append(f'Rel({_pid(e["from"])}, {_pid(e["to"])}, "{_q(handle(e, details))}", '
                    f'"{_q(techn)}"{tag})')
 
@@ -694,12 +730,25 @@ def plantuml(puml: Path) -> str:
         return ""
     if not svg.is_file():
         return ""
-    if "Syntax Error" in svg.read_text(encoding="utf-8", errors="replace"):
+    body = svg.read_text(encoding="utf-8", errors="replace")
+    if "Syntax Error" in body:
         print(f"[c2] WARNING: PlantUML could not render {puml.name} — dropping it",
               file=sys.stderr)
         svg.unlink(missing_ok=True)
         return ""
+    svg.write_text(_external_links_open_away(body), encoding="utf-8")
     return svg.name
+
+
+#: PlantUML writes `target="_top"` on every link it draws, which for the caption's link out
+#: to c4model.com means the review page is *replaced* by it — a reviewer three tabs deep
+#: loses where they were to a click they made to look something up. Only outward links are
+#: touched: `genseq://` and `src://` are handled inside the page and must stay where they are.
+EXTERNAL_LINK = re.compile(r'(<a\b[^>]*\bhref="https?://[^"]*"[^>]*)\btarget="_top"')
+
+
+def _external_links_open_away(svg: str) -> str:
+    return EXTERNAL_LINK.sub(r'\1target="_blank" rel="noopener noreferrer"', svg)
 
 
 # --------------------------------------------------------------------------- collecting
@@ -739,14 +788,26 @@ def base_sources(root: Path, base: str, sources: list[str], exclude: list[str]) 
                   if rel and matches(rel, sources, exclude))
 
 
-def build(root: Path, rels: list[str], read, containers: dict) -> Graph:
+def folds(containers: dict) -> tuple[dict[str, str], set[str]]:
+    """The two lifeline rewrites a project declares: fold these into one, drop those.
+
+    `drop` is resolved THROUGH `as`, so a lifeline can be folded into a name and that name
+    dropped — which is how a suite that renamed its own participant between the base and
+    the branch is excluded with one entry instead of one per name it has ever used."""
     rename = {name: cfg["as"] for name, cfg in containers.items()
               if isinstance(cfg, dict) and cfg.get("as")}
+    drop = {rename.get(name, name) for name, cfg in containers.items()
+            if isinstance(cfg, dict) and cfg.get("drop")}
+    return rename, drop
+
+
+def build(root: Path, rels: list[str], read, containers: dict) -> Graph:
+    rename, drop = folds(containers)
     g = Graph()
     for rel in rels:
         text = read(rel)
         if text:
-            parse_sequence(text, g, rel, rename)
+            parse_sequence(text, g, rel, rename, drop)
     classify(g, containers)
     return g
 
@@ -819,8 +880,15 @@ def main(argv=None) -> int:
     out = root / a.out_dir
     out.mkdir(parents=True, exist_ok=True)
     system = c2.get("system", "")
-    title = c2.get("title", "Containers, as the traced runs call them")
-    caption = (f"projected from {len(rels)} sequence diagram"
+    title = c2.get("title", "C2 Containers")
+    # Two lines, in the order a reader needs them: what KIND of picture this is, then
+    # where its contents came from. The first is a link because "C2" is jargon the page
+    # cannot teach in the room it has — c4model.com is Simon Brown's own site and explains
+    # the four levels in a paragraph, so a reader meeting the word here has one click to
+    # the thing that defines it rather than a guess at what the boxes mean.
+    caption = (f"[[{C4_URL}{{What a container diagram is, on Simon Brown's own site}} "
+               f"C4 model — level 2, Containers]] · "
+               f"projected from {len(rels)} sequence diagram"
                f"{'s' if len(rels) != 1 else ''} generated from test traces")
 
     # Two popup indexes, not one, and they are the two the manifest's `new_details` /

@@ -3283,6 +3283,53 @@ def test_a_pair_is_named_by_its_scenarios_and_addressed_by_its_test(tmp_path):
     assert ">add-visit.feature</summary>" in build._folded_pair(puml, rel, [""])
 
 
+def test_a_pair_says_what_kind_of_test_drew_it(tmp_path):
+    """Shut, this tab is a list of sentences, and "which of these went through a browser?"
+    had no answer short of opening every one. The kind leads the row, in the Tests tab's
+    own chip and the Tests tab's own three words — one vocabulary across the page."""
+    rel, puml = _genseq_fixture(tmp_path)
+    out = build._folded_pair(puml, rel, [""], scenarios=[(4, "remembers the vet")],
+                             cat=build._pair_cat(puml, tmp_path))
+    assert '<span class="testcat" data-cat="e2e"' in out
+    assert ">UI</span>remembers the vet</summary>" in out, "it leads the sentence"
+    assert "UI &mdash; clicks the screen" in out, "the legend is on the hover"
+    # The same three words the requirements map's legend uses, and no fourth.
+    assert [c[0] for c in build.TEST_CATS.values()] == ["UI", "API", "unit"]
+    # Same three colours as the evidence cards a few hundred lines up the stylesheet.
+    assert ".testcat[data-cat=api]" in build.CSS and ".testcat[data-cat=unit]" in build.CSS
+
+
+def test_the_kind_is_read_off_the_diagram_not_guessed_from_the_path(tmp_path):
+    """A `.spec.ts` is a Playwright run in one module and a component test in the next, so
+    the path settles nothing. The diagram is a record of what the run did, and its first
+    lifeline is the end it was driven from — `Browser` through the screens, `Client` from a
+    @SpringBootTest, one lifeline alone for a test nobody else could observe."""
+    def puml(body, name="x"):
+        rel = f"test/{name}.spec.ts.s.genseq.puml"
+        (tmp_path / "test").mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text("@startuml\n" + body + "\n@enduml\n", encoding="utf-8")
+        return rel
+
+    ui = puml("participant Browser\nparticipant Backend\nBrowser -> Backend: x", "a")
+    api = puml("participant Client\nparticipant Backend\nClient -> Backend: x", "b")
+    unit = puml("participant Component\nComponent -> Component: x", "c")
+    assert build._pair_cat(ui, tmp_path) == "e2e"
+    assert build._pair_cat(api, tmp_path) == "api"
+    assert build._pair_cat(unit, tmp_path) == "unit"
+    # `participant "Pet Clinic UI" as UI` — the quoted side is the label, either way round.
+    quoted = puml('participant "Pet Clinic UI" as U\nparticipant Backend\nU -> Backend: x', "d")
+    assert build._pair_cat(quoted, tmp_path) == "e2e"
+    # Declared nothing: PlantUML lets a sender exist from its first message.
+    bare = puml("Browser -> Backend: x", "e")
+    assert build._pair_cat(bare, tmp_path) == "e2e"
+    # Nothing to read at all is no chip, never a guessed one.
+    assert build._pair_cat("test/gone.genseq.puml", tmp_path) is None
+    assert build._cat_chip(None) == ""
+    # An author's say wins: a suite may name its driver something this never heard of.
+    assert build._pair_cat(ui, tmp_path, "unit") == "unit"
+    assert build._pair_cat(ui, tmp_path, "nonsense") == "e2e", "…but only one of the three"
+
+
 def test_the_fold_over_a_quoted_test_is_the_blocks_own_source_bar(tmp_path):
     """`the test · lines 60–61,70–94,124–155` above a bar reading `AddVisitApiTest.java:
     60-61,70-94,124-155` said the line numbers twice and the second copy said them beside
