@@ -653,7 +653,7 @@ PHASES = {"rows": [
      "window": ["2026-09-17T18:30:12+00:00", "2026-09-17T18:34:27+00:00"]},
     {"key": "review_points", "label": "review-points", "measured": True,
      "cost": 0.27, "tokens": 341_850, "messages": 1, "detail": "first → last write"},
-    {"key": "demo_video", "label": "demo video", "measured": False,
+    {"key": "video", "label": "demo video", "measured": False,
      "reason": "no step in the ledger named it"},
 ]}
 
@@ -708,7 +708,7 @@ def test_the_phase_cut_replaces_the_two_groups_rather_than_joining_them():
                                           "invoked": ["/code-review"]}}},
         "run": {"measured": True},
         "tabs": {}, "total": 29.62, "total_tokens": 44_034_439,
-        "phases": PHASES,
+        "phases": {**PHASES, "cost": 29.62, "tokens": 44_034_439},
     }
     out = build.cost_ledger_html(led, [])
     assert "phase by phase" in out
@@ -722,3 +722,27 @@ def test_the_phase_cut_replaces_the_two_groups_rather_than_joining_them():
     plain = build.cost_ledger_html({**led, "phases": None}, [])
     assert "writing the code" in plain and "the passes that read the diff" in plain
     assert "phase by phase" not in plain
+
+
+def test_the_footer_totals_the_rows_on_screen_and_not_another_cut_of_them():
+    """`led["total"]` adds the authoring conversation, the passes and the run — three
+    overlapping measurements of one bill, reconciled by the two groups the phase cut
+    replaces. Printed under the phases it is a footer the column above does not add up to,
+    and nothing on the page says which of the two numbers is the answer."""
+    led = {"writing": {"measured": True, "sessions": []}, "run": {"measured": True},
+           "tabs": {}, "total": 702.99, "total_tokens": 1_100_000_000,
+           "phases": {**PHASES, "cost": 206.91, "tokens": 312_869_953}}
+    out = build.cost_ledger_html(led, [])
+    assert "$206.91" in out and "$702.99" not in out
+    # …and with no phases it is the ledger's own total, exactly as before.
+    plain = build.cost_ledger_html({**led, "phases": None}, [])
+    assert "$702.99" in plain
+
+
+def test_the_tab_pill_says_what_the_table_says():
+    """A `$703` pill over a `$207` table is the footer's contradiction again, read first
+    and by everyone — the pill is the only part of this tab a reader sees without opening
+    it."""
+    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    i = src.index("cost_label = f'$")
+    assert "phase_total" in src[i - 400:i + 200]

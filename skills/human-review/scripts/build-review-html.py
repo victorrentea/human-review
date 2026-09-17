@@ -8305,7 +8305,7 @@ PASS_ROWS = [
 #: rather than trusted to the file, so a phase nobody could date still holds its place in
 #: the sequence instead of vanishing from the middle of it.
 PHASE_ROWS = ["implementation", "code_review", "post_review_fixes", "review_points",
-              "demo_video", "view_images", "page_build"]
+              "video", "images", "page_build"]
 
 
 def _when(raw: str | None) -> str:
@@ -8490,9 +8490,19 @@ def cost_ledger_html(led: dict | None, tabs: list[dict]) -> str:
     group("building this guide")
     rows.append(_cost_tab_rows(led.get("tabs") or {}, tabs))
 
-    total = led.get("total") or 0.0
+    # The total of the rows on screen, which under the phase cut is not the ledger's own.
+    # `led["total"]` adds the authoring conversation, the passes and the run — three
+    # overlapping measurements of one bill, reconciled by the groups that are no longer
+    # being drawn. Printing it under the phases would put a number in the footer that the
+    # column above it does not add up to, and the reader has no way to tell which of the
+    # two is the answer.
+    phase_doc = led.get("phases") or {}
+    if phases and phase_doc.get("cost") is not None:
+        total, total_tokens = phase_doc.get("cost") or 0.0, phase_doc.get("tokens") or 0
+    else:
+        total, total_tokens = led.get("total") or 0.0, led.get("total_tokens") or 0
     foot = (f'<tr class="costtotal"><td>total</td>'
-            f'<td>{_cost_tokens(led.get("total_tokens") or 0)}</td>'
+            f'<td>{_cost_tokens(total_tokens)}</td>'
             f'<td>{_cost_money(total)}</td></tr>')
     return (
         '<table class="costtab costledger">'
@@ -9659,7 +9669,12 @@ def main(argv=None) -> int:
             # list-price estimate whose error bars are the width of a whole session; `$744`
             # says the size, which is the only thing a label has room to say. The cents are
             # one click away, in the table the tab opens.
-            cost_label = f'${(led.get("total") or 0.0):,.0f}'
+            # The pill says what the table says. Under the phase cut that is the phases'
+            # own total, not the ledger's three overlapping measurements of one bill —
+            # a `$703` pill over a `$207` table is the same contradiction as the footer's,
+            # read first and by everyone.
+            phase_total = (led.get("phases") or {}).get("cost")
+            cost_label = f'${(phase_total if phase_total is not None and phase_rows_html(led.get("phases")) else (led.get("total") or 0.0)):,.0f}'
             strip.append(
                 f'<button type="button" class="tab" role="tab" id="tabbtn-{COST_TAB_ID}" '
                 f'aria-controls="{COST_TAB_ID}" aria-selected="false" tabindex="-1" '
