@@ -19,6 +19,7 @@
 #   <name>.diff.focus<N>.svg   the same delta, pruned to N hops around what changed
 #   <name>.new.svg     the work-tree diagram, undiffed
 #   <name>.old.svg     the same diagram at the merge-base, undiffed
+#   <name>.new.json    the generator's sidecar AS IT WAS WHEN THIS PICTURE WAS DRAWN
 #   <name>.old.json    the generator's sidecar AS OF THE MERGE-BASE, for the old render
 #   MANIFEST.tsv       name / source / kind / status / diff.puml / svg / focus / new / old
 #
@@ -87,7 +88,7 @@ done < <(
 )
 
 MANIFEST="$OUT_DIR/MANIFEST.tsv"
-printf 'name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\told_details\n' > "$MANIFEST"
+printf 'name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\told_details\tnew_details\n' > "$MANIFEST"
 
 # Render one .puml as-is (no diff markup) to "$2.svg", echoing the basename on success.
 # PlantUML writes beside its input, so the source is copied in under the name we want
@@ -237,6 +238,16 @@ for rel in "${CHANGED[@]}"; do
   # nothing and is dropped as dead — which is most of them, and looked exactly like an
   # inert pane. The base commit has the matching sidecar; carry it along.
   old_details=""
+  # And the work tree's payloads, COPIED rather than pointed at. The ids PlantUML drew
+  # into the picture above are derived from the payloads of the run that produced it, and
+  # a generated payload carries per-run values — a timestamp in a description, a
+  # database-assigned id — so re-running the suite re-ids every arrow whose body moved.
+  # Any later step that runs the acceptance suite again (the trace capture does) leaves
+  # the sidecar a generation ahead of these pictures, and reading it live then hands the
+  # page ids no arrow on it carries: every one of those handles is dropped as dead, and
+  # a `200 ⊕` that opened its JSON body yesterday is plain text today. Pinning the
+  # sidecar to the drawing keeps the two halves of one recording together.
+  new_details=""
   case "$rel" in
     *.genseq.puml)
       if git show "$MERGE_BASE:${rel%.puml}.json" > "$OUT_DIR/$name.old.json" 2>/dev/null \
@@ -245,12 +256,18 @@ for rel in "${CHANGED[@]}"; do
       else
         rm -f "$OUT_DIR/$name.old.json"
       fi
+      if [ -s "$ROOT/${rel%.puml}.json" ] \
+         && cp "$ROOT/${rel%.puml}.json" "$OUT_DIR/$name.new.json"; then
+        new_details="$(basename "$OUT_DIR/$name.new.json")"
+      else
+        rm -f "$OUT_DIR/$name.new.json"
+      fi
       ;;
   esac
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$label" "$rel" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" \
-    "$new_svg" "$old_svg" "$old_details" >> "$MANIFEST"
+    "$new_svg" "$old_svg" "$old_details" "$new_details" >> "$MANIFEST"
   echo "[puml-diff] $rel ($kind, $status) -> $diff_puml" >&2
   count=$((count + 1))
 done

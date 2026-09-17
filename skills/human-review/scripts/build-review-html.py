@@ -3945,6 +3945,33 @@ def _details_carrier(sidecar: Path, root: Path) -> str:
     return f'<script type="application/json" class="genseq-details">{payload}</script>'
 
 
+def genseq_details_at_render(row, assets: Path, root: Path) -> str:
+    """The sidecar as it stood when this diagram was drawn — not as it stands now.
+
+    The handles PlantUML drew into the picture are generation-time ids derived from the
+    payload behind each arrow, and a generated payload carries per-run values: a
+    timestamp inside a description, a database-assigned row id. So every arrow whose body
+    holds one is re-identified by the next run of the suite, while its SQL neighbours —
+    whose statement text does not move — keep the id they had.
+
+    That matters because the picture is rendered once, early, and the report is built
+    later. Anything in between that re-runs the acceptance suite (the trace capture does)
+    advances the sidecar a generation past the pictures. Read live, it then hands the page
+    ids that no arrow in the SVG carries, and `GENSEQ_JS` unwraps each of them as a dead
+    handle: the `200 ⊕` on an HTTP response stops opening its JSON body and becomes plain
+    text, while `select owners ⊕` beside it still works. The failure is silent and reads
+    as "the response handles were never wired".
+
+    So the renderer copies the sidecar next to the SVG it drew from it, and this prefers
+    that copy. The work tree stays the fallback, for a manifest written before the
+    renderer took the snapshot.
+    """
+    name = (row.get("new_details") or "").strip()
+    if name and (assets / name).is_file():
+        return _details_carrier(assets / name, root)
+    return genseq_details(row["source"], root)
+
+
 def genseq_details_at_base(row, assets: Path, root: Path) -> str:
     """The same sidecar as of the base ref, for the diagram's `Old` pane.
 
@@ -5042,7 +5069,7 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") 
             + _source_link(r["source"], root) + '</div>'
             + (f"<p>{note}</p>" if note else "")
             + ("" if bare else _provenance(r["source"], root))
-            + genseq_details(r["source"], root)
+            + genseq_details_at_render(r, manifest.parent, root)
             + genseq_details_at_base(r, manifest.parent, root)
             + body + '</div>'
         )

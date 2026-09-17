@@ -263,7 +263,7 @@ def test_there_is_exactly_one_place_that_emits_the_control():
 
 def test_puml_diff_writes_the_two_extra_columns():
     sh = (HERE / "puml-diff.sh").read_text()
-    assert "\\tnew_svg\\told_svg\\told_details\\n' > \"$MANIFEST\"" in sh
+    assert "\\tnew_svg\\told_svg\\told_details\\tnew_details\\n' > \"$MANIFEST\"" in sh
     assert 'render_plain "$new" "$OUT_DIR/$name.new"' in sh
     assert 'render_plain "$old" "$OUT_DIR/$name.old"' in sh
 
@@ -390,8 +390,64 @@ def test_no_line_of_instructions_is_printed_above_the_picture(tmp_path):
 def test_puml_diff_carries_the_base_sidecar_for_the_old_render():
     sh = (HERE / "puml-diff.sh").read_text()
     assert 'git show "$MERGE_BASE:${rel%.puml}.json"' in sh
-    assert "\\told_details\\n' > \"$MANIFEST\"" in sh
+    assert "\\told_details\\tnew_details\\n' > \"$MANIFEST\"" in sh
     assert '*.genseq.puml)' in sh, "only generated sequence diagrams have a sidecar"
+
+
+def test_puml_diff_pins_the_work_tree_sidecar_to_the_picture_it_drew():
+    """A copy beside the SVG, not a path back to a file that keeps moving."""
+    sh = (HERE / "puml-diff.sh").read_text()
+    assert 'cp "$ROOT/${rel%.puml}.json" "$OUT_DIR/$name.new.json"' in sh
+    assert "\\told_details\\tnew_details\\n' > \"$MANIFEST\"" in sh
+
+
+def _drifted_page(tmp_path, *, pinned: bool):
+    """The shipped failure: the suite ran again after the picture was drawn.
+
+    A generated payload carries per-run values, so a re-run re-ids every arrow whose body
+    holds one — here the `200`, whose JSON body has a fresh timestamp in it — and leaves
+    the SQL arrow beside it alone. The SVG on disk still draws the ids of the run it was
+    rendered from; the work tree's sidecar knows only the newer ones.
+    """
+    def sidecar(path, ids):
+        path.write_text(_json.dumps({"version": 1, "details": {
+            i: {"title": i, "steps": [{"text": "{}"}]} for i in ids}}))
+        return path.name
+
+    svg = tmp_path / "s.svg"
+    svg.write_text('<svg xmlns="http://www.w3.org/2000/svg">' + "".join(
+        f'<a href="genseq://{i}"><text>200</text></a>' for i in ("sql", "drawn")) + "</svg>")
+    sidecar(tmp_path / "s.new.json", ["sql", "drawn"])       # taken when the SVG was drawn
+    sidecar(tmp_path / "t.genseq.json", ["sql", "rerun"])    # the work tree, a run later
+    row = {"name": "Seq", "source": "t.genseq.puml", "kind": "sequence",
+           "status": "modified", "diff_puml": "s.diff.puml", "focus": "",
+           "svg": svg.name, "new_svg": "", "old_svg": "", "old_details": "",
+           "new_details": "s.new.json" if pinned else ""}
+    return build.render_diagrams({"manifest": "M.tsv"}, tmp_path, tmp_path, rows=[row])
+
+
+def test_a_re_run_of_the_suite_does_not_kill_the_handles_on_the_drawn_picture(tmp_path):
+    page = _drifted_page(tmp_path, pinned=True)
+    known = _payload_ids(page)
+    drawn = set(_re.findall(r'href="genseq://([^"]+)"', page))
+    assert drawn == {"sql", "drawn"}
+    assert drawn <= known, f"dead handles: {sorted(drawn - known)}"
+
+
+def test_the_test_above_fails_when_the_sidecar_is_read_live(tmp_path):
+    """Proof the guard bites. Without the snapshot the response handle resolves to
+    nothing and the page unwraps it — `200 ⊕` stops opening its body while the `select`
+    beside it still works, which is exactly how the bug was reported."""
+    page = _drifted_page(tmp_path, pinned=False)
+    dead = set(_re.findall(r'href="genseq://([^"]+)"', page)) - _payload_ids(page)
+    assert dead == {"drawn"}, dead
+
+
+def test_a_manifest_written_before_the_snapshot_still_finds_the_work_tree_sidecar(tmp_path):
+    """The fallback. An old `.human-review/` has no `new_details` column, and the page it
+    built before this change must keep building."""
+    page = _drifted_page(tmp_path, pinned=False)
+    assert "sql" in _payload_ids(page)
 
 
 # ── testpairs: the test beside the sequence its own run recorded ───────────────────
