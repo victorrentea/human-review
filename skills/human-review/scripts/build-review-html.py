@@ -1093,6 +1093,23 @@ button.allbtn { border:1px solid var(--line); background:var(--card); color:var(
 button.allbtn:hover { color:var(--fg); border-color:var(--link); }
 button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:#fff; }
 .panel[hidden] { display:none; }
+/* The moment before the strip runs. Every panel is in the document and *visible* while
+   the earlier scripts measure it -- TABS_JS says why: getBBox() inside a display:none
+   subtree returns zeros -- so for the first few hundred milliseconds of every load the
+   document is all twelve panels stacked end to end, and the browser paints it. Measured
+   on the demo page: frames at 41, 90, 174, 206, 291 and 340ms, a document 37,000px tall
+   with twelve panels on screen, before the strip collapses it to one at ~490ms. On a
+   first load it reads as a page still arriving. On the reload the watcher fires after a
+   rebuild it is a flicker under a reader's eyes: the report they were reading, then a
+   pile of every other tab's content under it, then the report again.
+
+   `visibility:hidden` and not `display:none`, because that is the one way to keep a box
+   out of the paint while leaving it in layout -- which is exactly the bargain the
+   measuring scripts need. The class goes on in the head and comes off after TABS_JS has
+   chosen a tab, so nothing here survives into the page a reader interacts with.
+   Screen only: `@media print` deliberately shows every panel, and a print that raced
+   the load would otherwise come out blank. */
+@media screen { html.tabs-pending .panel { visibility:hidden; } }
 /* A hash lands the panel top flush against the viewport, where the sticky strip sits
    on top of it and eats the first line. Push the scroll target down past the strip.
    The push is the strip's OWN measured height (TABS_JS keeps `--strip-h` in step with
@@ -2512,6 +2529,35 @@ TABS_JS = """<script>
   }
   select(start, false, Boolean(wanted));
 })();
+</script>"""
+
+
+# Emitted in the <head>, which is the only place early enough: the first frame the browser
+# paints is already past the first panel, and a class added at the foot of the body would
+# be a class added after the flicker it exists to prevent. The hold is put on by script
+# and not written into the markup, so a reader with no JavaScript -- and the page saved to
+# disk and opened from a zip -- gets the document it always got, every panel on screen,
+# rather than an invisible one nothing will ever reveal.
+PAINT_HOLD_JS = """<script>
+(function () {
+  var h = document.documentElement;
+  h.classList.add('tabs-pending');
+  // Insurance, and the reason the hold is safe to take at all: whatever happens to the
+  // scripts at the foot of the page -- a throw in one of them, a truncated file, a build
+  // with no tab layout at all -- `load` still fires, and the panels come back. The page
+  // can lose its tab strip; it must never lose its content.
+  addEventListener('load', function () { h.classList.remove('tabs-pending'); });
+})();
+</script>"""
+
+
+# The release, and it is its own script rather than the last line of TABS_JS on purpose:
+# TABS_JS returns early on a page built without a tab strip, and a throw anywhere inside
+# it would strand the hold. A separate tag runs either way, and by the time it does the
+# strip has hidden eleven of the twelve panels, so the first frame the reader ever sees is
+# the one tab they asked for.
+PAINT_RELEASE_JS = """<script>
+document.documentElement.classList.remove('tabs-pending');
 </script>"""
 
 XREF_CSS = """
@@ -8872,6 +8918,7 @@ def main(argv=None) -> int:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(spec.get('title', 'Review guide'))}</title>
 <link rel="icon" type="image/svg+xml" href="{FAVICON}">
+{PAINT_HOLD_JS}
 <style>{CSS}{extra_css.rstrip()}
 {LATE_CSS}{XREF_CSS}</style></head>
 <body><div class="wrap">
@@ -8890,7 +8937,7 @@ def main(argv=None) -> int:
 {DGM_VIEWS_JS}
 {XREF_JS}
 {EDITOR_JS}
-{FRAME_JS}\n{TRACE_JS}\n{SEQLINK_JS}\n{SEQFOLD_JS}\n{HSCROLL_JS}\n{TABS_JS}
+{FRAME_JS}\n{TRACE_JS}\n{SEQLINK_JS}\n{SEQFOLD_JS}\n{HSCROLL_JS}\n{TABS_JS}\n{PAINT_RELEASE_JS}
 {TIP_JS}
 </body></html>
 """

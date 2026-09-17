@@ -1210,6 +1210,39 @@ def test_the_capacity_rules_are_the_last_thing_in_the_stylesheet(tmp_path):
         "the spacer existed to push `show all` to the far end; the button left the strip"
 
 
+def test_the_stacked_panels_are_never_painted_on_the_way_in(tmp_path):
+    """Every panel is visible while the earlier scripts measure it — getBBox() inside a
+    display:none subtree returns zeros — so the document spends the first few hundred
+    milliseconds of every load as all twelve panels stacked end to end, and the browser
+    paints that. Measured on the demo page: six frames, 37,000px tall, before the strip
+    collapsed it at ~490ms. Harmless-looking on a first load, and a flicker under the
+    reader's eyes on the reload the watcher fires after a rebuild.
+
+    The hold keeps the panels out of the paint without taking them out of layout, which is
+    the one thing the measuring scripts cannot lose."""
+    page, _ = _build(tmp_path, BARE)
+    css = page[page.index("<style>"):page.index("</style>")]
+    rule = [l for l in css.splitlines() if "tabs-pending" in l]
+    assert rule, "nothing holds the stacked panels out of the first paint"
+    assert all("visibility:hidden" in l for l in rule), rule
+    assert not any("display:none" in l for l in rule), \
+        "display:none costs every sequence diagram its click targets: getBBox() is zeros"
+    assert all(l.lstrip().startswith("@media screen") for l in rule), \
+        "print shows every panel; a print racing the load would come out blank"
+
+    head = page[:page.index("</head>")]
+    assert "classList.add('tabs-pending')" in head, \
+        "the hold has to be on before the first frame, which is already past a panel"
+    # And off again on the far side of the strip, in its own tag: TABS_JS returns early on
+    # a page with no strip, and a throw inside it would strand the hold.
+    tail = page[page.index("</head>"):]
+    assert tail.count("classList.remove('tabs-pending')") >= 1
+    assert page.rindex("classList.remove('tabs-pending')") > page.rindex("var strip = document.querySelector('.tabstrip')")
+    # The load event is the net under all of it: whatever happens to the scripts at the
+    # foot of the page, the content comes back.
+    assert "addEventListener('load', function () { h.classList.remove('tabs-pending'); })" in page
+
+
 def test_the_panels_can_be_deep_linked_past_the_sticky_strip(tmp_path):
     page, _ = _build(tmp_path, BARE)
     assert "scroll-margin-top" in page
