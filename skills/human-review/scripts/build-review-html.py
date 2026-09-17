@@ -953,6 +953,32 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
     steps out of the way — or down, where "Offline" is the whole truth there is. */
 .appenv .appenv-state { font-weight:600; }
 .appenv .appenv-state[data-state="down"] { color:var(--muted); }
+/* "Starting…" can stand there for a whole docker build, and a line of text that never
+    moves is how a page says it has hung. The spinner is the row's only evidence that
+    something is still happening — the last line the command printed is in the tooltip,
+    which you have to know to go looking for.
+
+    A `::before` and not an element: the pill's text is written with textContent, which
+    would wipe any child out from under the script on the next status line. A ring drawn
+    in CSS and not a .gif: it inherits the pill's own colours, so it themes with the page
+    in dark mode, stays sharp on a retina screen, and keeps this report one file that
+    works off disk with no asset beside it.
+
+    Invisible for its first 300ms, because `unknown` is also the state of the probe on
+    every page load — a fetch that answers in milliseconds — and a spinner that flashes
+    once per load is the page twitching, not the page working. */
+@keyframes appenv-spin { to { transform:rotate(360deg); } }
+@keyframes appenv-reveal { to { opacity:1; } }
+.appenv .appenv-state[data-state="unknown"]::before {
+    content:""; display:inline-block; width:.8em; height:.8em; margin-right:.4em;
+    vertical-align:-.1em; box-sizing:border-box; border-radius:50%;
+    border:2px solid var(--line); border-top-color:var(--link); opacity:0;
+    animation:appenv-spin .7s linear infinite, appenv-reveal .12s linear .3s forwards; }
+/* Slowed rather than stopped: it is the only thing on the page saying the wait is not a
+    hang, and a still ring says the opposite of what it is there for. */
+@media (prefers-reduced-motion: reduce) {
+  .appenv .appenv-state[data-state="unknown"]::before { animation-duration:2.6s, .12s; }
+}
 /* A link the running app can answer looks like the caption links around it; one that has
     nowhere to point yet must not look clickable, because it is not. */
 .transcript a[data-app].dead { color:var(--muted); text-decoration:none; cursor:default; }
