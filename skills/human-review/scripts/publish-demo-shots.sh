@@ -183,6 +183,10 @@ region = page[start:end]
 cards = dict(re.findall(r'(?s)<!-- gallery:([a-z0-9-]+) -->(.*?)<!-- /gallery -->', region))
 
 subtitle = manifest.get("subtitle") or ""
+# The card is itself an <a>, and an <a> inside an <a> does not nest: the parser closes
+# the card at the inner link and re-parents the rest, which puts the stats outside the
+# card they belong to. The subtitle keeps its text and loses its links.
+subtitle = re.sub(r"</?a\b[^>]*>", "", subtitle)
 tabs = manifest.get("tabs") or []
 schemes = manifest.get("schemes") or ["light"]
 title = html.escape(manifest.get("title") or slug)
