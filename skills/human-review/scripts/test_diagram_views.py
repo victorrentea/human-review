@@ -1069,6 +1069,9 @@ def test_the_hover_is_where_the_two_ways_back_are_told_apart(tmp_path):
     undo = re.search(r'data-action="drawio-undo:conceptual" data-tip="([^"]*)"', out).group(1)
     over = re.search(r'data-action="drawio-redraw:conceptual" data-tip="([^"]*)"', out).group(1)
     assert REVERT["short"] in undo and "stash" in undo
+    btn = re.search(r'data-action="drawio-undo:conceptual"[^>]*'
+                    r'data-tip-served="([^"]*)"', out).group(1)
+    assert REVERT["short"] in btn, "the served hover is the one most readers ever see"
     assert REDRAW["base"] not in undo, "the one way back that names no base ref"
     assert REDRAW["base"] in over and "red" in over
 

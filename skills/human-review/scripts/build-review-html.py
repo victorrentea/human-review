@@ -4353,9 +4353,15 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
            "banked, not binned: `git stash pop` brings it back. Press it again to step "
            "back another drawing.")
     fold = f"undo-{name or 'diagram'}"
-    return (_run_or_read(fold, act, tip,
-                         "Runs it here, then reloads with the committed drawing back",
-                         "Putting the committed drawing back…",
+    # The served hover names the target too. It is the one most readers ever see — the
+    # probe swaps it in wherever the button can actually run — and "reloads with the
+    # committed drawing back" told them the least at the moment they most needed to know
+    # *which* drawing they were about to land on.
+    served = ("Runs it here and reloads, with "
+              + (f"{where} — {subject} — " if where else "the previous drawing ")
+              + "back. Your own edits go to the git stash.")
+    return (_run_or_read(fold, act, tip, served,
+                         "Putting the previous drawing back…",
                          run_label="undo your edits", read_label="undo your edits"),
             _cmdfold(fold, line))
 
