@@ -263,9 +263,28 @@ an iteration is one command:
 
 ```sh
 ${SKILL}/scripts/refresh-report.py                  # the page changed: rebuild, re-serve
+${SKILL}/scripts/refresh-report.py --steps static   # …and the producers that need nothing up
 ${SKILL}/scripts/refresh-report.py --steps cheap    # the branch changed: re-derive the fast evidence too
 ${SKILL}/scripts/refresh-report.py --steps all      # …including the film, the city and the traced suites
 ```
+
+**On the served page, the reader can do the middle one themselves.** The masthead carries a
+**Rerun** beside the `served` badge — `refresh-report.py --steps static`, which is the
+producers that need nothing up: the diagram deltas, the container view, the complexity
+increment, the REST contract and its second opinions, the logging scan, code owners and the
+test manifest. It rebuilds and the tab reloads itself on the same tab, keeping its place.
+It is deliberately *not* `--steps cheap`: that one keeps `traces`, whose configured commands
+are the project's own e2e suite. And it is deliberately not the model's half or the film —
+the button says so on its hover, because those are the two a reader is right to worry about.
+
+The button exists only where the page is served; read off disk or out of the zip there is
+nothing behind it, so there is nothing there. A rerun that fails puts the recorder's last
+lines in a red band under the header rather than leaving the reader guessing, and only one
+runs at a time — a second click joins the first.
+
+That is the loop for "the branch moved, catch the page up", and it is the reason to prefer it
+over a terminal: the three commands are one command here, and the one it runs is the one that
+cannot cost anything.
 
 **Never hand-run the build, the server or `run-steps.py` to satisfy a request.** Edit
 `content.json` if the request is about its words, then run the program. That is the point of

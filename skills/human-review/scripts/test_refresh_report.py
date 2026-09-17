@@ -99,6 +99,28 @@ def test_cheap_leaves_out_the_producers_that_drive_a_browser_or_a_suite(tmp_path
     assert set(refresh.HEAVY_STEPS) <= {s[0] for s in steps.STEPS}
 
 
+def test_static_is_the_set_a_button_may_fire_and_leaves_out_the_suites(tmp_path):
+    """`--steps static` is what the page's own Rerun asks for, so the bar is higher than
+    `cheap`: nothing in it may need a served app, a browser, a film or a test suite.
+
+    `cheap` is not that set, and the gap is the point. It skips the four heavy ones and
+    keeps `traces`, whose configured `commands` are the project's own e2e suite — in
+    petclinic a cucumber run against :4200. A reader who edited a test body and pressed a
+    button asked for the page to catch up, not for a browser suite to be run at them."""
+    argv = refresh.steps_argv("static")
+    assert argv[0] == "--only"
+    named = argv[1].split(",")
+    assert named == list(refresh.STATIC_STEPS)
+    # Every name is a step that exists — a typo would silently drop a producer.
+    steps = _load("run-steps")
+    assert set(named) <= {s[0] for s in steps.STEPS}
+    # And none of them is one of the four that need something up, nor the suite harvester.
+    assert not (set(named) & set(refresh.HEAVY_STEPS))
+    assert "traces" not in named
+    # The manifest behind the Tests tab is in, because that is the case this exists for.
+    assert "tests" in named
+
+
 def test_the_producers_run_before_the_build_and_the_build_before_the_server(tmp_path):
     d = _review(tmp_path)
     cmds = refresh.plan(d, "cheap", "origin/main", True, False, None)

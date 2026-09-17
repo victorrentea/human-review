@@ -32,6 +32,12 @@ rendered from. So the allowlist is not a list somebody has to remember to mainta
 the build's own record of what this page is allowed to ask for, and a page from another
 build, a page out of the zip, or a page on GitHub Pages can ask for nothing at all.
 
+`/__rerun__` is the one exception to that indirection, and it proves the rule rather than
+bending it. It takes no id, because the command is not the page's to name: it is
+`refresh-report.py` with the producers that need nothing up, which is what the **Rerun** in
+the masthead asks for. A page read off disk has no button there at all — the probe below
+says whether this server can honour one, and the button rises only when it does.
+
 That mortality is not in tension with running commands, because every action here is a
 batch: `start-docker.sh up` exits once the stack answers, the drawio rerun exits once the
 picture is redrawn. Nothing here supervises a daemon — the environment reaps itself.
@@ -50,6 +56,7 @@ OPEN = "/__open__"
 OPEN_DIFF = "/__open_diff__"
 RUN = "/__run__"
 RUN_STATUS = "/__run_status__"
+RERUN = "/__rerun__"
 WATCH = "/__watch__"
 
 # The page asks "is there a review server here?" and a *wrong* yes is expensive: the demo
@@ -67,6 +74,17 @@ MARKER_KEY = "humanReview"
 # which is not a tidiness preference — it is the property that makes "a page out of the
 # zip can ask for nothing" true by construction rather than by remembering to exclude it.
 ACTIONS_FILE = ".actions.json"
+
+# The refresh program, beside us in the skill. The header's Rerun is the one command this
+# server runs that the build did NOT declare, and deliberately so: the manifest is the
+# build's record of what *this page* may ask for, while "rebuild yourself from the
+# repository as it is now" is a property of being served at all. A page out of the zip
+# cannot ask for it because there is nobody there to ask.
+REFRESH = Path(__file__).resolve().parent / "refresh-report.py"
+
+# The id that rerun's Run wears in RUNS, so a second click can find the first one. Dunder
+# so it can never collide with an action name out of a manifest.
+RERUN_ACTION = "__rerun__"
 
 # A ref, and nothing that could be a flag or a second argument. `git show` is invoked
 # without a shell, so this is not about quoting — it is about `--upload-pack=…` and
@@ -383,7 +401,17 @@ class Watcher:
 
     The first fingerprint is published immediately, on purpose: it is the baseline the
     page is served against, and a stamp that arrived empty and filled in half a second
-    later would spend that half-second looking like a change."""
+    later would spend that half-second looking like a change.
+
+    Quiet is not enough while *we* are the ones rebuilding. `refresh-report.py` runs eight
+    producers and a build: between two of them the tree holds still for whole seconds
+    while a program computes, and six tenths of a second of stillness is all this asks for
+    — so a rerun would reload the reader's tab several times on its way through, each time
+    into a directory one step into being rewritten, and each time out from under the
+    button they pressed. `hold()` is how the rerun says "I am not finished"; the stamp is
+    published at the first quiet tick after it is released, which is the single reload the
+    reader wanted. Held per-caller, counted, because nothing here is allowed to assume
+    there is only ever one."""
 
     def __init__(self, root, quiet=0.6):
         self.root = Path(root)
@@ -391,11 +419,22 @@ class Watcher:
         self._lock = threading.Lock()
         self._stamp = self._seen = fingerprint(self.root)
         self._since = time.time()
+        self._holds = 0
 
     @property
     def stamp(self) -> str:
         with self._lock:
             return self._stamp
+
+    def hold(self) -> None:
+        with self._lock:
+            self._holds += 1
+
+    def release(self) -> None:
+        # Never below zero: a release that outnumbers its hold must not leave the watcher
+        # permanently unable to publish, which is what a negative counter would do.
+        with self._lock:
+            self._holds = max(0, self._holds - 1)
 
     def tick(self, now=None) -> str:
         now = time.time() if now is None else now
@@ -403,7 +442,8 @@ class Watcher:
         with self._lock:
             if found != self._seen:
                 self._seen, self._since = found, now
-            elif found != self._stamp and now - self._since >= self.quiet:
+            elif (found != self._stamp and not self._holds
+                  and now - self._since >= self.quiet):
                 self._stamp = found
             return self._stamp
 
@@ -533,7 +573,7 @@ class Run:
     KEEP = 200
     DEFAULT_TIMEOUT = 40 * 60
 
-    def __init__(self, action_id, entry, argv, cwd):
+    def __init__(self, action_id, entry, argv, cwd, on_done=None):
         self.id = secrets.token_urlsafe(9)
         self.action = action_id
         self.state = "running"
@@ -541,6 +581,7 @@ class Run:
         self.result = {}
         self.reload = bool(entry.get("reload"))
         self._scrape = entry.get("scrape")
+        self._on_done = on_done
         try:
             # A ceiling, not a schedule. Nothing here is meant to run for forty minutes;
             # what it stops is a command that wedged on a prompt nobody can answer,
@@ -584,6 +625,14 @@ class Run:
                 # a process killed by a signal reports a plausible-looking code.
                 if self.state == "running":
                     self.state = "done" if code == 0 else "failed"
+            # After the state is final and outside the lock: whatever this releases (the
+            # watcher's hold, for a rerun) must be released on every path out, including
+            # the one where the command died, and must not be able to deadlock doing it.
+            if self._on_done:
+                try:
+                    self._on_done(self)
+                except Exception:
+                    pass
 
     def _kill(self):
         with self._lock:
@@ -632,7 +681,10 @@ def start_run(action_id, params, served_root):
     cwd = entry.get("cwd") or (ROOT if ROOT else Path(served_root))
     if not Path(cwd).is_dir():
         return None, f"{cwd} is not a directory on this machine", 500
-    run = Run(action_id, entry, argv, cwd)
+    return remember(Run(action_id, entry, argv, cwd)), None, 200
+
+
+def remember(run: Run) -> Run:
     with RUNS_LOCK:
         RUNS[run.id] = run
         while len(RUNS) > RUNS_KEEP:
@@ -640,7 +692,66 @@ def start_run(action_id, params, served_root):
             if old.state == "running":       # never evict one still going
                 RUNS[old.id] = old
                 break
-    return run, None, 200
+    return run
+
+
+def rerun_plan(served_root):
+    """`(argv, cwd)` for the header's Rerun, or None when this page cannot have one.
+
+    Both conditions are about honesty rather than safety — the command is ours, not the
+    page's:
+
+    - **`refresh-report.py` has to be beside us.** A directory somebody copied out of a
+      run and served by hand has no skill behind it to rebuild it with.
+    - **the review directory has to sit inside the repository.** `run-steps.py` writes to
+      a *relative* `.human-review/assets` and reads `human-review.json` out of the working
+      directory, so the producers only land where the page is reading from when the rerun
+      is launched from the repository root. Anywhere else it would rebuild the page next
+      to evidence it never refreshed — the one outcome nobody can tell from success.
+
+    `--steps static` and not `cheap`: the producers that need nothing up (see
+    `refresh-report.STATIC_STEPS`). Nothing turns the model's half on — `refresh-report.py`
+    builds `--no-model` unless asked for `--allow-model`, and this never asks — so a click
+    cannot buy a privacy verdict, and it refuses outright to build a page whose findings,
+    requirements matrix or test catalogue are missing.
+    """
+    if ROOT is None or not REFRESH.is_file():
+        return None
+    try:
+        rel = Path(served_root).resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        return None
+    return ([sys.executable, str(REFRESH), "--dir", str(rel),
+             "--steps", "static", "--no-serve"], ROOT)
+
+
+def start_rerun(served_root):
+    """`(Run, problem, status)` for `POST /__rerun__`.
+
+    One rerun at a time, and a second click joins the first rather than being refused:
+    two `refresh-report.py` runs over one directory would have the second build reading
+    assets the first is halfway through rewriting. The lock is the join — there is no
+    second process to serialise — and it holds across tabs, because RUNS is per server,
+    not per page."""
+    plan = rerun_plan(served_root)
+    if plan is None:
+        return None, "this page has no refresh program behind it", 404
+    with RUNS_LOCK:
+        for run in reversed(RUNS.values()):
+            if run.action == RERUN_ACTION and run.state == "running":
+                return run, None, 200
+    argv, cwd = plan
+    if WATCHER:
+        WATCHER.hold()
+    try:
+        run = Run(RERUN_ACTION, {"reload": True}, argv, cwd,
+                  on_done=lambda _r: WATCHER and WATCHER.release())
+    except Exception:
+        # A hold whose run never started is a watcher that never reloads anything again.
+        if WATCHER:
+            WATCHER.release()
+        raise
+    return remember(run), None, 200
 
 
 def runs_in_flight() -> bool:
@@ -734,7 +845,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         Handler.last_seen = time.time()
-        if self.path.split("?")[0] != RUN:
+        route = self.path.split("?")[0]
+        if route not in (RUN, RERUN):
             self.reply_text("no", 404)
             return
         problem = refuse_reason(self.headers)
@@ -751,16 +863,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if Handler.token and self.headers.get("X-Human-Review-Token") != Handler.token:
             self.reply_text("this page was not served by this server", 403)
             return
+        # Drained either way, rerun included: an unread body on a keep-alive connection is
+        # the next request as far as the parser is concerned.
         try:
             length = int(self.headers.get("Content-Length") or 0)
-            body = json.loads(self.rfile.read(length) or b"{}")
-            action_id, params = body["id"], body.get("params") or {}
-            if not isinstance(action_id, str) or not isinstance(params, dict):
-                raise TypeError
+            raw = self.rfile.read(length) or b"{}"
         except Exception:
-            self.reply_text("expected {id, params}", 400)
+            self.reply_text("could not read the request body", 400)
             return
-        run, problem, status = start_run(action_id, params, Handler.root)
+        if route == RERUN:
+            # No id and no parameters: there is exactly one thing this asks for, and the
+            # command behind it is the server's own, not something the page named.
+            run, problem, status = start_rerun(Handler.root)
+        else:
+            try:
+                body = json.loads(raw)
+                action_id, params = body["id"], body.get("params") or {}
+                if not isinstance(action_id, str) or not isinstance(params, dict):
+                    raise TypeError
+            except Exception:
+                self.reply_text("expected {id, params}", 400)
+                return
+            run, problem, status = start_run(action_id, params, Handler.root)
         if problem:
             self.reply_text(problem, status)
             return
@@ -813,6 +937,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              # poll — a build that stopped watching takes the reload
                              # away from a tab that is still open, same as the actions.
                              "watch": WATCHER.stamp if WATCHER else "",
+                             # Whether the header's Rerun has anything behind it here.
+                             # Answered rather than assumed, for the reason every other
+                             # control on this page is: a button drawn live that turns
+                             # out not to apply has already been clicked by then.
+                             "rerun": bool(rerun_plan(Handler.root)),
                              "actions": {name: {"params": e.get("params") or {},
                                                 "reload": bool(e.get("reload")),
                                                 "label": e.get("label") or ""}

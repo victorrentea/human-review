@@ -133,6 +133,27 @@ Tabs are declared in the content file, so the layout is the guide's to choose: a
 nothing to show is dropped and named, a changed diagram no tab claimed warns at build time,
 and `show all` (or printing) reveals every panel at once so `⌘F` searches the lot.
 
+### Rerun, in the header
+
+The page has two halves and only one of them is reproducible. The findings, the prose, the
+requirements↔tests matrix and the per-test catalogue are written once, by a model, when a
+human asks — a second pass over the same diff does not confirm the first, it replaces it at
+full price. Everything else is the output of a program.
+
+So on the served copy the masthead carries a **Rerun** beside the `served` badge: it runs
+`refresh-report.py --steps static` — the diagram deltas, the container view, the complexity
+increment, the REST contract and its two second opinions, the logging scan, code owners and
+the test manifest — rebuilds the page, and reloads the tab you are on, in place, keeping its
+scroll. Not the model's half. Not the feature film, which needs the application up and is a
+decision, not a refresh. Not the traced suites either, whose `commands` are the project's own
+e2e run.
+
+It appears only where there is a server behind the page: read off disk, out of the zip or off
+GitHub Pages there is nothing to run it, so there is no button. One rerun goes at a time (a
+second click joins the first), the button carries a spinner while it works, and a rebuild
+that failed puts the program's last lines in a red band under the header instead of leaving
+you to go and look.
+
 ## What it needs
 
 The skill drives tools that belong to your project, and degrades rather than fails when

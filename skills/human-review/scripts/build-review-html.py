@@ -232,6 +232,38 @@ a.chip-link { text-decoration:none; }
 a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
 button.chip-mode { font:inherit; font-size:.82rem; cursor:copy; }
 .chip-served { color:#2e7d32; border-color:#2e7d32; cursor:default; }
+/* Rerun: re-derive what a program can re-derive and rebuild the page. A chip like its
+   neighbour rather than a call to action, because it is furniture of the served copy and
+   not a verdict about the branch — and shaped like the mode badge beside it so the two
+   read as one pair of facts about *this copy of the page*, not as a control competing
+   with the score. Emitted hidden; the probe raises it. */
+button.chip-rerun { font:inherit; font-size:.82rem; cursor:pointer; color:var(--fg); }
+button.chip-rerun:hover:not(:disabled) { border-color:var(--link); background:var(--accent-soft); }
+button.chip-rerun:disabled { cursor:progress; color:var(--muted); }
+/* The spinner is on the chip, not beside it: a second element in the title row would
+   reflow the masthead the instant the button is pressed. */
+button.chip-rerun.running::before { content:""; display:inline-block; width:.62em;
+            height:.62em; margin-right:.42rem; vertical-align:baseline;
+            border:2px solid currentColor; border-right-color:transparent;
+            border-radius:50%; animation:hrspin .7s linear infinite; }
+@keyframes hrspin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) {
+  button.chip-rerun.running::before { animation:none; } }
+/* Only ever on screen after a rebuild failed, which is why it may be a band at all: it
+   costs the normal read nothing, and the lines a producer printed on its way out are the
+   whole of the fix. Dismissible, because the reader is the one who decides it is read. */
+.rerunfail { margin:.8rem 0 0; border:1px solid #c62828; border-radius:8px;
+            background:rgba(198,40,40,.07); padding:.55rem .8rem; }
+.rerunfail-head { display:flex; align-items:baseline; gap:.5rem; font-size:.88rem;
+            color:#c62828; }
+@media (prefers-color-scheme: dark) {
+  .rerunfail-head { color:#f0757f; } }
+.rerunfail-x { margin-left:auto; background:none; border:0; color:var(--muted);
+            font:inherit; font-size:1rem; line-height:1; cursor:pointer; padding:0 .2rem; }
+.rerunfail-log { margin:.45rem 0 0; max-height:11rem; overflow:auto; white-space:pre-wrap;
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.78rem;
+            line-height:1.55; color:var(--fg); }
+.rerunfail-log:empty { display:none; }
 table.costtab { border-collapse:collapse; width:100%; font-size:.85rem; }
 table.costtab caption { caption-side:top; text-align:left; color:var(--muted);
              font-size:.8rem; line-height:1.5; margin:0 0 .55rem; }
@@ -820,6 +852,13 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
    with the pill, so the title keeps the whole left and the two facts read as one. */
 .titlerow .chip-mode { flex:0 0 auto; margin-left:auto; align-self:center; }
 .titlerow .chip-mode + .titlescore { margin-left:0; }
+/* Rerun travels with the mode badge — the two are both facts about this copy of the page
+   — so the badge keeps the `margin-left:auto` that pushes the pair right and this one
+   only needs to stop stretching. `[hidden]` is spelled out because `display:inline-flex`
+   further down would otherwise beat the attribute. */
+.titlerow .chip-rerun { flex:0 0 auto; align-self:center; }
+.titlerow .chip-rerun[hidden] { display:none; }
+.titlerow .chip-rerun + .titlescore { margin-left:0; }
 .masthead .scopebar { margin:.3rem 0 .05rem; }
 /* Inside the masthead the strip is no longer its own sticky, full-bleed band: the block
    around it does the bleeding, the pinning and the edge. */
@@ -1579,6 +1618,26 @@ window.HR = (function () {
     }).then(function (first) { return poll(first, onprogress); });
   }
 
+  // The masthead's Rerun. Same request braces as `run` — POST, a Content-Type that
+  // forces a preflight nobody answers, the per-process token — and the same poller. What
+  // it does not send is an id, because there is nothing for the page to name: the command
+  // is the server's own refresh program. So this is gated on `caps.rerun`, which the
+  // probe answers, and not on a manifest entry a build could forget to write.
+  function rerun(onprogress) {
+    if (!caps || !caps.rerun) {
+      return Promise.reject(new Error('this page cannot rebuild itself here'));
+    }
+    return fetch('/__rerun__', {
+      method: 'POST', cache: 'no-store',
+      headers: {'Content-Type': 'application/json',
+                'X-Human-Review-Token': (caps && caps.token) || ''},
+      body: '{}'
+    }).then(function (r) {
+      if (r.ok) return r.json();
+      return r.text().then(function (t) { throw new Error(t || 'the review server refused'); });
+    }).then(function (first) { return poll(first, onprogress); });
+  }
+
   // The last line the command has printed, for a control with room for one line.
   function tail(snap) {
     var lines = (snap.output || '').split('\\n');
@@ -1663,7 +1722,146 @@ window.HR = (function () {
     });
   });
 
-  return {ready: ready, can: can, onready: onready, run: run, tail: tail};
+  return {ready: ready, can: can, onready: onready, run: run, rerun: rerun, tail: tail};
+})();
+</script>"""
+
+
+# The masthead's Rerun, and the only place a failed one is reported.
+#
+# Not to be confused with `rerun_html` further down, which is the offer under a *diagram*
+# — one picture, re-rendered, from a command the build declared in the manifest. This one
+# is the whole page, from a command the build never sees: it belongs to the server.
+#
+# Emitted hidden and raised by the probe, like every other control here. A static copy has
+# no process behind it, and a button that copied a shell line instead would be handing back
+# the terminal round trip this exists to remove.
+#
+# The tooltip names what the button will NOT do, because that is the part a reader cannot
+# see and the part they are right to worry about: the findings on this page are a judgement
+# bought once, and the film costs minutes and a running application.
+RERUN_CHIP = ('<button type="button" class="chip chip-rerun" id="hr-rerun" hidden '
+              'aria-disabled="true" data-tip="Re-derive the evidence and rebuild this '
+              'page: diagrams, complexity, the REST contract, the logging scan, the test '
+              'manifest. Not the findings, and not the film.">Rerun</button>')
+
+# Under the masthead rather than inside it: the header is a block that never scrolls, and
+# a log tail pinned to the top of the viewport for the rest of the read is a worse artifact
+# than the failure it reports. Hidden until there is something to report, so the normal
+# read never pays for it, and dismissible, because the reader decides when it is read.
+RERUN_FAIL = ('<div class="rerunfail" id="hr-rerun-fail" hidden role="alert">'
+              '<div class="rerunfail-head"><b>Rerun failed</b>'
+              '<span class="rerunfail-why"></span>'
+              '<button type="button" class="rerunfail-x" '
+              'aria-label="Dismiss this report" data-tip="Dismiss">✕</button></div>'
+              '<pre class="rerunfail-log"></pre></div>')
+
+
+RERUN_JS = """<script>
+// The masthead's Rerun: re-derive the evidence a program can re-derive, and rebuild this
+// page around it.
+//
+// It is the button for the loop this page is actually read in. A reviewer edits a test
+// body, fixes a finding, adds a column — and until now catching the page up meant going
+// back to the terminal the page was built from and remembering which of three commands
+// refreshes what. Two of those three are wrong in a way nothing tells you: run the model's
+// half again and the findings you are looking at are replaced by a different, equally
+// fluent set at full price; run `--steps all` and you have just re-recorded the film.
+//
+// So this button asks for exactly one thing — `refresh-report.py --steps static` — and the
+// server, not the page, decides what that means. The findings, the requirements matrix and
+// the test catalogue are never touched: they are a judgement, produced once, when a human
+// asks. Neither is the film: it is minutes long, it needs the application up, and it is
+// the one artifact on this page whose re-recording is a decision.
+//
+// Hidden unless the probe says this server can honour it, like every other control here.
+// A static copy has no process behind it to rebuild anything, and a button that copied a
+// shell line instead would be offering the terminal round-trip this exists to remove.
+(function () {
+  var btn = document.getElementById('hr-rerun');
+  if (!btn) return;
+  var fail = document.getElementById('hr-rerun-fail');
+  var face = btn.textContent;
+  var idle = btn.getAttribute('data-tip') || '';
+  // Per page, because a reader keeps several of these open and each is a different branch.
+  var KEY = 'hr-rerun-place:' + location.pathname;
+
+  // Where the reader was, restored after the reload the rerun ends in. Written when the
+  // button is pressed rather than before the reload, because the reload may not be ours:
+  // the server watches the directory it serves, so a tab can be reloaded by the build
+  // finishing. Both routes then land on the same saved place.
+  function remember() {
+    try {
+      sessionStorage.setItem(KEY, JSON.stringify({y: window.pageYOffset}));
+    } catch (e) {}
+  }
+
+  window.addEventListener('load', function () {
+    var saved = null;
+    try {
+      saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+      sessionStorage.removeItem(KEY);
+    } catch (e) {}
+    // Consumed, always: a place restored twice is a page that will not let the reader
+    // scroll away from where they once pressed a button.
+    if (saved && typeof saved.y === 'number' && saved.y > 0) {
+      window.scrollTo(0, saved.y);
+    }
+  });
+
+  function stop(problem, snap) {
+    btn.disabled = false;
+    btn.classList.remove('running');
+    btn.textContent = face;
+    btn.setAttribute('data-tip', idle);
+    if (!fail) return;
+    // The last lines, not the whole log: a build prints hundreds and the answer is at the
+    // end of them. Shown at all because "it failed" is not actionable and this is — the
+    // sentence a producer printed on its way out is usually the whole fix.
+    var log = ((snap && snap.output) || '').split('\\n');
+    while (log.length && !log[log.length - 1].trim()) log.pop();
+    fail.querySelector('.rerunfail-why').textContent =
+        problem + (snap && snap.exit != null ? ' (exit ' + snap.exit + ')' : '');
+    fail.querySelector('.rerunfail-log').textContent = log.slice(-14).join('\\n');
+    fail.hidden = false;
+  }
+
+  if (fail) {
+    fail.querySelector('.rerunfail-x').addEventListener('click', function () {
+      fail.hidden = true;
+    });
+  }
+
+  btn.addEventListener('click', function () {
+    if (btn.disabled) return;
+    if (fail) fail.hidden = true;
+    btn.disabled = true;
+    btn.classList.add('running');
+    btn.textContent = 'Running\\u2026';
+    remember();
+    window.HR.rerun(function (snap) {
+      // One line, in the hover: the button has room for a word and the reader who wants
+      // to know which producer it is on is the reader already pointing at it.
+      var line = window.HR.tail(snap);
+      btn.setAttribute('data-tip', line || 'Rebuilding this page\\u2026');
+    }).then(function (snap) {
+      if (snap.state === 'done') {
+        // The server holds its reload-watcher for the length of the rerun, so this is the
+        // single reload of the whole run rather than one per producer.
+        location.reload();
+        return;
+      }
+      stop('the rebuild did not finish', snap);
+    }).catch(function (e) {
+      stop(e.message || 'the review server could not be reached', null);
+    });
+  });
+
+  window.HR.onready(function (caps) {
+    if (!caps || !caps.rerun) return;
+    btn.hidden = false;
+    btn.removeAttribute('aria-disabled');
+  });
 })();
 </script>"""
 
@@ -8745,7 +8943,7 @@ def main(argv=None) -> int:
 
     # Only a tabbed page grows a masthead; the plain single-column guide keeps the
     # heading it always had.
-    strip_html = allbtn_html = mode_html = ""
+    strip_html = allbtn_html = mode_html = rerun_fail_html = ""
     if tabs:
         # Measured once, for every tab, before the loop: one subprocess and one transcript
         # scan rather than one per tab. `led` is None only when review-cost.py itself
@@ -8899,6 +9097,11 @@ def main(argv=None) -> int:
             'running it, and recordings open natively, not here. Click to copy the line '
             'that serves this directory and opens the page from it.">'
             'static</button>')
+        # And, on the served copy only, the way to make the page catch up with the
+        # repository. Both pieces are constants above, so what the page carries is one
+        # thing a test can read rather than a string assembled inside a 400-line function.
+        mode_html += RERUN_CHIP
+        rerun_fail_html = RERUN_FAIL
         allbtn_html = (
             '<div class="allbar">'
             '<button type="button" class="allbtn" aria-pressed="false" '
@@ -8955,6 +9158,7 @@ def main(argv=None) -> int:
 {LATE_CSS}{XREF_CSS}</style></head>
 <body><div class="wrap">
 {masthead_html(spec, mode_html + title_score, chips, strip_html, base_st)}
+{rerun_fail_html}
 {lede_html}
 
 {body_html}
@@ -8969,6 +9173,7 @@ def main(argv=None) -> int:
 {XREF_JS}
 {EDITOR_JS}
 {FRAME_JS}\n{TRACE_JS}\n{SEQLINK_JS}\n{SEQFOLD_JS}\n{HSCROLL_JS}\n{TABS_JS}\n{PAINT_RELEASE_JS}
+{RERUN_JS}
 {TIP_JS}
 </body></html>
 """

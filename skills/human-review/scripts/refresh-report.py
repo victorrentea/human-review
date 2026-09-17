@@ -21,6 +21,7 @@ evaluated* rather than quietly buying an answer.
 
     refresh-report.py                     # rebuild the page and serve it
     refresh-report.py --steps cheap       # …after re-running the fast producers
+    refresh-report.py --steps static      # …after re-running the ones that need nothing up
     refresh-report.py --steps all         # …after re-running every producer, heavy included
     refresh-report.py --steps diagrams,tests
     refresh-report.py --no-serve          # write the file, print nothing to open
@@ -77,6 +78,20 @@ def missing_model_work(review: Path) -> list[tuple[str, str]]:
 #: are not what "refresh the page" should mean. `--steps all` is how you ask for them.
 HEAVY_STEPS = ("sequence", "video", "city", "dsaudit")
 
+#: The producers that need nothing but the repository: no served app, no browser, no film,
+#: no test suite. This is the set a *button* may re-run — the Rerun in the page's header
+#: (`serve-review.py`) asks for exactly this — and it is named here rather than there
+#: because which producers are safe to fire off a click is a fact about the producers.
+#:
+#: It is not `cheap` minus the video, and the difference is the whole reason it exists.
+#: `cheap` skips the four in HEAVY_STEPS and keeps `traces`, whose configured `commands`
+#: are a project's own e2e suite — in petclinic, a cucumber run that needs the stack up on
+#: :4200. Minutes, and a failure when nothing is listening. A reader who presses Rerun
+#: after editing a test body is asking for the page to catch up with the repository, not
+#: for a browser suite to be run at them.
+STATIC_STEPS = ("diagrams", "c2", "complexity", "api", "specchanges", "logging",
+                "owners", "tests")
+
 
 def steps_argv(steps: str) -> list[str] | None:
     """`--steps` as arguments for `run-steps.py`, or None for "run no producers at all".
@@ -91,6 +106,8 @@ def steps_argv(steps: str) -> list[str] | None:
         return []
     if steps == "cheap":
         return ["--skip", ",".join(HEAVY_STEPS)]
+    if steps == "static":
+        return ["--only", ",".join(STATIC_STEPS)]
     return ["--only", steps]
 
 
@@ -134,7 +151,7 @@ def main(argv=None) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", default=".human-review", help="the review directory")
     ap.add_argument("--steps", default="none",
-                    help="none (default), cheap, all, or a comma-separated list")
+                    help="none (default), static, cheap, all, or a comma-separated list")
     ap.add_argument("--base", help="base ref for the producers (default: the config's)")
     ap.add_argument("--no-serve", dest="serve", action="store_false",
                     help="write the page and do not start the server")

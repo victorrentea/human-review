@@ -634,3 +634,185 @@ def test_the_poll_gives_up_when_the_server_has_been_reaped():
     """The server is mortal by design, and it dies under tabs that are still open. That
     is the end of the poll, not an error to report at somebody."""
     assert "if (++misses < 3) next();" in build.SERVER_JS
+
+
+# --------------------------------------------------------------------------- #
+# the header's Rerun
+# --------------------------------------------------------------------------- #
+#
+# The one command this server runs that the build did not declare, and the exception that
+# proves the rule: it takes no id, because there is nothing for the page to name. "Rebuild
+# yourself from the repository as it is now" is a property of being served at all, so the
+# capability is answered by the probe rather than written into a manifest a build could
+# forget — and a page out of the zip has no button, because there is nobody there to ask.
+
+
+def _slow_refresh(tmp_path, seconds=5):
+    """Stand in for `refresh-report.py` with something that takes its time.
+
+    The real program exits in a tenth of a second on a directory with no judgement in it,
+    which is the right answer and the wrong stopwatch for testing a lock."""
+    script = tmp_path / "slow-refresh.py"
+    script.write_text(f"import time\ntime.sleep({seconds})\n", encoding="utf-8")
+    return script
+
+
+def test_the_rerun_runs_the_static_refresh_from_the_repository_root(tmp_path):
+    """Two things the plan must get right, and both are about the page ending up next to
+    evidence it really refreshed: the producers write to a *relative* `.human-review/`, so
+    the cwd is the repository and `--dir` is the review directory inside it."""
+    _fresh(tmp_path)
+    (tmp_path / ".human-review").mkdir()
+    srv.ROOT = tmp_path
+    argv, cwd = srv.rerun_plan(tmp_path / ".human-review")
+    assert cwd == tmp_path
+    assert Path(argv[1]).name == "refresh-report.py"
+    assert argv[2:] == ["--dir", ".human-review", "--steps", "static", "--no-serve"]
+    # Never the model's half: not the film, not a privacy verdict, not the findings.
+    assert "--allow-model" not in argv and "video" not in argv and "all" not in argv
+
+
+def test_a_review_directory_outside_the_repository_gets_no_rerun(tmp_path):
+    """`run-steps.py` writes to `.human-review/assets` relative to where it was launched.
+    A rerun from anywhere else would rebuild the page beside evidence it never touched —
+    the one outcome nobody can tell from success — so there is no button at all."""
+    _fresh(tmp_path)
+    srv.ROOT = tmp_path / "repo"
+    (srv.ROOT).mkdir()
+    assert srv.rerun_plan(tmp_path) is None
+    # And with no repository under the served directory, nothing to run it in either.
+    srv.ROOT = None
+    assert srv.rerun_plan(tmp_path) is None
+
+
+def test_the_probe_says_whether_this_page_can_rebuild_itself(server, tmp_path):
+    srv.ROOT = tmp_path
+    assert json.loads(_call(server, "GET", srv.MARKER)[1])["rerun"] is True
+    srv.ROOT = None
+    assert json.loads(_call(server, "GET", srv.MARKER)[1])["rerun"] is False
+
+
+def test_the_rerun_endpoint_really_launches_the_refresh_program(server, tmp_path):
+    """Run for real, against the real program, in a directory whose judgement is missing —
+    so what comes back is `refresh-report.py`'s own exit 3 and its own sentence about it.
+    That is the proof the endpoint reaches the program and not a lookalike."""
+    srv.ROOT = tmp_path
+    status, payload = _call(server, "POST", srv.RERUN, body={})
+    assert status == 200, payload
+    snap = _finish(server, json.loads(payload)["run"], deadline=30.0)
+    assert snap["exit"] == 3 and snap["state"] == "failed"
+    assert "only a model writes" in snap["output"]
+    # And a failed rerun is an answer the page can show, not an exception it has to guess
+    # the meaning of.
+    assert "content.json" in snap["output"]
+
+
+def test_a_second_click_joins_the_rerun_already_in_flight(server, tmp_path, monkeypatch):
+    """One rerun at a time, and the lock is the join. Two `refresh-report.py` runs over one
+    directory would have the second build reading assets the first is halfway through
+    rewriting; refusing the click instead would leave a reader who could not tell the
+    first one had started with nothing on screen either way."""
+    srv.ROOT = tmp_path
+    monkeypatch.setattr(srv, "REFRESH", _slow_refresh(tmp_path))
+    first = json.loads(_call(server, "POST", srv.RERUN, body={})[1])
+    second = json.loads(_call(server, "POST", srv.RERUN, body={})[1])
+    assert second["run"] == first["run"] and second["state"] == "running"
+    assert len([r for r in srv.RUNS.values() if r.action == srv.RERUN_ACTION]) == 1
+    srv.RUNS[first["run"]]._kill()
+
+
+def test_the_rerun_holds_the_reload_until_it_is_finished(server, watched, tmp_path,
+                                                         monkeypatch):
+    """`refresh-report.py` runs eight producers and a build, and between two of them the
+    tree holds still for seconds while a program computes. Six tenths of a second of
+    stillness is all the watcher asks for — so without the hold, one rerun reloads the
+    reader's tab several times on the way through, each time into a directory one step
+    into being rewritten and each time out from under the button they pressed."""
+    srv.ROOT = tmp_path
+    monkeypatch.setattr(srv, "REFRESH", _slow_refresh(tmp_path))
+    baseline = watched.stamp
+    run_id = json.loads(_call(server, "POST", srv.RERUN, body={})[1])["run"]
+
+    (tmp_path / ".human-review").mkdir()
+    (tmp_path / "review.html").write_text("half a page", encoding="utf-8")
+    watched.tick(now=500)
+    assert watched.tick(now=501) == baseline, "reloaded mid-rebuild"
+    assert json.loads(_call(server, "GET", srv.WATCH)[1])["stamp"] == baseline
+
+    srv.RUNS[run_id]._kill()
+    _finish(server, run_id)
+    # Released on every path out, including the one where the command died — and then it
+    # is one reload, at the end, which is the one the reader wanted.
+    watched.tick(now=600)
+    assert watched.tick(now=601) != baseline
+
+
+def test_a_hold_that_is_released_twice_does_not_silence_the_watcher(tmp_path):
+    """A counter that could go negative would leave the page unable to reload for the rest
+    of the server's life, with nothing on screen to say so."""
+    (tmp_path / "review.html").write_text("built", encoding="utf-8")
+    watcher = srv.Watcher(tmp_path, quiet=0)
+    baseline = watcher.stamp
+    watcher.release()
+    watcher.release()
+    (tmp_path / "review.html").write_text("rebuilt", encoding="utf-8")
+    watcher.tick(now=700)
+    assert watcher.tick(now=701) != baseline
+
+
+@pytest.mark.parametrize("headers, why", [
+    ({"Sec-Fetch-Site": "cross-site"}, "a page on the internet may not rebuild this"),
+    ({"Host": "review.example.com"}, "a rebound name may not either"),
+    ({"X-Human-Review-Token": "not-the-token"}, "nor a caller that never read the probe"),
+])
+def test_the_rerun_is_guarded_exactly_like_the_rest(server, tmp_path, headers, why):
+    srv.ROOT = tmp_path
+    status, _ = _call(server, "POST", srv.RERUN, body={}, headers=headers)
+    assert status == 403, why
+
+
+def test_a_form_post_cannot_rebuild_the_page(server, tmp_path):
+    """The Content-Type is insisted on, not merely accepted: a form post cannot set it, so
+    requiring it is what forces a cross-origin caller through a preflight this server does
+    not answer — the browser then never sends the request at all."""
+    srv.ROOT = tmp_path
+    status, _ = _call(server, "POST", srv.RERUN, body={},
+                      headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert status == 415
+
+
+def test_a_page_that_is_not_served_has_no_rerun_button():
+    """Hidden in the markup and raised by the probe, like every other control here. A
+    static copy has no process behind it, and a button that copied a shell line instead
+    would be handing back the terminal round trip this exists to remove."""
+    assert 'id="hr-rerun" hidden' in build.RERUN_CHIP
+    assert 'aria-disabled="true"' in build.RERUN_CHIP
+    assert "if (!caps || !caps.rerun) return;" in build.RERUN_JS
+    assert "btn.hidden = false;" in build.RERUN_JS
+    assert "fetch('/__rerun__'" in build.SERVER_JS
+    # No clipboard consolation prize: there is nothing to paste that would be this button.
+    assert "clipboard" not in build.RERUN_JS
+
+
+def test_the_button_says_what_it_will_not_do():
+    """The part a reader cannot see, and the part they are right to worry about: the
+    findings are a judgement bought once, and the film costs minutes and a running app."""
+    tip = re.search(r'data-tip="([^"]*)"', build.RERUN_CHIP).group(1)
+    assert "Not the findings" in tip and "not the film" in tip
+    assert ">Rerun</button>" in build.RERUN_CHIP
+
+
+def test_where_the_reader_was_survives_the_rebuild():
+    """The reload at the end of a rerun is not always ours — the server watches the
+    directory it serves, so the build finishing can reload the tab first. Both routes have
+    to land on the same saved place, which is why it is written when the button is pressed
+    and not just before a reload we might never reach."""
+    assert "sessionStorage.setItem(KEY" in build.RERUN_JS
+    assert "sessionStorage.removeItem(KEY)" in build.RERUN_JS
+    assert "window.scrollTo(0, saved.y)" in build.RERUN_JS
+
+
+def test_a_failed_rerun_shows_the_last_lines_rather_than_a_shrug():
+    assert "rerunfail-log" in build.RERUN_JS
+    assert "log.slice(-14)" in build.RERUN_JS
+    assert "snap.exit" in build.RERUN_JS
