@@ -155,18 +155,93 @@ def subagent_transcripts(session_file: Path) -> list[Path]:
 REVIEW_AGENT_NAME = "code-review"
 
 
-def review_agent_files(session_file: Path, name: str = REVIEW_AGENT_NAME) -> list[Path]:
-    """The forked reviewers of this session, by what their `.meta.json` says they are.
+def _rows(path: Path):
+    """Every parseable record of a transcript, in file order."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    out = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return out
 
-    By `name`, not by prose in the description: an agent type is recorded by the harness,
-    a description is written by whoever spawned it. `pass_costs` learned this the hard way
-    — matching on description billed two implementation tasks to the review.
+
+def _blocks(rec) -> list[dict]:
+    content = ((rec.get("message") or {}).get("content")) or []
+    return [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
+
+
+def _skill_name(raw) -> str:
+    """`code-review`, `victor-skills:code-review` and `code-review:code-review` all name
+    the same pass as far as attribution goes — the plugin prefix is not part of it."""
+    return str(raw or "").split(":")[-1].strip()
+
+
+def skill_windows(session_file: Path,
+                  skill: str = REVIEW_AGENT_NAME) -> tuple[list[tuple], list]:
+    """`(start, end)` for every `Skill{skill: <skill>}` call in the parent transcript.
+
+    `start` is the `tool_use`, `end` the matching `tool_result`. A call still running — or
+    one whose result the transcript never got — has `end=None`, and the caller closes the
+    window itself against the parent's next turn. `parent` is every parent timestamp, in
+    order, which is what makes that possible.
+    """
+    rows = _rows(session_file)
+    starts: dict[str, dt.datetime] = {}
+    ends: dict[str, dt.datetime] = {}
+    stamps: list[dt.datetime] = []
+    for rec in rows:
+        when = _parse_iso(rec.get("timestamp"))
+        if when is not None:
+            stamps.append(when)
+        for b in _blocks(rec):
+            if b.get("type") == "tool_use" and b.get("name") == "Skill":
+                if _skill_name((b.get("input") or {}).get("skill")) == skill and when:
+                    starts[str(b.get("id"))] = when
+            elif b.get("type") == "tool_result" and when:
+                ends.setdefault(str(b.get("tool_use_id")), when)
+    windows = []
+    for tid, start in sorted(starts.items(), key=lambda kv: kv[1]):
+        windows.append((start, ends.get(tid)))
+    return windows, sorted(stamps)
+
+
+def review_agent_files(session_file: Path, name: str = REVIEW_AGENT_NAME) -> list[Path]:
+    """The forked reviewers of this session — by `.meta.json`, else by when they ran.
+
+    **By `name`, not by prose in the description**: an agent type is recorded by the
+    harness, a description is written by whoever spawned it. `pass_costs` learned this the
+    hard way — matching on description billed two implementation tasks to the review.
+
+    **But the name is not always there.** A `/code-review` that forks from a skill
+    invocation gets a `.meta.json` of `{"agentType": "general-purpose", "spawnDepth": 1,
+    …}` with no `name` and no `description` at all, and the run envelope reports
+    `subagent_stats.spawned: 0` — nothing in the fork's own files says what it was. What
+    does say it is the parent: the skill arrives there as a `tool_use` named `Skill` with
+    `{"skill": "code-review"}`, and its `tool_result` is the moment the fork handed its
+    findings back. So a second rule joins the first: an `agent-*.jsonl` of this session
+    whose **first** timestamp falls inside that use→result window is that review pass.
+
+    The first timestamp, not any: a window bounded by the result is exactly the fork's own
+    lifetime, and an agent that merely overlaps it (a parallel errand launched before the
+    skill) starts outside and stays out. Where the transcript has no `tool_result` — a run
+    that was interrupted, or a transcript still being written — the window closes at the
+    parent's first turn after the subagent's last line, which is where the parent demonstrably
+    resumed.
     """
     home = subagent_dir(session_file)
     if not home.is_dir():
         return []
-    out = []
-    for jsonl in sorted(home.glob("agent-*.jsonl")):
+    agents = sorted(home.glob("agent-*.jsonl"))
+    out, claimed = [], set()
+
+    for jsonl in agents:
         meta_path = jsonl.with_suffix(".meta.json")
         if not meta_path.is_file():
             continue
@@ -176,7 +251,27 @@ def review_agent_files(session_file: Path, name: str = REVIEW_AGENT_NAME) -> lis
             continue
         if str(meta.get("name") or "") == name:
             out.append(jsonl)
-    return out
+            claimed.add(jsonl)
+
+    windows, parent_stamps = skill_windows(session_file, name)
+    if not windows:
+        return out
+    for jsonl in agents:
+        if jsonl in claimed:
+            continue
+        first, last = agent_span([jsonl])
+        if first is None:
+            continue
+        for start, end in windows:
+            if first < start:
+                continue
+            close = end
+            if close is None:
+                close = next((s for s in parent_stamps if last and s > last), None)
+            if close is None or first <= close:
+                out.append(jsonl)
+                break
+    return sorted(set(out))
 
 
 def agent_span(files) -> tuple["dt.datetime | None", "dt.datetime | None"]:

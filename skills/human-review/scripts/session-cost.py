@@ -22,6 +22,13 @@ Nothing here is typed by a human:
     t3  the review's last turn              latest turn across the same files
     t4  commit #2, the review commit        %cI of the commit with Review-Points:
 
+Which forks are the reviewers is `review-cost.py:review_agent_files`' answer, and it has
+two rules because the harness only sometimes records the first: the agent's `.meta.json`
+`name`, and failing that, a fork that ran inside the parent's own
+`Skill{skill: "code-review"}` call. A `/code-review` forked from a skill invocation gets
+neither a `name` nor a `description`, so without the second rule t2/t3 came back empty on
+a run whose review had plainly happened.
+
 **A phase that cannot be dated says so.** It prints `unmeasurable: <why>` and not `$0.00`,
 because those two render identically to a reader and mean opposite things: one is a phase
 that cost nothing, the other is a phase whose cost is sitting in some other row. And every
@@ -152,8 +159,9 @@ def boundaries(root: Path, base: str, session: str | None, found: dict,
     t2, t3 = rc.agent_span(reviewers)
     if not reviewers:
         notes.append(f"t2/t3: no subagent of this session is named "
-                     f"{rc.REVIEW_AGENT_NAME!r} — the review ran inline, or in another "
-                     f"conversation")
+                     f"{rc.REVIEW_AGENT_NAME!r}, and no agent of it ran inside a "
+                     f"Skill{{skill: {rc.REVIEW_AGENT_NAME!r}}} call in the parent "
+                     f"transcript — the review ran inline, or in another conversation")
     return [t0, t1, t2, t3, t4], reviewers, notes
 
 

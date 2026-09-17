@@ -493,6 +493,133 @@ def test_the_reviewers_are_picked_by_the_name_the_harness_recorded(tmp_path):
     assert [p.stem for p in files] == ["agent-aaaaaaaaaaaa"]
 
 
+def _skill_use(when, tid, skill="code-review"):
+    """The parent's own record of invoking a skill — which is where a fork that carries no
+    `name` of its own is identified from."""
+    return {"type": "assistant", "timestamp": when,
+            "message": {"id": "u" + tid, "model": "claude-opus-5",
+                        "usage": {"input_tokens": 10, "output_tokens": 10},
+                        "content": [{"type": "tool_use", "id": tid, "name": "Skill",
+                                     "input": {"skill": skill, "args": "high"}}]}}
+
+
+def _skill_result(when, tid):
+    return {"type": "user", "timestamp": when,
+            "message": {"role": "user",
+                        "content": [{"type": "tool_result", "tool_use_id": tid,
+                                     "content": "Skill completed (forked execution)."}]}}
+
+
+def test_a_reviewer_with_no_name_is_found_by_the_parents_skill_call(tmp_path):
+    """The first real `/implement-ticket` run: `/code-review high` forked, and the fork's
+    `.meta.json` was `{"agentType": "general-purpose", "spawnDepth": 1, …}` — no `name`,
+    no `description`, and the run envelope said `subagent_stats.spawned: 0`. Nothing in
+    the fork's own files says what it was; the parent's `Skill` tool_use does."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-aaaaaaaaaaaa",
+                 {"agentType": "general-purpose", "spawnDepth": 1,
+                  "requestShape": "foreground"},
+                 [_assistant("a1", "2026-09-02T10:00:10Z"),
+                  _assistant("a2", "2026-09-02T10:04:00Z")])],
+        rows=[_assistant("m1", "2026-09-02T09:00:00Z"),
+              _skill_use("2026-09-02T10:00:00Z", "toolu_1"),
+              _skill_result("2026-09-02T10:04:30Z", "toolu_1"),
+              _assistant("m2", "2026-09-02T10:05:00Z")])
+    assert [p.stem for p in rc.review_agent_files(session)] == ["agent-aaaaaaaaaaaa"]
+    first, last = rc.agent_span(rc.review_agent_files(session))
+    assert (first, last) == (_ts("2026-09-02T10:00:10+00:00"),
+                             _ts("2026-09-02T10:04:00+00:00"))
+
+
+def test_an_errand_outside_the_skill_window_stays_out_of_the_review(tmp_path):
+    """The window is bounded by the `tool_result`, so an agent that merely overlaps the
+    review — one launched before the skill, or long after it returned — starts outside it
+    and is not billed to the review. `pass_costs` was billing two implementation errands
+    to the review before it matched on something the harness records."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-aaaaaaaaaaaa", {"agentType": "general-purpose"},
+                 [_assistant("a1", "2026-09-02T10:00:10Z")]),
+                ("agent-bbbbbbbbbbbb", {"agentType": "general-purpose"},
+                 [_assistant("b1", "2026-09-02T09:30:00Z"),     # before the skill call
+                  _assistant("b2", "2026-09-02T10:02:00Z")]),   # still running during it
+                ("agent-cccccccccccc", {"agentType": "general-purpose"},
+                 [_assistant("c1", "2026-09-02T10:06:00Z")])],  # after the result
+        rows=[_skill_use("2026-09-02T10:00:00Z", "toolu_1"),
+              _skill_result("2026-09-02T10:04:30Z", "toolu_1"),
+              _assistant("m2", "2026-09-02T10:05:00Z")])
+    assert [p.stem for p in rc.review_agent_files(session)] == ["agent-aaaaaaaaaaaa"]
+
+
+def test_the_named_reviewer_and_the_windowed_one_are_both_reviewers(tmp_path):
+    """The two rules add up rather than replacing each other: a session can fork one
+    reviewer the harness named and another it did not, and half a review priced as the
+    whole of it is worse than either rule alone."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-aaaaaaaaaaaa", {"name": "code-review"},
+                 [_assistant("a1", "2026-09-02T09:00:10Z")]),
+                ("agent-bbbbbbbbbbbb", {"agentType": "general-purpose"},
+                 [_assistant("b1", "2026-09-02T10:00:10Z")])],
+        rows=[_skill_use("2026-09-02T10:00:00Z", "toolu_1"),
+              _skill_result("2026-09-02T10:04:30Z", "toolu_1")])
+    assert [p.stem for p in rc.review_agent_files(session)] == [
+        "agent-aaaaaaaaaaaa", "agent-bbbbbbbbbbbb"]
+
+
+def test_a_skill_call_with_no_result_closes_at_the_parents_next_turn(tmp_path):
+    """An interrupted run, or a transcript still being written, has the `tool_use` and no
+    `tool_result`. The parent's first turn after the subagent's last line is where it
+    demonstrably resumed, and that is the honest end of the window."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-aaaaaaaaaaaa", {"agentType": "general-purpose"},
+                 [_assistant("a1", "2026-09-02T10:00:10Z"),
+                  _assistant("a2", "2026-09-02T10:03:00Z")])],
+        rows=[_skill_use("2026-09-02T10:00:00Z", "toolu_1"),
+              _assistant("m2", "2026-09-02T10:05:00Z")])
+    assert [p.stem for p in rc.review_agent_files(session)] == ["agent-aaaaaaaaaaaa"]
+
+
+def test_another_skill_does_not_open_a_review_window(tmp_path):
+    """`/db` forks too. A window opened by any skill at all would bill whatever it did to
+    the review."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-aaaaaaaaaaaa", {"agentType": "general-purpose"},
+                 [_assistant("a1", "2026-09-02T10:00:10Z")])],
+        rows=[_skill_use("2026-09-02T10:00:00Z", "toolu_1", skill="victor-skills:db"),
+              _skill_result("2026-09-02T10:04:30Z", "toolu_1")])
+    assert rc.review_agent_files(session) == []
+
+
+def test_a_plugin_prefix_on_the_skill_name_is_not_part_of_it(tmp_path):
+    """`code-review`, `victor-skills:code-review` and `code-review:code-review` all name
+    the same pass as far as attribution goes."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-aaaaaaaaaaaa", {"agentType": "general-purpose"},
+                 [_assistant("a1", "2026-09-02T10:00:10Z")])],
+        rows=[_skill_use("2026-09-02T10:00:00Z", "toolu_1",
+                         skill="code-review:code-review"),
+              _skill_result("2026-09-02T10:04:30Z", "toolu_1")])
+    assert [p.stem for p in rc.review_agent_files(session)] == ["agent-aaaaaaaaaaaa"]
+
+
+def test_the_skill_windows_are_the_use_and_the_matching_result(tmp_path):
+    session = _session_tree(
+        tmp_path,
+        rows=[_skill_use("2026-09-02T10:00:00Z", "toolu_1"),
+              _skill_result("2026-09-02T10:04:30Z", "toolu_1"),
+              _skill_use("2026-09-02T11:00:00Z", "toolu_2")])
+    windows, stamps = rc.skill_windows(session)
+    assert windows == [(_ts("2026-09-02T10:00:00+00:00"),
+                        _ts("2026-09-02T10:04:30+00:00")),
+                       (_ts("2026-09-02T11:00:00+00:00"), None)]
+    assert stamps == sorted(stamps) and len(stamps) == 3
+
+
 def test_the_review_window_is_the_span_of_the_reviewers_own_turns(tmp_path):
     session = _session_tree(
         tmp_path,
