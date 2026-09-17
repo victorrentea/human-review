@@ -8244,8 +8244,19 @@ def main(argv=None) -> int:
                               opening_lede(spec))
             return (head + render_autofixes(items), len(items), len(items))
         if kind == "diagrams":
-            rows = select_rows(manifest_rows, block)
-            placed.update(r["name"] for r in rows)
+            # A block may name a manifest of its own. One producer does: the C2 view is
+            # projected from the sequence diagrams rather than diffed out of a .puml that
+            # changed, and it cannot file its row in `assets/diagrams/MANIFEST.tsv`
+            # because `puml-diff.sh` does `rm -rf` on that whole directory every time it
+            # runs — which the `sequence` step makes it do AFTER the `diagrams` step
+            # wrote it. Its rows stay out of `placed` on purpose: `placed` answers "did
+            # every row of the SHARED gallery find a tab", and a private manifest has no
+            # orphans to warn about.
+            own = block.get("manifest")
+            source_rows = read_manifest(out_dir / own) if own else manifest_rows
+            rows = select_rows(source_rows, block)
+            if not own:
+                placed.update(r["name"] for r in rows)
             # Nothing of this family changed. A block that names a `context` diagram
             # (the Packages case: no delta, but the current package shape is still
             # worth showing) falls back to rendering it from source — exactly like a
@@ -8265,6 +8276,10 @@ def main(argv=None) -> int:
             # the author asked for. Popping it here is what used to make
             # `only: ["DomainModel", "DB"]` come out alphabetical anyway.
             merged["only"] = block.get("only") or dspec.get("only") or []
+            if own:
+                # Every SVG a row names is resolved relative to its own manifest, so this
+                # has to travel with the rows or the pictures 404 next to the gallery's.
+                merged["manifest"] = own
             return (
                 heading(block, "diagrams", dspec.get("title", ""))
                 + render_diagrams(merged, root, out_dir, rows),

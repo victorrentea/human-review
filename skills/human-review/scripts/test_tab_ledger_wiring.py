@@ -60,7 +60,7 @@ def test_the_parsers_find_what_this_test_expects():
     """A sanity check on the regex and the import, so a shape change that silently matched
     nothing fails loudly instead of making every real test below vacuously pass."""
     assert _schema_tab_ids() == {
-        "review", "behaviour", "sequence", "requirements", "data",
+        "review", "behaviour", "sequence", "c2", "requirements", "data",
         "packages", "api", "city", "complexity", "logging", "dsaudit", "owners",
     }
     assert len(rs.STEPS) >= 10

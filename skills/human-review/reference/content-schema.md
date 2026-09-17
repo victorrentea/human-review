@@ -557,6 +557,11 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
               "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
               "unpaired":{"id":"tests-nosequence",
                           "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
+  {"id":"c2","label":"C2",
+   "tip":"Containers and the calls between them, projected from the sequence diagrams above — not drawn by hand.",
+   "blocks":[{"type":"section","id":"c2-note"},
+             {"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2"],
+              "id":"c2-containers","title":"Containers, as the traced runs call them"}]},
   {"id":"packages","label":"Structure",
    "blocks":[{"type":"section","id":"packages-note"},
              {"type":"diagrams","only":["Packages"],
@@ -590,6 +595,7 @@ table, and `test_tab_ledger_wiring.py` fails until the two agree.
 | `review` | Review | the harvested passes (Step 1) |
 | `behaviour` | Demo | `video` |
 | `sequence` | Sequence | `sequence` |
+| `c2` | C2 | `c2` |
 | `requirements` | Tests | `tests` |
 | `data`, `packages` | Data, Structure | `diagrams` |
 | `api` | API | `api`, `specchanges` |
@@ -611,12 +617,50 @@ with it, so the measurement now lives in `scripts/endpoint-complexity.py` and th
 the whole tab. A section that embeds a report nothing produces renders as an apology.
 
 Default order, worth departing from only with a reason — **Review, Demo, API, Data,
-Tests, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
+Tests, Sequence, C2, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
 order a review actually goes: what the passes raised, then the feature as a user meets it
 (the film, then the contract and the shape behind it), then what pins it — the tests, then
 the traces those runs recorded — then the code's own shape, where *Structure* and *Code
 City* are one question asked twice and stay adjacent, and CODEOWNERS last, because it is
-the one thing no amount of reading changes. Four tabs need something said about how they are written:
+the one thing no amount of reading changes.
+
+**C2 sits immediately after Sequence, and that adjacency is the argument.** The tab is a C4
+*container* view — boxes for the browser, the backend, the database, a queue, a
+microservice, and a line wherever one calls another — and every box and every line in it is
+**projected from the sequence diagrams on the tab before it** by
+`scripts/c2-from-sequence.py`. Nothing about it is drawn, which is the only reason it can be
+trusted: an architecture diagram somebody maintains by hand is a claim about the system, and
+this one is a *measurement* of it, taken from the same traces the sequences came from. A
+call to a service nobody documented shows up here the first time a test makes it. Read it
+after the sequences, not before: the sequences are the evidence, and this is what they add up
+to.
+
+Three things follow from its being derived, and all three are visible on the page:
+
+- **Its rows are in a manifest of its own**, `assets/c2/MANIFEST.tsv`, named by the block —
+  `{"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2"]}`. Give it an
+  `id` of its own (`c2-containers`): a diagrams block with a title and no id heads itself
+  `id="diagrams"`, and two of those on one page is one anchor pointing at two panels. It cannot file
+  them in the shared gallery's `assets/diagrams/MANIFEST.tsv`, because `puml-diff.sh` does
+  `rm -rf` on that directory on entry, and the `sequence` step runs it *after* the
+  `diagrams` step wrote it. A block naming its own manifest is otherwise an ordinary
+  diagrams block: same Diff / New / Old control, same colours.
+- **The delta is taken on the graph, not on the PlantUML.** The two sides are not two files
+  but two whole *sets* of sequence diagrams — the work tree's and the merge-base's — and
+  `puml_diff.py` refuses the C4-PlantUML dialect outright. Green is a container or a call
+  this branch introduced; red is one it removed; a surviving edge whose traffic changed
+  stays neutral and says `(+3)` on its technology line, because a chattier call is news and
+  is not a change of shape.
+- **What is guessed is written down.** A sequence diagram does not say whether a lifeline is
+  a datastore or a queue, so `steps.c2.containers` in `human-review.json` decides it first,
+  the PlantUML keyword (`database`, `queue`, `actor`) second, the name third, and a plain
+  container last — and `C2.json` records which of the four rules fired for every box, under
+  `inferredBy`. Technology (`Angular`, `PostgreSQL`) is never guessed: it comes from the
+  config or the box goes without one. `{"as": "Browser"}` folds two lifelines into one
+  container, which is what a suite that names its own driver `Client` needs so a renamed
+  test harness does not read as an architecture change.
+
+Four tabs need something said about how they are written:
 
 - **Review** — the label is the word alone. The 🤖 it used to carry announced that
   the tab was machine-produced, which the `source` stamp on every item inside it already

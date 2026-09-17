@@ -21,6 +21,26 @@
         "cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram"
       ]
     },
+    "c2": {
+      "//": "The C4 container view, PROJECTED from the sequence diagrams the step above",
+      "//2": "draws — nothing here is a drawing. Every key is optional: with no `c2` block",
+      "//3": "at all the tab is still built, from the lifelines and arrows alone.",
+      "//4": "`containers` is where a project corrects the only thing a sequence diagram",
+      "//5": "cannot say: what KIND of thing a lifeline is. `kind` is one of container,",
+      "//6": "db, queue, person, external; `tech` is never guessed, so a box says",
+      "//7": "PostgreSQL only because this file does. `as` folds two lifelines into one",
+      "//8": "container — the Playwright suite calls the entry point Browser and the API",
+      "//9": "test calls it Client, and undrawn that is two boxes for one container.",
+      "//10": "`sources` defaults to **/*.genseq.puml, outside target/ and node_modules/.",
+      "system": "PetClinic",
+      "containers": {
+        "Browser": {"kind": "container", "tech": "Angular"},
+        "Client": {"kind": "container", "tech": "JUnit + RestAssured"},
+        "Test": {"as": "Client"},
+        "Backend": {"kind": "container", "tech": "Java / Spring Boot"},
+        "DB": {"kind": "db", "tech": "PostgreSQL"}
+      }
+    },
     "city": {
       "//": "`tests` runs before the city is drawn: its CRAP and coverage colours need a",
       "//2": "JaCoCo report, and -Dmaven.test.failure.ignore=true is what makes the report",

@@ -86,6 +86,17 @@ def has_java() -> bool:
     return bool(listed.stdout.strip())
 
 
+def has_genseq() -> bool:
+    """Whether any traced sequence diagram exists, asked of the index and of the untracked
+    files alike — the `sequence` step usually writes them minutes before this is asked, and
+    a brand-new one is not committed yet."""
+    for args in (["git", "ls-files", "*.genseq.puml"],
+                 ["git", "ls-files", "--others", "--exclude-standard", "*.genseq.puml"]):
+        if subprocess.run(args, capture_output=True, text=True).stdout.strip():
+            return True
+    return False
+
+
 def answers(url: str, timeout: float = 3.0) -> bool:
     """Whether *anything* is serving at `url` — the running-app twin of `have()`.
 
@@ -140,6 +151,25 @@ def _sequence(ctx: Ctx):
                          "say in the guide that the suite could not run")
         sh("git checkout -- " + " ".join(deleted), ctx, check=False)
     sh(f"{HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
+
+
+def _c2(ctx: Ctx):
+    """The container view, projected from the sequence diagrams `_sequence` just drew.
+
+    It runs as its own step rather than at the end of `_sequence` for two reasons that both
+    come down to honesty about the run: a C2 that could not be drawn has to say so on its
+    own row of the status table instead of quietly reducing the Sequence tab, and the two
+    tabs are two answers a reviewer reaches for separately, so their costs must not be
+    pooled. It writes to `assets/c2`, never `assets/diagrams`: `puml-diff.sh` does
+    `rm -rf` on that directory on entry, and it is the LAST thing `_sequence` runs.
+    """
+    r = sh(f"{HERE}/c2-from-sequence.py --base {ctx.base} --out-dir {ART}/c2", ctx,
+           check=False)
+    if r.returncode == 3:
+        raise LookupError("no traced sequence diagram to project a container view from — "
+                          "the sequence step is what produces them")
+    if r.returncode != 0:
+        raise RuntimeError(f"c2-from-sequence.py exit {r.returncode}")
 
 
 def _city(ctx: Ctx):
@@ -491,6 +521,11 @@ STEPS = [
     ("sequence",    "sequence",      "sequence diagrams from traces",
      lambda c: bool(c.step_cfg("sequence").get("commands")) or "sequence.commands not configured",
      _sequence),
+    # Straight after `sequence`, and never before it: it reads what that step wrote.
+    ("c2",          "c2",            "container view projected from the sequences",
+     lambda c: has_genseq() or "no *.genseq.puml in this repository — nothing to project "
+                               "a container view from",
+     _c2),
     ("city",        "city",          "Code City capture",
      lambda c: have("google-chrome") or have("chromium") or True, _city),
     ("video",       "behaviour",     "feature recording",         None,              _video),

@@ -196,6 +196,34 @@ def test_the_diff_tints_still_hold_their_labels_in_dark_mode():
         assert contrast(fg, tint) >= 4.5, f"a label on {name} is too dim to read"
 
 
+def test_the_c2_boxes_hold_their_labels_in_both_themes():
+    """The container view is the one diagram that paints the diff colours as a FILL rather
+    than as a stroke or a text colour: an added container is a solid green box with its
+    name written on it. That name is `$fontColor="#FFFFFF"` — which the page rewrites to
+    --dgm-bg, and --dgm-bg is the canvas — so the pairing inverts with the theme: dark
+    green under white in light mode, pale green under near-black in dark. Both halves have
+    to read, and neither can be checked by looking at one theme.
+
+    `c2-from-sequence.py` re-types the two hues as literals for the same reason
+    `test_the_map_holds_exactly_the_literals_the_differs_paint_with` exists above it: it
+    emits C4-PlantUML, which `puml_diff.py` refuses, so there is no import to hang them
+    off. This is what keeps the three copies equal."""
+    _spec = importlib.util.spec_from_file_location("c2", HERE / "c2-from-sequence.py")
+    c2 = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(c2)
+
+    assert build.DIAGRAM_COLOR_VARS[c2.ADDED] == "--dgm-diff-add"
+    assert build.DIAGRAM_COLOR_VARS[c2.REMOVED] == "--dgm-diff-del"
+
+    light, dark = build.CSS.split("@media (prefers-color-scheme: dark)", 1)
+    for block, theme in ((light, "light"), (dark, "dark")):
+        canvas = re.search(r"--dgm-bg:(#[0-9a-fA-F]{6})", block)[1]
+        for var, what in (("--dgm-diff-add", "added"), ("--dgm-diff-del", "removed")):
+            fill = re.search(rf"{var}:(#[0-9a-fA-F]{{6}})", block)[1]
+            assert contrast(canvas, fill) >= 4.5, \
+                f"the name on an {what} C2 container is too dim in {theme} mode"
+
+
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-q"]))
