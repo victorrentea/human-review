@@ -52,6 +52,14 @@ jobs:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
+      # Half the room at a course is on Apple Silicon. An amd64-only image still runs there
+      # under emulation, but it starts slower and greets them with a platform-mismatch
+      # warning on the very first command of the demo, which is the worst possible moment to
+      # make somebody wonder whether they did something wrong. The payload is a directory of
+      # static files and nginx publishes both architectures, so the second one costs a second
+      # manifest and nothing else.
+      - uses: docker/setup-buildx-action@v3
+
       # Two kinds of tag, on purpose. `<slug>` and `latest` are readable and are meant to be
       # quoted in a README or typed from memory at a whiteboard; they move with main. Beside
       # each one sits `<slug>-<sha7>`, which never moves, so a snapshot shown at a course can
@@ -67,9 +75,9 @@ jobs:
             local context="$1"; shift
             local tags=() tag
             for tag in "$@"; do tags+=(-t "$image:$tag"); done
-            docker build -f .github/snapshot.Dockerfile \
-              --build-arg "SNAPSHOT=$context" "${tags[@]}" .
-            for tag in "$@"; do docker push "$image:$tag"; done
+            docker buildx build --platform linux/amd64,linux/arm64 \
+              -f .github/snapshot.Dockerfile \
+              --build-arg "SNAPSHOT=$context" "${tags[@]}" --push .
           }
 
           # demo/ itself is the landing page listing the snapshots — the same thing Pages
