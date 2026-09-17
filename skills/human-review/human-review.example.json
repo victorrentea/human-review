@@ -6,6 +6,23 @@
   "base": "origin/main",
   "spec": "openapi.yaml",
 
+  "//generated": [
+    "Which paths nobody types. The Review tab opens with a band naming every commit that",
+    "landed AFTER the agent's review commit — the one thing a page built from a diff",
+    "cannot see, because every number on it was measured before those commits existed.",
+    "The band is RED when a file outside this list moved and GREY when they all match it:",
+    "a regenerated diagram, a spec rewritten by a pre-commit hook or a redrawn .drawio is",
+    "not somebody editing the change under review, and a band that is red for those is a",
+    "band nobody reads by the third branch.",
+    "Leave it out and the defaults below apply. Writing it REPLACES them: a project that",
+    "says what it generates has said it. `*` stops at a slash, `**` crosses them, and a",
+    "leading `**/` is optional, so `**/generated/**` covers a top-level generated/ too."
+  ],
+  "generated": [
+    "**/generated/**", "docs/generated/**", "openapi.yaml",
+    "**/*.genseq.*", "**/api-types.ts", "**/*.drawio*"
+  ],
+
   "steps": {
     "diagrams": {
       "drawio": {

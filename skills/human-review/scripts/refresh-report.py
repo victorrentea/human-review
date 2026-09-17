@@ -156,8 +156,8 @@ HEAVY_STEPS = ("sequence", "video", "city", "dsaudit")
 #: :4200. Minutes, and a failure when nothing is listening. A reader who presses Rerun
 #: after editing a test body is asking for the page to catch up with the repository, not
 #: for a browser suite to be run at them.
-STATIC_STEPS = ("reviewpoints", "diagrams", "c2", "complexity", "api", "specchanges",
-                "logging", "owners", "tests")
+STATIC_STEPS = ("reviewpoints", "aftermath", "diagrams", "c2", "complexity", "api",
+                "specchanges", "logging", "owners", "tests")
 
 
 def steps_argv(steps: str) -> list[str] | None:

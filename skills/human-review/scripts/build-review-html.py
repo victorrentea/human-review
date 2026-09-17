@@ -6125,6 +6125,128 @@ def render_autofixes(fixes) -> str:
     return _open_list(len(fixes)) + "\n".join(items) + "</ol>"
 
 
+#: Where `run-steps.py`'s `aftermath` step leaves what it measured.
+AFTERMATH_JSON = "aftermath.json"
+
+#: How many files one commit's row names before it stops naming them. A commit that
+#: touched forty files is a commit whose *subject* is the answer; the list is there so a
+#: reader recognises a one-file config tweak without opening anything.
+AFTERMATH_FILES = 6
+
+
+def _numstat_face(f: dict) -> str:
+    """`+18 −1`, or `binary` — the same signs the scope bar uses, for the same reason."""
+    if f.get("binary"):
+        return "binary"
+    parts = []
+    if f.get("added"):
+        parts.append(f'<span class="added">+{f["added"]}</span>')
+    if f.get("deleted"):
+        parts.append(f'<span class="removed">−{f["deleted"]}</span>')
+    return " ".join(parts) or "no lines"
+
+
+def _aftermath_commit(c: dict, root: Path) -> str:
+    """One commit's row: what it is, what it touched, and the way to take it back.
+
+    The revert is offered per commit rather than for the range, because the range is
+    usually not what anyone wants undone: the infrastructure cherry-pick that has to land
+    on the PR branch is legitimate and the hand edit beside it is the question. Reverting
+    one at a time is also the only form of this that is safe to put behind a button —
+    `git revert --no-commit` stages an inverse and stops, so the click produces a diff for
+    the reader to look at rather than a commit made on their behalf.
+    """
+    files = c.get("files") or []
+    shown = files[:AFTERMATH_FILES]
+    face = " · ".join(
+        f'<code>{html.escape(Path(f["path"]).name)}</code> {_numstat_face(f)}'
+        + (' <span class="rb-gen">generated</span>' if f.get("generated") else "")
+        for f in shown)
+    if len(files) > len(shown):
+        face += f" · and {len(files) - len(shown)} more"
+    if not files:
+        # A merge commit prints no numstat. "Nothing changed" is the wrong reading of it.
+        face = "no file list — a merge, or nothing git could count"
+    line = f'cd {shlex.quote(str(root.resolve()))} && git revert --no-commit {c["sha"]}'
+    aid = declare_action(f"aftermath-revert:{c['short']}", line,
+                         label=f"Stage the inverse of {c['short']} in the working tree")
+    fold = f"revert-{c['short']}"
+    offer = _run_or_read(
+        fold, f' data-action="{html.escape(aid, quote=True)}"',
+        f"Stages the inverse of {c['short']} in the working tree and stops: "
+        "`git revert --no-commit`. Nothing is committed and nothing is pushed — you get "
+        "a diff to look at.",
+        f"Runs `git revert --no-commit {c['short']}` here. It stages the inverse and "
+        "stops: nothing is committed, nothing is pushed, and `git reset` undoes it.",
+        "Staging the inverse…", run_label="revert it", read_label="revert it")
+    when = (c.get("when") or "")[:10]
+    return ('<li>'
+            f'<code>{html.escape(c["short"])}</code> '
+            f'{html.escape(c.get("subject", ""))}'
+            + (f' <span class="rb-gen">{html.escape(when)}</span>' if when else "")
+            + f'<span class="rb-files">{face}</span>'
+            + offer + _cmdfold(fold, line)
+            + '</li>')
+
+
+def aftermath_html(out_dir: Path, root: Path) -> str:
+    """What landed on the branch after the agent stopped, at the top of the Review tab.
+
+    This is the one band on the page that is about the page rather than about the code.
+    Every number here was measured from a diff, and a diff cannot say when it was written:
+    the film, the findings, the declined items, the assumptions and the costs all describe
+    the branch as the agent left it, and three commits later they describe something
+    nobody reviewed. The reader cannot see that, because the page is the only thing in a
+    position to say it.
+
+    Red when a file no generator owns has moved; grey when every one of them is generated,
+    which on this project's own demo branch is the normal case — the guardrails regenerate
+    diagrams, a spec and a `.drawio` on every commit, and a band that is red for that is a
+    band nobody reads by the third branch. Nothing at all when the agent's commit is the
+    tip, which is the state this whole flow is trying to produce.
+    """
+    try:
+        doc = json.loads((out_dir / AFTERMATH_JSON).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        # No measurement is not "nothing happened". The step says why on its own row of
+        # the status table (no review commit, most often), and inventing a reassuring
+        # band here would be the page asserting the one thing it does not know.
+        return ""
+    commits = doc.get("commits") or []
+    if not commits:
+        return ""
+    totals = doc.get("totals") or {}
+    code = totals.get("code") or {}
+    gen = totals.get("generated") or {}
+    n = len(commits)
+    plural = "" if n == 1 else "s"
+    if code.get("files"):
+        lines = (code.get("added", 0) or 0) + (code.get("deleted", 0) or 0)
+        head = (f'<p><b>{n} commit{plural}, {lines} line'
+                f'{"" if lines == 1 else "s"} changed since the agent finished.</b> '
+                'Everything else on this tab — and on every other tab — describes the '
+                'branch as it was when the review was written.</p>')
+        sub = ('Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>. '
+               + (f'{gen["files"]} generated file' + ("" if gen["files"] == 1 else "s")
+                  + ' moved as well and are not counted here.'
+                  if gen.get("files") else
+                  'None of it is a generated file.'))
+        cls = "rband-alert"
+        role = "alert"
+    else:
+        head = (f'<p>{n} commit{plural} since the agent finished, and every file '
+                'in them is generated.</p>')
+        sub = ('Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>. '
+               'Regenerated output, not somebody editing the change under review — which '
+               'is why this band is grey.')
+        cls = "rband-warn"
+        role = "status"
+    return (f'<div class="rband {cls}" role="{role}">' + head
+            + f'<p class="rb-sub">{sub}</p><ul>'
+            + "".join(_aftermath_commit(c, root) for c in commits)
+            + '</ul></div>')
+
+
 #: The three block types that render the one list. Named so `render_block` can hand all
 #: three to one function: they share the lede, the numbering, the band and — since
 #: `{"auto": "review-points"}` — the question of what an empty one is allowed to say.
@@ -9097,7 +9219,11 @@ def main(argv=None) -> int:
     # What the Review tab owes the reader above its first heading. Both are facts about the
     # branch rather than about any pile, so they are set once here and drained by whichever
     # pile renders first.
-    set_bands([POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
+    # The aftermath first: it is the louder statement and it governs how the piles under
+    # it should be read. The missing-record band is second, directly above the piles it
+    # explains.
+    set_bands([aftermath_html(out_dir, root),
+               POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
                else ""])
 
     def render_block(block):

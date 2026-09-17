@@ -196,6 +196,178 @@ def _reviewpoints(ctx: Ctx):
         raise RuntimeError(f"review-points.py exit {rp.returncode}")
 
 
+#: What counts as a file no human wrote. A commit landing on the branch after the agent
+#: finished is a fact a reviewer has to be told about — every other number on the page was
+#: measured before it — but a regenerated diagram, an OpenAPI spec rewritten by a
+#: pre-commit hook and a redrawn `.drawio` are not somebody editing the change under
+#: review. Without this split the band would be red on every branch where the guardrails
+#: did their job, which is the fastest way to teach a reader to ignore a red band.
+#:
+#: Overridable per project with `"generated": [...]` in `human-review.json`, because which
+#: paths a repository generates is a fact about that repository and nothing here can guess
+#: it. Replaces the list rather than adding to it: a project that says what it generates
+#: has said it.
+GENERATED_DEFAULT = (
+    "**/generated/**", "docs/generated/**", "openapi.yaml",
+    "**/*.genseq.*", "**/api-types.ts", "**/*.drawio*",
+)
+
+
+def glob_rx(pattern: str) -> "re.Pattern[str]":
+    """One `**`-aware glob as a regex over a repo-relative path.
+
+    `fnmatch` is not enough and is wrong in the direction that hurts: its `*` crosses `/`,
+    so `openapi.yaml` would match `docs/openapi.yaml` and `**/*.genseq.*` would match
+    nothing it was not already matching by accident. Here `*` stops at a slash, `**`
+    crosses them, and a leading `**/` is *optional* — `**/generated/**` has to cover a
+    top-level `generated/` directory too, which is the spelling every project writes and
+    the one a literal reading would miss.
+    """
+    out: list[str] = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("^" + "".join(out) + "$")
+
+
+def generated_globs(cfg: dict) -> list[str]:
+    got = cfg.get("generated") if isinstance(cfg, dict) else None
+    if isinstance(got, list):
+        named = [g for g in got if isinstance(g, str) and g.strip()]
+        if named:
+            return named
+    return list(GENERATED_DEFAULT)
+
+
+def numstat(text: str, rxs) -> tuple[list[dict], int, int]:
+    """`git --numstat` output as rows, plus the added/deleted totals.
+
+    A binary file is `-\t-\tpath`: it counts as a file that moved and as no lines, which
+    is what it is. A rename arrives as `old => new` (or `a/{b => c}/d`) and is kept
+    verbatim — the path is what the reader has to recognise, and rewriting it here would
+    make the row disagree with the `git show` they run next.
+    """
+    rows, adds, dels = [], 0, 0
+    for line in text.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        a, d, path = parts[0], parts[1], "\t".join(parts[2:]).strip()
+        if not path:
+            continue
+        added = int(a) if a.isdigit() else 0
+        deleted = int(d) if d.isdigit() else 0
+        # A rename's *new* side is what the classifier has to judge: a diagram moved into
+        # `generated/` is generated from here on, whatever it used to be.
+        judged = path.split(" => ")[-1].strip("}").strip()
+        rows.append({"path": path, "added": added, "deleted": deleted,
+                     "binary": not a.isdigit(),
+                     "generated": any(rx.match(judged) for rx in rxs)})
+        adds += added
+        dels += deleted
+    return rows, adds, dels
+
+
+def _aftermath(ctx: Ctx):
+    """What landed on the branch after the agent stopped — the page's one honesty gate.
+
+    Every other number here is measured from the diff, and the diff cannot tell when it
+    was written. So a page can be entirely accurate about a change set and entirely
+    misleading about *this* change: the film, the findings, the assumptions and the costs
+    all describe the branch as the agent left it, and three commits later they describe
+    something nobody reviewed. The reader has no way to see that from the page, because
+    the page is the thing that would have to say it.
+
+    `review-commits.py` already knows where the agent stopped (the `Review-Points:`
+    trailer) and what came after it. This measures those commits and splits them by
+    whether a human wrote them, so the band the build draws is red for a hand edit and
+    grey for a regenerated diagram. Without the split it would be red on every branch
+    whose guardrails ran, and a red band that is always on is a red band nobody reads.
+
+    With no review commit there is nothing to date from, and the step is skipped: a band
+    reading "nothing has changed since the agent finished" would be a claim resting
+    entirely on not knowing when that was.
+    """
+    doc = None
+    try:
+        doc = json.loads(Path(".human-review/review-commits.json")
+                         .read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        doc = None
+    if not isinstance(doc, dict) or not doc.get("review"):
+        raise LookupError("no commit on this branch carries a Review-Points: trailer, so "
+                          "there is no point in its history to date 'after the agent "
+                          "finished' from — run the reviewpoints step first, and if it "
+                          "found nothing, the branch genuinely has no such point")
+    review = doc["review"]
+    globs = generated_globs(ctx.cfg)
+    rxs = [glob_rx(g) for g in globs]
+
+    head = sh("git rev-parse HEAD", ctx, capture=True, check=False).stdout.strip()
+    total = sh(f"git diff --numstat {review}..HEAD", ctx, capture=True, check=False)
+    rows, adds, dels = numstat(total.stdout or "", rxs)
+
+    commits = []
+    for c in doc.get("after_detail") or []:
+        sha = c.get("sha") or ""
+        got = sh(f"git show --numstat --format= {sha}", ctx, capture=True, check=False)
+        files, cadds, cdels = numstat(got.stdout or "", rxs)
+        code = [f for f in files if not f["generated"]]
+        commits.append({
+            "sha": sha, "short": sha[:8], "when": c.get("when", ""),
+            "subject": c.get("subject", ""),
+            "files": files, "added": cadds, "deleted": cdels,
+            # A merge commit shows no numstat at all, so "nothing but generated files"
+            # would be the wrong reading of it. No files means unmeasured, not harmless.
+            "generated_only": bool(files) and not code,
+            "measured": bool(files),
+        })
+
+    def tally(picked):
+        return {"files": len(picked),
+                "added": sum(f["added"] for f in picked),
+                "deleted": sum(f["deleted"] for f in picked)}
+
+    out = {
+        "review": review, "review_short": review[:8], "head": head,
+        "generated_globs": globs,
+        "commits": commits,
+        "totals": {"commits": len(commits), "files": len(rows),
+                   "added": adds, "deleted": dels,
+                   "code": tally([f for f in rows if not f["generated"]]),
+                   "generated": tally([f for f in rows if f["generated"]])},
+        "clean": not commits,
+    }
+    if not ctx.dry:
+        path = Path(".human-review/aftermath.json")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
+    if out["totals"]["code"]["files"]:
+        ctx.notes.append(
+            f"{len(commits)} commit(s) landed after the review commit and "
+            f"{out['totals']['code']['files']} of the files they touched are not "
+            "generated — the Review tab opens with a red band naming them. Say in the "
+            "guide what they were; everything else on this page describes the branch as "
+            "the agent left it")
+    elif commits:
+        ctx.notes.append(f"{len(commits)} commit(s) after the review commit, all of them "
+                         "generated files only — the band is grey, which is correct")
+
+
 def _diagrams(ctx: Ctx):
     sh(f"{HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
     d = ctx.step_cfg("diagrams").get("drawio")
@@ -731,6 +903,11 @@ STEPS = [
     # steps and the cost phases date themselves from.
     ("reviewpoints", "review",       "review-points.md and the two commits",
      None,                                                                        _reviewpoints),
+    # Straight after it, and never before: it reads the review commit that step resolved.
+    # Same tab, because "what changed after the agent stopped" is the first thing the
+    # Review tab has to say — it governs how everything under it should be read.
+    ("aftermath",   "review",        "what landed after the review commit",
+     None,                                                                        _aftermath),
     ("diagrams",    "data,packages", "diagram deltas",            None,              _diagrams),
     ("sequence",    "sequence",      "sequence diagrams from traces",
      lambda c: bool(c.step_cfg("sequence").get("commands")) or "sequence.commands not configured",
