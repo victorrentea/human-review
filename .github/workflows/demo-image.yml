@@ -1,0 +1,102 @@
+name: demo image
+
+# Pages lets a stranger click a snapshot, the rolling zip lets them keep one; this lets
+# them *run* one. Every snapshot under demo/ is baked into a container image and pushed to
+# this repository's package registry, so a single command stands the page up on their own
+# machine, at their own address, with no clone, no install and no model in the loop:
+#
+#   docker run --rm -p 8080:80 ghcr.io/victorrentea/human-review:petclinic-visit-vet
+#
+# It earns its place next to the other two for two reasons. A page served over HTTP is not
+# the same page as one opened off disk — under `file://` a review cannot reliably fetch its
+# own content.json and every request it makes is cross-origin — so this is the only copy a
+# reader can be handed that behaves exactly like the one Victor demos. And the tag is the
+# snapshot's name, which means the review of a pull request has an address that can be
+# quoted, pinned and pulled back months later, the way any other build artifact of that
+# pull request would be.
+#
+# Unlike the zip job, this one *is* path-filtered. The zip refuses a filter because its
+# release notes name the commit the download stands on, and a filtered run would leave that
+# claim quoting a commit from weeks ago. An image makes no such claim: it is the snapshot
+# bytes plus the two files that package them, and nothing else on main can change what it
+# contains. Rebuilding it on unrelated pushes would only mint a fresh immutable tag per
+# push and bury the readable ones.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "demo/**"
+      - ".github/snapshot.Dockerfile"
+      - ".github/snapshot.nginx.conf"
+      - ".github/workflows/demo-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+# The readable tags are clobbered in place, so two runs racing would decide between them by
+# whichever manifest landed last. Queue them, and never cancel one mid-push.
+concurrency:
+  group: demo-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in to the registry
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Two kinds of tag, on purpose. `<slug>` and `latest` are readable and are meant to be
+      # quoted in a README or typed from memory at a whiteboard; they move with main. Beside
+      # each one sits `<slug>-<sha7>`, which never moves, so a snapshot shown at a course can
+      # still be pulled byte-for-byte after the demo has been regenerated.
+      - name: Build and push the gallery and every snapshot
+        id: push
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          sha7="${GITHUB_SHA:0:7}"
+
+          publish() {
+            local context="$1"; shift
+            local tags=() tag
+            for tag in "$@"; do tags+=(-t "$image:$tag"); done
+            docker build -f .github/snapshot.Dockerfile \
+              --build-arg "SNAPSHOT=$context" "${tags[@]}" .
+            for tag in "$@"; do docker push "$image:$tag"; done
+          }
+
+          # demo/ itself is the landing page listing the snapshots — the same thing Pages
+          # serves at its root — so it is what an untagged `docker run` should give you.
+          publish demo latest "main-$sha7"
+          printed=""
+          for snap in demo/*/; do
+            slug="$(basename "$snap")"
+            publish "demo/$slug" "$slug" "$slug-$sha7"
+            printed="$printed $slug"
+          done
+          echo "slugs=$printed" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      # The run's own page is where somebody lands when they wonder what was published, so
+      # it answers with the command rather than with a list of digests.
+      - name: Say how to run it
+        run: |
+          {
+            echo "### Snapshots published"
+            echo
+            echo '```sh'
+            echo "docker run --rm -p 8080:80 ${{ steps.push.outputs.image }}"
+            for slug in ${{ steps.push.outputs.slugs }}; do
+              echo "docker run --rm -p 8080:80 ${{ steps.push.outputs.image }}:$slug"
+            done
+            echo '```'
+            echo
+            echo "Then open <http://localhost:8080>."
+          } >> "$GITHUB_STEP_SUMMARY"

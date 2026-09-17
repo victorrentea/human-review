@@ -395,6 +395,42 @@ reason to fix the snapshot and never a reason to withhold the download. `*.raw.w
 un-narrated capture, which nothing on the page plays — is dropped, and an `OPEN-ME.txt`
 naming the source commit is added.
 
+## Running a snapshot from a container image
+
+A zip opened off disk is not quite the page `/human-review` produces. Under `file://` a
+review cannot reliably fetch its own `content.json`, every request it makes is a
+cross-origin one, and its capability probe fails in a way the page is written to survive
+rather than in the way a served page answers it. So every snapshot is also published as a
+container image, and running one is the only way to stand in front of exactly the page
+being demoed without cloning anything:
+
+```sh
+docker run --rm -p 8080:80 ghcr.io/victorrentea/human-review:petclinic-visit-vet
+# then open http://localhost:8080
+```
+
+Untagged — `ghcr.io/victorrentea/human-review` — you get `demo/` itself, the landing page
+listing every snapshot, which is the same thing Pages serves at its root. Beside each
+readable tag sits an immutable `<slug>-<sha7>`, so a snapshot shown at a course can be
+pulled back byte-for-byte after the demo has been regenerated. The package is public, so
+none of this needs a login.
+
+`.github/workflows/demo-image.yml` does it, on pushes to `main` that touch `demo/**` or
+the two files that package it — `.github/snapshot.Dockerfile`, which copies one committed
+directory into `nginx:alpine`, and `.github/snapshot.nginx.conf`, which names both
+`review.html` and `index.html` as directory indexes so a full review and a screenshot
+gallery are served by the same image definition. Unlike the zip job it *is* path-filtered:
+the zip refuses a filter because its release notes name the commit the download stands on,
+while an image is the snapshot bytes and nothing else, and rebuilding it on unrelated
+pushes would only mint a fresh immutable tag per push.
+
+Two things still 404 and are meant to. The root-relative deep links into the reviewed
+application — `/owners/4` — have no application behind them here; the page's
+app-environment bar is what rewrites those, and it cannot until the page loads. And
+`/__human_review__`, the probe by which a page asks whether the live tool is serving it,
+correctly answers "no". Both behave identically on Pages. The `vscode://file/...` caveat
+above is unchanged: those hold absolute paths on the authoring machine.
+
 ## Editing it in place
 
 The skill is developed by symlinking it into a project rather than reinstalling it:
