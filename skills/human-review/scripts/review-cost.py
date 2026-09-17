@@ -22,9 +22,11 @@ Three details matter and are easy to get wrong:
   it and only the matching task files are counted. `/simplify` alone spawns four reviewers,
   so a number that skipped them would be wrong by most of the bill — and they are reported
   separately, because "of which N% was subagents" is the interesting half of it.
-* **Cache reads are a tenth of input, cache writes are 1.25x (5m) or 2x (1h).** On a long
-  run the cache-read column dwarfs everything else in *tokens* while contributing almost
-  nothing to *cost*, so a chip that showed only a token total would be actively misleading.
+* **Cache writes are 1.25x (5m) or 2x (1h) of input; cache reads are a tenth of it — except
+  on Fable, where they are $0.25 against a $10 input, a fortieth.** On a long run the
+  cache-read column dwarfs everything else in *tokens* while contributing almost nothing to
+  *cost*, so a chip that showed only a token total would be actively misleading — and a flat
+  tenth applied to a Fable run overcharges the largest token column by four.
 
 The dollar figure is **list-price equivalent**: what these tokens would cost on the API.
 Nobody running this under a subscription is billed it, and the chip says so on hover.
@@ -41,15 +43,22 @@ from pathlib import Path
 
 PROJECTS = Path(os.path.expanduser("~/.claude/projects"))
 
-# $ per 1M tokens: (input, output). Cache write is 1.25x input (5m TTL) / 2x (1h),
-# cache read is 0.1x input. Kept in step with victor-skills-private/claude-usage.
+# $ per 1M tokens: (input, output). Cache write is 1.25x input (5m TTL) / 2x (1h).
+# Kept in step with victor-skills-private/claude-usage.
 PRICES = {
     "opus": (5.0, 25.0),
     "fable": (10.0, 50.0),
     "mythos": (10.0, 50.0),
-    "sonnet": (3.0, 15.0),
+    "sonnet": (2.0, 10.0),
     "haiku": (1.0, 5.0),
 }
+# Cache read as a fraction of *that family's* input price, because it is not one fraction.
+# The usual rate is a tenth of input, but Fable reads cache at $0.25 against a $10 input —
+# 0.025x, not 0.1x. Applying the flat tenth to a Fable run overcharges its cache reads
+# fourfold, and on a long agentic run cache reads are most of the tokens, so that lands on
+# the total rather than in the noise. A family with no entry keeps the tenth.
+CACHE_READ = {"fable": 0.025}
+CACHE_READ_DEFAULT = 0.10
 LABELS = [
     ("claude-opus-5", "Opus 5"), ("claude-opus-4-8", "Opus 4.8"),
     ("claude-fable-5", "Fable 5"), ("claude-mythos-5", "Mythos 5"),
@@ -83,7 +92,7 @@ def price(fam: str | None, u: dict) -> float:
         + u.get("output_tokens", 0) * out
         + w5 * inp * 1.25
         + w1 * inp * 2.0
-        + u.get("cache_read_input_tokens", 0) * inp * 0.10
+        + u.get("cache_read_input_tokens", 0) * inp * CACHE_READ.get(fam, CACHE_READ_DEFAULT)
     ) / 1e6
 
 
@@ -101,26 +110,92 @@ def transcript(session_id: str) -> Path | None:
 AGENT_ID_RE = __import__("re").compile(r"agentId[\"\':\s]+([0-9a-f]{12,})")
 
 
-def subagent_transcripts(session_file: Path) -> list[Path]:
-    """The task files of every agent this session spawned.
+def subagent_dir(session_file: Path) -> Path:
+    """`<session>/subagents/`, beside the parent transcript."""
+    return session_file.parent / session_file.stem / "subagents"
 
-    Nothing in the environment points at the tasks directory, and its parent is keyed by a
-    workspace uuid that is not the session id — so going from the session to its agents by
-    walking the filesystem is guesswork that would sweep up a concurrent session's agents
-    in the same folder. Going the other way is exact: the parent transcript names every
-    agentId it launched, and each of those is a filename.
+
+def subagent_transcripts(session_file: Path) -> list[Path]:
+    """Every agent this session spawned, durable copy first.
+
+    Claude Code writes a subagent twice: `<session>/subagents/agent-<id>.jsonl` beside the
+    parent transcript, and a `/tmp/claude-*/…/tasks/<id>.output` that is a symlink into it
+    — which a tmp sweep or a reboot takes away, leaving a dangling path this used to count
+    as an absent subagent. The durable copy is preferred for that reason and because it is
+    the only one with a `.meta.json` naming the agent's type, which is what tells a review
+    pass apart from an implementation errand.
+
+    The tmp files remain the fallback for a session whose project folder was cleaned
+    instead, and they are found the exact way, not by walking: nothing in the environment
+    points at the tasks directory and its parent is keyed by a workspace uuid that is not
+    the session id, so a filesystem walk would sweep up a concurrent session's agents from
+    the same folder. The parent transcript names every agentId it launched, and each of
+    those is a filename. `review-passes.py:subagent_files` resolves them the same way.
     """
+    home = subagent_dir(session_file)
+    if home.is_dir():
+        found = sorted(home.glob("agent-*.jsonl"))
+        if found:
+            return found
     ids = set(AGENT_ID_RE.findall(session_file.read_text(encoding="utf-8", errors="replace")))
     found = []
     for agent_id in sorted(ids):
-        for base in Path("/private/tmp").glob(f"claude-*/*/*/tasks/{agent_id}.output"):
-            found.append(base)
-            break
-        else:
-            for base in Path("/tmp").glob(f"claude-*/*/*/tasks/{agent_id}.output"):
-                found.append(base)
+        for root in ("/private/tmp", "/tmp"):
+            hit = next(Path(root).glob(f"claude-*/*/*/tasks/{agent_id}.output"), None)
+            if hit:
+                found.append(hit)
                 break
     return found
+
+
+# The `name` a forked `/code-review` carries in its `.meta.json`. It is the phase-2
+# boundary for free: a reviewer's transcript is that pass and nothing else, so it needs no
+# window at all — and the earliest and latest timestamps across those files ARE when the
+# review started and stopped.
+REVIEW_AGENT_NAME = "code-review"
+
+
+def review_agent_files(session_file: Path, name: str = REVIEW_AGENT_NAME) -> list[Path]:
+    """The forked reviewers of this session, by what their `.meta.json` says they are.
+
+    By `name`, not by prose in the description: an agent type is recorded by the harness,
+    a description is written by whoever spawned it. `pass_costs` learned this the hard way
+    — matching on description billed two implementation tasks to the review.
+    """
+    home = subagent_dir(session_file)
+    if not home.is_dir():
+        return []
+    out = []
+    for jsonl in sorted(home.glob("agent-*.jsonl")):
+        meta_path = jsonl.with_suffix(".meta.json")
+        if not meta_path.is_file():
+            continue
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if str(meta.get("name") or "") == name:
+            out.append(jsonl)
+    return out
+
+
+def agent_span(files) -> tuple["dt.datetime | None", "dt.datetime | None"]:
+    """The earliest and latest timestamp across a set of agent transcripts."""
+    stamps = []
+    for path in files:
+        path = Path(path)
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if '"timestamp"' not in line:
+                continue
+            try:
+                when = _parse_iso((json.loads(line) or {}).get("timestamp"))
+            except json.JSONDecodeError:
+                continue
+            if when is not None:
+                stamps.append(when)
+    return (min(stamps), max(stamps)) if stamps else (None, None)
 
 
 def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict,
@@ -620,9 +695,310 @@ def pass_costs(session: str, since: "dt.datetime | None" = None) -> dict:
     return {"measured": True, "groups": groups, "inline": inline}
 
 
+# --------------------------------------------------------------------------------------- #
+# Cost per PHASE, which is a different question from cost per tab. A tab is a piece of the
+# page; a phase is a piece of the work — writing the code, reviewing it, taking the review's
+# advice, writing down what was declined. The reader arriving at the `$` tab wants the
+# second breakdown, and until now the page could only offer the first.
+# --------------------------------------------------------------------------------------- #
+
+DEFAULT_POINTS = "review-points.md"
+
+PHASE_LABELS = {
+    "implementation": "implementation",
+    "code_review": "code-review agents",
+    "post_review_fixes": "post-review fixes",
+    "review_points": "review-points",
+    "video": "demo video",
+    "images": "view images",
+    "page_build": "page build",
+}
+
+
+@__import__("functools").lru_cache(maxsize=1)
+def _authoring_module():
+    """`authoring-sessions.py` as a module, for its evidence rules and nothing else.
+
+    Hyphenated, so not importable by name. Imported rather than reimplemented because
+    `WRITE_TOOLS` and `shell_writes` are the answer to "did this turn write that file",
+    and a second copy of that answer is a second thing to keep in step with the harness.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("authoring_sessions", AUTHORING)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def write_window(path: Path, rel: str) -> tuple["dt.datetime | None", "dt.datetime | None"]:
+    """When this transcript first and last wrote `rel`.
+
+    The same evidence `authoring-sessions.py` uses to decide who wrote the code, pointed at
+    one file: an edit tool naming it, or a shell command that demonstrably writes it. Turns
+    that merely *read* it are not evidence, which is the whole reason the review-points row
+    can be told apart from the fixes around it.
+    """
+    auth = _authoring_module()
+    stamps: list[dt.datetime] = []
+    base = Path(rel).name
+    try:
+        handle = path.open(encoding="utf-8", errors="replace")
+    except OSError:
+        return None, None
+    with handle:
+        for line in handle:
+            if base not in line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            when = _parse_iso(rec.get("timestamp"))
+            content = ((rec.get("message") or {}).get("content")) or []
+            if when is None or not isinstance(content, list):
+                continue
+            for block in content:
+                if not isinstance(block, dict) or block.get("type") != "tool_use":
+                    continue
+                name, inp = block.get("name", ""), block.get("input") or {}
+                if name in auth.WRITE_TOOLS:
+                    paths = [inp.get("file_path") or inp.get("path")
+                             or inp.get("notebook_path")]
+                    paths += [e.get("file_path") for e in (inp.get("edits") or [])
+                              if isinstance(e, dict)]
+                    if any(p and str(p).endswith(rel) or (p and Path(str(p)).name == base)
+                           for p in paths):
+                        stamps.append(when)
+                elif name == "Bash":
+                    cmd = str(inp.get("command") or "")
+                    if rel in cmd and auth.shell_writes(cmd, rel):
+                        stamps.append(when)
+    return (min(stamps), max(stamps)) if stamps else (None, None)
+
+
+def _price_turns(turns) -> dict:
+    cost = tokens = 0.0
+    for _key, model, u, _side, _when in turns:
+        cost += price(family(model), u)
+        tokens += sum(u.get(k, 0) for k in
+                      ("input_tokens", "output_tokens",
+                       "cache_creation_input_tokens", "cache_read_input_tokens"))
+    return {"cost": cost, "tokens": round(tokens), "messages": len(turns)}
+
+
+def _window(path: Path, since, until, skip=()) -> dict:
+    """The parent's turns in a window, plus its own agents' — but never the reviewers'.
+
+    A reviewer's transcript is priced exactly, as its own row, so counting it here as well
+    would bill the review twice. Everything else the session forked belongs to whichever
+    phase it ran in, and is charged there.
+    """
+    best: dict[str, tuple] = {}
+    _scan(path, since, False, best, until)
+    skip = {str(s) for s in skip}
+    for extra in subagent_transcripts(path):
+        if str(extra) in skip:
+            continue
+        _scan(extra, since, True, best, until)
+    return _price_turns(list(best.values()))
+
+
+def _row(key: str, measured: bool, data: dict | None = None, reason: str | None = None,
+         window=None, detail: str | None = None) -> dict:
+    """One line of the breakdown. An unmeasurable phase carries a reason, never a zero.
+
+    `$0.00` and "we could not date this" render identically to a reader and mean opposite
+    things — one is a phase that cost nothing, the other is a phase whose cost is sitting
+    in some other row. The reason is what stops the table from quietly balancing itself.
+    """
+    out = {"key": key, "label": PHASE_LABELS.get(key, key), "measured": measured,
+           "cost": 0.0, "tokens": 0, "messages": 0, "reason": reason, "detail": detail,
+           "window": [w.isoformat() if w else None for w in (window or (None, None))]}
+    if data:
+        out.update({k: data[k] for k in ("cost", "tokens", "messages")})
+    return out
+
+
+def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
+                run_session: str | None = None, steps_path: Path | None = None,
+                points_file: str = DEFAULT_POINTS) -> dict:
+    """What each phase of the work cost, from the boundaries somebody else derived.
+
+    The boundaries are `session-cost.py`'s job — they come out of git trailers, the step
+    ledger and the reviewers' own transcripts — and the pricing is this module's, so the
+    two never disagree about what a turn costs. Rows:
+
+      1. **implementation** — the coding session between its first edit and commit #1.
+      2. **code-review agents** — each forked reviewer's whole transcript. Exact, needing
+         no window: a subagent's file is that pass and nothing else.
+      3. **post-review fixes** — the parent's turns between the last reviewer turn and
+         commit #2, less row 4.
+      4. **review-points** — the turns that wrote `review-points.md`, found by the same
+         evidence `authoring-sessions.py` uses. A sub-window of row 3, subtracted so the
+         rows still add up to the total.
+      5/6. **demo video / view images** — not the coding session at all: the `video` and
+         `dsaudit` steps of the run that built the page, priced by `tab_costs`.
+      7. **page build** — that run's `guide` pseudo-tab and residual.
+
+    **Every window is a bound, not a fence** — the caveat `authoring_cost` already carries.
+    Work inside a window that belonged to something else is still counted, and where rows 3
+    and 4 interleave the split between them is arbitrary. The windows are returned so the
+    page can print them instead of implying a precision the transcript cannot support.
+    """
+    rows: list[dict] = []
+    path = transcript(session) if session else None
+    reviewer_files = [Path(f) for f in reviewer_files or ()]
+
+    if path is None:
+        why = ("no session id — nothing names the conversation that wrote the code"
+               if not session else f"no transcript on disk for session {session}")
+        for key in ("implementation", "code_review", "post_review_fixes", "review_points"):
+            rows.append(_row(key, False, reason=why))
+    else:
+        if t0 and t1:
+            rows.append(_row("implementation", True,
+                             _window(path, t0, t1, skip=reviewer_files), window=(t0, t1),
+                             detail="first edit to the change set → commit #1"))
+        else:
+            rows.append(_row("implementation", False, window=(t0, t1), reason=(
+                "no first edit found in the transcript" if not t0 else
+                "which commit is the implementation is not recorded — no Implements "
+                "trailer, so the phase has no end")))
+
+        live = [f for f in reviewer_files if f.is_file()]
+        if live:
+            data = {"cost": 0.0, "tokens": 0, "messages": 0}
+            for f in live:
+                # include_subagents=False: a subagent transcript is a leaf, and any agent
+                # id it happens to mention belongs to the parent, which already paid.
+                c = collect(f, None, include_subagents=False)
+                data["cost"] += c["cost"]
+                data["tokens"] += c["tokens"]
+                data["messages"] += c["messages"]
+            rows.append(_row("code_review", True, data, window=(t2, t3),
+                             detail=f"{len(live)} forked reviewer(s), whole transcripts"))
+        else:
+            rows.append(_row("code_review", False, window=(t2, t3), reason=(
+                "no forked reviewer transcript — the review ran inline, interleaved with "
+                "the conversation that invoked it, and its turns cannot be separated from "
+                "the turns around them")))
+
+        points_from, points_to = write_window(path, points_file)
+        points = None
+        if points_from and points_to:
+            points = _window(path, points_from, points_to, skip=reviewer_files)
+
+        if t3 and t4:
+            fixes = _window(path, t3, t4, skip=reviewer_files)
+            detail = "last reviewer turn → commit #2"
+            if points:
+                for k in ("cost", "tokens", "messages"):
+                    fixes[k] = max(fixes[k] - points[k], 0)
+                detail += f", less the {points['messages']} turn(s) that wrote {points_file}"
+            rows.append(_row("post_review_fixes", True, fixes, window=(t3, t4),
+                             detail=detail))
+        else:
+            rows.append(_row("post_review_fixes", False, window=(t3, t4), reason=(
+                "the review's end and commit #2 are not both dated, so the stretch "
+                "between them is not a window")))
+
+        if points:
+            rows.append(_row("review_points", True, points,
+                             window=(points_from, points_to),
+                             detail=f"first → last write of {points_file}"))
+        else:
+            rows.append(_row("review_points", False, reason=(
+                f"no turn in this session wrote {points_file} — it was written somewhere "
+                "else, or not at all")))
+
+    # The three rows that belong to the run which BUILT the page, not to the one that wrote
+    # the code. They are already measured, by the step ledger; this only puts them in the
+    # same table, so the reader sees one bill instead of two halves that never meet.
+    if run_session and steps_path is not None:
+        # Every tab the ledger names, not just the two that get their own row: asking for a
+        # narrow list makes `tab_cost_report` report all the others as drift, and that
+        # warning would then be printed as the *reason* the video row is unmeasured. The
+        # other tabs are not dropped either — their work is page building, and that is the
+        # row it lands in.
+        steps, _found = load_steps(Path(steps_path))
+        wanted = sorted({t for s in steps for t in s["tabs"] if t != GUIDE_TAB}
+                        | {"video", "dsaudit"})
+        report = tab_cost_report(run_session, None, Path(steps_path), wanted)
+        for key, tab in (("video", "video"), ("images", "dsaudit")):
+            row = report["tabs"].get(tab) or {}
+            if row.get("measured"):
+                rows.append(_row(key, True, {"cost": row["cost"], "tokens": row["tokens"],
+                                             "messages": row["messages"]},
+                                 detail=f"the '{tab}' step of the page-building run"))
+            else:
+                rows.append(_row(key, False, reason=(row.get("tip")
+                                                     or report.get("reason")
+                                                     or "no step named it")))
+        residual = report.get("residual") or {}
+        if residual.get("measured"):
+            page = {k: residual[k] for k in ("cost", "tokens", "messages")}
+            others = [t for t in wanted if t not in ("video", "dsaudit")]
+            for tab in others:
+                row = report["tabs"].get(tab) or {}
+                for k in ("cost", "tokens", "messages"):
+                    page[k] += row.get(k) or 0
+            rows.append(_row("page_build", True, page, detail=(
+                "assembling the guide, the other " f"{len(others)} tab(s), and whatever no "
+                "step covered" if others else
+                "assembling the guide, plus whatever no step covered")))
+        else:
+            rows.append(_row("page_build", False,
+                             reason=residual.get("tip") or "the page-building run is not "
+                                                           "measured"))
+    else:
+        why = ("no step ledger for the run that built the page — pass --steps-file and the "
+               "building run's session id")
+        for key in ("video", "images", "page_build"):
+            rows.append(_row(key, False, reason=why))
+
+    measured = [r for r in rows if r["measured"]]
+    return {
+        "rows": rows,
+        "measured": bool(measured),
+        "unmeasured": [r["key"] for r in rows if not r["measured"]],
+        "cost": sum(r["cost"] for r in measured),
+        "tokens": sum(r["tokens"] for r in measured),
+        "messages": sum(r["messages"] for r in measured),
+        "session": session, "run_session": run_session,
+        "points_file": points_file,
+        "boundaries": {name: (w.isoformat() if w else None) for name, w in
+                       (("t0", t0), ("t1", t1), ("t2", t2), ("t3", t3), ("t4", t4))},
+    }
+
+
+PHASES_FILE = ".human-review/phases.json"
+
+
+def load_phases(path: Path) -> dict:
+    """The phase breakdown `session-cost.py` left behind, if it ran.
+
+    Read from a file rather than recomputed here on purpose: the boundaries come out of git
+    trailers and the reviewers' transcripts, which is `session-cost.py`'s subject and not
+    this module's, and deriving them twice is how the `$` tab and the table Victor reads in
+    the terminal would come to disagree. Absent, the page falls back to the writing/review
+    split it has always drawn — and is told *why*, so it can say so.
+    """
+    if not Path(path).is_file():
+        return {"measured": False, "rows": [],
+                "reason": f"no {path} — run session-cost.py to date the phases"}
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {"measured": False, "rows": [], "reason": f"{path} is unreadable ({exc})"}
+    if not isinstance(doc, dict) or not isinstance(doc.get("rows"), list):
+        return {"measured": False, "rows": [],
+                "reason": f"{path} is not something session-cost.py wrote"}
+    return doc
+
+
 def ledger(session: str | None, since: "dt.datetime | None", steps_path: Path,
            tabs: list[str], base: str, root: Path,
-           include_subagents: bool = True) -> dict:
+           include_subagents: bool = True, phases_file: str = PHASES_FILE) -> dict:
     """The whole bill for this change set, in the order the money was spent.
 
     The page used to state one number — what the review run cost — in a chip, with a
@@ -665,7 +1041,12 @@ def ledger(session: str | None, since: "dt.datetime | None", steps_path: Path,
     total = (writing.get("cost") or 0.0) + (run.get("cost") or 0.0) + earlier
     return {"writing": writing, "run": run, "passes": passes, "tabs": tabs_report,
             "passes_added": earlier, "total": total,
-            "total_tokens": (writing.get("tokens") or 0) + (run.get("tokens") or 0)}
+            "total_tokens": (writing.get("tokens") or 0) + (run.get("tokens") or 0),
+            # A view *inside* the same money, cut by phase of the work rather than by piece
+            # of the page. Not added to `total`: implementation + review + fixes is the same
+            # bill as writing + run, counted a second way, and a table that summed both
+            # would double every dollar on it.
+            "phases": load_phases(root / phases_file)}
 
 
 def _resolve_since(since_file: str, since_raw: str | None) -> "dt.datetime | None":
@@ -711,7 +1092,36 @@ def main(argv=None) -> int:
                          "every tab and the residual — as JSON (needs --tabs)")
     ap.add_argument("--base", default="origin/main",
                     help="what the change set is measured against, for --ledger")
+    ap.add_argument("--phases", action="store_true",
+                    help="emit the per-phase breakdown as JSON. The boundaries are given, "
+                         "not guessed — session-cost.py derives them and is the usual "
+                         "caller; this mode exists for a boundary somebody has in hand")
+    for name, helptext in (("t0", "first edit to the change set"),
+                           ("t1", "commit #1, the implementation"),
+                           ("t2", "the review's first turn"),
+                           ("t3", "the review's last turn"),
+                           ("t4", "commit #2, the review commit")):
+        ap.add_argument(f"--{name}", help=f"ISO timestamp: {helptext}")
+    ap.add_argument("--reviewer", action="append", default=[], metavar="JSONL",
+                    help="a forked reviewer's transcript; repeatable. Default: every "
+                         "subagent of --session whose .meta.json is named code-review")
+    ap.add_argument("--run-session", help="the session that BUILT the page, for the video, "
+                                          "images and page-build rows")
+    ap.add_argument("--points-file", default=DEFAULT_POINTS,
+                    help="the review-points file whose writing is its own row")
     args = ap.parse_args(argv)
+
+    if args.phases:
+        path = transcript(args.session) if args.session else None
+        reviewers = [Path(r) for r in args.reviewer]
+        if not reviewers and path is not None:
+            reviewers = review_agent_files(path)
+        stamps = [_parse_iso(getattr(args, n)) for n in ("t0", "t1", "t2", "t3", "t4")]
+        print(json.dumps(phase_costs(args.session, *stamps, reviewers,
+                                     run_session=args.run_session or args.session,
+                                     steps_path=Path(args.steps_file),
+                                     points_file=args.points_file), indent=1))
+        return 0
 
     if args.ledger:
         since = _resolve_since(args.since_file, args.since)
