@@ -4347,19 +4347,28 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
         act = f' data-action="{html.escape(aid, quote=True)}"'
     where = revert.get("short") or revert.get("sha", "")[:8]
     subject = revert.get("subject") or ""
-    tip = ("Steps back one drawing, to " + (f"{where} — {subject} — " if where else "")
-           + "the newest commit whose picture is not the one on disk. It runs no script "
-           "and does not go near the base. Anything still loose in the work tree is "
-           "banked, not binned: `git stash pop` brings it back. Press it again to step "
-           "back another drawing.")
+    # Two different answers, and the reader is owed the difference. Landing on a drawing
+    # that still carries red is landing on automation's own — the line as the patch script
+    # drew it, before anyone laid it out — which is what "before I touched it" means to
+    # the person asking. Landing anywhere else is just one step back through history.
+    lands = ("automation's own drawing — what the patch script drew, in red, before "
+             "anyone laid it out"
+             if revert.get("machine_drawn") else
+             "the newest earlier drawing that is not the one on disk")
+    tip = (f"Goes back to {lands}"
+           + (f", at {where} — {subject}" if where else "") + ". It runs no script and "
+           "does not go near the base. Anything still loose in the work tree is banked, "
+           "not binned: `git stash pop` brings it back.")
     fold = f"undo-{name or 'diagram'}"
     # The served hover names the target too. It is the one most readers ever see — the
     # probe swaps it in wherever the button can actually run — and "reloads with the
     # committed drawing back" told them the least at the moment they most needed to know
     # *which* drawing they were about to land on.
     served = ("Runs it here and reloads, with "
-              + (f"{where} — {subject} — " if where else "the previous drawing ")
-              + "back. Your own edits go to the git stash.")
+              + ("automation's own drawing back, in red, as the patch script drew it"
+                 if revert.get("machine_drawn") else "the previous drawing back")
+              + (f" — {where}, {subject}" if where else "")
+              + ". Your own edits go to the git stash.")
     return (_run_or_read(fold, act, tip, served,
                          "Putting the previous drawing back…",
                          run_label="undo your edits", read_label="undo your edits"),

@@ -846,6 +846,12 @@ def last_distinct_revision(path: str, current: str) -> dict | None:
     drawing, the next press steps past it to the one before, and a reader who has gone one
     step too far can read the sha in the fold and walk forward by hand.
 
+    Red decides where it lands. The patch script paints what it draws red and leaves it
+    red until a human lays it out, so a drawing with no red left is one somebody has
+    worked on — and "undo my edits" means that work, not the commit that happens to sit
+    one step below it. The walk therefore prefers the newest earlier drawing that still
+    carries red, and falls back to simply the newest earlier drawing when none does.
+
     "Past it" is why the walk starts from where the file already stands rather than from
     the top. Once a press has landed, the drawing just left behind is the newest one that
     differs — so a search that always started at HEAD would answer the second press with
@@ -881,9 +887,28 @@ def last_distinct_revision(path: str, current: str) -> dict | None:
         if not differs(xml):
             start = i + 1
             break
+
+    # What "my edits" *are*, when the drawing on disk carries no red. Red is the patch
+    # script's own mark — "a machine put this here and nobody has laid it out yet" — so a
+    # drawing with none left has been through a human's hands, and the thing that human
+    # did is exactly what the undo is being asked to take back. Landing one commit earlier
+    # does not do that: the step before a re-layout is usually a re-render, a moved label,
+    # a caption removed, and the reader presses undo, watches the same laid-out line come
+    # back, and concludes the button is broken. It was, for this.
+    #
+    # So when there is no red here, the target is the newest earlier drawing that still
+    # has some: automation's own, which is what a person means by "before I touched it".
+    # When there IS red here, nobody has laid this out yet, there is no re-layout to
+    # undo, and stepping back one drawing is the honest answer again.
+    on_red = any(is_red(c.style) for c in parse_model(current).values())
+    if not on_red:
+        for meta, xml in entries[start:]:
+            if differs(xml) and any(is_red(c.style) for c in parse_model(xml).values()):
+                return {**meta, "machine_drawn": True}
+
     for meta, xml in entries[start:]:
         if differs(xml):
-            return meta
+            return {**meta, "machine_drawn": False}
     return None
 
 

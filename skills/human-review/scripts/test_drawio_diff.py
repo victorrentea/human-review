@@ -773,6 +773,45 @@ def test_the_undo_steps_back_one_drawing_and_skips_a_re_render(tmp_path, branch_
     assert Path(revert["cwd"]).resolve() == tmp_path.resolve()
 
 
+def test_the_undo_reaches_for_the_drawing_that_still_has_red_in_it(tmp_path):
+    """"Before I touched it" means automation's drawing, not one commit earlier.
+
+    Red is the patch script's mark: a machine drew this and nobody has laid it out yet.
+    A drawing with none left has been through a human's hands, so that is the edit being
+    undone — and the commit one step below a re-layout is usually something else entirely
+    (a re-render, a caption removed). Landing there gives the reader the same laid-out
+    line back and teaches them the button is broken.
+    """
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for setting in (("user.email", "t@t"), ("user.name", "t")):
+        subprocess.run(["git", "-C", str(tmp_path), "config", *setting], check=True)
+    (tmp_path / "DomainModel.puml").write_text(DOMAIN_PUML)
+    diagram = tmp_path / "docs" / "CM.drawio.png"
+    diagram.parent.mkdir()
+
+    shas = {}
+    # the machine's drawing, then a human laying it out, then an unrelated tidy-up
+    tidied = BLACKENED.replace('x="40"', 'x="60"', 1)   # a box nudged, nothing red
+    assert tidied != BLACKENED
+    for name, xml in (("red", BRANCH), ("laid out", BLACKENED), ("tidied", tidied)):
+        diagram.write_bytes(png_with(xml))
+        subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", name], check=True)
+        shas[name] = subprocess.run(["git", "-C", str(tmp_path), "rev-parse", "HEAD"],
+                                    capture_output=True, text=True).stdout.strip()
+
+    proc = subprocess.run(
+        [sys.executable, str(HERE / "drawio-diff.py"), "--base", "HEAD",
+         "--diagram", "docs/CM.drawio.png", "--out-dir", "out", "--name", "conceptual",
+         "--renderer", "builtin", "--concepts", "DomainModel.puml"],
+        capture_output=True, text=True, cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    revert = json.loads((tmp_path / "out" / "conceptual-diff.json").read_text())["revert"]
+    assert revert["sha"] == shas["red"], "it stopped at the tidy-up instead of the red one"
+    assert revert["machine_drawn"] is True
+    assert f"git checkout {shas['red']} --" in revert["command"]
+
+
 def test_pressing_undo_twice_goes_further_back_and_never_rocks_between_two(tmp_path):
     """The walk starts from where the file already stands in its own history.
 
