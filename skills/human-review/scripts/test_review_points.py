@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -327,6 +328,182 @@ def test_the_reference_documents_the_exit_codes_it_is_read_with():
     for code in ("0", "3", "4", "5"):
         assert f"| {code} |" in doc
     assert "review-points.py --check" in doc
+
+
+# --------------------------------------------------------------------------- #
+# review-commits.py — which commit is which, over a real repository
+# --------------------------------------------------------------------------- #
+
+_rc_spec = importlib.util.spec_from_file_location("review_commits", HERE / "review-commits.py")
+rc = importlib.util.module_from_spec(_rc_spec)
+_rc_spec.loader.exec_module(rc)
+
+
+def _git(repo: Path, *args: str) -> str:
+    out = subprocess.run(["git", "-C", str(repo), *args], check=True,
+                         capture_output=True, text=True)
+    return out.stdout.strip()
+
+
+def _repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True,
+                   capture_output=True)
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "t")
+    _git(repo, "config", "commit.gpgsign", "false")
+    (repo / "README.md").write_text("base\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    return repo
+
+
+def _commit(repo: Path, name: str, body: str, message: str) -> str:
+    (repo / name).write_text(body)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", message)
+    return _git(repo, "rev-parse", "HEAD")
+
+
+SESSION = "16a1e790-2c96-4f1b-8a4f-2ddcf2d10a8e"
+
+
+def _two_commit_branch(tmp_path: Path) -> tuple[Path, str, str, str]:
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    impl = _commit(repo, "feature.py", "one\n",
+                   f"Link visit with vet\n\nClaude-Session: {SESSION}\n")
+    (repo / "review-points.md").write_text(FULL)
+    (repo / "feature.py").write_text("two\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "Take the review's three real findings\n\n"
+         f"Review-Points: review-points.md\nImplements: {impl}\n"
+         f"Claude-Session: {SESSION}\n")
+    return repo, base, impl, _git(repo, "rev-parse", "HEAD")
+
+
+def test_the_trailers_name_both_commits_and_the_session(tmp_path):
+    repo, base, impl, review = _two_commit_branch(tmp_path)
+    found = rc.detect(repo, base)
+    assert found["implementation"] == impl
+    assert found["review"] == review
+    assert found["session"] == SESSION
+    assert found["fallback"] is False and found["after"] == []
+    assert found["warnings"] == []
+
+
+def test_a_short_implements_sha_is_resolved_to_the_full_one(tmp_path):
+    """Trailers get typed by hand and pasted from `git log --oneline`; the phase windows
+    compare shas, so a 7-character one has to become the commit it names."""
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    impl = _commit(repo, "a.py", "one\n", "feature")
+    (repo / "review-points.md").write_text(FULL)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm",
+         f"fixes\n\nReview-Points: review-points.md\nImplements: {impl[:7]}\n")
+    assert rc.detect(repo, base)["implementation"] == impl
+
+
+def test_commits_after_the_review_commit_are_listed_because_nothing_else_shows_them(tmp_path):
+    """A page built from the diff cannot see that somebody kept committing once the agent
+    stopped — and that is the one change that can make every other claim on it stale."""
+    repo, base, _impl, review = _two_commit_branch(tmp_path)
+    later = _commit(repo, "feature.py", "three\n", "tweak it by hand")
+    found = rc.detect(repo, base)
+    assert found["review"] == review
+    assert found["after"] == [later]
+    assert found["after_detail"][0]["subject"] == "tweak it by hand"
+
+
+def test_the_fallback_is_the_only_commit_touching_the_file_and_says_it_is_a_guess(tmp_path):
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    _commit(repo, "a.py", "one\n", "feature")
+    review = _commit(repo, "review-points.md", FULL, "fixes and the write-up")
+    found = rc.detect(repo, base)
+    assert found["review"] == review and found["fallback"] is True
+    assert any("falling back" in w for w in found["warnings"])
+    assert found["implementation"] is None, "a guessed review commit does not get a " \
+                                            "guessed implementation on top"
+    assert any("no Implements trailer" in w for w in found["warnings"])
+
+
+def test_two_commits_touching_the_file_are_not_guessed_between(tmp_path):
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    _commit(repo, "review-points.md", "## Fixed\n", "first write-up")
+    _commit(repo, "review-points.md", FULL, "second write-up")
+    found = rc.detect(repo, base)
+    assert found["review"] is None and found["fallback"] is False
+    assert any("cannot be guessed" in w for w in found["warnings"])
+
+
+def test_nothing_recorded_at_all_is_said_plainly(tmp_path):
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    _commit(repo, "a.py", "one\n", "feature")
+    found = rc.detect(repo, base)
+    assert found["review"] is None
+    assert any("nobody recorded what was reviewed" in w for w in found["warnings"])
+    assert any("no Claude-Session trailer" in w for w in found["warnings"])
+
+
+def test_two_review_commits_take_the_last_and_name_them_both(tmp_path):
+    repo, base, _impl, first = _two_commit_branch(tmp_path)
+    (repo / "review-points.md").write_text(FULL + "\n### later\n- file: a.py:1\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "second round\n\nReview-Points: review-points.md\n")
+    second = _git(repo, "rev-parse", "HEAD")
+    found = rc.detect(repo, base)
+    assert found["review"] == second
+    assert any(first[:8] in w and "2 commits carry" in w for w in found["warnings"])
+
+
+def test_an_unresolvable_implements_is_reported_not_passed_through(tmp_path):
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    (repo / "review-points.md").write_text(FULL)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "fixes\n\nReview-Points: review-points.md\n"
+                                "Implements: 0000000000000000000000000000000000000000\n")
+    found = rc.detect(repo, base)
+    assert found["implementation"] is None
+    assert any("does not resolve" in w for w in found["warnings"])
+
+
+def test_a_trailer_survives_the_cherry_pick_that_a_subject_convention_does_not(tmp_path):
+    """The reason this reads trailers at all: a demo branch is rebuilt by cherry-picking,
+    which rewrites every sha and keeps every trailer."""
+    repo, base, impl, review = _two_commit_branch(tmp_path)
+    _git(repo, "checkout", "-q", "-b", "redone", base)
+    infra = _commit(repo, "guardrail.py", "assert True\n", "cherry-pick the guardrail first")
+    _git(repo, "cherry-pick", impl)
+    new_impl = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "cherry-pick", review)
+    new_review = _git(repo, "rev-parse", "HEAD")
+    assert new_impl != impl and new_review != review, "the picks did rewrite the shas"
+    found = rc.detect(repo, infra, "HEAD")
+    assert found["review"] == new_review
+    assert found["session"] == SESSION
+    assert found["implementation"] == impl, (
+        "Implements still names the original sha, which the cherry-pick did not rewrite — "
+        "so it resolves as long as that commit is still reachable")
+
+
+def test_the_cli_reports_the_pair_and_exits_3_when_there_is_none(tmp_path, capsys):
+    repo, base, impl, review = _two_commit_branch(tmp_path)
+    assert rc.main(["--root", str(repo), "--base", base]) == 0
+    out = capsys.readouterr().out
+    assert impl in out and review in out and SESSION in out
+    assert "nothing — the branch is as the agent left it" in out
+
+    plain = _repo(tmp_path / "other")
+    plain_base = _git(plain, "rev-parse", "HEAD")
+    _commit(plain, "a.py", "one\n", "feature")
+    assert rc.main(["--root", str(plain), "--base", plain_base, "--json"]) == 3
+    assert json.loads(capsys.readouterr().out)["review"] is None
 
 
 if __name__ == "__main__":

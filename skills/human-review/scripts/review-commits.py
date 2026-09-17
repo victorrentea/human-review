@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""Which commit is the implementation, which one is the review, and what came after.
+
+The flow this reads is two commits wide. The first is the feature and nothing else; the
+second carries the fixes the agent accepted plus the `review-points.md` that records what
+it accepted, declined and assumed. Everything the page wants to say about phases — what
+writing the code cost against what reviewing it cost, and what a human changed *after* the
+agent was finished — hangs off knowing which commit is which.
+
+**Trailers, not a message convention.** The three that matter are
+
+    Review-Points: review-points.md     ← this commit is the review commit
+    Implements: <sha>                   ← and that one was the implementation
+    Claude-Session: <session id>        ← the conversation that did both
+
+because trailers survive a cherry-pick, a rebase and a squash-into-a-branch, which is
+exactly what happens to a demo branch between the run and the page. A subject-line
+convention ("fix: review fixes") survives none of it, and `.human-review/.session` is
+gitignored and dies with the directory.
+
+**The fallback is a guess and says so.** With no trailer anywhere, the single commit in
+the range that touches the points file is taken as the review commit, with a warning. Two
+such commits, or none, is not guessed at all: an ambiguous answer here silently mis-bases
+every fix diff on the page, and "I could not tell" is a thing the page can render.
+
+Exit codes:  0 found · 2 not a git repository / no range · 3 no review commit and no
+usable fallback.
+
+Usage:
+  review-commits.py --base origin/main            # the two commits, as a table
+  review-commits.py --base origin/main --json     # the same, as data
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+DEFAULT_FILE = "review-points.md"
+CONFIG = "human-review.json"
+
+# One record per commit, NUL-ish delimited: a trailer value can itself contain newlines,
+# so neither field nor record separator may be one.
+FIELDS = ("sha", "when", "points", "implements", "session", "subject")
+FMT = ("%H%x1F%cI%x1F"
+       "%(trailers:key=Review-Points,valueonly,separator=%x2C)%x1F"
+       "%(trailers:key=Implements,valueonly,separator=%x2C)%x1F"
+       "%(trailers:key=Claude-Session,valueonly,separator=%x2C)%x1F"
+       "%s%x1E")
+
+
+def git(root: Path, *args: str) -> tuple[int, str]:
+    proc = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+    return proc.returncode, proc.stdout
+
+
+def points_file(root: Path) -> str:
+    p = root / CONFIG
+    if p.is_file():
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            data = {}
+        value = data.get("reviewPoints") if isinstance(data, dict) else None
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return DEFAULT_FILE
+
+
+def log(root: Path, base: str, head: str = "HEAD") -> list[dict]:
+    """`base..head`, oldest first, with the three trailers read out by git itself."""
+    rng = f"{base}..{head}" if base else head
+    code, out = git(root, "log", "--reverse", f"--format={FMT}", rng)
+    if code != 0:
+        return []
+    rows = []
+    for chunk in out.split("\x1e"):
+        chunk = chunk.strip("\n")
+        if not chunk.strip():
+            continue
+        parts = chunk.split("\x1f")
+        if len(parts) < len(FIELDS):
+            continue
+        row = dict(zip(FIELDS, (p.strip() for p in parts)))
+        rows.append(row)
+    return rows
+
+
+def resolve(root: Path, rev: str) -> str | None:
+    code, out = git(root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+    return out.strip() or None if code == 0 else None
+
+
+def touching(root: Path, base: str, head: str, rel: str) -> list[str]:
+    code, out = git(root, "log", "--reverse", "--format=%H",
+                    f"{base}..{head}" if base else head, "--", rel)
+    return [s for s in out.split() if s] if code == 0 else []
+
+
+def detect(root: Path, base: str, head: str = "HEAD", rel: str | None = None) -> dict:
+    """The two commits, what came after them, and every doubt about the answer.
+
+    `after` is the honesty requirement: commits landing on the branch once the agent has
+    stopped are invisible on a page built from the diff alone, and they are the one thing
+    that can make every other claim on it stale.
+    """
+    rel = rel or points_file(root)
+    commits = log(root, base, head)
+    warnings: list[str] = []
+
+    marked = [c for c in commits if c["points"]]
+    fallback = False
+    review = None
+    if marked:
+        # The last, not the first: a second round of review fixes is a real thing, and the
+        # newest record is the one describing the file as it now stands.
+        review = marked[-1]
+        if len(marked) > 1:
+            warnings.append(
+                f"{len(marked)} commits carry a Review-Points trailer "
+                f"({', '.join(c['sha'][:8] for c in marked)}); taking the last one. Two "
+                "rounds of review on one branch is legitimate, but the page reports one.")
+    else:
+        hits = touching(root, base, head, rel)
+        if len(hits) == 1:
+            review = next((c for c in commits if c["sha"] == hits[0]), None)
+            fallback = review is not None
+            if fallback:
+                warnings.append(
+                    f"no Review-Points trailer in {base}..{head} — falling back to "
+                    f"{hits[0][:8]}, the only commit that touches {rel}. That is a guess: "
+                    "add the trailer and it becomes a fact that survives a rebase.")
+        elif len(hits) > 1:
+            warnings.append(
+                f"no Review-Points trailer, and {len(hits)} commits touch {rel} "
+                f"({', '.join(h[:8] for h in hits)}) — which of them is the review commit "
+                "cannot be guessed, and guessing it would mis-base every fix diff.")
+        else:
+            warnings.append(
+                f"no Review-Points trailer in {base}..{head}, and nothing in the range "
+                f"touches {rel} — nobody recorded what was reviewed on this branch.")
+
+    implementation = None
+    if review is not None and review["implements"]:
+        raw = review["implements"].split(",")[0].strip()
+        implementation = resolve(root, raw)
+        if implementation is None:
+            warnings.append(f"Implements: {raw} does not resolve to a commit here — a "
+                            "rebase rewrote it, or it was typed by hand")
+    elif review is not None:
+        # Deliberately not "the commit before the review commit". That is right often
+        # enough to be trusted and wrong silently: on a branch with three commits of
+        # implementation it names the last of them, and every fix diff on the page is then
+        # based one commit too late, showing part of the feature as if it were a fix.
+        warnings.append("the review commit carries no Implements trailer, so which commit "
+                        "is the implementation is not recorded — the implementation phase "
+                        "cannot be dated")
+
+    session = None
+    for candidate in (review, next((c for c in commits if c["sha"] == implementation), None)):
+        if candidate and candidate["session"]:
+            session = candidate["session"].split(",")[0].strip()
+            break
+    if session is None and commits:
+        warnings.append("no Claude-Session trailer on either commit — the coding session "
+                        "is only findable through .human-review/.session or by scanning "
+                        "transcripts, and both of those outlive their accuracy")
+
+    after: list[dict] = []
+    if review is not None:
+        seen = False
+        for c in commits:
+            if seen:
+                after.append({"sha": c["sha"], "when": c["when"], "subject": c["subject"]})
+            seen = seen or c["sha"] == review["sha"]
+
+    return {
+        "base": base, "head": head, "points_file": rel,
+        "commits": len(commits),
+        "implementation": implementation,
+        "review": review["sha"] if review else None,
+        "session": session,
+        "fallback": fallback,
+        "after": [c["sha"] for c in after],
+        "after_detail": after,
+        "review_when": review["when"] if review else None,
+        "warnings": warnings,
+    }
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--root", default=".", help="the repository (default: cwd)")
+    ap.add_argument("--base", default="origin/main", help="what the branch is measured from")
+    ap.add_argument("--head", default="HEAD")
+    ap.add_argument("--file", help="the points file, when it is not review-points.md")
+    ap.add_argument("--json", action="store_true")
+    args = ap.parse_args(argv)
+
+    root = Path(args.root).resolve()
+    code, top = git(root, "rev-parse", "--show-toplevel")
+    if code != 0 or not top.strip():
+        print(f"[review-commits] {root} is not a git repository", file=sys.stderr)
+        return 2
+    root = Path(top.strip())
+
+    found = detect(root, args.base, args.head, args.file)
+    if not found["commits"]:
+        print(f"[review-commits] no commits in {args.base}..{args.head} — nothing to "
+              "attribute", file=sys.stderr)
+        return 2
+
+    for w in found["warnings"]:
+        print(f"[review-commits] WARNING: {w}", file=sys.stderr)
+
+    if args.json:
+        print(json.dumps(found, indent=1))
+    else:
+        print(f"{found['commits']} commit(s) in {args.base}..{args.head}")
+        print(f"  implementation  {found['implementation'] or '— not recorded'}")
+        print(f"  review          {found['review'] or '— not found'}"
+              + ("   (fallback: the only commit touching the points file)"
+                 if found["fallback"] else ""))
+        print(f"  session         {found['session'] or '— not recorded'}")
+        if found["after_detail"]:
+            print(f"  after the review  {len(found['after_detail'])} commit(s):")
+            for c in found["after_detail"]:
+                print(f"      {c['sha'][:8]}  {c['when'][:16]}  {c['subject'][:60]}")
+        elif found["review"]:
+            print("  after the review  nothing — the branch is as the agent left it")
+        else:
+            # Without a review commit there is no "after", and printing one anyway would
+            # say the branch is untouched on the strength of not knowing when it stopped.
+            print("  after the review  — nothing to date from")
+
+    return 0 if found["review"] else 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
