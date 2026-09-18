@@ -774,23 +774,46 @@ pre.code code { white-space:pre; }
    and "Running…" in it would reflow the line it sits in. */
 .cmd .cmd-run.running { animation:hrspin .9s linear infinite; }
 @media (prefers-reduced-motion:reduce) { .cmd .cmd-run.running { animation:none; } }
-/* The offers inside the sentence are worded as things you do, not as things you press, so
-   they are dressed as the draw.io links beside them and not as buttons: three boxed
-   controls in one line under a picture read as a toolbar, which is exactly what this line
-   stopped being. `button` and not `a` because neither goes anywhere. */
-/* `:not(.cmd-run)` is load-bearing, not defensive. A play glyph is also a `.runhere` —
-   that is how the page's one handler runs it — and this rule and the glyph's own pill are
-   the same specificity, so whichever came later in the stylesheet won. This one comes
-   later, so without the exclusion every ▶ under a diagram lost its border, its background
-   and its padding and read as a stray character in the sentence. */
-.rerun .runhere:not(.cmd-run) { cursor:pointer; font:inherit; color:var(--fg);
-              font-weight:600; background:none; border:0; padding:0;
+/* One kind of emphasis, one meaning. This line used to carry seven underlined runs of
+   text — `this diagram`, `App`, `Web`, `click here`, `undo your edits`, `start over` and
+   the fold's trigger — which read as a wall of links with no rank, so a reader could not
+   tell the two things that *do* something from the four that go somewhere. Underlining is
+   now for the actions, the actions are pills below the sentence, and everything inside the
+   sentence is a quiet link that underlines only under the pointer. */
+.rerun a, .rerun .offer .runhere {
+              cursor:pointer; font:inherit; color:var(--fg); font-weight:600;
+              background:none; border:0; padding:0; text-decoration:none; }
+.rerun a:hover, .rerun .offer .runhere:hover {
               text-decoration:underline; text-underline-offset:2px; }
-.rerun .runhere:not(.cmd-run):hover { text-decoration-thickness:2px; }
-/* A sentence of its own, and a sentence's worth of air before it: the offer that throws
-   work away is found by the reader who goes looking for it rather than met by the reader
-   who does not. */
-.rerun .rerun-back::before { content:"\\00a0\\00a0"; }
+/* The actions, on their own row under the sentence. Two of them, and each wears the pair
+   of glyphs every command on this page wears. */
+.rerun .rerun-acts { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .9rem;
+              margin:.45rem 0 0; }
+.rerun .rerun-acts .cmd { margin-left:-.55rem; }
+/* What the command is doing, while it is doing it — and nothing at all otherwise.
+   The `[hidden]` rule is not belt-and-braces: `display:flex` on a class beats the browser's
+   own `[hidden] { display:none }`, so without it this line is on screen in every copy of
+   the page, empty, under every diagram, for ever. It is the same trap the folded command
+   fell into before it was deleted, two rules up in this file's history. */
+.runstatus { margin:.45rem 0 0; font-size:.78rem; color:var(--muted); line-height:1.6;
+              display:flex; align-items:baseline; gap:.5rem; min-width:0; }
+.runstatus[hidden] { display:none; }
+.runstatus .rs-phase { flex:none; color:var(--fg); font-weight:600; }
+/* One line, clipped. A build prints two-hundred-character sentences about dropped diff
+   links, and a status line that reflows the page under the reader while they are waiting
+   for it is its own small chaos. */
+.runstatus .rs-tail { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;
+              white-space:nowrap;
+              font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.94em; }
+.runstatus .rs-tail:empty { display:none; }
+.runstatus::before { content:""; display:inline-block; width:.62em; height:.62em;
+              margin-right:.45rem; vertical-align:baseline; border:2px solid currentColor;
+              border-right-color:transparent; border-radius:50%;
+              animation:hrspin .7s linear infinite; }
+.runstatus.done { color:#2e7d32; }
+.runstatus.done::before { animation:none; border:0; content:"\\2713"; width:auto;
+              height:auto; font-weight:700; }
+@media (prefers-reduced-motion:reduce) { .runstatus::before { animation:none; } }
 /* `reveal_html` is the one offer left with two renderings — the *subject* of the sentence
    is the control ("this diagram"), and where nothing can run, two words are two words
    again rather than a control explaining why it does not work. Every other offer under
@@ -867,10 +890,10 @@ pre.code code { white-space:pre; }
 #copy-toast.shown { opacity:1; transform:translateX(-50%) translateY(0); }
 .badge { border-radius:4px; padding:.1rem .45rem; font-size:.74rem; font-weight:600; text-transform:uppercase;
           letter-spacing:.04em; background:var(--accent-soft); color:var(--accent); }
-/* No top margin: with the lede gone, this picture is the first thing in the panel and
-   the strip above it is already a gutter's worth of air. */
+/* Under its heading, with a heading's worth of air — the same gap every other section on
+   this page leaves between its title and what it is the title of. */
 .city { display:block; border:1px solid var(--line); border-radius:8px; overflow:hidden;
-        margin:0 0 1rem; }
+        margin:.55rem 0 1rem; }
 .city img { display:block; width:100%; height:auto; }
 ol.findings { list-style:none; counter-reset:f; padding:0; margin:1rem 0; }
 ol.findings > li { counter-increment:f; background:var(--card); border:1px solid var(--line);
@@ -1295,7 +1318,13 @@ button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--acc
    read as one more word of it. Alone on its own line, in the middle, it is unmistakably
    the page's one control — the sentence above keeps its natural width and `flex-wrap`
    still folds the two halves of that sentence on a narrow screen. */
-footer .footrow { display:flex; align-items:baseline; gap:.6rem 1.2rem; flex-wrap:wrap; }
+/* One line, centred, and the two halves are one sentence rather than two blocks pushed to
+   opposite ends of it. They were two spans in a `flex` row that wrapped: on a wide screen
+   the provenance sat left and the offer sat a long way right, reading as a header bar
+   rather than as the one closing line it is. `inline` spans in a centred paragraph put
+   them where a reader's eye lands after the last panel. */
+footer .footrow { text-align:center; }
+footer .footrow > span { display:inline; }
 footer .allbar { display:flex; justify-content:center; align-items:center; gap:.6rem;
                  margin-top:.9rem; }
 button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
@@ -1850,6 +1879,37 @@ window.HR = (function () {
     }).then(function (first) { return poll(first, onprogress); });
   }
 
+  // Where the reader was, kept across the reload a command ends in.
+  //
+  // On HR because three controls now end in `location.reload()` — the masthead's two
+  // Reruns and every command declared with `reload` — and the reload may not even be
+  // theirs: the server watches the directory it serves, so a build finishing can reload
+  // the tab first. All of them have to land on the same saved place, and a second copy of
+  // this in another script block is how two of them end up landing differently.
+  //
+  // Per page, because a reader keeps several of these open and each is a different branch.
+  // Which *tab* they were on needs nothing: it is in `location.hash`, which a reload keeps.
+  var PLACE = 'hr-rerun-place:' + location.pathname;
+
+  function keepPlace() {
+    try {
+      sessionStorage.setItem(PLACE, JSON.stringify({y: window.pageYOffset}));
+    } catch (e) {}
+  }
+
+  window.addEventListener('load', function () {
+    var saved = null;
+    try {
+      saved = JSON.parse(sessionStorage.getItem(PLACE) || 'null');
+      sessionStorage.removeItem(PLACE);
+    } catch (e) {}
+    // Consumed, always: a place restored twice is a page that will not let the reader
+    // scroll away from where they once pressed a button.
+    if (saved && typeof saved.y === 'number' && saved.y > 0) {
+      window.scrollTo(0, saved.y);
+    }
+  });
+
   // The clipboard, once, for the whole page.
   //
   // `navigator.clipboard` is not available on a `file://` page in every browser — and a
@@ -1987,7 +2047,7 @@ window.HR = (function () {
   });
 
   return {ready: ready, can: can, onready: onready, run: run, rerun: rerun,
-          rerunAi: rerunAi, tail: tail, copy: copy};
+          rerunAi: rerunAi, tail: tail, copy: copy, keepPlace: keepPlace};
 })();
 </script>"""
 
@@ -2151,31 +2211,12 @@ RERUN_JS = """<script>
     document.querySelectorAll('button.chip-rerun[data-rerun]'));
   if (!buttons.length) return;
   var fail = document.getElementById('hr-rerun-fail');
-  // Per page, because a reader keeps several of these open and each is a different branch.
-  var KEY = 'hr-rerun-place:' + location.pathname;
-
-  // Where the reader was, restored after the reload the rerun ends in. Written when the
-  // button is pressed rather than before the reload, because the reload may not be ours:
-  // the server watches the directory it serves, so a tab can be reloaded by the build
-  // finishing. Both routes then land on the same saved place.
-  function remember() {
-    try {
-      sessionStorage.setItem(KEY, JSON.stringify({y: window.pageYOffset}));
-    } catch (e) {}
-  }
-
-  window.addEventListener('load', function () {
-    var saved = null;
-    try {
-      saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-      sessionStorage.removeItem(KEY);
-    } catch (e) {}
-    // Consumed, always: a place restored twice is a page that will not let the reader
-    // scroll away from where they once pressed a button.
-    if (saved && typeof saved.y === 'number' && saved.y > 0) {
-      window.scrollTo(0, saved.y);
-    }
-  });
+  // Where the reader was, restored after the reload this ends in — `HR.keepPlace`, which
+  // the diagram offers and every other `reload` action call too. It used to live here, and
+  // "the same scroll position, saved under the same key, restored on the same event" is
+  // not a thing to keep two copies of: the second control to end in a reload would have
+  // had to find this one and copy it.
+  var remember = window.HR.keepPlace;
 
   function stop(btn, problem, snap) {
     btn.disabled = false;
@@ -3526,45 +3567,106 @@ EDITOR_JS = r"""<script>
         : 'Copied \u2014 paste it in a terminal'); });
   });
 
+  // Where a running command says what it is doing: a line under the control that started
+  // it, if the block offering that control put one there.
+  //
+  // This exists because of one complaint, and it is the right complaint. `Update the
+  // report` re-renders a diagram and then rebuilds the whole page — seconds, during which
+  // the page said nothing whatever. A reader who presses a control and gets no sign does
+  // not wait patiently: they press it again, and then they stop believing the page. The
+  // toast said it, but a toast is at the foot of the window, away from the thing pressed,
+  // and it fades.
+  //
+  // The line is the command's own last line, polled from `/__run_status__` — what is
+  // actually happening, not a script's guess at what stage it has reached.
+  function statusline(button) {
+    var box = button.closest && button.closest('.rerun, .rband, .appenv');
+    return box ? box.querySelector('.runstatus') : null;
+  }
+
+  // `[review] ` is what `build-review-html.py` prefixes every line it prints with, and it
+  // is the last stage of every command declared under a diagram — so the moment a line
+  // wearing it appears, the diagram is done and the page is being rebuilt. A marker rather
+  // than a guess at elapsed time, and the only one needed: everything before it is the
+  // producer the offer named in `data-run-say`.
+  var REBUILDING = /^\[review\]/;
+
+  // Two parts, and they answer two different questions. The **phase** is what a reader
+  // wants at a glance — is this still going, and roughly where is it — and it is three
+  // words that do not move. The **tail** is the command's own last line, which is what
+  // they want when it takes longer than they expected or stops; it is clipped to one line,
+  // because a build prints two-hundred-character sentences about dropped diff links and a
+  // status line that reflows the page under the reader is its own small chaos.
+  function say(status, phase, tail, done) {
+    if (!status) return;
+    status.classList.toggle('done', !!done);
+    var p = status.querySelector('.rs-phase'), s = status.querySelector('.rs-tail');
+    if (p) { p.textContent = phase || ''; s.textContent = tail || ''; }
+    else status.textContent = phase || tail || '';
+    status.hidden = false;
+  }
+
   function rerun(button, action) {
     var was = button.textContent, last = '';
-    // A play glyph is a pill one character wide; 'Running\u2026' in it would reflow the line it
-    // sits in, and 'Done' would leave a word where the reader learnt to find a mark. So
-    // the glyph spins in place and the sentence goes in the toast, which is where the
-    // progress of every other command on this page is already read.
+    // A run glyph is a pill one character wide; 'Running\u2026' in it would reflow the line
+    // it sits in, and 'Done' would leave a word where the reader learnt to find a mark. So
+    // the glyph spins in place and the sentence goes to the status line and the toast.
     var glyph = button.classList.contains('cmd-run');
-    button.disabled = true;
-    if (glyph) button.classList.add('running');
-    else button.textContent = 'Running\u2026';
+    var status = statusline(button);
     // Two offers under the same picture run through here, and "Re-rendering the diagram"
     // over a click that has just thrown the layout away would be the page describing the
     // wrong half of what it is doing.
-    flash(button.getAttribute('data-run-say') || 'Re-rendering the diagram\u2026', true);
+    var opening = button.getAttribute('data-run-say') || 'Re-rendering the diagram\u2026';
+    button.disabled = true;
+    if (glyph) button.classList.add('running');
+    else button.textContent = 'Running\u2026';
+    // Every offer in the same block goes down with it: they run one command over one
+    // working tree, and a second press while the first is going is a reader who could not
+    // tell it had started.
+    var box = button.closest && button.closest('.rerun, .rband, .appenv');
+    var kin = box ? [].slice.call(box.querySelectorAll('.offer-pill, .cmd-run')) : [];
+    kin.forEach(function (b) { b.disabled = true; });
+    say(status, opening, '');
+    flash(opening, true);
     window.HR.run(action, {}, function (snap) {
       var line = window.HR.tail(snap);
       // Only on change: the poll is every 700ms and a quiet command would otherwise
       // repaint the same sentence eighty times while nothing happened.
-      if (line && line !== last) { last = line; flash(line, true); }
+      if (line && line !== last) {
+        last = line;
+        say(status, REBUILDING.test(line) ? 'Rebuilding the page\u2026' : opening, line);
+        flash(line, true);
+      }
     }).then(function (done) {
       if (done.state === 'done') {
         if (glyph) button.classList.remove('running');
         else button.textContent = 'Done';
+        say(status, 'Done \u2014 reloading this page', '', true);
         flash('Rebuilt \u2014 reloading this page', true);
+        // Which tab and how far down, kept across the reload — the same place-keeper the
+        // masthead's Rerun uses, because landing at the top of the first tab after
+        // pressing a button three screens into the fifth one is its own small betrayal.
+        window.HR.keepPlace();
         // A beat, so the sentence is readable before the page goes. `reload()` and not a
         // cache-busting navigation: the server sends no-store for exactly this.
         setTimeout(function () { location.reload(); }, 800);
         return;
       }
       restore();
-      flash(window.HR.tail(done) || ('The command exited ' + done.exit));
+      var why = window.HR.tail(done) || ('The command exited ' + done.exit);
+      say(status, 'It stopped \u2014 exit ' + done.exit, why, true);
+      flash(why);
     }).catch(function (e) {
       restore();
-      flash(e.message || 'The review server is no longer running');
+      var why = e.message || 'The review server is no longer running';
+      say(status, 'It could not be run', why, true);
+      flash(why);
     });
 
     function restore() {
       button.disabled = false;
       button.classList.remove('running');
+      kin.forEach(function (b) { b.disabled = false; });
       if (!glyph) button.textContent = was;
     }
   }
@@ -5084,141 +5186,66 @@ def offer_words_html(label: str, action_id: str, static_tip: str, served_tip: st
             + f'>{html.escape(label)}</button>')
 
 
-def revert_html(revert: dict | None, rerun: dict, rebuild: str,
-                name: str) -> tuple[str, str]:
-    """Undo my edits: back to the drawing this branch committed, which is the green one.
+def regenerate_html(redraw: dict | None, rerun: dict, rebuild: str,
+                    name: str) -> tuple[str, str | None]:
+    """The one way back: put the machine's own drawing there, and rebuild around it.
 
-    The sibling offer below this one starts over — base plus the repository's patch script
-    — and that lands on a diagram whose new boxes are staged and red *on purpose*, with the
-    guardrail still failing. It is the to-do state, and a reader who has just dragged a box
-    somewhere wrong is not asking for a to-do; they are asking for the last drawing that
-    was not this one. Nothing but the path is needed to find that, which is why this offer
-    needs no flag while the redraw needs `--redraw`.
+    There used to be two of these and they were the same offer to the reader. *Undo your
+    edits* walked back to the newest committed drawing; *start over* restored the base and
+    re-ran the repository's patch script, which draws what the code has and the map lacks.
+    Two commands, two tooltips, two paragraphs of this docstring explaining that they land
+    in different places — and every reader who pressed either was asking one question:
+    **give me back the diagram the machine makes.** Only the second answers it. The first
+    hands back a human's layout from an earlier commit, which is a different drawing and
+    is not "generated" in any sense the reader meant.
 
-    It used to aim at HEAD, and that failed the first time it was pressed: a hand edit does
-    not wait in the work tree to be undone, it gets swept into the next commit that touches
-    the file, and from then on HEAD is the mess. `drawio-diff.py` walks back for the newest
-    commit whose *drawing* differs, so the step is one picture rather than one sha — and
-    the offer is repeatable, which is the thing an undo has to be.
+    So the one that runs the generator stays, and it is named after what it produces rather
+    than after the gesture that gets you there: *Regenerate the diagram*, not *start over*,
+    which is a direction and not a destination.
 
-    Both offers are worded by where they land, and neither says "undo" or "start over" on
-    its own: to a reader who has not read this file those are the same four words, and the
-    two of them land in opposite places — one on the branch's own layout, the other on the
-    base with the script's to-do restaged in red.
+    It is destructive — the hand-drawn layout goes — so it banks the work first. The
+    command that went away was the survivable one (`git stash push` before the checkout),
+    and losing that property along with it would be a bad trade for a simpler line, so the
+    stash comes across. `git stash push -- <path>` exits 0 with "No local changes to save"
+    when there is nothing to bank, so it costs a clean tree nothing.
 
-    Folded like the redraw, and for the same reason: it throws a layout away. The
-    difference is where the layout goes. `drawio-diff.py` records a `git stash push`
-    rather than a `git checkout --`, so the second click on this control is survivable —
-    the sentence says so, because a reader weighing an undo needs to know that before
-    pressing it, not afterwards.
-    """
-    if not revert or not revert.get("command"):
-        return "", ""
-    line = (f'cd {shlex.quote(revert["cwd"])} \\\n  && {revert["command"]} \\\n'
-            f'  && {rerun["command"]} \\\n  && {rebuild}')
-    aid = None
-    if name:
-        aid = declare_action(f"drawio-undo:{name}", line, reload=True,
-                             label=f"Undo hand edits to {name} and rebuild this page")
-    where = revert.get("short") or revert.get("sha", "")[:8]
-    subject = revert.get("subject") or ""
-    # Two different answers, and the reader is owed the difference. Landing on a drawing
-    # that still carries red is landing on automation's own — the line as the patch script
-    # drew it, before anyone laid it out — which is what "before I touched it" means to
-    # the person asking. Landing anywhere else is just one step back through history.
-    lands = ("automation's own drawing — what the patch script drew, in red, before "
-             "anyone laid it out"
-             if revert.get("machine_drawn") else
-             "the newest earlier drawing that is not the one on disk")
-    tip = (f"Goes back to {lands}"
-           + (f", at {where} — {subject}" if where else "") + ". It runs no script and "
-           "does not go near the base. Anything still loose in the work tree is banked, "
-           "not binned: `git stash pop` brings it back.")
-    # The served hover names the target too. It is the one most readers ever see — the
-    # probe swaps it in wherever the button can actually run — and "reloads with the
-    # committed drawing back" told them the least at the moment they most needed to know
-    # *which* drawing they were about to land on.
-    served = ("Runs it here and reloads, with "
-              + ("automation's own drawing back, in red, as the patch script drew it"
-                 if revert.get("machine_drawn") else "the previous drawing back")
-              + (f" — {where}, {subject}" if where else "")
-              + ". Your own edits go to the git stash.")
-    return (offer_words_html("undo your edits", aid or "", tip, served,
-                             "Putting the previous drawing back…", cmd=line)
-            + command_html(line, aid, tip=served,
-                           running="Putting the previous drawing back…"), "")
-
-
-def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
-                name: str) -> tuple[str, str]:
-    """The one offer under this picture that the reader cannot reconstruct: start over.
-
-    Re-laying the map out by hand is what the red asks for, and it is also the only step
-    on this page with no way back — the layout is in the file, the file is in the
-    repository, and "let me see what the machine drew again" means going and finding a
-    revision by hand. The command is half derived and half declared: restoring the diagram
-    to its base state falls out of the flags `drawio-diff.py` already ran with, and
-    redrawing it is the repository's own patch script, which is why it has to be passed
-    in with `--redraw` rather than guessed from a naming convention.
-
-    It throws work away, so it is the only control in this block whose button is inside
-    the fold: opening it shows the `git checkout` that discards the layout, and the click
-    that runs it is the second click, on a line the reader has by then read.
-
-    Returns the offer and its fold separately — the offer belongs in the sentence, and a
-    `<div>` inside a `<p>` closes the paragraph out from under it.
+    Returns `(offer, action_id)`; `("", None)` where the repository declared no patch
+    script. That script is the reviewed project's, not this tool's — guessing it from a
+    naming convention and running it on a reader's click is not a trade worth making.
     """
     if not redraw or not redraw.get("command"):
-        return "", ""
-    # Four stages, and the middle two are the reason this is not two separate offers:
-    # restoring the file and redrawing it change the drawing on disk, and the picture in
-    # this page is an inlined SVG that only `drawio-diff.py` rewrites. Stopping after the
-    # patch script would leave the reader looking at their own layout with a green tick
-    # beside it — the same trap the re-render offer exists to close, in the one direction
-    # where the reader has just thrown their layout away and has nothing to compare
-    # against.
-    line = (f'cd {shlex.quote(redraw["cwd"])} \\\n  && {redraw["command"]} \\\n'
+        return "", None
+    # Five stages, and the middle three are the reason this is one offer and not three:
+    # banking the layout, restoring the base drawing and redrawing it all change the file
+    # on disk, and the picture in this page is an inlined SVG that only `drawio-diff.py`
+    # rewrites. Stopping before the last two would leave the reader looking at their own
+    # layout with a green tick beside it.
+    stash = ""
+    if redraw.get("diagram"):
+        stash = (f"git stash push -m {shlex.quote(f'human-review: layout of {name}')} -- "
+                 f"{shlex.quote(redraw['diagram'])} && ")
+    line = (f'cd {shlex.quote(redraw["cwd"])} \\\n  && {stash}{redraw["command"]} \\\n'
             f'  && {rerun["command"]} \\\n  && {rebuild}')
     aid = None
     if name:
         aid = declare_action(f"drawio-redraw:{name}", line, reload=True,
-                             label=f"Restore {name} to its base state and redraw it")
+                             label=f"Regenerate {name} from the repository's own script")
     base = redraw.get("base") or "the base branch"
-    tip = (f"Throws the hand-drawn layout away: restores the drawing to {base} and runs "
-           "the repository's own script over it, which draws what the code has and the "
-           "map lacks — in red, as a to-do — again.")
-    served = "Runs it here, then reloads with automation's drawing back"
-    return (offer_words_html("start over", aid or "", tip, served,
-                             "Putting automation's drawing back…", cmd=line)
+    tip = (f"Puts automation's own drawing back: restores the file to {base} and runs the "
+           "repository's script over it, which draws what the code has and the map lacks "
+           "— in red, as a to-do. Your layout is banked with `git stash`, not binned.")
+    served = ("Runs it here and reloads, with automation's drawing back. Your layout goes "
+              "to the git stash.")
+    return (offer_words_html("Regenerate the diagram", aid or "", tip, served,
+                             "Putting automation's drawing back…", cmd=line, pill=True)
             + command_html(line, aid, tip=served,
-                           running="Putting automation's drawing back…"), "")
-
-
-def _ways_back(undo: str, over: str) -> str:
-    """`You can undo your edits or start over.` — both ways back in one short sentence.
-
-    They were a clause each, and each clause spelled its destination out: *to put the
-    drawing back as this branch committed it*, *to start over from the base and let the
-    script redraw it in red*. That was written to answer a reader who could not tell the
-    two apart from `undo` and `start over` alone — and it answered them by putting two
-    lines of tooling under a picture, permanently, for the one visit in twenty where
-    anything goes back at all.
-
-    The distinction belongs in the hover, where it is read once by the reader who is
-    actually choosing, and the line stays a line. What the sentence owes them is that the
-    two offers are *different* and that both are here; which one they want is a question
-    they are already asking by the time they are pointing at it.
-    """
-    ways = [w for w in (undo, over) if w]
-    if not ways:
-        return ""
-    return '<span class="rerun-back">You can ' + " or ".join(ways) + ".</span>"
+                           running="Putting automation's drawing back…"), aid)
 
 
 def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
                app_url: str = "", web_url: str = "", redraw: dict | None = None,
                revert: dict | None = None, reveal: dict | None = None) -> str:
-    """One line under the drawing: where to edit it, and the two ways to pick the edit up.
+    """Under the drawing: where to edit it, and the two things to do about it afterwards.
 
     The command is not a convenience. The picture above is inlined into the HTML, and it
     has to be: the boxes are links into the classes they name and the to-do note is a link
@@ -5226,15 +5253,17 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     reader can see them and cannot click them. So the file on disk and the picture in the
     page are two artefacts, and reloading the browser only ever refreshes the second one.
     That is a thing the page owes the reader an answer to, at the moment they need it, in
-    the form of something they can run.
+    the form of something they can press.
 
-    What it does *not* owe them is three stacked lines of tooling under a diagram. Where
-    to edit, an offer to re-render, and a shell command used to be a paragraph, a sentence
-    and a code block — read once and then permanently in the way of the picture they sit
-    under. They are one sentence now, and the command is folded away behind the end of it:
-    the reader who wants to run it here clicks four words, and the reader who wants to
-    paste it in a terminal opens the fold. Both are one click; only one of them costs the
-    page a code block on every look.
+    **A sentence, then two buttons.** It was one sentence with everything inside it, and
+    by the time the offers had grown their glyphs it carried seven underlined runs of text
+    — `this diagram`, `App`, `Web`, `click here`, `undo your edits`, `start over` — which
+    read as a wall of links with no rank. Underlining is for the actions now and the
+    actions are pills; the places to go (the file, the two editors) are plain links that
+    underline on hover. One kind of emphasis, one meaning.
+
+    **`revert` is accepted and ignored**, so a verdict written by an older `drawio-diff.py`
+    still builds. See `regenerate_html` for why there is one way back rather than two.
 
     `rerun` is what `drawio-diff.py` recorded about its own invocation; `rebuild` is how
     this build was started. Neither is reconstructed here — a guessed command that does
@@ -5257,40 +5286,34 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     if name:
         aid = declare_action(f"drawio:{name}", line, reload=True,
                              label=f"Re-render {name} and rebuild this page")
-    # `runhere` is rendered on the static page too, and says so when pressed rather than
-    # being absent from it. A control that disappears between two copies of the same
-    # report teaches the reader that the report is unreliable; one that explains what it
-    # needs teaches them what served mode is — and the `static` badge in the title row is
-    # already holding the line that gets them there.
-    #
-    # One wording in both worlds. The sentence used to be rewritten when the probe found a
-    # server — "pick your edit up" off disk, "update this report" served — on the reasoning
-    # that a static page must not promise what it cannot do. But the offer is what the
-    # reader wants either way, and a button that says what it needs when pressed teaches
-    # them what served mode is; a sentence that quietly reads differently in the two copies
-    # of the same report teaches them the report is unreliable.
-    # Gentlest first. The three offers on this line go one way only — refresh the report,
-    # undo my edits, start over — and a reader who stops reading partway through has
-    # stopped on the milder of the two ways back, not on the one that discards the branch's
-    # drawing as well as their own.
-    undo, _ = revert_html(revert, rerun, rebuild, name)
-    over, _ = redraw_html(redraw, rerun, rebuild, name)
     served = "Runs it here, then reloads with the new picture"
-    # No fold any more, and nothing left to fold: the command is not printed on the page at
-    # all. The three `&&` chains under a diagram were the longest lines on this page by a
-    # factor of five, they were in a box the reader had to open, and what they were for was
-    # a paste. They are in the copy glyph's hover, where the reader who wants to paste one
-    # looks and nobody else has to.
-    return ('<div class="rerun">'
-            f'<p class="dgm-open">{f"Edit {it} in {edit}, then " if edit else ""}'
-            + offer_words_html("click here", aid if name else "", STATIC_RUN_TIP,
-                               served, cmd=line)
-            + command_html(line, aid if name else None, tip=served)
-            + " to update the report."
-            # Second sentence, same line: it is the same subject — this drawing, and what
-            # you can do to it — and a paragraph of its own would put the offer nobody
-            # takes on most visits on a line of its own under the picture.
-            + _ways_back(undo, over) + '</p></div>')
+    again, _ = regenerate_html(redraw, rerun, rebuild, name)
+    # The status line, under the buttons and empty until something is running. This is the
+    # whole of the answer to the complaint that produced it: the command behind *Update the
+    # report* re-renders a diagram and rebuilds the page, which is seconds of nothing
+    # whatever, in front of a control that gave no sign it had been pressed. A reader with
+    # no feedback does not wait patiently — they press it again, and then they stop
+    # believing the page. What goes in it is the command's own last line, polled from
+    # `/__run_status__`, so it says what is actually happening rather than a guess.
+    #
+    # In the markup of both copies of the report. Off disk nothing fills it, which costs
+    # a hidden empty paragraph.
+    # The sentence, when there is somewhere to send them. With no editor link declared
+    # there is no "in draw.io App ↗" to write, and `Edit this diagram in .` is worse than
+    # silence — but the file itself is still worth naming if the verdict recorded how to
+    # reveal it.
+    where = (f'<p class="dgm-open">Edit {it} in {edit}.</p>' if edit
+             else (f'<p class="dgm-open">Edit {it}.</p>' if reveal else ""))
+    return ('<div class="rerun">' + where
+            + '<div class="rerun-acts">'
+            + offer_words_html("Update the report", aid or "", STATIC_RUN_TIP, served,
+                               "Re-rendering the diagram…", cmd=line, pill=True)
+            + command_html(line, aid, tip=served, running="Re-rendering the diagram…")
+            + again
+            + '</div>'
+            + '<p class="runstatus" hidden role="status" aria-live="polite">'
+              '<b class="rs-phase"></b><span class="rs-tail"></span></p>'
+            + '</div>')
 
 
 def expand_drawio(text: str, out_dir: Path, root: Path, rebuild: str) -> str:
@@ -6611,6 +6634,12 @@ def render_autofixes(fixes, badge: str = "auto-fixed") -> str:
         )
     return _open_list(len(fixes)) + "\n".join(items) + "</ol>"
 
+
+#: What the Code City shot is above, said as a heading rather than as a caption. Fixed in
+#: the build and not asked of every content file, for the same reason the zip offer in the
+#: footer is: it is a fact about what this picture always shows, not about this branch. A
+#: `title` on the block overrides it for a page that means something else by the picture.
+CITY_HEADING = "Code impact of this PR: size, complexity, coupling, \u2026"
 
 #: Where `run-steps.py`'s `aftermath` step leaves what it measured.
 AFTERMATH_JSON = "aftermath.json"
@@ -9607,9 +9636,18 @@ def main(argv=None) -> int:
     # module is imported and driven directly by the test suite, where two builds in one
     # process would otherwise leave the second one declaring the first one's actions.
     ACTIONS.clear()
-    # How to start this build again, for the copy button under the hand-drawn diagram.
+    # How to start this build again — the last stage of every command offered under a
+    # hand-drawn diagram.
+    #
+    # `--no-model` always, whatever this build was run with. A reader pressing *Update the
+    # report* under a picture is asking for the picture to be picked up; they are not asking
+    # to buy a privacy verdict for a logging statement, and a click that can spend money is
+    # the one thing `refresh-report.py` goes out of its way to make impossible. It is also
+    # most of why the command is quick: cached verdicts still render, and an uncached one
+    # says *not evaluated* rather than going and asking.
     rebuild_cmd = " ".join([rebuild_interpreter(), shlex.quote(str(Path(__file__).resolve())),
-                            shlex.quote(args.content), "--out", shlex.quote(args.out)])
+                            shlex.quote(args.content), "--out", shlex.quote(args.out),
+                            "--no-model"])
 
     # Before `validate`, and before anything walks the piles: the three arrays may be a
     # delegation (`{"auto": "review-points"}`) rather than a list, and everything
@@ -9746,25 +9784,31 @@ def main(argv=None) -> int:
     city = spec.get("codecity")
     city_html = ""
     if city:
-        # No heading and no lede: the picture starts immediately under the tab strip.
+        # A heading, and not the lede that used to be here. The two are different kinds of
+        # sentence and only one of them earns the space: the lede described the picture
+        # ("10 buildings lit — the classes this change set touched"), which a reader is
+        # looking at; the heading names what the picture is *for*, which they are not. The
+        # tab pill says "Code City", the name of the visualisation; this says what it is
+        # being shown to them to answer, and the trailing ellipsis is deliberate — the
+        # three named axes are the ones the panel inside the shot lets them switch between,
+        # and they are not all of them.
+        heading = city.get("title") or CITY_HEADING
+        # No lede. The line it held was always some version of *"10 buildings lit — the
+        # classes this change set touched, in a city of the whole backend"*, which is three
+        # claims the reader can already see: the count is legible in the shot, the lit slice
+        # is what lit means, and the city being the whole backend is what a city is. It was
+        # also a **hand-typed number** in a file nothing revalidates — the exact thing this
+        # skill's own writing rule forbids — so it went stale silently the first time a
+        # class was added.
         #
-        # `title` was already ignored, for the reason `logging` has no heading — the tab is
-        # called *Code City* and a heading above the picture is the tab's label said a
-        # second time. `body` now goes the same way, and it earned it. The line it held was
-        # always some version of *"10 buildings lit — the classes this change set touched,
-        # in a city of the whole backend"*, which is three claims the reader can already
-        # see: the count is legible in the shot, the lit slice is what lit means, and the
-        # city being the whole backend is what a city is. It was also a **hand-typed
-        # number** in a file nothing revalidates — the exact thing this skill's own writing
-        # rule forbids — so it went stale silently the first time a class was added.
-        #
-        # The anchor moves onto the picture, so `#codecity` still lands here.
+        # The anchor sits on the heading, so `#codecity` still lands here.
         if city.get("body"):
             print("[review] codecity.body is no longer rendered — the picture starts under "
                   "the tab strip. Delete it from the content file; every sentence it can "
                   "hold is either in the shot or a number that goes stale.", file=sys.stderr)
         city_html = (
-            f'<a class="city" id="codecity" href="{html.escape(city["href"])}"'
+            f'<h2 id="codecity">{html.escape(heading)}</h2>\n'
+            f'<a class="city" href="{html.escape(city["href"])}"'
             f' target="_blank" rel="noopener"'
             f' data-tip="Open the interactive Code City in a new tab">'
             f'<img src="{html.escape(city["png"])}" alt="Code City with the branch change set highlighted"></a>\n'
@@ -10135,7 +10179,13 @@ def main(argv=None) -> int:
             # evidence *about* the branch, not a thing the branch moved.
             return frag, n, 0
         if kind == "codecity":
-            return city_html, 1 if city_html else 0, 0
+            # A delta, unlike `puml`. The strike-through on a tab means "we looked and this
+            # branch did not touch it", and a `puml` card earns it honestly: a context
+            # diagram can be the same picture at both ends of the branch. This shot cannot
+            # — the lit buildings *are* the classes the change set touched, so a city with
+            # anything in it is a city this branch changed, and the tab was being struck
+            # through over a picture whose whole subject is the change.
+            return city_html, (1 if city_html else 0), (1 if city_html else 0)
         if kind == "section":
             body = by_id.get(block["id"])
             if body is None:
@@ -10452,7 +10502,7 @@ def main(argv=None) -> int:
 {lede_html}
 
 {body_html}
-<footer><div class="footrow"><span>{_link_home(spec.get('footer', ''))}</span>{TAKEAWAY}</div>{allbtn_html}</footer>
+<footer><p class="footrow"><span>{_link_home(spec.get('footer', ''))}</span> {TAKEAWAY}</p>{allbtn_html}</footer>
 </div>
 {SERVER_JS}
 {CAPTION_JS}

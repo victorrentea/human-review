@@ -1475,15 +1475,21 @@ def test_the_show_all_button_sits_after_the_footer_not_in_the_strip(tmp_path):
     assert "allbtn" in foot and "show single page" in foot
 
 
-def test_the_show_all_button_sits_centred_under_the_footer_s_line(tmp_path):
-    """The footer's sentence is one flex row; the control is not a word of it. It stands
-    on its own line below, centred, so it reads as the page's one control rather than as
-    the tail of the sentence."""
+def test_the_footer_is_one_centred_line_with_the_control_under_it(tmp_path):
+    """The provenance and the offer are one sentence, centred — not two blocks pushed to
+    opposite ends of a flex row, which on a wide screen read as a header bar rather than as
+    the page's closing line. The control is not a word of that sentence: it stands on its
+    own line below, centred, so it reads as the page's one control."""
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert '<div class="footrow">' in foot
-    assert foot.index("</div>") < foot.index("allbar"), "the row closes before the button"
+    assert '<p class="footrow">' in foot
+    assert foot.index("</p>") < foot.index("allbar"), "the line closes before the button"
+    assert "footer .footrow { text-align:center; }" in page
+    assert "footer .footrow > span { display:inline; }" in page
     assert "footer .allbar { display:flex; justify-content:center;" in page
+    # One line, so nothing between the two halves but a space.
+    line = foot[foot.index('<p class="footrow">'):foot.index("</p>")]
+    assert line.count("<span") >= 2 and "<div" not in line
 
 
 def test_the_footer_offers_both_ways_to_take_the_page_away(tmp_path):
@@ -3883,3 +3889,134 @@ def test_the_review_chip_drops_itself_when_nothing_records_a_review(tmp_path):
     head = src[i:i + 900]
     assert '(spec.get("_reviewPoints") or {}).get("missing")' in head
     assert "continue" in head
+
+
+# --------------------------------------------------------------------------- #
+# the Code City shot
+# --------------------------------------------------------------------------- #
+
+def _city(tmp_path, **over):
+    """A page whose only tab is the Code City shot, with the two files it names on disk."""
+    (tmp_path / "assets").mkdir(exist_ok=True)
+    (tmp_path / "assets" / "codecity.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    city = {"png": "assets/codecity.png", "href": "assets/codecity/codecity.html", **over}
+    return {**BARE, "codecity": city,
+            "tabs": [*BARE["tabs"],
+                     {"id": "city", "label": "Code City",
+                      "blocks": [{"type": "codecity"}]}]}
+
+
+def test_the_shot_is_headed_by_what_it_is_for(tmp_path):
+    """Not by what it is. The tab pill says *Code City*, the name of the visualisation; the
+    heading says what the reader is being shown it to answer. The trailing ellipsis is
+    deliberate: the three named axes are the ones the panel inside the shot switches
+    between, and they are not all of them."""
+    page, _ = _build(tmp_path, _city(tmp_path))
+    assert ('<h2 id="codecity">Code impact of this PR: size, complexity, coupling, …</h2>'
+            in page)
+    assert build.CITY_HEADING.endswith("…")
+    # The anchor is on the heading, so `#codecity` still lands at the top of the picture.
+    assert 'class="city" href=' in page and 'class="city" id=' not in page
+
+
+def test_the_shot_carries_no_lede(tmp_path):
+    """It held *"10 buildings lit — the classes this change set touched, in a city of the
+    whole backend"*: three claims a reader can see, one of them a hand-typed number in a
+    file nothing revalidates, which went stale the first time somebody added a class."""
+    page, err = _build(tmp_path, _city(tmp_path, body="<p>10 buildings lit.</p>"))
+    assert "10 buildings lit" not in page
+    # Named rather than silently dropped, so whoever wrote it learns it is not wanted.
+    assert "codecity.body is no longer rendered" in err
+
+
+def test_a_page_that_means_something_else_by_the_picture_can_say_so(tmp_path):
+    page, _ = _build(tmp_path, _city(tmp_path, title="Where the weight moved"))
+    assert '<h2 id="codecity">Where the weight moved</h2>' in page
+    assert build.CITY_HEADING not in page
+
+
+def test_the_city_tab_is_never_struck_through(tmp_path):
+    """The strike means "we looked and this branch did not touch it", which a `puml` card
+    can earn honestly — a context diagram is often the same picture at both ends of a
+    branch. This shot cannot: the lit buildings *are* the classes the change set touched,
+    so the tab was being struck over a picture whose whole subject is the change."""
+    page, err = _build(tmp_path, _city(tmp_path))
+    at = page.index('id="tabbtn-city"')
+    tag = page[page.rindex("<button", 0, at):page.index(">", at)]
+    assert "quiet" not in tag
+    assert "Code City" not in err.split("kept as context")[-1].split("\n")[0]
+
+
+# --------------------------------------------------------------------------- #
+# the cost ledger, cached on its inputs
+# --------------------------------------------------------------------------- #
+
+def test_the_ledger_is_recomputed_when_anything_it_reads_has_moved(tmp_path):
+    """The key is the inputs and never a timestamp: a cache that could be *wrong* would be
+    much worse than a slow build, because the cost tab is the one part of this page nothing
+    else corroborates."""
+    out = tmp_path / ".human-review"
+    (out / "assets").mkdir(parents=True)
+    (out / ".steps.json").write_text("{}", encoding="utf-8")
+    (out / ".session").write_text("abc-123", encoding="utf-8")
+    key = lambda tabs=("a", "b"), base="origin/main": build._cost_inputs(
+        tmp_path, out, list(tabs), base)
+
+    same = key()
+    assert key() == same, "nothing moved, so the answer cannot have"
+    assert key(base="origin/release") != same, "a different base is a different question"
+    assert key(tabs=("a",)) != same, "a different tab list is a different answer"
+    import time
+    time.sleep(0.01)
+    (out / ".steps.json").write_text('{"x": 1}', encoding="utf-8")
+    assert key() != same, "the step ledger is how the bill is split across tabs"
+
+
+def test_the_ledger_is_read_back_instead_of_recomputed(tmp_path):
+    """This one call was forty seconds of a forty-seven-second build — every turn of a
+    conversation that wrote a feature over two days, read again for a page whose bill had
+    not moved. Most of what a reader waited through after pressing a button on the page."""
+    out = tmp_path / ".human-review"
+    out.mkdir()
+    cache = out / build.COST_CACHE
+    cache.write_text(json.dumps({
+        "key": build._cost_inputs(tmp_path, out, ["one"], "origin/main"),
+        "ledger": {"tabs": {"one": {"cost": 1.5}}}}), encoding="utf-8")
+    got = build.cost_ledger_report(tmp_path, ["one"], "origin/main", out)
+    assert got == {"tabs": {"one": {"cost": 1.5}}}
+    # Dot-prefixed: `publish-demo.sh` publishes what does not start with a dot, and a
+    # measurement of one machine's transcripts is not something to ship in a demo zip.
+    assert build.COST_CACHE.startswith(".")
+
+
+def test_a_cache_written_for_another_question_is_ignored(tmp_path):
+    out = tmp_path / ".human-review"
+    out.mkdir()
+    (out / build.COST_CACHE).write_text(
+        json.dumps({"key": "not-this-one", "ledger": {"tabs": {}}}), encoding="utf-8")
+    # It falls through to the program, whatever the program then answers — the point is
+    # that it did not serve the stale one back.
+    got = build.cost_ledger_report(tmp_path, ["one"], "origin/main", out)
+    assert got != {"tabs": {}}
+    # And the cache it leaves behind is keyed to the question that was actually asked.
+    held = json.loads((out / build.COST_CACHE).read_text())
+    assert held["key"] == build._cost_inputs(tmp_path, out, ["one"], "origin/main")
+
+
+def test_an_unreadable_cache_is_a_slow_build_and_not_a_failed_one(tmp_path):
+    """A half-written file — a build killed mid-`write_text` — must cost the next one a
+    recomputation and nothing else."""
+    out = tmp_path / ".human-review"
+    out.mkdir()
+    (out / build.COST_CACHE).write_text("{not json", encoding="utf-8")
+    build.cost_ledger_report(tmp_path, ["one"], "origin/main", out)
+    json.loads((out / build.COST_CACHE).read_text())  # and it is valid JSON again
+
+
+def test_the_diagram_rebuild_can_never_buy_a_privacy_verdict(tmp_path):
+    """A reader pressing *Update the report* under a picture is asking for the picture to be
+    picked up. It is also most of why the command is quick."""
+    page, _ = _build(tmp_path, BARE)
+    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    body = src[src.index("rebuild_cmd = "):]
+    assert '"--no-model"' in body[:body.index("\n\n")]

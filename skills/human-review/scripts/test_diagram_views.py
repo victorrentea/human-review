@@ -784,14 +784,20 @@ def test_the_command_says_what_it_is_for(tmp_path):
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN,
+        "drawio_url": "drawio:///repo/C.drawio.png"}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
     line = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert ">click here</button>" in line
-    assert " to update the report." in line
-    # The command is not in the sentence and not in a block under it: it is in the hover of
-    # the copy glyph between the offer and the full stop.
-    assert line.index("cmd-copy") < line.index(" to update the report.")
-    assert "<code>" not in line
+    # The sentence says where to edit, and that is all it says. The offer is a pill under
+    # it — the line used to carry both, and by the time each offer had grown its glyphs it
+    # was seven underlined runs of text with no rank between them.
+    assert "Edit " in line and "in draw.io" in line
+    assert "offer-pill" not in line and "cmd-copy" not in line
+    acts = re.search(r'<div class="rerun-acts">(.*?)</div>', out, re.S).group(1)
+    assert ">Update the report</button>" in acts
+    assert "offer-pill" in acts and "cmd-copy" in acts
+    assert "<code>" not in out, "the command is in a hover, not on the page"
 
 
 def test_the_command_is_in_a_hover_and_not_in_a_block(tmp_path):
@@ -1011,39 +1017,6 @@ def _widget_with(tmp_path, **verdict):
     return build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
 
 
-def test_the_offer_to_start_over_runs_the_restore_the_redraw_and_the_re_render(tmp_path):
-    """Stopping after the patch script would leave the reader looking at their own layout
-    with a green tick beside it: the picture in the page is an inlined SVG, and only
-    `drawio-diff.py` rewrites it."""
-    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
-    line = html.unescape(re.search(
-        r'offer-words" data-action="drawio-redraw:conceptual" data-copy="(.*?)" data-tip',
-        out, re.S).group(1))
-    assert "git checkout origin/main -- docs/CM.drawio.png" in line
-    assert "docs/patch.py" in line
-    assert RERUN["command"] in line, "the picture on the page is re-rendered too"
-    assert REBUILD in line
-
-
-def test_starting_over_is_the_same_offer_in_the_same_shape(tmp_path):
-    """Both ways back are named after what they do, so the words read correctly whether the
-    click runs the command or opens it — and both run through the review server."""
-    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
-    sentence = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert ">start over</button>" in sentence
-    assert 'data-action="drawio-redraw:conceptual"' in sentence, \
-        "it runs through the review server like the other offer, not only in a terminal"
-    # The glyphs beside it, like every other command on the page: a clipboard in both
-    # copies of the report, and a play the probe raises where there is a server.
-    after = out[out.index(">start over</button>"):]
-    glyphs = after[:after.index("</span>") + 7]
-    assert 'class="copycmd cmd-copy"' in glyphs
-    assert 'class="runhere cmd-run" hidden' in glyphs
-    assert glyphs.count('data-action="drawio-redraw:conceptual"') == 1
-    assert "git checkout origin/main" in glyphs, "in the hover, not in the text"
-    assert "<code>" not in glyphs
-
-
 def test_each_offer_carries_its_own_command_and_not_the_neighbours(tmp_path):
     """Two commands under one picture, and they used to live in two folds keyed by id
     because "the first .cmdline in here" would open the one that re-renders when the reader
@@ -1063,80 +1036,106 @@ def test_a_repository_that_declared_no_redraw_is_offered_none(tmp_path):
     assert "start over" not in out and "redraw-conceptual" not in out
 
 
-# ── Undo my edits ─────────────────────────────────────────────────────────────────
+# ── The one way back ──────────────────────────────────────────────────────────────
 #
 # The page tells the reader to go and drag boxes around in draw.io, and dragging boxes
-# around is how a guardrail that was green stops being green. The way back is one command,
-# but it is one command the reader has to know exists — so it is an offer on the same line
-# as the one that sent them to draw.io in the first place.
+# around is how a guardrail that was green stops being green. So there is a way back, and
+# it is an offer beside the one that sent them to draw.io in the first place.
+#
+# There used to be two, and to the reader they were the same offer. *Undo your edits*
+# walked back to the newest committed drawing; *start over* restored the base and re-ran
+# the repository's patch script. Two commands, two tooltips, and one question behind every
+# press of either: give me back the diagram the machine makes. Only the second answers it —
+# the first hands back a human's layout from an earlier commit, which is a different
+# drawing and is not generated in any sense the reader meant.
 
-def test_the_undo_offer_names_all_four_stages(tmp_path):
-    """Putting the file back is not enough on its own: the picture in the page is inlined
-    at build time, so an undo that stopped at the file would leave the reader looking at
-    their own layout with the committed one on disk."""
-    out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
-    line = html.unescape(re.search(
-        r'offer-words" data-action="drawio-undo:conceptual" data-copy="(.*?)" data-tip',
-        out, re.S).group(1))
-    assert "cd /repo" in line and "git stash push" in line
-    assert REVERT["sha"] in line, "it names the revision, so a step too far is walkable"
-    assert RERUN["command"] in line and REBUILD in line
-
-
-def test_the_undo_offer_says_where_the_layout_goes_before_it_is_clicked(tmp_path):
-    """The reassurance is the whole reason this is a stash and not a checkout, and a reader
-    weighing an undo needs it *before* pressing, not in a paragraph underneath."""
-    out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
-    tip = re.search(r'offer-words" data-action="drawio-undo:conceptual"[^>]*? data-tip="([^"]*)"', out).group(1)
-    assert "stash" in tip
-
-
-def test_the_gentler_way_back_is_offered_first(tmp_path):
-    """Refresh, undo, start over. A reader who stops reading partway along the line has
-    stopped on the offer that keeps the branch's drawing, not on the one that throws it
-    away along with their own."""
-    line = re.search(r'<p class="dgm-open">(.*?)</p>',
-                     _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW),
-                     re.S).group(1)
-    assert line.index(">undo your edits</button>") < line.index(">start over</button>")
-
-
-def test_both_ways_back_are_one_short_sentence(tmp_path):
-    """`You can undo your edits or start over.` Two clauses spelling their destinations out
-    put two lines of tooling under a picture, permanently, for the one visit in twenty
-    where anything goes back at all."""
-    line = re.search(r'<p class="dgm-open">(.*?)</p>',
-                     _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW),
-                     re.S).group(1)
-    # And the same words in both copies. `click here` / `run this` was a sentence that
-    # quietly read differently depending on where the reader opened the file; what differs
-    # now is only what the click does — it runs where there is a server, and copies the
-    # command where there is not.
-    for served in (True, False):
-        assert _as_read(line, served=served).endswith(
-            "click here to update the report.You can undo your edits or start over.")
-
-
-def test_the_hover_is_where_the_two_ways_back_are_told_apart(tmp_path):
-    """"Undo" and "start over" are both just "go back" until you read what they do, and the
-    line no longer says. So the tooltips have to: one keeps the branch's own layout and
-    banks the edits, the other goes to the base and lets the script restage its to-do."""
+def test_there_is_one_way_back_and_it_is_the_generated_drawing(tmp_path):
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW)
-    undo = re.search(r'offer-words" data-action="drawio-undo:conceptual"[^>]*? data-tip="([^"]*)"', out).group(1)
-    over = re.search(r'offer-words" data-action="drawio-redraw:conceptual"[^>]*? data-tip="([^"]*)"', out).group(1)
-    assert REVERT["short"] in undo and "stash" in undo
-    btn = re.search(r'offer-words" data-action="drawio-undo:conceptual"[^>]*'
-                    r'data-tip-served="([^"]*)"', out).group(1)
-    assert REVERT["short"] in btn, "the served hover is the one most readers ever see"
-    assert REDRAW["base"] not in undo, "the one way back that names no base ref"
-    assert REDRAW["base"] in over and "red" in over
+    assert ">Regenerate the diagram</button>" in out
+    # Named after what it produces, not after the gesture that gets you there: "start over"
+    # is a direction and not a destination, and "undo your edits" is gone entirely.
+    assert "start over" not in out and "undo your edits" not in out
+    assert "drawio-undo" not in out and "drawio-undo:conceptual" not in build.ACTIONS
+    assert "drawio-redraw:conceptual" in build.ACTIONS
 
 
-def test_no_undo_is_offered_for_a_diagram_with_nothing_committed(tmp_path):
-    """`drawio-diff.py` leaves `revert` out when the branch introduces the drawing. The
-    page must then be silent about it rather than assemble a command from what it has."""
+def test_a_verdict_that_still_records_a_revert_builds_and_ignores_it(tmp_path):
+    """`revert` is what an older `drawio-diff.py` wrote about a command this page no longer
+    offers. A page that refused to build on one would make a tool upgrade a migration."""
+    out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
+    assert "drawio-undo" not in out
+    assert "Update the report" in out
+
+
+def test_the_one_way_back_runs_every_stage_and_banks_the_layout(tmp_path):
+    """Restoring the file is not enough on its own: the picture in the page is inlined at
+    build time, so a regeneration that stopped at the file would leave the reader looking
+    at their own layout with the machine's on disk. And it is destructive, so it banks the
+    work first — the command that went away was the survivable one, and losing that along
+    with it would be a bad trade for a simpler line."""
+    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
+    line = html.unescape(re.search(
+        r'offer-pill" data-action="drawio-redraw:conceptual" data-copy="(.*?)" data-tip',
+        out, re.S).group(1))
+    assert "cd /repo" in line
+    assert "git stash push" in line and REDRAW["diagram"] in line
+    assert "git checkout origin/main -- docs/CM.drawio.png" in line
+    assert "docs/patch.py" in line
+    assert RERUN["command"] in line, "the picture on the page is re-rendered too"
+    assert REBUILD in line
+    # The stash comes first, or the checkout has already thrown the layout away.
+    assert line.index("git stash push") < line.index("git checkout")
+
+
+def test_the_hover_says_where_the_layout_goes_before_it_is_clicked(tmp_path):
+    """The reassurance is the whole reason this is a stash and not a bare checkout, and a
+    reader weighing it needs that *before* pressing, not in a paragraph underneath."""
+    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
+    tip = re.search(r'offer-pill" data-action="drawio-redraw:conceptual"'
+                    r'[^>]*? data-tip="([^"]*)"', out).group(1)
+    assert "stash" in tip and REDRAW["base"] in tip and "red" in tip
+    served = re.search(r'offer-pill" data-action="drawio-redraw:conceptual"'
+                       r'[^>]*data-tip-served="([^"]*)"', out).group(1)
+    assert "stash" in served, "the served hover is the one most readers ever see"
+
+
+def test_the_row_carries_a_place_for_the_command_to_report_itself(tmp_path):
+    """The complaint that produced it: pressing *Update the report* re-renders a diagram
+    and rebuilds the page, which was seconds of nothing whatever in front of a control
+    that gave no sign it had been pressed. A reader with no feedback presses it again."""
+    out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
+    assert '<p class="runstatus" hidden' in out
+    assert 'aria-live="polite"' in out
+    # Filled from the command's own output, not from a script's guess at what stage it is on.
+    assert "say(status, REBUILDING.test(line)" in build.EDITOR_JS
+    assert "window.HR.tail(snap)" in build.EDITOR_JS
+    # And taken away by the attribute — which `display:flex` on the class would beat, so
+    # the rule that restores it is load-bearing. Without it the line is on screen in every
+    # copy of the page, empty, under every diagram, for ever.
+    assert ".runstatus[hidden] { display:none; }" in build.CSS
+    body = build.CSS[build.CSS.index(".runstatus {"):]
+    assert body.index("[hidden]") < body.index(".rs-phase"), \
+        "after the rule it has to beat, or specificity decides it the other way"
+
+
+def test_the_reload_keeps_the_tab_and_the_scroll(tmp_path):
+    """Landing at the top of the first tab after pressing a button three screens into the
+    fifth one is its own small betrayal. The tab is in `location.hash`, which a reload
+    keeps on its own; the scroll is the place-keeper the masthead's Rerun already uses."""
+    assert "window.HR.keepPlace();" in build.EDITOR_JS
+    assert "function keepPlace()" in build.SERVER_JS
+    assert build.SERVER_JS.count("sessionStorage.setItem(PLACE") == 1
+    # One implementation: the masthead's Rerun reaches for the same one.
+    assert "var remember = window.HR.keepPlace;" in build.RERUN_JS
+
+
+def test_no_way_back_is_offered_for_a_repository_that_declared_no_script(tmp_path):
+    """The patch script is the reviewed repository's, not this tool's. Guessing it from a
+    naming convention and running it on a reader's click is not a trade worth making, so a
+    diagram with no `redraw` gets the sentence and one offer."""
     out = _widget_with(tmp_path, rerun=RERUN)
-    assert "undo your edits" not in out and "drawio-undo" not in out
+    assert "Regenerate the diagram" not in out and "drawio-redraw" not in out
+    assert ">Update the report</button>" in out
 
 
 def test_the_play_glyph_is_hidden_by_the_attribute_and_not_by_a_class(tmp_path):

@@ -850,9 +850,13 @@ def test_where_the_reader_was_survives_the_rebuild():
     directory it serves, so the build finishing can reload the tab first. Both routes have
     to land on the same saved place, which is why it is written when the button is pressed
     and not just before a reload we might never reach."""
-    assert "sessionStorage.setItem(KEY" in build.RERUN_JS
-    assert "sessionStorage.removeItem(KEY)" in build.RERUN_JS
-    assert "window.scrollTo(0, saved.y)" in build.RERUN_JS
+    # On `HR` now, because three controls end in a reload — the masthead's two Reruns and
+    # every command declared with `reload` — and "the same scroll position, saved under the
+    # same key, restored on the same event" is not a thing to keep two copies of.
+    assert "var remember = window.HR.keepPlace;" in build.RERUN_JS
+    assert "sessionStorage.setItem(PLACE" in build.SERVER_JS
+    assert "sessionStorage.removeItem(PLACE)" in build.SERVER_JS
+    assert "window.scrollTo(0, saved.y)" in build.SERVER_JS
 
 
 def test_a_failed_rerun_shows_the_last_lines_rather_than_a_shrug():

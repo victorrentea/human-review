@@ -225,6 +225,29 @@ launches the paid one: a click that asked for the free half cannot spend money).
 carries a spinner while it works, and a rebuild that failed puts the program's last lines in
 a red band under the header instead of leaving you to go and look.
 
+### A running command says what it is doing
+
+Every control the page can run ends in a rebuild, and a rebuild is seconds during which a
+page that said nothing was indistinguishable from a page that had ignored the click. The
+blocks that offer a command carry a **status line** under them: hidden until something
+starts, then the command's own last line, polled from `/__run_status__` — what is actually
+happening rather than a script's guess at which stage it has reached — and a ✓ before the
+reload. Every offer in the same block goes down together while one of them runs, because
+they run one command over one working tree. The reload keeps the tab (it is in
+`location.hash`) and the scroll (`HR.keepPlace`, the same place-keeper the masthead's Rerun
+uses), so pressing a button three screens into the fifth tab does not land you at the top
+of the first.
+
+It also got quicker. Re-rendering a diagram takes three seconds; the rebuild behind it took
+forty-five, of which **forty were the cost ledger** — `review-cost.py` reading every turn of
+a conversation that wrote a feature over two days, again, on a page whose bill had not
+moved. It is cached now on its *inputs* (the session id, the byte length and mtime of its
+transcript and every subagent's, `.steps.json`, the base, the tab list, and
+`review-cost.py` itself), never on a timestamp: anything moves and the number is recomputed;
+nothing moves and it cannot have changed. A rebuild is about five seconds. The diagram
+commands also pass `--no-model` now, because a click under a picture is a request to pick
+the picture up and not to buy a privacy verdict.
+
 ### Commands: copy everywhere, play when served
 
 Every control on this page that is a shell command underneath wears the same two marks, in
@@ -385,11 +408,20 @@ Re-laying the map out by hand is what the red asks for, and it is also the one s
 the page with no way back — the layout is in the file, the file is in the repository, and
 "let me see what the machine drew" otherwise means going and finding a revision by hand.
 `--redraw '<command>'` closes that: half the line falls out of the flags this run already
-has (`git checkout <base> -- <diagram>`), the other half is the repository's own patch
-script, and the report turns the pair into an offer under the picture — shown as a command
-first, run on a second click. It is passed in and never guessed: a script that rewrites a
-checked-in file is not something to derive from a naming convention and then give a reader
-a button for.
+has (`git stash push -- <diagram>`, then `git checkout <base> -- <diagram>`), the other half
+is the repository's own patch script, and the report turns the chain into one button under
+the picture — **Regenerate the diagram**. It is passed in and never guessed: a script that
+rewrites a checked-in file is not something to derive from a naming convention and then give
+a reader a button for.
+
+There used to be two buttons there. *Undo your edits* walked back to the newest committed
+drawing and *start over* ran the script; two commands, two tooltips, and one question behind
+every press of either — *give me back the diagram the machine makes*. Only the second
+answers it: the first hands back a human's layout from an earlier commit, which is a
+different drawing and is not generated in any sense the reader meant. So the one that runs
+the generator stayed, named after what it produces rather than after the gesture that gets
+you there, and it took the other's one good property with it — the stash, so the layout it
+replaces is banked rather than binned.
 
 ```sh
 ./drawio-diff.py --base origin/main --diagram docs/ConceptualModel.drawio.png \

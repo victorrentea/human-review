@@ -522,8 +522,12 @@ it and strikes the label through.
   behind `5/10 not yet mergeable` — so keep the findings in one tab.
 - A tab whose every block came back empty is **dropped** and named in the build log.
 - A tab with content but **no delta** is kept and its label **struck through**, with a
-  tooltip saying so. `noStrike: true` opts out. `puml`/`codecity` blocks never carry a delta;
-  a `section` counts as one unless it declares `"unchanged": true`.
+  tooltip saying so. `noStrike: true` opts out. A `puml` block never carries a delta — a
+  context diagram can be the same picture at both ends of a branch — while **`codecity`
+  always does**: the lit buildings *are* the classes the change set touched, so a city with
+  anything in it is a city this branch changed, and the tab was being struck through over a
+  picture whose whole subject is the change. A `section` counts as a delta unless it
+  declares `"unchanged": true`.
 - A changed diagram no tab claimed prints a **warning**.
 - `count: true` puts the item count on the tab, `badge: "…"` a literal, `badgeClass`
   paints that badge; `badgeLabel` names it for `aria-label` and `data-tip`.
@@ -920,9 +924,14 @@ Four tabs need something said about how they are written:
   - Once the card carries all four states, **the ledger at the foot of the tab is the same
     rows a second time**, grouped by a question the stamps already answer. Turn it off with
     **`"testLedger": false`** at the top level of the content file. The header strip then
-    reads *every test this change set touched*, and nothing else: it used to close with how
-    many tests the branch **left alone**, and a count of the tests a change set did not
-    touch is not a fact about that change set — it is the size of the suite. Said out loud rather
+    reads *as matched by AI*, and nothing else. It has said three things in turn and each
+    replaced a worse one: first how many tests the branch **left alone** — a count of the
+    tests a change set did not touch is not a fact about that change set, it is the size of
+    the suite; then *every test this change set touched*, which was true and was the one
+    thing the 🤖 beside it had already said was uncertain. The line under a heading is where
+    a reader looks for the caveat, and the caveat here is that which test covers which
+    requirement is a model's reading, not a measurement — the states on the rows come from
+    `test-changes.py` and are, but the pairing is not. Said out loud rather
     than inferred: the build cannot read a hand-authored fragment and know what is in it,
     so with the flag off it prints a reminder that every moved test, deleted ones included,
     now has to be listed some other way.
@@ -1114,10 +1123,14 @@ Four tabs need something said about how they are written:
     reading *as inferred by AI*; the logging tab's verdicts carry the same mark reading
     *LLM evaluated* — and the one verdict meaning "the model was never reached" carries
     none. A hover on a sentence carries **the badges themselves** (`data-tip-html`, so the
-    tip renders the same pill the list on the right does) with a count each, then what
-    clicking does — `click to highlight`. Naming the kinds in prose makes the reader
-    translate back into the badge they are already looking at, and nothing else on the
-    page announces that a sentence is clickable.
+    tip renders the same pill the list on the right does) with a count each, **and nothing
+    else**. Naming the kinds in prose makes the reader translate back into the badge they
+    are already looking at. It used to end `click to highlight`, on the reasoning that
+    nothing else on the page announces a sentence is clickable — but a tooltip that names
+    the badges and then tells you to click is two sentences in a bubble read standing up,
+    and the second one is about the tooltip rather than about the tests. The row a reader
+    is pointing at already looks pressable. A sentence with no test is the exception and
+    keeps its one line, because *that* is a fact rather than an instruction.
   - With that column on the page, **do not also write an evidence-cards section** listing
     what the branch wrote — it is the same list, in fewer words, further down.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each

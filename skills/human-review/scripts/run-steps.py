@@ -500,6 +500,92 @@ def _app_slots(ctx: Ctx) -> dict:
     return {"sha": full, "shortsha": short or full[:8]}
 
 
+#: What an `app` block exports by default. `video` has always set both, and the same two
+#: names carry a Playwright suite; a project whose tests read something else (petclinic's
+#: `API_BASE_URL`) says so in `app.env` instead of renaming its tests around this default.
+APP_ENV_DEFAULT = {"BASE_URL": "{url}", "API_URL": "{url}"}
+
+
+class AppInstance:
+    """The stack a step started for itself: its base URL and the env that points at it.
+
+    Empty (`started` false, `env` "") when the step has no `app` block, which is the case
+    every project started from and still the default — the commands then run against
+    whatever the operator has listening, exactly as before.
+    """
+
+    def __init__(self, base: str = "", env: str = "", started: bool = False):
+        self.base, self.env, self.started = base, env, started
+
+
+@contextlib.contextmanager
+def app_instance(ctx: Ctx, cfg: dict, sha: dict):
+    """`up` the app this step runs against, hand back where it landed, `down` it after.
+
+    Extracted from `_video`, which had it inline and alone. The reason it existed there is
+    not about film: the recorder's liveness check tested the PORT and not the commit, and
+    this machine keeps several checkouts of one repository that can each serve :4200 — so
+    a review of `test-pr` was illustrated with a film of `main`. Every step that drives the
+    running application has that same hazard, and the traced suites have it worse: a
+    sequence diagram of the wrong checkout is not obviously wrong the way a film is, it is
+    just a picture of some other code, drawn in this branch's name and committed.
+
+    `app` is either the block itself or the string "video", which borrows `steps.video.app`
+    rather than repeating it — the usual case, where one `up` builds the one stack every
+    step would want. Borrowing is spelt out and never assumed: a stack that is right for
+    the film is not automatically right for a suite that needs a collector behind it.
+
+    `{sha}`/`{shortsha}` come from `git rev-parse HEAD`, never from the config.
+    """
+    if isinstance(cfg, str):
+        if cfg != "video":
+            raise LookupError(f'app: "{cfg}" — the only name that can be borrowed is "video"')
+        cfg = (ctx.step_cfg("video").get("app") or {})
+        if not cfg:
+            raise LookupError('app: "video" — but steps.video.app is not configured')
+    if not cfg:
+        yield AppInstance()
+        return
+
+    def expand(template: str) -> str:
+        for name, value in sha.items():
+            template = template.replace("{" + name + "}", value)
+            template = template.replace("{" + name.replace("sha", "SHA") + "}", value)
+        return template
+
+    inst = AppInstance()
+    try:
+        if cfg.get("up"):
+            up = sh(expand(cfg["up"]), ctx, capture=True, check=False)
+            # Echoed: a docker build's output is what a reader asks for when the step takes
+            # four minutes, and `capture` is only here to scrape the port off it.
+            print((up.stdout or "") + (up.stderr or ""), end="", flush=True)
+            if up.returncode != 0:
+                raise RuntimeError(f"the app would not start: {expand(cfg['up'])}")
+            inst.started = True
+            found = APP_URL.findall(up.stdout or "")
+            inst.base = found[-1].rstrip(".,)") if found else ""
+        if not inst.base and cfg.get("url"):
+            got = sh(expand(cfg["url"]), ctx, capture=True, check=False)
+            found = APP_URL.findall(got.stdout or "")
+            inst.base = found[-1].rstrip(".,)") if found else ""
+        if not inst.base and not ctx.dry:
+            raise RuntimeError("the app started and printed no URL to reach it at — "
+                               "`app.up` has to print it, or `app.url` has to")
+        if inst.base:
+            names = cfg.get("env") or APP_ENV_DEFAULT
+            inst.env = "".join(
+                f"{k}={shlex.quote(v.replace('{url}', inst.base))} " for k, v in names.items())
+            inst.env += (f"HUMAN_REVIEW_APP_COMMIT={shlex.quote(sha.get('sha', ''))} "
+                         "HUMAN_REVIEW_APP_STARTED=1 ")
+        yield inst
+    finally:
+        if inst.started and cfg.get("down"):
+            # In a `finally`, and never `check`ed: a stack left up outlives the run, and the
+            # reason the step failed is a better thing to report than the teardown.
+            sh(expand(cfg["down"]), ctx, check=False)
+
+
 def _video(ctx: Ctx):
     """Film the feature — and, where the project says how, start the stack it is filmed
     against and stop it afterwards.
