@@ -39,6 +39,7 @@ _spec.loader.exec_module(build)
 # thing a re-export cannot carry: rebinding `build.X` leaves the module that defines `X`
 # calling the original. So the handful of tests below that replace a function reach for
 # the module that owns it.
+logging_tab = importlib.import_module("hrbuild.tabs.logging")
 snippets = importlib.import_module("hrbuild.shared.snippets")
 
 
@@ -489,8 +490,8 @@ def no_verdict_disk(monkeypatch):
     read and write `<root>/.human-review/.privacy-verdicts.json`, and most of these
     tests pass `REPO_ROOT` (this very checkout, needed so `snippet_html` can resolve the
     fixture) rather than a throwaway `tmp_path` — this fixture is what keeps that safe."""
-    monkeypatch.setattr(build, "_load_verdict_cache", lambda root: {})
-    monkeypatch.setattr(build, "_save_verdict_cache", lambda root, cache: None)
+    monkeypatch.setattr(logging_tab, "_load_verdict_cache", lambda root: {})
+    monkeypatch.setattr(logging_tab, "_save_verdict_cache", lambda root, cache: None)
 
 
 def test_each_statement_renders_as_the_page_s_one_snippet_style(no_verdict_disk):
@@ -750,13 +751,13 @@ def test_fields_in_scope_are_named_when_present():
 # --------------------------------------------------------------------------- #
 
 def test_no_claude_binary_is_a_runtime_error_not_a_crash(monkeypatch):
-    monkeypatch.setattr(build, "_claude_bin", lambda: None)
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: None)
     with pytest.raises(RuntimeError, match="not on PATH"):
         build._call_privacy_model("prompt")
 
 
 def test_a_nonzero_exit_with_no_usable_output_is_reported_not_swallowed(monkeypatch):
-    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: "/usr/bin/true")
     monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
                         subprocess.CompletedProcess(a, 1, stdout="", stderr="boom"))
     with pytest.raises(RuntimeError, match="exited 1"):
@@ -769,7 +770,7 @@ def test_a_good_answer_is_not_thrown_away_over_the_exit_code(monkeypatch):
     -for response. Reading the exit code first put "the model could not be reached" on a
     page whose model *had* been reached — the one state reserved for never having asked.
     The answer decides; the exit code only colours the message when there is no answer."""
-    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: "/usr/bin/true")
     ok = json.dumps({"is_error": False, "subtype": "success", "total_cost_usd": 0.02,
                      "structured_output": {"verdict": "SAFE", "values": [
                          {"name": "vetId", "verdict": "SAFE", "note": "a numeric id"}]}})
@@ -783,7 +784,7 @@ def test_a_good_answer_is_not_thrown_away_over_the_exit_code(monkeypatch):
 def test_a_bad_payload_still_raises_and_names_the_exit_code(monkeypatch):
     """Nothing is loosened: an exit code plus a response that misses the schema is still
     a failure, and the message says both halves so the cause is not guesswork."""
-    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: "/usr/bin/true")
     bad = json.dumps({"is_error": False, "structured_output": {"verdict": "SAFE"}})
     monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
                         subprocess.CompletedProcess(a, 1, stdout=bad, stderr="oops"))
@@ -792,7 +793,7 @@ def test_a_bad_payload_still_raises_and_names_the_exit_code(monkeypatch):
 
 
 def test_a_response_missing_the_verdict_field_is_rejected(monkeypatch):
-    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: "/usr/bin/true")
     ok = json.dumps({"is_error": False, "structured_output": {"trace": "x"}})
     monkeypatch.setattr(build.subprocess, "run", lambda *a, **k:
                         subprocess.CompletedProcess(a, 0, stdout=ok, stderr=""))
@@ -801,7 +802,7 @@ def test_a_response_missing_the_verdict_field_is_rejected(monkeypatch):
 
 
 def test_a_well_formed_response_is_parsed(monkeypatch):
-    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: "/usr/bin/true")
     ok = json.dumps({"is_error": False, "total_cost_usd": 0.0123,
                      "structured_output": {
                          "verdict": "PRIVACY",
@@ -817,7 +818,7 @@ def test_a_well_formed_response_is_parsed(monkeypatch):
 def test_a_response_whose_values_are_the_wrong_shape_is_rejected(monkeypatch):
     """Shape only — whether the list *covers* the logged values is decided against
     `logextract.py`'s argument list at render time, not against the model's word."""
-    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: "/usr/bin/true")
     for values in ("not a list", [{"name": "x"}],
                    [{"name": "x", "verdict": "MAYBE", "note": "n"}]):
         ok = json.dumps({"is_error": False, "structured_output": {
@@ -839,7 +840,7 @@ def test_the_model_is_no_longer_asked_where_a_value_came_from(monkeypatch):
     assert build.VERDICT_SCHEMA["additionalProperties"] is False
     assert not hasattr(build, "_render_chain")
     assert "chain-hops" not in build.CSS
-    monkeypatch.setattr(build, "_claude_bin", lambda: "/usr/bin/true")
+    monkeypatch.setattr(logging_tab, "_claude_bin", lambda: "/usr/bin/true")
     ok = json.dumps({"is_error": False, "structured_output": {
         "verdict": "SAFE",
         "values": [{"name": "id", "verdict": "SAFE", "note": "an int id"}]}})
@@ -868,7 +869,7 @@ def test_editing_the_prompt_invalidates_the_verdict_cache(tmp_path, monkeypatch)
     assert len(fake.calls) == 1
     build._logging_listing([DEBUG_HIT], REPO_ROOT, call=fake, cache_root=tmp_path)
     assert len(fake.calls) == 1                     # same prompt, same key: a cache hit
-    monkeypatch.setattr(build, "VERDICT_SYSTEM_PROMPT", build.VERDICT_SYSTEM_PROMPT + " x")
+    monkeypatch.setattr(logging_tab, "VERDICT_SYSTEM_PROMPT", logging_tab.VERDICT_SYSTEM_PROMPT + " x")
     build._logging_listing([DEBUG_HIT], REPO_ROOT, call=fake, cache_root=tmp_path)
     assert len(fake.calls) == 2                     # a different ask is a different answer
 
@@ -932,7 +933,7 @@ def test_logging_fragment_keeps_its_weight_with_no_header_or_card(tmp_path, monk
     test cannot see. The model call itself IS mocked — `logging_fragment` has no `call`
     parameter of its own to inject one, so this patches `_call_privacy_model` directly,
     the same seam `privacy_verdict`'s default argument points at."""
-    monkeypatch.setattr(build, "_call_privacy_model",
+    monkeypatch.setattr(logging_tab, "_call_privacy_model",
                         lambda prompt: {"verdict": "safe", "cost_usd": 0.0,
                                         "values": [{"name": "id", "verdict": "safe",
                                                     "note": "an int parameter"}]})
@@ -959,7 +960,7 @@ def test_the_logging_tab_opens_on_one_computed_line_and_no_heading(tmp_path, mon
     naming what the scan looked for, with the package list on hover — and the list is read
     out of `logextract.py`'s own rule, so a library added there turns up here with nobody
     remembering the page. The anchor the heading carried moves onto the line."""
-    monkeypatch.setattr(build, "_call_privacy_model",
+    monkeypatch.setattr(logging_tab, "_call_privacy_model",
                         lambda prompt: {"verdict": "safe", "cost_usd": 0.0,
                                         "values": [{"name": "id", "verdict": "safe",
                                                     "note": "an int parameter"}]})
@@ -1003,7 +1004,7 @@ def test_a_logging_box_does_not_badge_what_its_own_gutter_already_marks(tmp_path
     the branch added or rewrote that logging line, and the `+` in the gutter marks exactly
     which lines. The badge stays everywhere else, where the reader did not choose the
     snippet and "is this new?" is a real question."""
-    monkeypatch.setattr(build, "_call_privacy_model",
+    monkeypatch.setattr(logging_tab, "_call_privacy_model",
                         lambda prompt: {"verdict": "safe", "cost_usd": 0.0, "values": []})
     repo, src = _tiny_java_repo(tmp_path, FOO_BASE)
     src.write_text(FOO_WITH_WARN, encoding="utf-8")

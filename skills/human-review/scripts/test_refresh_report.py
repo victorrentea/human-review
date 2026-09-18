@@ -25,6 +25,13 @@ def _load(name: str):
 refresh = _load("refresh-report")
 build = _load("build-review-html")
 
+# The page builder is a package now (`hrbuild/`), and `build-review-html.py` re-exports
+# every name in it so the rest of the skill still finds them here. A *patch* is the one
+# thing a re-export cannot carry: rebinding `build.X` leaves the module that defines `X`
+# calling the original. So the handful of tests below that replace a function reach for
+# the module that owns it.
+logging_tab = importlib.import_module("hrbuild.tabs.logging")
+
 
 def _review(tmp_path: Path, *, complete=True) -> Path:
     d = tmp_path / ".human-review"
@@ -155,18 +162,18 @@ def test_offline_verdicts_come_out_of_the_cache_or_say_they_were_never_asked(tmp
     (tmp_path / "A.java").write_text("class A { }\n", encoding="utf-8")
     h = {"text": 'log.warn("hi {}", id)', "file": "A.java", "line": 3, "args": [],
          "abs_file": str(tmp_path / "A.java"), "raw_line": 'log.warn("hi {}", id);'}
-    monkeypatch.setattr(build, "OFFLINE", True)
-    monkeypatch.setattr(build, "_call_privacy_model",
+    monkeypatch.setattr(logging_tab, "OFFLINE", True)
+    monkeypatch.setattr(logging_tab, "_call_privacy_model",
                         lambda p: pytest.fail("a --no-model build must not call out"))
     got = build.privacy_verdict(h, tmp_path, {})
     assert got["verdict"] == "error" and "--no-model" in got["note"]
     assert got["cost_usd"] == 0.0
 
     # …and a statement an earlier run already paid for still renders its real verdict.
-    monkeypatch.setattr(build, "OFFLINE", False)
+    monkeypatch.setattr(logging_tab, "OFFLINE", False)
     build.privacy_verdict(h, tmp_path, cache := {},
                           call=lambda p: {"verdict": "safe", "values": [], "cost_usd": 1.0})
-    monkeypatch.setattr(build, "OFFLINE", True)
+    monkeypatch.setattr(logging_tab, "OFFLINE", True)
     again = build.privacy_verdict(h, tmp_path, cache)
     assert again["verdict"] == "safe" and again["cached"] is True
 
