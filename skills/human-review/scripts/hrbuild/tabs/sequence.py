@@ -1,14 +1,16 @@
 """The Sequence tab: a diagram paired with the test that draws it."""
 from __future__ import annotations
 
+import functools
 import html
 import json
 import re
+import subprocess
 from pathlib import Path
 
 from ..shared.diagrams import _context_svg, _source_link, render_diagrams, select_rows
 from ..shared.genseq import GENSEQ_HANDLE, genseq_by_test, genseq_details, pair_anchor, test_of_genseq
-from ..shared.snippets import snippet_html
+from ..shared.snippets import SNIPPET_BASE, snippet_html
 from ..shared.svg import inline_svg
 
 #: The three kinds of test the page names, and what each one is — the Tests tab's own
@@ -383,6 +385,75 @@ def _unquoted_note(test_rel: str, root: Path) -> str:
             f'left.</span></p>')
 
 
+#: What `plan` carries in place of a manifest row for a diagram that has no delta drawn
+#: for it and is *not* identical to the base. `None` already means "unchanged", and the
+#: two must not be told apart by a boolean beside the plan — the plan is what the render
+#: loop reads, so the distinction belongs in it.
+STALE = object()
+
+
+@functools.lru_cache(maxsize=None)
+def _moved_since_base(rel: str, root: str, base: str) -> bool:
+    """Whether the work tree's copy of `rel` is *not* what the review's base ref has.
+
+    `render_testpairs` learns that a diagram changed by finding a row for it in
+    `MANIFEST.tsv`, and the manifest is written by a producer — `puml-diff.sh`, run by the
+    `diagrams` and `sequence` steps. Absence from it therefore has two meanings that look
+    identical from here: the branch really left the diagram alone, or the manifest is
+    older than the diagram. The second one happens in the ordinary way of working: the
+    page is rebuilt without re-running the producers (`refresh-report.py` runs none by
+    default, because most refreshes are a change to the *page*), and any `.genseq.puml`
+    the acceptance suite regenerated in the meantime is then described by a manifest that
+    predates it. The pair came out pilled UNCHANGED over a picture that differs from the
+    base in every lifeline — a page asserting the opposite of what `git diff` says, with
+    nothing on it admitting the claim was second-hand.
+
+    So the claim is checked against the repository instead of inferred from an artifact.
+    Against the merge-base with the base ref, not its tip, for the same reason
+    `puml-diff.sh` uses it: commits that landed on the base after this branch started are
+    not this branch's doing.
+
+    `False` is also the answer when git cannot say — no repository, no such base ref, a
+    checkout with no commits — and that is deliberate: the fixture-shaped cases are
+    exactly the ones where "unchanged" was never a claim about a base to begin with, and
+    turning them into a warning would be inventing a problem.
+    """
+    def git(*args):
+        return subprocess.run(["git", "-C", root, *args],
+                              capture_output=True, text=True)
+    mb = git("merge-base", base, "HEAD").stdout.strip()
+    if not mb:
+        return False
+    # `--quiet` exits 1 on a difference, 0 on none — and 128 when git could not look,
+    # which must not be read as "it moved".
+    r = git("diff", "--quiet", mb, "--", rel)
+    return r.returncode == 1
+
+
+def _stale_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path) -> str:
+    """The card for a sequence that has no delta on disk and is not identical to the base.
+
+    It cannot be drawn as a delta — nothing rendered one — and it must not be pilled
+    UNCHANGED, because the repository says otherwise. What is true is that the evidence is
+    out of date, and that the reader can fix it with the button in the masthead, so that
+    is what it says, over the picture the work tree actually holds."""
+    rel = puml_rel
+    cache, why_not = _context_svg(rel, root, out_dir)
+    body = f'<div class="svgbox">{inline_svg(cache, root)}</div>' if cache else why_not
+    return (f'<div class="diagram dgm-bare"'
+            f' data-test-src="vscode://file/{(root / test_rel).resolve()}:1:1">'
+            '<div class="head"><span class="badge sev-med" data-tip="No delta was drawn '
+            'for this diagram, but it differs from the base — the diagram manifest is '
+            'older than the picture">delta not drawn</span>'
+            + _source_link(rel, root) + '</div>'
+            '<p class="sub">This sequence differs from the base ref, but no delta was '
+            'drawn for it: <code>assets/diagrams/MANIFEST.tsv</code> is older than the '
+            'diagram. Press <b>Rerun</b> — or run <code>run-steps.py --only diagrams</code>'
+            ' — to redraw it.</p>'
+            + genseq_details(rel, root)
+            + body + '</div>')
+
+
 def _unchanged_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path) -> str:
     """The card for a sequence the branch left alone, inside its test's pair.
 
@@ -459,13 +530,20 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
         plan_add(r["source"], r)
 
     unchanged = 0
+    stale = 0
     drawn = genseq_by_test(root)
     for test_rel in dict.fromkeys(x["ref"].rpartition(":")[0] for x in snippets):
         for rel in drawn.get(test_rel, ()):
             if any(rel == q for q, _ in plan.get(test_rel, [])):
                 continue          # this branch changed it: it is already a row above
-            plan_add(rel, None)
-            unchanged += 1
+            # No row, so the manifest says nothing changed here — but the manifest is an
+            # artifact of a producer that may not have run since this file did. Ask git
+            # before repeating it: a diagram that differs from the base is never
+            # "unchanged", whatever an older manifest was told. See `_moved_since_base`.
+            moved = _moved_since_base(rel, str(root), SNIPPET_BASE)
+            plan_add(rel, STALE if moved else None)
+            stale += 1 if moved else 0
+            unchanged += 0 if moved else 1
 
     # An author's say on what kind of test a file holds, keyed by the file the snippet
     # quotes — one kind per test file, which is the grain the content file already writes
@@ -485,9 +563,11 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
             # the generator. Two copies of one list, and the one on the picture is the one
             # that sits where the reader is already looking.
             pieces = [] if quoted else [_unquoted_note(test_rel, root)]
-            pieces.append(render_diagrams(merged, root, out_dir, [row], bare=test_rel)
-                          if row is not None
-                          else _unchanged_sequence(puml_rel, test_rel, root, out_dir))
+            pieces.append(
+                _stale_sequence(puml_rel, test_rel, root, out_dir) if row is STALE
+                else render_diagrams(merged, root, out_dir, [row], bare=test_rel)
+                if row is not None
+                else _unchanged_sequence(puml_rel, test_rel, root, out_dir))
             parts.append(_folded_pair(puml_rel, test_rel, pieces, quoted, scenarios,
                                       _pair_cat(puml_rel, root,
                                                 authored_cat.get(test_rel))))
@@ -524,4 +604,4 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path):
     # Weight counts every exhibit; changes count only the manifest's rows. An unchanged
     # pair is context, exactly as a `puml` block is, and must not un-strike the tab.
     return ("\n".join(([head] if head else []) + parts) + "\n",
-            len(rows) + unchanged + len(orphaned), len(rows))
+            len(rows) + unchanged + stale + len(orphaned), len(rows))

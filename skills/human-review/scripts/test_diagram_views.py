@@ -680,6 +680,72 @@ def test_a_test_whose_sequence_did_not_change_is_paired_and_marked_not_orphaned(
     assert (weight, changes) == (1, 0)
 
 
+def _base_repo(tmp_path, *, base_body, work_body):
+    """A checkout whose `origin/main` really exists, with one `.genseq.puml` on it.
+
+    The pair rendering asks git whether a diagram it has no delta for is what the base
+    has, so a fixture that wants that question answered has to give it a base to answer
+    about: a commit, a branch named the way the build spells its base ref, and a second
+    commit on top that only the branch has.
+    """
+    run = lambda *a: subprocess.run(["git", "-C", str(tmp_path), *a], check=True,
+                                    capture_output=True)
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    run("config", "user.email", "t@t.t")
+    run("config", "user.name", "t")
+    (tmp_path / "same.ts").write_text("// x\ntest('untouched', () => {\n  ok();\n});\n")
+    (tmp_path / "same.ts.genseq.puml").write_text(base_body)
+    run("add", "-A")
+    run("commit", "-qm", "base")
+    # The ref the build measures against, spelled as a remote-tracking branch because
+    # that is what `HUMAN_REVIEW_DIFF_BASE` defaults to.
+    run("update-ref", "refs/remotes/origin/main", "HEAD")
+    run("checkout", "-q", "-b", "feature")
+    (tmp_path / "same.ts.genseq.puml").write_text(work_body)
+    cache = tmp_path / "assets" / "same.ts.genseq.context.svg"
+    cache.parent.mkdir(exist_ok=True)
+    cache.write_text('<svg xmlns="http://www.w3.org/2000/svg"><text>same</text></svg>')
+    block = {"type": "testpairs", "id": "sequences", "kind": "sequence",
+             "snippets": [{"ref": "same.ts:2-4"}],
+             "unpaired": {"id": "tests-nosequence", "title": "No diagram came back"}}
+    return build.render_testpairs(block, {"manifest": "M.tsv"}, [],
+                                  tmp_path, tmp_path)
+
+
+def test_a_sequence_that_differs_from_the_base_is_never_pilled_unchanged(tmp_path):
+    """The bug this guards: the page said UNCHANGED over a diagram `git diff` calls
+    modified.
+
+    A pair is told it has no delta by the *absence of a row* in `MANIFEST.tsv` — and that
+    manifest is written by a producer that does not run on every build (`refresh-report.py`
+    runs none by default). Regenerate a `.genseq.puml`, rebuild the page without re-running
+    `diagrams`, and the pair came out pilled UNCHANGED over a picture whose every lifeline
+    differs from the base. The claim is now checked against the repository, so it cannot
+    survive the manifest going stale."""
+    build._moved_since_base.cache_clear()
+    html_, weight, changes = _base_repo(
+        tmp_path,
+        base_body="@startuml\nA -> B : hello\n@enduml\n",
+        work_body="@startuml\nA -> B : hello\nA -> SMS : send\n@enduml\n")
+    assert '<span class="badge sev-info">unchanged</span>' not in html_
+    assert "delta not drawn" in html_
+    assert "MANIFEST.tsv" in html_ and "Rerun" in html_
+    # Still a pair, still weighed as context: the evidence is stale, not a delta.
+    assert "No diagram came back" not in html_
+    assert (weight, changes) == (1, 0)
+
+
+def test_a_sequence_identical_to_the_base_is_still_pilled_unchanged(tmp_path):
+    """The other half of the same check, so the guard above cannot be satisfied by
+    pilling every pair as stale."""
+    build._moved_since_base.cache_clear()
+    body = "@startuml\nA -> B : hello\n@enduml\n"
+    html_, weight, changes = _base_repo(tmp_path, base_body=body, work_body=body)
+    assert '<span class="badge sev-info">unchanged</span>' in html_
+    assert "delta not drawn" not in html_
+    assert (weight, changes) == (1, 0)
+
+
 # ── the hand-drawn diagram, read off disk on every build ──────────────────────────
 #
 # The conceptual model is the only picture on this page the report *asks the reader to go
