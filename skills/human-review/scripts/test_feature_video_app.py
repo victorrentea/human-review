@@ -417,3 +417,94 @@ def test_the_schema_example_names_the_instance_and_not_the_ref():
     assert "url petclinic-9f3c1ab" in example
     assert "--ref" in example, "up still takes the ref; only down and url take the name"
     assert "down --ref" not in example and "url --ref" not in example
+
+
+# ── the same block, for the steps that drive the app without filming it ───────────
+#
+# `video` had this to itself for a day, because a film of the wrong branch is what was
+# noticed. The traced suites have the same hazard and a worse ending: a sequence diagram of
+# another checkout is not visibly wrong the way a film is — it is a plausible picture of some
+# other code, drawn under this branch's name and *committed* to `generated/`.
+
+def _steps_ctx(tmp_path, monkeypatch, cfg_steps):
+    (tmp_path / ".human-review" / "assets").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    sh = Recorder([("git rev-parse HEAD", 0, SHA + "\n"),
+                   ("git rev-parse --short HEAD", 0, SHORT + "\n"),
+                   ("start-docker.sh up", 0, "building\n   http://localhost:63241\n")])
+    monkeypatch.setattr(steps, "sh", sh)
+    return steps.Ctx("origin/main", {"steps": cfg_steps}, dry=False), sh
+
+
+def test_the_sequence_step_can_start_the_stack_its_suites_are_traced_against(
+        tmp_path, monkeypatch):
+    ctx, sh = _steps_ctx(tmp_path, monkeypatch, {
+        "sequence": {"app": APP, "commands": ["cd petclinic-test && ./run-tests-with-tracing.sh"]}})
+    steps._sequence(ctx)
+
+    assert sh.first("start-docker.sh up").endswith(f"up --ref {SHA} --ttl 1800")
+    traced = sh.first("run-tests-with-tracing.sh")
+    assert traced.startswith("BASE_URL=http://localhost:63241 ")
+    assert "API_URL=http://localhost:63241" in traced
+    assert sh.has(f"start-docker.sh down petclinic-{SHORT}")
+
+
+def test_a_step_borrows_the_video_block_by_name_rather_than_repeating_it(
+        tmp_path, monkeypatch):
+    """One `up` builds the one stack both steps want, and saying so is a word, not a copy.
+    Borrowing is never implicit: a stack that is right for the film is not automatically
+    right for a suite that needs a trace collector standing behind it."""
+    ctx, sh = _steps_ctx(tmp_path, monkeypatch, {
+        "video": {"app": APP},
+        "traces": {"app": "video", "report": "r", "commands": ["npm run test:cucumber"]}})
+    steps._traces(ctx)
+
+    assert sh.has("start-docker.sh up --ref " + SHA)
+    assert sh.first("npm run test:cucumber").startswith("BASE_URL=http://localhost:63241 ")
+
+
+def test_a_project_names_the_env_vars_its_own_tests_read(tmp_path, monkeypatch):
+    """`BASE_URL`/`API_URL` is only the default. petclinic's suites read `API_BASE_URL`,
+    and a step that renamed the tests around this file's default would be the tail wagging
+    the dog."""
+    ctx, sh = _steps_ctx(tmp_path, monkeypatch, {
+        "sequence": {"app": {**APP, "env": {"BASE_URL": "{url}", "API_BASE_URL": "{url}/api"}},
+                     "commands": ["npm run test:sequence"]}})
+    steps._sequence(ctx)
+
+    ran = sh.first("npm run test:sequence")
+    assert "API_BASE_URL=http://localhost:63241/api" in ran
+    assert "API_URL=" not in ran
+
+
+def test_without_an_app_block_nothing_is_started_and_the_commands_run_as_they_always_did(
+        tmp_path, monkeypatch):
+    ctx, sh = _steps_ctx(tmp_path, monkeypatch, {
+        "sequence": {"commands": ["cd petclinic-test && ./run-tests-with-tracing.sh"]}})
+    steps._sequence(ctx)
+
+    assert not sh.has("start-docker.sh")
+    assert sh.first("run-tests-with-tracing.sh") == "cd petclinic-test && ./run-tests-with-tracing.sh"
+
+
+def test_a_suite_that_could_not_run_says_what_has_to_be_listening(tmp_path, monkeypatch):
+    """The page renders a LookupError as "this could not be produced, and here is why",
+    which is the difference between a reader who knows what to start and one who only
+    learns that a step died."""
+    (tmp_path / ".human-review" / "assets").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    sh = Recorder([("run-tests-with-tracing.sh", 1, "")])
+    monkeypatch.setattr(steps, "sh", sh)
+    ctx = steps.Ctx("origin/main", {"steps": {"sequence": {
+        "commands": ["cd petclinic-test && ./run-tests-with-tracing.sh"]}}}, dry=False)
+
+    with pytest.raises(LookupError, match="collector"):
+        steps._sequence(ctx)
+
+
+def test_borrowing_a_block_that_is_not_there_is_an_error_and_not_a_silent_skip(
+        tmp_path, monkeypatch):
+    ctx, sh = _steps_ctx(tmp_path, monkeypatch, {
+        "sequence": {"app": "video", "commands": ["npm run test:sequence"]}})
+    with pytest.raises(LookupError, match="steps.video.app"):
+        steps._sequence(ctx)

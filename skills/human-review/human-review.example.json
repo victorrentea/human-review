@@ -37,6 +37,22 @@
       }
     },
     "sequence": {
+      "//": "The traced suites, whose output is COMMITTED (generated/*.genseq.puml) — which",
+      "//2": "is why `app` matters more here than it does for the film. A run that reached",
+      "//3": "another checkout listening on the same port does not fail: it draws that",
+      "//4": "checkout's code, under this branch's name, and the pictures go into the",
+      "//5": "repository looking like everybody else's.",
+      "//6": "`app` is the same block `video.app` is — `up` prints the URL, `down` runs in a",
+      "//7": "finally, {sha}/{shortsha} come from git — or the word \"video\" to borrow that",
+      "//8": "block rather than repeat it. Borrowing is never implicit: a stack that is right",
+      "//9": "for a film is not automatically right for a suite that needs a trace collector",
+      "//10": "behind it, and THIS project's does — its containers carry no OTLP endpoint and",
+      "//11": "no Java agent, so the stack these commands need is still the ./start-*.sh one,",
+      "//12": "started by hand in the documented order (grafana BEFORE backend). With no",
+      "//13": "`app`, the step runs against whatever is listening and says what was missing",
+      "//14": "if the suite could not run.",
+      "//15": "`app.env` names the variables the suites read; the default is BASE_URL and",
+      "//16": "API_URL, and this project's Playwright/Cucumber glue reads API_BASE_URL.",
       "commands": [
         "cd petclinic-test && ./run-tests-with-tracing.sh",
         "cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq",

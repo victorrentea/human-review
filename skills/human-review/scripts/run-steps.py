@@ -33,6 +33,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
@@ -387,8 +388,36 @@ def _diagrams(ctx: Ctx):
 
 
 def _sequence(ctx: Ctx):
-    for cmd in ctx.step_cfg("sequence").get("commands") or []:
-        sh(cmd, ctx)
+    """The traced suites, against a stack this step can start for itself.
+
+    `sequence.app` is the same block `video.app` is, and exists for a sharper version of
+    the same reason: these commands drive a browser, a backend, a database AND a collector,
+    and their output is *committed* — `generated/*.genseq.puml`. A run that reached some
+    other checkout listening on the same port does not fail; it draws that checkout's code,
+    in this branch's name, and the diagrams go into the repository looking like everyone
+    else's. Without the block nothing changes: the commands run against whatever the
+    operator has up, which is how every project used this step until now.
+
+    What the suite needs beyond the app itself — a trace collector, the agent attached to
+    the backend at *its* boot — is the project's business, and its own `up` is the only
+    thing that can know. When there is no `app` and the commands fail, the failure carries
+    the list, so the page says what has to be listening instead of only that a step died.
+    """
+    cfg = ctx.step_cfg("sequence")
+    commands = cfg.get("commands") or []
+    with app_instance(ctx, cfg.get("app"), _app_slots(ctx)) as app:
+        if app.started:
+            ctx.notes.append(f"the traced suites ran against {app.base}, started by this run "
+                             "from the commit under review — not whatever was already listening")
+        for cmd in commands:
+            r = sh(f"{app.env}{cmd}", ctx, check=False, capture=False)
+            if r.returncode != 0:
+                raise LookupError(
+                    f"the traced suite could not run (exit {r.returncode}: {cmd}). It needs the "
+                    "whole stack listening — a trace collector, the database, the backend "
+                    "started AFTER the collector so its agent attaches, and the front end. "
+                    "Configure `steps.sequence.app` to have this step start them itself, or "
+                    "start them by hand and re-run this step")
     # A suite that could not start leaves a generated diagram deleted, and the delta then
     # reports, in the branch's voice, that this branch removed it.
     r = sh("git status --porcelain -- '*.genseq.puml'", ctx, capture=True)
@@ -613,56 +642,14 @@ def _video(ctx: Ctx):
     """
     cfg = ctx.step_cfg("video")
     out = cfg.get("out", f"{ART}/feature.webm")
-    app = cfg.get("app") or {}
     logs = Path(f"{ART}/feature.run.log")
     verdict_path = Path(f"{ART}/feature.verdict.json")
-    slots = _app_slots(ctx) if app else {}
 
-    def expand(template: str) -> str:
-        for name, value in slots.items():
-            template = template.replace("{" + name + "}", value)
-            # `{shortsha}` is spelt two ways in the wild and both mean the same thing.
-            template = template.replace("{" + name.replace("sha", "SHA") + "}", value)
-        return template
-
-    base = ""
-    started = False
-    env = ""
-    try:
-        if app.get("up"):
-            up = sh(expand(app["up"]), ctx, capture=True, check=False)
-            # Echoed, because a docker build's output is what a reader asks for when the
-            # step takes four minutes — and `capture` is only here to scrape the port.
-            print((up.stdout or "") + (up.stderr or ""), end="", flush=True)
-            if up.returncode != 0:
-                raise RuntimeError(f"the app would not start: {expand(app['up'])}")
-            started = True
-            found = APP_URL.findall(up.stdout or "")
-            base = found[-1].rstrip(".,)") if found else ""
-        if not base and app.get("url"):
-            got = sh(expand(app["url"]), ctx, capture=True, check=False)
-            found = APP_URL.findall(got.stdout or "")
-            base = found[-1].rstrip(".,)") if found else ""
-        if app and not base and not ctx.dry:
-            raise RuntimeError("the app started and printed no URL to film it at — "
-                               "`app.up` has to print it, or `app.url` has to")
-        if base:
-            # Both, and the same one: the container's nginx proxies `/api/` on its own
-            # origin, so the front end and the REST calls the feature script makes are
-            # the same host and port. Two different values here is how a film ends up
-            # driving one instance's screens against another instance's data.
-            env = (f"BASE_URL={shlex.quote(base)} API_URL={shlex.quote(base)} "
-                   f"HUMAN_REVIEW_APP_COMMIT={shlex.quote(slots.get('sha', ''))} "
-                   "HUMAN_REVIEW_APP_STARTED=1 ")
-            ctx.notes.append(f"filmed against {base}, started by this run from "
-                             f"{slots.get('shortsha', 'HEAD')} — not whatever was already "
-                             "listening on :4200")
-        r = sh(f"{env}{HERE}/record-feature-video.sh {out}", ctx, check=False, capture=True)
-    finally:
-        if started and app.get("down"):
-            # In a `finally`, and never `check`ed: a stack left up outlives the run, and
-            # the reason the film failed is a better thing to report than the teardown.
-            sh(expand(app["down"]), ctx, check=False)
+    with app_instance(ctx, cfg.get("app"), _app_slots(ctx) if cfg.get("app") else {}) as app:
+        if app.base:
+            ctx.notes.append(f"filmed against {app.base}, started by this run from the commit "
+                             "under review — not whatever was already listening on :4200")
+        r = sh(f"{app.env}{HERE}/record-feature-video.sh {out}", ctx, check=False, capture=True)
 
     # Written before anything is raised or noted, so the log survives every exit from here.
     tail = ((r.stdout or "") + (r.stderr or ""))
@@ -962,11 +949,15 @@ def _traces(ctx: Ctx):
     report = c.get("report")
     if not report:
         raise LookupError("traces.report not configured")
-    for cmd in c.get("commands") or []:
-        r = sh(cmd, ctx, check=False)
-        if r.returncode != 0:
-            ctx.notes.append(f"the traced suite did not pass ({cmd}); the recordings below "
-                             "are of that run, which is exactly when they are worth most")
+    with app_instance(ctx, c.get("app"), _app_slots(ctx)) as app:
+        if app.started:
+            ctx.notes.append(f"the recorded suite ran against {app.base}, started by this run "
+                             "from the commit under review")
+        for cmd in c.get("commands") or []:
+            r = sh(f"{app.env}{cmd}", ctx, check=False)
+            if r.returncode != 0:
+                ctx.notes.append(f"the traced suite did not pass ({cmd}); the recordings below "
+                                 "are of that run, which is exactly when they are worth most")
     project = f' --project-dir "{c["projectDir"]}"' if c.get("projectDir") else ""
     cucumber = f' --cucumber "{c["cucumber"]}"' if c.get("cucumber") else ""
     r = sh(f'{HERE}/playwright-traces.py --report "{report}" --out {ART} '
