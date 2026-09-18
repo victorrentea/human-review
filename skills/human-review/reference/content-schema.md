@@ -631,8 +631,8 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
                           "title":"Tagged for tracing, and no diagram came back","body":"…"}}]},
   {"id":"packages","label":"Structure",
    "blocks":[{"type":"section","id":"packages-note"},
-             {"type":"diagrams","only":["Packages"],
-              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}},
+             {"type":"diagrams","only":["Java packages"],
+              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Java packages","note":"…"}},
              {"type":"puml","src":"petclinic-backend/docs/generated/MavenModules.puml",
               "name":"Maven modules","status":"unchanged"},
              {"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2-Containers"],
@@ -704,7 +704,7 @@ call to a service nobody documented shows up here the first time a test makes it
 caption links out to **c4model.com**, because "C2" is jargon the page has no room to teach
 and Simon Brown's own site explains the four levels in a paragraph.
 
-It sits **third on Structure, after Packages and Maven modules**, and not on a tab of its
+It sits **third on Structure, after Java packages and Maven modules**, and not on a tab of its
 own. Structure is already the question *what shape is this thing*, asked at two altitudes —
 packages inside one module, then the modules themselves — and the containers are the third
 and widest. A pill of its own put one question in two places on the strip and made the
