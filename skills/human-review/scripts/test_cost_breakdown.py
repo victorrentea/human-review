@@ -29,6 +29,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -665,6 +666,88 @@ OTHER_ROW = {
     "cost": 308.66, "tokens": 449_672_199, "messages": 2349,
     "detail": "git (335), editing files from the shell (246), running tests (156)",
 }
+
+#: What `page build` is now: one regeneration out of the dozens the session did.
+BUILD_ROW = {
+    "key": "page_build", "label": "page build", "measured": True,
+    "cost": 4.12, "tokens": 6_120_400, "messages": 3,
+    "detail": ("the last full regeneration of this report (steps + build): "
+               "python3 refresh-report.py --steps static --no-serve"),
+    "window": ["2026-09-18T21:39:48+00:00", "2026-09-18T21:41:02+00:00"],
+}
+
+
+def test_the_page_build_row_names_the_regeneration_it_is_the_cost_of():
+    """The row is one run out of forty. A reader who cannot see WHICH one has to take the
+    number on faith, and the whole reason it shrank from $64.74 is that the other
+    thirty-nine were somebody checking their work."""
+    out = build.phase_rows_html({"rows": [*PHASES["rows"], BUILD_ROW, OTHER_ROW]})
+    row = [r for r in out.split("<tr") if "page build" in r][0]
+    assert "the last full regeneration of this report (steps + build)" in row
+    assert "refresh-report.py --steps static" in row
+    assert "18 Sep 21:39" in row, "the window, because a window is not a fence"
+
+
+def test_the_grey_row_says_the_earlier_rebuilds_are_in_it():
+    """The rebuilds of this very page are the largest thing that moved into this row, and a
+    tooltip that only said "other work" would leave the reader wondering where the missing
+    sixty dollars of page building went."""
+    other = {**OTHER_ROW,
+             "detail": OTHER_ROW["detail"] + "; including 70 earlier rebuilds of this "
+                                             "page ($39.00)"}
+    out = build.phase_rows_html({"rows": [*PHASES["rows"], BUILD_ROW, other]})
+    row = [r for r in out.split("<tr") if "not this report" in r][0]
+    assert "70 earlier rebuilds of this page ($39.00)" in row
+    assert "the earlier rebuilds of this very page included" in row
+
+
+def test_the_token_column_says_which_model_spent_them():
+    """36.9M is $180 on Opus and $37 on Sonnet. Both numbers are already in the row, so
+    without the model the reader is left inferring it from the ratio between them."""
+    one = {**BUILD_ROW, "models": {"Opus 5": 6_120_400}}
+    out = build.phase_rows_html({"rows": [one]})
+    row = [r for r in out.split("<tr") if "page build" in r][0]
+    assert "6.1M" in row and ">Opus 5<" in row
+    assert "%" not in row, "one model is a name, not a share of itself"
+
+
+def test_a_row_that_mixed_models_lists_them_with_their_weights():
+    """A phase is rarely a clean split — the conversation that built this page ran Opus
+    with a scout beside it — and two names with no weights suggest something near half."""
+    mixed = {**OTHER_ROW, "models": {"Opus 5": 92_000_000, "Sonnet 5": 8_000_000,
+                                     "Haiku 4.5": 20_000}}
+    out = build.phase_rows_html({"rows": [*PHASES["rows"], mixed]})
+    row = [r for r in out.split("<tr") if "not this report" in r][0]
+    assert "Opus 5 92% / Sonnet 5 8%" in row
+    assert "Haiku" not in row, "0.02% is a rounding error with a name"
+
+
+def test_a_row_with_no_model_breakdown_still_prints_its_tokens():
+    """Older `phases.json` files carry no `models` at all, and a page that fell over on one
+    would be a page that cannot render the report it shipped last week."""
+    out = build.phase_rows_html({"rows": [{**BUILD_ROW, "models": None}]})
+    assert "6.1M" in out and "costsub\">python3" not in out.split("<td>")[2]
+
+
+def test_rerunning_session_cost_invalidates_the_cached_ledger(tmp_path):
+    """The ledger *embeds* `phases.json`, and the fingerprint that decides whether to reuse
+    it did not list it. So `session-cost.py` could be rerun with a whole new definition of
+    `page build` and the page would keep printing last night's number — which is exactly
+    what happened the first time this row changed meaning."""
+    out = tmp_path / ".human-review"
+    (out / "assets").mkdir(parents=True)
+    (out / ".steps.json").write_text("[]", encoding="utf-8")
+    (out / ".session").write_text("abc-123", encoding="utf-8")
+    (out / "phases.json").write_text('{"cost": 64.74}', encoding="utf-8")
+    before = build._cost_inputs(tmp_path, out, ["a"], "origin/main")
+    time.sleep(0.01)
+    (out / "phases.json").write_text('{"cost": 0.14}', encoding="utf-8")
+    assert build._cost_inputs(tmp_path, out, ["a"], "origin/main") != before
+
+
+def test_the_footer_formula_names_page_build_for_what_it_now_is():
+    """The row's meaning changed under the reader: it used to be the whole evening."""
+    assert "the last full regeneration of this page" in build.TOTAL_FORMULA
 
 
 def test_a_phase_that_cannot_be_dated_says_so_rather_than_printing_zero():

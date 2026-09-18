@@ -76,6 +76,9 @@ def _cost_inputs(root: Path, out_dir: Path, tab_ids: list[str], base: str) -> st
       * that session's `.jsonl` and every `agent-*.jsonl` beside it, by size and mtime —
         a conversation that ran another turn is a different bill;
       * `.steps.json`, which is how the ledger splits the run across tabs;
+      * `phases.json`, which the ledger *embeds* — rerunning `session-cost.py` and seeing
+        the page still print last night's `page build` is the exact failure this list
+        exists to prevent, and it happened: the phases were the one input not in it;
       * the base ref and the tab list, which are what was asked;
       * `review-cost.py` itself, so a change to the pricing invalidates every cache on
         this machine rather than being invisible until somebody deletes a file.
@@ -83,7 +86,8 @@ def _cost_inputs(root: Path, out_dir: Path, tab_ids: list[str], base: str) -> st
     h = hashlib.blake2b(digest_size=16)
     h.update(f"{base}\0{','.join(tab_ids)}\0".encode())
     script = HERE / "review-cost.py"
-    for f in (script, out_dir / ".steps.json", out_dir / ".session"):
+    for f in (script, out_dir / ".steps.json", out_dir / ".session",
+              out_dir / "phases.json"):
         try:
             st = f.stat()
             h.update(f"{f.name}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
@@ -186,18 +190,43 @@ def _cost_money(c: float) -> str:
     return f"${c:,.2f}" if c >= 0.01 else "<$0.01"
 
 
-def _cost_tokens(n: float) -> str:
+def _cost_tokens(n: float, models=None) -> str:
+    """A row's token count, and under it the models that spent them.
+
+    `36.9M` says how much was read and written; it does not say by what, and the same
+    36.9M is $180 on Opus and $37 on Sonnet. Both numbers are already in the row, so
+    without the model line the reader is left inferring it from the ratio between them —
+    which is precisely the arithmetic this column exists to save them.
+
+    One model prints as a name, several as shares: a phase is rarely a clean split (the
+    conversation that built this page ran Opus with a Haiku scout beside it), and
+    "Opus 5 / Haiku 4.5" with no weights would suggest something near half. `models` is
+    `{printed name: tokens}`, straight from `phases.json` — the name table lives in
+    `review-cost.py`, which is also where the turns were read.
+    """
     n = int(round(n))
     # A conversation that wrote a feature over two days runs to ten figures, and `1044.6M`
     # is four digits the reader has to convert before the column means anything.
     if n >= 1_000_000_000:
-        return f"{n / 1_000_000_000:.1f}B"
-    if n >= 1_000_000:
-        return f"{n / 1_000_000:.1f}M"
-    if n >= 1_000:
-        return f"{n / 1_000:.0f}k"
-    return str(n)
-
+        out = f"{n / 1_000_000_000:.1f}B"
+    elif n >= 1_000_000:
+        out = f"{n / 1_000_000:.1f}M"
+    elif n >= 1_000:
+        out = f"{n / 1_000:.0f}k"
+    else:
+        out = str(n)
+    rows = [(str(k), float(v)) for k, v in (models or {}).items()
+            if isinstance(v, (int, float)) and v > 0] if isinstance(models, dict) else []
+    total = sum(v for _k, v in rows)
+    if not rows or total <= 0:
+        return out
+    rows.sort(key=lambda kv: -kv[1])
+    # Under half a percent a model is a rounding error with a name, and printing
+    # "Sonnet 5 0%" makes the reader parse a share too small to explain anything.
+    big = [(k, v) for k, v in rows if v / total >= 0.005] or rows[:1]
+    text = (big[0][0] if len(big) == 1 else
+            " / ".join(f"{k} {v / total * 100:.0f}%" for k, v in big))
+    return f'{out}<span class="costsub">{html.escape(text)}</span>'
 
 
 COST_TAB_ID = "cost"
@@ -223,11 +252,18 @@ PASS_ROWS = [
 #: rather than trusted to the file, so a phase nobody could date still holds its place in
 #: the sequence instead of vanishing from the middle of it.
 #:
+#: `page_build` is **the last full regeneration of this report** — the one run of
+#: `refresh-report.py --steps all|static` (or of `run-steps.py` and `build-review-html.py`
+#: together) that produced the copy on screen. Not every rebuild the session did: the
+#: conversation that writes a page rebuilds it dozens of times to check its work, and
+#: counting them all made the row 118.8M tokens on PR #49 for a page whose own build is a
+#: few dollars. A reader asking what this page cost means the copy in front of them.
+#:
 #: `not_this_report` is last and is not part of the sum. The session that builds a page is
 #: rarely doing only that — on the run this was written for it spent the same evening
 #: writing the skill that builds the page, mending the branch under review and answering
-#: unrelated questions, and the old `page build` row swallowed all of it: $170 of a $207
-#: total, for a page whose own build was $23. It is printed because hiding a measured
+#: unrelated questions — and those earlier rebuilds land here too, itemised in the tooltip
+#: so the reader can see what the row is made of. It is printed because hiding a measured
 #: number teaches the reader the evening was cheaper than it was, and it is excluded
 #: because a page may not bill for work it had no part in.
 PHASE_ROWS = ["implementation", "code_review", "post_review_fixes", "review_points",
@@ -236,9 +272,10 @@ PHASE_ROWS = ["implementation", "code_review", "post_review_fixes", "review_poin
 #: What the total adds, spelled out under it. A footer number nobody can derive from the
 #: column above it is a number the reader has to take on faith, and this table now has a
 #: row on it that is deliberately not in the sum — which is exactly the case where faith
-#: runs out.
+#: runs out. `page build` is named for what it is rather than left to sound like the whole
+#: evening, because that is the row whose meaning changed under the reader.
 TOTAL_FORMULA = ("implementation + code-review + post-review fixes + review-points + "
-                 "model steps + page build")
+                 "model steps + the last full regeneration of this page")
 
 
 def _when(raw: str | None) -> str:
@@ -301,15 +338,16 @@ def phase_rows_html(phases: dict | None) -> str:
             # a sentence they can.
             tip = html.escape(
                 "Not added to the total — this is the rest of the session that built the "
-                "page, and it was not building the page. It was: "
+                "page: everything it did besides the regeneration above, the earlier "
+                "rebuilds of this very page included. It was: "
                 + str(r.get("detail") or "other work") + ".", quote=True)
             out.append(f'<tr class="costquiet"><td><span data-tip="{tip}">{label}</span>'
                        f'<span class="costsub">{sub} &middot; not in the total</span></td>'
-                       f'<td>{_cost_tokens(r.get("tokens") or 0)}</td>'
+                       f'<td>{_cost_tokens(r.get("tokens") or 0, r.get("models"))}</td>'
                        f'<td>{_cost_money(r.get("cost") or 0.0)}</td></tr>')
             continue
         out.append(f'<tr><td>{label}<span class="costsub">{sub}</span></td>'
-                   f'<td>{_cost_tokens(r.get("tokens") or 0)}</td>'
+                   f'<td>{_cost_tokens(r.get("tokens") or 0, r.get("models"))}</td>'
                    f'<td>{_cost_money(r.get("cost") or 0.0)}</td></tr>')
     # Anything the file dates that this table does not know the name of. Dropping it would
     # make the rows stop summing to the total, silently, the first time a phase is added.
@@ -317,7 +355,7 @@ def phase_rows_html(phases: dict | None) -> str:
         if key in PHASE_ROWS or not r.get("measured"):
             continue
         out.append(f'<tr><td>{html.escape(str(r.get("label") or key))}</td>'
-                   f'<td>{_cost_tokens(r.get("tokens") or 0)}</td>'
+                   f'<td>{_cost_tokens(r.get("tokens") or 0, r.get("models"))}</td>'
                    f'<td>{_cost_money(r.get("cost") or 0.0)}</td></tr>')
     return "".join(out)
 

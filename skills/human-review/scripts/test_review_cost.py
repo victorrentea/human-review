@@ -835,7 +835,8 @@ def test_the_page_building_rows_come_from_the_step_ledger_of_that_run(tmp_path,
     build.write_text("\n".join(json.dumps(r) for r in [
         _assistant("v1", "2026-09-03T10:05:00Z"),     # inside the video step
         _assistant("d1", "2026-09-03T11:05:00Z"),     # inside the dsaudit step
-        _assistant("g1", "2026-09-03T12:05:00Z"),     # the guide pseudo-tab
+        _bash("2026-09-03T12:05:00Z", "python3 refresh-report.py --steps all", mid="g1"),
+        _result("2026-09-03T12:05:30Z", "g1"),        # the regeneration being billed
         _assistant("x1", "2026-09-03T13:05:00Z"),     # no step at all
     ]) + "\n", encoding="utf-8")
     steps = tmp_path / ".steps.json"
@@ -861,7 +862,7 @@ def test_the_page_building_rows_come_from_the_step_ledger_of_that_run(tmp_path,
     assert video["measured"] and video["messages"] == 1
     assert images["measured"] and images["messages"] == 1
     assert page["measured"] and page["messages"] == 1, (
-        "the guide turn only -- the stray one ran nothing and is somebody else's work")
+        "the regeneration only -- the stray turn ran nothing and is somebody else's work")
     rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
     assert rest["measured"] and rest["excluded"] and rest["messages"] == 1
 
@@ -1013,16 +1014,37 @@ def _steps_doc(*rows):
 
 
 def test_the_residual_splits_into_ours_and_somebody_else_s(tmp_path):
-    steps = _steps_doc((["data"], "diagram", "2026-09-03T09:00:00+00:00",
+    """A step for a tab with no row of its own is page building or somebody else's evening
+    depending only on WHEN it ran. The diagrams step of a rebuild three hours ago is not
+    this report's bill, and claiming every step regardless of date is how the old row put
+    every rebuild of the evening back into it through the tab column."""
+    steps = _steps_doc((["dsaudit"], "shots", "2026-09-03T08:00:00+00:00",
+                        "2026-09-03T08:10:00+00:00"),
+                       (["data"], "diagram", "2026-09-03T09:00:00+00:00",
                         "2026-09-03T09:10:00+00:00"))
     windows = [(_ts("2026-09-03T10:00:00+00:00"), _ts("2026-09-03T10:10:00+00:00"))]
-    turns = [_turn("2026-09-03T09:05:00Z"),   # inside a step: neither half
+    turns = [_turn("2026-09-03T08:05:00Z"),   # the images row already prints this one
+             _turn("2026-09-03T09:05:00Z"),   # a diagram step of an older rebuild
              _turn("2026-09-03T10:05:00Z"),   # ran the build: ours
              _turn("2026-09-03T11:05:00Z"),   # somebody else's evening
              _turn(None)]                     # no timestamp: cannot be ours
-    got = rc.split_residual(turns, steps, windows, {"data", rc.GUIDE_TAB})
+    got = rc.split_residual(turns, steps, windows, {"data", "dsaudit", rc.GUIDE_TAB})
+    assert got["ours"]["messages"] == 1
+    assert got["theirs"]["messages"] == 3
+
+
+def test_the_earlier_rebuilds_are_itemised_inside_somebody_else_s_half(tmp_path):
+    """`rebuilds` is a subset of `theirs`, never a third share: the reader is told how much
+    of that row was this same page being rebuilt, and the two halves still add up."""
+    windows = [(_ts("2026-09-03T10:00:00+00:00"), _ts("2026-09-03T10:10:00+00:00"))]
+    earlier = [(_ts("2026-09-03T09:00:00+00:00"), _ts("2026-09-03T09:10:00+00:00"))]
+    turns = [_turn("2026-09-03T09:05:00Z"), _turn("2026-09-03T10:05:00Z"),
+             _turn("2026-09-03T11:05:00Z")]
+    got = rc.split_residual(turns, [], windows, {"data"}, earlier=earlier)
     assert got["ours"]["messages"] == 1
     assert got["theirs"]["messages"] == 2
+    assert got["rebuilds"]["messages"] == 1
+    assert got["rebuilds"]["cost"] < got["theirs"]["cost"]
 
 
 def test_a_step_naming_only_tabs_this_page_lacks_does_not_claim_its_turns(tmp_path):
@@ -1124,15 +1146,15 @@ def test_the_page_is_not_charged_for_the_rest_of_the_session_that_built_it(tmp_p
     page whose own build was $23."""
     doc = _build_run(tmp_path, monkeypatch, [
         _assistant("g1", "2026-09-03T12:05:00Z"),                       # the guide step
-        _bash("2026-09-03T13:00:00Z", "python3 refresh-report.py", mid="t1"),
-        _result("2026-09-03T13:01:00Z", "t1"),
+        _bash("2026-09-03T13:00:00Z", "python3 refresh-report.py --steps all", mid="t1"),
+        _result("2026-09-03T13:00:20Z", "t1"),
         _bash("2026-09-03T14:00:00Z", "python3 -m pytest test_skill.py"),
         _tool_use("2026-09-03T14:05:00Z", "Edit", {"file_path": "/repo/skill.py"}),
     ])
     page = next(r for r in doc["rows"] if r["key"] == "page_build")
     rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
-    assert page["messages"] == 2, "the guide step and the turn that ran the builder"
-    assert rest["messages"] == 2, "the pytest run and the edit to the skill"
+    assert page["messages"] == 1, "the turn that ran the regeneration"
+    assert rest["messages"] == 3, "the guide turn, the pytest run and the edit"
     assert rest["label"].startswith("not this report")
     assert "running tests" in rest["detail"] and "editing files" in rest["detail"]
 
@@ -1141,7 +1163,8 @@ def test_the_other_work_is_measured_and_still_kept_out_of_the_total(tmp_path, mo
     """Measured is not the same as owed. It is printed -- hiding a real number teaches the
     reader the evening was cheaper than it was -- and it is not summed."""
     doc = _build_run(tmp_path, monkeypatch, [
-        _assistant("g1", "2026-09-03T12:05:00Z"),
+        _bash("2026-09-03T12:05:00Z", "refresh-report.py --steps static", mid="g1"),
+        _result("2026-09-03T12:05:10Z", "g1"),
         _assistant("x1", "2026-09-03T15:00:00Z", in_tok=999_000),
     ])
     rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
@@ -1158,8 +1181,198 @@ def test_the_other_work_is_measured_and_still_kept_out_of_the_total(tmp_path, mo
 def test_a_session_that_did_nothing_else_grows_no_extra_row(tmp_path, monkeypatch):
     """The row is evidence of a shared session, not furniture. A run that only built the
     page must not print `$0.00 of other work` and invite the question."""
-    doc = _build_run(tmp_path, monkeypatch, [_assistant("g1", "2026-09-03T12:05:00Z")])
+    doc = _build_run(tmp_path, monkeypatch, [
+        _bash("2026-09-03T12:05:00Z", "refresh-report.py --steps static", mid="g1"),
+        _result("2026-09-03T12:05:10Z", "g1"),
+    ])
     assert [r["key"] for r in doc["rows"] if r["key"] == "not_this_report"] == []
+
+
+# --------------------------------------------------------------------------- #
+# page build == the LAST full regeneration, not every rebuild of the evening
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("command,full", [
+    ("python3 refresh-report.py --steps all", True),
+    ("python3 refresh-report.py --steps static --no-serve", True),
+    ("refresh-report.py --steps=static", True),
+    ("python3 refresh-report.py", False),          # --steps defaults to none: a re-render
+    ("python3 refresh-report.py --steps cheap", False),
+    ("python3 refresh-report.py --steps diagrams", False),
+    ("python3 run-steps.py --only c2", False),     # half of one, on its own
+    ("python3 build-review-html.py content.json", False),
+])
+def test_only_a_run_that_reran_the_producers_is_a_regeneration(command, full):
+    """`refresh-report.py` without `--steps` runs no producer at all — it re-assembles the
+    page out of what is already on disk. A session doing twenty of those has not built the
+    report twenty times, and billing the reader for the last of them would be billing them
+    for a second of work."""
+    hits = rc.builder_calls(command)
+    assert any(rc.is_full_regeneration(p, a) for p, a in hits) is full
+
+
+def test_a_heredoc_about_the_builders_is_not_a_build(tmp_path):
+    """These sessions write an enormous amount of prose about the page builders — commit
+    messages, README paragraphs, patch scripts. Segments split on newlines, so a body line
+    starting `run-steps.py --only x` reads as a command; that is how a commit message came
+    to be the last full regeneration of PR #49."""
+    assert rc.runs_builder(
+        "git commit -F - <<'MSG'\nrun-steps.py --only c2 now caches\nMSG") is False
+    assert rc.runs_builder(
+        "python3 - <<'PY'\nrefresh-report.py --steps all\nPY\npython3 run-steps.py") is True
+
+
+def test_page_build_is_the_last_full_regeneration_and_the_earlier_ones_are_not(tmp_path,
+                                                                              monkeypatch):
+    """Victor's decision. The session that built this page rebuilt it dozens of times while
+    the skill was being written, and the row charged the reader for every one: 118.8M
+    tokens for a page whose last regeneration is a couple of turns. What a reader means by
+    "what did this page cost" is the copy in front of them."""
+    doc = _build_run(tmp_path, monkeypatch, [
+        _bash("2026-09-03T10:00:00Z", "python3 refresh-report.py --steps all", mid="r1"),
+        _result("2026-09-03T10:00:20Z", "r1"),
+        _bash("2026-09-03T11:00:00Z", "python3 refresh-report.py --steps static", mid="r2"),
+        _result("2026-09-03T11:00:20Z", "r2"),
+        _bash("2026-09-03T12:00:00Z", "python3 refresh-report.py --steps all", mid="r3"),
+        _result("2026-09-03T12:00:20Z", "r3"),
+    ])
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
+    assert page["measured"] and page["messages"] == 1, "the last one, and only it"
+    assert page["window"][0] == "2026-09-03T12:00:00+00:00"
+    assert "the last full regeneration" in page["detail"]
+    assert "--steps all" in page["detail"]
+    assert rest["messages"] == 2, "the two earlier rebuilds"
+    assert "2 earlier rebuilds of this page" in rest["detail"]
+    assert doc["page_build_run"]["when"] == "2026-09-03T12:00:00+00:00"
+
+
+def test_the_named_command_keeps_the_flags_and_drops_the_directories():
+    """Spelled in full, the path eats the whole cell and the line stops one word short of
+    `--steps static` — which is the thing the reader opened the row to see."""
+    got = rc.short_command(
+        "cd ~/workspace/petclinic-pr && python3 "
+        "/Users/victorrentea/workspace/human-review/skills/human-review/scripts/"
+        "refresh-report.py --dir .human-review --steps static --no-serve 2>&1 | tail -15")
+    assert "refresh-report.py --dir .human-review --steps static --no-serve" in got
+    assert "/Users/victorrentea" not in got
+    assert len(got) <= 112
+    assert rc.short_command("a " * 200).endswith("…")
+
+
+def test_the_last_regeneration_is_the_last_one_that_worked(tmp_path, monkeypatch):
+    """A `--steps all` that died is a rebuild the reader is not looking at."""
+    rows = [
+        _bash("2026-09-03T10:00:00Z", "python3 refresh-report.py --steps all", mid="r1"),
+        _result("2026-09-03T10:00:20Z", "r1"),
+        _bash("2026-09-03T12:00:00Z", "python3 refresh-report.py --steps all", mid="r2"),
+    ]
+    rows.append({"type": "user", "timestamp": "2026-09-03T12:00:20Z",
+                 "message": {"content": [{"type": "tool_result", "tool_use_id": "r2",
+                                          "is_error": True, "content": "Traceback"}]}})
+    doc = _build_run(tmp_path, monkeypatch, rows)
+    assert doc["page_build_run"]["when"] == "2026-09-03T10:00:00+00:00"
+
+
+def test_the_two_halves_of_a_regeneration_run_by_hand_are_one(tmp_path, monkeypatch):
+    """`refresh-report.py --steps X` IS `run-steps.py --only X` and then
+    `build-review-html.py`. A session that drives the halves itself has still done the
+    whole thing, and a rule that could not see that would only recognise the shorthand."""
+    doc = _build_run(tmp_path, monkeypatch, [
+        _bash("2026-09-03T12:00:00Z", "python3 run-steps.py --only diagrams", mid="s1"),
+        _result("2026-09-03T12:00:20Z", "s1"),
+        _bash("2026-09-03T12:00:40Z", "python3 build-review-html.py c.json", mid="s2"),
+        _result("2026-09-03T12:00:50Z", "s2"),
+    ])
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    assert page["measured"] and page["messages"] == 2
+    assert page["window"][0] == "2026-09-03T12:00:00+00:00"
+
+
+def test_a_run_with_no_full_regeneration_says_so_instead_of_zero(tmp_path, monkeypatch):
+    """`$0.00` and "we could not find it" render identically to a reader and mean opposite
+    things: one is a page that built itself for nothing, the other is a page whose build
+    cost is sitting somewhere this table cannot see."""
+    doc = _build_run(tmp_path, monkeypatch, [
+        _bash("2026-09-03T12:00:00Z", "python3 refresh-report.py", mid="r1"),
+        _result("2026-09-03T12:00:20Z", "r1"),
+        _assistant("x1", "2026-09-03T13:00:00Z"),
+    ])
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    assert page["measured"] is False and page["cost"] == 0.0
+    assert "no full regeneration found in the pinned session" in page["reason"]
+    assert doc["page_build_run"] is None
+    assert page["key"] not in doc["excluded"]
+
+
+def test_a_regeneration_in_one_agent_does_not_bill_what_another_did_meanwhile(tmp_path,
+                                                                             monkeypatch):
+    """The rule the previous commit bought and this one must not lose: a run forks, and the
+    merged timeline would bill three idle agents for the two minutes one of them spent
+    inside `--steps all`."""
+    build = tmp_path / "build.jsonl"
+    build.write_text(json.dumps(_assistant("p1", "2026-09-03T12:00:10Z")) + "\n",
+                     encoding="utf-8")
+    subs = tmp_path / "build" / "subagents"
+    subs.mkdir(parents=True)
+    (subs / "agent-aaaaaaaaaaaa.jsonl").write_text("\n".join(json.dumps(r) for r in [
+        _bash("2026-09-03T12:00:00Z", "python3 refresh-report.py --steps all", mid="r1"),
+        _result("2026-09-03T12:02:00Z", "r1")]) + "\n", encoding="utf-8")
+    (subs / "agent-bbbbbbbbbbbb.jsonl").write_text("\n".join(json.dumps(r) for r in [
+        _assistant("o1", "2026-09-03T12:00:30Z"),
+        _assistant("o2", "2026-09-03T12:01:00Z")]) + "\n", encoding="utf-8")
+    steps = tmp_path / ".steps.json"
+    steps.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(rc, "transcript", lambda s: build)
+    doc = rc.phase_costs(None, None, None, None, None, None, [],
+                         run_session="build-run", steps_path=steps)
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
+    assert page["messages"] == 1, "the agent that ran it, and nobody else"
+    assert rest["messages"] == 3
+
+
+def test_every_row_carries_the_models_that_spent_its_tokens(tmp_path, monkeypatch):
+    """A token count without a model is half a measurement: the same 36.9M is $180 on Opus
+    and $37 on Sonnet, and the page has to be able to say which."""
+    doc = _build_run(tmp_path, monkeypatch, [
+        _bash("2026-09-03T12:00:00Z", "refresh-report.py --steps all", mid="r1"),
+        _result("2026-09-03T12:00:10Z", "r1"),
+        _assistant("x1", "2026-09-03T13:00:00Z", model="claude-opus-5-20260220",
+                   in_tok=900_000),
+        _assistant("x2", "2026-09-03T13:05:00Z", model="claude-haiku-4-5-20251001",
+                   in_tok=100_000),
+    ])
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
+    assert page["models"] == {"Sonnet 5": 1100}, "the turn that ran it, priced by its model"
+    assert list(rest["models"]) == ["Opus 5", "Haiku 4.5"], "biggest share first"
+    assert sum(rest["models"].values()) == rest["tokens"], (
+        "the shares are the row's own tokens, not a second count of them")
+
+
+def test_a_model_step_inside_the_regeneration_is_part_of_it(tmp_path, monkeypatch):
+    """A paid `rerun-model.py` is a `claude -p` subprocess: it spends real money and leaves
+    not one priced turn in any transcript, so the ledger it writes is the only record. It
+    belongs to the build when it ran as part of the build, and to nothing when it did
+    not."""
+    rows = [
+        _bash("2026-09-03T12:00:00Z", "python3 refresh-report.py --steps all", mid="r1"),
+        _result("2026-09-03T12:02:00Z", "r1"),
+    ]
+    (tmp_path / rc.MODEL_RUNS).write_text(json.dumps(
+        {"version": 1, "runs": [{"when": "2026-09-03T12:01:30+00:00", "model": "sonnet",
+                                 "cost": 8.09, "seconds": 90}]}), encoding="utf-8")
+    doc = _build_run(tmp_path, monkeypatch, rows)
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    assert page["cost"] > 8.09 and "model step" in page["detail"]
+
+    (tmp_path / rc.MODEL_RUNS).write_text(json.dumps(
+        {"version": 1, "runs": [{"when": "2026-09-03T09:00:00+00:00", "model": "sonnet",
+                                 "cost": 8.09, "seconds": 90}]}), encoding="utf-8")
+    doc = _build_run(tmp_path, monkeypatch, rows)
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    assert page["cost"] < 8.09, "an hour earlier is a separate errand, not this build"
 
 
 if __name__ == "__main__":

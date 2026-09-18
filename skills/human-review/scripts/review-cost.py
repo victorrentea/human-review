@@ -505,7 +505,7 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
     it" rather than "these two files disagree". Naming the orphaned ids is what lets the
     caller say which of the two it is.
     """
-    per_tab = {t: {"cost": 0.0, "tokens": 0.0, "messages": 0,
+    per_tab = {t: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {},
                     "has_closed": False, "has_unclosed": False}
                for t in [*wanted, GUIDE_TAB]}
     unknown: set[str] = set()
@@ -525,13 +525,11 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
     # questions: subagent turns outside a step are work that was delegated but not bracketed
     # (instrumentable, in principle), while the parent's are the orchestrating conversation —
     # reading, deciding, recovering — which never belonged to a step in the first place.
-    parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0}
+    parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {}}
              for k in ("subagent", "conversation")}
     for _, model, u, side, when in turns:
         c = price(family(model), u)
-        tok = sum(u.get(k, 0) for k in
-                  ("input_tokens", "output_tokens",
-                   "cache_creation_input_tokens", "cache_read_input_tokens"))
+        tok = turn_tokens(u)
         hit = set()
         if when is not None:
             for s in closed:
@@ -542,20 +540,41 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
             bucket["cost"] += c
             bucket["tokens"] += tok
             bucket["messages"] += 1
+            bucket["models"][label(model)] = bucket["models"].get(label(model), 0) + tok
             continue
         share = 1.0 / len(hit)
         for t in hit:
             per_tab[t]["cost"] += c * share
             per_tab[t]["tokens"] += tok * share
             per_tab[t]["messages"] += 1
+            per_tab[t]["models"][label(model)] = (
+                per_tab[t]["models"].get(label(model), 0) + tok * share)
 
     guide = per_tab.pop(GUIDE_TAB)
-    parts = {"guide": {k: guide[k] for k in ("cost", "tokens", "messages")}, **parts}
+    parts = {"guide": {k: guide[k] for k in ("cost", "tokens", "messages", "models")},
+             **parts}
     # `residual` stays the sum of the parts, so the invariant every caller relies on —
     # tabs + residual == the scope chip's total — survives the decomposition untouched.
     residual = {k: sum(p[k] for p in parts.values()) for k in ("cost", "tokens", "messages")}
+    residual["models"] = _merge_models(p["models"] for p in parts.values())
+    for row in per_tab.values():
+        row["models"] = _merge_models([row["models"]])
     return {"tabs": per_tab, "residual": residual, "residual_parts": parts,
             "unknown": sorted(unknown)}
+
+
+def _merge_models(dicts) -> dict:
+    """Several `{name: tokens}` added together, biggest share first, fractions rounded off.
+
+    A turn inside two tabs' windows has its tokens split between them, so the shares arrive
+    fractional; they are rounded here rather than at each addition, because rounding twenty
+    thousand halves is how a column stops summing to its own total."""
+    out: dict[str, float] = {}
+    for d in dicts:
+        for name, tok in (d or {}).items():
+            out[name] = out.get(name, 0.0) + tok
+    return {k: round(v) for k, v in sorted(out.items(), key=lambda kv: -kv[1])
+            if round(v) > 0}
 
 
 # --------------------------------------------------------------------------------------- #
@@ -591,6 +610,27 @@ BUILD_PROGRAMS = ("refresh-report.py", "run-steps.py", "build-review-html.py",
 #: window that stretched to meet it would bill the page for whatever came next.
 READ_GRACE = dt.timedelta(minutes=2)
 
+#: The `--steps` values that make `refresh-report.py` a *regeneration* rather than a
+#: re-render. Without one of these the program runs no producer at all: it re-assembles
+#: `review.html` out of what is already on disk, which is a useful thing to do and is not
+#: what "what did this report cost to build" is asking about.
+FULL_STEPS = ("all", "static")
+
+#: The two programs that, run together, are a regeneration spelled the long way —
+#: `refresh-report.py --steps X` is literally `run-steps.py --only X` followed by
+#: `build-review-html.py`, and a session that drives the halves by hand has still done the
+#: whole thing.
+STEPS_PROGRAM = "run-steps.py"
+RENDER_PROGRAM = "build-review-html.py"
+REFRESH_PROGRAM = "refresh-report.py"
+MODEL_PROGRAM = "rerun-model.py"
+
+#: The tabs that get a row of their own in the phase table. Their steps are subtracted from
+#: the build/other split so no turn is billed twice; every *other* step is page building or
+#: somebody else's evening depending only on *when* it ran, which is the whole point of
+#: measuring the last regeneration instead of the session.
+OWN_ROW_TABS = ("video", "dsaudit")
+
 
 def _tool_text(inp) -> str:
     """The scalar values of a tool call, flattened — a command, a path, a script."""
@@ -605,8 +645,35 @@ _LAUNCHERS = {"python", "python3", "uv", "run", "sh", "bash", "zsh", "time", "ti
               "nohup", "exec", "poetry", "pipenv", "env"}
 
 
-def runs_builder(command: str, programs=BUILD_PROGRAMS) -> bool:
-    """Does this shell command *run* one of the page builders?
+#: `<<EOF`, `<<'EOF'`, `<<-"EOF"` — the opening of a here-document, whose body is data.
+_HEREDOC = __import__("re").compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+
+
+def _strip_heredocs(command: str) -> str:
+    """The command with every here-document body removed.
+
+    A here-doc body is *data the command writes*, not more command line — and these
+    sessions write an enormous amount of prose about the page builders: commit messages,
+    README paragraphs, patch scripts that open `refresh-report.py` by name. Segment
+    splitting happens on newlines, so a body line beginning `run-steps.py --only …` lands
+    in command position and reads as a build. That is how `git commit -F - <<'MSG'` came to
+    be the last full regeneration of PR #49 — a commit message about regenerations.
+    """
+    lines = command.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        for mark in [m.group(2) for m in _HEREDOC.finditer(line)]:
+            while i < len(lines) and lines[i].strip() != mark:
+                i += 1
+            i += 1                                   # and the terminator itself
+    return "\n".join(out)
+
+
+def builder_calls(command: str, programs=BUILD_PROGRAMS) -> list[tuple]:
+    """`(program, arguments)` for every page builder this shell command *runs*.
 
     The distinction the whole row rests on. `python3 refresh-report.py` is page building;
     `sed -i 's/x/y/' refresh-report.py` is somebody editing the builder, which is the
@@ -614,8 +681,15 @@ def runs_builder(command: str, programs=BUILD_PROGRAMS) -> bool:
     would put the skill's own development straight back into the row this rule exists to
     take it out of. So the program has to be in *command position* — first word of a
     segment, or first word after an interpreter — not merely somewhere in the line.
+
+    The arguments come back with it because "did this run a builder" is no longer the only
+    question asked of a command: `refresh-report.py --steps static` regenerates the report
+    and a bare `refresh-report.py` re-renders it, and only the first is what the page bills
+    itself for. Reading that off the same parse is how the two answers cannot disagree
+    about which words belonged to which program.
     """
-    for segment in __import__("re").split(r"[;&|\n]+|\$\(|`", command):
+    hits = []
+    for segment in __import__("re").split(r"[;&|\n]+|\$\(|`", _strip_heredocs(command)):
         words = [w for w in segment.strip().split() if not __import__("re").match(r"^\w+=", w)]
         for i, word in enumerate(words[:4]):
             base = word.split("/")[-1]
@@ -624,15 +698,42 @@ def runs_builder(command: str, programs=BUILD_PROGRAMS) -> bool:
                 # something else — `grep refresh-report.py`, `git add run-steps.py`.
                 if all(w.split("/")[-1].lstrip("-") in _LAUNCHERS or w.startswith("-")
                        or w.isdigit() for w in words[:i]):
-                    return True
+                    hits.append((base, words[i + 1:]))
             if i and base not in _LAUNCHERS and not word.startswith("-") \
                     and not word.isdigit():
                 break
+    return hits
+
+
+def runs_builder(command: str, programs=BUILD_PROGRAMS) -> bool:
+    """Does this shell command run one of the page builders at all?"""
+    return bool(builder_calls(command, programs))
+
+
+def is_full_regeneration(program: str, args: list[str]) -> bool:
+    """Is this one invocation a *whole* regeneration of the report?
+
+    `refresh-report.py` with `--steps all` or `--steps static` is: it re-runs the producers
+    and then rebuilds the page. Without `--steps` it defaults to `none` and re-renders what
+    is already on disk — a second of work that regenerates nothing, and a session doing
+    twenty of them has not built the report twenty times.
+
+    `run-steps.py` and `build-review-html.py` each answer half the question and neither is
+    a regeneration alone; `_regenerations` is where the two halves are put back together,
+    because "in the same window" is a fact about a window and not about a command line.
+    """
+    if program != REFRESH_PROGRAM:
+        return False
+    for i, w in enumerate(args):
+        if w == "--steps" and i + 1 < len(args):
+            return args[i + 1] in FULL_STEPS
+        if w.startswith("--steps="):
+            return w.split("=", 1)[1] in FULL_STEPS
     return False
 
 
-def _command_windows(path: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
-    """`(start, end)` for every turn of one transcript that ran one of `programs`.
+def _builder_runs(path: Path, programs=BUILD_PROGRAMS) -> list[dict]:
+    """Every builder invocation of one transcript, with its window and how it ended.
 
     `start` is the turn that issued the call — the assistant turn being priced — and `end`
     is the turn that read the result, because reading a build's output is the other half of
@@ -640,26 +741,46 @@ def _command_windows(path: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
     got closes at the next turn there is, which is where the conversation demonstrably
     resumed; with no such turn it closes on itself rather than staying open to the end of
     time and swallowing the evening.
+
+    `ok` is the tool result's own verdict — a non-zero exit, a denied permission and a
+    crashed producer all arrive as `is_error` — because "the last regeneration" has to mean
+    the last one that *worked*. A failed `--steps all` is a rebuild the reader is not
+    looking at.
     """
-    starts: dict[str, dt.datetime] = {}
+    calls: dict[str, dict] = {}
     ends: dict[str, dt.datetime] = {}
+    errors: dict[str, bool] = {}
     stamps: list[dt.datetime] = []
+    # Claude Code writes several rows per `message.id` as a turn streams, and the tool call
+    # only appears on the last of them — while `_scan` prices the turn at the *first*. A
+    # window that opened where the tool call is written therefore starts a few milliseconds
+    # after the turn that issued it, and the one turn the row exists to charge falls out of
+    # it. Nine milliseconds is all it took to make `page build` $0.00.
+    first: dict[str, dt.datetime] = {}
     for rec in _rows(path):
         when = _parse_iso(rec.get("timestamp"))
         if when is None:
             continue
         stamps.append(when)
+        mid = str((rec.get("message") or {}).get("id") or rec.get("uuid") or "")
+        if mid and (mid not in first or when < first[mid]):
+            first[mid] = when
         for b in _blocks(rec):
             if b.get("type") == "tool_use":
                 inp = b.get("input") or {}
                 cmd = str(inp.get("command") or "") if b.get("name") == "Bash" else ""
-                if cmd and runs_builder(cmd, programs):
-                    starts[str(b.get("id"))] = when
+                hits = builder_calls(cmd, programs) if cmd else []
+                if hits:
+                    calls[str(b.get("id"))] = {"start": min(first.get(mid, when), when),
+                                               "command": cmd, "hits": hits}
             elif b.get("type") == "tool_result":
-                ends.setdefault(str(b.get("tool_use_id")), when)
+                tid = str(b.get("tool_use_id"))
+                ends.setdefault(tid, when)
+                errors.setdefault(tid, bool(b.get("is_error")))
     stamps.sort()
     out = []
-    for tid, start in starts.items():
+    for tid, call in calls.items():
+        start = call["start"]
         done = ends.get(tid)
         # Strictly after, both times. The `tool_result` carries its own timestamp and is
         # not a priced turn, so closing on it would stop one record short of the assistant
@@ -674,8 +795,138 @@ def _command_windows(path: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
         anchor = done if done is not None else start
         nxt = next((s for s in stamps if s > anchor), None)
         close = nxt if nxt is not None and nxt - anchor <= READ_GRACE else anchor
-        out.append((start, close))
-    return sorted(out)
+        out.append({"start": start, "end": close, "command": call["command"],
+                    "programs": tuple(p for p, _a in call["hits"]),
+                    "full": any(is_full_regeneration(p, a) for p, a in call["hits"]),
+                    "ok": not errors.get(tid, False)})
+    return sorted(out, key=lambda r: (r["start"], r["end"]))
+
+
+def _command_windows(path: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
+    """`(start, end)` for every turn of one transcript that ran one of `programs`."""
+    return [(r["start"], r["end"]) for r in _builder_runs(path, programs)]
+
+
+def _regenerations(path: Path, programs=BUILD_PROGRAMS) -> list[dict]:
+    """One transcript's builder calls, grouped into the regenerations they add up to.
+
+    Calls whose windows touch — overlapping, or within `READ_GRACE` of each other — are one
+    errand: `run-steps.py` and then `build-review-html.py` back to back is a person
+    spelling out by hand what `refresh-report.py --steps X` does in one line, and a rule
+    that could not see that would only ever recognise the shorthand.
+
+    A group is `full` when it regenerated the whole report: a `refresh-report.py --steps
+    all|static`, or both halves of it run separately. `ok` is the verdict of the calls that
+    made it full — a group whose `--steps all` failed and whose stray `build-review-html.py`
+    succeeded did not regenerate anything, and saying otherwise would pin the page's bill on
+    a rebuild that never finished.
+    """
+    groups: list[dict] = []
+    for run in _builder_runs(path, programs):
+        if groups and run["start"] - groups[-1]["end"] <= READ_GRACE:
+            g = groups[-1]
+            g["end"] = max(g["end"], run["end"])
+            g["runs"].append(run)
+        else:
+            groups.append({"path": Path(path), "start": run["start"], "end": run["end"],
+                           "runs": [run]})
+    for g in groups:
+        by_full = [r for r in g["runs"] if r["full"]]
+        halves = {p for r in g["runs"] for p in r["programs"]}
+        by_halves = ([r for r in g["runs"]
+                      if STEPS_PROGRAM in r["programs"] or RENDER_PROGRAM in r["programs"]]
+                     if {STEPS_PROGRAM, RENDER_PROGRAM} <= halves else [])
+        making = by_full or by_halves
+        g["full"] = bool(making)
+        g["ok"] = bool(making) and all(r["ok"] for r in making)
+        g["command"] = (making[-1]["command"] if making else g["runs"][-1]["command"])
+        g["when"] = (making[0]["start"] if making else g["start"])
+        g["programs"] = tuple(sorted(halves))
+        g["model"] = MODEL_PROGRAM in halves
+        g.pop("runs")
+    return groups
+
+
+def _group_key(g: dict) -> tuple:
+    """What makes two regenerations the same one. `build_groups` is called more than once —
+    by `last_full_build` and again to price the rest — and the dicts it hands back are new
+    objects each time, so identity is the one comparison that would silently be False."""
+    return (str(g["path"]), g["start"], g["end"])
+
+
+def build_groups(session_file: Path, programs=BUILD_PROGRAMS) -> list[dict]:
+    """Every regeneration of this run — parent and subagents — in time order.
+
+    Per transcript and never merged into one timeline: a run forks, and two agents
+    rebuilding the page at the same minute are two rebuilds, not one. Each group carries
+    the transcript it belongs to, because that is the only conversation whose turns it may
+    be allowed to bill.
+    """
+    out: list[dict] = []
+    for path, _side in run_files(session_file):
+        out += _regenerations(path, programs)
+    return sorted(out, key=lambda g: (g["start"], g["end"]))
+
+
+def last_full_build(session_file: Path, programs=BUILD_PROGRAMS) -> dict | None:
+    """The last regeneration of this report that actually regenerated it, or None.
+
+    This is what `page build` costs now. It used to be every turn of the pinned session
+    that ran a builder, which on PR #49 meant a hundred and eighteen million tokens: the
+    subagents developing the skill rebuilt the page dozens of times that evening to check
+    their work, and each of those rebuilds was charged to the report as if the reader had
+    paid for it twice over. A reader asking "what did this page cost" means the copy in
+    front of them — the last time it was made, start to finish — not the forty drafts
+    thrown away on the way there.
+    """
+    full = [g for g in build_groups(session_file, programs) if g["full"] and g["ok"]]
+    return full[-1] if full else None
+
+
+def short_command(command: str, width: int = 110) -> str:
+    """The command a row names, in a length a table cell can print.
+
+    Directories are dropped from every script path first, and only then is anything cut:
+    `python3 /Users/victorrentea/workspace/human-review/skills/human-review/scripts/refresh-rep`
+    spends its whole allowance on a path the reader already knows and stops one word short
+    of the thing they opened the row to see — which flag it was run with.
+    """
+    flat = " ".join(str(command).split())
+    flat = __import__("re").sub(r"\S*/(?=[\w.+-]+\.(?:py|sh)\b)", "", flat)
+    if len(flat) <= width:
+        return flat
+    cut = flat[:width].rsplit(" ", 1)[0]
+    return f"{cut or flat[:width]} …"
+
+
+#: What `rerun-model.py` spent, written by the run itself. A paid model step is a `claude
+#: -p` subprocess: it costs real money and leaves not one priced turn in any transcript, so
+#: the only record of it is this ledger.
+MODEL_RUNS = ".model-runs.json"
+
+
+def model_run_in(review: Path, lo, hi) -> dict | None:
+    """The last `rerun-model.py` run, if it belongs to the regeneration being billed.
+
+    The step is part of building the page when it ran as part of building the page, and a
+    separate errand when somebody pressed the button on its own an hour earlier. The ledger
+    stamps each run when it finishes, which is inside the window that read its output — so
+    "did it happen here" is a question the timestamps can answer.
+    """
+    try:
+        doc = json.loads((Path(review) / MODEL_RUNS).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    runs = doc.get("runs") if isinstance(doc, dict) else doc
+    if not isinstance(runs, list) or not runs:
+        return None
+    last = runs[-1]
+    if not isinstance(last, dict) or not isinstance(last.get("cost"), (int, float)):
+        return None
+    when = _parse_iso(last.get("when"))
+    if when is None or lo is None or hi is None or not lo <= when <= hi:
+        return None
+    return last
 
 
 def _merge(spans) -> list[tuple]:
@@ -711,61 +962,94 @@ def build_windows(session_file: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
     return _merge(spans)
 
 
-def _claimed(steps: list[dict], tabs) -> list[dict]:
-    """The closed steps that name a tab this page has — the ones `tab_costs` attributes.
+def _claimed(steps: list[dict], tabs, own_rows=OWN_ROW_TABS) -> list[dict]:
+    """The closed steps whose cost is already printed on a row of its own.
 
-    Same filter, deliberately: a step naming only tabs the page does not have puts its turns
-    in the residual, and a split of that residual which thought otherwise would not add up
-    to it.
+    Only those. Every *other* step — the diagrams, the audit, the guide — is page building
+    or it is not, depending on whether it ran inside the regeneration the page is billing
+    for, and that is a question about *when* it ran. Claiming them all here, as this used
+    to, quietly put every diagram step of every rebuild that evening back into `page build`
+    through the tab rows, which is exactly the number Victor asked to stop paying.
     """
     known = set(tabs)
+    owned = set(own_rows)
     return [s for s in steps
             if s["end"] is not None and s["end"] >= s["start"]
-            and any(t in known for t in s["tabs"])]
+            and any(t in known and t in owned for t in s["tabs"])]
 
 
-def split_residual(turns, steps: list[dict], windows, tabs) -> dict:
-    """The turns no step claimed, split by whether they ran the build.
+def split_residual(turns, steps: list[dict], windows, tabs, own_rows=OWN_ROW_TABS,
+                   earlier=()) -> dict:
+    """These turns, split into the regeneration the page bills for and everything else.
 
-    `ours` is page building the ledger simply did not bracket — a rebuild driven by hand
-    after a fix, a `--redraw`, the wrapper that reran a step. `theirs` is the part of the
-    session that was never about this report: it is reported, with its own row and its own
-    words, and it is not added to anything.
+    `ours` is the last full regeneration of this report and nothing else. `theirs` is the
+    rest of the pinned session — the earlier rebuilds of this same page included, because a
+    reader paying for the copy in front of them did not pay for the thirty drafts that
+    preceded it either. `rebuilds` itemises that part of `theirs`: it is a *subset*, not a
+    third share, so the two halves still add up to everything handed in.
     """
-    closed = _claimed(steps, tabs)
-    parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0} for k in ("ours", "theirs")}
+    parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {}}
+             for k in ("ours", "theirs", "rebuilds")}
+    closed = _claimed(steps, tabs, own_rows)
     for _key, model, u, _side, when in turns:
         if when is not None and any(s["start"] <= when <= s["end"] for s in closed):
             continue
+        cost = price(family(model), u)
+        tokens = turn_tokens(u)
         mine = when is not None and any(a <= when <= b for a, b in windows)
-        row = parts["ours" if mine else "theirs"]
-        row["cost"] += price(family(model), u)
-        row["tokens"] += sum(u.get(k, 0) for k in
-                             ("input_tokens", "output_tokens",
-                              "cache_creation_input_tokens", "cache_read_input_tokens"))
-        row["messages"] += 1
+        buckets = ["ours"] if mine else ["theirs"]
+        if not mine and when is not None and any(a <= when <= b for a, b in earlier):
+            buckets.append("rebuilds")
+        for name in buckets:
+            row = parts[name]
+            row["cost"] += cost
+            row["tokens"] += tokens
+            row["messages"] += 1
+            row["models"][label(model)] = row["models"].get(label(model), 0) + tokens
     return parts
 
 
 def run_residual(session_file: Path, steps: list[dict], tabs,
-                 programs=BUILD_PROGRAMS) -> dict:
+                 programs=BUILD_PROGRAMS, only: dict | None = None) -> dict:
     """`split_residual` over a whole run, each transcript judged by its own builds.
 
+    `only` is the one regeneration the page bills for — `last_full_build`'s answer. It
+    belongs to a single transcript and is applied to that transcript alone: a run forks,
+    and while one agent sits inside `refresh-report.py --steps all` three others are off
+    doing something else that the merged timeline would bill to the page.
+
+    Without it the old rule stands — every builder turn is page building — which is what
+    `build_windows` still answers and what the tests of that rule still check.
+
     The dedupe is `gather_turns`' — one entry per `message.id`, first transcript to carry it
-    wins — so the two halves returned here still add up to the same residual `tab_costs`
+    wins — so the halves returned here still add up to the same residual `tab_costs`
     reports, and the phase table still balances.
     """
-    total = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0} for k in ("ours", "theirs")}
+    total = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {}}
+             for k in ("ours", "theirs", "rebuilds")}
+    groups = build_groups(session_file, programs) if only is not None else []
     best: dict[str, tuple] = {}
     for path, side in run_files(session_file):
-        windows = _merge(_command_windows(path, programs))
+        if only is None:
+            windows = _merge(_command_windows(path, programs))
+            earlier = ()
+        else:
+            windows = ([(only["start"], only["end"])]
+                       if Path(path) == Path(only["path"]) else [])
+            earlier = _merge([(g["start"], g["end"]) for g in groups
+                              if Path(g["path"]) == Path(path)
+                              and _group_key(g) != _group_key(only)])
         before = set(best)
         _scan(path, None, side, best, None)
         fresh = [best[mid] for mid in best.keys() - before]
-        part = split_residual(fresh, steps, windows, tabs)
+        part = split_residual(fresh, steps, windows, tabs, earlier=earlier)
         for half, row in part.items():
-            for field in row:
+            for field in ("cost", "tokens", "messages"):
                 total[half][field] += row[field]
+            for name, tok in row["models"].items():
+                total[half]["models"][name] = total[half]["models"].get(name, 0) + tok
+    for row in total.values():
+        row["models"] = dict(sorted(row["models"].items(), key=lambda kv: -kv[1]))
     return total
 
 
@@ -790,7 +1074,7 @@ OTHER_WORK = (
 
 
 def other_work(session_file: Path, steps: list[dict], tabs, limit: int = 4,
-               programs=BUILD_PROGRAMS) -> str:
+               programs=BUILD_PROGRAMS, only: dict | None = None) -> str:
     """What the part of the session that was *not* this report spent its turns on.
 
     Derived from the tool calls of those turns and nothing else, because a row saying
@@ -804,7 +1088,13 @@ def other_work(session_file: Path, steps: list[dict], tabs, limit: int = 4,
     counts: dict[str, int] = {}
     files: set[str] = set()
     for path, _side in run_files(session_file):
-        windows = _merge(_command_windows(path, programs))
+        # The same window the row is costed over, or the old every-builder rule when no
+        # regeneration was picked. A summary drawn over a different set of turns from the
+        # number beside it is a caption for a different photograph.
+        windows = ([(only["start"], only["end"])]
+                   if only is not None and Path(path) == Path(only["path"])
+                   else [] if only is not None
+                   else _merge(_command_windows(path, programs)))
         for rec in _rows(path):
             when = _parse_iso(rec.get("timestamp"))
             if when is not None and (any(s["start"] <= when <= s["end"] for s in closed)
@@ -885,13 +1175,13 @@ def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path
     tabs_out = {
         t: {"measured": row["has_closed"], "cost": row["cost"],
             "tokens": round(row["tokens"]), "messages": row["messages"],
-            "tip": tab_cost_tip(row)}
+            "models": row.get("models") or {}, "tip": tab_cost_tip(row)}
         for t, row in result["tabs"].items()
     }
     r = result["residual"]
     parts = {
         k: {"measured": True, "cost": v["cost"], "tokens": round(v["tokens"]),
-            "messages": v["messages"]}
+            "messages": v["messages"], "models": _merge_models([v.get("models")])}
         for k, v in (result.get("residual_parts") or {}).items()
     }
     residual_tip = (
@@ -916,7 +1206,8 @@ def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path
         "unknown_tabs": orphans,
         "tabs": tabs_out,
         "residual": {"measured": True, "cost": r["cost"], "tokens": round(r["tokens"]),
-                    "messages": r["messages"], "tip": residual_tip},
+                    "messages": r["messages"], "models": r.get("models") or {},
+                    "tip": residual_tip},
         "residual_parts": parts,
     }
 
@@ -1170,14 +1461,39 @@ def write_window(path: Path, rel: str) -> tuple["dt.datetime | None", "dt.dateti
     return (min(stamps), max(stamps)) if stamps else (None, None)
 
 
+def turn_tokens(u: dict) -> int:
+    """Every token a turn was billed for — fresh input, output, cache written, cache read.
+
+    One definition, used everywhere a row counts tokens, because a column that added up
+    four fields in one row and three in the next would be a column of two different
+    measurements printed in the same font."""
+    return sum(u.get(k, 0) for k in ("input_tokens", "output_tokens",
+                                     "cache_creation_input_tokens",
+                                     "cache_read_input_tokens"))
+
+
+def models_of(turns) -> dict:
+    """`{display name: tokens}` for a set of turns, the biggest share first.
+
+    A phase's token count says how much was read and written; it does not say *by what*,
+    and the difference between 36.9M on Opus and 36.9M on Haiku is a factor of five on the
+    line beside it. Keyed by the printed name rather than the model id, because this
+    travels to the page as JSON and the name table lives here — one place where
+    `claude-opus-5-20260220` becomes `Opus 5`.
+    """
+    out: dict[str, int] = {}
+    for _key, model, u, _side, _when in turns:
+        out[label(model)] = out.get(label(model), 0) + turn_tokens(u)
+    return dict(sorted(out.items(), key=lambda kv: -kv[1]))
+
+
 def _price_turns(turns) -> dict:
     cost = tokens = 0.0
     for _key, model, u, _side, _when in turns:
         cost += price(family(model), u)
-        tokens += sum(u.get(k, 0) for k in
-                      ("input_tokens", "output_tokens",
-                       "cache_creation_input_tokens", "cache_read_input_tokens"))
-    return {"cost": cost, "tokens": round(tokens), "messages": len(turns)}
+        tokens += turn_tokens(u)
+    return {"cost": cost, "tokens": round(tokens), "messages": len(turns),
+            "models": models_of(turns)}
 
 
 def _window(path: Path, since, until, skip=()) -> dict:
@@ -1213,10 +1529,17 @@ def _row(key: str, measured: bool, data: dict | None = None, reason: str | None 
     """
     out = {"key": key, "label": PHASE_LABELS.get(key, key), "measured": measured,
            "excluded": excluded,
-           "cost": 0.0, "tokens": 0, "messages": 0, "reason": reason, "detail": detail,
+           "cost": 0.0, "tokens": 0, "messages": 0, "models": {},
+           "reason": reason, "detail": detail,
            "window": [w.isoformat() if w else None for w in (window or (None, None))]}
     if data:
         out.update({k: data[k] for k in ("cost", "tokens", "messages")})
+        # Which models spent those tokens. Carried per row rather than once for the table:
+        # the phases ran in different conversations on different models, and "36.9M" says
+        # nothing about the dollars beside it until the reader knows whether that was Opus
+        # or Haiku.
+        out["models"] = {k: round(v) for k, v in (data.get("models") or {}).items()
+                         if round(v) > 0}
     return out
 
 
@@ -1249,6 +1572,10 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
     rows: list[dict] = []
     path = transcript(session) if session else None
     reviewer_files = [Path(f) for f in reviewer_files or ()]
+    # Which regeneration the `page build` row is about, for whoever has to check it. A row
+    # that names one run out of forty is only as trustworthy as the reader's ability to go
+    # and look at that run.
+    chosen: dict | None = None
 
     if path is None:
         why = ("no session id — nothing names the conversation that wrote the code"
@@ -1268,7 +1595,7 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
 
         live = [f for f in reviewer_files if f.is_file()]
         if live:
-            data = {"cost": 0.0, "tokens": 0, "messages": 0}
+            data = {"cost": 0.0, "tokens": 0, "messages": 0, "models": {}}
             for f in live:
                 # include_subagents=False: a subagent transcript is a leaf, and any agent
                 # id it happens to mention belongs to the parent, which already paid.
@@ -1276,6 +1603,8 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
                 data["cost"] += c["cost"]
                 data["tokens"] += c["tokens"]
                 data["messages"] += c["messages"]
+                data["models"] = _merge_models(
+                    [data["models"], {k: v["tokens"] for k, v in c["models"].items()}])
             rows.append(_row("code_review", True, data, window=(t2, t3),
                              detail=f"{len(live)} forked reviewer(s), whole transcripts"))
         else:
@@ -1335,7 +1664,8 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
             row = report["tabs"].get(tab) or {}
             if row.get("measured"):
                 rows.append(_row(key, True, {"cost": row["cost"], "tokens": row["tokens"],
-                                             "messages": row["messages"]},
+                                             "messages": row["messages"],
+                                             "models": row.get("models") or {}},
                                  detail=f"the '{tab}' step of the page-building run"))
             else:
                 rows.append(_row(key, False, reason=(row.get("tip")
@@ -1343,31 +1673,46 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
                                                      or "no step named it")))
         residual = report.get("residual") or {}
         if residual.get("measured") and run_path is not None:
-            # The guide pseudo-tab is page building with a window; the tab steps are page
-            # building with a window; the build programs are page building without one. The
-            # rest of the session is somebody else's evening and gets its own row.
+            # `page build` is the LAST full regeneration of this report and nothing else.
+            # It used to be every turn of the pinned session that ran a builder, which on
+            # PR #49 came to 118.8M tokens: the subagents writing the skill rebuilt the page
+            # dozens of times that evening to check their work, and the row charged the
+            # reader for every one of them. A reader asking what this page cost means the
+            # copy in front of them, not the drafts thrown away on the way to it.
             known = set(wanted) | {GUIDE_TAB}
-            split = run_residual(run_path, steps, known)
-            guide = ((report.get("residual_parts") or {}).get("guide")) or {}
-            page = {k: (guide.get(k) or 0) + split["ours"][k]
-                    for k in ("cost", "tokens", "messages")}
-            others = [t for t in wanted if t not in ("video", "dsaudit")]
-            for tab in others:
-                row = report["tabs"].get(tab) or {}
-                for k in ("cost", "tokens", "messages"):
-                    page[k] += row.get(k) or 0
-            page["tokens"] = round(page["tokens"])
-            rows.append(_row("page_build", True, page, detail=(
-                f"assembling the guide, the other {len(others)} tab(s) the ledger timed, "
-                f"and every turn that ran {', '.join(BUILD_PROGRAMS)}" if others else
-                "assembling the guide, plus every turn that ran "
-                f"{', '.join(BUILD_PROGRAMS)}")))
+            last = chosen = last_full_build(run_path)
+            groups = build_groups(run_path)
+            split = run_residual(run_path, steps, known, only=last)
+            if last is None:
+                # Never a zero. A run nobody can find a regeneration in is a run whose build
+                # cost is sitting somewhere this table cannot see, and "$0.00" would read as
+                # a page that built itself for nothing.
+                rows.append(_row("page_build", False, reason=(
+                    "no full regeneration found in the pinned session — nothing in it ran "
+                    f"{REFRESH_PROGRAM} --steps {'/'.join(FULL_STEPS)}, or "
+                    f"{STEPS_PROGRAM} and {RENDER_PROGRAM} together")))
+            else:
+                page = {**split["ours"], "tokens": round(split["ours"]["tokens"])}
+                detail = ("the last full regeneration of this report (steps + build): "
+                          + short_command(last["command"]))
+                paid = model_run_in(Path(steps_path).parent, last["start"], last["end"])
+                if paid:
+                    page["cost"] += float(paid["cost"])
+                    detail += f", including the model step it ran ({money(paid['cost'])})"
+                rows.append(_row("page_build", True, page,
+                                 window=(last["start"], last["end"]), detail=detail))
             rest = split["theirs"]
             if rest["messages"]:
                 rest = {**rest, "tokens": round(rest["tokens"])}
-                rows.append(_row(
-                    "not_this_report", True, rest, excluded=True,
-                    detail=other_work(run_path, steps, known)))
+                said = other_work(run_path, steps, known, only=last)
+                earlier = [g for g in groups
+                           if last is None or g["start"] < last["start"]]
+                if earlier and split["rebuilds"]["messages"]:
+                    said += (f"; including {len(earlier)} earlier rebuild"
+                             f"{'' if len(earlier) == 1 else 's'} of this page "
+                             f"({money(split['rebuilds']['cost'])})")
+                rows.append(_row("not_this_report", True, rest, excluded=True,
+                                 detail=said))
         else:
             rows.append(_row("page_build", False,
                              reason=residual.get("tip") or "the page-building run is not "
@@ -1394,6 +1739,14 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
         "messages": sum(r["messages"] for r in measured),
         "session": session, "run_session": run_session,
         "points_file": points_file,
+        # Named, not implied: `page build` is one run out of however many the session did,
+        # and a reader who cannot see WHICH one has to take the number on faith.
+        "page_build_run": (None if chosen is None else {
+            "when": chosen["when"].isoformat(),
+            "window": [chosen["start"].isoformat(), chosen["end"].isoformat()],
+            "command": " ".join(chosen["command"].split()),
+            "transcript": str(chosen["path"]),
+        }),
         "boundaries": {name: (w.isoformat() if w else None) for name, w in
                        (("t0", t0), ("t1", t1), ("t2", t2), ("t3", t3), ("t4", t4))},
     }

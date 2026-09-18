@@ -186,6 +186,16 @@ def report(doc: dict, notes: list[str], how: str, out: Path | None) -> None:
             # Never a zero. "$0.00" and "we could not date this" look the same on a page
             # and mean opposite things.
             print(f"  {r['label']:<{width}}  {'unmeasurable':>8}: {r['reason']}")
+    # Which rebuild the `page build` row is about. The session that builds a report
+    # rebuilds it dozens of times while it is being written, and the row is the cost of the
+    # LAST full regeneration — a claim the reader can only check if the table says which
+    # run that was, in words they can go and find in the transcript.
+    chosen = doc.get("page_build_run")
+    if chosen:
+        print(f"  {'page build from':<{width}}  {chosen['when'][:16]}  "
+              f"{chosen['command'][:100]}")
+    elif any(r["key"] == "page_build" and not r["measured"] for r in doc["rows"]):
+        print(f"  {'page build from':<{width}}  — no full regeneration in this run")
     print(f"  {'total':<{width}}  {rc.money(doc['cost']):>8}  "
           f"{rc.human(doc['tokens']):>7} tok  {doc['messages']:>4} turns"
           + ("   (the measured rows only)" if doc["unmeasured"] else ""))
