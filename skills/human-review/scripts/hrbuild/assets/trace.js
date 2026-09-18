@@ -18,16 +18,6 @@
   (reg.tests || []).forEach(function (t) { byKey[t.test] = t; });
   var served = !!reg.viewer && location.protocol !== 'file:';
 
-  function copy(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
-    var ta = document.createElement('textarea');
-    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '-1000px';
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); } catch (e) {}
-    document.body.removeChild(ta);
-    return Promise.resolve();
-  }
-
   function decorate() {
     var rows = document.querySelectorAll('.rm-t[data-id]');
     Array.prototype.forEach.call(rows, function (row) {
@@ -42,8 +32,13 @@
       var tv = document.createElement('a');
       tv.className = 'rm-tv';
       tv.textContent = '📺';
-      tv.setAttribute('aria-label', 'open the recording of this test');
+      // Said once, by the branch that is actually taken. The label used to be written
+      // before the fork and claimed "open the recording of this test" in both, so off
+      // disk a screen reader announced an open over a control that copies — the one
+      // thing an aria-label must never get wrong, because it is the only description
+      // that reader gets.
       if (served) {
+        tv.setAttribute('aria-label', 'open the recording of this test');
         // Absolute, because the viewer resolves `?trace=` against its own document and
         // not against ours: a relative path would be looked for inside the viewer's folder.
         tv.href = reg.viewer + '?trace=' + encodeURIComponent(new URL(t.trace, location.href).href);
@@ -52,14 +47,17 @@
         tv.addEventListener('click', function (ev) { ev.stopPropagation(); });
       } else {
         tv.href = '#';
+        tv.setAttribute('aria-label', 'copy the command that opens the recording of this test');
         tv.setAttribute('data-tip', 'Recorded. Copy the command that opens the replay natively'
           + (reg.viewer ? ' \u2014 or serve this page (scripts/serve-review.py) to open it from here' : ''));
         tv.addEventListener('click', function (ev) {
           ev.preventDefault(); ev.stopPropagation();
-          copy(t.cmd).then(function () {
-            var was = tv.getAttribute('data-tip');
-            tv.setAttribute('data-tip', 'Copied \u2014 run it in a terminal');
-            setTimeout(function () { tv.setAttribute('data-tip', was); }, 2000);
+          // The page's own clipboard and the page's own toast. This used to be a third
+          // `copy()` and a two-second swap of `data-tip` \u2014 which rewrites an attribute
+          // the tooltip has already rendered, so nothing appeared and the only silent
+          // copy control on the page was this one. Every other one says it in the toast.
+          window.HR.copy(t.cmd).then(function () {
+            window.HR.flash('Copied \u2014 paste it in a terminal');
           });
         });
       }

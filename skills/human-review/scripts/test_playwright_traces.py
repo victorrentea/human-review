@@ -19,6 +19,7 @@ import base64
 import importlib.util
 import io
 import json
+import shlex
 import shutil
 import zipfile
 from pathlib import Path
@@ -324,16 +325,69 @@ def test_the_viewer_is_named_once_and_no_frame_is_ever_written(tmp_path):
 def test_every_row_offers_the_native_command_for_a_page_read_off_disk(tmp_path):
     """From the zip or from `file://` nothing can be fetched, so the frame would be blank.
     The command opens the same recording, and it is written whether or not that reader
-    exists — the build cannot know which of the two is reading."""
+    exists — the build cannot know which of the two is reading.
+
+    It keeps the contract every other command on this page keeps: `cd <repo> &&` in front
+    and an absolute program argument, so the string runs as-is in any terminal. It used to
+    be `npx playwright show-trace .human-review/assets/traces/001-….zip` — relative to a
+    directory the line never named, which worked only if the reader happened to be
+    standing in the repository root and said nothing if they were not."""
     frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
-    assert "npx playwright show-trace .human-review/assets/traces/001-owner-page.zip" in frag
+    cmd = _registry(frag)["tests"][0]["cmd"]
+    assert cmd == (f"cd {shlex.quote(str(tmp_path.resolve()))} && npx playwright show-trace "
+                   + shlex.quote(str((tmp_path / '.human-review/assets/traces/'
+                                      '001-owner-page.zip').resolve())))
+    # The `cd` is not redundant beside the absolute zip: `npx` resolves `playwright` out
+    # of the project's own node_modules, so the command has to run inside the project.
+    assert cmd.startswith("cd ")
 
 
 def test_the_command_names_the_directory_the_page_was_built_into(tmp_path):
     """`.human-review` is only the default. A command naming a directory the reader does
     not have is worse than no command at all."""
     frag, _ = build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / "out/review")
-    assert "npx playwright show-trace out/review/assets/traces/001-owner-page.zip" in frag
+    assert str((tmp_path / "out/review/assets/traces/001-owner-page.zip").resolve()) in \
+        _registry(frag)["tests"][0]["cmd"]
+
+
+def test_the_offline_copy_says_it_copied_the_way_every_other_copy_does():
+    """The 📺 was the only silent copy control on the page.
+
+    It wrote its own "Copied" by swapping `data-tip` for two seconds — an attribute the
+    tooltip has already rendered by the time the click happens, so nothing appeared. Every
+    other control on the page flashes the page's one toast, and now so does this one,
+    through `window.HR.flash` rather than through a third implementation of it.
+    """
+    js = build.TRACE_JS
+    assert "window.HR.flash('Copied" in js
+    assert "setAttribute('data-tip', 'Copied" not in js, "an attribute already rendered"
+    # And the page's one clipboard: a `file://` page needs the execCommand fallback, and
+    # TRACE_JS carried a third copy of it.
+    assert "window.HR.copy(t.cmd)" in js
+    assert "navigator.clipboard" not in js
+    assert "window.HR.flash = flash;" in build.EDITOR_JS, "the toast is published once"
+
+
+def test_the_screen_says_what_a_press_will_actually_do():
+    """`aria-label` said *open the recording of this test* in both modes, and off disk the
+    press copies. It is the only description a screen-reader user gets, so it is written
+    inside each branch by the branch that is taken."""
+    js = build.TRACE_JS
+    served = js.index("if (served) {")
+    otherwise = js.index("} else {", served)
+    assert "'open the recording of this test'" in js[served:otherwise]
+    assert "'open the recording of this test'" not in js[otherwise:]
+    assert "copy the command that opens the recording of this test" in js[otherwise:]
+
+
+def test_the_native_command_is_not_in_the_servers_manifest(tmp_path):
+    """`.actions.json` is the list of things the *server* may be asked to run, and
+    `show-trace` opens a desktop window. Served, the 📺 has a better answer anyway — the
+    trace viewer copied beside this page — so the command exists for exactly the reader
+    who has no server to ask."""
+    build.ACTIONS.clear()
+    build.render_traces(_manifest(tmp_path), tmp_path, tmp_path / '.human-review')
+    assert not [k for k in build.ACTIONS if "trace" in k]
 
 
 def test_the_entry_carries_how_the_run_ended(tmp_path):

@@ -48,6 +48,15 @@
     flash.timer = setTimeout(function () { toast.classList.remove('shown'); }, 2600);
   }
 
+  // Published for the same reason `copy` is: the page has ONE toast, and a second script
+  // that wanted one grew its own way of saying "copied" instead. TRACE_JS did exactly
+  // that \u2014 it swapped the 📺's `data-tip` for two seconds, which changes an attribute
+  // the tooltip had already rendered, so the only copy control on the page that said
+  // nothing at all was the one that had written itself a message. Declared here rather
+  // than in SERVER_JS because the toast and its stylesheet are this file's; SERVER_JS
+  // runs first and builds `window.HR`, and every consumer of this runs after EDITOR_JS.
+  window.HR.flash = flash;
+
   // `vscode://file//abs/path.java:487:1` → the two halves the server wants.
   function parse(href) {
     var m = /^vscode:\/\/file\/*(\/[^:]*?)(?::(\d+))?(?::\d+)?$/.exec(decodeURIComponent(href));

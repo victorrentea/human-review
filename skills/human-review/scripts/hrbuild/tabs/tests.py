@@ -250,20 +250,29 @@ def render_traces(doc: dict, root: Path, out_dir: Path,
     tests = doc.get("tests") or []
     if not tests:
         return "", 0
-    # Where this page was built, said the way a terminal at the repo root would say it:
-    # `.human-review` is only the default, and a command naming a directory the reader does
-    # not have is worse than no command at all.
-    try:
-        here = out_dir.resolve().relative_to(root.resolve())
-    except ValueError:
-        here = out_dir.resolve()
+    # `cd <repo> && …`, and an absolute zip, which is the contract every other command
+    # this page hands out already keeps. This one used to be
+    # `npx playwright show-trace .human-review/assets/traces/011-….zip` — relative to a
+    # directory the line does not name, so it only worked if the reader happened to be
+    # standing in the repository root, and said nothing if they were not. The `cd` is not
+    # redundant beside the absolute path either: `npx` resolves `playwright` out of the
+    # project's own `node_modules`, so the command has to run inside the project whatever
+    # the zip is called.
+    #
+    # Not in `.actions.json`, though, and that is deliberate: the manifest is the list of
+    # things the *server* may be asked to run, and `show-trace` opens a desktop window.
+    # Served, the 📺 has a better answer anyway — the trace viewer copied beside this page,
+    # in a browser window of its own — so the command exists for exactly the reader who
+    # has no server to ask.
+    home = shlex.quote(str(root.resolve()))
     entries = []
     for t in tests:
         if not t.get("trace"):
             continue
         key = Path(t.get("file", "")).name + (f':{t["line"]}' if t.get("line") else "")
+        zip_path = shlex.quote(str((out_dir / t["trace"]).resolve()))
         entries.append({"test": key, "trace": t["trace"], "status": t.get("status", ""),
-                        "cmd": f"npx playwright show-trace {shlex.quote(str(here / t['trace']))}"})
+                        "cmd": f"cd {home} && npx playwright show-trace {zip_path}"})
     reg = {"viewer": doc.get("viewer") or "", "tests": entries}
     # `</` cannot appear inside a script element, whatever its type.
     return ('<script type="application/json" id="hr-traces">'
