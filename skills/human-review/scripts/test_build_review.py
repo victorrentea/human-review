@@ -3681,7 +3681,12 @@ def test_the_recordings_are_a_registry_the_tv_reads_not_a_list(tmp_path):
     assert reg["viewer"] == "assets/tv/index.html"
     assert [e["test"] for e in reg["tests"]] == ["guard.spec.ts:5", "add-visit.spec.ts:52"]
     assert n == 2, "a test with no trace is not a recording"
-    assert reg["tests"][1]["cmd"] == "npx playwright show-trace .human-review/t/2.zip"
+    # `cd <repo> &&` and an absolute zip: the contract every command this page hands out
+    # keeps, and the `cd` is not redundant beside it — `npx` resolves `playwright` out of
+    # the project's own node_modules.
+    assert reg["tests"][1]["cmd"] == (
+        f"cd {tmp_path.resolve()} && npx playwright show-trace "
+        f"{(tmp_path / '.human-review/t/2.zip').resolve()}")
 
 
 def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_this_is(tmp_path):
