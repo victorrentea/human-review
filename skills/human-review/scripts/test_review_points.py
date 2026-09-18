@@ -57,6 +57,7 @@ cannot leave it unassigned.
 ### @Transactional went on the public endpoints
 - file: src/main/java/VisitRestController.java:62-68
 - alternative: annotate bookVisit as asked — a silent no-op
+- confidence: 0.85
 - why: Spring AOP ignores self-invoked private methods.
 """
 
@@ -267,10 +268,116 @@ def test_the_item_keys_are_the_ones_the_renderer_reads(tmp_path):
     assert set(doc["autofixes"][0]) <= {"title", "body", "why", "source", "severity",
                                         "refs", "snippets", "diffs", "alternative"}
     assert set(doc["assumptions"][0]) <= {"title", "body", "why", "source", "refs",
-                                          "snippets", "alternative", "diffs"}
+                                          "snippets", "alternative", "diffs",
+                                          "confidence"}
     src = page_source()
     for key in ("refs", "snippets", "diffs", "severity", "alternative", "why"):
         assert f'"{key}"' in src or f"'{key}'" in src
+
+
+# --------------------------------------------------------------------------- #
+# confidence — how sure the agent is about the reading it chose
+# --------------------------------------------------------------------------- #
+
+def test_confidence_reaches_the_item_as_a_number(tmp_path):
+    """A number, not a string: the page has to compare it against a threshold to decide
+    how loudly to say it, and a string that sorts `"0.9" < "0.85"` would be worse than
+    having nothing."""
+    doc = _doc(tmp_path, "## Assumptions\n### t\n- file: a.py:1\n- confidence: 0.85\n")
+    item = doc["assumptions"][0]
+    assert item["confidence"] == 0.85
+    assert isinstance(item["confidence"], float)
+
+
+@pytest.mark.parametrize("written,read", [
+    ("0", 0.0), ("1", 1.0), ("0.0", 0.0), ("1.0", 1.0), ("0.3", 0.3), ("1.00", 1.0),
+    ("0.857", 0.86), ("0.3333", 0.33),
+])
+def test_the_ends_of_the_scale_are_inside_it_and_a_third_decimal_rounds(tmp_path, written,
+                                                                       read):
+    doc = _doc(tmp_path, f"## Assumptions\n### t\n- file: a.py:1\n"
+                         f"- confidence: {written}\n")
+    assert doc["assumptions"][0]["confidence"] == read
+
+
+def test_an_assumption_without_confidence_says_nothing_rather_than_defaulting(tmp_path):
+    """Every file written before the field existed still parses — and none of them
+    acquires a number the agent never typed. A defaulted confidence would be the page
+    answering, on the agent's behalf, the one question only the agent could answer."""
+    doc = _doc(tmp_path, "## Assumptions\n### t\n- file: a.py:1\n- why: because.\n")
+    assert "confidence" not in doc["assumptions"][0]
+    assert doc["warnings"] == []
+
+
+@pytest.mark.parametrize("value", ["1.5", "-0.1", "2", "95", "inf"])
+def test_a_confidence_outside_the_scale_is_refused_with_its_line(tmp_path, value):
+    """There is no being surer than certain. A typo'd `0.95` written as `95` would
+    otherwise reach the page as a confidence nobody has."""
+    with pytest.raises(rp.Unparseable) as bad:
+        _doc(tmp_path, f"## Assumptions\n### t\n- file: a.py:1\n"
+                       f"- confidence: {value}\n")
+    assert "line 2" in str(bad.value) and "between 0 and 1" in str(bad.value)
+
+
+@pytest.mark.parametrize("value", ["high", "0.8ish", "", "85%"])
+def test_a_confidence_that_is_not_a_number_is_refused(tmp_path, value):
+    with pytest.raises(rp.Unparseable) as bad:
+        _doc(tmp_path, f"## Assumptions\n### t\n- file: a.py:1\n"
+                       f"- confidence: {value}\n")
+    assert "confidence" in str(bad.value) and "line 2" in str(bad.value)
+
+
+@pytest.mark.parametrize("heading,pile", [("Fixed", "autofixes"), ("Ignored", "findings")])
+def test_confidence_on_a_fix_or_a_decline_is_warned_about_and_dropped(tmp_path, heading,
+                                                                     pile):
+    """Softer than `severity:` on an assumption, which is fatal, and deliberately so: a
+    confidence in the wrong pile is a misplaced field, while ranking a decision the reader
+    must confirm as though it were a defect is a category error."""
+    doc = _doc(tmp_path, f"## {heading}\n### Something I repaired\n- file: a.py:1\n"
+                         f"- confidence: 0.9\n")
+    assert "confidence" not in doc[pile][0], "a fix is in the diff or it is not"
+    assert len(doc["warnings"]) == 1
+    assert "Something I repaired" in doc["warnings"][0]
+    assert heading in doc["warnings"][0]
+
+
+def test_an_out_of_range_confidence_on_a_fix_is_still_only_a_warning(tmp_path):
+    """The pile is checked before the number is: the field does not belong there at all,
+    so refusing the file over the value of a field nobody will read would be reporting the
+    second problem and hiding the first."""
+    doc = _doc(tmp_path, "## Fixed\n### t\n- file: a.py:1\n- confidence: 7\n")
+    assert "confidence" not in doc["autofixes"][0]
+    assert len(doc["warnings"]) == 1
+
+
+def test_confidence_is_printed_beside_the_title_by_check(tmp_path, capsys):
+    """`--check` is what the agent runs before committing, so it is where a confidence it
+    did not mean to write — or forgot to — has to be visible."""
+    _write(tmp_path, "## Assumptions\n### The reading I chose\n- file: a.py:1\n"
+                     "- confidence: 0.4\n")
+    assert rp.main(["--root", str(tmp_path), "--check"]) == 0
+    out = capsys.readouterr().out
+    assert "The reading I chose" in out
+    assert "confidence 0.4" in out
+
+
+def test_confidence_survives_into_the_json_the_build_reads(tmp_path):
+    _write(tmp_path, FULL)
+    assert rp.main(["--root", str(tmp_path)]) == 0
+    data = json.loads((tmp_path / ".human-review" / "review-points.json")
+                      .read_text(encoding="utf-8"))
+    assert data["assumptions"][0]["confidence"] == 0.85
+
+
+def test_the_reference_documents_the_confidence_scale():
+    """The scale is the whole field: a number with no agreed meaning is a number every
+    agent picks differently, and the page would be averaging apples."""
+    doc = (HERE.parent / "reference" / "review-points.md").read_text(encoding="utf-8")
+    assert "- confidence: 0.85" in doc, "the format example has to show it"
+    for phrase in ("the ticket left no other reading", "coin flip", "expects to be "
+                   "corrected"):
+        assert phrase in doc
+
 
 
 # --------------------------------------------------------------------------- #

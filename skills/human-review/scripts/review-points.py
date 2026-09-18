@@ -7,7 +7,10 @@ the transcript and `review-passes.py` harvests them. What it could never show is
 agent did with them — which finding it accepted, which it read and declined, and on what
 grounds — because that decision is made in a conversation and then lost. Nor could it show
 the readings the agent chose where the ticket was ambiguous, which are not in the diff at
-all and are not findings: nobody found them, somebody decided them.
+all and are not findings: nobody found them, somebody decided them. Each of those carries
+an optional `confidence:` — how sure the agent is that the reading it chose is the right
+one — because "I decided this" and "I decided this and I may well be wrong" send a reviewer
+to two different places, and only the agent that decided it can tell them apart.
 
 `review-points.md` is that record, written by the agent while it still has it, committed
 with the fixes, and therefore visible in the PR's own file list. This script turns it into
@@ -59,8 +62,13 @@ SECTIONS = {
 }
 PILE_HEADING = {"autofixes": "Fixed", "findings": "Ignored", "assumptions": "Assumptions"}
 
-FIELDS = {"file", "source", "severity", "alternative", "why", "fixed-in"}
+FIELDS = {"file", "source", "severity", "alternative", "why", "fixed-in", "confidence"}
 SEVERITIES = {"high", "medium", "low", "info"}
+# How sure the agent is that the reading it chose is the right one. Only an assumption
+# can carry it: 1.0 = the ticket left no other reading, 0.5 = a coin flip between two,
+# below 0.3 = the author expects to be corrected. Two decimals, because the third would
+# claim a precision nobody has about their own guess.
+CONFIDENCE_DECIMALS = 2
 
 H2 = re.compile(r"^##\s+(.*?)\s*#*\s*$")
 H3 = re.compile(r"^###\s+(.*?)\s*#*\s*$")
@@ -145,7 +153,7 @@ def split_ref(value: str) -> tuple[str, str | None]:
 
 
 def build_item(title: str, fields: list[tuple[str, str]], body: str, pile: str,
-               front: dict, problems: list[str], where: int) -> dict:
+               front: dict, problems: list[str], warnings: list[str], where: int) -> dict:
     """One `### …` block as the renderer wants it.
 
     `refs` and `snippets` both come from `file:` — a ref that names lines earns a card, a
@@ -193,6 +201,33 @@ def build_item(title: str, fields: list[tuple[str, str]], body: str, pile: str,
                                 f"one of {', '.join(sorted(SEVERITIES))}")
             else:
                 item["severity"] = sev
+        elif key == "confidence":
+            # The mirror image of `severity:`: severity ranks a defect and is refused on an
+            # assumption, confidence rates a *reading* and is meaningless anywhere else.
+            # Refused there only with a warning, though, not fatally — a stray confidence on
+            # a fix is a misplaced field, while a severity on an assumption is a category
+            # error that would put a defect's rank on a decision the reader must confirm.
+            raw = value.strip()
+            if pile != "assumptions":
+                warnings.append(
+                    f"{PILE_HEADING[pile]}: {title[:60]!r} (line {where}) carries "
+                    f"`confidence: {raw}` — only an assumption has a reading to be unsure "
+                    "about; a fix is either in the diff or it is not. Ignored.")
+                continue
+            try:
+                number = float(raw)
+            except ValueError:
+                problems.append(f"line {where}: {title[:40]!r} has confidence {raw!r} — "
+                                "confidence is a number between 0 and 1 (1.0 = the ticket "
+                                "left no other reading, 0.5 = a coin flip between two, "
+                                "below 0.3 = you expect to be corrected)")
+                continue
+            if not 0.0 <= number <= 1.0:
+                problems.append(f"line {where}: {title[:40]!r} has confidence {raw} — "
+                                "confidence is a number between 0 and 1; there is no being "
+                                "surer than certain, and no being less sure than not")
+                continue
+            item["confidence"] = round(number, CONFIDENCE_DECIMALS)
         elif key == "fixed-in":
             fixed_in = value.strip()
         else:
@@ -240,6 +275,7 @@ def parse(text: str) -> dict:
     """The whole file. Raises `Unparseable` with every problem, not just the first."""
     lines = text.splitlines()
     problems: list[str] = []
+    warnings: list[str] = []
     front, start = parse_front(lines, problems)
 
     piles: dict[str, list[dict]] = {"findings": [], "autofixes": [], "assumptions": []}
@@ -256,7 +292,7 @@ def parse(text: str) -> dict:
         nonlocal title, fields, body, in_body
         if title is not None and pile is not None:
             piles[pile].append(build_item(title, fields, "\n".join(body), pile, front,
-                                          problems, at))
+                                          problems, warnings, at))
         title, fields, body, in_body = None, [], [], False
 
     for n in range(start, len(lines)):
@@ -342,7 +378,7 @@ def parse(text: str) -> dict:
     if problems:
         raise Unparseable(problems)
 
-    return {"front": front, "piles": piles,
+    return {"front": front, "piles": piles, "warnings": warnings,
             "sections": {PILE_HEADING[k]: v for k, v in seen_sections.items()}}
 
 
@@ -393,7 +429,10 @@ def document(path: Path, rel: str) -> dict:
     parsed = parse(path.read_text(encoding="utf-8", errors="replace"))
     piles = parsed["piles"]
     total = sum(len(v) for v in piles.values())
-    dropped, warnings = drop_unanchored(piles)
+    dropped, unanchored = drop_unanchored(piles)
+    # Field warnings first: they name a line the author can still go and fix, whereas the
+    # anchoring ones name an item that is already gone from the page.
+    warnings = parsed["warnings"] + unanchored
     kept = sum(len(v) for v in piles.values())
     front = parsed["front"]
     # Read before the bookkeeping keys are stripped: `fixed_in` is derived from the items'
@@ -440,6 +479,8 @@ def report(doc: dict, out: Path, write: bool) -> None:
                 marks.append(f"{len(item['diffs'])} diff")
             if item.get("severity"):
                 marks.append(item["severity"])
+            if "confidence" in item:
+                marks.append(f"confidence {item['confidence']:g}")
             if item.get("source"):
                 marks.append(f"from {item['source']}")
             print(f"      · {re.sub('<[^>]+>', '', item['title'])[:70]}"

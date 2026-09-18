@@ -52,6 +52,7 @@ leave it unassigned.
 ### @Transactional went on the public endpoints, not on bookVisit
 - file: petclinic-backend/src/main/java/victor/training/VisitRestController.java:62-68
 - alternative: annotate `bookVisit` as the ticket asked — a silent no-op
+- confidence: 0.85
 - why: Spring AOP ignores self-invoked private methods.
 The ticket named the inner method; the annotation only does anything on the
 two callers, so that is where it went.
@@ -105,6 +106,7 @@ fields.
 | `severity:` | no | `severity` — `high\|medium\|low\|info`. Defaults to `info` in `Ignored`; **rejected outright on an assumption**, which is not a defect and must not be ranked as one |
 | `alternative:` | no | `alternative` — the reading that was *not* taken. What makes an assumption checkable at a glance |
 | `why:` | no | `why` — the reason to decline, or the reason the reading was chosen |
+| `confidence:` | no | `confidence` — how sure the agent is the reading it chose is the right one, a number in `[0, 1]`. **Assumptions only**; on `Fixed` or `Ignored` it is ignored with a warning |
 | `fixed-in:` | no | `diffs[]`, one per `file:`, based at the frontmatter's `implementation`. `fixed-in: HEAD` leaves the head side as the working tree, which keeps the editor link; any other value pins both sides |
 
 An unknown field key is an error too. `- fille:` typed once would otherwise drop a ref, and
@@ -127,6 +129,34 @@ Bodies may carry the same inline tokens as any other body on the page:
 Backticked spans become `<code>`; everything else is escaped, so a stray `<` in prose cannot
 reach the page as markup.
 
+### Confidence, on an assumption
+
+`- confidence: 0.85` is how sure the agent is that the reading it chose is the correct one.
+A number in `[0, 1]`, at most two decimals. Optional, so every file written before it
+existed still parses — but **write it**: an assumption without one tells the reviewer a
+decision was made and nothing about whether to go and check it, which is the only question
+they are reading the pile to answer.
+
+| value | what it claims |
+| --- | --- |
+| `1.0` | the ticket left no other reading |
+| `0.5` | a coin flip between two readings |
+| below `0.3` | the author expects to be corrected |
+
+It is emitted as a JSON number, `confidence`, on the assumption's item — absent when the
+field is, never defaulted. A defaulted confidence would be the page inventing a number on
+the agent's behalf, on exactly the question the agent was the only one able to answer.
+
+**Only assumptions carry it.** `Fixed` and `Ignored` are not readings to be unsure about —
+a fix is in the diff or it is not — so a `confidence:` there is ignored, with a warning
+naming the item. That is deliberately softer than `severity:` on an assumption, which is
+fatal: a misplaced confidence is a field in the wrong pile, while ranking a decision the
+reader is being asked to confirm as though it were a defect is a category error.
+
+A value outside `[0, 1]`, or one that is not a number, is a hard error (exit 4) naming the
+line — there is no being surer than certain, and a typo'd `0.95` that read as `95` would
+otherwise reach the page as a confidence nobody has.
+
 ### The anchoring rule
 
 **An item with no `file:`, no snippet and no diff is dropped, with a warning naming it.**
@@ -148,7 +178,7 @@ review-points.py --root ../petclinic --file docs/review-points.md --out /tmp/rp.
 | --- | --- |
 | 0 | parsed |
 | 3 | no such file — nobody recorded what was reviewed on this branch |
-| 4 | present and unparseable: an unknown H2, an unknown field, a field after the prose, a duplicate section, no section at all |
+| 4 | present and unparseable: an unknown H2, an unknown field, a field after the prose, a duplicate section, a `confidence:` that is not a number in `[0, 1]`, no section at all |
 | 5 | present, parsed, and **every** item was unanchored — which is a file that says nothing, reported as such rather than as an empty review |
 
 Exit 3 and exit 5 are distinct on purpose. "Nobody wrote one" and "somebody wrote one with

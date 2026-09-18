@@ -15,11 +15,28 @@ Implement the ticket you were given, then record the review of your own work.
                    after a five-agent review is not credible; if you accepted everything,
                    say so in one line.
      Assumptions — what you decided that the ticket did not. Not defects: the readings
-                   you chose, each with the reading you did not take under `alternative:`.
+                   you chose, each with the reading you did not take under `alternative:`
+                   and a `confidence:` for how sure you are that yours is the right one.
                    This is the only section nobody else can write, because it is not in
                    the diff.
    Every entry names a file:line. An unanchored entry is dropped by the build.
    Check it parses before you commit:  review-points.py --check
+
+   `confidence:` — a number in [0, 1] on every assumption, two decimals at most:
+
+       1.0         the ticket left no other reading
+       0.5         a coin flip between two readings
+       below 0.3   you expect to be corrected
+
+   The number is rendered to the reviewer beside the word "assumption", and it is what
+   decides where they spend their attention — so it has to be what you actually think,
+   not what is comfortable to hand over. **0.9 on everything is a lie the page will
+   show**: a pile of assumptions that are all nearly certain reads as an agent that
+   never noticed it was guessing, and the one reading you were genuinely unsure about
+   becomes indistinguishable from the six you were not. If a call was close, write 0.5
+   and let the reviewer go and look. Being told where to look is the entire point of
+   the section; a flat 0.9 tells them nothing and costs you nothing, which is exactly
+   what makes it worthless.
 5. Commit the fixes and review-points.md together.
    The last lines you write in the message are:
        Review-Points: review-points.md

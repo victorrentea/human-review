@@ -11,12 +11,21 @@ happened; this one is what happens. It exists because the most valuable thing a 
 agent knows about its own change is the part that never reaches the diff:
 
 * which review findings it accepted, and which it read and **declined** — and why;
-* which reading of an ambiguous ticket it **chose**, and which reading it did not take.
+* which reading of an ambiguous ticket it **chose**, which reading it did not take, and
+  **how sure it is** that it chose right.
 
-Both live in a conversation and die with it. `review-points.md` is where they are written
-down instead, at the repository root, committed with the fixes — so a reviewer sees the
-artifact arrive in the PR's own file list rather than taking a generated page's word for
-it. The page then renders it; it does not invent it.
+That last number — `confidence:`, in `[0, 1]` — is the cheapest thing on the page and the
+one nothing else can supply: a reviewer with an hour and eleven assumptions needs to know
+which three were close calls, and only the agent that made them knows. It is honest or it
+is noise, which is why `prompt.md` says so in as many words: *0.9 on everything is a lie
+the page will show.* The scale is fixed so the numbers mean the same thing across runs —
+`1.0` the ticket left no other reading, `0.5` a coin flip, below `0.3` expecting to be
+corrected — and it is refused outside that range rather than clamped.
+
+All of it lives in a conversation and dies with it. `review-points.md` is where it is
+written down instead, at the repository root, committed with the fixes — so a reviewer
+sees the artifact arrive in the PR's own file list rather than taking a generated page's
+word for it. The page then renders it; it does not invent it.
 
 ## One text, two entry points
 
