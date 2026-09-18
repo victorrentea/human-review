@@ -126,8 +126,8 @@ from hrbuild.tabs.review import (
     resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_value,
     SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
     _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source,
-    _LEDE_SHOWN, _LIST_OFFSET, _open_list, _pile_anchor, _raised_by, _ref_link,
-    _regenerate_offer, _score_target, _tooling_commit_shas, _tooling_fold_html
+    _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
+    _ref_link, _regenerate_offer, _score_target, _tooling_commit_shas, _tooling_fold_html
 )
 from hrbuild.tabs.sequence import (
     CODE_BADGE, FILE_PAGE, FILE_PENCIL, FILE_PLUS, render_testpairs, SEQ_ARROW, SEQ_DECL,

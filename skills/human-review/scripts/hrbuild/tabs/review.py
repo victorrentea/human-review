@@ -808,6 +808,21 @@ def _tooling_commit_shas(root: Path, base_ref: str | None, shas: list[str]) -> s
     on the base, which is what `git cherry` is answering in the first place — the two are
     complementary, not redundant.
 
+    **Asked once per commit, not once for the branch.** `git cherry <base> <head>` is a
+    *symmetric* difference: it patch-ids `base..head` on one side and `head..base` on the
+    other, and reports `-` only for a pair that matches across the two. The moment the
+    branch merges the base — which is exactly what a branch that also cherry-picks tooling
+    does, and what `CLAUDE.md` tells this project to do — `head..base` empties out, because
+    the base's commits are now reachable from the head. There is nothing left on the right
+    to match against, so every pick comes back `+`. On the demo branch that reported 2
+    tooling commits where 8 had been picked: the six it missed were all older than the
+    first `Merge main`.
+
+    Per commit the window is the honest one again: `<sha>..<base>` is everything the base
+    grew that this particular commit cannot see, which is where a commit copied off the
+    base actually lives. One `git cherry` per commit, and on a twenty-commit branch the
+    whole loop is well under a second — the band is built once per page.
+
     Best-effort, and silent about it: a repository this cannot ask (no `base_ref`, a
     shallow clone, `git` missing) reports every commit as the branch's own rather than
     guessing, because a tooling commit wrongly kept in the list a reader can filter with
@@ -815,15 +830,17 @@ def _tooling_commit_shas(root: Path, base_ref: str | None, shas: list[str]) -> s
     if not shas or not base_ref:
         return set()
     tooling: set[str] = set()
-    cherry = subprocess.run(["git", "cherry", base_ref, shas[-1]], cwd=root,
-                             capture_output=True, text=True)
-    if cherry.returncode == 0:
-        wanted = set(shas)
-        for line in cherry.stdout.splitlines():
-            marker, _, sha = line.strip().partition(" ")
-            if marker == "-" and sha in wanted:
-                tooling.add(sha)
     for sha in shas:
+        cherry = subprocess.run(["git", "cherry", base_ref, sha], cwd=root,
+                                capture_output=True, text=True)
+        if cherry.returncode == 0:
+            for line in cherry.stdout.splitlines():
+                marker, _, listed = line.strip().partition(" ")
+                # Its own line, not the whole range: `base..sha` ends at `sha` but also
+                # holds every branch commit before it, and those are answered by their
+                # own pass with their own window.
+                if listed == sha and marker == "-":
+                    tooling.add(sha)
         if sha in tooling:
             continue
         anc = subprocess.run(["git", "merge-base", "--is-ancestor", sha, base_ref],
@@ -831,6 +848,28 @@ def _tooling_commit_shas(root: Path, base_ref: str | None, shas: list[str]) -> s
         if anc.returncode == 0:
             tooling.add(sha)
     return tooling
+
+
+def _merge_seam_shas(root: Path, shas: list[str]) -> set[str]:
+    """The merge commits among these, which the band drops rather than lists.
+
+    A `Merge main: …` commit has no patch of its own — `git show` on it is empty — so it
+    can be neither a cherry-pick (`git cherry` refuses to patch-id a merge and leaves it
+    out of its output entirely) nor an ancestor of the base (the merge itself was made on
+    the branch). It falls through both tests in `_tooling_commit_shas` and lands in the
+    branch's own list, where it reads as a commit that changed nothing.
+
+    Everything it brought is already on the list beside it, commit by commit, folded as
+    tooling. The seam itself is the one row that says nothing a reader can act on, so it
+    does not get a row. Merges only: an ordinary commit with an empty file list is a
+    person having committed nothing, which is worth seeing."""
+    if not shas:
+        return set()
+    out = subprocess.run(["git", "rev-list", "--merges", "--no-walk", *shas],
+                         cwd=root, capture_output=True, text=True)
+    if out.returncode != 0:
+        return set()
+    return {line.strip() for line in out.stdout.splitlines() if line.strip()}
 
 
 def _code_totals(commits: list[dict]) -> dict:
@@ -884,7 +923,9 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
     `base_ref` splits the commits a second way, orthogonal to generated/not: a tooling
     cherry-pick from `main` (see `_tooling_commit_shas`) is folded into one grey row and
     left out of every count in the headline, because it is not a change to this review —
-    it is `main` arriving, the way `CLAUDE.md`'s own workflow says it should.
+    it is `main` arriving, the way `CLAUDE.md`'s own workflow says it should. The merge
+    commits that brought it are dropped outright (see `_merge_seam_shas`): they carry no
+    patch, so they belong to neither half of that split.
     """
     try:
         doc = json.loads((out_dir / AFTERMATH_JSON).read_text(encoding="utf-8"))
@@ -894,6 +935,14 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
         # band here would be the page asserting the one thing it does not know.
         return ""
     commits = doc.get("commits") or []
+    if not commits:
+        return ""
+    # The seams first: a merge that brought the base in is not a commit this band has
+    # anything to say about, and leaving it in makes both halves of the split wrong — it
+    # is not tooling (it was made here) and it is not the branch's own work (it carries no
+    # patch), so it inflates whichever list it falls into.
+    seams = _merge_seam_shas(root, [c["sha"] for c in commits if c.get("sha")])
+    commits = [c for c in commits if c.get("sha") not in seams]
     if not commits:
         return ""
     tooling_shas = _tooling_commit_shas(

@@ -3012,6 +3012,86 @@ def test_a_merged_ancestor_commit_is_told_apart_too(tmp_path):
     assert own_sha not in tooling
 
 
+def _picked_then_merged_repo(tmp_path):
+    """The shape the demo branch is actually in, and the one that broke the fold: a pick
+    off `main`, *then* a merge of `main`, then the branch's own work. Returns
+    `(repo, early_pick_sha, late_pick_sha, own_sha)`."""
+    repo = _tooling_repo(tmp_path)
+    # One on main, picked onto the feature before anything is merged.
+    (repo / "EARLY.md").write_text("early guardrail\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "chore: early tooling on main")
+    early_on_main = _tgit(repo, "rev-parse", "HEAD")
+    _tgit(repo, "checkout", "-q", "feature")
+    _tgit(repo, "cherry-pick", early_on_main)
+    early_pick = _tgit(repo, "rev-parse", "HEAD")
+    # main moves again, and the feature takes it as a merge rather than a pick.
+    _tgit(repo, "checkout", "-q", "main")
+    (repo / "MID.md").write_text("mid\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "chore: mid tooling on main")
+    _tgit(repo, "checkout", "-q", "feature")
+    _tgit(repo, "merge", "-q", "--no-ff", "-m", "Merge main: mid tooling", "main")
+    # And one more pick, after the merge.
+    _tgit(repo, "checkout", "-q", "main")
+    (repo / "LATE.md").write_text("late guardrail\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "chore: late tooling on main")
+    late_on_main = _tgit(repo, "rev-parse", "HEAD")
+    _tgit(repo, "checkout", "-q", "feature")
+    _tgit(repo, "cherry-pick", late_on_main)
+    late_pick = _tgit(repo, "rev-parse", "HEAD")
+    (repo / "feature.txt").write_text("mine\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "feat: my own change")
+    return repo, early_pick, late_pick, _tgit(repo, "rev-parse", "HEAD")
+
+
+def test_a_pick_made_before_the_branch_merged_the_base_is_still_tooling(tmp_path):
+    """The bug the demo branch showed: 8 commits picked off `main`, 2 recognised.
+
+    `git cherry <base> <head>` is a symmetric difference — it matches `base..head`
+    against `head..base` — and a branch that has merged the base has emptied the right
+    half, because the base's commits are now reachable from the head. Every pick older
+    than the first merge came back `+`. Asked per commit, the window is `<sha>..<base>`,
+    which is the base's history that *this* commit cannot see, and the match is there.
+    """
+    repo, early_pick, late_pick, own_sha = _picked_then_merged_repo(tmp_path)
+    tooling = build._tooling_commit_shas(repo, "main", [early_pick, late_pick, own_sha])
+    assert early_pick in tooling, "picked before the merge, and folded all the same"
+    assert late_pick in tooling
+    assert own_sha not in tooling
+
+
+def test_the_merge_that_brought_the_base_in_is_not_a_commit_of_its_own(tmp_path):
+    """It carries no patch, so it is neither a pick nor an ancestor of the base and falls
+    through both tests — landing in the branch's own list as a row that changed nothing.
+    Everything it brought is already listed beside it, folded."""
+    repo, early_pick, late_pick, own_sha = _picked_then_merged_repo(tmp_path)
+    merge_sha = _tgit(repo, "rev-list", "--merges", "-n", "1", "feature")
+    assert build._merge_seam_shas(repo, [merge_sha, own_sha]) == {merge_sha}
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    def entry(sha, subject, path):
+        return {"sha": sha, "short": sha[:8], "when": "2026-01-01T00:00:00+00:00",
+                "subject": subject, "added": 1, "deleted": 0,
+                "files": ([{"path": path, "added": 1, "deleted": 0, "binary": False,
+                            "generated": False}] if path else []),
+                "generated_only": False, "measured": True}
+    (out_dir / build.AFTERMATH_JSON).write_text(json.dumps({
+        "review": "deadbeef", "review_short": "deadbee", "head": own_sha,
+        "commits": [entry(early_pick, "chore: early tooling on main", "EARLY.md"),
+                    entry(merge_sha, "Merge main: mid tooling", None),
+                    entry(late_pick, "chore: late tooling on main", "LATE.md"),
+                    entry(own_sha, "feat: my own change", "feature.txt")]}),
+        encoding="utf-8")
+    out = build.aftermath_html(out_dir, repo, base_ref="main")
+    assert "2 tooling commits merged from main" in out, \
+        "both picks, and the merge counted in neither half"
+    assert "Merge main: mid tooling" not in out
+    assert "1 commit, 1 line changed since the agent finished" in out
+
+
 def test_no_base_ref_folds_nothing(tmp_path):
     """Best-effort: nothing to ask means every commit stays the branch's own rather than
     a guess — a tooling commit left in the list is a smaller lie than a branch commit
