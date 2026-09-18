@@ -4036,6 +4036,67 @@ def test_an_excerpt_quoting_two_scenarios_goes_under_both(tmp_path):
     quoted = build._share_excerpts(
         rel, [(p, None) for p in pumls], [{"ref": f"{rel}:35-48,52-65"}], set(), tmp_path)
     assert quoted[pumls[0]] and quoted[pumls[1]]
+    # …but each side quotes ITS OWN range: the content file already split them.
+    assert quoted[pumls[0]][0]["ref"] == f"{rel}:35-48"
+    assert quoted[pumls[1]][0]["ref"] == f"{rel}:52-65"
+
+
+def test_a_shared_excerpt_is_cut_so_each_pair_quotes_its_own_test(tmp_path):
+    """`add-visit.spec.ts` holds two tagged Playwright tests, at 34 and at 51, and one
+    excerpt in the content file quotes both. Handed whole to both pairs, the vet's
+    diagram — the one this PR is about — sat beside the *other* scenario's code, both
+    "Show Test" folds opening on `test('Add a visit to an existing pet…'` at 34. The
+    generator's own title handle says which line each picture was drawn from, so the
+    excerpt is cut at the next declaration and each pair gets its own test."""
+    rel = "test/add-visit.spec.ts"
+    (tmp_path / "test").mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_text("x\n" * 70, encoding="utf-8")
+    pumls = []
+    for slug, line in (("to-an-existing-pet", 34), ("attended-by-a-vet", 51)):
+        puml = f"{rel}.{slug}.genseq.puml"
+        (tmp_path / puml).write_text(
+            f"@startuml\ntitle [[src://{rel}:{line}{{t}} {slug}]]\nA -> B: x\n@enduml\n",
+            encoding="utf-8")
+        pumls.append(puml)
+    entries = [(p, None) for p in pumls]
+
+    # One range swallowing both declarations is cut at the second one.
+    one = build._share_excerpts(rel, entries, [{"ref": f"{rel}:30-64"}], set(), tmp_path)
+    assert one[pumls[0]][0]["ref"] == f"{rel}:30-50"
+    assert one[pumls[1]][0]["ref"] == f"{rel}:51-64"
+
+    # Two ranges, one per test: the comment on 49-50 that introduces the vet test is
+    # inside the second range, so it travels with the vet test and not with the first.
+    two = build._share_excerpts(rel, entries, [{"ref": f"{rel}:34-47,49-64"}], set(), tmp_path)
+    assert two[pumls[0]][0]["ref"] == f"{rel}:34-47"
+    assert two[pumls[1]][0]["ref"] == f"{rel}:49-64"
+
+    # A range with no declaration in it is shared setup, and stays under both.
+    both = build._share_excerpts(
+        rel, entries, [{"ref": f"{rel}:1-10,34-47,49-64"}], set(), tmp_path)
+    assert both[pumls[0]][0]["ref"] == f"{rel}:1-10,34-47"
+    assert both[pumls[1]][0]["ref"] == f"{rel}:1-10,49-64"
+
+    # The content file's own dict is never edited: the same object is handed to both.
+    original = {"ref": f"{rel}:34-64", "caption": "the two tests"}
+    cut = build._share_excerpts(rel, entries, [original], set(), tmp_path)
+    assert original["ref"] == f"{rel}:34-64"
+    assert cut[pumls[1]][0]["caption"] == "the two tests", "the caption rides along"
+
+
+def test_an_excerpt_with_one_owner_is_passed_through_untouched(tmp_path):
+    """A file with one picture per excerpt must go through the cutting byte for byte —
+    the same dict object, not a copy with a rebuilt ref."""
+    rel = "test/one.feature"
+    (tmp_path / "test").mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_text("x\n" * 40, encoding="utf-8")
+    puml = f"{rel}.only.genseq.puml"
+    (tmp_path / puml).write_text(
+        f"@startuml\ntitle [[src://{rel}:10{{t}} only]]\nA -> B: x\n@enduml\n",
+        encoding="utf-8")
+    snippet = {"ref": f"{rel}:8-14"}
+    quoted = build._share_excerpts(rel, [(puml, None)], [snippet], set(), tmp_path)
+    assert quoted[puml][0] is snippet
 
 
 def test_the_scenario_handle_is_read_from_the_title_and_from_a_divider(tmp_path):

@@ -132,8 +132,9 @@ from hrbuild.tabs.review import (
 from hrbuild.tabs.sequence import (
     CODE_BADGE, FILE_PAGE, FILE_PENCIL, FILE_PLUS, render_testpairs, SEQ_ARROW, SEQ_DECL,
     SEQ_UI_DRIVERS, SRCBAR, STALE, TEST_CATS, TEST_RUNNERS, _badge_as_glyph, _cat_chip,
-    _fold_over, _folded_pair, _line_spans, _moved_since_base, _pair_cat, _pair_runner,
-    _scenarios_drawn, _share_excerpts, _stale_sequence, _unchanged_sequence, _unquoted_note
+    _fold_over, _folded_pair, _line_spans, _moved_since_base, _narrowed, _pair_cat,
+    _pair_runner, _scenario_extents, _scenarios_drawn, _share_excerpts, _spans_for,
+    _stale_sequence, _unchanged_sequence, _unquoted_note
 )
 from hrbuild.tabs.tests import (
     LEDGER_TAB, render_requirements, render_test_ledger, render_tests, render_traces,

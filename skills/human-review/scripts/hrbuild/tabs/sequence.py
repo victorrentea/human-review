@@ -343,10 +343,11 @@ def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
     the first picture, where a reader meets it before the scenarios that use it.
 
     One excerpt often quotes two scenarios at once (`35-48,52-65` is one snippet in the
-    content file, not two), and then it goes under *both*. The alternative is to pick one
-    and leave the other pair claiming its test is "not excerpted here", which is false —
-    and the pairs are folded shut, so a block quoted twice costs the reader nothing until
-    they ask for it.
+    content file, not two), and then it goes under *both* — but narrowed, each pair
+    getting only its own scenario's lines. Whole, both pairs quoted `34-64` and both
+    opened on the test declared at 34, so the vet's diagram sat beside the other
+    scenario's code; and picking one owner instead leaves the other pair claiming its test
+    is "not excerpted here", which is false. `_spans_for` does the cutting.
 
     The excerpts come back as they went in, unrendered: which excerpt belongs to which
     picture is the decision this function exists to make, and it is one a test can check
@@ -357,14 +358,87 @@ def _share_excerpts(test_rel: str, entries, snippets, used: set, root: Path):
     quoted = {rel: [] for rel, _ in entries}
     lines_of = {rel: [ln for ln, _ in _scenarios_drawn(rel, test_rel, root)]
                 for rel, _ in entries}
+    extents = _scenario_extents(lines_of)
     first = entries[0][0]
     for x in mine:
         spans = _line_spans(x["ref"].rpartition(":")[2])
         owners = [rel for rel, _ in entries
                   if any(lo <= ln <= hi for lo, hi in spans for ln in lines_of[rel])]
+        if len(owners) > 1:
+            for owner in owners:
+                quoted[owner].append(_narrowed(x, test_rel,
+                                               _spans_for(spans, owner, lines_of, extents)))
+            continue
         for owner in (owners or [first]):
             quoted[owner].append(x)
     return quoted
+
+
+def _scenario_extents(lines_of: dict[str, list[int]]) -> dict[str, list[tuple[int, int]]]:
+    """Where each picture's scenario stops, in the test file: the line before the next
+    scenario starts — whosever it is.
+
+    A test file gives away where a scenario BEGINS and never where it ends: the generator
+    records the declaration line, and nothing records the closing brace. The next
+    declaration is the only end the page can know, and it is the right one — everything
+    between two scenarios is either the first one's body or the second one's lede, and
+    which of the two it is, is settled per span by `_spans_for` rather than guessed here.
+    The last scenario runs to the end of the file, which is what a helper below it is
+    part of as far as a reader scrolling the quote is concerned. The first one runs back
+    to line 1 for the same reason and the one `_share_excerpts` already states: whatever
+    stands above the first scenario belongs to nobody in particular and is met under the
+    first picture."""
+    marks = sorted((ln, rel) for rel, lines in lines_of.items() for ln in lines)
+    extents: dict[str, list[tuple[int, int]]] = {rel: [] for rel in lines_of}
+    for i, (line, rel) in enumerate(marks):
+        end = marks[i + 1][0] - 1 if i + 1 < len(marks) else 10 ** 9
+        extents[rel].append((1 if i == 0 else line, end))
+    return extents
+
+
+def _spans_for(spans, owner: str, lines_of, extents) -> list[tuple[int, int]]:
+    """The part of a shared excerpt that is this picture's own test.
+
+    An excerpt that quotes two tagged tests of one file used to go to both pairs whole, so
+    both quoted `34-64` and both opened on the test declared at 34 — the vet's diagram
+    sitting beside the other scenario's code, which is the one mistake this tab exists to
+    prevent. The excerpt is still shared (the alternative is a pair claiming its test is
+    "not excerpted here", which is false), but each side is handed only the lines that are
+    its own.
+
+    Per RANGE first, because the content file already draws the line: `34-47,49-64` is two
+    ranges around two tests, and the comment on 49-50 that introduces the second one
+    travels with it. Only a range that swallows several declarations is cut, and then at
+    the next declaration — see `_scenario_extents`. A range holding no declaration at all
+    (imports, a Background, a helper) goes to every picture: it is setup both scenarios
+    run through, and dropping it from all but one would quote a test without the fixture
+    it stands on."""
+    mine: list[tuple[int, int]] = []
+    for lo, hi in spans:
+        inside = [rel for rel in lines_of
+                  if any(lo <= ln <= hi for ln in lines_of[rel])]
+        if not inside:
+            mine.append((lo, hi))
+        elif inside == [owner]:
+            mine.append((lo, hi))
+        elif owner in inside:
+            mine += [(max(lo, a), min(hi, b)) for a, b in extents[owner]
+                     if max(lo, a) <= min(hi, b)]
+    return sorted(mine)
+
+
+def _narrowed(snippet: dict, test_rel: str, spans) -> dict:
+    """The same excerpt, quoting only the lines `_spans_for` left to this pair.
+
+    A copy, never an edit: the snippet dicts belong to the content file and the same one
+    is handed to both pairs. An unchanged set of ranges returns the original object, so a
+    file with one picture per excerpt goes through this function byte for byte."""
+    if not spans:
+        return snippet
+    tail = ",".join(str(lo) if lo == hi else f"{lo}-{hi}" for lo, hi in spans)
+    if tail == snippet["ref"].rpartition(":")[2]:
+        return snippet
+    return {**snippet, "ref": f"{test_rel}:{tail}"}
 
 
 def _unquoted_note(test_rel: str, root: Path) -> str:
