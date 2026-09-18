@@ -41,6 +41,7 @@ import re
 import shlex
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -1130,10 +1131,20 @@ def _prereq(spec, ctx: Ctx) -> str | None:
 
 
 def run_step(name, tabs, label, prereq, fn, ctx: Ctx) -> dict:
+    """One step, timed. `seconds` is on every row, including the skipped ones.
+
+    A skipped row's time is not noise: half the prerequisites shell out to git (`has_java`,
+    `has_genseq`) or open a socket (`answers`), and a prerequisite that takes two seconds to
+    say "no" costs exactly as much as one that takes two seconds to say "yes". Without the
+    number on the row, the only place that cost could be seen was the wall clock of the
+    whole run, which is where it hid for a year.
+    """
+    t0 = time.monotonic()
     reason = _prereq(prereq, ctx)
     if reason:
         print(f"  - {name}: skipped ({reason})")
-        return {"step": name, "tabs": tabs, "status": SKIPPED, "reason": reason}
+        return {"step": name, "tabs": tabs, "status": SKIPPED, "reason": reason,
+                "seconds": round(time.monotonic() - t0, 2)}
 
     handle = Path(f".human-review/.step-{name}")
     idx = None
@@ -1159,6 +1170,7 @@ def run_step(name, tabs, label, prereq, fn, ctx: Ctx) -> dict:
         if idx:
             subprocess.run([sys.executable, str(LEDGER), "end", idx], check=False)
     return {"step": name, "tabs": tabs, "status": status, "reason": reason,
+            "seconds": round(time.monotonic() - t0, 2),
             "notes": ctx.notes[before:]}
 
 
@@ -1181,6 +1193,8 @@ def main(argv=None) -> int:
     ap.add_argument("--list", action="store_true", help="list the steps and stop")
     ap.add_argument("--dry-run", action="store_true", help="echo the commands, run nothing")
     ap.add_argument("--json", action="store_true", help="emit the status table as JSON")
+    ap.add_argument("--timing", action="store_true",
+                    help="print what each step cost, slowest first, after the status table")
     args = ap.parse_args(argv)
 
     if args.list:
@@ -1216,7 +1230,29 @@ def main(argv=None) -> int:
         if dropped:
             print(f"\n  tabs with no content, to be named under the strip: "
                   f"{', '.join(sorted(set(dropped)))}")
+    if args.timing:
+        print_timing(results)
     return 1 if any(r["status"] == FAILED for r in results) else 0
+
+
+def print_timing(results: list[dict], out=None) -> None:
+    """The steps by what they cost, slowest first, with the share of the run each took.
+
+    Sorted by time rather than by the order they ran in, because the question this answers
+    is never "what happened" — the status table above already says that — but "what do I
+    fix first". The total is the sum of the rows, not the wall clock of the process: the
+    difference between the two is the runner's own overhead, and if it ever grows into
+    something worth seeing, it should be a row and not a rounding error.
+    """
+    out = out or sys.stdout
+    rows = sorted(results, key=lambda r: -(r.get("seconds") or 0))
+    total = sum(r.get("seconds") or 0 for r in rows)
+    print("\n  step         seconds   share  status", file=out)
+    for r in rows:
+        secs = r.get("seconds") or 0
+        share = (secs / total * 100) if total else 0
+        print(f"  {r['step']:<12} {secs:7.2f}  {share:5.1f}%  {r['status']}", file=out)
+    print(f"  {'TOTAL':<12} {total:7.2f}  100.0%", file=out)
 
 
 if __name__ == "__main__":

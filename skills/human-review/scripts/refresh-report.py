@@ -42,6 +42,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -179,7 +180,7 @@ def steps_argv(steps: str) -> list[str] | None:
 
 
 def plan(review: Path, steps: str, base: str | None, serve: bool,
-         allow_model: bool, session: str | None) -> list[list[str]]:
+         allow_model: bool, session: str | None, timing: bool = False) -> list[list[str]]:
     """Every command this run will make, in order, as argv lists.
 
     Built as data so the decisions above are testable without running a browser, a build or
@@ -188,7 +189,8 @@ def plan(review: Path, steps: str, base: str | None, serve: bool,
     produce = steps_argv(steps)
     if produce is not None:
         out.append([sys.executable, str(RUN_STEPS), *produce]
-                   + (["--base", base] if base else []))
+                   + (["--base", base] if base else [])
+                   + (["--timing"] if timing else []))
     build = [sys.executable, str(BUILD), str(review / "content.json"),
              "--out", str(review / "review.html")]
     if not allow_model:
@@ -224,6 +226,8 @@ def main(argv=None) -> int:
                     help="write the page and do not start the server")
     ap.add_argument("--allow-model", action="store_true",
                     help="let the build make the Logging tab's uncached privacy calls")
+    ap.add_argument("--timing", action="store_true",
+                    help="print what each producer and each phase of this run cost")
     ap.add_argument("--dry-run", action="store_true", help="print the plan, run nothing")
     args = ap.parse_args(argv)
 
@@ -260,13 +264,14 @@ def main(argv=None) -> int:
         return 3
 
     commands = plan(review, args.steps, args.base, args.serve,
-                    args.allow_model, session_id(review))
+                    args.allow_model, session_id(review), args.timing)
     env = dict(os.environ)
     sid = session_id(review)
     if sid:
         env["CLAUDE_CODE_SESSION_ID"] = sid
 
     url = ""
+    phases: list[tuple[str, float]] = []
     for cmd in commands:
         printable = " ".join(Path(c).name if c.startswith("/") and Path(c).exists() else c
                              for c in cmd)
@@ -274,8 +279,10 @@ def main(argv=None) -> int:
         if args.dry_run:
             continue
         is_serve = cmd[1] == str(SERVE)
+        t0 = time.monotonic()
         proc = subprocess.run(cmd, env=env, text=True,
                               capture_output=is_serve)
+        phases.append((Path(cmd[1]).stem, time.monotonic() - t0))
         if is_serve:
             url = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else ""
         # A producer that fails is a fact about the run and the page still gets built —
@@ -286,6 +293,14 @@ def main(argv=None) -> int:
             print("[refresh] the build failed — the page on disk is the previous one.",
                   file=sys.stderr)
             return 1
+    if args.timing and phases:
+        # The three phases of a refresh — produce, build, serve — as three numbers, because
+        # "the refresh takes two minutes" was never actionable: whether that is the
+        # producers or the build decides whether the fix is a cache or a profiler.
+        print("\n[refresh] phase             seconds")
+        for phase, secs in phases:
+            print(f"[refresh]   {phase:<16} {secs:7.2f}")
+        print(f"[refresh]   {'TOTAL':<16} {sum(s for _, s in phases):7.2f}")
     if url:
         print(url)
     return 0
