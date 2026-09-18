@@ -396,6 +396,22 @@ def scope_chip_value(spec) -> str:
 #: one to have scrolled above the trigger is the section the reader is standing in, and
 #: that stays true for as long as the next heading has not arrived.
 PILELEDE_SPY_JS = """<script>(function(){
+// The row prints above its own tab's first heading (`_lede_above` puts the lede before
+// the head, on purpose — the line describes the whole list, not the pile under it), so
+// this script's own tag sits in the document *before* `#first`/`#fixed`/
+// `#assumed` have been parsed. Read at the top level, `getElementById` on any of them
+// returns null every time, `pairs` comes up empty, and the whole thing silently no-ops
+// — the bug this file shipped with once already. Deferred to `DOMContentLoaded` (or run
+// immediately if that has already fired, for a script that lands after it), the same
+// three ids exist wherever else on the page they are.
+function whenReady(fn){
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', fn);
+  }else{
+    fn();
+  }
+}
+whenReady(function(){
 var lede=document.querySelector('.pilelede');
 if(!lede||!('IntersectionObserver' in window))return;
 var links={};
@@ -441,6 +457,7 @@ window.addEventListener('resize',setup);
 // straight past. Unknown to a browser (`scrollend` is recent), `addEventListener`
 // silently ignores the event name and the band above is what carries the behaviour.
 window.addEventListener('scrollend', paint, {passive:true});
+});
 })();</script>"""
 
 
@@ -585,6 +602,12 @@ def render_findings(findings) -> str:
     return _open_list(len(findings)) + "\n".join(items) + "</ol>"
 
 
+#: The confidence chip's tooltip, fixed rather than composed per item — Victor's own
+#: words, verbatim. It names the scale, not the one number already on the chip's own
+#: face; the number does not need saying twice.
+CONFIDENCE_TIP = "Confidence ∈ [0.9 .. 0.1]"
+
+
 def _confidence_chip(f) -> str:
     """The number beside the purple `assumption` chip, read verbatim off
     `review-points.json`'s `confidence` — how sure the agent that wrote the code is that
@@ -597,11 +620,9 @@ def _confidence_chip(f) -> str:
     if c is None:
         return ""
     shown = f"{c:.2f}".rstrip("0").rstrip(".") or "0"
-    tip = (f"Confidence {shown} — how sure the coding agent is that this reading of "
-           "the ticket is the right one. 1.0 = the ticket left no other reading; 0.5 = a "
-           "coin flip; below 0.3 = the author expects to be corrected.")
     cls = "f-confidence sev-med" if c < 0.5 else "f-confidence"
-    return f'<span class="{cls}" title="{html.escape(tip, quote=True)}">{shown}</span>'
+    return (f'<span class="{cls}" title="{html.escape(CONFIDENCE_TIP, quote=True)}">'
+            f'{shown}</span>')
 
 
 def render_assumptions(items, mode: str = "") -> str:
@@ -627,6 +648,15 @@ def render_assumptions(items, mode: str = "") -> str:
                  'survives, so it could not be asked. This is not the agent saying it was '
                  'sure \u2014 it is nobody having been in a position to ask.</p>',
         }.get(mode, '<p class="sub">Nothing was assumed.</p>')
+    # Least sure first. A confidence is the one number on this pile that ranks the
+    # cards by how much they need the reader's judgement rather than by anything about
+    # when the agent happened to write them down, and the reader's attention is worth
+    # spending on the ones the agent itself was least sure about before the ones it
+    # already trusted. An item that named no confidence at all is neither sure nor
+    # unsure — it is unmeasured — so it goes after every measured one, in the order the
+    # file already put them in: `sorted` is stable, and comparing `(False, 0.4)` against
+    # `(True, None)` never touches `None` against a number.
+    items = sorted(items, key=lambda f: (f.get("confidence") is None, f.get("confidence")))
     out = []
     for f in items:
         refs = _finding_refs(f)

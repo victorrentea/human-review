@@ -2819,9 +2819,10 @@ def test_an_assumptions_confidence_reads_verbatim_with_its_tooltip(tmp_path):
     # `_confidence_chip` writes a native `title=`; the assembled page's own
     # `one_tooltip_only` postprocess turns every native title into `data-tip`, the same
     # rewrite PlantUML's own hints go through — one tooltip mechanism, page-wide.
-    assert '<span class="f-confidence" data-tip="Confidence 0.85' in item
-    assert "how sure the coding agent is" in item
-    assert ">0.85</span>" in item
+    # The tooltip is `CONFIDENCE_TIP`, fixed — Victor's own words, verbatim — not a
+    # sentence composed around this item's own number.
+    assert '<span class="f-confidence" data-tip="Confidence ∈ [0.9 .. 0.1]">0.85</span>' \
+        in item
     assert "sev-med" not in item, "0.85 is not a low confidence"
 
 
@@ -2835,6 +2836,18 @@ def test_a_low_confidence_assumption_wears_the_page_own_worth_a_look_amber(tmp_p
     item = re.search(r'<li class="n-assumed">.*?</li>', page, re.S).group(0)
     assert 'class="f-confidence sev-med"' in item
     assert ">0.3</span>" in item
+
+
+def test_assumptions_are_ordered_least_sure_first(tmp_path):
+    """The reader's attention goes where the agent itself was least sure, before the
+    cards it already trusted — and an item with no confidence at all is neither, so it
+    sits after every measured one, in the order the file already put them in."""
+    out = build.render_assumptions([
+        _assumption(title="sure", confidence=0.9),
+        _assumption(title="unsure", confidence=0.4),
+        _assumption(title="unmeasured"),
+    ])
+    assert (out.index("unsure") < out.index("sure") < out.index("unmeasured"))
 
 
 def test_the_three_piles_are_one_numbered_list(tmp_path):
@@ -3277,6 +3290,12 @@ def test_the_pilelede_carries_a_scroll_spy_that_marks_the_chapter_in_view(tmp_pa
     assert "addEventListener('resize'" in lede
     # It rides only on the one paragraph it belongs beside, never printed on its own.
     assert lede.count("<script>") == 1
+    # `_lede_above` prints the lede *before* the pile's own heading, so this script's tag
+    # lands in the document ahead of `#first`/`#fixed`/`#assumed` — a bare top-level
+    # `getElementById` at that point finds none of them and the whole thing would
+    # silently no-op. Deferred to `DOMContentLoaded` (or run at once if that already
+    # fired), the same three ids exist wherever the tag sits.
+    assert "document.readyState" in lede and "DOMContentLoaded" in lede
 
 
 def test_a_count_with_no_chapter_to_jump_to_is_not_a_link(tmp_path):

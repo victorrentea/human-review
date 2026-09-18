@@ -1320,8 +1320,14 @@ button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--
 /* Which chapter the reader is standing in, on the row that never scrolls away — the
    alternative to freezing the `h2` itself, which the row already points at from a
    distance. Set by a script beside the row (`PILELEDE_SPY_JS`), never by CSS alone, so
-   with JS off the links stay exactly as they always were: plain, clickable, unmarked. */
-.pilelede a.here { color:var(--link); font-weight:700; text-decoration:underline; }
+   with JS off the links stay exactly as they always were: plain, clickable, unmarked.
+   A filled pill, not just bold-and-underlined text on the same blue every link on the
+   row already wears — the first cut read as identical to the other two at a glance,
+   which is the one thing a "you are here" mark cannot do. Same shape as the page's own
+   `.chip` (rounded, padded), so it reads as a place the reader is standing rather than
+   as emphasised prose. */
+.pilelede a.here { background:var(--accent-soft); color:var(--fg); font-weight:700;
+            padding:.1rem .55rem; border-radius:999px; text-decoration:none; }
 .panel > h2:first-child, .panel > .paneltag + h2 { margin-top:.2rem; }
 /* Only meaningful once every panel is on screen at once, which is what "show all"
     (and printing) do — otherwise the heading names the tab you are already on. */

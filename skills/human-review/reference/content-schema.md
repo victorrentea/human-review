@@ -92,6 +92,10 @@ the agent was that this reading, not the alternative, was the right one — and 
 all when it did not: a scale the agent was never asked to fill in is a different fact from
 one it filled in at the middle, and `n/a` would say the two are the same. Below 0.5 the
 chip wears the page's own "worth a second look" amber rather than a colour of its own.
+Confidence also orders the pile — least sure first, the reader's attention spent where
+the agent itself was least sure before the cards it already trusted — with an
+undeclared confidence sorting after every measured one, in the order the file wrote
+them in.
 
 The block's `"mode"` (A / B / C) is only ever read for an **empty** pile, to say which kind
 of empty it is. With `{"auto": "review-points"}` you do not write it: a record on the branch

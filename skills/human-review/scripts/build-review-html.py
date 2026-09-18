@@ -120,10 +120,10 @@ from hrbuild.shared.validate import (
     REQUIRED, validate
 )
 from hrbuild.tabs.review import (
-    AFTERMATH_FILES, aftermath_html, AFTERMATH_JSON, opening_lede, PASS_DOCS, PILE_BLOCKS,
-    pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND, POINTS_PILES,
-    render_assumptions, render_autofixes, render_findings, render_pile_block, reset_list,
-    resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_value,
+    AFTERMATH_FILES, aftermath_html, AFTERMATH_JSON, CONFIDENCE_TIP, opening_lede, PASS_DOCS,
+    PILE_BLOCKS, pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND,
+    POINTS_PILES, render_assumptions, render_autofixes, render_findings, render_pile_block,
+    reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_value,
     SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
     _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source,
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
