@@ -180,7 +180,8 @@ def steps_argv(steps: str) -> list[str] | None:
 
 
 def plan(review: Path, steps: str, base: str | None, serve: bool,
-         allow_model: bool, session: str | None, timing: bool = False) -> list[list[str]]:
+         allow_model: bool, session: str | None, timing: bool = False,
+         force: bool = False) -> list[list[str]]:
     """Every command this run will make, in order, as argv lists.
 
     Built as data so the decisions above are testable without running a browser, a build or
@@ -190,7 +191,13 @@ def plan(review: Path, steps: str, base: str | None, serve: bool,
     if produce is not None:
         out.append([sys.executable, str(RUN_STEPS), *produce]
                    + (["--base", base] if base else [])
-                   + (["--timing"] if timing else []))
+                   + (["--timing"] if timing else [])
+                   + (["--force"] if force else [])
+                   # A refresh never stamps the ledger. Its windows would name a stretch of
+                   # a *later* session, in which none of the reviewed conversation happened,
+                   # and moving `.steps.json` costs the build the whole cost ledger, which
+                   # is keyed on it. See `run-steps.Ctx`.
+                   + ["--no-ledger"])
     build = [sys.executable, str(BUILD), str(review / "content.json"),
              "--out", str(review / "review.html")]
     if not allow_model:
@@ -228,6 +235,9 @@ def main(argv=None) -> int:
                     help="let the build make the Logging tab's uncached privacy calls")
     ap.add_argument("--timing", action="store_true",
                     help="print what each producer and each phase of this run cost")
+    ap.add_argument("--force", action="store_true",
+                    help="re-run every producer, including the ones whose inputs are "
+                         "unchanged (the default is to skip those and say so)")
     ap.add_argument("--dry-run", action="store_true", help="print the plan, run nothing")
     args = ap.parse_args(argv)
 
@@ -264,7 +274,7 @@ def main(argv=None) -> int:
         return 3
 
     commands = plan(review, args.steps, args.base, args.serve,
-                    args.allow_model, session_id(review), args.timing)
+                    args.allow_model, session_id(review), args.timing, args.force)
     env = dict(os.environ)
     sid = session_id(review)
     if sid:

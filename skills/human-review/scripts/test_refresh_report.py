@@ -133,7 +133,21 @@ def test_the_producers_run_before_the_build_and_the_build_before_the_server(tmp_
     cmds = refresh.plan(d, "cheap", "origin/main", True, False, None)
     assert [Path(c[1]).name for c in cmds] == [
         "run-steps.py", "build-review-html.py", "serve-review.py"]
-    assert cmds[0][-2:] == ["--base", "origin/main"]
+    # Containment rather than a tail slice: the producer command grows flags (`--timing`,
+    # `--force`, `--no-ledger`), and a test that pins their *order* fails on every one of
+    # them while proving nothing about the thing it is named for.
+    assert "--base" in cmds[0] and cmds[0][cmds[0].index("--base") + 1] == "origin/main"
+
+
+def test_a_refresh_never_stamps_the_ledger(tmp_path):
+    """`.steps.json` is an input to the build's own cost cache, and a refresh's step windows
+    name a stretch of a *later* session in which none of the reviewed conversation happened.
+    Stamping it is therefore both meaningless and expensive — it costs the build the whole
+    cost ledger, which is the single slowest thing on a rebuild."""
+    d = _review(tmp_path)
+    for steps in ("static", "cheap", "all"):
+        cmds = refresh.plan(d, steps, None, False, False, None)
+        assert "--no-ledger" in cmds[0], f"--steps {steps} would stamp the ledger"
 
 
 def test_the_page_is_never_served_when_the_caller_asked_only_for_the_file(tmp_path):

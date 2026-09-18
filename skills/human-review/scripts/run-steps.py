@@ -34,6 +34,9 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import datetime as dt
+import fnmatch
+import hashlib
 import json
 import os
 import shutil
@@ -53,9 +56,32 @@ LEDGER = HERE / "steps-ledger.py"
 RAN, SKIPPED, FAILED = "ran", "skipped", "failed"
 
 
+def _stamp() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+
 class Ctx:
-    def __init__(self, base: str, cfg: dict, dry: bool):
+    """What every step needs to know about the run it is part of.
+
+    `no_ledger` is the one field that is not about the repository, and it is here rather
+    than as an argument because every step has to agree on it. A *review* stamps the
+    ledger: that is how `review-cost.py` later attributes the conversation's turns to the
+    tabs they paid for, by which step's window each turn falls inside. A *refresh* must
+    not, for two reasons that point the same way:
+
+      * it re-derives evidence in a different session, days later. Its windows are windows
+        in which no turn of the reviewed conversation happened, so they attribute nothing
+        and can only dilute what the real ones say;
+      * `.steps.json` is one of the inputs the build's own cost cache is keyed on
+        (`hrbuild/tabs/cost.py`). A refresh that stamps it moves it, so the cache misses,
+        so the build spends forty-five seconds re-reading a conversation that has not
+        gained a turn. Stamping a window that means nothing is not free — it is the single
+        most expensive thing a refresh used to do.
+    """
+
+    def __init__(self, base: str, cfg: dict, dry: bool, no_ledger: bool = False):
         self.base, self.cfg, self.dry = base, cfg, dry
+        self.no_ledger = no_ledger
         self.notes: list[str] = []
 
     def step_cfg(self, name: str) -> dict:
@@ -1067,6 +1093,274 @@ def _traces(ctx: Ctx):
         raise RuntimeError(f"playwright-traces.py exit {r.returncode}")
 
 
+# ─────────────────────────────────────────────────────── what each step reads and writes
+#
+# A refresh re-derives every producer's answer from inputs that, nine times out of ten,
+# nobody has touched. The page is rebuilt after an edit to one test body and the diagram
+# deltas are redrawn, the container view re-projected, the contract re-diffed — thirty-eight
+# seconds to arrive at the bytes already on disk. Worse than the wait: `run-steps.py` stamps
+# the ledger for every step it runs, so `.steps.json` moves, so the cost ledger's own cache
+# (`hrbuild/tabs/cost.py`, keyed on that file among others) misses and the *build* spends
+# another forty-eight seconds re-reading a conversation that has not gained a turn. One
+# needless step poisons a cache two programs away.
+#
+# So each step declares what it reads. `_step_key` turns that into a hash; a step whose hash
+# matches the one recorded next to its last successful run is not run again, and — crucially
+# — is not stamped either, which is what lets the build's cache hold.
+#
+# The three kinds of input are separate because they are fingerprinted differently:
+#
+#   `paths`   git pathspecs in the repository under review. Fingerprinted from the *index*
+#             (`git ls-files -s`, which is blob shas and costs 20ms for a whole repo)
+#             plus the content of anything git reports dirty. Exact, not mtime-based: a
+#             checkout that rewrites every mtime must not invalidate every step.
+#             `("*",)` means "the whole repository", which is the honest declaration for
+#             `tests` and `owners` — they read the entire change set.
+#   `tools`   the producers themselves, relative to this directory. Editing
+#             `endpoint-complexity.py` has to re-run `complexity` and nothing else; this is
+#             the whole reason the list is per-step and not "every script in the skill".
+#   `reads`   artifacts under `.human-review/` that an *earlier step* wrote. They are
+#             gitignored, so no pathspec sees them, and `aftermath` is built entirely out
+#             of one of them.
+#
+# `outputs` is the other half of correctness and not an optimisation at all. Step 0 of a
+# fresh review wipes `.human-review/assets/`; a cache that only knew about inputs would
+# then skip every step and leave the page asserting evidence that had just been deleted. A
+# hit therefore also requires the step's own outputs to be where it left them.
+STEP_INPUTS = {
+    "reviewpoints": {"paths": ("*review-points.md",),
+                     "tools": ("review-points.py", "review-commits.py"),
+                     "outputs": ("review-points.json", "review-commits.json")},
+    "aftermath":    {"paths": (),
+                     "reads": ("review-commits.json",),
+                     "tools": (),
+                     "outputs": ("aftermath.json",)},
+    "diagrams":     {"paths": ("*.puml", "*.drawio", "*.drawio.png", "*.drawio.svg"),
+                     "tools": ("puml-diff.sh", "drawio-diff.py",
+                               "../puml-diff/puml_diff.py", "../puml-diff/seq_puml_diff.py"),
+                     "outputs": ("assets/diagrams",)},
+    "c2":           {"paths": ("*.genseq.puml",),
+                     "tools": ("c2-from-sequence.py",),
+                     "outputs": ("assets/c2",)},
+    "complexity":   {"paths": ("*.java",),
+                     "tools": ("endpoint-complexity.py", "endpoint-complexity-delta.py"),
+                     "outputs": ("assets/complexity-delta.html",
+                                 "assets/complexity-delta.css")},
+    "api":          {"paths": ("*.yaml", "*.yml", "*.json"),
+                     "tools": ("openapi-diff.py", "openapi-compat.py",
+                               "openapi-visual-diff.py"),
+                     "outputs": ("assets/openapi-verdict.html", "assets/openapi-diff.html",
+                                 "assets/openapi-compat.html", "assets/openapi-diff.css",
+                                 "assets/openapi-compat.css",
+                                 "assets/openapi-visual-diff.html")},
+    "specchanges":  {"paths": ("*.yaml", "*.yml"),
+                     "tools": (),
+                     "outputs": ("assets/openapi-changes.html",)},
+    "logging":      {"paths": ("*.java", "*.ts", "*.js", "*.kt"),
+                     "tools": ("logextract.py", "ast-grep-rules"),
+                     "outputs": ("assets/logging.json",)},
+    "owners":       {"paths": ("*",),
+                     "tools": ("codeowners-check.py",),
+                     "outputs": ()},
+    "tests":        {"paths": ("*",),
+                     "tools": ("test-changes.py",),
+                     "outputs": ("assets/test-changes.json",)},
+}
+
+#: Where the per-step hashes live. Beside `.steps.json` and deliberately not inside it: the
+#: ledger is a record of what a *run* did and is read by the cost attribution, while this is
+#: a derived, throwaway index that any run may rebuild from scratch.
+STEP_CACHE = Path(".human-review/.steps-cache.json")
+
+#: Bumped when the shape of a key changes, so an upgrade of this file cannot hit a cache
+#: entry computed by an older, differently-meaning hash. Cheaper than migrating and much
+#: harder to get wrong than remembering to delete a file.
+CACHE_VERSION = 3
+
+
+def _hash_file(path: Path, h) -> None:
+    """Fold one file's *content* into `h`, or the fact that it is not there.
+
+    Content and not `(size, mtime)` because the cheap fingerprint is wrong in the one
+    direction that matters: `git checkout` rewrites mtimes on files it restores byte for
+    byte, and a refresh after a branch switch would re-run every producer to arrive at what
+    was already on disk. Only dirty files are hashed this way — a handful — so the cost is
+    a few kilobytes of reading against the thirty-eight seconds it saves.
+    """
+    try:
+        with path.open("rb") as fh:
+            while True:
+                chunk = fh.read(1 << 20)
+                if not chunk:
+                    break
+                h.update(chunk)
+    except OSError:
+        h.update(b"\0absent\0")
+
+
+def _tree_stamp(path: Path, h) -> None:
+    """Fold an output — a file or a whole directory — into `h` by name, size and mtime.
+
+    Outputs are stamped rather than hashed, and the asymmetry with `_hash_file` is
+    deliberate. An input's fingerprint has to survive a checkout; an output's has to notice
+    a wipe, and `assets/diagrams/` is ninety SVGs somebody's rebuild rewrites wholesale.
+    Reading all of it every run would cost more than the step being skipped.
+    """
+    if path.is_dir():
+        for child in sorted(path.rglob("*")):
+            if child.is_file():
+                try:
+                    st = child.stat()
+                    h.update(f"{child}\0{st.st_size}\0{st.st_mtime_ns}\0".encode())
+                except OSError:
+                    h.update(b"\0gone\0")
+    elif path.is_file():
+        try:
+            st = path.stat()
+            h.update(f"{path}\0{st.st_size}\0{st.st_mtime_ns}\0".encode())
+        except OSError:
+            h.update(b"\0gone\0")
+    else:
+        h.update(f"{path}\0absent\0".encode())
+
+
+def _outputs_present(review: Path, outputs) -> bool:
+    """Whether every artifact the step claims to write is still there.
+
+    A directory counts only when it holds something: `assets/diagrams/` emptied by Step 0's
+    wipe is the same absence as no directory at all, and skipping the step over it would
+    leave the page naming evidence that had just been deleted.
+    """
+    for rel in outputs:
+        p = review / rel
+        if p.is_dir():
+            if not any(p.iterdir()):
+                return False
+        elif not p.is_file():
+            return False
+    return True
+
+
+def _git_out(args: list[str]) -> str:
+    return subprocess.run(["git", *args], capture_output=True, text=True).stdout
+
+
+def dirty_paths() -> list[str]:
+    """Every path git reports as not matching the index — modified, staged, untracked.
+
+    Untracked included, and that is not thoroughness for its own sake: `*.genseq.puml` is
+    written by the `sequence` step minutes before `c2` reads it and is not committed yet, so
+    a fingerprint taken from the index alone would call the repository unchanged while the
+    file `c2` exists to project from had just appeared.
+    """
+    out = []
+    for line in _git_out(["status", "--porcelain", "-z", "--untracked-files=all"]).split("\0"):
+        if len(line) > 3:
+            path = line[3:]
+            # A rename's record is `R  new\0old`; the split already gave us each side.
+            if not _is_review_dir(path):
+                out.append(path)
+    return out
+
+
+def _is_review_dir(path: str) -> bool:
+    """Whether a path is inside the review directory this program is writing into.
+
+    Excluded from every fingerprint, and not as an optimisation. `.human-review/` holds
+    each step's *output*, plus the status table and the cache file itself — all of which
+    this run rewrites — so a project that does not gitignore it would see `git status`
+    report a different tree after every run and no whole-repo step (`tests`, `owners`)
+    would ever cache. petclinic gitignores it and the bug was invisible there; a project
+    that commits its reports would have found the cache permanently disabled and nothing
+    saying why.
+    """
+    return path == ART.parent.name or path.startswith(ART.parent.name + "/")
+
+
+def _fnmatch_any(path: str, specs) -> bool:
+    """Whether a path matches any of the git pathspecs, the way git itself matches them.
+
+    `fnmatch` with `*` crossing `/`, which is what git's wildmatch does without the
+    `:(glob)` magic — `git ls-files '*.puml'` finds one at any depth, and `has_genseq()`
+    has always relied on exactly that. `"*"` is the whole repository."""
+    return any(spec == "*" or fnmatch.fnmatch(path, spec)
+               or fnmatch.fnmatch("/" + path, "*/" + spec.lstrip("*/"))
+               for spec in specs)
+
+
+def _step_key(name: str, ctx: Ctx, mb: str, head: str, dirty: list[str]) -> str | None:
+    """The fingerprint of everything `name` reads, or None when it declares nothing.
+
+    None is the signal for "this step is not cacheable" and is the correct answer for a step
+    nobody has declared inputs for: an undeclared step must run, every time, because the
+    alternative is a page quietly built from a stale artifact that nothing on it admits to.
+    A new step is therefore slow until somebody describes it, which is the right way round.
+    """
+    spec = STEP_INPUTS.get(name)
+    if spec is None:
+        return None
+    h = hashlib.blake2b(digest_size=16)
+    h.update(f"v{CACHE_VERSION}\0{name}\0{ctx.base}\0{mb}\0{head}\0".encode())
+    h.update(json.dumps(ctx.step_cfg(name), sort_keys=True).encode())
+    # The project's own `generated` globs steer `aftermath`'s split and nothing else reads
+    # them, but they are config the step consults, so a change to them has to be a miss.
+    h.update(json.dumps(ctx.cfg.get("generated"), sort_keys=True).encode())
+    h.update(json.dumps(ctx.cfg.get("spec"), sort_keys=True).encode())
+
+    paths = tuple(spec.get("paths") or ())
+    if paths:
+        pathspecs = [] if "*" in paths else list(paths)
+        h.update(b"\0index\0")
+        for row in _git_out(["ls-files", "-s", "--", *pathspecs]).splitlines():
+            # `<mode> <sha> <stage>\t<path>` — the review directory drops out here for the
+            # same reason it drops out of `dirty_paths`, for a project that commits it.
+            if not _is_review_dir(row.split("\t", 1)[-1]):
+                h.update((row + "\n").encode())
+        h.update(b"\0dirty\0")
+        for p in sorted(d for d in dirty if _fnmatch_any(d, paths)):
+            h.update(f"{p}\0".encode())
+            _hash_file(Path(p), h)
+
+    review = STEP_CACHE.parent
+    for rel in spec.get("reads") or ():
+        h.update(f"\0reads\0{rel}\0".encode())
+        _hash_file(review / rel, h)
+
+    for rel in spec.get("tools") or ():
+        h.update(f"\0tool\0{rel}\0".encode())
+        tool = HERE / rel
+        if tool.is_dir():
+            _tree_stamp(tool, h)
+        else:
+            _hash_file(tool, h)
+
+    h.update(b"\0outputs\0")
+    for rel in spec.get("outputs") or ():
+        _tree_stamp(review / rel, h)
+    return h.hexdigest()
+
+
+def load_step_cache() -> dict:
+    try:
+        held = json.loads(STEP_CACHE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(held, dict) or held.get("version") != CACHE_VERSION:
+        return {}
+    steps = held.get("steps")
+    return steps if isinstance(steps, dict) else {}
+
+
+def save_step_cache(steps: dict) -> None:
+    """Write the index atomically — a half-written cache would be read as no cache at all,
+    which is merely slow, but a truncated one that still parses would be read as a hit."""
+    STEP_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = STEP_CACHE.with_name(STEP_CACHE.name + ".tmp")
+    tmp.write_text(json.dumps({"version": CACHE_VERSION, "steps": steps}, indent=1) + "\n",
+                   encoding="utf-8")
+    os.replace(tmp, STEP_CACHE)
+
+
 # name, tabs (None = feeds no tab), label, prerequisite, runner
 STEPS = [
     # First, because it is the only step whose subject is the *branch's own record* of the
@@ -1130,8 +1424,11 @@ def _prereq(spec, ctx: Ctx) -> str | None:
     return None if got is True else (got if isinstance(got, str) else "prerequisite not met")
 
 
-def run_step(name, tabs, label, prereq, fn, ctx: Ctx) -> dict:
-    """One step, timed. `seconds` is on every row, including the skipped ones.
+def run_step(name, tabs, label, prereq, fn, ctx: Ctx,
+             key: str | None = None, cached: dict | None = None) -> dict:
+    """One step, timed, and skipped when nothing it reads has moved.
+
+    `seconds` is on every row, including the skipped ones.
 
     A skipped row's time is not noise: half the prerequisites shell out to git (`has_java`,
     `has_genseq`) or open a socket (`answers`), and a prerequisite that takes two seconds to
@@ -1146,9 +1443,23 @@ def run_step(name, tabs, label, prereq, fn, ctx: Ctx) -> dict:
         return {"step": name, "tabs": tabs, "status": SKIPPED, "reason": reason,
                 "seconds": round(time.monotonic() - t0, 2)}
 
+    # A cached step reports `ran`, not a status of its own, and the reason is not
+    # tidiness: `ran` is the truthful answer to the only question anything downstream asks
+    # of this table — "is this tab's evidence on disk and current?" — and it is, byte for
+    # byte, because nothing it is derived from has moved. A fourth status would have every
+    # reader of `.steps-status.json` treat a fresh artifact as a missing one. The `cached`
+    # flag is beside it for the humans and for the status line the page prints.
+    if key and cached and cached.get("key") == key and _outputs_present(STEP_CACHE.parent,
+                                                                       STEP_INPUTS[name]["outputs"]):
+        saved = cached.get("seconds") or 0
+        print(f"  = {name}: unchanged, {saved:.1f} s saved")
+        return {"step": name, "tabs": tabs, "status": RAN, "reason": None,
+                "cached": True, "saved": round(saved, 2),
+                "seconds": round(time.monotonic() - t0, 2), "notes": []}
+
     handle = Path(f".human-review/.step-{name}")
     idx = None
-    if tabs and not ctx.dry:
+    if tabs and not ctx.dry and not ctx.no_ledger:
         idx = subprocess.run([sys.executable, str(LEDGER), "start", tabs, "--label", label],
                              text=True, capture_output=True).stdout.strip()
         handle.parent.mkdir(parents=True, exist_ok=True)
@@ -1195,6 +1506,12 @@ def main(argv=None) -> int:
     ap.add_argument("--json", action="store_true", help="emit the status table as JSON")
     ap.add_argument("--timing", action="store_true",
                     help="print what each step cost, slowest first, after the status table")
+    ap.add_argument("--force", action="store_true",
+                    help="re-run every step even if nothing it reads has changed")
+    ap.add_argument("--no-ledger", action="store_true",
+                    help="do not stamp .steps.json — for a refresh, whose step windows "
+                         "attribute no conversation turn and whose stamps cost the build "
+                         "its cost-ledger cache (see Ctx)")
     args = ap.parse_args(argv)
 
     if args.list:
@@ -1203,16 +1520,51 @@ def main(argv=None) -> int:
         return 0
 
     cfg = load_config(Path(args.config))
-    ctx = Ctx(args.base or cfg.get("base") or "origin/main", cfg, args.dry_run)
+    ctx = Ctx(args.base or cfg.get("base") or "origin/main", cfg, args.dry_run,
+              args.no_ledger)
     only = {s.strip() for s in args.only.split(",")} if args.only else None
     skip = {s.strip() for s in args.skip.split(",")} if args.skip else set()
 
     ART.mkdir(parents=True, exist_ok=True)
+
+    # The three git questions every key is built on, asked once for the whole run rather
+    # than once per step: they are the same answer ten times over, and `git status` on a
+    # repository with a node_modules in it is not free.
+    # `--force` suppresses the *lookup* and nothing else. The fingerprints are still
+    # computed and still stored, because a forced run is the most reliable moment there is
+    # to record what the answer was derived from — and a `--force` that wrote keys taken
+    # against an empty git context would leave every later refresh a guaranteed miss, which
+    # is how a cache turns into a permanent tax.
+    incremental = not args.dry_run
+    cache = load_step_cache() if (incremental and not args.force) else {}
+    head = _git_out(["rev-parse", "HEAD"]).strip() if incremental else ""
+    mb = merge_base(ctx) if incremental else ""
+    dirty = dirty_paths() if incremental else []
+
     results = []
     for name, tabs, label, prereq, fn in STEPS:
         if (only and name not in only) or name in skip:
             continue
-        results.append(run_step(name, tabs, label, prereq, fn, ctx))
+        key = _step_key(name, ctx, mb, head, dirty) if incremental else None
+        r = run_step(name, tabs, label, prereq, fn, ctx, key, cache.get(name))
+        results.append(r)
+        # Only a step that actually ran to completion records a key, and the key is
+        # recomputed *after* it ran rather than reused from before: the fingerprint covers
+        # the step's own outputs, which is precisely what the run just changed. Storing the
+        # pre-run key would make the very next refresh a miss, for ever.
+        if r["status"] == RAN and not r.get("cached") and not args.dry_run:
+            fresh = _step_key(name, ctx, mb, head, dirty)
+            if fresh:
+                cache[name] = {"key": fresh, "seconds": r.get("seconds") or 0,
+                               "at": _stamp()}
+        elif r["status"] != RAN:
+            # A failed or skipped step must not leave last run's key behind it: the next
+            # refresh would find a hit, skip the step, and report as current an artifact
+            # this run had just proved it could not produce.
+            cache.pop(name, None)
+
+    if not args.dry_run:
+        save_step_cache(cache)
 
     status_path = Path(".human-review/.steps-status.json")
     if not args.dry_run:
@@ -1230,6 +1582,16 @@ def main(argv=None) -> int:
         if dropped:
             print(f"\n  tabs with no content, to be named under the strip: "
                   f"{', '.join(sorted(set(dropped)))}")
+    # One line, last, and phrased for the status band on the served page rather than for
+    # this terminal: pressing **Rerun** and watching nothing happen for two seconds is
+    # indistinguishable from pressing a button that does not work. Saying which steps were
+    # skipped, and what that saved, is what makes a fast rerun legible as a fast rerun.
+    cached_rows = [r for r in results if r.get("cached")]
+    if cached_rows and not args.json:
+        saved = sum(r.get("saved") or 0 for r in cached_rows)
+        ran_n = len(results) - len(cached_rows)
+        print(f"\n[run-steps] {ran_n} step(s) re-run, {len(cached_rows)} unchanged and "
+              f"skipped — about {saved:.0f} s saved. `--force` re-runs everything.")
     if args.timing:
         print_timing(results)
     return 1 if any(r["status"] == FAILED for r in results) else 0
