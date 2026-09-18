@@ -1,0 +1,52 @@
+
+/* --- following the code the page already quotes ----------------------------------
+   A cross-reference is a word inside a code block, so it cannot wear the page's link
+   colour: syntax highlighting has already spent colour on that word to say what kind of
+   thing it is, and repainting it blue would trade a fact for an affordance. A dotted rule
+   under it says "followable" without touching the token's own colour, and the cursor and
+   the hover wash say the rest. */
+a.xref { color:inherit; text-decoration:none; cursor:pointer;
+  border-bottom:1px dotted var(--link,#1a4fa0); }
+/* Several anchors in a row are one sentence: Pygments splits a Gherkin step at its quoted
+   argument, so `with "Helen Leary" attending` is three links that have to read as one.
+   No gap, no double underline where they meet. */
+a.xref + a.xref { border-left:0; }
+a.xref:hover, a.xref:focus-visible { background:var(--accent-soft,#eef2fb);
+  border-bottom-style:solid; }
+/* The folded state. The source bar stays — a reader scanning an opened test still wants
+   to see which files it went through — and what goes is the body, replaced by the one
+   line that says what is in it.
+
+   That line goes INSIDE the bar, not under it. The bar is right-aligned, so the whole left
+   half of it is empty: a folded excerpt was costing two rows, one of them a file name with
+   nothing beside it, and stacking four of them under a scenario put the next test a screen
+   away. `flex:1` fills that space, which also pushes nothing — the name, the badge and the
+   two handles were already against the right edge and stay exactly where they were. */
+.rm-part.xr-shut > .rm-scroll, .rm-part.xr-shut > pre.code { display:none; }
+/* `flex-basis:0`, not `auto`: a signature is a hundred characters wide, so basing the stub
+   on its own content made it ask for the whole row and the file name paid for it — the
+   name wrapped into three lines mid-word and the folded excerpt came out taller than the
+   two rows it replaced. At zero the name is measured first, as it always was, and the stub
+   grows into whatever the bar has left. */
+.xr-stub { flex:1 1 0; min-width:0; display:flex; align-items:baseline; gap:.35rem;
+  margin:0; padding:0; border:0; background:transparent; color:var(--muted,#6b6b78);
+  font:400 11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; text-align:left;
+  cursor:pointer; overflow:hidden; }
+.xr-stub:hover { color:var(--fg,#1c1c22); }
+.xr-stub .xr-face { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xr-caret { flex:0 0 auto; transition:transform .12s ease; }
+/* Unfolded, the signature is the first line of the code right underneath, so the stub
+   keeps only its handle — the one thing that folds the excerpt away again. */
+.rm-part:not(.xr-shut) .xr-stub .xr-face { display:none; }
+.rm-part:not(.xr-shut) .xr-stub .xr-caret { transform:rotate(90deg); }
+/* Where the click landed. The window a link opens is usually a screen away and folded, so
+   it arrives with nothing saying which of its lines the link was about. The flash says it
+   once and gets out of the way — a permanent mark would still be there on the next click,
+   pointing at the last question instead of this one. */
+@keyframes xr-flash { from { background:var(--accent-soft,#eef2fb); } to { background:transparent; } }
+pre.code .ln-row.xr-hit { animation:xr-flash 1.8s ease-out 1; }
+@media (prefers-color-scheme: dark) {
+  a.xref { border-bottom-color:#7aa2f7; }
+  a.xref:hover, a.xref:focus-visible { background:rgba(122,162,247,.16); }
+  @keyframes xr-flash { from { background:rgba(122,162,247,.22); } to { background:transparent; } }
+}

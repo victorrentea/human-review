@@ -1,0 +1,63 @@
+
+/* An eleventh tab does not fit, and no amount of window is going to help: the strip's
+   inner track is pinned to 1120px at every viewport by its own padding formula, and the
+   ten tabs plus `show all` already needed 1115.5px of it — 4.5px of slack. "Spec changes"
+   is 113.7px wide and needs 118.5px with its gap, so the strip wrapped to two rows (34px
+   → 55.8px) at 1280px, 1440px and 1920px alike. Three shavings, cheapest first: the
+   spacer stopped reserving a 1rem basis it never drew (+16px); the right padding drops to
+   its floor, which the strip's full bleed already covers (+20px at 1280, +100px at 1440);
+   and every pill gives up .25rem of horizontal padding (+88px across eleven of them).
+   Budget at 1280px, the narrowest width that has to hold: 1140px of track, 1130px used.
+   The LEFT padding is deliberately untouched — the first tab still starts exactly where
+   the body text does.
+   Two of those three are now free money: `show all` moved to the foot of the page and
+   took its ~72px and the spacer with it, so the strip is a row of tabs and nothing else.
+   The shavings stay — they are what buys the row back the next time a tab is added. */
+.tabstrip { padding-right:1.25rem; }
+button.tab { padding:0 .6rem; }
+/* A thirteenth tab, and the row the strip wraps onto is no longer paid once on the way
+   past: the masthead keeps it on screen for the whole read. Nothing is abbreviated --
+   a tab is named or it is not there -- so the last of the room comes out of the gap
+   between a label and its badge and a hair of the type. (There used to be a third
+   source, the `show all` button beside them; it is not in the strip any more.) */
+button.tab { padding:0 .5rem; font-size:.83rem; line-height:1.7; gap:.32rem; }
+/* The strip is the masthead's third row, so it ends where the other two do: at the right
+   edge of the text column, in line with the score pill above it and with the panels the
+   whole page is made of. It used to be let out to 1.25rem from the window edge -- room
+   borrowed when fifteen pills would not fit the column -- and once the pills grew to fill
+   their track (below) that borrowed width stopped being invisible: the tab row alone ran
+   on past the right edge of everything else on the page. The room is not needed any more.
+   Measured at 1280/1385/1512/1728/1920px, the text column is 1040px at every one of them
+   (`.wrap` is capped at 1080px) and the twelve tabs measure 931px, so they fit the column
+   itself with 109px to spare -- about one more tab's worth of headroom before the strip
+   wraps to a second row. Left untouched, as ever: the first tab starts exactly where the
+   body text does. */
+.masthead .tabstrip { margin-right:0; }
+
+/* The 109px is the growth. A row of pills that stops short of the column's right edge
+   reads as a row that broke, next to a title and a scope bar that both run the full
+   width, so the slack is shared out over the tabs instead of left in a gap at the end:
+   ~9px a pill, at every window width, since the column does not change. Grown from each
+   pill's own text width (`auto` basis), so the labels keep their relative sizes rather
+   than being squared off into equal columns, and a row that does wrap fills itself the
+   same way -- which `justify-content:space-between` could not do without flinging a short
+   last row's two tabs to opposite edges of the page. */
+button.tab { flex:1 1 auto; justify-content:center; }
+
+/* pb33f's report is a whole application in one file — its own tabs, its own diff view,
+   its own theme — so it is embedded as a document rather than picked apart and re-drawn
+   in this page's styles. A document is also a fence: the frame is a separate origin off
+   `file://`, so nothing in it can reach this page and this page's find bar cannot reach
+   into it. That is the trade, and it is why the finding is stated above in text and the
+   frame is left to be the evidence. */
+.diagram .head .dgm-src { color:var(--muted); font:inherit; text-decoration:none;
+  border-bottom:1px dotted var(--line); }
+.diagram .head .dgm-src:hover { color:var(--link); border-bottom-color:currentColor; }
+.oacframe { display:block; width:100%; height:760px; margin:1rem 0 1.4rem;
+            border:1px solid var(--line); border-radius:8px; background:#12111a; }
+/* The Swagger-shaped diff is framed the same way, but it is not a dark-only
+   application the way pb33f's is: it follows the system theme, exactly as this
+   page does. So the frame gets the page's own card colour rather than pb33f's
+   near-black, and the two documents agree at the seam in both themes. */
+.oaviframe { display:block; width:100%; height:820px; margin:1rem 0 1.4rem;
+             border:1px solid var(--line); border-radius:8px; background:var(--card); }
