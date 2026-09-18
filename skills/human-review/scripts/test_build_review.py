@@ -2344,6 +2344,36 @@ def test_a_source_with_no_documentation_stays_a_plain_stamp():
     assert '<span class="f-src">assumption</span>' in out
 
 
+def test_a_sourced_effort_and_detail_split_off_the_chip():
+    """`review-points.md` writes one field for three facts: the pass, the effort it filed
+    at, and which of several same-titled findings this one is. The chip stays the pass
+    alone — a face that says `/code-review high (the PUT-clears-the-vet scenario)` reads
+    as a broken command, not as three facts about one."""
+    out = build.render_findings([{
+        "title": "a", "body": "x",
+        "source": "/code-review high (the PUT-clears-the-vet scenario)"}])
+    assert ">/code-review</a>" in out
+    assert "high (the PUT-clears-the-vet scenario)" not in out.split(">/code-review</a>")[0]
+    assert 'data-tip="What /code-review does, in the Claude Code docs — filed at high ' \
+           'effort"' in out
+    assert '<span class="f-src-detail">(the PUT-clears-the-vet scenario)</span>' in out
+
+
+def test_a_sourced_pass_with_no_detail_still_gets_a_tip_for_its_effort():
+    out = build.render_findings([{"title": "a", "body": "x", "source": "/simplify medium"}])
+    assert ">/simplify</a>" in out
+    assert "f-src-detail" not in out
+    assert "filed at medium effort" in out
+
+
+def test_a_sourced_pass_with_a_detail_but_no_effort_still_splits(tmp_path):
+    out = build.render_findings([{
+        "title": "a", "body": "x", "source": "/code-review (duplication)"}])
+    assert ">/code-review</a>" in out
+    assert '<span class="f-src-detail">(duplication)</span>' in out
+    assert "filed at" not in out
+
+
 def test_the_verdict_never_draws_a_band_however_many_reasons_it_carries(tmp_path):
     """The band is gone, bullets and all. It held the masthead's own pill a second time,
     one screenful lower, at 3.4rem and on a full-bleed amber ground — so the first
@@ -2763,6 +2793,39 @@ def test_an_assumption_wears_one_purple_chip_naming_where_it_came_from(tmp_path)
     assert "sev-high" not in item and "sev-med" not in item
 
 
+def test_an_assumption_with_no_confidence_declared_shows_no_chip_at_all(tmp_path):
+    """Not `n/a` — a scale nobody was asked to fill in is a different fact from a model
+    that filled it in at the middle, and a page that shows `n/a` for both hides that."""
+    assert build._confidence_chip(_assumption()) == ""
+
+
+def test_an_assumptions_confidence_reads_verbatim_with_its_tooltip(tmp_path):
+    page, _ = _build(tmp_path, dict(
+        BARE, assumptions=[_assumption(confidence=0.85)],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}]}]))
+    item = re.search(r'<li class="n-assumed">.*?</li>', page, re.S).group(0)
+    # `_confidence_chip` writes a native `title=`; the assembled page's own
+    # `one_tooltip_only` postprocess turns every native title into `data-tip`, the same
+    # rewrite PlantUML's own hints go through — one tooltip mechanism, page-wide.
+    assert '<span class="f-confidence" data-tip="Confidence 0.85' in item
+    assert "how sure the coding agent is" in item
+    assert ">0.85</span>" in item
+    assert "sev-med" not in item, "0.85 is not a low confidence"
+
+
+def test_a_low_confidence_assumption_wears_the_page_own_worth_a_look_amber(tmp_path):
+    """Below 0.5 reuses `.sev-med` rather than a colour of its own — the same "worth a
+    second look" the rest of the page already spends amber on."""
+    page, _ = _build(tmp_path, dict(
+        BARE, assumptions=[_assumption(confidence=0.3)],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}]}]))
+    item = re.search(r'<li class="n-assumed">.*?</li>', page, re.S).group(0)
+    assert 'class="f-confidence sev-med"' in item
+    assert ">0.3</span>" in item
+
+
 def test_the_three_piles_are_one_numbered_list(tmp_path):
     """A reader shown three lists that all start at 1 has to add them up by hand. Each
     pile opens where the last one stopped, in the order the content file puts them."""
@@ -2839,12 +2902,179 @@ def test_the_alternative_reading_renders_beside_the_assumption(tmp_path):
     assert "carries its own vet" in page
 
 
-def test_applied_fixes_anywhere_but_last_are_called_out(tmp_path):
+def test_piles_out_of_canonical_order_are_called_out(tmp_path):
+    """Open, then fixed, then assumed — the same order the counts line above already
+    reads them in. `autofixes` before `assumptions` is not itself a violation (it never
+    was the rule; the rule is that open leads and assumed trails), so that pair alone is
+    left silent below."""
     _, err = _build(tmp_path, dict(
         BARE, autofixes=[{"title": "fixed"}], assumptions=[_assumption()],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "autofixes"}, {"type": "assumptions", "mode": "A"}]}]))
-    assert "already done" in err
+    assert "the piles render as" not in err, \
+        "autofixes before assumptions, with no findings block at all, is already canonical"
+
+
+def test_findings_after_autofixes_is_out_of_canonical_order(tmp_path):
+    _, err = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "x"}], autofixes=[{"title": "fixed"}],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "autofixes"}, {"type": "findings"}]}]))
+    assert "['autofixes', 'findings']" in err and "['findings', 'autofixes']" in err
+
+
+def test_assumptions_before_the_defect_piles_is_out_of_canonical_order(tmp_path):
+    _, err = _build(tmp_path, dict(
+        BARE, findings=[{"title": "f", "body": "x"}], assumptions=[_assumption()],
+        tabs=[{"id": "review", "label": "Review",
+               "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
+    assert "['assumptions', 'findings']" in err and "['findings', 'assumptions']" in err
+
+
+# ── the aftermath band folds tooling commits away from the branch's own ─────────────
+def _tooling_repo(tmp_path):
+    """`main` with one commit, and a `feature` branch off it — the two refs the aftermath
+    band's `base_ref` and `head` name in every real project this runs against."""
+    repo = tmp_path / "toolrepo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)],
+                   check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@example.com"],
+                   check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"],
+                   check=True, capture_output=True)
+    (repo / "base.txt").write_text("base\n")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "base"],
+                   check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "checkout", "-qb", "feature"],
+                   check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "checkout", "-q", "main"],
+                   check=True, capture_output=True)
+    return repo
+
+
+def _tgit(repo, *args):
+    return subprocess.run(["git", "-C", str(repo), *args], check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def _tooling_and_own_commits(repo):
+    """One commit on `main` after the fork, cherry-picked onto `feature` (a new sha, the
+    same patch — what `git cherry` catches), followed by one commit `feature` made on its
+    own. Returns `(cherry_sha, own_sha)`."""
+    (repo / "TOOLING.md").write_text("guardrail\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "chore: tooling change on main")
+    tooling_on_main = _tgit(repo, "rev-parse", "HEAD")
+    _tgit(repo, "checkout", "-q", "feature")
+    _tgit(repo, "cherry-pick", tooling_on_main)
+    cherry_sha = _tgit(repo, "rev-parse", "HEAD")
+    (repo / "feature.txt").write_text("mine\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "feat: my own change")
+    own_sha = _tgit(repo, "rev-parse", "HEAD")
+    return cherry_sha, own_sha
+
+
+def test_a_cherry_picked_tooling_commit_is_told_apart_from_the_branch_own(tmp_path):
+    """`git cherry` catches it: a new sha, the same patch as one already on `main`."""
+    repo = _tooling_repo(tmp_path)
+    cherry_sha, own_sha = _tooling_and_own_commits(repo)
+    tooling = build._tooling_commit_shas(repo, "main", [cherry_sha, own_sha])
+    assert cherry_sha in tooling
+    assert own_sha not in tooling
+
+
+def test_a_merged_ancestor_commit_is_told_apart_too(tmp_path):
+    """`git cherry base head` restricts itself to `base..head` from the start, so a
+    commit that is already reachable from `base` — carried across by a merge rather than
+    picked — never appears in its output at all, `-` or `+`. `merge-base --is-ancestor`
+    is the check that still catches it."""
+    repo = _tooling_repo(tmp_path)
+    (repo / "TOOLING.md").write_text("guardrail\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "chore: tooling change on main")
+    ancestor_sha = _tgit(repo, "rev-parse", "HEAD")
+    _tgit(repo, "checkout", "-q", "feature")
+    _tgit(repo, "merge", "-q", "--no-ff", "-m", "merge main", "main")
+    (repo / "feature.txt").write_text("mine\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "feat: my own change")
+    own_sha = _tgit(repo, "rev-parse", "HEAD")
+    tooling = build._tooling_commit_shas(repo, "main", [ancestor_sha, own_sha])
+    assert ancestor_sha in tooling
+    assert own_sha not in tooling
+
+
+def test_no_base_ref_folds_nothing(tmp_path):
+    """Best-effort: nothing to ask means every commit stays the branch's own rather than
+    a guess — a tooling commit left in the list is a smaller lie than a branch commit
+    folded away."""
+    assert build._tooling_commit_shas(tmp_path, None, ["abc123"]) == set()
+
+
+def test_aftermath_band_folds_tooling_and_excludes_it_from_the_headline(tmp_path):
+    """The count and the lines in the band's own headline are the branch's, not the
+    aftermath step's raw total: a page that still says "2 commits, 4 lines" with one of
+    them a guardrail cherry-pick is the drift this fold exists to stop."""
+    repo = _tooling_repo(tmp_path)
+    cherry_sha, own_sha = _tooling_and_own_commits(repo)
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    doc = {
+        "review": "deadbeef", "review_short": "deadbee", "head": own_sha,
+        "commits": [
+            {"sha": cherry_sha, "short": cherry_sha[:8], "when": "2026-01-01T00:00:00+00:00",
+             "subject": "chore: tooling change on main",
+             "files": [{"path": "TOOLING.md", "added": 1, "deleted": 0, "binary": False,
+                        "generated": False}],
+             "added": 1, "deleted": 0, "generated_only": False, "measured": True},
+            {"sha": own_sha, "short": own_sha[:8], "when": "2026-01-02T00:00:00+00:00",
+             "subject": "feat: my own change",
+             "files": [{"path": "feature.txt", "added": 3, "deleted": 0, "binary": False,
+                        "generated": False}],
+             "added": 3, "deleted": 0, "generated_only": False, "measured": True},
+        ],
+    }
+    (out_dir / build.AFTERMATH_JSON).write_text(json.dumps(doc), encoding="utf-8")
+    out = build.aftermath_html(out_dir, repo, base_ref="main")
+    assert "1 commit, 3 lines changed since the agent finished" in out
+    assert '<details class="toolcommits">' in out
+    assert "1 tooling commit merged from main" in out
+    assert "feat: my own change" in out
+    assert "chore: tooling change on main" in out  # still named, inside the fold
+
+
+def test_aftermath_band_says_only_tooling_when_nothing_else_moved(tmp_path):
+    """Every commit since the review is `main`'s own: the headline drops the alarm
+    entirely rather than reporting `0 commits, 0 lines changed`, which would read as a
+    measurement rather than as the good news it is."""
+    repo = _tooling_repo(tmp_path)
+    (repo / "TOOLING.md").write_text("guardrail\n")
+    _tgit(repo, "add", "-A")
+    _tgit(repo, "commit", "-qm", "chore: tooling change on main")
+    tooling_on_main = _tgit(repo, "rev-parse", "HEAD")
+    _tgit(repo, "checkout", "-q", "feature")
+    _tgit(repo, "cherry-pick", tooling_on_main)
+    cherry_sha = _tgit(repo, "rev-parse", "HEAD")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    doc = {
+        "review": "deadbeef", "review_short": "deadbee", "head": cherry_sha,
+        "commits": [
+            {"sha": cherry_sha, "short": cherry_sha[:8], "when": "2026-01-01T00:00:00+00:00",
+             "subject": "chore: tooling change on main",
+             "files": [{"path": "TOOLING.md", "added": 1, "deleted": 0, "binary": False,
+                        "generated": False}],
+             "added": 1, "deleted": 0, "generated_only": False, "measured": True},
+        ],
+    }
+    (out_dir / build.AFTERMATH_JSON).write_text(json.dumps(doc), encoding="utf-8")
+    out = build.aftermath_html(out_dir, repo, base_ref="main")
+    assert "Only tooling from main since the agent finished" in out
+    assert "1 tooling commit merged from main" in out
+    assert "0 commit" not in out
 
 
 def test_an_assumptions_block_nobody_configured_a_mode_for_weighs_nothing(tmp_path):
@@ -2939,6 +3169,23 @@ def test_the_lede_is_counts_and_nothing_else(tmp_path):
     assert ('<p class="sub counts pilelede">'
             '<a href="#first">1 open LLM review issue</a></p>') in page
     assert "stamped with" not in page and "worst first" not in page
+
+
+def test_the_pilelede_carries_a_scroll_spy_that_marks_the_chapter_in_view(tmp_path):
+    """`.here` is set by the script beside the row, never by CSS alone — with JS off (or
+    in a caller that renders a pile bare, with no `<script>` at all) the links stay plain
+    and clickable, exactly as they were before the spy existed."""
+    build.reset_list()
+    lede = build.opening_lede({
+        "findings": [{"title": "f"}],
+        "tabs": [{"id": "review", "label": "R", "blocks": [{"type": "findings"}]}]})
+    assert lede.rstrip().endswith("</script>")
+    assert "IntersectionObserver" in lede
+    assert "querySelector('.pilelede')" in lede
+    assert "classList.toggle('here'" in lede
+    assert "addEventListener('resize'" in lede
+    # It rides only on the one paragraph it belongs beside, never printed on its own.
+    assert lede.count("<script>") == 1
 
 
 def test_a_count_with_no_chapter_to_jump_to_is_not_a_link(tmp_path):
@@ -3958,7 +4205,11 @@ def test_the_counts_line_is_printed_once_even_when_every_pile_is_empty(tmp_path)
     build.set_bands([])
     out = "".join(build.render_pile_block(spec, b)[0]
                   for b in spec["tabs"][0]["blocks"])
-    assert out.count("pilelede") == 1
+    # Not a bare `.count("pilelede")`: the scroll-spy script that rides along with the
+    # line also names the class, as a selector, so that substring alone appears twice
+    # even when the line itself renders once.
+    assert out.count('<p class="sub counts pilelede">') == 1
+    assert out.count("<script>(function(){") == 1, "the spy script rides along once, not once per pile"
 
 
 def test_the_review_chip_drops_itself_when_nothing_records_a_review(tmp_path):

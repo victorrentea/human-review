@@ -121,11 +121,13 @@ from hrbuild.shared.validate import (
 )
 from hrbuild.tabs.review import (
     AFTERMATH_FILES, aftermath_html, AFTERMATH_JSON, opening_lede, PASS_DOCS, PILE_BLOCKS,
-    points_empty_html, POINTS_MISSING_BAND, POINTS_PILES, render_assumptions, render_autofixes,
-    render_findings, render_pile_block, reset_list, resolve_refs, resolve_review_points,
-    REVIEW_POINTS_JSON, SEVERITIES, _aftermath_commit, _aftermath_files_tip, _assumptions_block,
-    _finding_refs, _finding_source, _LEDE_SHOWN, _LIST_OFFSET, _open_list, _pile_anchor,
-    _raised_by, _ref_link, _regenerate_offer, _score_target
+    pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND, POINTS_PILES,
+    render_assumptions, render_autofixes, render_findings, render_pile_block, reset_list,
+    resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_value,
+    SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
+    _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source,
+    _LEDE_SHOWN, _LIST_OFFSET, _open_list, _pile_anchor, _raised_by, _ref_link,
+    _regenerate_offer, _score_target, _tooling_commit_shas, _tooling_fold_html
 )
 from hrbuild.tabs.sequence import (
     CODE_BADGE, FILE_PAGE, FILE_PENCIL, FILE_PLUS, render_testpairs, SEQ_ARROW, SEQ_DECL,
@@ -470,8 +472,8 @@ def main(argv=None) -> int:
             # print a number it cannot stand behind; this one now does too.
             if (spec.get("_reviewPoints") or {}).get("missing"):
                 continue
-            fixed = len(spec.get("autofixes", []))
-            total = len(spec.get("findings", [])) + fixed
+            open_n, fixed, _ = pile_numbers(spec)
+            total = open_n + fixed
             # Who reviewed is half of what this chip says, and it used to sit in a
             # second chip beside it (`reviewed by  Opus 5`) that nobody could check. The
             # run knows: `review-cost.py` returns the models it spent money on, most
@@ -506,17 +508,13 @@ def main(argv=None) -> int:
                 # it, not so they can act on it, and at full contrast it competes with the
                 # number that IS the work. Grey is the page's own "already handled" —
                 # the same treatment the fixes themselves get in the list below.
-                # Read off `review-points.md`, the two halves swap round and change
-                # name: the items are not open, they were declined, by the agent, with a
-                # reason — and the fixed pile leads because it is what the agent did
-                # rather than what it left. The same distinction the counts line in the
-                # tab draws, in the same words, so a reader who compares the chip with
-                # the line is not asked which of them to believe.
-                "value": (f'{fixed} fixed, <span class="sub">{total - fixed} '
-                          'declined</span>'
-                          if (spec.get("_reviewPoints") or {}).get("missing") is False
-                          else f'{total - fixed} open, '
-                               f'<span class="sub">{fixed} auto-fixed</span>'),
+                # One vocabulary now, not two. Read off `review-points.md` this used to
+                # swap to `fixed, … declined`, which described the same review as the
+                # counts line under the header in different words one scroll away — a
+                # reader who compared the two was asked which of them to believe.
+                # `scope_chip_value` reads `pile_numbers`, the same counts the counts
+                # line itself reads, so neither can drift from the other again.
+                "value": scope_chip_value(spec),
                 # The total, which the face no longer carries, split by the pass that
                 # raised each item. `by /code-review and /simplify` named the two passes
                 # and left the reader to guess the split — which is the only thing the
@@ -609,16 +607,22 @@ def main(argv=None) -> int:
 
     # The piles are one numbered list and each starts where the last stopped, so the order
     # in this file is the order on the page — including the order of the numbers. That
-    # makes the ordering an editorial choice rather than a bug waiting to happen, and leaves
-    # one rule worth enforcing: work that is already done is the tail. An `autofixes` block
-    # anywhere but last opens the reviewer's list with items they have nothing to do about.
+    # makes the ordering an editorial choice rather than a bug waiting to happen, and
+    # leaves one shape worth enforcing: open first, because that is the pile the reader
+    # still owes a decision to; what was fixed without asking next, because it is done and
+    # worth a glance rather than a verdict; what nobody could be asked about last, because
+    # it is the softest pile and the counts line above already puts it there. This used to
+    # require only that `autofixes` render last — true while the piles were two, and wrong
+    # once `assumptions` had a fixed place of its own to be after instead of before.
+    _canonical_pile_order = ("findings", "autofixes", "assumptions")
     _blocks = [b.get("type") for tb in (spec.get("tabs") or []) for b in (tb.get("blocks") or [])
-               if b.get("type") in ("findings", "assumptions", "autofixes")]
-    if "autofixes" in _blocks and _blocks[-1] != "autofixes":
-        after = _blocks[_blocks.index("autofixes") + 1]
-        print(f"[review] WARNING: the autofixes block renders before {after!r}, so the list "
-              "opens with work that is already done — the piles are one list, and "
-              "the applied fixes are its tail", file=sys.stderr)
+               if b.get("type") in _canonical_pile_order]
+    _wanted = [k for k in _canonical_pile_order if k in _blocks]
+    if _blocks != _wanted:
+        print(f"[review] WARNING: the piles render as {_blocks!r}, not {_wanted!r} — open "
+              "should lead the list, the applied fixes come next, and what nobody could be "
+              "asked about is the tail, the same order the counts line above already reads "
+              "them in", file=sys.stderr)
 
     v = spec.get("verdict")
     title_score = ""
@@ -685,7 +689,7 @@ def main(argv=None) -> int:
     # The aftermath first: it is the louder statement and it governs how the piles under
     # it should be read. The missing-record band is second, directly above the piles it
     # explains.
-    set_bands([aftermath_html(out_dir, root),
+    set_bands([aftermath_html(out_dir, root, base_ref=base_st["ref"] if base_st else None),
                POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
                else ""])
 

@@ -240,6 +240,20 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
 .rband li + li { margin-top:.35rem; }
 .rband code { font-size:.95em; }
 .rband .rb-gen { color:var(--muted); }
+/* The base's own commits, folded to one row so eight cherry-picked guardrails do not
+   bury the two commits that actually touched the feature. Same disclosure shape
+   `details.testsrc`/`details.testpair` already use elsewhere on the page — the marker is
+   drawn from `::before`, not the browser's own triangle, so every fold on the page looks
+   like the same control. Muted even when the band around it is red: this row is telling
+   the reader what it is *not* about. */
+.rband details.toolcommits { margin:.45rem 0 0; color:var(--muted); }
+.rband details.toolcommits > summary { cursor:pointer; list-style:none; font-size:.85rem; }
+.rband details.toolcommits > summary::-webkit-details-marker { display:none; }
+.rband details.toolcommits > summary::before { content:"▸"; font-size:.75rem;
+            margin-right:.3rem; display:inline-block; }
+.rband details.toolcommits[open] > summary::before { content:"▾"; }
+.rband details.toolcommits > summary:hover { color:var(--fg); }
+.rband details.toolcommits > ul { margin:.4rem 0 0; }
 /* The one thing to do about the commits the band reports: make the rest of the page catch
    up with them. A button on a row of its own under the list, not an underlined word inside
    the paragraph — an inline link in a red band carries the same weight as the prose around
@@ -840,6 +854,19 @@ ol.findings > li.n-assumed { --num-bg:#5b3fa8; border-left:3px solid #5b3fa8; }
           vertical-align:.05em; }
 a.f-src { text-decoration:none; }
 a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--link); }
+/* The bit of `source:` that is not the pass and not its effort — which finding this is,
+   among several the same pass raised with the same title. Plain text beside the chip,
+   not a second chip: it is prose about this one item, not a second fact worth a border
+   of its own the way the pass name is. */
+.f-src-detail { font-size:.85rem; color:var(--muted); margin-left:.3rem; }
+/* The number beside the purple `assumption` chip, when the branch declared a confidence.
+   Same shape as `.f-src` — monospace stamp, not prose — so the two read as the same kind
+   of fact beside a title. Below 0.5 it wears `.sev-med`'s amber, already this page's own
+   colour for "worth a second look", rather than a new one nobody has met yet. */
+.f-confidence { font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted);
+        border:1px solid var(--line); border-radius:4px; padding:.05rem .35rem; margin-left:.35rem;
+        vertical-align:.05em; }
+.f-confidence.sev-med { border-color:transparent; }
 .f-title { font-weight:650; }
 .f-why { color:var(--muted); font-size:.9rem; margin:.35rem 0 0; }
 .sev-high { background:#fdeaea; color:#8a1c1c; }
@@ -1290,6 +1317,11 @@ button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--
    the panel that actually carries the line: every other tab clears the masthead alone. */
 .panel:has(.counts.pilelede) [id] {
             scroll-margin-top: calc(var(--strip-h, 2.6rem) + var(--lede-h, 0px) + .6rem); }
+/* Which chapter the reader is standing in, on the row that never scrolls away — the
+   alternative to freezing the `h2` itself, which the row already points at from a
+   distance. Set by a script beside the row (`PILELEDE_SPY_JS`), never by CSS alone, so
+   with JS off the links stay exactly as they always were: plain, clickable, unmarked. */
+.pilelede a.here { color:var(--link); font-weight:700; text-decoration:underline; }
 .panel > h2:first-child, .panel > .paneltag + h2 { margin-top:.2rem; }
 /* Only meaningful once every panel is on screen at once, which is what "show all"
     (and printing) do — otherwise the heading names the tab you are already on. */

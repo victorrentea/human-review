@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import html
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -217,18 +219,38 @@ def _finding_source(f) -> str:
     A stamp naming a documented pass is the link to that documentation. The stamp already
     is the question — *what is `/code-review`?* — and answering it in place costs the page
     nothing, where answering it in prose costs a line under the verdict that every reader
-    who already knows has to read past."""
+    who already knows has to read past.
+
+    `review-points.md`'s `source:` is one field carrying up to three facts the parser
+    never splits apart — the pass, the effort it filed the item at, and which of several
+    same-titled findings this one is (`/code-review high (the PUT-clears-the-vet
+    scenario)`) — because splitting them is a rendering decision, not a parsing one, and
+    `review-points.py` is not this tab's to change. Only the pass name is the link: effort
+    is a fact for the tooltip, not the face, and the parenthesised detail is prose that
+    happens to follow a chip, not part of the chip itself."""
     src = (f.get("source") or "").strip()
     if not src:
         return ""
-    href = PASS_DOCS.get(src)
-    if not href:
+    # A known pass may be followed by its effort and a parenthesised detail; an unknown
+    # source (`assumption`, a human name, a linter) never matches and falls straight to
+    # the plain stamp below, whatever it says after the first word.
+    name = next((n for n in PASS_DOCS if src == n or src.startswith(n + " ")), None)
+    if not name:
         return f'<span class="f-src">{html.escape(src)}</span>'
-    # The face is the command, which says nothing about where the link goes; the tooltip
-    # spends itself on that half, as every other tooltip on this page does.
-    return (f'<a class="f-src" href="{html.escape(href)}" target="_blank" rel="noopener"'
-            f' data-tip="What {html.escape(src)} does, in the Claude Code docs">'
-            f'{html.escape(src)}</a>')
+    rest = src[len(name):].strip()
+    detail_m = re.search(r"\(([^()]*)\)\s*$", rest)
+    detail = detail_m.group(1).strip() if detail_m else ""
+    effort = (rest[:detail_m.start()] if detail_m else rest).strip()
+    tip = f"What {name} does, in the Claude Code docs"
+    if effort:
+        tip += f" — filed at {effort} effort"
+    # The face is the command, which says nothing about where the link goes or how hard
+    # the pass looked; the tooltip spends itself on the first, as every other tooltip on
+    # this page does, and the detail after the chip spends itself on the second, in plain
+    # text rather than crowded into a face that is also a link.
+    chip = (f'<a class="f-src" href="{html.escape(PASS_DOCS[name])}" target="_blank" '
+            f'rel="noopener" data-tip="{html.escape(tip)}">{html.escape(name)}</a>')
+    return chip + (f' <span class="f-src-detail">({html.escape(detail)})</span>' if detail else "")
 
 
 def _raised_by(items, total: int) -> str:
@@ -307,6 +329,121 @@ def _pile_anchor(spec, kind, fallback):
     return None
 
 
+def pile_numbers(spec) -> tuple[int, int, int]:
+    """`(open, fixed, assumed)` — the three counts every summary of this tab reads off the
+    same three arrays, so a number cannot drift between the sticky line under the header
+    and the masthead's LLM-review chip above it. It used to be the other way round: a
+    hand-typed `/code-review 8 findings` outlived the ninth finding being added, and
+    nothing caught it, because nothing was looking. Both callers now count nothing twice."""
+    return (len(spec.get("findings", [])), len(spec.get("autofixes", [])),
+            len(spec.get("assumptions", [])))
+
+
+#: How long the masthead's LLM-review chip's plain text (tags stripped) is allowed to run
+#: before its third, optional number stops fitting. The chip sits in a row that already
+#: carries the base/head refs and a diffstat, so `, N assumptions` rides along only while
+#: the two required numbers leave room for it — cut for space, it is cut whole, never
+#: trimmed mid-number. 34 is the width of `N open, N auto-fixed, N assumption` with every
+#: `N` a single digit: this project's own PR #49 (`6 open, 3 auto-fixed, 7 assumptions`,
+#: 35 characters — one over, on the plural `s`) is the boundary case that picked the
+#: number, and it lands on the side that leaves the chip two numbers, not three.
+SCOPE_CHIP_MAX_LEN = 34
+
+
+def scope_chip_value(spec) -> str:
+    """`6 open, <span class="sub">3 auto-fixed</span>` — read by the masthead's LLM-review
+    chip rather than composed a second time beside it, off the same `pile_numbers` the
+    counts line under the header reads. One vocabulary now, not two: the chip used to
+    swap to `fixed, … declined` on a branch reviewed through `review-points.md`, which
+    read as a different review from the one the line under the header described one
+    scroll away. `implementation assumptions` — the counts line's own name for the third
+    pile — is spelled out there; the chip says only `assumptions`, because the room a
+    tooltip has is the room a pill does not."""
+    open_n, fixed_n, assumed_n = pile_numbers(spec)
+    sub = f"{fixed_n} auto-fixed"
+    if assumed_n:
+        widened = sub + f', {assumed_n} assumption{"" if assumed_n == 1 else "s"}'
+        if len(f"{open_n} open, {widened}") <= SCOPE_CHIP_MAX_LEN:
+            sub = widened
+    return f'{open_n} open, <span class="sub">{sub}</span>'
+
+
+#: What lights up the counts line as the reader scrolls past the chapter each clause
+#: names — the alternative to freezing the section heading itself, which is the one this
+#: page settled on: the line already sits still (it is sticky), so it is the line that
+#: gains a mark rather than a second element competing for the same job.
+#:
+#: An inline script, not a file added to `hrbuild/assets/` and wired through
+#: `shared/assets.py`: that pipeline, and the script list it feeds `build-review-html.py`,
+#: is `shared/`'s to change, and two other agents were mid-edit in exactly those files
+#: while this was written. A paragraph-sized behaviour that belongs to one tab's one
+#: paragraph is safer self-contained than borrowed into a home somebody else is using.
+#:
+#: The trigger line is read off the row's own resolved `top` (the masthead's height,
+#: however `--strip-h` is currently expressed) plus its own `offsetHeight` — not a second
+#: copy of those numbers, so the mark cannot land a pile-width off from where the row is
+#: actually pinned. Recomputed on resize, because the strip wraps to a second row exactly
+#: when the tab count or the viewport does. No `IntersectionObserver`, no mark: the links
+#: stay exactly as clickable as they were before this existed.
+#:
+#: Watching the three headings themselves, directly, was the first attempt and it read
+#: wrong: a heading is one line tall, so `isIntersecting` on it alone is true only while
+#: it is crossing the trigger, which is the top of a scroll through a section a thousand
+#: pixels long and false for the rest of the read — the mark would go dark the moment a
+#: reader actually started reading. `IntersectionObserver` still drives it (it wakes the
+#: check only when a heading nears the line, never on every scroll frame), but what
+#: decides the mark is a position check across all three: whichever heading is the last
+#: one to have scrolled above the trigger is the section the reader is standing in, and
+#: that stays true for as long as the next heading has not arrived.
+PILELEDE_SPY_JS = """<script>(function(){
+var lede=document.querySelector('.pilelede');
+if(!lede||!('IntersectionObserver' in window))return;
+var links={};
+lede.querySelectorAll('a[href^="#"]').forEach(function(a){
+  links[a.getAttribute('href').slice(1)]=a;
+});
+var ids=Object.keys(links);
+var pairs=ids.map(function(id){return {id:id, el:document.getElementById(id)};})
+  .filter(function(p){return p.el;});
+if(!pairs.length)return;
+var io=null;
+function triggerY(){
+  return (parseFloat(getComputedStyle(lede).top)||0)+lede.offsetHeight;
+}
+function paint(){
+  var t=triggerY(), current=null;
+  pairs.forEach(function(p){
+    if(p.el.getBoundingClientRect().top<=t)current=p.id;
+  });
+  ids.forEach(function(id){links[id].classList.toggle('here', id===current);});
+}
+function setup(){
+  if(io)io.disconnect();
+  var t=Math.max(triggerY(),0);
+  // A band, not a line. A 1-2px trigger line is exact on paper and wrong in a browser:
+  // `IntersectionObserver` only reports what it sampled on a rendered frame, and a fast
+  // flick of the wheel can move a heading clean across two pixels between one frame and
+  // the next without either frame catching it mid-crossing — the mark then never wakes
+  // up and stays lit on whatever section it last saw. A few hundred pixels of band is
+  // cheap to observe and near-impossible for an ordinary scroll to jump over unseen.
+  var band=Math.min(300, Math.max(window.innerHeight-t-40, 40));
+  var bottom=Math.max(window.innerHeight-t-band,0);
+  io=new IntersectionObserver(paint,
+    {rootMargin:'-'+t+'px 0px -'+bottom+'px 0px', threshold:0});
+  pairs.forEach(function(p){io.observe(p.el);});
+  paint();
+}
+setup();
+window.addEventListener('resize',setup);
+// A belt beside the band's braces: once scrolling actually stops, `paint()` runs once
+// more off the headings' real positions regardless of whether the band caught every
+// frame in between, so the mark is never left stuck on a section the reader scrolled
+// straight past. Unknown to a browser (`scrollend` is recent), `addEventListener`
+// silently ignores the event name and the band above is what carries the behaviour.
+window.addEventListener('scrollend', paint, {passive:true});
+})();</script>"""
+
+
 def opening_lede(spec) -> str:
     """The shape of the whole list, for whichever pile opens it — and only for that one.
 
@@ -354,14 +491,19 @@ def opening_lede(spec) -> str:
     # fact the file exists to carry.
     points = spec.get("_reviewPoints")
     if points:
-        # Fixed first, then declined. The old order led with what is still open because
-        # that was the pile with work in it; here the reader is being shown a review that
-        # is already finished, and it reads in the order it happened — accepted, declined,
-        # and then the decisions nobody was asked about.
-        if spec.get("autofixes"):
-            parts.append(clause(f"{len(spec['autofixes'])} fixed", "autofixes", "fixed"))
+        # Open first, same as the other vocabulary below — the two sources disagree about
+        # what to *call* the undecided pile (a content file's `findings` are untriaged, a
+        # branch's are declined-by-the-agent) but agree on where it goes: first, because
+        # it is the one a human still owes a decision to. What was fixed without asking
+        # comes next, and what nobody could be asked about is always the tail — see the
+        # `block is not None` clause below.
         if spec.get("findings"):
-            parts.append(clause(f"{len(spec['findings'])} declined", "findings", "first"))
+            n_open = len(spec["findings"])
+            parts.append(clause(
+                f"{n_open} open review issue{'' if n_open == 1 else 's'}",
+                "findings", "first"))
+        if spec.get("autofixes"):
+            parts.append(clause(f"{len(spec['autofixes'])} auto-fixed", "autofixes", "fixed"))
     else:
         if spec.get("findings"):
             # "open LLM review issues", not "open, worst first": the ordering fact was the
@@ -393,15 +535,19 @@ def opening_lede(spec) -> str:
         # news. Mode C is the case where a zero would be the lie instead — nobody was in a
         # position to be asked — so it says that rather than counting an empty pile.
         assumed = len(spec.get("assumptions", []))
-        # `6 assumptions`, flat. `coder` named who produced them, which the card's own
-        # purple `assumption` chip says where the reader is standing, and `to check` named
-        # the work — in a line whose other two clauses are bare counts, so the asymmetry
-        # read as a fourth fact rather than as the same shape said three times. Mode C is
-        # still the exception: there is no count to give, only the reason there is none.
+        # `6 implementation assumptions`, flat. `coder` named who produced them, which the
+        # card's own purple `assumption` chip says where the reader is standing, and `to
+        # check` named the work — in a line whose other two clauses are bare counts, so the
+        # asymmetry read as a fourth fact rather than as the same shape said three times.
+        # `implementation` is the one word carried over from that trimming: on a page that
+        # also runs `/code-review` and `/simplify`, "assumptions" alone reads as ambiguous
+        # about *whose* — this pile is what the coder assumed while implementing, not a
+        # reviewer's. Mode C is still the exception: there is no count to give, only the
+        # reason there is none.
         parts.append(clause(
             "coder could not be asked"
             if block.get("mode") == "C" and not assumed
-            else f"{assumed} assumption{'' if assumed == 1 else 's'}",
+            else f"{assumed} implementation assumption{'' if assumed == 1 else 's'}",
             "assumptions", "assumed"))
     if not parts:
         return ""
@@ -414,7 +560,7 @@ def opening_lede(spec) -> str:
     # thousands of pixels apart, so it has to still be on screen when the reader is inside
     # one of them and wants the next. Sticky under the masthead, never over it.
     return ('<p class="sub counts pilelede">' + " &middot; ".join(parts)
-            + "</p>")
+            + "</p>" + PILELEDE_SPY_JS)
 
 
 def render_findings(findings) -> str:
@@ -437,6 +583,25 @@ def render_findings(findings) -> str:
             + "</li>"
         )
     return _open_list(len(findings)) + "\n".join(items) + "</ol>"
+
+
+def _confidence_chip(f) -> str:
+    """The number beside the purple `assumption` chip, read verbatim off
+    `review-points.json`'s `confidence` — how sure the agent that wrote the code is that
+    this reading of the ticket is the right one, not a severity: absent when the item
+    declares none, because a scale a model was never asked to fill in is not the same fact
+    as a model that filled it in at the middle. `.sev-med`'s amber marks anything under
+    0.5, the same hue the rest of the page already spends on "worth a second look" — a
+    confidence low enough to flag is exactly that, not a new colour to learn."""
+    c = f.get("confidence")
+    if c is None:
+        return ""
+    shown = f"{c:.2f}".rstrip("0").rstrip(".") or "0"
+    tip = (f"Confidence {shown} — how sure the coding agent is that this reading of "
+           "the ticket is the right one. 1.0 = the ticket left no other reading; 0.5 = a "
+           "coin flip; below 0.3 = the author expects to be corrected.")
+    cls = "f-confidence sev-med" if c < 0.5 else "f-confidence"
+    return f'<span class="{cls}" title="{html.escape(tip, quote=True)}">{shown}</span>'
 
 
 def render_assumptions(items, mode: str = "") -> str:
@@ -477,6 +642,7 @@ def render_assumptions(items, mode: str = "") -> str:
             '<li class="n-assumed">'
             f'<span class="badge sev-assumed">'
             f'{html.escape((f.get("source") or "assumption").strip())}</span>'
+            + _confidence_chip(f)
             + f' <span class="f-title">{f["title"]}</span>'
             + (f'<p>{f["body"]}</p>' if f.get("body") else "")
             + (f'<p class="f-alt"><b>Read the other way:</b> {f["alternative"]}</p>'
@@ -627,7 +793,79 @@ def _regenerate_offer(out_dir: Path, root: Path) -> str:
             + '</span></p>')
 
 
-def aftermath_html(out_dir: Path, root: Path) -> str:
+def _tooling_commit_shas(root: Path, base_ref: str | None, shas: list[str]) -> set[str]:
+    """Which of these commits are the base's own, already — read with `git`, at build
+    time, because the aftermath step hands the band a list of commits and nothing about
+    which of them the base already carries.
+
+    Two different ways a commit can already be `base_ref`'s: `git cherry` catches a
+    cherry-pick — a new sha, the same patch, reported `-` when an equivalent (by patch-id)
+    already sits on the base. `git merge-base --is-ancestor` catches the other way a
+    commit crosses branches unchanged — a merge, or a rebase that replays without
+    conflict — where the sha itself, not just its patch, is already reachable from the
+    base. Neither test alone catches both: a cherry-pick gets a new sha `git
+    merge-base` has never seen, and a merged commit's patch-id is exactly the one already
+    on the base, which is what `git cherry` is answering in the first place — the two are
+    complementary, not redundant.
+
+    Best-effort, and silent about it: a repository this cannot ask (no `base_ref`, a
+    shallow clone, `git` missing) reports every commit as the branch's own rather than
+    guessing, because a tooling commit wrongly kept in the list a reader can filter with
+    their own judgement; a branch commit wrongly folded away as tooling is invisible."""
+    if not shas or not base_ref:
+        return set()
+    tooling: set[str] = set()
+    cherry = subprocess.run(["git", "cherry", base_ref, shas[-1]], cwd=root,
+                             capture_output=True, text=True)
+    if cherry.returncode == 0:
+        wanted = set(shas)
+        for line in cherry.stdout.splitlines():
+            marker, _, sha = line.strip().partition(" ")
+            if marker == "-" and sha in wanted:
+                tooling.add(sha)
+    for sha in shas:
+        if sha in tooling:
+            continue
+        anc = subprocess.run(["git", "merge-base", "--is-ancestor", sha, base_ref],
+                              cwd=root, capture_output=True)
+        if anc.returncode == 0:
+            tooling.add(sha)
+    return tooling
+
+
+def _code_totals(commits: list[dict]) -> dict:
+    """`{files, added, deleted, genFiles}` over exactly these commits' own file lists —
+    not the aftermath step's pre-aggregated `totals`, which is summed over every commit
+    the step saw. This band may now be folding some of those away as tooling, and a total
+    that still includes a folded commit's lines is the thing the fold exists to stop
+    saying. Same arithmetic `run-steps.py` already does per commit; asked here of
+    whichever subset the band is about to head with."""
+    files = added = deleted = gen_files = 0
+    for c in commits:
+        for f in c.get("files") or []:
+            if f.get("generated"):
+                gen_files += 1
+                continue
+            files += 1
+            added += f.get("added", 0) or 0
+            deleted += f.get("deleted", 0) or 0
+    return {"files": files, "added": added, "deleted": deleted, "genFiles": gen_files}
+
+
+def _tooling_fold_html(commits: list[dict], base_label: str) -> str:
+    """The base's own commits, folded to one grey row — expandable, never counted in the
+    band's headline. A cherry-picked guardrail is not news about this review; it is
+    `main`'s own history riding along, and a band that lists eight of them beside two
+    commits that actually touched the feature buries the two a reader came for."""
+    n = len(commits)
+    plural = "" if n == 1 else "s"
+    items = "".join(_aftermath_commit(c) for c in commits)
+    return ('<details class="toolcommits"><summary><span class="foldlbl">'
+            f'{n} tooling commit{plural} merged from {html.escape(base_label)}'
+            f'</span></summary><ul>{items}</ul></details>')
+
+
+def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> str:
     """What landed on the branch after the agent stopped, at the top of the Review tab.
 
     This is the one band on the page that is about the page rather than about the code.
@@ -642,6 +880,11 @@ def aftermath_html(out_dir: Path, root: Path) -> str:
     diagrams, a spec and a `.drawio` on every commit, and a band that is red for that is a
     band nobody reads by the third branch. Nothing at all when the agent's commit is the
     tip, which is the state this whole flow is trying to produce.
+
+    `base_ref` splits the commits a second way, orthogonal to generated/not: a tooling
+    cherry-pick from `main` (see `_tooling_commit_shas`) is folded into one grey row and
+    left out of every count in the headline, because it is not a change to this review —
+    it is `main` arriving, the way `CLAUDE.md`'s own workflow says it should.
     """
     try:
         doc = json.loads((out_dir / AFTERMATH_JSON).read_text(encoding="utf-8"))
@@ -653,25 +896,29 @@ def aftermath_html(out_dir: Path, root: Path) -> str:
     commits = doc.get("commits") or []
     if not commits:
         return ""
-    totals = doc.get("totals") or {}
-    code = totals.get("code") or {}
-    gen = totals.get("generated") or {}
-    n = len(commits)
+    tooling_shas = _tooling_commit_shas(
+        root, base_ref, [c["sha"] for c in commits if c.get("sha")])
+    tooling = [c for c in commits if c.get("sha") in tooling_shas]
+    branch_only = [c for c in commits if c.get("sha") not in tooling_shas]
+    base_label = (base_ref or "the base").split("/", 1)[-1]
+    code = _code_totals(branch_only)
+    n = len(branch_only)
     plural = "" if n == 1 else "s"
-    if code.get("files"):
-        lines = (code.get("added", 0) or 0) + (code.get("deleted", 0) or 0)
+    if code["files"]:
+        lines = code["added"] + code["deleted"]
         head = (f'<p><b>{n} commit{plural}, {lines} line'
                 f'{"" if lines == 1 else "s"} changed since the agent finished.</b> '
                 'Everything else on this tab — and on every other tab — describes the '
                 'branch as it was when the review was written.</p>')
         sub = ('Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>. '
-               + (f'{gen["files"]} generated file' + ("" if gen["files"] == 1 else "s")
+               + (f'{code["genFiles"]} generated file'
+                  + ("" if code["genFiles"] == 1 else "s")
                   + ' moved as well and are not counted here.'
-                  if gen.get("files") else
+                  if code["genFiles"] else
                   'None of it is a generated file.'))
         cls = "rband-alert"
         role = "alert"
-    else:
+    elif n:
         head = (f'<p>{n} commit{plural} since the agent finished, and every file '
                 'in them is generated.</p>')
         sub = ('Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>. '
@@ -679,12 +926,22 @@ def aftermath_html(out_dir: Path, root: Path) -> str:
                'is why this band is grey.')
         cls = "rband-warn"
         role = "status"
+    else:
+        # Every commit since the review folded away as tooling: nothing here is news
+        # about the review, only about what `main` shipped in the meantime.
+        head = (f'<p>Only tooling from {html.escape(base_label)} since the agent '
+                'finished — nothing about this review changed.</p>')
+        sub = 'Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>.'
+        cls = "rband-warn"
+        role = "status"
     return (f'<div class="rband {cls}" role="{role}">' + head
-            + f'<p class="rb-sub">{sub}</p><ul>'
-            + "".join(_aftermath_commit(c) for c in commits)
+            + f'<p class="rb-sub">{sub}</p>'
+            + ('<ul>' + "".join(_aftermath_commit(c) for c in branch_only) + '</ul>'
+               if branch_only else '')
+            + (_tooling_fold_html(tooling, base_label) if tooling else '')
             # After the list, not inside it: the commits are what happened, and this is the
             # one thing to do about all of them.
-            + '</ul>' + _regenerate_offer(out_dir, root) + '</div>')
+            + _regenerate_offer(out_dir, root) + '</div>')
 
 
 #: The three block types that render the one list. Named so `render_block` can hand all
@@ -711,15 +968,19 @@ def render_pile_block(spec, block, heading=None):
 
     kind = block.get("type", "section")
     # Whether these three piles are the branch's record or the content file's own list. It
-    # changes what an empty one is allowed to say, and what the two defect piles are
-    # *called* — a content file's `findings` are untriaged and a branch's are declined —
-    # and nothing else: the item shapes are identical, which is the whole reason
-    # `review-points.md` could be bolted on without touching a renderer.
+    # changes what an empty one is allowed to say, and what each *item's* badge in the
+    # autofixes pile is stamped with (`review-points.md` items were read and chosen —
+    # "fixed" — a bare content file's were applied by the pass that raised them —
+    # "auto-fixed") — and nothing else: the item shapes are identical, which is the whole
+    # reason `review-points.md` could be bolted on without touching a renderer. The section
+    # headings themselves no longer branch on it: "Open review issues" and "Auto-fixed"
+    # read the same in both vocabularies, and only the lede above them still says whether a
+    # pass or an agent's own second look raised the open pile.
     points = spec.get("_reviewPoints")
     if kind == "findings":
         items = spec.get("findings", [])
         head = _lede_above(
-            head_of("first", "Read and declined" if points else "Requires human review"),
+            head_of("first", "Open review issues" if points else "Requires human review"),
             opening_lede(spec))
         if points and not items:
             # Weight 1: the sentence saying which kind of empty this is has to keep the
@@ -731,7 +992,7 @@ def render_pile_block(spec, block, heading=None):
         # `resolve_review_points` has already forced this block to mode C when the branch
         # carries no record, so the mode read here is the one the counts line read too.
         mode = block.get("mode", "")
-        head = _lede_above(head_of("assumed", "Decided without asking you"),
+        head = _lede_above(head_of("assumed", "Implementation assumptions"),
                            opening_lede(spec))
         if points and not items and not points.get("missing"):
             return (head + points_empty_html("assumptions", points), 1, 0)
@@ -740,8 +1001,7 @@ def render_pile_block(spec, block, heading=None):
         return (head + render_assumptions(items, mode),
                 1 if (items or mode) else 0, len(items))
     items = spec.get("autofixes", [])
-    head = _lede_above(head_of("fixed", "Fixed" if points else "Auto-fixed"),
-                       opening_lede(spec))
+    head = _lede_above(head_of("fixed", "Auto-fixed"), opening_lede(spec))
     if points and not items:
         return (head + points_empty_html("autofixes", points), 1, 0)
     return (head + render_autofixes(items, badge="fixed" if points else "auto-fixed"),

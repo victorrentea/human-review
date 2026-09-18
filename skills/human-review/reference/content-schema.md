@@ -29,11 +29,13 @@ missing record is not a clean review, and those are the two states a reviewer mo
 told apart. An empty pile in a file that *is* there says which kind of empty it is — no
 such section, or a section with nothing in it.
 
-With the piles delegated, the counts line reads **`3 fixed · 6 declined · 7 assumptions`**
-— `declined` because the items are closed, by the agent, and the reader's job is to agree
-or disagree rather than to triage. A content file that writes its own piles keeps the old
-wording (`6 open LLM review issues · 4 auto-fixed · 6 assumptions`), which is right for a
-list nobody has answered yet.
+With the piles delegated, the counts line reads
+**`6 open review issues · 3 auto-fixed · 7 implementation assumptions`** — open leads in
+both vocabularies, because whether the item was untriaged or read and declined by the
+agent, it is still the pile the reader owes a decision to. A content file that writes its
+own piles keeps the old wording (`6 open LLM review issues · 4 auto-fixed · 6
+implementation assumptions`), which is right for a list nobody has answered yet — `LLM` is
+the one word that vocabulary still carries and the delegated one does not.
 
 ## A finding / autofix item
 
@@ -75,15 +77,21 @@ on a finding, the token the way to write it mid-paragraph.
 
 ```json
 {"source":"assumption", "title":"…", "body":"…", "alternative":"…", "why":"…",
- "refs":["path:line"], "snippets":[{"ref":"path:12-30","caption":"…"}]}
+ "confidence":0.85, "refs":["path:line"], "snippets":[{"ref":"path:12-30","caption":"…"}]}
 ```
 
 Same shape as a finding minus `severity` — an assumption is not a defect and must not be
-ranked as one, and the parser refuses the field outright rather than coercing it away. It renders with its own violet card, a `your call` badge and the stamp
-`assumption` where a finding carries `/code-review`, because it did not come from a pass:
-it came from the agent that wrote the code, and it arrives from `review-points.md`'s
-`## Assumptions` section. `alternative` is the reading that was not taken, and it is what
-makes the item checkable at a glance.
+ranked as one, and the parser refuses the field outright rather than coercing it away. It
+renders with its own violet card and the stamp `assumption` where a finding carries
+`/code-review`, because it did not come from a pass: it came from the agent that wrote the
+code, and it arrives from `review-points.md`'s `## Assumptions` section. `alternative` is
+the reading that was not taken, and it is what makes the item checkable at a glance.
+`confidence` (0–1, from `review-points.md`'s `- confidence:`) is optional and renders as a
+small monospace chip beside the `assumption` stamp when the branch declared one — how sure
+the agent was that this reading, not the alternative, was the right one — and nothing at
+all when it did not: a scale the agent was never asked to fill in is a different fact from
+one it filled in at the middle, and `n/a` would say the two are the same. Below 0.5 the
+chip wears the page's own "worth a second look" amber rather than a colour of its own.
 
 The block's `"mode"` (A / B / C) is only ever read for an **empty** pile, to say which kind
 of empty it is. With `{"auto": "review-points"}` you do not write it: a record on the branch
@@ -831,21 +839,31 @@ Four tabs need something said about how they are written:
 
 - **Review** — the label is the word alone. The 🤖 it used to carry announced that
   the tab was machine-produced, which the `source` stamp on every item inside it already
-  says, one item at a time. **One list** of three piles, numbered straight through: what only the
-  reader can answer (`assumptions`), then the open calls, most critical first, then the
-  fixes already applied, greyed out. Lists that each start at 1 make the reader do
-  arithmetic. The numbering follows the order the blocks appear in here, so that order is
-  an editorial choice — with one rule the build enforces: work already done is the tail.
+  says, one item at a time. **One list** of three piles, numbered straight through: the
+  open calls, most critical first, then the fixes already applied, greyed out, then what
+  only the reader can answer (`assumptions`) — leading with the pile the reader still owes
+  a decision to, closing with the softest one. Lists that each start at 1 make the reader
+  do arithmetic. The numbering follows the order the blocks appear in here, so that order
+  is an editorial choice — with one shape the build enforces: `findings`, then
+  `autofixes`, then `assumptions`, whichever of the three are actually laid out.
   Whichever pile opens the list writes its lede — `9 open LLM review issues · 3
-  auto-fixed · 2 assumptions` — computed, so restate none of it. It **pins under the
-  masthead** for the whole panel, because the three chapters it names are thousands of
-  pixels apart and the reader wants the second one from inside the first. Each
+  auto-fixed · 2 implementation assumptions` — computed, so restate none of it. It **pins
+  under the masthead** for the whole panel, because the three chapters it names are
+  thousands of pixels apart and the reader wants the second one from inside the first, and
+  it now marks which chapter the reader is standing in as they scroll (an
+  `IntersectionObserver` beside the row, off the row's own sticky position — no second
+  copy of the numbers that already pin it — so the mark cannot drift a pile-width from
+  where the row is actually pinned; nothing at all with JS off). Each
   clause links to the chapter it counts (`#first`, `#fixed`, `#assumed`, or the block's own
   `id`), so the line doubles as the tab's contents; a pile the layout never lays out keeps
   its count as plain text rather than offering a dead anchor. The coder's clause is the one
-  that renders at zero (`0 assumptions`), because that zero is a result: it says
-  the authoring conversation was asked. Mode C prints `coder could not be asked` instead,
-  the one case where a zero would be claiming an answer nobody was there to give. It is counts and one ordering fact,
+  that renders at zero (`0 implementation assumptions`), because that zero is a result: it
+  says the authoring conversation was asked. Mode C prints `coder could not be asked`
+  instead, the one case where a zero would be claiming an answer nobody was there to give.
+  Each `source` a pass earns — `/code-review`, `/simplify` — links to that pass's docs, the
+  effort it filed at rides the link's own tooltip rather than its face, and a parenthesised
+  detail after it (which of several same-titled findings this one is) stays plain text, not
+  part of the chip. It is counts and one ordering fact,
   and nothing that describes what is directly under it: the applied fixes are visibly
   grey, an assumption visibly says *your call*, and every item carries its source beside
   its own title, so `greyed out`, `yours to confirm` and `each stamped with the pass that
