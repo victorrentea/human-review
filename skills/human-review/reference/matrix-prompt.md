@@ -35,7 +35,18 @@ report, and nothing else. Work in the repository you are started in.
   vocabulary. This is a regeneration, not a redesign: a matrix that looks different from
   the one the reader saw an hour ago is a matrix they have to learn again. The previous
   copies are kept under `.human-review/.model-prev/` — read them, diff your work against
-  them, and change only what the repository changed.
+  them, and change only what the repository changed. **`.model-prev/` is a byte-identical
+  copy of the pair you are about to rewrite, made seconds ago**, so "the current files are
+  identical to `.model-prev/`" is true before you have done anything and is never evidence
+  that nothing needed doing. The comparison that means something is the pair against the
+  *repository*: a test the branch added is in the tree, not in the copy.
+- **The two files you write are one artifact.** Every test id `mapping.json` names as
+  covering a sentence must have a row in the matrix, and the matrix must name no test the
+  catalogue does not. A catalogue that lists a scenario whose row never reached the matrix
+  is a page telling the reader a requirement is uncovered while the file beside it says who
+  covers it — and it is the failure this step actually had: a Gherkin UI scenario landed in
+  `test-index/` and never appeared under *Covering tests*. `rerun-model.py` now refuses a
+  run that ends that way, so a matrix left behind is a failed step rather than a quiet one.
 - **Never say a test's state yourself.** Whether a test is new, edited, deleted, commented
   out or sitting under an `@Disabled` is read out of the code by
   `scripts/test-changes.py`, and its manifest is already on the page. Name the test under

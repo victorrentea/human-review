@@ -1003,6 +1003,41 @@ def test_the_model_step_refuses_rather_than_half_writing(tmp_path, monkeypatch):
     assert model.missing(review) == []
 
 
+def test_the_model_step_refuses_a_matrix_that_lost_a_mapped_test(tmp_path):
+    """The catalogue and the matrix are one artifact in two files, and a run can exit 0
+    having quietly broken the link between them.
+
+    That is not hypothetical: `keep_previous` copies today's pair into `.model-prev/`
+    *before* the model starts, so the two are byte-identical at that moment, and a run
+    that read "diff your work against the previous copy" as "am I different from
+    `.model-prev/`?" answered no for free and wrote nothing. A Gherkin scenario the branch
+    had added reached `test-index/` and never reached *Covering tests*, and the step
+    reported success. The prompt now says the copy proves nothing; this is the half that
+    does not depend on the model having read it."""
+    model = _load("rerun_model", "rerun-model.py")
+    review = tmp_path / ".human-review"
+    (review / "assets").mkdir(parents=True)
+    (review / "test-index").mkdir()
+    mapping = {"blocks": [{"sentences": [{"id": "s1", "tests": [
+        {"id": "src/add-visit.spec.ts:51"}, {"id": "src/book-visit.feature:18"}]}]}]}
+    (review / "test-index" / "mapping.json").write_text(json.dumps(mapping), encoding="utf-8")
+    matrix = review / "assets" / "requirements-map.html"
+
+    matrix.write_text('<div class="reqmap">src/add-visit.spec.ts:51</div>', encoding="utf-8")
+    assert model.unmapped(review) == ["src/book-visit.feature:18"]
+
+    matrix.write_text('<div class="reqmap">src/add-visit.spec.ts:51 '
+                      'src/book-visit.feature:18</div>', encoding="utf-8")
+    assert model.unmapped(review) == []
+
+    # A consistency check between two files, not a second opinion on either one's shape:
+    # nothing to compare is nothing to complain about.
+    (review / "test-index" / "mapping.json").write_text("{not json", encoding="utf-8")
+    assert model.unmapped(review) == []
+    (review / "test-index" / "mapping.json").unlink()
+    assert model.unmapped(review) == []
+
+
 def test_the_pair_being_replaced_is_kept_out_of_the_published_copy(tmp_path):
     """This replaces a judgement rather than refreshing it, so the copy the reader was
     looking at has to survive the click. Dot-prefixed, because `publish-demo.sh` publishes

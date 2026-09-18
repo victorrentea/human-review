@@ -36,6 +36,7 @@ button is wired to the right program, runs through it. Nothing below it may cost
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -106,6 +107,53 @@ def missing(review: Path) -> list[str]:
         elif not p.is_file() or not p.stat().st_size:
             gone.append(rel)
     return gone
+
+
+def unmapped(review: Path) -> list[str]:
+    """Tests the catalogue says cover a requirement, and the matrix has no row for.
+
+    The two artifacts are one artifact in two files: `mapping.json` says *which* test
+    pins which sentence of the ticket, and `requirements-map.html` is the rendering of
+    exactly that. A test named in the mapping and absent from the matrix is not a smaller
+    matrix — it is the page telling the reader a requirement is uncovered while the
+    catalogue beside it says who covers it.
+
+    Checked here because a run can exit 0 having written neither: `keep_previous` copies
+    today's pair into `.model-prev/` *before* the model starts, so at that moment the two
+    are byte-identical, and a model that reads "diff your work against the previous copy"
+    as "am I different from `.model-prev/`?" gets no for free and stops. That happened —
+    a scenario added to the branch reached `test-index/` and never reached the matrix, and
+    the run reported success. The prompt now says so in as many words; this is the half
+    that does not depend on the model having read it.
+
+    A missing or unparseable `mapping.json` returns nothing to complain about: this is a
+    consistency check between two files, not a second opinion on either one's shape.
+    """
+    mapping = review / "test-index" / "mapping.json"
+    matrix = review / WRITES[0]
+    if not mapping.is_file() or not matrix.is_file():
+        return []
+    try:
+        doc = json.loads(mapping.read_text(encoding="utf-8"))
+        html = matrix.read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return []
+
+    ids: list[str] = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            for t in node.get("tests") or []:
+                if isinstance(t, dict) and isinstance(t.get("id"), str):
+                    ids.append(t["id"])
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(doc)
+    return sorted({i for i in ids if i not in html})
 
 
 def keep_previous(review: Path) -> Path:
@@ -179,6 +227,14 @@ def main(argv=None) -> int:
         print(f"[model] the previous pair is in {kept}/ — copy it back rather than "
               "building a page whose matrix is not there.", file=sys.stderr)
         return 4
+    stranded = unmapped(review)
+    if stranded:
+        print("[model] the catalogue names these as covering a requirement and the matrix "
+              "has no row for them: " + ", ".join(stranded), file=sys.stderr)
+        print("[model] the two files are one artifact; a matrix missing a mapped test "
+              f"tells the reader nothing covers it. The previous pair is in {kept}/.",
+              file=sys.stderr)
+        return 5
     print("[model] matrix and catalogue rewritten.")
     return 0
 
