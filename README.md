@@ -568,10 +568,27 @@ one worth making.
 The JSON is the artefact and the picture is its rendering — a reviewing agent reads
 `--json` rather than OCR-ing a PNG. Needs Playwright (`pip install playwright &&
 playwright install chromium`), Pillow and numpy, and **both revisions served** — the
-branch at `--base-new`, the base at `--base-old`, two instances side by side. Neither is
-started for you: `run-steps.py` probes both before the browser is launched and skips the
-step, naming the URL that did not answer, and the script itself refuses in one line rather
-than a Playwright traceback when run by hand against a port nobody is listening on.
+branch at `--base-new`, the base at `--base-old`, two instances side by side.
+
+**The run starts both.** `steps.dsaudit.app` is the same block `steps.video.app` is, and
+`"video"` borrows it rather than repeating it; the step expands it twice, once with HEAD's
+`{sha}`/`{shortsha}` and once with the **merge-base's**, reads each host port back out of
+what its `up` printed, and brings both down in a `finally` — including when only one of
+the two ever came up. The ports are ephemeral by design: that is exactly what lets two
+builds of one repository be up at the same time.
+
+This is the only step that needs both sides of a branch running at once, and for a year it
+was the only step that never ran. `base-new` and `base-old` named `:4300` and `:4301` —
+which is not a configuration, it is a promise about somebody else's machine. Nothing
+started those builds, the prerequisite found nothing answering, the step was skipped on
+every single run, and the UX tab arrived empty carrying a note that explained it was empty.
+A project that genuinely does keep two builds served by hand still names the two origins
+and gets the old behaviour: `run-steps.py` probes both before the browser is launched and
+skips the step naming the URL that did not answer. Either way the script itself refuses in
+one line, rather than a Playwright traceback, when run by hand against a port nobody is
+listening on; `--base-new`/`--base-old` also default from `$DS_AUDIT_BASE_NEW` and
+`$DS_AUDIT_BASE_OLD`, so whoever started the builds can export the addresses instead of
+writing them down.
 
 ## Publishing a snapshot to GitHub Pages
 

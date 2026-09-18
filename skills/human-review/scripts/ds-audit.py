@@ -43,6 +43,7 @@ import hashlib
 import html
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -1435,8 +1436,18 @@ def main():
     ap.add_argument("--unlisted", action="append", default=[], metavar="COMPONENT=ROUTE[=VIA]",
                     help="a changed routed component no --screen reaches; rendered as a red "
                          "warning at the top and carried in the JSON as `unlisted`")
-    ap.add_argument("--base-new", help="origin the branch is served from, e.g. http://localhost:4300")
-    ap.add_argument("--base-old", help="origin the base is served from, e.g. http://localhost:4301")
+    # Defaulted from the environment so the two origins can be *exported* by whoever
+    # started the builds rather than written down. They used to be two fixed ports in
+    # `human-review.json` (:4300 / :4301), which is a promise about somebody else's
+    # machine: nothing in the pipeline started those builds, so the audit was skipped on
+    # every run and the UX tab arrived empty. A caller that starts the two instances
+    # itself gets ephemeral ports and can only pass them on — by flag, or through these.
+    ap.add_argument("--base-new", default=os.environ.get("DS_AUDIT_BASE_NEW"),
+                    help="origin the branch is served from, e.g. http://localhost:4300 "
+                         "($DS_AUDIT_BASE_NEW)")
+    ap.add_argument("--base-old", default=os.environ.get("DS_AUDIT_BASE_OLD"),
+                    help="origin the base is served from, e.g. http://localhost:4301 "
+                         "($DS_AUDIT_BASE_OLD)")
     ap.add_argument("--new", action="append", default=[],
                     help="full URL of a screen on the branch (repeatable; pairs with --old "
                          "by position). Use instead of --screen/--base-* when the two "

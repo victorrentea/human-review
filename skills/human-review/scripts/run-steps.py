@@ -527,12 +527,16 @@ APP_URL = re.compile(r"https?://(?:localhost|127\.0\.0\.1)(?::[0-9]{1,5})?(?:/\S
 VERDICT_TAIL = 30
 
 
-def _app_slots(ctx: Ctx) -> dict:
-    """`{sha, shortsha}` for the commit this review is about, for `steps.video.app`.
+def _app_slots(ctx: Ctx, ref: str = "HEAD") -> dict:
+    """`{sha, shortsha}` for a commit an `app` block is to be built from.
 
     Read from git rather than from the config, because the whole point of the block is
     that the film is made against *this* commit: a sha written into `human-review.json`
     would be a sha that is right until the next push.
+
+    `ref` is HEAD for every step that drives the branch, and the merge-base for the one
+    step that needs the *other* side up at the same time: `dsaudit` compares two running
+    builds, so it asks for two sets of slots and starts two instances from one block.
 
     `shortsha` is asked of git too, never sliced to a fixed width. The instance a host
     names after a ref is named with git's own abbreviation (`rev-parse --short`), whose
@@ -540,8 +544,8 @@ def _app_slots(ctx: Ctx) -> dict:
     is at eight today; a hardcoded seven would have `down` naming an instance that does
     not exist, and `down` failing is a whole stack left running after every film.
     """
-    full = sh("git rev-parse HEAD", ctx, capture=True, check=False).stdout.strip()
-    short = sh("git rev-parse --short HEAD", ctx, capture=True, check=False).stdout.strip()
+    full = sh(f"git rev-parse {ref}", ctx, capture=True, check=False).stdout.strip()
+    short = sh(f"git rev-parse --short {ref}", ctx, capture=True, check=False).stdout.strip()
     return {"sha": full, "shortsha": short or full[:8]}
 
 
@@ -895,15 +899,73 @@ def unlisted_screens(changed: list[str], catalogue: dict, sources: list[str],
     return out
 
 
+@contextlib.contextmanager
+def _dsaudit_origins(ctx: Ctx, c: dict, mb: str):
+    """The two origins the audit shoots — and, where the project says how, the two stacks
+    behind them.
+
+    This is the only step that needs *both* sides of the branch running at the same time,
+    and that is exactly why it was the only step that never ran. `base-new`/`base-old`
+    named `:4300` and `:4301`, which is not a configuration: it is a promise about somebody
+    else's machine. Nothing in the pipeline started those builds, so `_dsaudit_prereq`
+    found nothing answering, the step was skipped on every single run, and the UX tab
+    arrived empty carrying a note explaining that it was empty. On 18 Sep 2026 Victor read
+    one of those pages — of a branch whose whole subject is a vet field moved onto the
+    design system's own combo — and said the obvious thing: *"there is no audit for design
+    system I see right now"*.
+
+    So the run owns both instances, the way `_video` owns the one it films: `steps.dsaudit.app`
+    is the same block (`"video"` borrows it), expanded twice — once with HEAD's slots, once
+    with the merge-base's. The ports are ephemeral by design, which is what lets two builds
+    of one repository be up together, so they can only be read back out of what each `up`
+    printed; they can never be written down.
+
+    Two `with`s and not one `try/finally` around the pair: the second `up` is the one most
+    likely to fail — the images for the older commit are the ones not in the cache — and a
+    single block would raise past the first instance's teardown, leaving 700MB and a port
+    behind for the *next* run to find answering.
+    """
+    cfg = c.get("app")
+    if not cfg:
+        if not (c.get("base-new") and c.get("base-old")):
+            raise LookupError(
+                "dsaudit has neither `app` — the block that has this step start both builds "
+                "itself, the same one `steps.video.app` is — nor `base-new`/`base-old`, the "
+                "two origins of builds somebody else keeps served")
+        yield c["base-new"], c["base-old"]
+        return
+
+    new_slots = _app_slots(ctx)
+    old_slots = _app_slots(ctx, mb)
+    if new_slots["sha"] and new_slots["sha"] == old_slots["sha"]:
+        raise LookupError(
+            "this branch IS its own merge-base, so there is no second build to compare it "
+            "against — and two instances of one commit report 'no screen changed', which is "
+            "the same sentence a clean audit prints")
+    with app_instance(ctx, cfg, new_slots) as fresh, \
+            app_instance(ctx, cfg, old_slots) as before:
+        if fresh.started or before.started:
+            ctx.notes.append(
+                f"the design-system audit compared {fresh.base} (this branch) against "
+                f"{before.base} ({old_slots['shortsha']}, the merge-base) — both started by "
+                "this run, not whatever happened to be listening")
+        yield fresh.base, before.base
+
+
 def _dsaudit(ctx: Ctx):
     c = ctx.step_cfg("dsaudit")
     catalogue = c.get("screens") or {}
     screens = " ".join(f'--screen "{k}={v}"' for k, v in catalogue.items())
     sources = " ".join(f"--source {s}" for s in (c.get("source") or []))
-    if not (c.get("base-new") and c.get("base-old") and screens):
-        raise LookupError("dsaudit needs base-new, base-old and at least one screen")
+    # Asked before anything is started. Booting two stacks to then discover there is
+    # nothing to shoot is four minutes spent on a step that was never going to run.
+    if not screens:
+        raise LookupError("dsaudit needs at least one screen in steps.dsaudit.screens — "
+                          "the list is the app's whole catalogue, not the screens somebody "
+                          "guessed the branch touched")
     branch = sh("git rev-parse --abbrev-ref HEAD", ctx, capture=True).stdout.strip() or "HEAD"
-    changed = sh(f"git diff --name-only {merge_base(ctx)} HEAD -- "
+    mb = merge_base(ctx)
+    changed = sh(f"git diff --name-only {mb} HEAD -- "
                  + " ".join(f"'{s}'" for s in (c.get("source") or [])),
                  ctx, capture=True, check=False).stdout.split()
     unlisted = unlisted_screens(changed, catalogue, c.get("source") or [])
@@ -916,21 +978,36 @@ def _dsaudit(ctx: Ctx):
     flags = " ".join(
         f'--unlisted "{u["component"]}={u["route"]}' + (f'={u["via"]}' if u.get("via") else "") + '"'
         for u in unlisted)
-    sh(f"{HERE}/ds-audit.py --base-new {c['base-new']} --base-old {c['base-old']} "
-       f'--label-new "{branch}" --label-old {c.get("label-old", "main")} {screens} {sources} '
-       f"{flags} --assets {ART} --asset-prefix assets --json {ART}/ds-audit.json "
-       f"-o {ART}/ds-audit.html", ctx)
+    with _dsaudit_origins(ctx, c, mb) as (base_new, base_old):
+        sh(f"{HERE}/ds-audit.py --base-new {base_new} --base-old {base_old} "
+           f'--label-new "{branch}" --label-old {c.get("label-old", "main")} {screens} {sources} '
+           f"{flags} --assets {ART} --asset-prefix assets --json {ART}/ds-audit.json "
+           f"-o {ART}/ds-audit.html", ctx)
+    # Outside the block: the stylesheet is printed by the script itself and needs no
+    # application at all, so it must not hold two stacks up while it is written.
     sh(f"{HERE}/ds-audit.py --css > {ART}/ds-audit.css", ctx)
 
 
 def _dsaudit_prereq(ctx: Ctx):
-    """Configured, and both builds up. The audit compares two running apps screen by screen,
-    so a missing app is its missing binary: a precondition, checked before the stamp, with
-    the URL that did not answer and what it stands for in the reason — not a defect of the
-    run to be dug out of a Playwright traceback and a 400-character command line."""
+    """Configured — and, for a project that serves its own two builds, both of them up.
+
+    With `app` there is nothing to probe, and probing anyway would be worse than useless:
+    the addresses do not exist until this step creates them, so the check would skip the
+    step for the absence of a build it was about to start. An `up` that fails is then a
+    failure of the step, reported with its own output — the same arrangement `video` has,
+    whose prerequisite is `None`.
+
+    Without `app` the old guard stands. The audit compares two running apps screen by
+    screen, so a missing app is its missing binary: a precondition, checked before the
+    stamp, with the URL that did not answer and what it stands for in the reason — not a
+    defect of the run to be dug out of a Playwright traceback and a 400-character command
+    line.
+    """
     c = ctx.step_cfg("dsaudit")
     if not c:
         return "dsaudit not configured"
+    if c.get("app"):
+        return True
     if ctx.dry or not (c.get("base-new") and c.get("base-old")):
         return True                    # the step itself names what is missing
     down = [f"{url} ({what})" for url, what in ((c["base-new"], "this branch"),
@@ -939,7 +1016,8 @@ def _dsaudit_prereq(ctx: Ctx):
     if not down:
         return True
     return (f"no app answering at {' and '.join(down)} — the audit compares two running "
-            "builds; start both (human-review.json steps.dsaudit names them) and re-run "
+            "builds. Configure `steps.dsaudit.app` to have this step start both itself "
+            "(the same block steps.video.app is), or start them by hand and re-run "
             "--only dsaudit")
 
 

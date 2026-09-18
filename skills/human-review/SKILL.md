@@ -122,8 +122,9 @@ The first two steps are the Review tab, and neither of them is yours to write:
 Read the status table it prints. Three things in it are yours:
 
 - **`skipped`** — a missing optional binary, an unconfigured step, or a stack that is not
-  up (the design-system audit needs *both* builds served, `base-new` and `base-old`, and
-  skips naming the URL that did not answer). Its tab is dropped and named under the strip.
+  up (the design-system audit needs *both* builds served — it starts them itself from
+  `steps.dsaudit.app`, and without that block it skips naming the URL that did not
+  answer). Its tab is dropped and named under the strip.
   That is honest; do not work around it. **Unless another step feeds
   the same tab** — `tests` and `traces` both feed Tests — in which case the tab stays and
   only that step's half of it is missing: say *that*, not that the tab was dropped.
@@ -137,7 +138,10 @@ Read the status table it prints. Three things in it are yours:
   as well — the band is the floor, not the review.
 
   The film is recorded against the instance `steps.video.app` starts, not against whatever
-  happens to answer on :4200. A project without that block gets the old behaviour plus one
+  happens to answer on :4200. The design-system audit reads the same block (`steps.dsaudit.app`,
+  usually `"video"` to borrow it) and starts **two**: this branch and the merge-base, which is
+  the only way one step can compare two running builds. Until 19 Sep 2026 it named two fixed
+  ports instead, nothing started them, and the UX tab had been empty on every review since. A project without that block gets the old behaviour plus one
   guard: the recorder asks the application which commit it is (`/actuator/info`, or
   `$HUMAN_REVIEW_APP_COMMIT_URL`) and refuses to film a different one. An application that
   cannot say only warns — but if you see that warning, check by hand which tree is up
