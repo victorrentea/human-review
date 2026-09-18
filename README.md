@@ -194,6 +194,31 @@ rebuilds the page, and reloads the tab you are on, in place, keeping its scroll.
 model's half. Not the feature film, which needs the application up and is a decision, not a
 refresh. Not the traced suites either, whose `commands` are the project's own e2e run.
 
+It is also **incremental**, which is what makes it a button rather than a coffee break. Each
+producer declares what it reads — git pathspecs in the repository, the producer script
+itself, and any artifact an earlier step wrote (`STEP_INPUTS` in `run-steps.py`) — and a step
+whose fingerprint matches the one recorded beside its last successful run is skipped with
+`unchanged, N s saved` in the status band under the header. The band says how many steps
+re-ran and how many did not, so a fast rerun reads as a fast rerun instead of as a button
+that did nothing. A press that changes nothing takes about **five seconds** where it used to
+take **a minute and a half**; a press after editing one test re-runs the four steps that read
+test sources and leaves the six that do not.
+
+Most of that is not the producers. A step that runs stamps `.steps.json`, and the cost ledger
+— by far the slowest thing in the build, because it reads every turn of the conversation that
+wrote the branch — is cached on that file among others. One needless step therefore used to
+cost the *build* another forty-five seconds, two programs away. A refresh no longer stamps
+the ledger at all: its step windows would name a stretch of a later session in which none of
+the reviewed conversation happened, so they could only dilute what the real ones say. The
+review's own run still stamps, which is where the attribution comes from.
+
+The fingerprint is taken from the inputs and never from a timestamp, so a hit means *nothing
+this answer depends on has moved*. It is also refused when the step's own outputs are not
+where it left them — a fresh review wipes `.human-review/assets/`, and a cache that only knew
+about inputs would skip every step and leave the page naming evidence that had just been
+deleted. From a terminal, `refresh-report.py --steps static --force` re-runs everything and
+`--timing` prints what each step and each phase cost.
+
 **Rerun + AI** is the same thing with the model's half in front of it: `rerun-model.py`
 (`claude -p --model sonnet` over `skills/human-review/reference/matrix-prompt.md`) rewrites
 `assets/requirements-map.html` and `test-index/`, and then the same static refresh runs with

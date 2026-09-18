@@ -289,7 +289,27 @@ ${SKILL}/scripts/refresh-report.py                  # the page changed: rebuild,
 ${SKILL}/scripts/refresh-report.py --steps static   # …and the producers that need nothing up
 ${SKILL}/scripts/refresh-report.py --steps cheap    # the branch changed: re-derive the fast evidence too
 ${SKILL}/scripts/refresh-report.py --steps all      # …including the film, the city and the traced suites
+${SKILL}/scripts/refresh-report.py --steps static --force   # …ignoring the cache: re-run every producer
+${SKILL}/scripts/refresh-report.py --steps static --timing  # …and print what each one cost
 ```
+
+**A refresh only re-runs the producers whose inputs moved.** Each step declares what it
+reads — git pathspecs in the repository, the producer scripts themselves, and any artifact
+an earlier step wrote (`STEP_INPUTS` in `run-steps.py`) — and a step whose fingerprint
+matches the one beside its last successful run prints `unchanged, N s saved` and is skipped.
+Edit one test body and the test manifest, the complexity bars, the logging scan and the
+owners check re-run while the diagram deltas and the container view do not. Nothing has to
+be remembered: the default is incremental, `--force` is how you ask for all of it, and the
+cache is keyed on inputs and never on a timestamp, so a hit means *nothing this answer
+depends on has moved* rather than *somebody said it was fine*.
+
+On petclinic that is **1m32s → 5s** for a refresh that changes nothing, and about 6s for one
+that changes a single test. Two thirds of the saving is not the producers at all: a step that
+runs stamps `.steps.json`, which the build's cost ledger is cached on, so a single needless
+step used to cost the *build* another forty-five seconds re-reading a conversation that had
+not gained a turn. A refresh therefore no longer stamps the ledger — its step windows would
+name a stretch of a later session in which none of the reviewed conversation happened. The
+review's own run (Step 2) still does, which is what the cost attribution is built from.
 
 **On the served page, the reader can do the middle one themselves.** The masthead carries a
 **Rerun** beside the `served` badge — `refresh-report.py --steps static`, which is the
