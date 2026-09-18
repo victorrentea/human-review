@@ -1486,18 +1486,36 @@ def test_the_show_all_button_sits_centred_under_the_footer_s_line(tmp_path):
     assert "footer .allbar { display:flex; justify-content:center;" in page
 
 
-def test_the_footer_offers_the_page_as_a_zip_to_take_away(tmp_path):
+def test_the_footer_offers_both_ways_to_take_the_page_away(tmp_path):
     """A review page is nearly always read on someone else's screen — projected in a
     room, or shared for the length of a call. The reader who reaches the bottom has
-    nothing afterwards unless the page tells them where a copy lives, so the build says
-    it on every page: a link named for what it hands over, pointing at the rolling
-    release the `demo zip` workflow keeps current."""
+    nothing afterwards unless the page tells them where a copy lives, so the build says it
+    on every page, and it says it twice because the two copies are not the same page: the
+    zip is read off disk, where a review cannot reliably fetch its own content and every
+    request it makes is cross-origin, while the container serves it the way it is being
+    demoed."""
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert ">Download here</a> a standalone demo zip." in foot
+    assert ">Download zip</a> · or " in foot
+    assert ">a runnable docker of this report</a>." in foot
     assert "https://github.com/victorrentea/human-review/releases/tag/demo" in foot
+    assert "pkgs/container/human-review" in foot
+    # The links are the nouns. `Download here a standalone demo zip` put the verb in the
+    # link and the noun after it, so the eye landed on words that said nothing about what
+    # arrives and had to read on to find out.
+    assert "Download here" not in foot
     # After the sentence and before the control, so the row still reads sentence-first.
     assert foot.index("takeaway") < foot.index("allbar")
+
+
+def test_the_docker_hover_carries_the_command_the_link_cannot(tmp_path):
+    """A footer is a place to send somebody, not a place to print a command they cannot
+    run from a browser — but the command is the thing they will want ten seconds later."""
+    page, _ = _build(tmp_path, BARE)
+    foot = page[page.index("<footer>"):page.index("</footer>")]
+    tip = re.search(r'pkgs/container/human-review"[^>]*data-tip="([^"]*)"', foot).group(1)
+    assert "docker run" in tip and "ghcr.io/victorrentea/human-review" in tip
+    assert "8642" in tip
 
 
 def test_the_zip_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
@@ -1507,7 +1525,7 @@ def test_the_zip_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
     spec = {k: v for k, v in BARE.items() if k != "footer"}
     page, _ = _build(tmp_path, spec)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert ">Download here</a>" in foot
+    assert ">Download zip</a>" in foot
 
 
 def test_the_show_all_button_says_what_it_does_next(tmp_path):
@@ -1682,15 +1700,28 @@ def test_the_methodology_boilerplate_is_stripped_from_the_footer():
     assert "Built by" in out
 
 
-# The address is a credit line until something tells the reader what to do with it. The
-# builder says it, so no author has to remember to — and every page already published
-# says it the moment it is rebuilt.
-def test_the_footer_invites_the_reader_to_take_the_toolset():
+# The footer line is the address the page came from and the date it was built, and that is
+# all it is for. It carried an instruction for a while — "Tell your agent to adapt this to
+# your environment" — on the reasoning that a GitHub link in a footer reads as provenance
+# and gets skipped. Right about the reading, wrong about the cure: the two links beside it
+# already *are* the things to do, and the sentence was a third voice in a line with room
+# for two.
+def test_the_footer_line_is_provenance_and_nothing_else():
     out = build._link_home("Built by /human-review against the running stack on 2 Sep 2026.")
-    assert out.endswith("Tell your agent to adapt this to your environment.")
-    # The footer is emitted as HTML and not escaped on the way out, so a bare `&` in the
-    # invitation would be a lone ampersand in the markup.
+    assert out.endswith("on 2 Sep 2026.")
+    assert "Tell your agent" not in out
+    # The footer is emitted as HTML and not escaped on the way out, so a bare `&` in it
+    # would be a lone ampersand in the markup.
     assert " & " not in out
+
+
+def test_an_older_footer_that_carries_the_instruction_is_cleaned(tmp_path):
+    """Content files outlive the instructions that produced them, and a page rebuilt from
+    one would otherwise be the single place the sentence survives."""
+    for old in ("Tell your agent to adapt this to your environment.",
+                "Fork, Clone and Port with your Agent."):
+        out = build._link_home(f"Built by /human-review on 2 Sep 2026. {old}")
+        assert out.endswith("on 2 Sep 2026."), old
 
 
 # "against the running stack" describes the build, not anything the reader can act on,
@@ -1702,13 +1733,14 @@ def test_the_running_stack_phrase_is_dropped():
     assert "Built by" in out and "on 2 Sep 2026." in out
 
 
-# The sentence is appended once. A footer rebuilt from a content file that already ends
-# in it must not end in it twice.
+# The sentence is appended once, when there is one. Written against the constant and not
+# against a copy of today's wording: it is meant to be rewritten — and emptied, which is
+# what it is now — so a test that pinned its words would fail on the rewrite instead of on
+# the doubling it exists to catch.
 def test_the_invitation_is_not_doubled():
+    if not build.INVITATION:
+        pytest.skip("the footer carries no invitation")
     out = build._link_home(f"Built by /human-review on 2 Sep 2026. {build.INVITATION}")
-    # Against the constant, not against a copy of today's wording: the sentence is meant to
-    # be rewritten, and a test that pins its words fails on the rewrite instead of on the
-    # doubling it exists to catch.
     assert out.count(build.INVITATION) == 1
 
 

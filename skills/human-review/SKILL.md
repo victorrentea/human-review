@@ -128,9 +128,9 @@ Read the status table it prints. Three things in it are yours:
   the same tab** — `tests` and `traces` both feed Tests — in which case the tab stays and
   only that step's half of it is missing: say *that*, not that the tab was dropped.
 - **`failed`** — say so in the guide. A failed producer is a fact about the run.
-- **`note`** — things only the run knows: the measured Code City count to put under the
-  image, an amber `PARTIAL LIST` seal that is *correct*, a suite that could not start, and
-  above all **video exit 3 — filmed, and the feature did not hold.** Lead the whole review
+- **`note`** — things only the run knows: an amber `PARTIAL LIST` seal that is *correct*,
+  a suite that could not start, and above all **video exit 3 — filmed, and the feature did
+  not hold.** Lead the whole review
   with that one. You no longer have to *notice* it to keep it: the step writes
   `assets/feature.run.log` every time and `assets/feature.verdict.json` on any non-zero
   exit, and the page draws that verdict as a red band over the player. Say it in the prose
@@ -199,10 +199,12 @@ defect, it is the defect, quoted. It still applies, to the tab ledes and the sec
   runs"`), not the block.
 - **Never retype code** — `extract-snippet.py path:from-to` cuts it verbatim at build time.
 - **Never type a number the page computes** (the diffstat, the cost tab and its label, the
-  auto-fixed count, the test balance, the Code City count, tab costs, the pile counts). A
-  hand-typed number goes stale with nothing noticing — `unit tests · 125 green (20 new)`
-  was true until somebody wrote the next test, and `lines +1198 / −863` sat on a page for
-  six days matching no range in the repository at all. `files` and `lines` come from
+  auto-fixed count, the test balance, tab costs, the pile counts). A hand-typed number goes
+  stale with nothing noticing — `unit tests · 125 green (20 new)` was true until somebody
+  wrote the next test, `lines +1198 / −863` sat on a page for six days matching no range in
+  the repository at all, and *"10 buildings lit"* over the Code City shot was a count of a
+  city nobody had recounted. That last one is gone for good: the `codecity` block takes no
+  lede at all now, and the picture starts under the tab strip. `files` and `lines` come from
   `{"auto": "diffstat"}`, which measures the change set and leaves generated files out.
 - **Never say a test's state yourself.** Name the test under the requirement it pins;
   `test-changes.py` reads the code for whether it is new, edited, deleted, commented out

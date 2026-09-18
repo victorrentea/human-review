@@ -583,6 +583,14 @@ readable tag sits an immutable `<slug>-<sha7>`, so a snapshot shown at a course 
 pulled back byte-for-byte after the demo has been regenerated. The package is public, so
 none of this needs a login.
 
+**Both are in every page's footer**, and that is the whole of the footer beside the address
+the page came from: `Built by <repo> on <date>. Download zip · or a runnable docker of this
+report.` Two links and no prose between them — a reader at the foot of a page is scanning
+for a thing to take, so the links are the nouns (what arrives) rather than the verb
+(*Download here*, which said nothing about what arrives and made them read on to find out).
+The `docker run` line above is in the second one's hover, because a footer is a place to
+send somebody, not a place to print a command they cannot run from a browser.
+
 `.github/workflows/demo-image.yml` does it, on pushes to `main` that touch `demo/**` or
 the two files that package it — `.github/snapshot.Dockerfile`, which copies one committed
 directory into `nginx:alpine`, and `.github/snapshot.nginx.conf`, which names both

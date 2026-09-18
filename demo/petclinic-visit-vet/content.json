@@ -409,7 +409,6 @@
     }
   ],
   "codecity": {
-    "body": "How this PR changed the size and complexity of the code.",
     "png": "assets/codecity.png",
     "href": "assets/codecity/codecity.html"
   },

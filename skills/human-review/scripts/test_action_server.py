@@ -1072,11 +1072,15 @@ def test_the_paid_button_says_the_price_before_it_is_pressed(tmp_path):
     tip = re.search(r'data-tip="([^"]*)"', build.RERUN_AI_CHIP).group(1)
     assert "costs money" in tip and "$5" in tip and "Sonnet" in tip
     assert 'id="hr-rerun-ai" hidden' in build.RERUN_AI_CHIP
-    # The free one's mark, then the two things this one adds to it: a model, and money
-    # leaving. No words — `Rerun + AI` said neither the price nor anything the free chip
+    # The free one's mark, a plus, then the two things this one adds to it: a model, and
+    # money leaving. The `+` is the sentence — this chip is the one beside it *and*
+    # something more — and it is what keeps three marks from running together into one
+    # picture. No words: `Rerun + AI` said neither the price nor anything the free chip
     # beside it had not already said, and cost the masthead two words to say it.
-    assert build.RERUN_AI_CHIP.endswith("\U0001F916\U0001F4B8</button>")
+    assert build.RERUN_AI_CHIP.endswith(
+        '<span class="rr-plus">+</span>\U0001F916\U0001F4B8</button>')
     assert build.CMD_RUN in build.RERUN_AI_CHIP
+    assert ".rr-plus { margin:" in build.CSS
     assert "Rerun" not in build.RERUN_AI_CHIP[build.RERUN_AI_CHIP.index('data-tip'):]
     # The words are in the accessibility tree, where a glyph-only control has to put them.
     assert 'aria-label="Rerun with AI' in build.RERUN_AI_CHIP

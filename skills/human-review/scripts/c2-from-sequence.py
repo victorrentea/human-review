@@ -90,6 +90,18 @@ LINK_COLOR = "#1A4FA0"
 #: explaining C4 in a caption, because the caption has one line and the site has the answer.
 C4_URL = "https://c4model.com/diagrams/container"
 
+#: What this picture is called, on the page and in the filenames — and it is a *view key*,
+#: not a level. `C2` on its own names the level in the C4 model, the way `C3` does; it is
+#: not the name of a diagram any more than "page 2" is the name of a chapter, and a card
+#: titled with it tells a reader which shelf it came off rather than what is on it.
+#:
+#: `C2-Containers` is Structurizr's own convention for the key of a container view, and a
+#: project whose C4 lives in a DSL already has one — petclinic's reads
+#: `container petClinic "C2-Containers" …` and exports `C2-Containers.puml`. Matching it is
+#: the whole point: one name for one picture across the model, the export and this page.
+#: `steps.c2.name` overrides it for a project that spells its own view key differently.
+DEFAULT_NAME = "C2-Containers"
+
 # Where the sequence diagrams are, and where they are not. The defaults name the generator's
 # own convention (`<test file>.genseq.puml`, filed beside the test) and then rule out every
 # place a build copies one to: a diagram under `target/` is last week's run, and projecting
@@ -846,7 +858,9 @@ def main(argv=None) -> int:
     ap.add_argument("--base", default="", help="base ref (default: human-review.json's)")
     ap.add_argument("--config", default="human-review.json")
     ap.add_argument("--out-dir", default=".human-review/assets/c2")
-    ap.add_argument("--name", default="C2", help="manifest name and file stem")
+    ap.add_argument("--name", default="",
+                    help="manifest name and file stem (default: steps.c2.name, "
+                         f"else {DEFAULT_NAME!r})")
     ap.add_argument("--print", action="store_true", dest="dump",
                     help="print the projected graph as JSON and write nothing")
     a = ap.parse_args(argv)
@@ -858,6 +872,14 @@ def main(argv=None) -> int:
     sources = c2.get("sources") or DEFAULT_SOURCES
     exclude = (c2.get("exclude") or []) + DEFAULT_EXCLUDE
     containers = c2.get("containers") or {}
+    # The name is the card's title on the review page, so it is a name and not a level.
+    # `C2` alone is the *level* in the C4 model — "the container diagram of this system"
+    # is a view, and a view has a key. Structurizr projects write that key in the DSL
+    # (`container petClinic "C2-Containers" …`) and export it as the filename, so a
+    # project whose C4 is in a DSL should spell it the same here and get one name for one
+    # picture across the model, the export and this page. `steps.c2.name` is how; the
+    # default is the same convention for a project that has no DSL to copy from.
+    name = a.name or c2.get("name") or DEFAULT_NAME
 
     rels = worktree_sources(root, sources, exclude)
     if not rels:
@@ -916,16 +938,16 @@ def main(argv=None) -> int:
                    caption=caption, coloured=False, details=into), encoding="utf-8")
         return plantuml(out / f"{stem}.puml")
 
-    new_svg = side(new, f"{a.name}.new", new_details)
-    old_svg = side(old, f"{a.name}.old", old_details)
+    new_svg = side(new, f"{name}.new", new_details)
+    old_svg = side(old, f"{name}.old", old_details)
 
     changed = any(n["status"] != "same" for n in delta["nodes"].values()) or \
         any(e["status"] != "same" or e["operationsDelta"] for e in delta["edges"])
-    (out / f"{a.name}.diff.puml").write_text(
+    (out / f"{name}.diff.puml").write_text(
         render(delta["nodes"], delta["edges"], title=title, system=system,
                caption=caption, coloured=bool(old.edges), details=new_details),
         encoding="utf-8")
-    diff_svg = plantuml(out / f"{a.name}.diff.puml")
+    diff_svg = plantuml(out / f"{name}.diff.puml")
 
     def carrier(stem: str, index: dict) -> str:
         if not index:
@@ -935,21 +957,21 @@ def main(argv=None) -> int:
             + "\n", encoding="utf-8")
         return f"{stem}.json"
 
-    new_json = carrier(f"{a.name}.details.new", new_details)
-    old_json = carrier(f"{a.name}.details.old", old_details)
+    new_json = carrier(f"{name}.details.new", new_details)
+    old_json = carrier(f"{name}.details.old", old_details)
 
-    (out / f"{a.name}.json").write_text(
+    (out / f"{name}.json").write_text(
         json.dumps({"new": new.as_dict(), "old": old.as_dict(), "diff": delta,
                     "base": mb}, indent=2) + "\n", encoding="utf-8")
 
     status = "added" if not old.edges else ("modified" if changed else "unchanged")
-    src_rel = (out / f"{a.name}.new.puml").relative_to(root).as_posix()
+    src_rel = (out / f"{name}.new.puml").relative_to(root).as_posix()
     manifest = out / "MANIFEST.tsv"
     manifest.write_text(
         "name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\t"
         "old_details\tnew_details\n"
-        + "\t".join([a.name, src_rel, "structural", status,
-                     f"{a.name}.diff.puml", diff_svg, "", new_svg, old_svg,
+        + "\t".join([name, src_rel, "structural", status,
+                     f"{name}.diff.puml", diff_svg, "", new_svg, old_svg,
                      old_json, new_json])
         + "\n", encoding="utf-8")
 

@@ -261,8 +261,18 @@ button.chip-rerun:disabled { cursor:progress; color:var(--muted); }
 /* The chip's face is its glyph, so the glyph is what turns: a borrowed ring drawn beside
    it would be a second circular mark saying the same thing, and a word in its place would
    reflow the masthead the instant the button is pressed. `.rr-ico` is the run mark alone,
-   so the robot and the banknote on the paid chip stay still while it spins. */
-.rr-ico { display:inline-block; }
+   so the robot and the banknote on the paid chip stay still while it spins.
+
+   Set larger than the type around it and given a line box of its own: `↻` is one thin
+   stroke, and at the chip's .82rem it reads as punctuation rather than as a control. The
+   `line-height:1` is what lets it grow without the pill growing with it — the three pills
+   on that row share one height, and a glyph that pushed its own line box open would be the
+   one that broke it. */
+.rr-ico { display:inline-block; font-size:1.3em; line-height:1; vertical-align:-.12em; }
+/* The `+` that makes the paid chip readable as an equation rather than a row of marks.
+   Dimmed and set small: it is the joint between the two halves, not a third thing in the
+   label, and at full weight it competed with the marks it is there to separate. */
+.rr-plus { margin:0 .22em; opacity:.6; font-size:.9em; }
 button.chip-rerun.running .rr-ico { animation:hrspin .7s linear infinite; }
 @keyframes hrspin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) {
@@ -751,7 +761,10 @@ pre.code code { white-space:pre; }
 /* Green, and the only green glyph on this page that is not a passing check — which is
    exactly why it earns the exception: it says "something can happen here", and the reader
    has already learnt that green in the masthead's `served` badge. */
-.cmd .cmd-run { color:#2e7d32; border-color:#2e7d32; }
+.cmd .cmd-run { color:#2e7d32; border-color:#2e7d32;
+            font-size:1.1em; line-height:1; padding:.16rem .42rem; }
+/* Keeps its green on hover: the rule above it turns a glyph grey-to-foreground, which on
+   this one would read as it going out. */
 .cmd .cmd-run:hover { color:#2e7d32; border-color:#2e7d32; }
 @media (prefers-color-scheme: dark) {
   .cmd .cmd-run { color:#6bd48a; border-color:#3f7f52; }
@@ -981,12 +994,15 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .titlerow.oneline { flex-wrap:nowrap; align-items:baseline; }
 .titlerow.oneline h1 { min-width:0; overflow:hidden; text-overflow:ellipsis;
                         white-space:nowrap; }
-.titlerow.oneline .titlescore { flex:0 0 auto; }
+.titlerow.oneline .titleside { flex:0 0 auto; }
 /* The right-hand end of the title row: what this copy of the page can do, then how the
-   branch did. Whichever of them comes first takes the `margin-left:auto` that pushes the
-   group against the right edge — the badge is hidden once the rerun chip replaces it, and
-   `:first-child` would be the title, so the push is written as "the first of these that
-   is on screen" rather than pinned to one of them.
+   branch did. They travel in a box of their own, which is what carries the
+   `margin-left:auto` that pushes the group against the right edge and the gap that spaces
+   it. Laid on the group and not on its members, because two of the three are hidden in one
+   copy of the report or the other: a `margin-left:auto` pinned to "the first of these that
+   is on screen" is a sibling selector that has to be right about which ones can disappear,
+   and the first version of it was not — it matched *both* rerun chips and opened a hole
+   between them.
 
    One box for all three, and it is the score's. They are the same beige-and-border pill
    at a glance and they were not the same height: the chips took their height from the
@@ -995,12 +1011,11 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
    not share. Now the padding, the border, the radius, the type size and the line box are
    declared once, here, for the three of them, and they are centred on each other rather
    than on a baseline — a glyph, a word and a fraction have no common baseline to sit on. */
+.titleside { display:inline-flex; align-items:center; gap:.5rem; margin-left:auto; }
 .titlerow .chip-mode, .titlerow .chip-rerun, .titlerow .titlescore {
             flex:0 0 auto; align-self:center;
             padding:.15rem .7rem; border-radius:999px; border-width:1px;
             border-style:solid; font-size:.82rem; line-height:1.6; }
-.titlerow > .chip-mode:not([hidden]),
-.titlerow > .chip-mode[hidden] ~ .chip-rerun:not([hidden]) { margin-left:auto; }
 /* `[hidden]` is spelled out because the `display` these carry would otherwise beat the
    attribute. */
 .titlerow .chip-mode[hidden], .titlerow .chip-rerun[hidden] { display:none; }
@@ -1982,13 +1997,21 @@ window.HR = (function () {
 #: colour and size for free in both themes, and a page that carries eleven of these does
 #: not want eleven inline documents in it.
 #:
-#: The run glyph is the clockwise arrows and not a ▶ because every command this page
-#: offers is a *rerun*: it re-derives something the page is already showing and the page
-#: then catches up with it. A play triangle promises a thing that starts and plays; this
-#: promises the thing that comes round again, which is also what the masthead's badge and
-#: the spinner mid-run are drawn from. One mark, learnt once, everywhere it can happen.
+#: The run glyph is a circular arrow and not a ▶ because every command this page offers is
+#: a *rerun*: it re-derives something the page is already showing and the page then catches
+#: up with it. A play triangle promises a thing that starts and plays; this promises the
+#: thing that comes round again, which is also what the masthead's badge and the spinner
+#: mid-run are drawn from. One mark, learnt once, everywhere it can happen.
+#:
+#: `↻` and not the 🔃 emoji, for two reasons that both come down to it being *text*. It
+#: takes the pill's colour — the served badge is green and the paid chip is amber, and an
+#: emoji is a picture that stays its own colours inside both of them. And it is a stroke
+#: rather than a two-tone glyph, so at .82rem it reads as a mark instead of a small
+#: illustration. Picked over `⟳` (U+27F3) and `⥁` (U+2941) by measuring them: at this size
+#: those come out a fifth to a third narrower, and over `⭮` (U+2BAE), which measured
+#: exactly as wide as a private-use codepoint — i.e. it was tofu.
 CMD_COPY = "\U0001F4CB"   # 📋
-CMD_RUN = "\U0001F503"    # 🔃
+CMD_RUN = "\u21BB"        # ↻
 
 # The masthead's Rerun — which is also the served badge, because they are one fact.
 #
@@ -2042,12 +2065,15 @@ RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
                  'data-tip="costs money: ~$5 on Sonnet. Rewrites the requirements↔tests '
                  'matrix and the per-test catalogue with a model, then re-derives the '
                  'evidence and rebuilds the page.">'
-                 # The free one's mark, then the two things this one adds to it: a model,
-                 # and money leaving. Three characters and no words, because the sentence
-                 # that matters here is the price and the price is in the hover and again
-                 # in the dialog — a label reading `Rerun + AI` said neither, and cost the
-                 # masthead the width of two words to say `rerun` a second time.
+                 # The free one's mark, a plus, then the two things this one adds to it:
+                 # a model, and money leaving. The `+` is the whole sentence — this chip is
+                 # the one beside it *and* something more — and without it the three marks
+                 # ran together as one picture nobody could take apart. No words, because
+                 # the sentence that matters here is the price, and the price is in the
+                 # hover and again in the dialog: a label reading `Rerun + AI` said neither,
+                 # and cost the masthead two words to say `rerun` a second time.
                  f'<span class="rr-ico">{CMD_RUN}</span>'
+                 '<span class="rr-plus">+</span>'
                  '\U0001F916\U0001F4B8</button>')
 
 # The confirmation, in the page rather than in the browser.
@@ -9172,6 +9198,24 @@ HOME_URL = "https://github.com/victorrentea/human-review"
 # that starts a download the instant it is clicked is a poor thing to paste into a chat.
 DEMO_ZIP_URL = "https://github.com/victorrentea/human-review/releases/tag/demo"
 
+# The other way to keep this page, and the better one for anybody who is going to read it
+# rather than skim it: `.github/workflows/demo-image.yml` bakes every snapshot under
+# `demo/` into a container and pushes it to this repository's own registry, so
+# `docker run --rm -p 8642:80 ghcr.io/victorrentea/human-review:<slug>` stands the report
+# up at an address on the reader's own machine.
+#
+# It is worth a second link beside the zip because *served is not the same page as
+# unzipped*. Off disk a review cannot reliably fetch its own content, every request it
+# makes is cross-origin, and the recordings open in another application instead of in the
+# page. The container is the only copy a stranger can be handed that behaves exactly like
+# the one being demoed to them.
+#
+# The package page and not a `docker pull` line: the tags are listed there with what each
+# one holds, and a footer is a place to send somebody, not a place to print a command they
+# cannot run from a browser.
+DEMO_DOCKER_URL = ("https://github.com/victorrentea/human-review/"
+                   "pkgs/container/human-review")
+
 # The footer's own line is where the offer goes. A reader still reading has no use for it;
 # a reader who has reached the bottom is precisely the one who wants to keep a copy — and
 # the page they are looking at is usually on somebody else's screen, so "keep a copy" is
@@ -9179,13 +9223,24 @@ DEMO_ZIP_URL = "https://github.com/victorrentea/human-review/releases/tag/demo"
 #
 # A sibling of the footer sentence, not a clause inside it: that sentence belongs to the
 # content file and an author may write anything there or nothing, while this offer is the
-# build's and is owed to every page it produces. The link is the verb — `Download here` —
-# for the same reason the button under it says `show single page`: down here a reader is
-# scanning for a thing to do, not a sentence to read.
+# build's and is owed to every page it produces.
+#
+# Two links and almost no prose between them. It read `Download here a standalone demo
+# zip.`, where the verb was the link and the noun trailed after it — so the reader's eye
+# landed on *Download here*, which says nothing about what arrives, and had to read on to
+# find out. The links are the nouns now (`Download zip`, `a runnable docker of this
+# report`), which is what a reader at the foot of a page is scanning for: a thing to take,
+# not a sentence about taking it. What each one actually is stays in the hover.
 TAKEAWAY = (
-    f'<span class="takeaway"><a href="{DEMO_ZIP_URL}" target="_blank" rel="noopener" '
+    '<span class="takeaway">'
+    f'<a href="{DEMO_ZIP_URL}" target="_blank" rel="noopener" '
     'data-tip="Sample review pages on GitHub, one zip each. Unzip it and open '
-    'review.html — no install, no server.">Download here</a> a standalone demo zip.</span>'
+    'review.html — no install, no server.">Download zip</a> · or '
+    f'<a href="{DEMO_DOCKER_URL}" target="_blank" rel="noopener" '
+    'data-tip="The same pages as a container: docker run --rm -p 8642:80 '
+    'ghcr.io/victorrentea/human-review:&lt;snapshot&gt; — served rather than off disk, '
+    'so the page behaves the way it does here.">a runnable docker of this report</a>.'
+    '</span>'
 )
 
 
@@ -9211,13 +9266,23 @@ FOOTER_BOILERPLATE = re.compile(
 # leaves goes to the one sentence a stranger holding this page can act on.
 RUNNING_STACK = re.compile(r"\s+against the running stack", re.I)
 
-# A sentence, not a title-cased list of verbs. "Fork, Clone and Port with your Agent" read
-# as a feature name and left the reader to work out who does which of the three; naming the
-# agent as the one doing the work is the whole point — this is a page you hand to your own
-# agent, not a repository you sit down and re-implement.
-# Whatever it says, it is emitted as HTML and not escaped on the way out, so any `&` put
-# back into it has to be written `&amp;`.
-INVITATION = "Tell your agent to adapt this to your environment."
+# Nothing. The footer line is the address the page came from and the date it was built,
+# and that is all it is for.
+#
+# It carried a sentence for a while — "Tell your agent to adapt this to your environment",
+# after "Fork, Clone and Port with your Agent" before that — on the reasoning that a GitHub
+# link in a footer reads as provenance and gets skipped, so it should be told what to do
+# with the address. Both readings are right and the conclusion was not: the two links
+# beside it already *are* the things to do, and an instruction sitting between the
+# provenance and the offer was a third voice in a line that has room for two. The empty
+# string is load-bearing — `_link_home` appends this, so emptying it empties the sentence
+# on every page rebuilt from here, including ones already published.
+INVITATION = ""
+
+#: The ones that shipped, so a footer written against any of them comes out clean.
+PAST_INVITATIONS = re.compile(
+    r"\s*(?:Tell your agent to adapt this to your environment\.?"
+    r"|Fork,? Clone and Port with your Agent\.?)", re.I)
 
 
 def _link_home(footer: str) -> str:
@@ -9242,6 +9307,11 @@ def _link_home(footer: str) -> str:
     linked = footer.replace(
         "/human-review",
         f'<a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a>', 1)
+    if not INVITATION:
+        # And strip it where a content file (or an older build's output re-used as one)
+        # still carries it: the sentence is gone from the template, and a page that
+        # rebuilt itself and kept it would be the one place it survives.
+        return PAST_INVITATIONS.sub("", linked).strip()
     return f"{linked} {INVITATION}" if INVITATION not in linked else linked
 
 
@@ -9375,10 +9445,12 @@ def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str,
         # thing the summary says, and a block that never scrolls cannot spend its width
         # on a sentence that is read once. `subtitle` is still in the content file and
         # still renders on a page with no `pr` block.
-        rows = [f'<div class="titlerow oneline">{heading}{title_score}</div>']
+        rows = [f'<div class="titlerow oneline">{heading}'
+                f'<span class="titleside">{title_score}</span></div>']
         chips = ref_badges(spec, base_st) + chips
     else:
-        rows = [f'<div class="titlerow">{heading}{title_score}</div>',
+        rows = [f'<div class="titlerow">{heading}'
+                f'<span class="titleside">{title_score}</span></div>',
                 f'<p class="sub">{spec.get("subtitle", "")}</p>']
     rows.append(f'<div class="scopebar">{chips}</div>')
     if not strip_html:

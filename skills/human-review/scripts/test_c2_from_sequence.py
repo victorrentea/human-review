@@ -636,15 +636,19 @@ def test_end_to_end_writes_a_manifest_the_page_can_read(tmp_path):
     out = root / ".human-review" / "assets" / "c2"
     header, row = (out / "MANIFEST.tsv").read_text().splitlines()
     fields = dict(zip(header.split("\t"), row.split("\t")))
-    assert fields["name"] == "C2"
+    # The view key, not the level. `C2` alone is the C4 *level*, the way `C3` is, and a
+    # card titled with it tells a reader which shelf the picture came off rather than what
+    # is on it. `C2-Containers` is Structurizr's own convention for a container view's key,
+    # which is what petclinic's own DSL calls it and what it exports.
+    assert fields["name"] == "C2-Containers"
     assert fields["kind"] == "structural"
     assert fields["status"] == "modified"
-    assert fields["diff_puml"] == "C2.diff.puml"
+    assert fields["diff_puml"] == "C2-Containers.diff.puml"
     # The source column is a real file, so the page's header links into the editor rather
     # than printing a path nothing opens.
     assert (root / fields["source"]).is_file()
 
-    model = json.loads((out / "C2.json").read_text())
+    model = json.loads((out / "C2-Containers.json").read_text())
     assert {"Browser", "Backend", "DB", "Payments"} == set(model["new"]["nodes"])
     assert model["diff"]["nodes"]["Payments"]["status"] == "added"
 
@@ -677,8 +681,36 @@ def test_a_branch_whose_base_had_no_sequences_is_added_not_modified(tmp_path):
     assert row[8] == ""          # no old side to offer, so the control shows one word
     # Nothing to compare against means nothing to paint: a diagram where every box is
     # green says "all of this changed" when what happened is "this is the first picture".
-    assert c2.ADDED not in (out / "C2.diff.puml").read_text()
+    assert c2.ADDED not in (out / "C2-Containers.diff.puml").read_text()
 
 
 if __name__ == "__main__":
     sys.exit(subprocess.call([sys.executable, "-m", "pytest", "-q", __file__]))
+
+
+def test_the_card_is_named_after_the_projects_own_c4_view_key(tmp_path):
+    """One name for one picture, across the model, the export and this page.
+
+    `C2` on its own is the *level* in the C4 model — it names a shelf, not a diagram — so a
+    card headed with it tells a reader where the picture came from rather than what is on
+    it. Structurizr projects write the view's key in the DSL and export it as the filename
+    (`container petClinic "C2-Containers" …` → `C2-Containers.puml`), and a project that has
+    one should be able to say so rather than have this step invent a second spelling."""
+    root = _repo(tmp_path)
+    cfg = json.loads((root / "human-review.json").read_text()) \
+        if (root / "human-review.json").is_file() else {}
+    cfg.setdefault("steps", {}).setdefault("c2", {})["name"] = "C2-Runtime"
+    (root / "human-review.json").write_text(json.dumps(cfg))
+    assert c2.main(["--root", str(root), "--base", "main"]) == 0
+    out = root / ".human-review" / "assets" / "c2"
+    header, row = (out / "MANIFEST.tsv").read_text().splitlines()
+    assert dict(zip(header.split("\t"), row.split("\t")))["name"] == "C2-Runtime"
+    # And the files it writes are named for it too, so the stem, the manifest row and the
+    # card's title are one string rather than three that agree today.
+    assert (out / "C2-Runtime.diff.puml").is_file()
+    assert (out / "C2-Runtime.json").is_file()
+
+
+def test_the_default_name_is_the_container_view_convention():
+    """A project with no DSL to copy from still gets a name rather than a level."""
+    assert c2.DEFAULT_NAME == "C2-Containers"

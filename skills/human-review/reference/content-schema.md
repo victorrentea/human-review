@@ -214,12 +214,16 @@ for, with the package list itself on hover — read out of `logextract.py`'s own
 cannot go stale. The nested `existing` and `console` asides still take a `title` and
 `body`.
 
-**`codecity`** has no heading either, and its `title` is ignored for the same reason: the
-tab says *Code City* and the picture is the first thing under it. What is left is `body`,
-and it is **one line** — the measured count and what the lit slice is. The panel and the
-hover card are inside the shot, in the renderer's own words, so a paragraph explaining
-what a building, its height or its colour mean is the picture read aloud to someone who
-is already looking at it. **`codeowners`** has no default heading either: the pill says
+**`codecity`** has no heading and **no lede**: `title` and `body` are both ignored, and the
+picture starts immediately under the tab strip. The tab says *Code City*, so a heading above
+the shot is its label said twice — and the line `body` used to hold was always some version
+of *"10 buildings lit — the classes this change set touched, in a city of the whole
+backend"*, which is three claims a reader can already see: the count is legible in the
+picture, the lit slice is what lit means, and the city being the whole backend is what a
+city is. It was also a hand-typed number in a file nothing revalidates, so it went stale
+silently the first time somebody added a class. The panel and the hover card are inside the
+shot, in the renderer's own words. Write `caption` if there is genuinely something under the
+picture to say; there usually is not. **`codeowners`** has no default heading either: the pill says
 *CODEOWNERS*, its badge says *Code owners approval required* and the seal under it says
 *APPROVAL REQUIRED*, so a fourth `Code owners` above the first filename is the label said
 again. It still renders a `title` you write on purpose.
@@ -627,7 +631,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
               "context":{"src":"petclinic-backend/docs/packages.puml","name":"Packages","note":"…"}},
              {"type":"puml","src":"petclinic-backend/docs/generated/MavenModules.puml",
               "name":"Maven modules","status":"unchanged"},
-             {"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2"],
+             {"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2-Containers"],
               "id":"c2-containers","title":"C2 Containers"}]},
   {"id":"city","label":"Code City","blocks":[{"type":"codecity"}]},
   {"id":"dsaudit","label":"UX","tip":"Native controls sitting where a standardised component belongs — found by absence, not by labelling.",
@@ -737,7 +741,14 @@ opens the old inventory on `Old` and the new one on `Diff` and `New`.
 Four things follow from its being derived, and all four are visible on the page:
 
 - **Its rows are in a manifest of its own**, `assets/c2/MANIFEST.tsv`, named by the block —
-  `{"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2"]}`. Give it an
+  `{"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2-Containers"]}`. The
+  name in `only` is `steps.c2.name` from `human-review.json` (default `C2-Containers`),
+  which is the *view key* rather than the level: `C2` alone names the level in the C4 model
+  the way `C3` does, and a card titled with it says which shelf the picture came off rather
+  than what is on it. A project whose C4 lives in a Structurizr DSL already has that key —
+  petclinic's reads `container petClinic "C2-Containers" …` and exports
+  `C2-Containers.puml` — so spelling it the same gives one name for one picture across the
+  model, the export and this page. Give the block an
   `id` of its own (`c2-containers`): a diagrams block with a title and no id heads itself
   `id="diagrams"`, and two of those on one page is one anchor pointing at two panels. It cannot file
   them in the shared gallery's `assets/diagrams/MANIFEST.tsv`, because `puml-diff.sh` does
