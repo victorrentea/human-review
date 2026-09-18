@@ -92,7 +92,7 @@ from hrbuild.shared.diagrams import (
     CM_LEGEND_NEW, CM_LEGEND_TODO, DEFAULT_FOCUS, DGM_SRC_ANCHOR, dgm_views_html, DRAWIO_TOKEN,
     drawio_widget_html, expand_drawio, read_manifest, render_diagrams, render_puml, select_rows,
     shorten_dgm_src, VIEW_WORDS, _context_svg, _diagram_views, _focus_views, _provenance,
-    _source_link
+    _source_link, _why_not_drawn
 )
 from hrbuild.shared.bands import (
     set_bands, _BANDS, _flush_bands, _lede_above
@@ -127,9 +127,9 @@ from hrbuild.tabs.review import (
 )
 from hrbuild.tabs.sequence import (
     CODE_BADGE, FILE_PAGE, FILE_PENCIL, FILE_PLUS, render_testpairs, SEQ_ARROW, SEQ_DECL,
-    SEQ_UI_DRIVERS, SRCBAR, TEST_CATS, _badge_as_glyph, _cat_chip, _fold_over, _folded_pair,
-    _line_spans, _pair_cat, _scenarios_drawn, _share_excerpts, _unchanged_sequence,
-    _unquoted_note
+    SEQ_UI_DRIVERS, SRCBAR, TEST_CATS, TEST_RUNNERS, _badge_as_glyph, _cat_chip, _fold_over,
+    _folded_pair, _line_spans, _pair_cat, _pair_runner, _scenarios_drawn, _share_excerpts,
+    _unchanged_sequence, _unquoted_note
 )
 from hrbuild.tabs.tests import (
     LEDGER_TAB, render_requirements, render_test_ledger, render_tests, render_traces,

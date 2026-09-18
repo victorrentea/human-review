@@ -686,6 +686,13 @@ RUNS_KEEP = 40
 
 def start_run(action_id, params, served_root):
     """`(Run, problem, status)`. The id is looked up; the command never comes from the caller."""
+    if action_id in RERUN_ACTIONS:
+        # They are in the manifest now, because that is where their command lives — but
+        # they are not reachable here. `/__rerun__` and `/__rerun_ai__` carry the shared
+        # lock, the watcher hold and, for the paid one, the confirmation in front of it;
+        # a second door onto the same command through `/__run__` would have none of those,
+        # and the one it would skip first is the $5.
+        return None, f"{action_id} has an endpoint of its own; ask for it there", 400
     entry = actions(served_root).get(action_id)
     if entry is None:
         # Deliberately the same answer for "no manifest", "no such action" and "this build
@@ -745,6 +752,18 @@ def rerun_plan(served_root):
         rel = Path(served_root).resolve().relative_to(ROOT.resolve())
     except ValueError:
         return None
+    # The command itself comes out of the manifest the build wrote, not from here. It used
+    # to be assembled in this function *and* printed, differently, by the page — the band
+    # in the Review tab put `cd <repo> && refresh-report.py --dir … --steps static` on the
+    # clipboard while this ran `python refresh-report.py --dir … --steps static --no-serve`.
+    # Same intent, two authors, and they had already drifted by an interpreter and a flag.
+    # One string now: the build declares it, the page copies it, this runs it.
+    entry = actions(served_root).get(RERUN_ACTION)
+    if entry:
+        return (["/bin/sh", "-c", entry["command"]], ROOT)
+    # A page from a build older than the declaration still reruns. Kept because the
+    # alternative is a masthead button that goes away when the reader upgrades the skill
+    # and has not yet rebuilt the page the upgrade is for.
     return ([sys.executable, str(REFRESH), "--dir", str(rel),
              "--steps", "static", "--no-serve"], ROOT)
 
@@ -786,6 +805,9 @@ def rerun_ai_plan(served_root):
         rel = Path(served_root).resolve().relative_to(ROOT.resolve())
     except ValueError:
         return None
+    entry = actions(served_root).get(RERUN_AI_ACTION)
+    if entry:
+        return (["/bin/sh", "-c", entry["command"]], ROOT)
     return (["/bin/sh", "-c", rerun_ai_command(rel)], ROOT)
 
 

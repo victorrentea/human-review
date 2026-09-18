@@ -69,17 +69,18 @@
       ev.target.closest('button.copycmd, button.runhere');
     if (!cmd) return;
     // There used to be a third class here, `cmdpeek`, which opened a fold with the command
-    // in it. Both are gone: the command is not printed on the page at all any more, so
-    // there is nothing to fold and no trigger to fold it with. What is left is the offer
-    // (runs served, copies off disk) and the copy glyph beside it.
+    // in it, and a fourth arrangement after that: a word button beside a separate glyph,
+    // two elements for one action. Both are gone. What is left is one control per command
+    // \u2014 its label and its mark, in the same button \u2014 which runs served and copies off
+    // disk. The mark is which of the two this copy of the report can honour.
     var action = cmd.getAttribute('data-action');
     if (action && window.HR.can(action)) { rerun(cmd, action); return; }
     // Static, and the offer knows its own command: the click *copies* it. That is the one
     // thing this copy of the report can do with it, so it is what the click does — a
     // control whose whole answer is a sentence explaining why it did nothing is a control
-    // the reader learns to stop pressing. The copy glyph beside it is what keeps that from
-    // being a magic trick — it is the visible statement that a click here copies something
-    // — and its hover carries the line that goes on the clipboard.
+    // the reader learns to stop pressing. The clipboard mark *on* the button is what keeps
+    // that from being a magic trick — it is the visible statement that a click here copies
+    // something — and its hover carries the line that goes on the clipboard.
     var runhere = cmd.classList.contains('runhere');
     if (runhere && !cmd.getAttribute('data-copy')) {
       // Nothing to copy — the only offers left in this state are the ones whose command
@@ -145,24 +146,28 @@
   }
 
   function rerun(button, action) {
-    var was = button.textContent, last = '';
-    // A run glyph is a pill one character wide; 'Running\u2026' in it would reflow the line
-    // it sits in, and 'Done' would leave a word where the reader learnt to find a mark. So
-    // the glyph spins in place and the sentence goes to the status line and the toast.
-    var glyph = button.classList.contains('cmd-run');
+    var last = '';
+    // Every runnable control on this page is now one button carrying its own mark — the
+    // words and the glyph are the same element, because two elements for one action is a
+    // question the reader has to answer before pressing either. So there is no longer a
+    // wordless variant to special-case, and no variant whose face can be rewritten: the
+    // mark spins in place and the sentence goes to the status line and the toast.
+    // 'Running\u2026' over `Update the report` would reflow the row it sits in and take the
+    // label away from the one control that says what is running.
     var status = statusline(button);
     // Two offers under the same picture run through here, and "Re-rendering the diagram"
     // over a click that has just thrown the layout away would be the page describing the
     // wrong half of what it is doing.
     var opening = button.getAttribute('data-run-say') || 'Re-rendering the diagram\u2026';
     button.disabled = true;
-    if (glyph) button.classList.add('running');
-    else button.textContent = 'Running\u2026';
+    button.classList.add('running');
     // Every offer in the same block goes down with it: they run one command over one
     // working tree, and a second press while the first is going is a reader who could not
-    // tell it had started.
+    // tell it had started. Both faces of each offer, because the probe decides which one is
+    // up and a disabled run glyph beside a live clipboard for the same command is the pair
+    // this page spent two commits getting rid of.
     var box = button.closest && button.closest('.rerun, .rband, .appenv');
-    var kin = box ? [].slice.call(box.querySelectorAll('.offer-pill, .cmd-run')) : [];
+    var kin = box ? [].slice.call(box.querySelectorAll('.cmd-run, .cmd-copy')) : [];
     kin.forEach(function (b) { b.disabled = true; });
     say(status, opening, '');
     flash(opening, true);
@@ -177,8 +182,7 @@
       }
     }).then(function (done) {
       if (done.state === 'done') {
-        if (glyph) button.classList.remove('running');
-        else button.textContent = 'Done';
+        button.classList.remove('running');
         say(status, 'Done \u2014 reloading this page', '', true);
         flash('Rebuilt \u2014 reloading this page', true);
         // Which tab and how far down, kept across the reload — the same place-keeper the
@@ -205,7 +209,6 @@
       button.disabled = false;
       button.classList.remove('running');
       kin.forEach(function (b) { b.disabled = false; });
-      if (!glyph) button.textContent = was;
     }
   }
 

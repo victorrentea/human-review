@@ -287,6 +287,40 @@ def test_puml_diff_drops_a_side_plantuml_could_not_draw():
     assert '[ -s "$1" ] || return 1' in body, "an empty side is not a diagram"
 
 
+def test_puml_diff_keeps_the_reason_it_dropped_a_delta():
+    """Dropping the picture is right; dropping the complaint with it is what made the
+    page say "not rendered" — a sentence that sounds like a step nobody ran."""
+    sh = (HERE / "puml-diff.sh").read_text()
+    assert "capture_render_failure()" in sh
+    body = sh.split("  svg=\"\"\n")[1].split("  # A structural diagram")[0]
+    assert 'capture_render_failure "${diff_puml%.puml}.svg" "$diff_puml" "$diff_puml.err"' in body
+    assert 'rm -f "$diff_puml.err"' in body, "a delta that draws this time must not keep " \
+                                             "the last run's excuse beside it"
+
+
+def test_a_delta_that_did_not_draw_says_what_plantuml_said(tmp_path):
+    (tmp_path / "x.diff.puml").write_text('participant "A B" as A B\n', encoding="utf-8")
+    (tmp_path / "x.diff.puml.err").write_text(json.dumps(
+        {"message": "Syntax Error? (Assumed diagram type: sequence)",
+         "line": 11, "source": 'participant "A B" as A B'}), encoding="utf-8")
+    out = diagrams._why_not_drawn({"diff_puml": "x.diff.puml"}, tmp_path)
+    assert "diagram could not be drawn" in out
+    assert "Syntax Error?" in out                      # PlantUML's words, not ours
+    assert "at line 11" in out                         # …and where
+    assert html.escape('participant "A B" as A B') in out
+    assert f'href="vscode://file/{tmp_path.resolve()}/x.diff.puml:11:1"' in out
+    assert "not rendered" not in out
+
+
+def test_a_delta_with_no_recorded_reason_still_points_at_its_source(tmp_path):
+    """Nothing was captured — an older run, or plantuml simply absent. Say the little
+    that is true rather than inventing a cause."""
+    (tmp_path / "x.diff.puml").write_text("@startuml\n@enduml\n", encoding="utf-8")
+    out = diagrams._why_not_drawn({"diff_puml": "x.diff.puml"}, tmp_path)
+    assert "not rendered" in out and "x.diff.puml" in out
+    assert "could not be drawn" not in out
+
+
 def test_the_header_arrow_survived_python_before_it_reached_css():
     """The CSS hex escape for this arrow, written into a plain (non-raw) Python string,
     is read as an octal escape by Python first: it shipped as the text "94" on every

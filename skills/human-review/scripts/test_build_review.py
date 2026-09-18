@@ -183,65 +183,95 @@ def test_the_row_reads_the_state_first_then_the_verbs_that_act_on_it(tmp_path):
     assert "margin-left:auto" not in rule[:rule.index("}")], "not off in the corner"
 
 
-def test_every_verb_starts_hidden_and_is_raised_by_the_probe(tmp_path):
+def test_every_verb_starts_hidden_and_is_raised_by_the_script(tmp_path):
     """A verb drawn live that turns out not to apply has already been clicked by the time
-    the probe corrects it. `hidden` *and* aria-disabled: the second is the guard the script
-    itself reads, and it survives a stylesheet that never loaded."""
+    the probe corrects it, so nothing in this row ships visible.
+
+    The `hidden` sits on the *wrapper* for the three commands and on the button for Reset,
+    and that split is the design: inside a wrapper are the two faces of one verb — the
+    clipboard and the play — and SERVER_JS owns which of the two is up. Two owners of
+    `hidden` on one element is how a control ends up flickering between two truths."""
     s = _video_dir(tmp_path, filmed=True)
-    s["runtime"] = {"command": "up", "stop": "down", "reset": "/__reset"}
+    s["runtime"] = {"command": "up", "stop": "down", "urlCommand": "where",
+                    "reset": "/__reset"}
     out = build.video_html(s, tmp_path)
-    for cls in ("appenv-start", "appenv-stop", "appenv-reset"):
-        at = out.index(cls)
-        tag = out[out.rindex("<button", 0, at):out.index(">", at) + 1]
-        assert " hidden " in tag and 'aria-disabled="true"' in tag
+    for verb in ("start", "stop", "where"):
+        assert f'<span class="appenv-act appenv-{verb}" hidden>' in out
+    at = out.index("appenv-reset")
+    tag = out[out.rindex("<button", 0, at):out.index(">", at) + 1]
+    assert " hidden " in tag and 'aria-disabled="true"' in tag
 
 
-def test_off_disk_the_verbs_are_hidden_and_the_commands_are_the_route(tmp_path):
-    """Off disk nothing in the row can run: no process here runs a command, and Reset has
-    nothing to reset until one has. So the verbs are hidden — a control that always fails
-    is worse than an absent one — and the commands underneath are the route.
+def test_off_disk_every_verb_is_the_clipboard_for_its_own_command(tmp_path):
+    """No process stands behind a page on disk, so none of these verbs can run — and the
+    row says so by wearing the clipboard on all three, not by deleting them.
 
-    Both halves are in the markup because the same file is opened both ways and only the
-    script knows which; the stylesheet hides the half that would be lying."""
+    It used to delete them and put a *second* row underneath carrying the same three
+    commands again, as clipboards labelled `START`, `STOP`, `WHERE`. Six controls for three
+    offers — and the lower row wore the rerun mark, so a page that *was* being served still
+    looked like it was handing out lines to paste somewhere else. Both faces of each verb
+    are in the markup of every copy, because the same file is opened both ways and only the
+    script knows which."""
     s = _video_dir(tmp_path, filmed=True)
-    s["runtime"] = {"command": "up", "stop": "down", "reset": "/__reset"}
+    s["runtime"] = {"command": "up", "stop": "down", "urlCommand": "where",
+                    "reset": "/__reset"}
     out = build.video_html(s, tmp_path)
-    assert "appenv-start" in out and "appenv-manual" in out
-    for cls in ("appenv-start", "appenv-stop", "appenv-reset"):
-        assert f".appenv:not(.appenv-served) .{cls}" in build.CSS
+    # Nothing hides a verb off disk any more. Reset keeps its rule and is the one
+    # exception: it is a POST the application answers, not a line anybody can paste, so
+    # there is nothing for a clipboard there to be the honest form of.
+    for verb in ("start", "stop", "where"):
+        assert f".appenv:not(.appenv-served) .appenv-{verb}" not in build.CSS
+    assert ".appenv:not(.appenv-served) .appenv-reset { display:none; }" in build.CSS
+    # The second row is gone, name and all.
+    for dead in ("appenv-manual", "appenv-cmd", "appenv-verb"):
+        assert dead not in out and f".{dead}" not in build.CSS
 
 
-def test_served_the_commands_stay_beside_the_verbs(tmp_path):
-    """This used to be hidden the moment the probe answered, on the reasoning that a shell
-    line beside a button that already does the job is noise. It is not noise to the reader
-    this page is written for: they have a terminal open next to it, half of what they do
-    with the stack is not on this row, and hiding it made "what does this button actually
-    run" a question with no answer in the copy where the button works."""
-    assert ".appenv.appenv-served .appenv-manual" not in build.CSS
+def test_the_three_verbs_are_one_row_of_one_control_each(tmp_path):
     s = _video_dir(tmp_path, filmed=True)
     s["runtime"] = {"command": "up", "stop": "down", "urlCommand": "where"}
     out = build.video_html(s, tmp_path)
     # All three, not just `up`. `stop` and `where` were declared for the buttons and never
-    # shown to anybody, so the one reader who needed to know how the host is asked where
-    # the stack is answering had to read the manifest to find out.
+    # offered to anybody, so the one reader who needed to know how the host is asked where
+    # the stack is answering had to go and read the manifest.
+    for verb, word in (("start", "Start"), ("stop", "Stop"), ("where", "Where")):
+        assert f'<span class="appenv-act appenv-{verb}"' in out
+        assert f'<span class="cmd-word">{word}</span>' in out
+    # Each is the page's one command renderer with a word on it — not a fourth kind of
+    # button with its own clipboard and its own idea of what a glyph means.
+    assert out.count('class="copycmd cmd-copy has-word"') == 3
+    assert out.count('class="runhere cmd-run has-word" hidden') == 3
+    # One row. The verbs are inside it, after the state they act on.
+    assert out.count('class="appenv-run"') == 1
     for verb in ("start", "stop", "where"):
-        assert f'<span class="appenv-verb">{verb}</span>' in out
-    # And each of them is the one command renderer, with a play the probe raises.
-    assert out.count('class="copycmd cmd-copy"') == 3
-    assert out.count('class="runhere cmd-run" hidden') == 3
+        assert out.index("appenv-state") < out.index(f"appenv-{verb}")
+
+
+def test_none_of_the_three_verbs_wears_the_rerun_mark(tmp_path):
+    """`↻` means *this one comes round again* everywhere else on the page, which is the
+    opposite of what all three of these do: Start begins something that then keeps running,
+    Stop ends it, Where goes to it. The old second row wore it on all three."""
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "up", "stop": "down", "urlCommand": "where"}
+    out = build.video_html(s, tmp_path)
+    assert build.CMD_RUN not in out
+    for glyph in (build.CMD_PLAY, build.CMD_STOP, build.CMD_OPEN):
+        assert f'<span class="cmd-ico">{glyph}</span>' in out
+    # Red, because Stop is the only verb in the row that takes something away — and only
+    # on the play half, since copying a line destroys nothing.
+    assert ".appenv .appenv-stop .cmd-run" in build.CSS
 
 
 def test_the_command_is_a_clipboard_and_not_a_line_of_text(tmp_path):
     """It used to be printed here, and a `cd … && ./start-docker.sh up --ref abc123` was
     the widest thing in the Demo tab and was read exactly once. What the row carries now is
-    the affordance, labelled with the verb; the line is in the glyph's hover."""
+    the affordance, with the verb on it; the line is in the glyph's hover."""
     s = _video_dir(tmp_path, filmed=True)
     s["runtime"] = {"command": "./start-docker.sh up"}
     out = build.video_html(s, tmp_path)
-    assert out.index("appenv-run") < out.index("appenv-manual")
+    assert out.index("appenv-title") < out.index("appenv-start")
     assert "Run this in a terminal" not in out
     assert "<code>./start-docker.sh up</code>" not in out
-    assert '<span class="appenv-verb">start</span>' in out
     # The clipboard is `command_html`'s now, through the page's one copy-and-toast handler.
     # A second implementation for one button is how two of them end up behaving differently.
     assert "appenv-copy" not in out
@@ -253,7 +283,7 @@ def test_the_stop_control_appears_only_when_a_command_is_declared(tmp_path):
     s = _video_dir(tmp_path, filmed=True)
     s["runtime"] = {"command": "up", "stop": "./start-docker.sh down --ref abc"}
     out = build.video_html(s, tmp_path)
-    assert "appenv-stop" in out and ">Stop<" in out
+    assert "appenv-stop" in out and '<span class="cmd-word">Stop</span>' in out
     # The command is printed for the reader now — but the *button* still sends only the id
     # of the action, and the server holds the line. Showing a command and accepting one
     # from the page are different things, and it is the second that was never on offer.
@@ -2837,14 +2867,14 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"},
                           {"type": "autofixes"}]}]))
-    assert "2 assumptions" in page
+    assert "2 implementation assumptions" in page
     assert "yours to confirm" not in page, \
         "the card's own purple chip already says which pile it is"
     assert "9 open LLM review issues" in page
     assert "3 auto-fixed" in page
     assert ('<a href="#first">9 open LLM review issues</a> &middot; '
             '<a href="#fixed">3 auto-fixed</a> &middot; '
-            '<a href="#assumed">2 assumptions</a>') in page, \
+            '<a href="#assumed">2 implementation assumptions</a>') in page, \
         "what a pass found comes first; what no pass could find comes after it — and every "\
         "clause is the jump to the chapter it counts"
     assert page.index('class="sub counts pilelede"') < page.index("Requires human review"), \
@@ -2863,7 +2893,7 @@ def test_the_lede_counts_the_coder_pile_at_zero_too(tmp_path):
         BARE, findings=[{"title": "f", "body": "<p>b</p>"}],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert "0 assumptions" in page
+    assert "0 implementation assumptions" in page
     assert "1 open LLM review issue" in page
 
 
@@ -2895,8 +2925,8 @@ def test_the_lede_lands_on_the_pile_that_opens_the_list_whichever_it_is(tmp_path
         assumptions=[_assumption()],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert page.count("1 assumption</a>") == 1, "said once, not once per pile"
-    assert page.index("1 assumption</a>") < page.index("Requires human review")
+    assert page.count("1 implementation assumption</a>") == 1, "said once, not once per pile"
+    assert page.index("1 implementation assumption</a>") < page.index("Requires human review")
 
 
 def test_the_lede_is_counts_and_nothing_else(tmp_path):
@@ -3448,12 +3478,32 @@ def test_a_pair_says_what_kind_of_test_drew_it(tmp_path):
     out = build._folded_pair(puml, rel, [""], scenarios=[(4, "remembers the vet")],
                              cat=build._pair_cat(puml, tmp_path))
     assert '<span class="testcat" data-cat="e2e"' in out
-    assert ">UI</span>remembers the vet</summary>" in out, "it leads the sentence"
-    assert "UI &mdash; clicks the screen" in out, "the legend is on the hover"
+    assert ">UI · Gherkin</span>remembers the vet</summary>" in out, "it leads the sentence"
+    # The tip is now composed, so it is escaped as one string: a literal em dash, not the
+    # `&mdash;` entity that used to be concatenated in after the escaping.
+    assert "UI · Gherkin — clicks the screen" in out, "the legend is on the hover"
     # The same three words the requirements map's legend uses, and no fourth.
     assert [c[0] for c in build.TEST_CATS.values()] == ["UI", "API", "unit"]
     # Same three colours as the evidence cards a few hundred lines up the stylesheet.
     assert ".testcat[data-cat=api]" in build.CSS and ".testcat[data-cat=unit]" in build.CSS
+
+
+def test_a_pair_also_says_what_wrote_the_test(tmp_path):
+    """`UI` covered a Playwright spec and a Cucumber feature alike, and the shut row gave
+    a reader no way to tell which was which — though only one of them is written in a
+    language a non-programmer reads. The runner qualifies the kind inside the same pill."""
+    assert ">UI · Gherkin<" in build._cat_chip("e2e", "petclinic-test/src/book.feature")
+    assert ">UI · Playwright<" in build._cat_chip("e2e", "petclinic-test/src/add.spec.ts")
+    assert ">API · JUnit<" in build._cat_chip("api", "src/test/java/AddVisitApiTest.java")
+    # Unlike the kind, this IS the file: no diagram is consulted, and none is needed.
+    assert build._pair_runner("a/b.feature") == ("Gherkin", "a Cucumber scenario")
+    # Longest suffix first, or a Playwright spec would answer to a bare `.ts` rule.
+    assert build._pair_runner("a/b.spec.ts")[0] == "Playwright"
+    # An extension this has never heard of leaves the chip exactly as it was.
+    assert build._cat_chip("e2e", "a/b.rb") == build._cat_chip("e2e")
+    assert ">UI<" in build._cat_chip("e2e", "a/b.rb")
+    # …and a runner never conjures a chip where the kind could not be read.
+    assert build._cat_chip(None, "a/b.feature") == ""
 
 
 def test_the_kind_is_read_off_the_diagram_not_guessed_from_the_path(tmp_path):
@@ -3790,16 +3840,22 @@ def test_an_empty_pile_says_which_kind_of_empty_it_is(tmp_path):
     assert "records no fix" in was_empty
 
 
-def test_the_counts_line_says_declined_not_open(tmp_path):
+def test_the_counts_line_says_open_not_declined(tmp_path):
     """Read out of review-points.md, `findings` is what the agent read and said no to —
-    a closed decision the reviewer is invited to disagree with, not an untriaged item."""
+    a closed decision the reviewer is invited to disagree with, not an untriaged item —
+    but the counts line now names it the same as the plain-content-file vocabulary does:
+    `open`, because that is what the *reader's* job on it still is, whichever pile wrote
+    it. Only the word `LLM` is the plain-content-file's own, so it is the one thing this
+    vocabulary still leaves out."""
     spec, points = _points_spec(POINTS_DOC, tmp_path)
     build.reset_list()
     lede = build.opening_lede(spec)
-    assert "1 fixed" in lede and "1 declined" in lede and "2 assumptions" in lede
-    assert "open LLM review issue" not in lede
-    # Fixed leads: the review is finished, so the line reads in the order it happened.
-    assert lede.index("1 fixed") < lede.index("1 declined")
+    assert "1 open review issue" in lede and "1 auto-fixed" in lede
+    assert "2 implementation assumptions" in lede
+    assert "declined" not in lede and "open LLM review issue" not in lede
+    # Open leads: it is the pile the reader still owes a decision to, in both
+    # vocabularies, and the fixed pile is what is already done either way.
+    assert lede.index("1 open review issue") < lede.index("1 auto-fixed")
 
 
 def test_a_content_file_that_writes_its_own_piles_keeps_the_old_wording():
@@ -3813,7 +3869,7 @@ def test_a_content_file_that_writes_its_own_piles_keeps_the_old_wording():
     lede = build.opening_lede(spec)
     assert "6 open LLM review issues" in lede
     assert "4 auto-fixed" in lede
-    assert "6 assumptions" in lede
+    assert "6 implementation assumptions" in lede
 
 
 def test_a_band_is_drained_not_repeated():
@@ -3845,15 +3901,16 @@ def test_an_item_that_is_only_a_title_is_still_refused():
 
 def test_the_piles_are_named_for_what_they_are_in_each_mode(tmp_path):
     """A content file's `findings` are untriaged and a branch's are declined; a pass's
-    fixes were applied automatically and a branch's were chosen one at a time. The default
-    heading and the badge say which, so a page that names neither still reads correctly."""
+    fixes were applied automatically and a branch's were chosen one at a time. The
+    headings read the same in both vocabularies now — "Open review issues", "Auto-fixed"
+    — so only each item's own badge still says which is which."""
     spec, points = _points_spec(POINTS_DOC, tmp_path)
     build.reset_list()
     build.set_bands([])
     out = "".join(build.render_pile_block(spec, b, heading=lambda b, i, t: f"<h2>{t}</h2>")[0]
                   for b in spec["tabs"][0]["blocks"])
-    assert "<h2>Read and declined</h2>" in out
-    assert "<h2>Fixed</h2>" in out and "<h2>Auto-fixed</h2>" not in out
+    assert "<h2>Open review issues</h2>" in out
+    assert "<h2>Auto-fixed</h2>" in out
     assert ">fixed<" in out and ">auto-fixed<" not in out
     # A content file that writes its own piles keeps both words.
     old = {"findings": [{"title": "a", "body": "x"}], "autofixes": [{"title": "b"}],
@@ -3868,10 +3925,27 @@ def test_the_piles_are_named_for_what_they_are_in_each_mode(tmp_path):
 
 
 def test_the_scope_chip_says_the_same_thing_as_the_counts_line(tmp_path):
-    """Two numbers over one review, in two places on the same screen. `6 open, 3
-    auto-fixed` beside `3 fixed · 6 declined` asks the reader which of them to believe."""
+    """Two numbers over one review, in two places on the same screen. `3 fixed · 6
+    declined` beside `6 open, 3 auto-fixed` used to ask the reader which of them to
+    believe; both now read `pile_numbers`, so a mismatch cannot recur."""
     src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
-    assert 'f\'{fixed} fixed, <span class="sub">{total - fixed} \'' in src
+    assert '"value": scope_chip_value(spec)' in src
+    spec = {"findings": [{"title": f"f{i}"} for i in range(6)],
+            "autofixes": [{"title": f"a{i}"} for i in range(3)],
+            "assumptions": [{"title": f"s{i}"} for i in range(7)]}
+    # PR #49's own numbers — the boundary case `SCOPE_CHIP_MAX_LEN` was picked against:
+    # three numbers do not fit, so the chip stays at the two the reader can act on.
+    assert build.scope_chip_value(spec) == \
+        '6 open, <span class="sub">3 auto-fixed</span>'
+    small = {"findings": [{"title": "f"}], "autofixes": [{"title": "a"}],
+             "assumptions": [{"title": "s"}]}
+    assert build.scope_chip_value(small) == \
+        '1 open, <span class="sub">1 auto-fixed, 1 assumption</span>'
+    build.reset_list()
+    lede = build.opening_lede(dict(spec, tabs=[{"id": "review", "label": "R", "blocks": [
+        {"type": "findings"}, {"type": "autofixes"}, {"type": "assumptions", "mode": "A"}]}]))
+    assert "6 open LLM review issues" in lede and "3 auto-fixed" in lede
+    assert lede.index("open") < lede.index("auto-fixed")
 
 
 def test_the_counts_line_is_printed_once_even_when_every_pile_is_empty(tmp_path):

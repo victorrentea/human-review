@@ -236,6 +236,10 @@ def _band(tmp_path, doc):
     if doc is not None:
         (tmp_path / "aftermath.json").write_text(json.dumps(doc), encoding="utf-8")
     build.ACTIONS.clear()
+    # The band's one offer reads its command out of the register rather than composing a
+    # second copy of it, so the register has to exist — which in a real build it does, from
+    # the first thing `main` does after clearing it.
+    build.declare_rerun_actions(tmp_path, tmp_path, HERE)
     return build.aftermath_html(tmp_path, tmp_path)
 
 
@@ -290,15 +294,21 @@ def test_the_band_offers_one_regenerate_for_all_of_them(tmp_path):
     after the list.
     """
     out = _band(tmp_path, _doc(code_files=1, commits=3))
-    assert out.count(">Regenerate the report</button>") == 1
-    assert out.count("offer-pill") == 1
+    assert out.count('<span class="cmd-word">Regenerate the report</span>') == 2
     assert out.count('<p class="rb-actions">') == 1
     # After the commits, not among them.
     assert out.index("</ul>") < out.index("Regenerate the report")
-    # The server's own verb, not a manifest id: the run glyph here appears under exactly
-    # the condition the rerun chip in the header does.
+    # Two spans and not two offers: the same control in its two faces, of which the probe
+    # ever raises one. What there is exactly one of is the *pair* — the words and the mark
+    # in one button, rather than a pill with a glyph parked beside it.
+    assert out.count('class="cmd"') == 1
+    assert "offer-pill" not in out
+    assert '<span class="cmd-ico">' in out and "\u21bb" not in out
+    # The server's own verb. It is in the register like everything else — that is where its
+    # command lives now — and `window.HR.can` still answers for it off the probe, so the
+    # play here comes up under exactly the condition the rerun chip in the header does.
     assert 'data-action="__rerun__"' in out
-    assert "__rerun__" not in build.ACTIONS
+    assert "__rerun__" in build.ACTIONS
     assert "refresh-report.py" in out and "--steps static" in out
 
 
@@ -306,10 +316,23 @@ def test_the_offer_copies_its_command_where_nothing_can_run(tmp_path):
     """Off disk the click on the words *is* the copy. A control whose whole answer is a
     sentence explaining why it did nothing is a control the reader stops pressing."""
     out = _band(tmp_path, _doc(code_files=1))
-    at = out.index(">Regenerate the report</button>")
+    at = out.index('<span class="cmd-word">Regenerate the report</span>')
     tag = out[out.rindex("<button", 0, at):at]
     assert "data-copy=" in tag, "the offer cannot be copied by clicking it"
-    assert "clicking here copies the command" in tag
+    assert "Copy command to paste in terminal" in tag
+
+
+def test_the_line_the_band_copies_is_the_line_the_server_runs(tmp_path):
+    """One string, two surfaces. The band used to compose its own copy of the refresh
+    command while `serve-review.py` composed another, and they had drifted by an
+    interpreter and a flag — so the line a reader pasted did something other than the
+    button beside it. Now there is one author of that string and the band reads it."""
+    out = _band(tmp_path, _doc(code_files=1))
+    declared = build.ACTIONS["__rerun__"]["command"]
+    for shown in re.findall(r'data-cmd="([^"]*)"', out):
+        assert html.unescape(shown) == declared
+    assert "--no-serve" in declared, \
+        "the copy must not quietly start a second review server where the press does not"
 
 
 def test_a_merge_commit_with_no_numstat_is_not_read_as_harmless(tmp_path):

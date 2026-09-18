@@ -907,6 +907,62 @@ def test_the_printed_command_is_the_command_that_runs(tmp_path):
     assert argv[2] == srv.rerun_ai_command(".")
 
 
+def test_the_rerun_runs_the_string_the_manifest_holds_and_not_one_of_its_own(tmp_path):
+    """One string, two surfaces — and this is the surface that runs it.
+
+    The command behind the masthead's Rerun used to be written twice: assembled here, as an
+    argv, and printed separately by the page for the clipboard. Two authors, one command,
+    and by the time anybody looked they had drifted — the line a reader copied was missing
+    the interpreter and `--no-serve`, so pasting it did something other than pressing it.
+    The build declares it now and this reads it back, literally: `sh -c` over the exact
+    bytes the page put on the clipboard, with nothing reconstructed in between."""
+    line = "cd /somewhere && /usr/bin/python3 /skill/refresh-report.py --dir . --steps static --no-serve"
+    _fresh(tmp_path, {"version": 1, "actions": {
+        srv.RERUN_ACTION: {"command": line, "params": {}, "reload": True}}})
+    srv.ROOT = tmp_path
+    argv, cwd = srv.rerun_plan(tmp_path)
+    assert argv == ["/bin/sh", "-c", line]
+    assert cwd == tmp_path
+
+
+def test_the_paid_rerun_runs_the_string_the_manifest_holds_too(tmp_path):
+    """Same rule, and the one where drift would be expensive: a copied line that left
+    `--allow-model` off would quietly buy nothing, and one that left it on where the button
+    did not would buy it twice."""
+    line = "cd /somewhere && /usr/bin/python3 /skill/rerun-model.py --dir . && true"
+    _fresh(tmp_path, {"version": 1, "actions": {
+        srv.RERUN_AI_ACTION: {"command": line, "params": {}, "reload": True}}})
+    srv.ROOT = tmp_path
+    argv, _ = srv.rerun_ai_plan(tmp_path)
+    assert argv == ["/bin/sh", "-c", line]
+
+
+def test_a_page_older_than_the_declaration_still_reruns(tmp_path):
+    """The manifest beside a page built before the rerun was declared in it does not name
+    the verb. The fallback is why upgrading the skill does not take the masthead's button
+    away from the page the upgrade is for — it comes back the moment that page rebuilds."""
+    _fresh(tmp_path)
+    (tmp_path / ".human-review").mkdir()
+    srv.ROOT = tmp_path
+    argv, _ = srv.rerun_plan(tmp_path / ".human-review")
+    assert Path(argv[1]).name == "refresh-report.py"
+
+
+def test_the_two_reruns_are_not_reachable_through_the_plain_run_endpoint(tmp_path):
+    """They live in the manifest because that is where their command lives, not because
+    they gained a second door. `/__rerun__` and `/__rerun_ai__` carry the shared lock, the
+    watcher hold and — for the paid one — the confirmation in front of it; `/__run__` has
+    none of those, and the first thing it would skip is the $5."""
+    _fresh(tmp_path, {"version": 1, "actions": {
+        srv.RERUN_ACTION: {"command": "true", "params": {}},
+        srv.RERUN_AI_ACTION: {"command": "true", "params": {}}}})
+    srv.ROOT = tmp_path
+    for verb in (srv.RERUN_ACTION, srv.RERUN_AI_ACTION):
+        run, problem, status = srv.start_run(verb, {}, tmp_path)
+        assert run is None and status == 400
+        assert "endpoint of its own" in problem
+
+
 def test_no_model_step_beside_us_means_no_paid_button(tmp_path, monkeypatch):
     """The free button survives a skill directory without `rerun-model.py`; the paid one
     does not. A button that quietly did less than its label is worse than no button."""

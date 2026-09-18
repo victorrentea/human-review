@@ -22,6 +22,28 @@ TEST_CATS = {
     "unit": ("unit", "one isolated component"),
 }
 
+#: What actually ran the test, keyed by the extension of the file the pair quotes.
+#:
+#: The kind above says which END the run was driven from; it does not say what a reader
+#: has to open, or in what language, to change the thing. Two rows on this tab were both
+#: `UI` — a Playwright spec and a Cucumber scenario — and nothing on the shut row told
+#: them apart, though one of them is the only test on the page written in a language a
+#: non-programmer reads.
+#:
+#: Read off the extension and nothing else, and that is not the same shortcut `_pair_cat`
+#: refuses. The kind is a claim about what the run DID, which a path cannot answer. The
+#: runner IS the file: `.feature` is Gherkin because Gherkin is what a `.feature` file
+#: contains, and no diagram is needed to know it. Longest suffix first, so `.spec.ts` is
+#: not read as a bare `.ts`.
+TEST_RUNNERS = (
+    (".feature", "Gherkin", "a Cucumber scenario"),
+    (".spec.ts", "Playwright", "a Playwright spec"),
+    (".spec.tsx", "Playwright", "a Playwright spec"),
+    (".spec.js", "Playwright", "a Playwright spec"),
+    (".java", "JUnit", "a JUnit test"),
+    (".kt", "JUnit", "a JUnit test"),
+)
+
 #: A lifeline declaration in a generated sequence: `participant Browser`,
 #: `actor "A vet" as Vet`, `participant UI as "Pet Clinic UI"`. Only the declarations are
 #: read — an arrow can name a lifeline that was never declared, and the ORDER of the
@@ -99,18 +121,38 @@ def _pair_cat(puml_rel: str, root: Path, authored: str | None = None) -> str | N
     return "e2e" if SEQ_UI_DRIVERS.search(lifelines[0]) else "api"
 
 
-def _cat_chip(cat: str | None) -> str:
-    """The kind, as the chip the Tests tab wears — same words, same palette, same pill.
+def _pair_runner(test_rel: str) -> tuple[str, str] | None:
+    """`…/book-visit.feature` -> `("Gherkin", "a Cucumber scenario, in Gherkin")`."""
+    low = test_rel.lower()
+    for suffix, label, what in sorted(TEST_RUNNERS, key=lambda r: -len(r[0])):
+        if low.endswith(suffix):
+            return label, what
+    return None
 
-    Copied rather than shared, like `FILE_PAGE` above it: the Tests tab is an included
-    asset that builds its own markup, and the two will not be made to import from each
-    other. What is shared is the decision, which is written down in `TEST_CATS`."""
+
+def _cat_chip(cat: str | None, test_rel: str = "") -> str:
+    """The kind of test, and what wrote it: one pill reading `UI · Gherkin`.
+
+    The kind alone comes off the Tests tab — same words, same palette, same pill. Copied
+    rather than shared, like `FILE_PAGE` above it: the Tests tab is an included asset that
+    builds its own markup, and the two will not be made to import from each other. What is
+    shared is the decision, which is written down in `TEST_CATS`.
+
+    The runner is this tab's own, and it is here because the kind is not enough to place a
+    row: `UI` covers both a Playwright spec and a Cucumber feature, and a reader looking
+    for the Gherkin scenario had to open every `UI` row to find which one it was. It rides
+    INSIDE the same pill rather than beside it in a second one — a second chip is a second
+    thing to learn and a second column to line up, for a word that only ever qualifies the
+    first. A file whose extension says nothing gets the kind alone, exactly as before."""
     if cat not in TEST_CATS:
         return ""
     label, what = TEST_CATS[cat]
+    runner = _pair_runner(test_rel)
+    face = f"{label} \u00b7 {runner[0]}" if runner else label
+    tip = f"{face} \u2014 {what}" + (f", {runner[1]}" if runner else "")
     return (f'<span class="testcat" data-cat="{cat}"'
-            f' data-tip="{html.escape(label, quote=True)} &mdash; '
-            f'{html.escape(what, quote=True)}">{html.escape(label)}</span>')
+            + (f' data-runner="{html.escape(runner[0].lower(), quote=True)}"' if runner else "")
+            + f' data-tip="{html.escape(tip, quote=True)}">{html.escape(face)}</span>')
 
 
 def _scenarios_drawn(puml_rel: str, test_rel: str, root: Path) -> list[tuple[int, str]]:
@@ -261,7 +303,7 @@ def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
     return (f'<details class="testpair" open id="{pair_anchor(puml_rel)}"'
             f' data-test="{html.escape(test_rel)}">'
             f'<summary data-tip="{html.escape(test_rel)}">'
-            f'{_cat_chip(cat)}{name}</summary>'
+            f'{_cat_chip(cat, test_rel)}{name}</summary>'
             + src
             + "\n".join(x.strip("\n") for x in pieces)
             + "</details>")

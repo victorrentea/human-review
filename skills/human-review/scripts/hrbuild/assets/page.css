@@ -246,12 +246,11 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
    it and gets read as part of it, and this is what the band is *for*. */
 .rband .rb-actions { display:flex; flex-wrap:wrap; gap:.45rem .8rem; margin:.55rem 0 0; }
 .rband .rb-act { display:inline-flex; align-items:center; gap:.3rem; }
-.rband .offer-pill { cursor:pointer; font:inherit; font-size:.82rem; font-weight:600;
-            color:var(--fg); background:var(--card); border:1px solid var(--line);
-            border-radius:999px; padding:.26rem .8rem; text-decoration:none; }
-.rband .offer-pill:hover:not(:disabled) { border-color:var(--link);
-            background:var(--accent-soft); }
-.rband .offer-pill:disabled { cursor:progress; color:var(--muted); }
+/* One control, not a pill with a mark parked next to it. The band used to draw a grey
+   `Regenerate the report` and a separate `↻` beside it — two elements, one action, and no
+   way for a reader who pressed one to know the other did the same thing. */
+.rband .rb-act .cmd-copy, .rband .rb-act .cmd-run { font-size:.82rem; font-weight:600;
+            padding:.26rem .8rem; }
 /* The sha carries the file list in its hover now, so it has to look askable. A dotted
    underline and nothing louder: it is still a sha, and the page is full of them. */
 .rband li > code[data-tip] { cursor:help; text-decoration:underline dotted;
@@ -632,8 +631,9 @@ pre.code code { white-space:pre; }
    It is in the copy glyph's hover, which is where that reader looks.
 
    One rule set, because there is one `command_html` and the point of it is that the
-   reader learns this pair once: a clipboard means "copy the line", a play means "and this
-   copy of the report can run it". */
+   reader learns this once: the words of the action, then one mark — a clipboard where the
+   click copies the line, a play where it runs here. Never both, and never a mark standing
+   apart from the words it belongs to. */
 .cmd { display:inline-flex; align-items:center; gap:.2rem; vertical-align:baseline; }
 .cmd .cmd-copy, .cmd .cmd-run { font:inherit; font-size:.92em; line-height:1.15;
             cursor:pointer; color:var(--muted); background:var(--card);
@@ -641,22 +641,39 @@ pre.code code { white-space:pre; }
             text-decoration:none; font-weight:400; }
 .cmd .cmd-copy:hover, .cmd .cmd-run:hover { color:var(--fg); border-color:var(--muted);
             background:var(--accent-soft); }
-/* Green, and the only green glyph on this page that is not a passing check — which is
-   exactly why it earns the exception: it says "something can happen here", and the reader
-   has already learnt that green in the masthead's `served` badge. */
-.cmd .cmd-run { color:#2e7d32; border-color:#2e7d32;
+/* The action accent — the colour everything pressable on this page already wears, as one
+   variable, so it is the same in both themes without a second rule.
+   It was green, and green here was two mistakes at once. Green on this page means a check
+   passed, so a report whose controls turn green when a server happens to be up reads as
+   the branch being fine. And the green mark was `↻`, which belongs to the masthead badge,
+   where it means "this page can rebuild itself" — on a row of actions it said *rerun* over
+   verbs like Start and Stop that are not reruns of anything. */
+.cmd .cmd-run { color:var(--accent); border-color:var(--accent);
             font-size:1.1em; line-height:1; padding:.16rem .42rem; }
-/* Keeps its green on hover: the rule above it turns a glyph grey-to-foreground, which on
+/* Keeps its accent on hover: the rule above it turns a glyph grey-to-foreground, which on
    this one would read as it going out. */
-.cmd .cmd-run:hover { color:#2e7d32; border-color:#2e7d32; }
-@media (prefers-color-scheme: dark) {
-  .cmd .cmd-run { color:#6bd48a; border-color:#3f7f52; }
-  .cmd .cmd-run:hover { color:#6bd48a; border-color:#6bd48a; } }
+.cmd .cmd-run:hover { color:var(--accent); border-color:var(--accent); }
 .cmd .cmd-run[disabled], .cmd .cmd-copy[disabled] { cursor:progress; }
 /* A glyph mid-run, without the glyph becoming a word: this is a pill one character wide
    and "Running…" in it would reflow the line it sits in. */
 .cmd .cmd-run.running { animation:hrspin .9s linear infinite; }
 @media (prefers-reduced-motion:reduce) { .cmd .cmd-run.running { animation:none; } }
+/* The pair with a word on it — the Demo row's Start, Stop and Where. The glyph alone is
+   sized up to read as a mark; beside a word it is a letter among letters, so the button
+   goes back to the page's size and only the mark keeps its lift. And the spin moves to the
+   mark: turning the whole pill would turn the word with it. */
+.cmd .cmd-run.has-word { font-size:.92em; line-height:1.15; padding:.1rem .45rem; }
+.cmd .cmd-copy.has-word, .cmd .cmd-run.has-word { font-weight:500; }
+/* `inline-block` lives on the mark and never on the button: `.cmd-run` is hidden with the
+   `hidden` attribute, and a `display` in any rule that reaches it would beat the browser's
+   own `[hidden] { display:none }` and put a dead play glyph in every static copy. The mark
+   needs it because a rotation does nothing to an inline box. */
+.cmd .has-word .cmd-ico { font-size:1.1em; line-height:1; margin-left:.35rem;
+   display:inline-block; }
+.cmd .cmd-run.has-word.running { animation:none; }
+.cmd .cmd-run.has-word.running .cmd-ico { animation:hrspin .9s linear infinite; }
+@media (prefers-reduced-motion:reduce) {
+  .cmd .cmd-run.has-word.running .cmd-ico { animation:none; } }
 /* One kind of emphasis, one meaning. This line used to carry seven underlined runs of
    text — `this diagram`, `App`, `Web`, `click here`, `undo your edits`, `start over` and
    the fold's trigger — which read as a wall of links with no rank, so a reader could not
@@ -672,7 +689,8 @@ pre.code code { white-space:pre; }
    of glyphs every command on this page wears. */
 .rerun .rerun-acts { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .9rem;
               margin:.45rem 0 0; }
-.rerun .rerun-acts .cmd { margin-left:-.55rem; }
+/* Was `margin-left:-.55rem`, pulling the mark back against the pill it belonged to. There
+   is nothing to pull it against now: the label and the mark are one button. */
 /* What the command is doing, while it is doing it — and nothing at all otherwise.
    The `[hidden]` rule is not belt-and-braces: `display:flex` on a class beats the browser's
    own `[hidden] { display:none }`, so without it this line is on screen in every copy of
@@ -1013,23 +1031,38 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
     gap:.4rem; font-size:12.5px; }
 .appenv code { font:12px/1.6 ui-monospace,Menlo,monospace; background:var(--accent-soft);
     border-radius:4px; padding:.15rem .4rem; user-select:all; }
-/* The row of verbs, then the address they all act on. Two lines and not one: the command
-    underneath is the same offer spelled out for a terminal, and the reader chooses a
-    route rather than reading one long line of mixed controls. */
+/* One line: the state, then the verbs that act on it. It used to be two — word buttons
+    that only worked served, and under them `START ↻  STOP ↻  WHERE ↻`, the same three
+    commands again as clipboards. Six controls for three offers, and the lower row wore the
+    *rerun* mark, so a served page still looked like it was handing out lines to paste
+    somewhere else. One control per verb now, and the click is what differs between the two
+    copies of the report. */
 .appenv .appenv-run { display:flex; flex-wrap:wrap; gap:.4rem .5rem; align-items:center; }
 .appenv .appenv-title { font-weight:600; margin-right:.2rem; }
 /* The state and the address sit where the row starts reading, not off at the far right:
     there is at most one of them at a time, and it is the subject of the verbs after it. */
 .appenv .appenv-at { display:flex; gap:.35rem; align-items:center; min-width:0; }
-/* One clipboard per command, each labelled with the verb it is the long form of: `start`,
-    `stop`, `where`. The verbs match the buttons in the row above, so the two halves line
-    up by eye without a heading saying so — and this row is the one that is there in both
-    copies of the report, which is why the labels are words rather than icons. */
-.appenv .appenv-manual { display:flex; flex-wrap:wrap; gap:.3rem .9rem; margin:.25rem 0 0;
-    align-items:center; color:var(--fg); }
-.appenv .appenv-cmd { display:inline-flex; align-items:center; gap:.28rem; }
-.appenv .appenv-verb { color:var(--muted); font-size:11.5px; letter-spacing:.06em;
-    text-transform:uppercase; }
+/* One verb. The wrapper is what APP_ENV_JS takes out of the row when the verb does not
+    apply; which of the two buttons inside it is showing is SERVER_JS's answer. The
+    `[hidden]` rule is not redundant with the UA sheet: `display` set here would beat it. */
+.appenv .appenv-act { display:inline-flex; align-items:center; }
+.appenv .appenv-act[hidden] { display:none; }
+/* Stop is the one verb in this row that takes something away, and it is the one control
+    here that is filled rather than outlined.
+
+    Outlining it in red was the first attempt and it did not survive being looked at: the
+    page's action accent is itself a deep red, so a red-outlined Stop sat beside a
+    red-outlined Start and a red-outlined Where and said nothing at all. Filled, the square
+    reads as a stop from across the room, which is the point — pressing it tears down a
+    stack that took a minute to come up.
+
+    Only the play half. The clipboard half copies a line and destroys nothing, so it keeps
+    the neutral pill every other command on the page wears. */
+.appenv .appenv-stop .cmd-run, .appenv .appenv-stop .cmd-run:hover {
+    color:#fff; background:#c62828; border-color:#c62828; }
+@media (prefers-color-scheme: dark) {
+  .appenv .appenv-stop .cmd-run, .appenv .appenv-stop .cmd-run:hover {
+    color:#fff; background:#a3342c; border-color:#a3342c; } }
 .appenv button { font:inherit; cursor:pointer; border:1px solid var(--line); border-radius:4px;
     background:var(--bg); color:var(--fg); padding:.2rem .55rem; white-space:nowrap; }
 .appenv button:hover { background:var(--accent-soft); }
@@ -1038,17 +1071,10 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
 .appenv .appenv-url { font:12px/1.6 ui-monospace,Menlo,monospace; color:var(--link);
     text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .appenv .appenv-url:hover { text-decoration:underline; }
-/* Off disk no verb in this row can run: there is no process here to run a command, and
-    Reset needs one to have been started. So the verbs are hidden there — a control that
-    always fails is worse than an absent one — and the commands underneath are the route.
-    Served, the verbs come up and the commands **stay**: that is the one thing about this
-    row that changed. Hiding them was defended as removing noise beside a button that
-    already does the job, but it made "what does this button actually run" a question with
-    no answer in the copy where the button works, and it deleted the `stop` and `where`
-    lines from the reader who has a terminal open beside the page — which is most of them.
-    The play glyph on each command is what says the verbs above are live. */
-.appenv:not(.appenv-served) .appenv-start,
-.appenv:not(.appenv-served) .appenv-stop,
+/* Reset is the exception to the row's one-control-per-verb rule and the only thing in it
+    still hidden off disk. It is not a shell command — it is a POST the application
+    answers — so there is no line for anybody to paste and nothing for a clipboard to be
+    the honest form of. A button that always fails is worse than an absent one. */
 .appenv:not(.appenv-served) .appenv-reset { display:none; }
 /* Three states, and the page must never claim the third without having asked: unknown
     until the probe answers, then live — where the address speaks for it and the pill
@@ -1252,7 +1278,13 @@ button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--
    below the masthead's 31: it slides under the block that owns the top of the page.
    Opaque, because a line of links over a code card is unreadable. */
 .panel .counts.pilelede { position:sticky; top:var(--strip-h, 2.6rem); z-index:20;
-            margin:0; padding:.45rem 0 .4rem; background:var(--bg); }
+            margin:0; padding:.45rem 0 .4rem; background:var(--bg);
+            /* Heading size, not link size: it is the sentence that opens the tab's own
+               three chapters, sitting one scroll away from every `h2` it names, so it
+               reads at the weight of one rather than at the muted `.sub` size every other
+               line here shares. The `a`s inside stay inline and clickable — only the size
+               and weight of the line around them changed. */
+            font-size:1.3rem; font-weight:600; }
 /* And with a second pinned band above the panel, a deep link has to clear both of them --
    otherwise `#fixed` lands its heading exactly behind the line that linked to it. Only in
    the panel that actually carries the line: every other tab clears the masthead alone. */

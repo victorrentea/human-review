@@ -248,54 +248,90 @@ nothing moves and it cannot have changed. A rebuild is about five seconds. The d
 commands also pass `--no-model` now, because a click under a picture is a request to pick
 the picture up and not to buy a privacy verdict.
 
-### Commands: copy everywhere, play when served
+### Commands: text + one glyph
 
-Every control on this page that is a shell command underneath wears the same two marks, in
-both copies of the report: a **copy glyph** (📋) and — served only — a **play glyph** (▶).
+Every control on this page that is a shell command underneath is **one button**: the words
+of the action, and one mark after them. Which mark it is depends on what this copy of the
+report can honour, and it is the answer rather than an option beside it.
 
 ```
 753f724c  Let the review run start the stack its film is recorded against   2026-09-17
-          [ Revert it ] 📋 ▶     [ Regenerate the report ] 📋 ▶
+
+served    [ Regenerate the report ▶ ]     off disk   [ Regenerate the report 📋 ]
 ```
 
-**The command itself is not printed.** The first version of this put it in a parenthesis
-beside the offer, which was the right instinct and the wrong artifact: a review page is
-prose and pictures, and a two-hundred-character absolute path in the middle of a sentence is
-a wall the eye has to climb on every read — charged to all ten readers for the benefit of
-the one who wanted to paste it. The line lives in the **copy glyph's hover**, which is where
-that reader looks and nowhere else.
+It was a grey pill and, next to it, a separate glyph — two elements for one action, so a
+reader who pressed one had no way to know the other did the same thing, and a served page
+drew the clipboard and the run mark side by side and asked a question it already knew the
+answer to. The mark went through `↻` on the way here and lost it: the circular arrow is the
+masthead's badge, where it means *this page can rebuild itself*, and on a row of actions it
+said "rerun" over three verbs (Start, Stop, Where) that are not reruns of anything. The
+play triangle is drawn in the page's action accent, which is the colour everything
+pressable here already wears.
 
-What a click does differs by what the copy of the report can honour:
+**The command itself is not printed.** The first version put it in a parenthesis beside the
+offer, which was the right instinct and the wrong artifact: a review page is prose and
+pictures, and a two-hundred-character absolute path in the middle of a sentence is a wall
+the eye has to climb on every read — charged to all ten readers for the benefit of the one
+who wanted to paste it. The line lives in the **clipboard's hover**, which is where that
+reader looks and nowhere else.
 
-- **Served**, clicking the offer runs the command through the review server — the spinner,
-  the log tail in the tooltip, the reload. The **play glyph** is the visible statement that
-  this copy has a server behind it: it is a second, smaller target for the same thing, its
-  hover says what it will run, and it is not rendered at all where it would not work, so
-  its presence is information rather than decoration.
-- **Off disk** (`file://`, the zip, GitHub Pages), clicking the offer **copies** the
-  command, with a *copied* toast. That is the one thing that copy can do with it, so it is
-  what the click does — a control whose whole answer is a sentence explaining why it did
-  nothing is a control readers learn to stop pressing. The copy glyph is what keeps that
-  from being a magic trick: it is the visible sign that a click here copies something.
+What a click does differs by what the copy of the report can honour, and **the words and the
+mark are the same target**, so it does not matter which one is pressed:
 
-One renderer does all of it (`command_html` in `hrbuild/shared/commands.py`), and the places it
-reaches are the aftermath band's **Revert it** and **Regenerate the report**, the three
-commands in the Demo tab's **Deployed app** row (`start`, `stop`, `where` — the last two
-were declared for the buttons and never offered to anybody), and the three offers under a
-hand-drawn diagram. The clipboard itself is one function too, on `window.HR`, with the
-`document.execCommand` fallback a `file://` page needs — there were two of these and the one
-*without* the fallback was on the control that only exists off disk.
+- **Served**, the button wears a **play** (▶) and a click runs the command through the
+  review server — the spinner in the mark, the status line under the row, the reload. Its
+  hover is one short sentence naming the action and where it runs, because everything else
+  about it is legible from the label.
+- **Off disk** (`file://`, the zip, GitHub Pages), it wears a **clipboard** (📋), hovers
+  *Copy command to paste in terminal* with the line under it, and a click **copies**, with a
+  *copied* toast. That is the one thing that copy of the report can do with the command, so
+  it is what the click does — a control whose whole answer is a sentence explaining why it
+  did nothing is a control readers learn to stop pressing.
 
-Two things went away with the printed line: the fold under each diagram (it held nothing
-but the command, and its `&&` chains were the longest lines on the page by a factor of
-five) and the per-file line under each commit in the aftermath band (`human-review.json
-+18 −1` — six commits made six lines of filenames and arithmetic between the reader and the
-two things they can do about any of it). The file list is now the hover on the commit's sha.
+One renderer does all of it (`command_html` in `hrbuild/shared/commands.py`), and the places
+it reaches are the aftermath band's **Regenerate the report**, the Demo tab's **Deployed
+app** row (Start, Stop, Where — each with its own mark, since none of them is a rerun), and
+the two offers under every hand-drawn diagram, **Update the report** and **Regenerate the
+diagram**. Both faces are in the markup of every copy and the probe raises exactly one, so
+the page never has to be built twice. The clipboard itself is one function too, on
+`window.HR`, with the `document.execCommand` fallback a `file://` page needs.
 
-Nothing about this widens what the server will run. The page still sends an **id**; the
-command behind it is in `.human-review/.actions.json`, written by the build. Showing a
-command to a reader and accepting one from the page are different things, and it is the
-second that was never on offer.
+#### One string, two surfaces
+
+The line you copy off disk is **byte for byte the line the server runs** when the same
+button is pressed on a served page. That is a property of where the command lives, not of
+anybody remembering to keep two copies in step:
+
+- the **register** (`.human-review/.actions.json`, written by the build out of
+  `hrbuild/shared/actions.py`) holds each command once, as a line a reader could paste:
+  absolute interpreter, absolute program, `cd <repo> &&` in front;
+- `command_html` looks the command up **by its action id** and embeds those exact bytes in
+  `data-cmd`, in `data-copy` and in the hover — it never prints the string its caller
+  handed it when the register has one;
+- `serve-review.py` runs the command **out of the register**, through `sh -c`, and
+  reconstructs nothing.
+
+It was not always so. The masthead's Rerun was assembled inside the server as an argv
+(`python refresh-report.py --dir … --steps static --no-serve`) while the aftermath band
+printed its own line for the clipboard (`cd <repo> && refresh-report.py --dir … --steps
+static`) — same intent, two authors, and they had already drifted by an interpreter and a
+flag, so pasting the line did something other than pressing the button. Both reruns are
+declared by the build now, `--no-serve` included, because that is what the press does and a
+copy that left it out would start a second review server on the reader's machine.
+
+Being in the register is about where the command lives, not about how it is reached:
+`__rerun__` and `__rerun_ai__` keep their own endpoints, with the shared lock, the watcher
+hold and the confirmation in front of the paid one, and `/__run__` refuses them outright.
+
+Two guardrails hold the property: `test_command_html.py` walks every command on a built page
+and asserts each `data-cmd` is exactly the register's entry for that id, and
+`test_action_server.py` asserts the handler runs that string literally.
+
+Nothing about any of this widens what the server will run. The page still sends an **id**;
+the command behind it is in the register, written by the build. Showing a command to a
+reader and accepting one from the page are different things, and it is the second that was
+never on offer.
 
 ## What it needs
 

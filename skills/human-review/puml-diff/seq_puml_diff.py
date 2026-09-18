@@ -170,22 +170,79 @@ def _mark_line(line: str, removed: bool) -> str | None:
 
 
 def _participant_name(rest: str) -> str:
-    """`"Long Name" as X` -> X; `Backend` -> Backend."""
-    m = re.search(r"\bas\s+(\S+)\s*$", rest, re.I)
+    """`"Long Name" as X` -> X; `Backend` -> Backend; `"Long Name" as X #EEE` -> X."""
+    m = re.search(r"\bas\s+(\S+?)\s*(?:#\w+)?\s*$", rest, re.I)
     if m:
         return m.group(1)
     return rest.split("#")[0].strip().strip('"')
 
 
-def _mark_participant(line: str, removed: bool) -> str:
+# What PlantUML accepts after `as`. Anything else has to be *renamed*, not quoted: an
+# alias in quotes is a syntax error, not a long name.
+BARE_ALIAS_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_alias(name: str, taken: set) -> str:
+    """A bare identifier standing in for a participant PlantUML cannot name.
+
+    A traced sequence diagram declares its lifelines by their human name — `participant
+    "Notification module"` — and refers to them quoted in every arrow. That is legal
+    until this differ has to *mark* one, because marking means moving the human name into
+    the display slot and putting an alias behind it, and `as Notification module` is two
+    words where PlantUML wants one. It renders nothing: the whole delta comes back as a
+    "Syntax Error?" page, and the tab shows one pair with no picture."""
+    stem = re.sub(r"\W+", "_", name).strip("_") or "participant"
+    if not BARE_ALIAS_RE.match(stem):
+        stem = f"p_{stem}"
+    candidate, n = stem, 2
+    while candidate in taken:
+        candidate, n = f"{stem}_{n}", n + 1
+    taken.add(candidate)
+    return candidate
+
+
+def _mark_participant(line: str, removed: bool, alias: str = "") -> str:
     m = PARTICIPANT_RE.match(line.strip())
     if not m:
         return line
     rest = m["rest"].strip()
-    alias = _participant_name(rest)
-    label = rest.split(" as ")[0].strip().strip('"') if " as " in rest else alias
+    name = _participant_name(rest)
+    label = rest.split(" as ")[0].strip().strip('"') if " as " in rest else name
     shown = _struck(label) if removed else _added(label)
-    return f'{m["kind"]} "{shown}" as {alias} {REMOVED_TINT if removed else ADDED_TINT}'
+    return (f'{m["kind"]} "{shown}" as {alias or name} '
+            f"{REMOVED_TINT if removed else ADDED_TINT}")
+
+
+def _rename_endpoint(token: str, renames: dict) -> str:
+    """One src/dst/activate operand, with the quoted human name swapped for its alias."""
+    t = token.strip()
+    if len(t) >= 2 and t.startswith('"') and t.endswith('"'):
+        return renames.get(t[1:-1], t)
+    return renames.get(t, t)
+
+
+def _rename_participants(line: str, renames: dict) -> str:
+    """Apply `_safe_alias`'s renames to the places a body line *names a lifeline*.
+
+    Only those places: a message label is prose and may legitimately contain the same
+    words in quotes. Run on both sides before the body is diffed, so the two scripts are
+    still compared like for like."""
+    if not renames:
+        return line
+    stripped = line.strip()
+    if ACTIVATION_RE.match(stripped):
+        head, _, rest = stripped.partition(" ")
+        return f"{head} {_rename_endpoint(rest, renames)}" if rest.strip() else line
+    m = NOTE_RE.match(stripped)
+    if m:
+        head = re.sub(r'"([^"]*)"',
+                      lambda q: renames.get(q.group(1), q.group(0)), m["head"])
+        return f'{head}: {m["text"]}'
+    m = ARROW_RE.match(stripped)
+    if m:
+        return (f"{_rename_endpoint(m['src'], renames)} {m['arrow']} "
+                f"{_rename_endpoint(m['dst'], renames)}: {m['text']}")
+    return line
 
 
 # `[[<target>{<tooltip>} <label>]]` — anywhere on a line, arrow label or section header.
@@ -268,13 +325,30 @@ def diff(old: str, new: str) -> str:
         for p in old_parts
         if PARTICIPANT_RE.match(p.strip())
     }
-    for alias, line in new_by_alias.items():
-        out.append(_mark_participant(line, removed=False) if alias not in old_by_alias else line)
-    for alias, line in old_by_alias.items():
-        if alias not in new_by_alias:
-            out.append(_mark_participant(line, removed=True))
+    # A marked participant is re-declared as `"<label>" as <alias>`, and PlantUML only
+    # takes a one-word alias there. The ones whose name is not one word get a made-up
+    # alias, and every body line that named them follows.
+    taken = {n for n in new_by_alias} | {n for n in old_by_alias}
+    taken = {n for n in taken if BARE_ALIAS_RE.match(n)}
+    renames: dict = {}
+
+    def _alias_for(name: str) -> str:
+        if BARE_ALIAS_RE.match(name):
+            return name
+        if name not in renames:
+            renames[name] = _safe_alias(name, taken)
+        return renames[name]
+
+    for name, line in new_by_alias.items():
+        out.append(_mark_participant(line, removed=False, alias=_alias_for(name))
+                   if name not in old_by_alias else line)
+    for name, line in old_by_alias.items():
+        if name not in new_by_alias:
+            out.append(_mark_participant(line, removed=True, alias=_alias_for(name)))
 
     # ── body: an ordered script, so an ordered diff ──────────────────────────
+    old_body = [_rename_participants(l, renames) for l in old_body]
+    new_body = [_rename_participants(l, renames) for l in new_body]
     matcher = difflib.SequenceMatcher(
         a=[_as_read(l) for l in old_body], b=[_as_read(l) for l in new_body], autojunk=False
     )

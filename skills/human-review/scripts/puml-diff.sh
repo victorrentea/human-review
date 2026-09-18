@@ -110,6 +110,41 @@ render_plain() {
   basename "$2.svg"
 }
 
+# Why PlantUML gave up, in its own words, parked beside the .puml as `<file>.puml.err`.
+#
+# PlantUML never fails: it renders a picture of the error and exits 0, so every caller
+# below has to spot the words "Syntax Error" in the SVG and throw the file away. Throwing
+# the reason away with it is what made the page say "not rendered" — which reads as "we
+# did not get round to it" and sends the reviewer to a source file that looks fine. The
+# error image carries the offending line number; keep it, and the line it points at.
+capture_render_failure() {
+  # $1 = the error .svg, $2 = the .puml it came from, $3 = where to write the reason
+  python3 - "$1" "$2" "$3" <<'PYEOF'
+import html, json, re, sys
+
+svg_path, puml_path, out_path = sys.argv[1:4]
+try:
+    svg = open(svg_path, encoding="utf-8", errors="replace").read()
+except OSError:
+    sys.exit(0)
+texts = [html.unescape(t).strip() for t in re.findall(r">([^<>]*)<", svg)]
+texts = [t for t in texts if t and t != "\xa0"]
+message = next((t for t in reversed(texts) if "Error" in t), "PlantUML could not parse it")
+m = re.search(r"\(line (\d+)\)", " ".join(texts))
+line = int(m.group(1)) if m else 0
+source = ""
+if line:
+    try:
+        rows = open(puml_path, encoding="utf-8", errors="replace").read().splitlines()
+        if 0 < line <= len(rows):
+            source = rows[line - 1].strip()
+    except OSError:
+        pass
+with open(out_path, "w", encoding="utf-8") as f:
+    json.dump({"message": message, "line": line, "source": source}, f)
+PYEOF
+}
+
 # A sequence diagram is the one that declares lifelines and sends messages along
 # them; everything else in this repo is a structural snapshot.
 classify() {
@@ -187,8 +222,11 @@ for rel in "${CHANGED[@]}"; do
     # PlantUML emits a perfectly valid .svg that says "Syntax Error?" when it gives up.
     # Embedding that is worse than embedding nothing — it looks like a diagram, and it is
     # the loudest thing on the page. Drop it and say so.
+    rm -f "$diff_puml.err"
     if grep -lq "Syntax Error" "${diff_puml%.puml}.svg" 2>/dev/null; then
+      capture_render_failure "${diff_puml%.puml}.svg" "$diff_puml" "$diff_puml.err"
       echo "[puml-diff] WARNING: PlantUML could not render the delta for $rel — dropping it" >&2
+      echo "[puml-diff]          $(cat "$diff_puml.err" 2>/dev/null)" >&2
       rm -f "${diff_puml%.puml}.svg"
     fi
     [ -f "${diff_puml%.puml}.svg" ] && svg="$(basename "${diff_puml%.puml}.svg")"

@@ -1,10 +1,16 @@
 // The deployed-app row: what is up, and the one or two things you can do about it.
 //
-// Two copies of this report exist and the row has to be honest in both. Served, it is a
-// row of verbs whose state it keeps for you: nothing answering, so Start; something
-// answering, so its address as a link, Stop, and Reset DB. Off disk there is no process
-// here to run a command, so there are no verbs at all and the bash command stands in
-// their place — the only route there is, offered once instead of twice.
+// Two copies of this report exist and the row has to be honest in both, and it is now the
+// *same row* in both — one line of verbs, and only the click differs. Served, a verb runs
+// its command through the review server and the row keeps its own state: nothing
+// answering, so Start; something answering, so the address as a link, then Stop and Where.
+// Off disk nothing here can run, so every verb is a clipboard for its command and all
+// three are on screen, because which line the reader wants to paste is their business.
+//
+// What this file decides is *which verbs apply*. Which face each one wears — clipboard or
+// play — is SERVER_JS's answer, per action, and it is why the wrapper span is what gets
+// hidden here rather than the buttons: two owners of `hidden` on one element is how a
+// control ends up flickering between two truths.
 //
 // A control is hidden when it cannot be used, not greyed. Greying is for a thing you
 // could have had under a condition worth teaching; Stop before anything has started is
@@ -17,9 +23,16 @@
   if (!bar) return;
   var state = bar.querySelector('.appenv-state');
   var addr = bar.querySelector('.appenv-url');
-  var startBtn = bar.querySelector('.appenv-start');
-  var stopBtn = bar.querySelector('.appenv-stop');
+  // The wrapper per verb, not the button: each wrapper holds the clipboard/play pair that
+  // `command_html` emitted, and SERVER_JS owns which of the two is up.
+  var acts = {start: bar.querySelector('.appenv-start'),
+              stop: bar.querySelector('.appenv-stop'),
+              where: bar.querySelector('.appenv-where')};
   var reset = bar.querySelector('.appenv-reset');
+  // One command at a time. `docker compose up` is minutes, the row stays readable
+  // throughout, and a second press in the middle of it is a reader who could not tell the
+  // first one had started — a Stop sent into a half-built stack is the worst of them.
+  var busy = false;
   // Raised by the probe in SERVER_JS, never assumed: a page on GitHub Pages is https and
   // is not served by us, and the buttons here must not believe otherwise.
   var served = false;
@@ -63,14 +76,23 @@
   // stylesheet that failed to load would otherwise leave a live button behind.
   function gate(el, on, tip) { if (!el) return; arm(el, on, tip); el.hidden = !on; }
 
+  // A whole verb, in or out of the row. The tip is not touched: it was written by the
+  // build and it says what a click here does, which does not change with the state.
+  function show(wrap, on) { if (wrap) wrap.hidden = !on; }
+
   // The row's whole truth, in one call. Each verb is gated on the thing it actually needs
-  // — Start and Stop on a server to run them, Reset on something being up to reset —
-  // because a control that can be pressed while its precondition is missing is a control
-  // that lies: Reset would fail, and \u25b8 would drive an app that is not there.
+  // — because a control that can be pressed while its precondition is missing is a
+  // control that lies: Reset would fail, and \u25b8 would drive an app that is not there.
+  //
+  // Off disk the gate is open on all three. None of them can *run* there — they are
+  // clipboards — and a clipboard for `stop` is exactly as useful with the app down as up:
+  // the reader is pasting it into a terminal, where the state of things is their business
+  // and not this page's. Hiding two thirds of the commands behind a health check was the
+  // old second row's worst habit and there is no reason to inherit it.
   function setLive(live, why) {
-    gate(startBtn, served && !live,
-         'Start the app and fill the address in from what it prints');
-    gate(stopBtn, served && live, 'Stop the app and free its port');
+    show(acts.start, !served || !live);
+    show(acts.stop, !served || live);
+    show(acts.where, !served || live);
     gate(reset, live, 'Put the demo data back to its seed');
     [].forEach.call(document.querySelectorAll('.cue-drive'), function (el) {
       arm(el, live, live ? 'Drive the app to this point' : why);
@@ -139,23 +161,46 @@
   // and the pill carries the last line the command printed, which is where a reader who
   // wants to know it is still moving can look. A docker build prints thousands.
   function drive(id, face, then) {
+    busy = true;
     setLive(false, 'Waiting for the app \u2014 ' + face.toLowerCase() + '\u2026');
     say('unknown', face + '\u2026');
     return window.HR.run(id, {}, function (snap) {
       var line = window.HR.tail(snap);
       if (line) state.dataset.tip = line;
     }).then(function (done) {
+      busy = false;
       state.removeAttribute('data-tip');
       then(done);
     }).catch(function (e) {
+      busy = false;
       say('down', face + ' failed');
       state.dataset.tip = e.message || 'the review server is no longer running';
       setLive(false, state.dataset.tip);
     });
   }
 
-  if (startBtn) startBtn.addEventListener('click', function () {
-    if (blocked(startBtn)) return;
+  // The run half of one verb, and the click that belongs to it.
+  //
+  // `stopPropagation` is the whole reason these are bound here rather than left to
+  // EDITOR_JS, which already runs any `.runhere[data-action]` on the page: that handler
+  // reloads the page when the command finishes, and this row's entire job is to *keep* the
+  // page while the app comes up underneath it — the address it scraped, the links it
+  // aimed, the place the reader had got to. A listener on the button itself runs in the
+  // target phase, before the document-level one in the bubble phase, so stopping there is
+  // enough. The clipboard half is deliberately left alone: off disk the generic
+  // copy-and-toast handler is exactly right, and a second implementation of it for this
+  // row is how two of them end up behaving differently.
+  function onrun(wrap, fn) {
+    var btn = wrap && wrap.querySelector('.cmd-run');
+    if (!btn) return;
+    btn.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      if (busy) return;
+      fn();
+    });
+  }
+
+  onrun(acts.start, function () {
     drive('demo-env', 'Starting', function (done) {
       if (done.state === 'done' && adopt(done.result && done.result.base)) return;
       // It ran and printed no URL we recognised, or it failed. Either way the reader is
@@ -172,14 +217,38 @@
   // Stop forgets the address as well as freeing the port. Remembering it would leave
   // every link in the transcript pointing confidently at nothing, and the next Start will
   // hand us a different port anyway.
-  if (stopBtn) stopBtn.addEventListener('click', function () {
-    if (blocked(stopBtn)) return;
+  onrun(acts.stop, function () {
     drive('demo-env-stop', 'Stopping', function (done) {
       if (done.state === 'done') { current = ''; remember(''); apply(); }
       probe();
       if (done.state !== 'done') {
         say('down', 'stop failed');
         state.dataset.tip = window.HR.tail(done) || 'the command exited ' + done.exit;
+      }
+    });
+  });
+
+  // Where: the address of the instance, and a way into it.
+  //
+  // It is the one verb of the three that is not a state change, which is why it is worth a
+  // control of its own beside the address it duplicates: the address in the row is the one
+  // *this browser* remembers, and Where is the host being asked. A reader who started the
+  // stack in another tab, or cleared their site data, or is looking at a page somebody
+  // else served has nothing remembered — and this is the button that fixes that without
+  // a terminal. When the base is already known it skips the round trip and just opens it.
+  onrun(acts.where, function () {
+    var b = base();
+    if (b) { window.open(b, '_blank', 'noopener'); return; }
+    drive('demo-env-url', 'Asking', function (done) {
+      if (done.state === 'done' && adopt(done.result && done.result.base)) {
+        var u = base();
+        if (u) window.open(u, '_blank', 'noopener');
+        return;
+      }
+      probe();
+      if (done.state !== 'done') {
+        say('down', 'nothing is up');
+        state.dataset.tip = window.HR.tail(done) || 'the host knows of no instance';
       }
     });
   });

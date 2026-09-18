@@ -312,6 +312,39 @@ def select_rows(rows, block) -> list:
     return rows
 
 
+def _why_not_drawn(row, assets: Path) -> str:
+    """What a pair says where its picture should be — in PlantUML's words, not ours.
+
+    This used to read `not rendered — see <file>.diff.puml`, which says nothing a reader
+    can act on: it sounds like a step that has not run yet, and it points at a source file
+    that looks perfectly fine, because the fault is one line of it. PlantUML does not fail
+    on a bad line — it draws a picture of the complaint and exits 0 — so the pipeline
+    spots the words "Syntax Error", drops that picture, and leaves the complaint in a
+    `.err` sidecar. Read it back here: the message, the line, and a click that opens the
+    source on it."""
+    puml = row.get("diff_puml") or ""
+    err = assets / f"{puml}.err"
+    reason = {}
+    if puml and err.is_file():
+        try:
+            reason = json.loads(err.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            reason = {}
+    line = reason.get("line") or 0
+    src = assets / puml if puml else None
+    face = html.escape(puml or "the delta source")
+    link = (f'<a class="dgm-src" href="vscode://file/{src.resolve()}:{line or 1}:1">{face}</a>'
+            if src and src.is_file() else f"<code>{face}</code>")
+    if not reason:
+        return f'<p class="sub">not rendered — see {link}</p>'
+    where = f" at line {line}" if line else ""
+    offending = (f'<br><code>{html.escape(reason.get("source") or "")}</code>'
+                 if reason.get("source") else "")
+    return (f'<p class="sub">diagram could not be drawn: '
+            f'{html.escape(reason.get("message") or "PlantUML could not parse it")}'
+            f'{where} of {link}{offending}</p>')
+
+
 def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") -> str:
     """`bare` is the test file a pair's heading already names.
 
@@ -343,8 +376,7 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") 
         if svg_rel and svg_rel.is_file():
             body, toggles = _diagram_views(r, manifest.parent, svg_rel, root)
         else:
-            body, toggles = (f'<p class="sub">not rendered — see '
-                             f'<code>{html.escape(r["diff_puml"])}</code></p>', False)
+            body, toggles = _why_not_drawn(r, manifest.parent), False
         test_src = (f' data-test-src="vscode://file/{(root / bare).resolve()}:1:1"'
                     if bare and (root / bare).is_file() else "")
         parts.append(

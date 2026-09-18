@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """The deployed-app row has four states and none of them is in the markup.
 
-Everything the reader sees in that row — "Offline" or an address, `Start` or `Stop` and
-`Reset DB`, the terminal command or none of it — is decided at runtime by APP_ENV_JS out
-of two facts it cannot know at build time: whether this copy of the report is being
-served, and whether anything is answering at the base. So the markup tests in
-`test_build_review.py` can only pin what is *available*; what is actually *shown* needs a
-browser, which is what this file is.
+Everything the reader sees in that row — "Offline" or an address, which of `Start`, `Stop`
+and `Where` are on screen, `Reset DB`, and whether each verb wears a clipboard or its own
+mark — is decided at runtime by APP_ENV_JS and SERVER_JS out of two facts neither can know
+at build time: whether this copy of the report is being served, and whether anything is
+answering at the base. So the markup tests in `test_build_review.py` can only pin what is
+*available*; what is actually *shown* needs a browser, which is what this file is.
 
 The stubs are the two facts and nothing else: `window.HR.can()` decides served, and a
 replaced `fetch` decides live. The script under test is the real one, inlined from the
@@ -30,6 +30,7 @@ _spec.loader.exec_module(build)
 RUNTIME = {"command": "./start-docker.sh up --ref abc123",
            "base": "http://localhost:4200",
            "stop": "./start-docker.sh down --ref abc123",
+           "urlCommand": "./start-docker.sh url petclinic-abc123",
            "reset": "/__reset"}
 
 # What the reader can see, not what the page contains: `hidden` is how the script takes a
@@ -39,20 +40,24 @@ PROBE = """() => {
   const q = s => document.querySelector(s);
   const vis = el => !!el && !el.hidden && getComputedStyle(el).display !== 'none';
   const url = q('.appenv-url'), state = q('.appenv-state');
+  // One control per verb now, and what a reader can see of it is three things: whether the
+  // verb is in the row at all, what the button says, and which of its two faces is up —
+  // the clipboard, or the verb's own mark. The row used to be two rows: word buttons that
+  // only worked served, and under them the same three commands again as clipboards.
+  const verb = name => {
+    const wrap = q('.appenv-' + name);
+    if (!vis(wrap)) return null;
+    const copy = wrap.querySelector('.cmd-copy'), run = wrap.querySelector('.cmd-run');
+    return {word: wrap.querySelector('.cmd-word').textContent,
+            copies: vis(copy) ? copy.getAttribute('data-copy') : null,
+            runs: vis(run) ? run.getAttribute('data-action') : null,
+            mark: vis(run) ? run.querySelector('.cmd-ico').textContent : null};
+  };
   return {
     state: vis(state) ? state.textContent : null,
     url: vis(url) ? [url.textContent, url.getAttribute('href'), url.target] : null,
-    start: vis(q('.appenv-start')),
-    stop: vis(q('.appenv-stop')),
+    start: verb('start'), stop: verb('stop'), where: verb('where'),
     reset: vis(q('.appenv-reset')) ? q('.appenv-reset').textContent : null,
-    // The command is not printed any more: what is on screen is a clipboard per verb,
-    // with the line in its hover. So what a reader "can see" of it is which copy glyphs
-    // are there and what each one would put on the clipboard.
-    commands: [...document.querySelectorAll('.appenv-cmd')]
-      .filter(vis)
-      .map(e => [e.querySelector('.appenv-verb').textContent,
-                 e.querySelector('.cmd-copy').getAttribute('data-copy'),
-                 vis(e.querySelector('.cmd-run'))]),
   };
 }"""
 
@@ -117,12 +122,16 @@ def test_offline_says_offline_and_shows_no_address(row):
     assert seen["state"] == "Offline"
     assert seen["url"] is None
     # The one verb that changes what the row just said, and nothing that acts on an app
-    # that is not there.
-    assert seen["start"] and not seen["stop"] and seen["reset"] is None
-    # And the clipboards are there in this copy too. (Whether the play beside each one is
-    # on screen is SERVER_JS's answer, which this page deliberately stubs out — see
-    # test_command_html.py for the raising and the real page for the effect.)
-    assert [c[0] for c in seen["commands"]] == ["start", "stop"]
+    # that is not there. Stop with nothing to stop and Where with nowhere to go are two
+    # controls that can only fail, in a row a reader scans in one glance.
+    assert seen["start"]["word"] == "Start"
+    assert seen["stop"] is None and seen["where"] is None
+    assert seen["reset"] is None
+    # Which face that verb wears is SERVER_JS's answer, per action, and this page stubs
+    # SERVER_JS out on purpose — see test_command_html.py for the raising, and the real
+    # served page for the effect. Here it is still the clipboard.
+    assert seen["start"]["copies"] == RUNTIME["command"]
+    assert seen["start"]["runs"] is None
 
 
 def test_live_shows_the_address_as_a_link_into_a_new_tab(row):
@@ -132,19 +141,33 @@ def test_live_shows_the_address_as_a_link_into_a_new_tab(row):
     seen = row(served=True, live=True)
     assert seen["state"] is None
     assert seen["url"] == ["http://localhost:4200", "http://localhost:4200", "_blank"]
-    assert not seen["start"] and seen["stop"] and seen["reset"] == "Reset DB"
-    assert [c[0] for c in seen["commands"]] == ["start", "stop"]
+    # Start is gone and the two verbs that act on a running app take its place. `Where` is
+    # not the address repeated: the address is what *this browser* remembers, and Where is
+    # the host being asked — which is the answer for the reader whose site data is blocked,
+    # or who is reading a page somebody else served.
+    assert seen["start"] is None
+    assert seen["stop"]["word"] == "Stop" and seen["where"]["word"] == "Where"
+    assert seen["reset"] == "Reset DB"
 
 
-def test_off_disk_the_clipboard_stands_where_the_verbs_would_be(row):
-    """No process here runs a command, so Start and Stop cannot work and Reset has nothing
-    to reset. What is left is the clipboard for each command, with no play beside it —
-    which is the honest statement that this copy of the report cannot run them."""
+def test_off_disk_every_verb_is_on_screen_as_its_own_clipboard(row):
+    """No process here runs a command, so no verb can run and Reset has nothing to reset.
+    What is left is one control per command, wearing the clipboard — which is the honest
+    statement that this copy of the report cannot run it, made once instead of twice.
+
+    All three, and not only the ones that apply to the current state: the reader is pasting
+    one of these into a terminal, where what is up and what is not is their business and not
+    this page's. The row used to hide two thirds of them behind a health check, in a second
+    row underneath, labelled `START` `STOP` `WHERE` and wearing the *rerun* mark."""
     seen = row(served=False, live=False)
     assert seen["state"] == "Offline"
-    assert not seen["start"] and not seen["stop"] and seen["reset"] is None
-    assert seen["commands"] == [["start", RUNTIME["command"], False],
-                                ["stop", RUNTIME["stop"], False]]
+    assert seen["reset"] is None
+    assert [seen[v]["word"] for v in ("start", "stop", "where")] == \
+        ["Start", "Stop", "Where"]
+    assert [seen[v]["copies"] for v in ("start", "stop", "where")] == \
+        [RUNTIME["command"], RUNTIME["stop"], RUNTIME["urlCommand"]]
+    assert all(seen[v]["runs"] is None for v in ("start", "stop", "where")), \
+        "nothing here can run, so no verb may wear a mark that says it can"
 
 
 def test_off_disk_an_app_that_is_up_is_still_reported(row):
@@ -153,8 +176,11 @@ def test_off_disk_an_app_that_is_up_is_still_reported(row):
     — otherwise every link in the narration looks dead while it works."""
     seen = row(served=False, live=True)
     assert seen["url"] == ["http://localhost:4200", "http://localhost:4200", "_blank"]
-    assert seen["commands"][0] == ["start", RUNTIME["command"], False], \
+    assert seen["start"]["copies"] == RUNTIME["command"], \
         "still the only way to have started it"
+    # And Stop is still on screen with the app up, which is the case the old row got
+    # backwards: it hid Stop off disk, where it is the line most worth pasting.
+    assert seen["stop"]["copies"] == RUNTIME["stop"]
 
 
 SPINNER = """() => {
@@ -176,7 +202,12 @@ def test_a_command_in_flight_spins_beside_the_word(row):
     page = row.page
     page.set_content(row.html(served=True, live=False, hang=True))
     page.wait_for_function("() => document.querySelector('.appenv-start').hidden === false")
-    page.click(".appenv-start")
+    # SERVER_JS is what raises the run half on a real served page, and this harness stubs
+    # it out — so the one line of it that matters here is done by hand, and the click lands
+    # on the same button a reader's would.
+    page.evaluate("() => { document.querySelector('.appenv-start .cmd-run').hidden = false;"
+                  " document.querySelector('.appenv-start .cmd-copy').hidden = true; }")
+    page.click(".appenv-start .cmd-run")
     page.wait_for_function("() => document.querySelector('.appenv-state')"
                            ".textContent.startsWith('Starting')")
     page.wait_for_timeout(600)                   # past the 300ms the ring stays invisible

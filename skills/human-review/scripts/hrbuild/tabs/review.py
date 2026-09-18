@@ -3,13 +3,12 @@ from __future__ import annotations
 
 import html
 import json
-import shlex
 import sys
 from pathlib import Path
 
+from ..shared.actions import ACTIONS, RERUN_ACTION
 from ..shared.bands import _lede_above
-from ..shared.commands import command_html, offer_words_html
-from ..shared.util import HERE
+from ..shared.commands import command_html
 
 SEVERITIES = {
     "high": ("sev-high", "must look"),
@@ -604,31 +603,26 @@ def _regenerate_offer(out_dir: Path, root: Path) -> str:
     work out which one applies to which row. The answer is the band's, so it sits with the
     band.
 
-    `__rerun__` is not a manifest id — it is the server's own verb, and `window.HR.can`
-    answers for it off the probe. Which means the run glyph here appears under exactly the
-    same condition as the rerun chip in the masthead, and where nothing can run, the
-    clipboard in its place carries the same command a reader would type. One offer, two
-    places, one command.
+    **One control, not a button with a glyph beside it.** It was a grey pill reading
+    *Regenerate the report* and, next to it, a separate `↻` — two elements, one action, and
+    a reader who pressed one had no way to know the other did the same thing. Now the words
+    and the mark are the same control, which is the rule every command on this page follows.
+
+    **And the line it copies is the line the server runs.** `__rerun__` is not a name out of
+    the content file — it is the server's own verb — but its command is declared in the
+    manifest like everything else, so this does not reconstruct it. It used to, and the two
+    had drifted: this printed `cd <repo> && refresh-report.py --dir … --steps static` while
+    `serve-review.py` ran the same program through a different interpreter with `--no-serve`
+    on the end. Reading the register is what makes the drift unrepresentable rather than
+    merely fixed.
     """
-    try:
-        rel = str(out_dir.resolve().relative_to(root.resolve()))
-    except ValueError:
-        rel = str(out_dir.resolve())
-    line = (f'cd {shlex.quote(str(root.resolve()))}'
-            f' && {shlex.quote(str(HERE / "refresh-report.py"))}'
-            f' --dir {shlex.quote(rel)} --steps static')
+    entry = ACTIONS.get(RERUN_ACTION)
+    if not entry:
+        return ""
     return ('<p class="rb-actions"><span class="rb-act">'
-            + offer_words_html(
-                "Regenerate the report", "__rerun__",
-                "Re-derives the evidence a program can re-derive — diagrams, complexity, "
-                "the REST contract, the logging scan, the test manifest — and rebuilds "
-                "this page around the branch as it is now. Free, and not the findings.",
-                "Rebuilds this page against the branch as it is now and reloads. The "
-                "same thing the Rerun in the header does. Free.",
-                "Rebuilding this page…", cmd=line, pill=True)
-            + command_html(line, "__rerun__",
-                           tip="Rebuilds this page against the branch as it is now and "
-                               "reloads",
+            + command_html(entry["command"], RERUN_ACTION,
+                           label="Regenerate the report",
+                           tip="Rebuilds this page against the branch as it is now",
                            running="Rebuilding this page…")
             + '</span></p>')
 

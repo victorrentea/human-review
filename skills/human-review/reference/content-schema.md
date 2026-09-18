@@ -252,7 +252,6 @@ and struck through.
 ```json
 {"type":"testpairs","id":"sequences","kind":"sequence",
  "title":"Each test, beside the sequence its own run recorded",
- "body":"<p>…what the deltas amount to, in this page's own words…</p>",
  "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27"}],
  "unpaired":{"id":"tests-nosequence",
              "title":"Tagged for tracing, and no diagram came back","body":"…"}}
@@ -272,7 +271,17 @@ where there is one (`@GenerateSequence` and its `class` line, as a first span).
 
 A caption on one of these is prose nobody asked for: the fold already names the file, the
 source bar already prints the path and the lines, and the diagram below is the same scenario
-drawn. Say it in the block's `body` if it is worth saying once for the tab.
+drawn.
+
+⚠️ **The Sequence tab opens on the first pair, and carries no written prose at all.** No
+`section` block above the pairs, no `body` on the `testpairs` block, no caption on a
+snippet — the tab's `tip` is the only sentence it gets. Every paragraph an author has ever
+put here has been about the *pipeline*: why the tab was empty last time, which suite was
+not re-run, what the differ did with a stale `.genseq.puml`. That is a note about the
+machinery, written on the day it misbehaved, and it is stale by the next run while still
+sitting at the top of the tab telling the reviewer the diagrams below cannot be trusted.
+What the deltas amount to is on the pictures. If the pipeline itself is broken, fix the
+pipeline; the page already says so, on the pair that did not draw.
 
 **`title: ""`** drops the heading altogether, and the block opens straight on the first
 pair. Worth reaching for: each pair already names its scenarios and prints its own source
@@ -417,13 +426,25 @@ shown) and `{base}` to the URL in the bar. `drive-to-cue.js` replays the project
 and stops after the nth `say()`, leaving a headed browser on that screen for you to take
 over. Nothing describes the journey twice, so nothing can drift.
 
-`runtime` puts a **Deployed app** bar above the player — one row of verbs, and under it the
-same offer spelled out for a terminal:
+`runtime` puts a **Deployed app** row above the player — one line, with the state of the
+environment first and the verbs that act on it after:
 
 ```
-Deployed app  [Start] [Open ↗] [Stop] [Reset data]        live at http://localhost:53421
-or run this terminal command yourself:  cd ~/workspace/petclinic && ./start…   [Copy]
+served    Deployed app   http://localhost:53421     Stop ■   Where ↗   [Reset DB]
+off disk  Deployed app   Offline    Start 📋   Stop 📋   Where 📋
 ```
+
+It was two lines: word buttons that only did anything on a served page, and under them
+`START ↻  STOP ↻  WHERE ↻`, the same three commands again as clipboards. Six controls
+for three offers — and the lower row wore the *rerun* mark, so a page that was being served
+still looked like it was handing out lines to paste somewhere else.
+
+One control per verb now, and **the click is what differs**, not the words. Served, each
+wears its own mark — a green `▶` on Start, a red `■` on Stop, an `↗` on Where — and a
+click runs the command through the review server. Off disk all three wear the clipboard,
+hover *Copy command to paste in terminal* with the line under it, and a click copies. None
+of the three wears `↻`: that mark means *this comes round again* everywhere else on the
+page, and starting an app is not a rerun of anything.
 
 The address at the end of the row is where every relative `appLinks` href resolves against;
 it is remembered per page, so a reload keeps it. `base` is the fallback the links use before
@@ -433,15 +454,22 @@ lead somewhere.
 The bar asks `GET <base>/healthz` whether anything is listening, so an environment that
 wants the `live at` / `offline` pill must answer it with CORS open.
 
-Each control is gated on the thing it actually needs, because a control that can be pressed
+Which verbs are on screen is the row's own answer, because a control that can be pressed
 while its precondition is missing is one that lies:
 
-| control | drawn when | pressable when |
+| control | drawn when | on screen when |
 |---|---|---|
-| `Start` | `command` | served, and nothing is up |
-| `Open ↗` | always | something answers at the address |
-| `Stop` | `stop` | served, and something is up |
-| `Reset data` | `reset` | something answers at the address |
+| `Start` | `command` | off disk always; served, while nothing is up |
+| `Stop` | `stop` | off disk always; served, while something is up |
+| `Where` | `urlCommand` | off disk always; served, while something is up |
+| `Reset DB` | `reset` | served, and something answers at the address |
+
+Off disk all three are on screen whatever the health check says. None of them can *run*
+there — they are clipboards — and a clipboard for `stop` is exactly as useful with the app
+down as up: the reader is pasting it into a terminal, where the state of things is their
+business and not this page's. `Reset DB` is the exception and the reason is that it is not a
+shell command at all: it is a `POST` the application answers, so there is no line for
+anybody to paste and nothing for a clipboard there to be the honest form of.
 
 `stop` and `reset` are **optional and opt-in**, and neither is ever derived from `command`:
 turning `… up --ref abc` into `… down --ref abc` by string surgery works for one host and
@@ -451,22 +479,22 @@ no button is drawn. Resetting is never automatic — doing it on every link clic
 away work the reviewer was in the middle of — and `Stop` empties the address box, since
 leaving it behind would leave every link in the transcript pointing confidently at nothing.
 
-`command`, `stop` and `drive` are **run** on a page served by `serve-review.py` and are
-otherwise inert: the build writes them into `.human-review/.actions.json` and the button
-sends the id of the one it wants, never the command itself. Served, `Start` has the server
-scrape the `http://localhost:<port>` line the command prints and fills the address box
-itself — which flips the pill to `live at`, unlocks `Open ↗`, `Reset data` and every `▸`,
-and makes the box **read-only**, since it is output then rather than something to type into.
+`command`, `stop`, `urlCommand` and `drive` are **run** on a page served by
+`serve-review.py` and are otherwise inert: the build writes them into
+`.human-review/.actions.json` and the button sends the id of the one it wants, never the
+command itself. Served, `Start` has the server scrape the `http://localhost:<port>` line
+the command prints and fills the address in — which replaces the `Offline` pill with the
+address as a link, and brings up `Stop`, `Where`, `Reset DB` and every `▸` in the
+transcript.
 
-Off disk none of that exists, and the row says so instead of disappearing: it dims, `Start`
-and `Stop` carry a tooltip pointing at the command below, the address box stays typeable so
-pasting a URL by hand still aims the transcript's links, and the second line drops its
-"or …" and reads as the instruction it is. `drive` falls back to the clipboard the same way.
+Off disk none of that exists, and the row says so by wearing the clipboard rather than by
+disappearing. `drive` falls back to the clipboard the same way.
 
 `urlCommand` is **optional** and is the same host asked where the environment already
-*is* — `url` rather than `up`. It is run once when a served page loads with an empty box,
-which covers the reader who opens a guide somebody else already started the environment
-for, and the browser with site data blocked where the remembered base was never there. It
+*is* — `url` rather than `up`. It is what the **Where** verb runs, and it is also run once
+when a served page loads with no address remembered, which covers the reader who opens a
+guide somebody else already started the environment for, and the browser with site data
+blocked where the remembered base was never there. It
 is never derived from `command`: turning `up` into `url` by string surgery works for one
 host and fails silently on the next, at load time, where nobody sees it fail.
 
@@ -623,8 +651,7 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
   {"id":"requirements","label":"Tests",
    "blocks":[{"type":"section","id":"requirements"},{"type":"tests"}]},
   {"id":"sequence","label":"Sequence",
-   "blocks":[{"type":"section","id":"sequences-note"},
-             {"type":"testpairs","id":"sequences","kind":"sequence",
+   "blocks":[{"type":"testpairs","id":"sequences","kind":"sequence",
               "title":"Each test, beside the sequence its own run recorded",
               "snippets":[{"ref":"petclinic-test/features/add-visit.feature:12-27","caption":"…"}],
               "unpaired":{"id":"tests-nosequence",

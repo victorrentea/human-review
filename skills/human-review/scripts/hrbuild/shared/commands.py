@@ -4,7 +4,7 @@ from __future__ import annotations
 import html
 import shlex
 
-from .actions import declare_action
+from .actions import ACTIONS, declare_action
 
 #: The one glyph a command wears — whichever of the two is true of *this* copy of the
 #: report. Characters and not SVG: they are one text node each, they inherit the pill's
@@ -26,6 +26,21 @@ from .actions import declare_action
 #: exactly as wide as a private-use codepoint — i.e. it was tofu.
 CMD_COPY = "\U0001F4CB"   # 📋
 CMD_RUN = "\u21BB"        # ↻
+
+#: The three marks the Demo row wears instead of `↻`, because none of its verbs is a
+#: rerun. Start begins something that then keeps running, Stop ends it, Where goes to it —
+#: and the circular arrow, which this page teaches everywhere else as "the thing that comes
+#: round again", would say the opposite of all three. It is the one place a different glyph
+#: is earned: every other command here re-derives something the page is already showing.
+#:
+#: Text presentation (`\uFE0E`) on the triangle for the same reason `↻` is not the 🔃
+#: emoji — inside a pill the glyph has to take the pill's colour, and the play is green while
+#: the square is red. `\u25A0` and not `⏹` (U+23F9), which is an emoji by default and whose
+#: text form is tofu in more fonts than not: a filled square *is* the stop mark, and the red
+#: it is drawn in here is the half of "stop" the shape alone does not carry.
+CMD_PLAY = "\u25B6\uFE0E"  # ▶
+CMD_STOP = "\u25A0"         # ■
+CMD_OPEN = "\u2197"         # ↗
 
 # The masthead's Rerun — which is also the served badge, because they are one fact.
 #
@@ -203,19 +218,13 @@ def reveal_html(reveal: dict | None, name: str) -> str:
             '<span class="plainword">this diagram</span></span>')
 
 
-#: What a static click does, appended to the static tooltip of any offer that carries its
-#: command. A sentence and not a word, because "copies it" leaves out the half a reader
-#: needs — that the page cannot run it here, and that the copy is therefore the offer.
-STATIC_COPIES = ("This copy of the report cannot run it, so clicking here copies the "
-                 "command instead.")
-
 #: The copy glyph's hover. Says what the click does and then the line it will put on the
 #: clipboard, which is the only place a command appears on this page in full.
 COPY_TIP = "Copy command to paste in terminal"
 
 
 def command_html(cmd: str, action_id: str | None = None, *, tip: str = "",
-                 running: str = "") -> str:
+                 running: str = "", label: str = "", run_face: str = "") -> str:
     """The affordances of one shell command, beside the control that describes it.
 
     **The command itself is not printed.** It used to be, in a parenthesis, and it was the
@@ -242,69 +251,91 @@ def command_html(cmd: str, action_id: str | None = None, *, tip: str = "",
     probe rather than out of the manifest). No id means no run glyph and the clipboard
     stays, which is the honest rendering of a command the build did not declare — the line
     is real, and nothing here can run it.
+
+    `label` is the action in words, and it is on the button rather than beside it. It used
+    to be beside it: a grey pill reading *Update the report* and, after it, a separate
+    glyph — two elements for one action, so a reader who pressed one had no way to know
+    the other did the same thing, and the row under every diagram carried four controls
+    for two offers. The words and the mark are one target now, which is also the answer to
+    "what does this glyph belong to" without a hover.
+
+    `run_face` replaces the play on the run half, for the three verbs in the Demo tab's
+    **Deployed app** row: Start begins something that then keeps running, Stop ends it,
+    Where goes to it, and a play triangle on all three would say the same thing about
+    three different things. Everywhere else the mark is the play, because everywhere else
+    the offer is *do this here*.
+
+    Not `↻`. The circular arrow is the masthead's badge, where it means "this page can
+    rebuild itself", and it is green because that is what `served` is coloured. On a row of
+    actions it said *rerun* over verbs that are not reruns, and its green read as a passing
+    check. The play is drawn in the page's action accent — the colour everything pressable
+    here already wears.
+
+    **One string, two surfaces.** When `action_id` names something the build declared, the
+    command rendered is the register's, not the caller's: `data-copy`, `data-cmd` and the
+    clipboard's hover all carry the bytes `serve-review.py` will hand to `sh -c`. The
+    caller's `cmd` is a fallback for the undeclared case and a cross-check for the declared
+    one. This is not tidiness — the aftermath band and the server used to compose the same
+    refresh command separately and had drifted by an interpreter and a flag, so the line a
+    reader pasted did something other than the button they could have pressed.
     """
+    # The register is the source, and the caller's string is the fallback. Reading it here
+    # rather than trusting what was passed is what makes "the line you copy is the line the
+    # server runs" a property of the code instead of a habit: there is one author of that
+    # string, and it is `declare_action`.
+    entry = ACTIONS.get(action_id) if action_id else None
+    if entry and entry.get("command"):
+        cmd = entry["command"]
     quoted = html.escape(cmd, quote=True)
     # The command in the hover, on its own line after the sentence. This is the only place
     # it appears in full, so it is not truncated: a half-copied command in a tooltip is
     # worse than none, because the reader cannot tell which half they are looking at.
     copy_tip = html.escape(f"{COPY_TIP}:\n{cmd}", quote=True)
+    # The word first and the mark after it, in that order on both faces. The label is what
+    # the reader is looking for and the mark is the footnote saying what a press will do —
+    # and the row this replaced already read that way, so nothing about where to look
+    # changed when the second control went away.
+    word = f'<span class="cmd-word">{html.escape(label)}</span>' if label else ""
+    wordy = " has-word" if label else ""
+
+    def face(glyph: str) -> str:
+        return f'{word}<span class="cmd-ico">{glyph}</span>' if label else glyph
+
+    # With a word on the button the word is the name; `aria-label` would replace it and
+    # leave a screen reader saying "Copy command to paste in terminal" three times in a
+    # row with nothing to tell the three apart.
+    copy_aria = (f"{label} \u2014 {COPY_TIP.lower()}" if label else COPY_TIP)
+    # `data-cmd` on both faces, and it is not for the browser: it is the handle the
+    # guardrail reads. A test that walks a built page can ask every control what line it
+    # stands for and compare it with the register the server runs out of, which is the only
+    # way the two surfaces can be held equal after the fact rather than by inspection.
     out = [f'<span class="cmd">'
-           f'<button type="button" class="copycmd cmd-copy" data-copy="{quoted}" '
-           f'data-tip="{copy_tip}" aria-label="{html.escape(COPY_TIP, quote=True)}">'
-           f'{CMD_COPY}</button>']
+           f'<button type="button" class="copycmd cmd-copy{wordy}" data-copy="{quoted}" '
+           f'data-cmd="{quoted}" '
+           f'data-tip="{copy_tip}" aria-label="{html.escape(copy_aria, quote=True)}">'
+           f'{face(CMD_COPY)}</button>']
     if action_id:
         # `runhere` because the page's existing handler runs a `runhere` with a
         # `data-action` through the action server — spinner, log tail and reload included.
         # `hidden` from the start and raised by the probe, like every other control here.
+        #
+        # One short sentence, and the command is not in it. It used to end with the whole
+        # line, which put a two-hundred-character absolute path in a hover over a button
+        # whose label already says what it does — and it is the *clipboard* whose hover a
+        # reader opens to read a command, because that is the face that hands them one.
         play_tip = html.escape(
-            ((tip.rstrip(".") + ". ") if tip else "")
-            + f"Runs it through the server serving this page:\n{cmd}", quote=True)
-        out.append('<button type="button" class="runhere cmd-run" hidden '
+            tip or f"{label or 'Run it'} \u2014 runs on the server serving this page",
+            quote=True)
+        run_aria = f"{label} \u2014 run this command" if label else "Run this command"
+        out.append(f'<button type="button" class="runhere cmd-run{wordy}" hidden '
                    f'data-action="{html.escape(action_id, quote=True)}" '
+                   f'data-cmd="{quoted}" '
                    f'data-tip="{play_tip}"'
                    + (f' data-run-say="{html.escape(running, quote=True)}"' if running else "")
-                   + f' aria-label="Run this command">{CMD_RUN}</button>')
+                   + f' aria-label="{html.escape(run_aria, quote=True)}">'
+                   + f'{face(run_face or CMD_PLAY)}</button>')
     out.append('</span>')
     return "".join(out)
-
-
-def offer_words_html(label: str, action_id: str, static_tip: str, served_tip: str,
-                     running: str = "", cmd: str = "", pill: bool = False) -> str:
-    """The words of an offer — one control, in both copies of the report.
-
-    This replaces the pair `_run_or_read` used to render. That function put *two* controls
-    in the markup and let CSS choose: `click here` served, `run this` off disk, the second
-    one opening a fold with the command in it. The whole arrangement existed to answer "the
-    command is only useful in one of the two copies", and it answered it by making the same
-    control read differently in each — so a reader could not learn the page, and "what does
-    this button run" had no answer in the copy where the button worked.
-
-    One control, and the *click* differs rather than the words:
-
-      * **served**, it runs the command through the review server;
-      * **off disk**, it copies it, with a `copied` toast. That is the only thing that copy
-        of the report can do with the command, so it is what the click does. A control
-        whose whole answer is a sentence explaining why it did nothing is a control readers
-        learn to stop pressing.
-
-    The copy glyph beside it (`command_html`) is what keeps that from being a magic trick:
-    it is the signal that a click here copies something, and its hover carries the line.
-
-    `pill` dresses it as a button rather than as an underlined word. For the offers in the
-    aftermath band, which are the page's answer to "somebody changed the code after the
-    review was written" — a fact in a red band, with two things to do about it. Inline
-    links inside that sentence were the same weight as the prose around them and were read
-    as part of it; the two things to do are the point of the band.
-    """
-    tip = f"{static_tip} {STATIC_COPIES}" if cmd else static_tip
-    cls = "runhere offer-words" + (" offer-pill" if pill else "")
-    return (f'<button type="button" class="{cls}" '
-            f'data-action="{html.escape(action_id, quote=True)}" '
-            + (f'data-copy="{html.escape(cmd, quote=True)}" ' if cmd else "")
-            + f'data-tip="{html.escape(tip, quote=True)}" '
-            f'data-tip-served="{html.escape(served_tip, quote=True)}"'
-            + (f' data-run-say="{html.escape(running, quote=True)}"' if running else "")
-            + f'>{html.escape(label)}</button>')
 
 
 def regenerate_html(redraw: dict | None, rerun: dict, rebuild: str,
@@ -351,16 +382,15 @@ def regenerate_html(redraw: dict | None, rerun: dict, rebuild: str,
     if name:
         aid = declare_action(f"drawio-redraw:{name}", line, reload=True,
                              label=f"Regenerate {name} from the repository's own script")
-    base = redraw.get("base") or "the base branch"
-    tip = (f"Puts automation's own drawing back: restores the file to {base} and runs the "
-           "repository's script over it, which draws what the code has and the map lacks "
-           "— in red, as a to-do. Your layout is banked with `git stash`, not binned.")
-    served = ("Runs it here and reloads, with automation's drawing back. Your layout goes "
-              "to the git stash.")
-    return (offer_words_html("Regenerate the diagram", aid or "", tip, served,
-                             "Putting automation's drawing back…", cmd=line, pill=True)
-            + command_html(line, aid, tip=served,
-                           running="Putting automation's drawing back…"), aid)
+    # One short sentence on the play, and it spends its second half on the one thing a
+    # label cannot carry: that this throws the reader's layout away, and where it goes. The
+    # rest of what the old three-line tooltip said — which file, which base, what the
+    # script draws — is what the *command* says, and the command is one hover away on the
+    # clipboard face of the same control.
+    served = ("Regenerate the diagram \u2014 runs on the server serving this page; your "
+              "layout is banked with git stash")
+    return (command_html(line, aid, label="Regenerate the diagram", tip=served,
+                         running="Putting automation's drawing back…"), aid)
 
 
 def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
@@ -407,7 +437,7 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     if name:
         aid = declare_action(f"drawio:{name}", line, reload=True,
                              label=f"Re-render {name} and rebuild this page")
-    served = "Runs it here, then reloads with the new picture"
+    served = "Update the report \u2014 runs on the server serving this page"
     again, _ = regenerate_html(redraw, rerun, rebuild, name)
     # The status line, under the buttons and empty until something is running. This is the
     # whole of the answer to the complaint that produced it: the command behind *Update the
@@ -427,9 +457,8 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
              else (f'<p class="dgm-open">Edit {it}.</p>' if reveal else ""))
     return ('<div class="rerun">' + where
             + '<div class="rerun-acts">'
-            + offer_words_html("Update the report", aid or "", STATIC_RUN_TIP, served,
-                               "Re-rendering the diagram…", cmd=line, pill=True)
-            + command_html(line, aid, tip=served, running="Re-rendering the diagram…")
+            + command_html(line, aid, label="Update the report", tip=served,
+                           running="Re-rendering the diagram…")
             + again
             + '</div>'
             + '<p class="runstatus" hidden role="status" aria-live="polite">'
@@ -456,52 +485,54 @@ def runtime_html(rt) -> str:
     This page is a file on disk that outlives the branch it describes, so it cannot hold a
     live URL: by the time anyone opens it the environment is long gone, and the next one
     will come up on a different port. What it *can* hold is a way to bring the environment
-    back \u2014 and there are two of those, which is the whole shape of this bar.
+    back \u2014 and there are two of those, which is the whole shape of this row.
 
-    Served, the row is verbs, and it keeps its own state: nothing answering, so `Start`;
-    something answering, so the address it answers at \u2014 a link, into a new tab, port and
-    all \u2014 then `Stop` and `Reset DB`. The page asks its own server to run the commands
-    the build declared and scrapes the URL out of what `Start` printed, so there is nothing
-    for the reader to paste anywhere.
+    **One line, and the click is what differs.** It was two: a row of word buttons that
+    only did anything on a served page, and under it a second row \u2014 `START \u21bb`,
+    `STOP \u21bb`, `WHERE \u21bb` \u2014 carrying the same three commands as clipboards. Six
+    controls for three offers, and the lower row wore the *rerun* glyph, so a page that was
+    being served still looked like it was handing out lines to paste somewhere else. Worse,
+    the two rows disagreed about which copy of the report the reader was holding: the verbs
+    vanished off disk and the commands stayed, which read as the row breaking rather than
+    as it telling the truth.
 
-    Off disk none of that can happen: no process here runs a command, and Reset has
-    nothing to reset until one does. So the row carries no verbs at all and the terminal
-    command takes their place. Both are in the markup either way \u2014 the same file is
-    opened both ways and only the script knows which \u2014 and CSS hides the half that is
-    lying. One offer, in the register that copy of the report can actually honour, rather
-    than the same offer twice: greyed buttons above the command that replaces them.
+    Now each verb is one control (`command_html` with a word on it), and it is the one
+    control the page's whole command vocabulary is built on:
 
-    Every control except the command is opt-in on something the environment actually
-    provides \u2014 `stop`, `reset` \u2014 because a button that always fails is worse than no
-    button, and none of these can be derived from `command` by string surgery without
-    working for the one host this was written against and failing silently on the next.
+      * **served**, it wears its own mark \u2014 a green `\u25b6` on Start, a red `\u25a0` on Stop,
+        an `\u2197` on Where \u2014 and a click runs the command through the review server;
+      * **off disk**, all three wear the clipboard, hover `Copy command to paste in
+        terminal` with the line under it, and a click copies. No play glyph anywhere,
+        because nothing here can play.
+
+    None of the three is `\u21bb`: the marks this page teaches everywhere else mean *this
+    comes round again*, and starting an app is not a rerun of anything.
+
+    Which verbs are on screen is the row's own state and lives in APP_ENV_JS: served, it
+    shows Start while nothing answers, and Stop with Where once something does. Off disk
+    it shows all three, because the reader is going to paste one of them into a terminal
+    and which one they need is their business.
+
+    The state leads the row \u2014 `Offline`, or the address as a link, port and all \u2014
+    because it is the subject of every verb after it.
+
+    Every control except the clipboards is opt-in on something the environment actually
+    provides \u2014 `stop`, `urlCommand`, `reset` \u2014 because a button that always fails is
+    worse than no button, and none of these can be derived from `command` by string
+    surgery without working for the one host this was written against and failing silently
+    on the next.
     """
     if not rt:
         return ""
     cmd = rt.get("command", "")
     fallback = rt.get("base", "")
 
-    def btn(cls: str, face: str, tip: str) -> str:
-        # `hidden` from the start, and raised by the script once the probe has answered:
-        # a verb drawn live that turns out not to apply has already been clicked by then.
-        # aria-disabled rides along so the guard in the script survives a stylesheet that
-        # never loaded, where `hidden` alone would have left a live button behind.
-        return (f'<button type="button" class="{cls}" hidden aria-disabled="true"'
-                f' data-tip="{html.escape(tip, quote=True)}">{face}</button>')
-
     # The state first, because it is the subject of everything after it: "Offline", and
-    # then the one verb that changes that — or the address, and then the two verbs that
+    # then the one verb that changes that \u2014 or the address, and then the two verbs that
     # act on what is answering there. Exactly one of the pill and the link is ever shown.
     at = ('<span class="appenv-at">'
           '<span class="appenv-state" data-state="unknown">checking\u2026</span>'
           '<a class="appenv-url" target="_blank" rel="noopener" hidden></a></span>')
-
-    controls = btn("appenv-start", "Start",
-                   "Start the app and fill the address in from what it prints") if cmd else ""
-    if rt.get("stop"):
-        controls += btn("appenv-stop", "Stop", "Stop the app and free its port")
-    if rt.get("reset"):
-        controls += btn("appenv-reset", "Reset DB", "Put the demo data back to its seed")
 
     if cmd:
         declare_action("demo-env", cmd, scrape="url",
@@ -509,11 +540,9 @@ def runtime_html(rt) -> str:
     if rt.get("stop"):
         declare_action("demo-env-stop", rt["stop"],
                        label="Stop the environment the walkthrough was filmed against")
-    # Optional and never guessed. Turning `… up --ref abc` into `… url --ref abc` by
+    # Optional and never guessed. Turning `\u2026 up --ref abc` into `\u2026 url --ref abc` by
     # string surgery would work for the one host this was written against and fail
-    # silently on the next, at probe time, where nobody would see it fail. Declared or
-    # absent — and absent costs only the re-discovery of a base the browser had already
-    # remembered in localStorage.
+    # silently on the next, at probe time, where nobody would see it fail.
     if rt.get("urlCommand"):
         declare_action("demo-env-url", rt["urlCommand"], scrape="url",
                        label="Ask the host where the environment is already answering")
@@ -521,40 +550,43 @@ def runtime_html(rt) -> str:
         declare_action("cue-drive", rt["drive"], params={"n": "int", "base": "url"},
                        label="Drive the app to one caption of the walkthrough")
 
-    # The commands this row is made of, as a clipboard each — and, served, a play each.
+    # One control per verb, wrapped in a span that carries the verb's name. The wrapper is
+    # what APP_ENV_JS hides when the verb does not apply, and it has to be a *wrapper*:
+    # the two buttons inside it are already owned by SERVER_JS, which raises one and hides
+    # the other per action. Two owners of `hidden` on the same element is how a control
+    # ends up flickering between two truths.
     #
-    # In *both* copies of the report, which is the change. The stylesheet used to print the
-    # `up` line off disk and hide it the moment the probe answered, so "what does this
-    # button actually run" had no answer in the copy where the button worked. Now the
-    # affordance is there either way, and the line itself is in the glyph's hover rather
-    # than in the row: a `cd … && ./start-docker.sh up --ref abc123` printed in a bar of
-    # four controls was the widest thing in the Demo tab and was read once.
-    #
-    # All three, not just `up`. `stop` and `url` were declared for the buttons and never
-    # offered to anybody, which meant the one reader who needed to know how the host is
-    # asked where the stack is answering had to go and read the manifest.
-    rows = []
+    # `hidden` from the start, like everything else in this row \u2014 a verb drawn live that
+    # turns out not to apply has already been clicked by the time the probe corrects it.
+    # APP_ENV_JS raises the three it wants in its first synchronous pass, before the probe
+    # has answered anything, so a static page shows all three with no flicker.
+    verbs = []
     if cmd:
-        rows.append(("start", command_html(
-            cmd, "demo-env", tip="Starts the app and fills the address in from what it "
-            "prints", running="Starting the app…")))
+        verbs.append(("start", command_html(
+            cmd, "demo-env", label="Start", run_face=CMD_PLAY,
+            tip="Starts the app and fills the address in from what it prints",
+            running="Starting the app\u2026")))
     if rt.get("stop"):
-        rows.append(("stop", command_html(rt["stop"], "demo-env-stop",
-                                          tip="Stops the app and frees its port",
-                                          running="Stopping…")))
+        verbs.append(("stop", command_html(
+            rt["stop"], "demo-env-stop", label="Stop", run_face=CMD_STOP,
+            tip="Stops the app and frees its port", running="Stopping\u2026")))
     if rt.get("urlCommand"):
-        rows.append(("where", command_html(
-            rt["urlCommand"], "demo-env-url",
-            tip="Asks the host where the app is already answering",
-            running="Asking the host…")))
-    manual = ('<p class="appenv-manual">'
-              + "".join(f'<span class="appenv-cmd">'
-                        f'<span class="appenv-verb">{face}</span>{box}</span>'
-                        for face, box in rows)
-              + '</p>') if rows else ""
+        verbs.append(("where", command_html(
+            rt["urlCommand"], "demo-env-url", label="Where", run_face=CMD_OPEN,
+            tip="Asks the host where the app is answering, and opens it",
+            running="Asking the host\u2026")))
+    controls = "".join(f'<span class="appenv-act appenv-{verb}" hidden>{box}</span>'
+                       for verb, box in verbs)
+
+    if rt.get("reset"):
+        # Not a shell command and so not one of the three: it is a POST the *application*
+        # answers, which is why it works off disk as soon as something is up, and why it
+        # has no line for anybody to paste.
+        controls += ('<button type="button" class="appenv-reset" hidden aria-disabled="true"'
+                     ' data-tip="Put the demo data back to its seed">Reset DB</button>')
 
     return (f'<div class="appenv" data-fallback="{html.escape(fallback)}"'
             f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}'
             f'{f' data-drive="{html.escape(rt["drive"])}"' if rt.get("drive") else ""}>'
             '<div class="appenv-run"><span class="appenv-title">Deployed app</span>'
-            + at + controls + '</div>' + manual + '</div>')
+            + at + controls + '</div></div>')
