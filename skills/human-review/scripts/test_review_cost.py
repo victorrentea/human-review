@@ -1247,17 +1247,82 @@ def test_page_build_is_the_last_full_regeneration_and_the_earlier_ones_are_not(t
     assert doc["page_build_run"]["when"] == "2026-09-03T12:00:00+00:00"
 
 
-def test_the_named_command_keeps_the_flags_and_drops_the_directories():
-    """Spelled in full, the path eats the whole cell and the line stops one word short of
-    `--steps static` — which is the thing the reader opened the row to see."""
-    got = rc.short_command(
-        "cd ~/workspace/petclinic-pr && python3 "
-        "/Users/victorrentea/workspace/human-review/skills/human-review/scripts/"
-        "refresh-report.py --dir .human-review --steps static --no-serve 2>&1 | tail -15")
-    assert "refresh-report.py --dir .human-review --steps static --no-serve" in got
-    assert "/Users/victorrentea" not in got
-    assert len(got) <= 112
-    assert rc.short_command("a " * 200).endswith("…")
+LONG_BUILD = ("cd ~/workspace/petclinic-pr && python3 "
+              "/Users/victorrentea/workspace/human-review/skills/human-review/scripts/"
+              "refresh-report.py --dir .human-review --steps static --no-serve 2>&1 | tail -15")
+
+
+def test_the_named_command_keeps_the_flags_and_drops_the_plumbing():
+    """Spelled in full, the path ate the whole cell and the line stopped mid-word at
+    `…/scripts/refresh-rep` — in prose, with nothing saying it had been cut, one token
+    short of the flag the reader opened the row to see.
+
+    Nothing is cut until everything invariant is gone, because a cut is the one shortening
+    a reader cannot undo by knowing the convention. The `cd` says where it ran and the row
+    knows; the interpreter stands in front of a script that names itself; the directories
+    are a path the reader already has; `2>&1 | tail -15` is a harness keeping its own
+    output short."""
+    got = rc.short_command(LONG_BUILD)
+    assert got == "refresh-report.py --dir .human-review --steps static --no-serve"
+    assert rc.short_command("a " * 200).endswith("\u2026")
+    # The shedding is per-piece, not a pattern matched against this one line.
+    assert rc.short_command("python3 run-steps.py --only diagrams") == \
+        "run-steps.py --only diagrams"
+    assert rc.short_command("bash publish-demo.sh out 2>&1") == "publish-demo.sh out"
+    # And a command that is none of those shapes is handed back as it came.
+    assert rc.short_command("git revert --no-commit abc1234") == \
+        "git revert --no-commit abc1234"
+
+
+def test_the_page_build_row_names_which_build_and_nothing_else():
+    """`--dir` is this report's own directory — the row *is* this report — and
+    `--no-serve` is how the server presses its own button. Neither differs between two
+    runs of this program, so both spend cell width saying what the row already says. What
+    is left is the one thing that does differ: which set of steps ran."""
+    assert rc.named_build(LONG_BUILD) == "refresh-report.py --steps static"
+    # `--allow-model` is NOT shed: a build that bought a judgement is a different build,
+    # and it is the flag that says so.
+    paid = LONG_BUILD.replace("--steps static", "--steps static --allow-model")
+    assert "--allow-model" in rc.named_build(paid)
+
+
+def test_the_hover_keeps_the_line_as_it_ran_and_still_fits_on_a_screen():
+    """`shed=False` is the other face: the `cd` says where it ran and the pipe says what
+    read it, and a hover that dropped those would be a second summary rather than the line
+    behind the first. Bounded all the same — a transcript records a whole Bash call, and
+    1200 characters of one is a screen-tall bubble nobody reads. Nothing here is meant to
+    be pasted: the invocation itself is on the face, in full."""
+    assert rc.short_command(LONG_BUILD, rc.BUILD_HOVER_WIDTH, shed=False) == \
+        " ".join(LONG_BUILD.split())
+    chained = "cd /repo && python3 - <<'PY'\n" + "x = 1\n" * 200 + "PY\n"
+    hover = rc.short_command(chained, rc.BUILD_HOVER_WIDTH, shed=False)
+    assert len(hover) <= rc.BUILD_HOVER_WIDTH and hover.endswith("\u2026")
+    assert hover.startswith("cd /repo && python3 - <<'PY'")
+
+
+def test_the_row_names_the_builder_and_not_the_shell_line_around_it():
+    """A shell line is not a command. These sessions chain one routinely — an edit written
+    through a here-doc, a test run, then the refresh, all in a single Bash call — and the
+    whole of it is what the transcript records. Printed raw the row read `python3 - <<'PY'
+    import pathlib p = pathlib.Path("build-review-html.py") …`: the wrong program, in the
+    wrong language, stopped mid-statement.
+
+    `builder_calls` already knows which builders a line *runs*, so the row prints that
+    parse. The here-doc body is not one of them, which is the case that made this loud."""
+    chained = ("cd /repo/skills/scripts && python3 - <<'PY'\n"
+               'import pathlib\n'
+               'pathlib.Path("build-review-html.py").touch()\n'
+               "PY\n"
+               "cd /repo && python3 /repo/skills/scripts/refresh-report.py "
+               "--dir .human-review --steps static --no-serve 2>&1 | tail -25")
+    assert rc.named_build(chained) == "refresh-report.py --steps static"
+    # The regeneration wins over a later call on the same line: it is what the row is the
+    # cost of.
+    both = ("python3 refresh-report.py --steps all && "
+            "python3 build-review-html.py content.json")
+    assert rc.named_build(both) == "refresh-report.py --steps all"
+    # A line with no builder in it is all the row has, so it is handed back whole.
+    assert rc.named_build("echo   hello  there") == "echo hello there"
 
 
 def test_the_last_regeneration_is_the_last_one_that_worked(tmp_path, monkeypatch):

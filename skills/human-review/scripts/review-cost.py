@@ -37,6 +37,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -883,20 +884,104 @@ def last_full_build(session_file: Path, programs=BUILD_PROGRAMS) -> dict | None:
     return full[-1] if full else None
 
 
-def short_command(command: str, width: int = 110) -> str:
+#: The plumbing a command is wrapped in, which is not the command. In order: the
+#: `cd <repo> &&` that says where it ran (the row already knows), the interpreter in front
+#: of a script that names itself, and the `2>&1 | tail -25` a harness appended to keep its
+#: own output short. Each is invariant across every run of the same program, so each costs
+#: a table cell room and tells the reader nothing.
+_CD_PREFIX = re.compile(r"^cd\s+\S+\s*&&\s*")
+_OUTPUT_TAIL = re.compile(r"\s*(?:2>&1\s*)?(?:\|\s*(?:tail|head)\b.*)?$")
+_INTERPRETER = re.compile(r"^(?:\S*/)?(?:python[\d.]*|node|bash|sh)\s+(?=[\w.+-]+\.(?:py|sh|js)\b)")
+_SCRIPT_DIR = re.compile(r"\S*/(?=[\w.+-]+\.(?:py|sh|js)\b)")
+
+
+def short_command(command: str, width: int = 110, shed: bool = True) -> str:
     """The command a row names, in a length a table cell can print.
 
-    Directories are dropped from every script path first, and only then is anything cut:
-    `python3 /Users/victorrentea/workspace/human-review/skills/human-review/scripts/refresh-rep`
-    spends its whole allowance on a path the reader already knows and stops one word short
-    of the thing they opened the row to see — which flag it was run with.
+    Nothing is *cut* until everything invariant has been dropped, because a cut is the one
+    shortening a reader cannot undo by knowing the convention. Spelled in full, the row
+    read `python3 /Users/victorrentea/workspace/human-review/skills/human-review/scripts/
+    refresh-rep` — the whole allowance spent on a path, and then stopped mid-word, one
+    token short of the flag the reader opened the row to see.
+
+    So: the `cd` that says where it ran, the interpreter in front of a self-naming script,
+    the directories on that script's path, and the harness's own `2>&1 | tail -n` all go.
+    What is left is the program and its flags. Whatever survives all that and is still too
+    long is cut at a space and marked with an ellipsis — and the full line belongs on the
+    hover of whatever prints this, because a shortened command is a claim the reader has
+    to be able to check.
     """
     flat = " ".join(str(command).split())
-    flat = __import__("re").sub(r"\S*/(?=[\w.+-]+\.(?:py|sh)\b)", "", flat)
+    if not shed:
+        # `shed=False` is for the hover that says how the row's command was *actually*
+        # spelled: the `cd` is where it ran and the pipe is what read it, and a hover
+        # dropping those would be a second face rather than the line behind the first.
+        # It is still bounded, because the transcript records a whole Bash call — an edit
+        # written through a here-doc, a test run and the refresh in one — and 1200
+        # characters of that is a screen-tall bubble nobody reads. Unlike a command the
+        # page offers to run, nothing here is meant to be pasted: the invocation itself
+        # is on the face, in full, and this is provenance around it.
+        return flat if len(flat) <= width else (
+            f"{flat[:width].rsplit(' ', 1)[0] or flat[:width]} \u2026")
+    flat = _CD_PREFIX.sub("", flat)
+    flat = _OUTPUT_TAIL.sub("", flat)
+    # Directories first: the interpreter is only recognisable as one once the script after
+    # it is a bare file name rather than a hundred characters of absolute path.
+    flat = _SCRIPT_DIR.sub("", flat)
+    flat = _INTERPRETER.sub("", flat)
     if len(flat) <= width:
         return flat
     cut = flat[:width].rsplit(" ", 1)[0]
     return f"{cut or flat[:width]} …"
+
+
+#: What the `page build` row leaves off the command it names, on top of the plumbing every
+#: command sheds above. `--dir` is this report's own directory — the row *is* this report —
+#: and `--no-serve` is how the server presses its own button; neither differs between two
+#: runs of this program, so both spend cell width saying what the row already says. The
+#: line in full is one hover away, which is what makes this a shortening and not a lie.
+BUILD_DEFAULT_FLAGS = re.compile(r"\s--(?:dir\s+\S+|no-serve)\b")
+
+#: How much of the shell line the `page build` row puts on its hover. Long enough for
+#: a chained call to be recognisable, short enough not to be a screen-tall bubble.
+BUILD_HOVER_WIDTH = 300
+
+#: `>`, `>>`, `2>`, `2>&1`, `&>` — where a command line stops being arguments.
+_REDIRECT = re.compile(r"^\d*[<>]")
+
+
+def named_build(command: str, programs=BUILD_PROGRAMS) -> str:
+    """The page-building invocation inside a shell line, without the line around it.
+
+    A shell line is not a command. These sessions routinely chain one: an edit written
+    through a here-doc, a test run, and then the refresh — all in a single Bash call, and
+    the whole of it is what the transcript records. Printed as-is the row read
+    `python3 - <<'PY' import pathlib p = pathlib.Path("build-review-html.py") …`, which
+    names the wrong program in the wrong language and stops mid-statement.
+
+    `builder_calls` already parses that line into the builders it *runs* — in command
+    position, behind an interpreter, never as an argument to `grep` or `sed`, and never
+    inside a here-doc body. So the row prints that parse rather than the raw text: the
+    program and the flags it was given, which is the one line a reader could type to get
+    this page back. The full shell line stays on the row's hover.
+
+    The regeneration is preferred over the last call when a line holds several, because
+    that is the invocation the row is the cost of. A line this cannot parse a builder out
+    of is handed back whole — it is then all the row has.
+    """
+    calls = builder_calls(command, programs)
+    if not calls:
+        return " ".join(str(command).split())
+    program, args = next((c for c in calls if is_full_regeneration(*c)), calls[-1])
+    # The segment ends at a pipe, so a `| tail -25` is already gone — but a redirection is
+    # not a pipe and `2>&1` is split by the `&` that also separates commands, which left
+    # a lone `2>` hanging off the end of the flags. Everything from the first redirection
+    # is the shell talking to itself.
+    for i, a in enumerate(args):
+        if _REDIRECT.match(a):
+            args = args[:i]
+            break
+    return short_command(BUILD_DEFAULT_FLAGS.sub("", " ".join([program, *args])))
 
 
 #: What `rerun-model.py` spent, written by the run itself. A paid model step is a `claude
@@ -1514,7 +1599,8 @@ def _window(path: Path, since, until, skip=()) -> dict:
 
 
 def _row(key: str, measured: bool, data: dict | None = None, reason: str | None = None,
-         window=None, detail: str | None = None, excluded: bool = False) -> dict:
+         window=None, detail: str | None = None, excluded: bool = False,
+         command: str | None = None) -> dict:
     """One line of the breakdown. An unmeasurable phase carries a reason, never a zero.
 
     `$0.00` and "we could not date this" render identically to a reader and mean opposite
@@ -1532,6 +1618,10 @@ def _row(key: str, measured: bool, data: dict | None = None, reason: str | None 
            "cost": 0.0, "tokens": 0, "messages": 0, "models": {},
            "reason": reason, "detail": detail,
            "window": [w.isoformat() if w else None for w in (window or (None, None))]}
+    # Only where there is one: an absent key is a row whose face was never shortened, and
+    # `null` would have the renderer offering an empty hover over it.
+    if command:
+        out["command"] = command
     if data:
         out.update({k: data[k] for k in ("cost", "tokens", "messages")})
         # Which models spent those tokens. Carried per row rather than once for the table:
@@ -1694,13 +1784,19 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
             else:
                 page = {**split["ours"], "tokens": round(split["ours"]["tokens"])}
                 detail = ("the last full regeneration of this report (steps + build): "
-                          + short_command(last["command"]))
+                          + named_build(last["command"]))
                 paid = model_run_in(Path(steps_path).parent, last["start"], last["end"])
                 if paid:
                     page["cost"] += float(paid["cost"])
                     detail += f", including the model step it ran ({money(paid['cost'])})"
                 rows.append(_row("page_build", True, page,
-                                 window=(last["start"], last["end"]), detail=detail))
+                                 window=(last["start"], last["end"]), detail=detail,
+                                 # The line as it ran, for the row's hover. The face is
+                                 # the invocation alone, and an invocation lifted out of
+                                 # a shell line is a claim the reader has to be able to
+                                 # check against the line it came out of.
+                                 command=short_command(last["command"], BUILD_HOVER_WIDTH,
+                                                       shed=False)))
             rest = split["theirs"]
             if rest["messages"]:
                 rest = {**rest, "tokens": round(rest["tokens"])}

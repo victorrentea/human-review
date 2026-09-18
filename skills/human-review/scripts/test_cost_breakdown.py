@@ -23,6 +23,7 @@ Run with:  python3 -m pytest test_cost_breakdown.py
 """
 from __future__ import annotations
 
+import html
 import importlib.util
 import json
 import os
@@ -672,7 +673,10 @@ BUILD_ROW = {
     "key": "page_build", "label": "page build", "measured": True,
     "cost": 4.12, "tokens": 6_120_400, "messages": 3,
     "detail": ("the last full regeneration of this report (steps + build): "
-               "python3 refresh-report.py --steps static --no-serve"),
+               "refresh-report.py --steps static"),
+    "command": ("cd /Users/victorrentea/workspace/petclinic-pr && python3 "
+                "/Users/victorrentea/workspace/human-review/skills/human-review/scripts/"
+                "refresh-report.py --dir .human-review --steps static --no-serve"),
     "window": ["2026-09-18T21:39:48+00:00", "2026-09-18T21:41:02+00:00"],
 }
 
@@ -686,6 +690,22 @@ def test_the_page_build_row_names_the_regeneration_it_is_the_cost_of():
     assert "the last full regeneration of this report (steps + build)" in row
     assert "refresh-report.py --steps static" in row
     assert "18 Sep 21:39" in row, "the window, because a window is not a fence"
+
+
+def test_the_shortened_command_can_be_checked_against_the_line_that_ran():
+    """It used to be the whole absolute line in prose, chopped mid-word at
+    `…/scripts/refresh-rep` with nothing saying it had been cut. The face is short now, so
+    the exact line has to be reachable — a shortened command a reader cannot expand is one
+    they have to take on trust."""
+    out = build.phase_rows_html({"rows": [*PHASES["rows"], BUILD_ROW, OTHER_ROW]})
+    row = [r for r in out.split("<tr") if "page build" in r][0]
+    assert "/Users/victorrentea" not in row.split("data-tip=")[0], \
+        "no absolute path on the face of the row"
+    tip = re.search(r'data-tip="([^"]*)"', row)[1]
+    assert html.unescape(tip) == BUILD_ROW["command"]
+    # A row with nothing to expand offers no empty hover.
+    assert sum('data-tip="' in r for r in out.split("<tr")) == 2, \
+        "the page-build command and the grey row's own tooltip, and nothing else"
 
 
 def test_the_grey_row_says_the_earlier_rebuilds_are_in_it():

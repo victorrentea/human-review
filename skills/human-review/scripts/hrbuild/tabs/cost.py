@@ -326,8 +326,18 @@ def phase_rows_html(phases: dict | None) -> str:
                        f'{label} — {why}</span></td><td>—</td><td>—</td></tr>')
             continue
         window = r.get("window") or []
+        # A row that names a command names a *shortened* one — the plumbing around it is
+        # the same on every run and spends the cell's width saying so — and the line
+        # exactly as it ran goes on the hover of the sentence that carries it. Without
+        # that hover the face was a claim the reader had to take on trust, and before the
+        # shortening it was worse: an absolute path chopped mid-word at `…/refresh-rep`,
+        # in prose, with nothing saying it had been cut.
+        detail = html.escape(str(r.get("detail") or ""))
+        if r.get("command") and detail:
+            detail = (f'<span data-tip="{html.escape(str(r["command"]), quote=True)}">'
+                      f'{detail}</span>')
         sub = " &middot; ".join(x for x in (
-            html.escape(str(r.get("detail") or "")),
+            detail,
             (f'{_when(window[0])} &rarr; {_when(window[1])}'
              if len(window) == 2 and _when(window[0]) else ""),
         ) if x)
