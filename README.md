@@ -590,6 +590,10 @@ un-narrated capture nothing on the page plays. `.github/workflows/pages.yml`
 uploads the whole `demo/` directory and deploys it on every push to `main` that touches
 `demo/**` (or the workflow itself), and on `workflow_dispatch`.
 
+`demo/DEMO-PR-RECIPE.md` records the retouches Victor made by hand on the
+`petclinic-visit-vet` exhibit after `/implement-ticket` finished it, one per tab, so they
+can be redone if the demo PR is ever reimplemented or re-reviewed.
+
 To add one, `/publish-demo` from the reviewed project, once the run has finished. It is
 one command and no judgement:
 
