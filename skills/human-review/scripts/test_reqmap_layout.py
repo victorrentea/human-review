@@ -235,8 +235,39 @@ def test_a_redesigned_fragment_keeps_the_layout_the_model_shipped(tmp_path, caps
     rewrite rather than emitting half of it. The honest failure is the model's own layout
     with a line on stderr, not a column with its heading gone."""
     without_cats = FRAGMENT.replace('class="rm-cats"', 'class="rm-surfaces"')
-    assert T.reqmap_layout(without_cats, SPEC, tmp_path) == without_cats
+    out = T.reqmap_layout(without_cats, SPEC, tmp_path)
+    # The layout is abandoned; the hover on a cut name is not. It hangs off one class the
+    # fragment's own stylesheet declares, so it survives a redesign this function no
+    # longer recognises — which is the matrix most likely to be cutting names somewhere
+    # new.
+    assert out == without_cats + T.REQMAP_TIP_JS
     assert ".rm-cats" in capsys.readouterr().err
+
+
+def test_a_name_the_matrix_had_to_cut_gets_the_rest_of_it_on_hover(tmp_path):
+    """Nine covering-test names were cut on this project's own PR and none of them carried
+    `title`, `data-tip` or `aria-label`: *"The vet chosen while booking is named everywhere
+    the visit i…"* needed 372 px and got 156, and two UNIT rows for two different
+    components collapsed to nearly the same visible string. Every other truncation on this
+    page has a hover; these did not.
+
+    Measured on the way in rather than stamped at build time, because whether a name fits
+    is a question about the reader's window — and because the panel is `display:none`
+    until the tab is opened, where everything measures 0 and nothing looks truncated."""
+    out = _laid_out(tmp_path)
+    assert out.count(T.REQMAP_TIP_JS) == 1
+    assert T.REQMAP_CUT == ".reqmap .rm-tt"
+    js = T.REQMAP_TIP_JS
+    assert T.REQMAP_CUT in js, "the selector is said once and used"
+    assert "scrollWidth > el.clientWidth + 1" in js, "only a name that is actually cut"
+    assert "removeAttribute('data-tip')" in js, \
+        "a name that fits must not hover with a copy of itself"
+    # Capture phase, which is what puts it ahead of TIP_JS's own delegated `pointerover`
+    # on the same document: by the time the tooltip asks for the attribute, it is there.
+    assert "addEventListener('pointerover', measure, true)" in js
+    assert "addEventListener('focusin', measure, true)" in js
+    # The page's one tooltip component, not a native title it cannot style or size.
+    assert "title" not in js
 
 
 def test_the_decoy_markup_inside_the_scripts_is_not_what_gets_moved(tmp_path):

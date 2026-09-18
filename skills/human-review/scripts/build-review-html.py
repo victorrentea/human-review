@@ -140,7 +140,8 @@ from hrbuild.tabs.sequence import (
 )
 from hrbuild.tabs.tests import (
     LEDGER_TAB, render_requirements, render_test_ledger, render_tests, render_traces,
-    REQMAP_CSS, reqmap_layout, resolve_tests, SILENCED_LABEL, test_index, TEST_STATES,
+    REQMAP_CSS, REQMAP_CUT, REQMAP_TIP_JS, reqmap_layout, resolve_tests, SILENCED_LABEL,
+    test_index, TEST_STATES,
     TICKET_CACHE, ticket_head, ticket_ref, tests_chip, _append_inside, _element, _find,
     _gh_issue, _issue_url, _ms, _take, _test_changes_module
 )

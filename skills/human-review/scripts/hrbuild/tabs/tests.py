@@ -570,6 +570,50 @@ REQMAP_CSS = """
 </style>"""
 
 
+#: Which cells of the matrix are cut to fit, and therefore need somewhere for the rest of
+#: the words to live. `.rm-tt` is the covering test's name, and it is the only column in
+#: the fragment whose content is a sentence: nine of them were cut on this project's own
+#: PR — *"The vet chosen while booking is named everywhere the visit i…"*, 42 % of it on
+#: screen — and two UNIT rows for two different components collapsed to nearly the same
+#: visible string.
+REQMAP_CUT = ".reqmap .rm-tt"
+
+#: The hover on a name the matrix had to cut, measured at the moment it is asked for.
+#:
+#: Not written into the markup at build time, because the build cannot know: whether a
+#: name fits is a question about the reader's window, their font and which column the
+#: layout gave it, and the honest answer changes when they drag the window. A `data-tip`
+#: stamped on every row regardless would also put a tooltip on the rows that are NOT cut,
+#: where it repeats, word for word, the text the pointer is already resting on.
+#:
+#: Not an observer either. `.rm-tt` lives in a fragment a model renders, inside a tab
+#: panel that is `display:none` until the reader opens it — where `scrollWidth` and
+#: `clientWidth` are both 0 and nothing looks truncated. Anything measuring ahead of time
+#: therefore has to be told when the panel appears, when the fragment's own script has
+#: finished writing rows, and when the window resizes; three subscriptions to get one
+#: attribute right.
+#:
+#: So it is measured on the way in. The listener is on `document` in the CAPTURE phase,
+#: which is what puts it ahead of `TIP_JS`'s own delegated `pointerover` on the same
+#: document — by the time the tooltip asks `closest('[data-tip]')`, the attribute is
+#: either there or gone. `focusin` alongside it, for a reader arriving by keyboard.
+REQMAP_TIP_JS = """
+<script>(function () {
+  function measure(ev) {
+    var el = ev.target && ev.target.closest && ev.target.closest('%s');
+    if (!el) return;
+    var full = (el.textContent || '').trim();
+    // +1: sub-pixel layout makes scrollWidth exceed clientWidth by a fraction on rows
+    // that are not cut at all, and a tooltip repeating a name the reader can already
+    // read in full is how a page teaches people to stop hovering.
+    if (full && el.scrollWidth > el.clientWidth + 1) el.setAttribute('data-tip', full);
+    else el.removeAttribute('data-tip');
+  }
+  document.addEventListener('pointerover', measure, true);
+  document.addEventListener('focusin', measure, true);
+})();</script>""" % REQMAP_CUT
+
+
 def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
     """Re-lay the model's requirements↔tests matrix, or hand it back untouched.
 
@@ -587,7 +631,11 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
               "requirements-map.html. If the fragment was redesigned, "
               "hrbuild/tabs/tests.py:reqmap_layout is what has to learn the new names.",
               file=sys.stderr)
-        return frag
+        # The layout is abandoned; the hover is not. It hangs off a class name the
+        # fragment's own stylesheet declares, so it keeps working on a matrix this
+        # function no longer recognises — which is exactly the matrix whose names are
+        # most likely to be cut somewhere new.
+        return frag + REQMAP_TIP_JS
 
     m = re.search(r'<div class="rm-body"[^>]*>', frag)
     if not m:
@@ -620,4 +668,4 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
     side_col = _append_inside(side_col, cats)
     body = (m.group(0) + ticket_head(ticket_ref(spec, out_dir))
             + text_col + side_col + "</div>")
-    return frag[:a] + body + frag[b:] + REQMAP_CSS
+    return frag[:a] + body + frag[b:] + REQMAP_CSS + REQMAP_TIP_JS
