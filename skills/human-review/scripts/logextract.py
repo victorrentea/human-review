@@ -945,7 +945,15 @@ def extract(paths: list[str], root: str | None = None,
         if k not in best or len(m["text"]) > len(best[k]["text"]):
             best[k] = m
 
-    for m in best.values():
+    # Sorted by (file, line, column) rather than taken in `best`'s insertion order, which
+    # is ast-grep's output order, which is the order its worker threads happened to finish
+    # the files in. Two runs over an unchanged tree emitted the same statements in a
+    # different sequence, so `logging.json` — and the whole Logging tab under it — changed
+    # on every rebuild. That is not a cosmetic problem: it is the difference between a page
+    # a reader can diff against yesterday's and one that always looks like it moved.
+    for m in sorted(best.values(),
+                    key=lambda m: (m["file"], m["range"]["start"]["line"],
+                                   m["range"]["start"]["column"])):
         f = m["file"]
         recv = _mv(m, "RECV") or ""
         method = _mv(m, "METHOD") or ""
@@ -1013,9 +1021,12 @@ def extract(paths: list[str], root: str | None = None,
             origins=origins_for(proj, f, ln, rest if fmt is not None else args, menc),
         ))
 
-    for m in matches:
-        if m.get("ruleId") != "console-antipattern":
-            continue
+    # Sorted for the same reason as the loop above, and it is this list that was actually
+    # caught swapping: two `System.out.println` findings traded places between consecutive
+    # runs over an untouched tree.
+    for m in sorted((m for m in matches if m.get("ruleId") == "console-antipattern"),
+                    key=lambda m: (m["file"], m["range"]["start"]["line"],
+                                   m["range"]["start"]["column"])):
         f = m["file"]
         ln = m["range"]["start"]["line"] + 1
         t = m["text"]
@@ -1026,9 +1037,16 @@ def extract(paths: list[str], root: str | None = None,
                              column=m["range"]["start"]["column"] + 1, kind=kind,
                              raw_line=src.line(f, ln), text=t))
 
-    sym_out: dict[str, list] = {rel(f): [asdict(s) for s in v.values()]
-                                for f, v in symbols.items()}
-    for f, scopes in lombok.items():
+    # Sorted by file, and each file's symbols by where they are declared. Both dicts are
+    # filled in ast-grep's completion order, so the JSON's *key* order moved between runs
+    # even when every symbol in it was identical — the same instability as the two loops
+    # above, one level up.
+    sym_out: dict[str, list] = {
+        rel(f): [asdict(s) for s in sorted(symbols[f].values(),
+                                           key=lambda s: (s.line, s.name))]
+        for f in sorted(symbols)
+    }
+    for f, scopes in sorted(lombok.items()):
         sym_out.setdefault(rel(f), []).extend(
             asdict(LoggerSymbol(fname, fl, f"injected by Lombok `{ann}`", "lombok", start))
             for start, _end, fname, fl, ann in scopes)
@@ -1038,7 +1056,7 @@ def extract(paths: list[str], root: str | None = None,
     fields_out: dict[str, list] = {
         rel(f): [{"line": line, "name": name, "type": typ, "text": text}
                  for line, name, typ, text in sorted(fl)]
-        for f, fl in proj.all_fields.items()
+        for f, fl in sorted(proj.all_fields.items())
     }
     stats = {
         "files_with_loggers": len(sym_out),
