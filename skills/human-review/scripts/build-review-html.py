@@ -8735,16 +8735,90 @@ def tab_cost_report(root: Path, tab_ids: list[str]) -> dict | None:
         return None
 
 
-def cost_ledger_report(root: Path, tab_ids: list[str], base: str) -> dict | None:
+#: Where the ledger is kept between builds. Dot-prefixed like every other private file
+#: beside the page: `publish-demo.sh` publishes what does not begin with a dot, and a
+#: measurement of one machine's transcripts is not something to ship in a demo zip.
+COST_CACHE = ".cost-ledger.json"
+
+
+def _cost_inputs(root: Path, out_dir: Path, tab_ids: list[str], base: str) -> str:
+    """A fingerprint of everything the ledger is computed *from*.
+
+    Not of the answer — of the inputs, so a hit means "nothing this number depends on has
+    moved" rather than "somebody said it was fine". The pieces:
+
+      * the session id, which is whose transcripts are read;
+      * that session's `.jsonl` and every `agent-*.jsonl` beside it, by size and mtime —
+        a conversation that ran another turn is a different bill;
+      * `.steps.json`, which is how the ledger splits the run across tabs;
+      * the base ref and the tab list, which are what was asked;
+      * `review-cost.py` itself, so a change to the pricing invalidates every cache on
+        this machine rather than being invisible until somebody deletes a file.
+    """
+    h = hashlib.blake2b(digest_size=16)
+    h.update(f"{base}\0{','.join(tab_ids)}\0".encode())
+    script = Path(__file__).resolve().parent / "review-cost.py"
+    for f in (script, out_dir / ".steps.json", out_dir / ".session"):
+        try:
+            st = f.stat()
+            h.update(f"{f.name}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
+        except OSError:
+            h.update(b"\0gone\0")
+    sid = os.environ.get("CLAUDE_CODE_SESSION_ID") or ""
+    if not sid:
+        try:
+            sid = (out_dir / ".session").read_text(encoding="utf-8").strip()
+        except OSError:
+            sid = ""
+    h.update(f"{sid}\0".encode())
+    if sid:
+        projects = Path(os.path.expanduser("~/.claude/projects"))
+        # The session's own transcript and its subagents'. Sorted, because a set of paths
+        # in filesystem order is a fingerprint that changes for no reason.
+        for f in sorted(list(projects.glob(f"*/{sid}.jsonl"))
+                        + list(projects.glob(f"*/{sid}/subagents/agent-*.jsonl"))):
+            try:
+                st = f.stat()
+                h.update(f"{f}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
+            except OSError:
+                h.update(b"\0gone\0")
+    return h.hexdigest()
+
+
+def cost_ledger_report(root: Path, tab_ids: list[str], base: str,
+                       out_dir: Path | None = None) -> dict | None:
     """The whole bill — writing the code, the passes, every tab, the residual.
 
     Same discipline as `tab_cost_report`, which it supersedes: every failure comes back as
     data with a sentence explaining it, never as a silently missing number. It returns None
     only when `review-cost.py` could not be asked at all.
+
+    **Cached, on the inputs.** This one call was 40 seconds of a 47-second build — it reads
+    every turn of a conversation that wrote a feature over two days, and it does it again on
+    every rebuild of a page whose bill has not moved since. That is most of what a reader
+    waits through after pressing a button on the page: re-rendering a diagram takes three
+    seconds and then they sit for forty, watching nothing, in front of a control they
+    pressed. Re-deriving a number from transcripts nobody has appended to is not a
+    measurement, it is the same measurement, and `_cost_inputs` is what says so.
+
+    A cache that could be *wrong* would be much worse than a slow build — the cost tab is
+    the one part of this page nothing else corroborates — so the key is the inputs and never
+    a timestamp: the session id, the byte length and mtime of its transcript and every
+    subagent's, `.steps.json`, the base, the tab list, and `review-cost.py` itself. Anything
+    moves and the answer is recomputed. Nothing moves and the answer cannot have.
     """
     script = Path(__file__).resolve().parent / "review-cost.py"
     if not script.is_file():
         return None
+    cache = (out_dir / COST_CACHE) if out_dir else None
+    key = _cost_inputs(root, out_dir, tab_ids, base) if out_dir else ""
+    if cache:
+        try:
+            held = json.loads(cache.read_text(encoding="utf-8"))
+            if held.get("key") == key and "ledger" in held:
+                return held["ledger"]
+        except (OSError, ValueError):
+            pass
     proc = subprocess.run(
         [sys.executable, str(script), "--ledger", "--base", base,
          "--tabs", ",".join(tab_ids)],
@@ -8755,9 +8829,16 @@ def cost_ledger_report(root: Path, tab_ids: list[str], base: str) -> dict | None
             print(f"[review] no cost ledger: {line}", file=sys.stderr)
         return None
     try:
-        return json.loads(proc.stdout)
+        ledger = json.loads(proc.stdout)
     except json.JSONDecodeError:
         return None
+    if cache:
+        # Best effort: a read-only directory is a slow build, not a failed one.
+        try:
+            cache.write_text(json.dumps({"key": key, "ledger": ledger}), encoding="utf-8")
+        except OSError:
+            pass
+    return ledger
 
 
 # The unattributed cost, in the order a reader wants it: the one part that has a real name
@@ -10151,7 +10232,8 @@ def main(argv=None) -> int:
         # `tab_cost_report`'s docstring) — a bad day comes back as a "not measured"
         # sentence, not as a tab silently getting no number at all.
         led = cost_ledger_report(root, [t["id"] for t in tabs],
-                                 (spec.get("pr") or {}).get("base") or "origin/main")
+                                 (spec.get("pr") or {}).get("base") or "origin/main",
+                                 out_dir)
         costs = (led or {}).get("tabs")
         strip, panels, dropped, quiet, emitted = [], [], [], [], []
         for tab in tabs:
