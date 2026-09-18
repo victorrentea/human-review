@@ -269,6 +269,13 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
    underline and nothing louder: it is still a sha, and the page is full of them. */
 .rband li > code[data-tip] { cursor:help; text-decoration:underline dotted;
             text-underline-offset:2px; }
+/* `Revert it` sits ON the row of the commit it reverts, so it stays on the line instead
+   of taking one: the .rb-actions row below is a block under the whole list, and a flex
+   row inside an <li> would push the subject off its own line. Quieter than the band's
+   own button, too — the row's subject is the commit, not the offer. */
+.rband li .rb-act { margin-left:.45rem; vertical-align:baseline; }
+.rband li .rb-act .cmd-copy, .rband li .rb-act .cmd-run { font-size:.74rem;
+            font-weight:600; padding:.1rem .5rem; }
 .rband-alert { border-color:#c62828; background:rgba(198,40,40,.07); }
 .rband-alert > p:first-child b, .rband-alert > p:first-child { color:#c62828; }
 .rband-warn { border-color:var(--drift); background:rgba(181,115,10,.07); }

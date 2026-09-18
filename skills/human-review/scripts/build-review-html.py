@@ -123,11 +123,13 @@ from hrbuild.tabs.review import (
     AFTERMATH_FILES, aftermath_html, AFTERMATH_JSON, CONFIDENCE_TIP, opening_lede, PASS_DOCS,
     PILE_BLOCKS, pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND,
     POINTS_PILES, render_assumptions, render_autofixes, render_findings, render_pile_block,
+    review_tab_badge,
     reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_value,
     SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
     _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source,
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
-    _ref_link, _regenerate_offer, _score_target, _tooling_commit_shas, _tooling_fold_html
+    _ref_link, _regenerate_offer, _revert_offer, _score_target, _tooling_commit_shas,
+    _tooling_fold_html
 )
 from hrbuild.tabs.sequence import (
     CODE_BADGE, FILE_PAGE, FILE_PENCIL, FILE_PLUS, render_testpairs, SEQ_ARROW, SEQ_DECL,
@@ -704,6 +706,10 @@ def main(argv=None) -> int:
         why `puml` and `codecity` carry weight but no changes."""
         kind = block.get("type", "section")
         if kind in PILE_BLOCKS:
+            # The Review pill's number is the open pile, not this tab's render weight —
+            # the module that owns the piles says which, and why (`review_tab_badge`).
+            if kind == "findings":
+                auto_badge.update(review_tab_badge(spec))
             return render_pile_block(spec, block, heading)
         if kind == "diagrams":
             # A block may name a manifest of its own. One producer does: the C2 view is
@@ -915,8 +921,14 @@ def main(argv=None) -> int:
             tid = html.escape(tab["id"])
             # A number on a tab is a promise that it means something. It does on the tab
             # holding the findings; on "Data model" it would just count pictures.
+            # `count` from a block is a real count of things on the tab; `weight` is the
+            # "is there anything at all to show" number this loop keeps or drops the tab
+            # by, and a layout sentinel inside it (the assumptions pile weighs 1 even
+            # empty) is not a quantity of anything. A tab that asked for a number and has
+            # a block able to say what it counts gets that one.
+            counted = auto_badge.get("count", weight)
             badge = (tab.get("badge") or auto_badge.get("badge")
-                     or (str(weight) if tab.get("count") else ""))
+                     or (str(counted) if tab.get("count") else ""))
             badge_class = tab.get("badgeClass") or (
                 auto_badge.get("class", "") if not tab.get("badge") else "")
             # An alarm is a colour, not a mark: the tab's own label goes red rather than

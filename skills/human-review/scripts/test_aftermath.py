@@ -269,20 +269,42 @@ def test_no_measurement_is_not_a_reassuring_band(tmp_path):
     assert _band(tmp_path, None) == ""
 
 
-def test_no_commit_offers_to_revert_itself(tmp_path):
-    """The band reports commits the page has not caught up with; it does not accuse them.
+def test_every_branch_commit_offers_to_revert_itself(tmp_path):
+    """The README has promised this since the band was built: *each commit's sha, subject
+    and files, and a button that runs `git revert --no-commit` on it and stops*.
 
-    A per-commit *Revert it* used to sit here, running `git revert --no-commit`. It
-    answered the wrong question — on this kind of branch the commit is usually the
-    infrastructure cherry-pick that had to land — and it put the one control that rewrites
-    the working tree on a page whose whole contract is that it only reads the repository.
+    It was taken off the rows once, and the band's red half then ended at "here are twelve
+    commits" with nothing to do about any of them. The flag is what makes it safe to put
+    behind a button — an inverse staged in the working tree, nothing committed, nothing
+    pushed, `git reset` undoes it — which is why the promise is worded around it.
     """
     out = _band(tmp_path, _doc(code_files=1))
-    assert "Revert it" not in out
-    assert "git revert" not in out
-    assert not [k for k in build.ACTIONS if k.startswith("aftermath-revert")]
-    # The row keeps what it always was underneath: the sha, what it did, when.
+    assert "Revert it" in out
+    assert "git revert --no-commit 753f724c" in out
+    # In the register, like every command this page offers: the page sends an id and the
+    # server looks the line up, so a page from an older build can ask for nothing new.
+    assert build.ACTIONS["aftermath-revert:753f724c"]["command"].endswith(
+        "git revert --no-commit 753f724c")
+    assert 'data-action="aftermath-revert:753f724c"' in out
+    # The SHORT sha: the line is what the clipboard hands over, and a reader checking it
+    # before pasting stops checking at forty characters of hex.
+    assert "753f724c" * 5 not in out
+    # And the row keeps what it always was underneath.
     assert "753f724c" in out and "2026-09-17" in out
+
+
+def test_the_revert_is_offered_per_commit_and_not_over_the_tooling_fold(tmp_path):
+    """One button per commit, because the range is not what anyone wants undone: the hand
+    edit is the question and the guardrail cherry-picked beside it is not.
+
+    `main` arriving is nobody's mistake, so the folded half carries nothing to press —
+    that is the half the removal was right about, and folding it away is what let the
+    button come back over what a human actually wrote."""
+    out = _band(tmp_path, _doc(code_files=1, commits=3))
+    assert out.count('<span class="cmd-word">Revert it</span>') == 2 * 3, \
+        "one control per commit, in its two faces"
+    fold = build._tooling_fold_html(_doc()["commits"], "main")
+    assert "Revert it" not in fold and "git revert" not in fold
 
 
 def test_the_band_offers_one_regenerate_for_all_of_them(tmp_path):
@@ -300,8 +322,9 @@ def test_the_band_offers_one_regenerate_for_all_of_them(tmp_path):
     assert out.index("</ul>") < out.index("Regenerate the report")
     # Two spans and not two offers: the same control in its two faces, of which the probe
     # ever raises one. What there is exactly one of is the *pair* — the words and the mark
-    # in one button, rather than a pill with a glyph parked beside it.
-    assert out.count('class="cmd"') == 1
+    # in one button, rather than a pill with a glyph parked beside it. Three commits carry
+    # three `Revert it` pairs of their own, each naming its own sha.
+    assert out.count('class="cmd"') == 1 + 3
     assert "offer-pill" not in out
     assert '<span class="cmd-ico">' in out and "\u21bb" not in out
     # The server's own verb. It is in the register like everything else — that is where its
@@ -328,10 +351,15 @@ def test_the_line_the_band_copies_is_the_line_the_server_runs(tmp_path):
     interpreter and a flag — so the line a reader pasted did something other than the
     button beside it. Now there is one author of that string and the band reads it."""
     out = _band(tmp_path, _doc(code_files=1))
-    declared = build.ACTIONS["__rerun__"]["command"]
-    for shown in re.findall(r'data-cmd="([^"]*)"', out):
-        assert html.unescape(shown) == declared
-    assert "--no-serve" in declared, \
+    ids = re.findall(r'data-action="([^"]*)"', out)
+    assert set(ids) == {"__rerun__", "aftermath-revert:753f724c"}
+    # Every control on the band, asked what line it stands for, against the register the
+    # server runs out of. `data-cmd` rides on both faces of each control, so the two
+    # buttons of one pair answer with one string.
+    lines = {html.unescape(x) for x in re.findall(r'data-cmd="([^"]*)"', out)}
+    assert lines == {build.ACTIONS["__rerun__"]["command"],
+                     build.ACTIONS["aftermath-revert:753f724c"]["command"]}
+    assert "--no-serve" in build.ACTIONS["__rerun__"]["command"], \
         "the copy must not quietly start a second review server where the press does not"
 
 

@@ -4017,6 +4017,51 @@ def test_one_files_excerpts_are_shared_out_among_its_scenarios(tmp_path):
     assert [x["ref"] for x in quoted[pumls[1]]] == [f"{rel}:28-34"]
 
 
+def test_the_review_pill_counts_open_issues_and_not_the_render_weight(tmp_path):
+    """The pill said **10** while the row under it said `6 open · 3 auto-fixed ·
+    7 assumptions` and the masthead said `9 raised`. Ten was findings + auto-fixes + the
+    assumptions pile's fixed weight of 1 — a layout sentinel that keeps an empty pile's
+    "which kind of empty this is" sentence alive, read out to the reader as a count of
+    something. It also sat next to the `6 /10` score chip, where 10 read as a denominator.
+    """
+    spec = {"findings": [{"title": f"f{i}", "body": "b"} for i in range(6)],
+            "autofixes": [{"title": f"a{i}", "body": "b"} for i in range(3)],
+            "assumptions": [{"title": f"s{i}", "body": "b"} for i in range(7)]}
+    assert build.review_tab_badge(spec)["count"] == 6
+    assert build.pile_numbers(spec)[0] == 6, "the same arrays the header chip reads"
+    assert build.review_tab_badge(spec)["label"].startswith("6 open review issues")
+
+    page, _ = _build(tmp_path, {
+        "title": "t", "summary": "<p>s</p>",
+        "sections": [{"id": "s", "title": "S", "body": "<p>b</p>"}],
+        **spec,
+        "tabs": [{"id": "review", "label": "Review", "count": True,
+                  "blocks": [{"type": "findings"}, {"type": "autofixes"},
+                             {"type": "assumptions"}]},
+                 {"id": "other", "label": "Other",
+                  "blocks": [{"type": "section", "id": "s"}]}]})
+    pill = re.search(r'id="tabbtn-review"[^>]*>Review<span class="n"([^>]*)>(\d+)</span>',
+                     page)
+    assert pill, "the Review tab still carries a number"
+    assert pill.group(2) == "6", "the open pile, which is the one number a reader can find"
+    # And it says what it counts: a bare number beside a score chip is a number to guess at.
+    assert "open review issue" in pill.group(1)
+    # Nothing open, and two piles of work already done: the pill says 0 and the tab is
+    # still on the strip. Weight keeps a tab alive; the badge says what is left to read.
+    clean, _ = _build(tmp_path, {
+        "title": "t", "summary": "<p>s</p>",
+        "sections": [{"id": "s", "title": "S", "body": "<p>b</p>"}],
+        "findings": [], "autofixes": [{"title": "a", "body": "b"}],
+        "assumptions": [{"title": "s", "body": "b"}],
+        "tabs": [{"id": "review", "label": "Review", "count": True,
+                  "blocks": [{"type": "findings"}, {"type": "autofixes"},
+                             {"type": "assumptions"}]},
+                 {"id": "other", "label": "Other",
+                  "blocks": [{"type": "section", "id": "s"}]}]})
+    assert 'id="tabbtn-review"' in clean, "the tab is kept by its weight, not by its badge"
+    assert re.search(r'id="tabbtn-review"[^>]*>Review<span class="n"[^>]*>0</span>', clean)
+
+
 def test_an_excerpt_quoting_two_scenarios_goes_under_both(tmp_path):
     """`35-48,52-65` is ONE snippet in the content file, not two. Giving it to one pair
     leaves the other claiming its test is "not excerpted here", which is false."""

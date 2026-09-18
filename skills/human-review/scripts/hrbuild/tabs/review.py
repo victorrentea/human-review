@@ -4,11 +4,12 @@ from __future__ import annotations
 import html
 import json
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-from ..shared.actions import ACTIONS, RERUN_ACTION
+from ..shared.actions import ACTIONS, declare_action, RERUN_ACTION
 from ..shared.bands import _lede_above
 from ..shared.commands import command_html
 
@@ -337,6 +338,41 @@ def pile_numbers(spec) -> tuple[int, int, int]:
     nothing caught it, because nothing was looking. Both callers now count nothing twice."""
     return (len(spec.get("findings", [])), len(spec.get("autofixes", [])),
             len(spec.get("assumptions", [])))
+
+
+def review_tab_badge(spec) -> dict:
+    """What the number on the **Review** pill counts, and what it says it counts.
+
+    It used to count nothing a reader could find. The pill said **10** while the sticky
+    row under it said `6 open · 3 auto-fixed · 7 assumptions` and the masthead said
+    `9 raised` — because the badge fell back to the tab's render *weight*, which is the
+    "is there anything at all to show here" number every tab is dropped or kept by. On
+    this tab that weight is findings + auto-fixes + one: the assumptions pile weighs a
+    fixed 1 whatever is in it, so that its "which kind of empty this is" sentence keeps
+    the tab alive. A layout sentinel was being read as a count of something, and it even
+    collided with the `6 /10` score chip beside it — 10 read as the score's denominator.
+
+    The tab's own comment says a number on a tab is a promise that it means something. The
+    one number on this tab that a reader can point at is the open pile, which is what the
+    header chip leads with (`6 open, 3 auto-fixed`) and what the sticky row's first clause
+    counts — so it is that, off `pile_numbers`, the same arrays both of those read. The
+    other two piles are not hidden by leaving them out: they are one line down, and they
+    are work already dealt with, which is exactly what a pill on a tab should not be
+    adding to a count of what is left to do.
+
+    And it carries its own hover, because a bare number beside a score chip is a number a
+    reader has to guess at.
+    """
+    open_n, fixed_n, assumed_n = pile_numbers(spec)
+    rest = " and ".join(x for x in (
+        f"the {fixed_n} auto-fixed" if fixed_n else "",
+        f'the {assumed_n} assumption{"" if assumed_n == 1 else "s"}' if assumed_n else "",
+    ) if x)
+    label = f'{open_n} open review issue{"" if open_n == 1 else "s"}'
+    if rest:
+        label += f". {rest[:1].upper()}{rest[1:]} are further down the tab, already dealt " \
+                 "with, and this number leaves them out"
+    return {"count": open_n, "label": label}
 
 
 #: How long the masthead's LLM-review chip's plain text (tags stripped) is allowed to run
@@ -758,23 +794,58 @@ def _aftermath_files_tip(c: dict) -> str:
     return "\n".join(parts)
 
 
-def _aftermath_commit(c: dict) -> str:
-    """One commit's row: what it is, and nothing to press.
+def _revert_offer(c: dict, root: Path) -> str:
+    """*Revert it*, on the row of the commit it reverts.
 
-    It used to carry a *Revert it* button, per commit, running `git revert --no-commit`.
-    That is gone, and not because it did not work. It answered the wrong question: a
-    commit in this band is not a mistake to be undone, it is a commit the page has not
-    caught up with, and the overwhelmingly common case on a branch like this one is the
-    infrastructure cherry-pick that *had* to land here. Offering to reverse it first, in
-    red, made the band read as an accusation — and put a button that rewrites the working
-    tree at the top of a page whose whole contract is that it only ever reads the
-    repository. A reader who really does want a commit back has `git revert` and does not
-    need a review page to type it.
+    It was taken off the rows once, on the argument that a commit in this band is not a
+    mistake but a commit the page has not caught up with — which is true of the *tooling*
+    half of the band, and is why this is only rendered over the branch's own commits, with
+    the cherry-picks folded away under their own grey row carrying nothing to press. Over
+    what a human actually wrote after the review was signed off, the question the band
+    raises is exactly "do I want this in the change under review", and the README has
+    promised the answer since the band was built.
 
-    So the row is what it always was underneath: the sha, what it did, when. The one
-    action the band offers is the band's, rendered once beside the list rather than once
-    per commit — the answer is the same command however many commits landed, and three
-    copies of it down a list is three chances to wonder whether they differ.
+    It is safe to put behind a button because of the flag: `git revert --no-commit` stages
+    an inverse and stops. Nothing is committed, nothing is pushed, `git reset` undoes it —
+    the click leaves a diff to look at rather than a commit made on the reader's behalf,
+    which is the whole reason the band's promise is worded that way.
+
+    Per commit and not for the range, because the range is usually not what anyone wants
+    undone: the hand edit is the question and the guardrail beside it is not.
+
+    The **short** sha, not the full one: the command is what the clipboard hands over and
+    what its hover shows, and a reader checking that line before pasting it stops checking
+    at forty characters of hex. `git revert` resolves a short sha, and a prefix that is
+    genuinely ambiguous makes git refuse loudly instead of reverting the wrong commit.
+    """
+    short = c.get("short") or (c.get("sha") or "")[:9]
+    if not short:
+        return ""
+    aid = declare_action(
+        f"aftermath-revert:{short}",
+        f"cd {shlex.quote(str(root.resolve()))} && git revert --no-commit {short}",
+        label=f"Stage the inverse of {short} in the working tree")
+    return ('<span class="rb-act">'
+            + command_html(ACTIONS[aid]["command"], aid, label="Revert it",
+                           tip=(f"Revert it \u2014 runs `git revert --no-commit {short}` on the "
+                                "server serving this page. It stages the inverse and stops: "
+                                "nothing is committed, nothing is pushed, `git reset` undoes it."),
+                           running="Staging the inverse\u2026")
+            + '</span>')
+
+
+def _aftermath_commit(c: dict, root: Path | None = None) -> str:
+    """One commit's row: what it is, and — for the branch's own — what to do about it.
+
+    The sha (carrying the file list in its hover), what the commit did, when, and
+    *Revert it*. No `root`, no button: that is how the tooling fold renders the base's own
+    cherry-picks, which are `main` arriving the way this project's workflow says it should
+    and are not anybody's mistake to undo.
+
+    The band's other answer — *Regenerate the report* — stays where it is, once under the
+    whole list: it does not name a commit, so three copies of it under three shas would be
+    three identical buttons inviting the reader to work out which row each belonged to.
+    This one names one, which is exactly why it belongs on the row.
     """
     when = (c.get("when") or "")[:10]
     return ('<li>'
@@ -782,6 +853,7 @@ def _aftermath_commit(c: dict) -> str:
             f'{html.escape(c["short"])}</code> '
             f'{html.escape(c.get("subject", ""))}'
             + (f' <span class="rb-gen">{html.escape(when)}</span>' if when else "")
+            + (_revert_offer(c, root) if root is not None else "")
             + '</li>')
 
 
@@ -1015,7 +1087,7 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
         role = "status"
     return (f'<div class="rband {cls}" role="{role}">' + head
             + f'<p class="rb-sub">{sub}</p>'
-            + ('<ul>' + "".join(_aftermath_commit(c) for c in branch_only) + '</ul>'
+            + ('<ul>' + "".join(_aftermath_commit(c, root) for c in branch_only) + '</ul>'
                if branch_only else '')
             + (_tooling_fold_html(tooling, base_label) if tooling else '')
             # After the list, not inside it: the commits are what happened, and this is the
