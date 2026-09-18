@@ -44,8 +44,10 @@ Everything below is what happened **after** `ce56d912` — the aftermath band th
 Review tab shows in red. Some of it is Victor's retouches (this recipe); the
 rest is infrastructure cherry-picked from `main` per the rule in this repo's own
 `CLAUDE.md` ("infrastructure changes are made on `main` first, then pulled into
-the PR branch"), which the aftermath band still shows in red because the band
-doesn't know the difference — that's *why* it needs this file.
+the PR branch"). The aftermath band used to show all of it in red, because it
+could not tell the two apart; it now asks `git` per commit and folds the
+cherry-picks into one grey row, so what stays red is the retouches this file
+describes.
 
 To tell the two apart on a fresh checkout:
 
@@ -122,7 +124,7 @@ was already there.
   `@GenerateSequence` suite through Tempo — "the documented way", per
   `21680c35`'s message) and commit the regenerated `.genseq.puml`/`.json` pairs.
 
-### 4 — Sequence tab: the SMS gateway as a real HTTP hop (in progress)
+### 4 — Sequence tab: the SMS arrow, the HTTP hop that was reverted, and the JDBC noise
 
 **Precondition, not a retouch**: the Notification module and the SMS gateway
 already exist as two separate lifelines in the generated sequence diagrams
@@ -131,36 +133,96 @@ the sequence diagrams") — that landed on `main` before this branch's diff
 starts, so it never shows in `origin/main..test-pr` and there is nothing to
 redo for it; it just has to already be on `main`.
 
-What *is* on the branch, and still marked "in progress" as of 2026-09-19: making
-the SMS send a real HTTP call instead of a same-JVM method call, so the arrow
-between the two lifelines crosses an actual socket instead of being asserted by
-a `@WithSpan` on a private method.
+**Where it ended up**: `"Notification module" -> "SMS gateway"` is a plain
+in-process arrow, drawn from the `send-sms` span — one `@WithSpan` and one
+`genseq.participant` attribute on `FakeSmsNotificationSender.sendSms`, linking
+back into that method. That costs two annotations and leaves the application
+exactly as it was. **Nothing to redo here**: it is how `main` already is.
 
-- `4aea32fc` — "Send the fake SMS over HTTP, so the trace crosses a real
-  socket" — **this one is a tooling cherry-pick from `main`** (`fff6bd15`,
-  identical diff), not a branch-only retouch; it's listed here because it's the
-  commit that makes the rest of this item possible, not because it needs
-  redoing separately
-- `abf1c951` — "Give `VisitTest` a server to post the fake SMS to" — branch-only:
-  `VisitTest` (booking through MockMvc) needs `webEnvironment = RANDOM_PORT` too,
-  the same move `4aea32fc` already made for `AddVisitApiTest`/`OwnerCreateTest`
-  on `main`, because this test class doesn't exist on `main` in this shape
-- `e9e23b6a` — "Record the sequence diagrams with the SMS gateway self-call" —
-  branch-only: re-runs the three tagged suites against a freshly seeded
-  database and commits the diagrams that now show
-  `Notification module -> SMS gateway : POST /api/fake-sms` as two real arrows
-- **redo**: first make sure `4aea32fc`'s change (or its equivalent) is cherry-picked
-  from `main`, then add the `webEnvironment = RANDOM_PORT` twin for whatever
-  branch-only test class books a visit through MockMvc, then re-run the traced
-  suites and commit the regenerated diagrams.
+#### The detour, and why it is not in the recipe
+
+For a day the branch made that send a real HTTP round-trip, so the arrow would
+cross an actual socket instead of being asserted by a `@WithSpan` on a private
+method. It was then **reverted**, and the revert is the decision worth
+recording: *no production code for test instrumentation.* Drawing the arrow the
+other way cost a `FakeSmsGatewayController` endpoint, a `RestClient` in the
+sender, a `Lifeline` bean learning the bound port from
+`WebServerInitializedEvent`, the route repeated as a literal in
+`BasicAuthenticationConfig.permitAll`, and three `@SpringBootTest`s moved to
+`RANDOM_PORT` so there was a server to post to — an endpoint, a security
+exception and a lifecycle listener whose only reader is a picture. The picture
+was already honest without them.
+
+Both halves are on the branch, in order, which is why the log reads the way it
+does:
+
+| commit | | what |
+| --- | --- | --- |
+| `4aea32fc` | pick of `fff6bd15` | "Send the fake SMS over HTTP, so the trace crosses a real socket" — the hop itself, plus `AddVisitApiTest`/`OwnerCreateTest` on `RANDOM_PORT` |
+| `abf1c951` | branch-only | "Give `VisitTest` a server to post the fake SMS to" — the same move for the one test class that does not exist on `main` in this shape |
+| `e9e23b6a` | branch-only | "Record the sequence diagrams with the SMS gateway self-call" — the pictures showing `POST /api/fake-sms` and a `200` coming back |
+| `d0d57219` | pick of `b5606c1b` | "Send the fake SMS in-process again: keep the test instrumentation out of production code" — the revert |
+| `0a3541e5` | branch-only | "`VisitTest` goes back to a plain `@SpringBootTest`, with no server to post to" — the tail of the revert |
+
+Two things from the HTTP commit **stayed**, because neither depends on the hop:
+a crossing arrow with nothing to reveal now links to the method it was opened on
+(`Backend -> "Notification module": notify-visit-booked` was the only arrow in
+the picture with no way back to the code — PlantUML gives a message label exactly
+one link, and a ⊕ arrow already spends it), and its test. What went back with the
+revert is the rule that an HTTP CLIENT span stays on its caller's lifeline: it
+existed only for the self-call, and nothing else in these traces has both ends of
+one HTTP call under the same `service.name`.
+
+**Redo**: don't. If the branch is rebuilt from scratch, skip the hop entirely —
+`4aea32fc`, `abf1c951`, `e9e23b6a`, `d0d57219` and `0a3541e5` cancel out to
+nothing, and the arrow is already drawn by the `send-sms` span `main` carries.
+
+#### The JDBC arrows that named no call, and the final redraw
+
+The same diagrams were also carrying six arrows that said nothing. The OTel agent
+times every call *into* the JDBC driver, not only the ones that run SQL — borrowing
+a pooled connection, validating it, `setAutoCommit` — and each arrived as a CLIENT
+span named after the database rather than after a statement, wearing the whole
+database semconv with `db.statement`/`db.query.text` present and empty. The
+generator drew them, because its participant rule only asked whether a span looked
+like a database call: `Backend -> DB: petclinic`, an arrow naming no call, revealing
+no statement behind its ⊕, sitting right beside the query it was opened for.
+
+- `c4b0df32` — **tooling cherry-pick** of `5434391d`, "genseq: drop JDBC spans
+  that carry no statement". A DB span with no statement is dropped whole — no
+  arrow, no activation, no note. A DB span whose *name* is a statement
+  (`SELECT petclinic.owners`) is kept even without statement text: that is a real
+  query recorded by an agent that was not asked to capture the SQL.
+- `7ea4affd` — **branch-only**, "Redraw the sequences without the empty JDBC
+  arrows". The last re-recording, and the one the published page shows: a full run
+  of the tagged suites (Playwright, Cucumber, and the `@GenerateSequence`
+  `@SpringBootTest`) against an isolated stack, so the pictures match both changes
+  at once — the six `Backend -> DB: petclinic` arrows gone (three in
+  add-visit-attended-by-a-vet, two in add-visit-to-an-existing-pet, one in
+  owner-search), and the SMS hop back to a plain `send-sms` arrow linking into
+  `FakeSmsNotificationSender.sendSms` instead of `POST /api/fake-sms`. The rest is
+  what a re-recording always moves: the detail ids of the JSON payloads, and the
+  order of the two independent XHRs the page fires on load.
+- **redo**: cherry-pick the generator fix from `main`, then re-run the three
+  tagged suites against a freshly seeded database and commit the regenerated
+  `.genseq.puml`/`.json` pairs. This has to be the **last** diagram commit — any
+  later retouch that changes a traced path needs its own redraw after it.
 
 ### 5 — Review tab: the aftermath band itself
 
-No commit of its own — this is the fact that items 1–4 (and the tooling
-cherry-picks below) all land *after* `ce56d912`, the review commit. That's what
+No commit of its own — this is the fact that every retouch above (and the tooling
+cherry-picks below) lands *after* `ce56d912`, the review commit. That's what
 populates the aftermath band: red for the hand-written commits (code a human
 added after the agent's review), grey for the ones `human-review.json`'s
 `"generated"` globs classify as regenerated artifacts (diagrams, Code City).
+
+The band splits the same commits a second way, orthogonal to that: the eight
+cherry-picks are folded into one grey `8 tooling commits merged from main` row
+and left out of every count in the headline, and the two `Merge main` commits are
+dropped outright — a merge carries no patch of its own, and everything it brought
+is already listed beside it. So what the headline counts is the retouches, which
+is the point of the band and the reason this file has to stay accurate.
+
 Nothing to redo here beyond making sure the retouches keep landing after, not
 before, the review commit.
 
@@ -250,10 +312,23 @@ hand; it arrives by cherry-picking whatever `main` has at the time.
 | `619902c3` | `2265f333` | pre-commit: spotless only on the staged files |
 | `4aea32fc` | `fff6bd15` | Send the fake SMS over HTTP, so the trace crosses a real socket |
 | `b0203286` | `bddf3e4f` | human-review: let the design-system audit start its own two builds |
+| `d0d57219` | `b5606c1b` | Send the fake SMS in-process again: keep the test instrumentation out of production code |
+| `c4b0df32` | `5434391d` | genseq: drop JDBC spans that carry no statement |
+
+Eight, and the whole eight: that is what the Review tab's aftermath band folds
+away into `8 tooling commits merged from main`. To re-derive the list rather
+than trust this table, ask `git` per commit — `git cherry origin/main <sha>` and
+read `<sha>`'s own line, or `git merge-base --is-ancestor <sha> origin/main`.
+Per commit, not once for the branch: `git cherry origin/main test-pr` answers
+only 2 of the 8, because the branch has also *merged* `main` twice and a merged
+base has nothing left on the other side of the symmetric difference to match
+against.
 
 (`f96259dc`/`2f5947ea` is a guardrail that was tried and reverted on `main`
 itself — both halves rode over to `test-pr` together, which is why the pair
-shows up here rather than as a retouch.)
+shows up here rather than as a retouch. `4aea32fc`/`d0d57219` is the same shape:
+the SMS-over-HTTP hop and its revert, both `main`'s, both riding over. See
+retouch 4 for why it was undone.)
 
 ## If you redo the implementation
 
@@ -266,9 +341,13 @@ Order matters — each step depends on the branch state the previous one left:
 3. Cherry-pick whatever tooling `main` carries at that point (the table above,
    or its current equivalents — check with the `git log --grep` recipe in
    Step 0).
-4. Apply the retouches in this file, items 1–4, 6 and 7, in roughly the order
-   listed (Sequence/Tests before Logging/red-matrix is how it happened, but the
-   only real constraint is: all of them after the review commit).
+4. Apply the retouches in this file — items 1, 2, 3, 6 and 7 — in roughly the
+   order listed (Sequence/Tests before Logging/red-matrix is how it happened,
+   but the only real constraint is: all of them after the review commit). Item 4
+   is a precondition plus a decision: there is nothing in it to apply, and the
+   HTTP hop it describes is the one thing in this file **not** to redo.
+   Whichever retouch lands last and changes a traced path, redraw the sequence
+   diagrams after it — `7ea4affd` is that redraw on the branch as it stands.
 5. Re-run the model pass (`Rerun + AI` / `rerun-model.py`) so the requirements
    matrix picks up the dropped tests from item 2.
 6. Regenerate: Code City (`git push` will force this if it's stale), the
