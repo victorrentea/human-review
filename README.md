@@ -278,7 +278,7 @@ What a click does differs by what the copy of the report can honour:
   nothing is a control readers learn to stop pressing. The copy glyph is what keeps that
   from being a magic trick: it is the visible sign that a click here copies something.
 
-One renderer does all of it (`command_html` in `build-review-html.py`), and the places it
+One renderer does all of it (`command_html` in `hrbuild/shared/commands.py`), and the places it
 reaches are the aftermath band's **Revert it** and **Regenerate the report**, the three
 commands in the Demo tab's **Deployed app** row (`start`, `stop`, `where` — the last two
 were declared for the buttons and never offered to anybody), and the three offers under a
@@ -655,6 +655,56 @@ app-environment bar is what rewrites those, and it cannot until the page loads. 
 `/__human_review__`, the probe by which a page asks whether the live tool is serving it,
 correctly answers "no". Both behave identically on Pages. The `vscode://file/...` caveat
 above is unchanged: those hold absolute paths on the authoring machine.
+
+## Where the page is built: one module per tab
+
+`build-review-html.py` was one file of ten and a half thousand lines: the Logging tab's
+privacy prompts forty lines from the cost table, and the whole stylesheet in the middle of
+both. It is now an orchestrator over a package next to it.
+
+```
+skills/human-review/scripts/
+  build-review-html.py     the orchestrator: read the content file, validate it, render
+                           each tab's blocks in order, assemble the document, write it
+  hrbuild/
+    tabs/                  one module per tab of the page
+      review.py            findings, assumptions, applied fixes, the aftermath band
+      sequence.py          a sequence diagram paired with the test that draws it
+      tests.py             the test ledger, the requirement lists, the recordings
+      demo.py              the feature film, its captions, its verdict
+      city.py              the Code City shot
+      logging.py           what the branch logs, and whether it is a privacy problem
+      owners.py            the CODEOWNERS verdict
+      cost.py              what the run spent — per pass, per phase, per tab
+    shared/                what two or more tabs need: snippets and diffs, the diagram
+                           gallery, the commands the page offers, the masthead, the
+                           footer, the scope bar, the post-render rewrites
+    assets/                page.css, late.css, xref.css and every script, as real files,
+                           inlined verbatim by shared/assets.py
+```
+
+**A change to one tab is made in that tab's module.** That is the whole point of the
+split: two agents working on two tabs are editing two files and never rebase over each
+other. **`shared/` is touched by one agent at a time** — it is the part where they can
+collide, and a change there is a change to every tab at once.
+
+Five tabs have no module, and that is not an omission. **API contract**, **Data model**,
+**Structure**, **UX** and **Complexity** are `includeHtml` fragments rendered whole by
+their own producer (`openapi-compat.py`, `schema_tree.py`, `c2-from-sequence.py`,
+`ds-audit.py`, `endpoint-complexity.py`) and pasted into the panel. A change to what one
+of those tabs shows is a change to its producer.
+
+`build-review-html.py` re-exports every name the package defines, because it is the import
+surface the rest of the skill has always used — `ds-audit.py`, `serve-review.py` and two
+dozen test modules load it by path and reach for a function on it. Three names are the
+exception and must be read and patched on the module that owns them, never through the
+re-export: `OFFLINE` (`tabs/logging.py`) and `_LIST_OFFSET` / `_LEDE_SHOWN`
+(`tabs/review.py`). A re-export copies a value; those three move while a build runs.
+
+`test_build_split_identity.py` holds the split to all of this: the assets round-trip byte
+for byte, the CSS and the scripts are emitted in the order they always were, every tab
+module is reachable, no name has two homes, and nothing the package defines fell off the
+orchestrator.
 
 ## Editing it in place
 
