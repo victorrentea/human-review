@@ -2746,7 +2746,12 @@ def test_a_page_rebuilt_with_no_idea_who_reviewed_it_says_exactly_that_much(tmp_
         findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
         env=_sessionless_env())
     assert "LLM review" in page
-    assert "running on" not in page
+    # Scoped to the masthead on purpose. The claim is about the chip's own words, and
+    # the page inlines `server.js` verbatim — prose about what is "running on this
+    # server" is a different sentence in a different place, and a whole-page search
+    # cannot tell the two apart. It failed on exactly that.
+    mast = page[page.index('<header class="masthead">'):page.index("</header>")]
+    assert "running on" not in mast
 
 
 def test_a_hand_typed_diffstat_is_called_out_rather_than_silently_rendered(tmp_path):
@@ -4322,7 +4327,28 @@ def test_the_ledger_is_read_back_instead_of_recomputed(tmp_path):
     assert build.COST_CACHE.startswith(".")
 
 
-def test_a_cache_written_for_another_question_is_ignored(tmp_path):
+def _frozen_session(monkeypatch, tmp_path):
+    """A session whose transcript does not move while the test runs.
+
+    `_cost_inputs` fingerprints the session's `.jsonl` by size and mtime — which is the
+    whole point of it — and the suite is normally run *inside* a Claude Code session, so
+    the live transcript grows by a turn somewhere between the call that writes the cache
+    and the call that checks the key it was written under. The test then failed on the
+    feature working exactly as designed. A synthetic `$HOME` with one empty transcript in
+    it answers the same question deterministically: `review-cost.py` reads it (both
+    `PROJECTS` there and `_cost_inputs` here resolve `~` at call time), finds nothing, and
+    nothing about the answer can shift underneath the assertion.
+    """
+    home = tmp_path / "home"
+    (home / ".claude" / "projects" / "-synthetic").mkdir(parents=True)
+    (home / ".claude" / "projects" / "-synthetic" / "frozen-session.jsonl").write_text(
+        "", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "frozen-session")
+
+
+def test_a_cache_written_for_another_question_is_ignored(tmp_path, monkeypatch):
+    _frozen_session(monkeypatch, tmp_path)
     out = tmp_path / ".human-review"
     out.mkdir()
     (out / build.COST_CACHE).write_text(
