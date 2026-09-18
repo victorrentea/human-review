@@ -558,6 +558,281 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
             "unknown": sorted(unknown)}
 
 
+# --------------------------------------------------------------------------------------- #
+# Which turns actually built THIS report.
+#
+# The step ledger brackets the steps that draw a tab, and `GUIDE_TAB` brackets the one that
+# assembles the page. What neither brackets is the rest of the session — and a session is
+# not one errand. The conversation that builds a report is usually also doing something
+# else that evening: writing the skill that builds it, mending the branch under review,
+# answering a question that has nothing to do with either.
+#
+# The old `page_build` row took the whole unclaimed remainder and called it page building.
+# On the run this was written for that turned a $23 build into $170, because the pinned
+# session was a day's work across a whole workspace and the ledger claimed sixteen minutes
+# of it. Worse, the number grew on its own: the session was still running, so every rebuild
+# charged the page for more of somebody else's afternoon.
+#
+# So the residual is no longer *assumed* to be page building. What counts is what ran the
+# page builders — a turn whose tool call invokes one of these programs, plus the turn that
+# reads the result. The rest of the session is reported under its own name and kept out of
+# the total: a page does not get to bill for work it did not do.
+# --------------------------------------------------------------------------------------- #
+
+#: The programs that turn `.human-review/` into `review.html`. A turn that runs one of these
+#: is page building by construction — whoever ran it, and whatever else that conversation
+#: was up to. Named rather than inferred, because there is no other mark on a turn that says
+#: "this one was building the page".
+BUILD_PROGRAMS = ("refresh-report.py", "run-steps.py", "build-review-html.py",
+                  "rerun-model.py")
+
+#: How long after a build's result the turn that reads it may arrive. A reply to a finished
+#: build lands in seconds; anything further out is the conversation having moved on, and a
+#: window that stretched to meet it would bill the page for whatever came next.
+READ_GRACE = dt.timedelta(minutes=2)
+
+
+def _tool_text(inp) -> str:
+    """The scalar values of a tool call, flattened — a command, a path, a script."""
+    if not isinstance(inp, dict):
+        return ""
+    return " ".join(str(v) for v in inp.values() if isinstance(v, (str, int, float)))
+
+
+#: Interpreters and wrappers a build may be spelled behind. `python3 build-review-html.py`
+#: and `build-review-html.py` are the same turn; `sed -i … build-review-html.py` is not.
+_LAUNCHERS = {"python", "python3", "uv", "run", "sh", "bash", "zsh", "time", "timeout",
+              "nohup", "exec", "poetry", "pipenv", "env"}
+
+
+def runs_builder(command: str, programs=BUILD_PROGRAMS) -> bool:
+    """Does this shell command *run* one of the page builders?
+
+    The distinction the whole row rests on. `python3 refresh-report.py` is page building;
+    `sed -i 's/x/y/' refresh-report.py` is somebody editing the builder, which is the
+    single most common thing the sessions that build these pages also do, and counting it
+    would put the skill's own development straight back into the row this rule exists to
+    take it out of. So the program has to be in *command position* — first word of a
+    segment, or first word after an interpreter — not merely somewhere in the line.
+    """
+    for segment in __import__("re").split(r"[;&|\n]+|\$\(|`", command):
+        words = [w for w in segment.strip().split() if not __import__("re").match(r"^\w+=", w)]
+        for i, word in enumerate(words[:4]):
+            base = word.split("/")[-1]
+            if any(base == p for p in programs):
+                # Everything before it has to be a launcher, or it is an argument to
+                # something else — `grep refresh-report.py`, `git add run-steps.py`.
+                if all(w.split("/")[-1].lstrip("-") in _LAUNCHERS or w.startswith("-")
+                       or w.isdigit() for w in words[:i]):
+                    return True
+            if i and base not in _LAUNCHERS and not word.startswith("-") \
+                    and not word.isdigit():
+                break
+    return False
+
+
+def _command_windows(path: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
+    """`(start, end)` for every turn of one transcript that ran one of `programs`.
+
+    `start` is the turn that issued the call — the assistant turn being priced — and `end`
+    is the turn that read the result, because reading a build's output is the other half of
+    running it and lands on the next turn. A call whose `tool_result` the transcript never
+    got closes at the next turn there is, which is where the conversation demonstrably
+    resumed; with no such turn it closes on itself rather than staying open to the end of
+    time and swallowing the evening.
+    """
+    starts: dict[str, dt.datetime] = {}
+    ends: dict[str, dt.datetime] = {}
+    stamps: list[dt.datetime] = []
+    for rec in _rows(path):
+        when = _parse_iso(rec.get("timestamp"))
+        if when is None:
+            continue
+        stamps.append(when)
+        for b in _blocks(rec):
+            if b.get("type") == "tool_use":
+                inp = b.get("input") or {}
+                cmd = str(inp.get("command") or "") if b.get("name") == "Bash" else ""
+                if cmd and runs_builder(cmd, programs):
+                    starts[str(b.get("id"))] = when
+            elif b.get("type") == "tool_result":
+                ends.setdefault(str(b.get("tool_use_id")), when)
+    stamps.sort()
+    out = []
+    for tid, start in starts.items():
+        done = ends.get(tid)
+        # Strictly after, both times. The `tool_result` carries its own timestamp and is
+        # not a priced turn, so closing on it would stop one record short of the assistant
+        # turn that reads the output — the expensive half, since it is the one carrying the
+        # build's log in its context.
+        #
+        # And only if that turn came straight after. A reply to a build arrives in seconds;
+        # a gap of minutes means the conversation moved on, or the human went away and came
+        # back to something else, and stretching the window to meet it would charge the page
+        # for whatever they did next. On the run this was written for that one rule was the
+        # difference between a build row and an evening.
+        anchor = done if done is not None else start
+        nxt = next((s for s in stamps if s > anchor), None)
+        close = nxt if nxt is not None and nxt - anchor <= READ_GRACE else anchor
+        out.append((start, close))
+    return sorted(out)
+
+
+def _merge(spans) -> list[tuple]:
+    """Overlapping windows collapsed, so no turn can fall in the same row's window twice."""
+    merged: list[list] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return [(a, b) for a, b in merged]
+
+
+def run_files(session_file: Path) -> list[tuple]:
+    """`(transcript, is_subagent)` for every conversation of one run, parent first."""
+    return ([(Path(session_file), False)]
+            + [(Path(p), True) for p in subagent_transcripts(Path(session_file))])
+
+
+def build_windows(session_file: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
+    """Every stretch of this session — parent and subagents — that ran the page builders.
+
+    One merged timeline, which is the right answer to "when was this run building" and the
+    **wrong** one to "was this turn building": a run forks, and while one agent sits inside
+    a two-minute `run-steps.py` three others are off doing something else entirely. Judged
+    against the merged line, all three would be billed to the page. So this is for reading
+    and for tests; the attribution in `run_residual` is per transcript, because a build
+    belongs to the conversation that ran it.
+    """
+    spans = []
+    for path, _side in run_files(session_file):
+        spans += _command_windows(path, programs)
+    return _merge(spans)
+
+
+def _claimed(steps: list[dict], tabs) -> list[dict]:
+    """The closed steps that name a tab this page has — the ones `tab_costs` attributes.
+
+    Same filter, deliberately: a step naming only tabs the page does not have puts its turns
+    in the residual, and a split of that residual which thought otherwise would not add up
+    to it.
+    """
+    known = set(tabs)
+    return [s for s in steps
+            if s["end"] is not None and s["end"] >= s["start"]
+            and any(t in known for t in s["tabs"])]
+
+
+def split_residual(turns, steps: list[dict], windows, tabs) -> dict:
+    """The turns no step claimed, split by whether they ran the build.
+
+    `ours` is page building the ledger simply did not bracket — a rebuild driven by hand
+    after a fix, a `--redraw`, the wrapper that reran a step. `theirs` is the part of the
+    session that was never about this report: it is reported, with its own row and its own
+    words, and it is not added to anything.
+    """
+    closed = _claimed(steps, tabs)
+    parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0} for k in ("ours", "theirs")}
+    for _key, model, u, _side, when in turns:
+        if when is not None and any(s["start"] <= when <= s["end"] for s in closed):
+            continue
+        mine = when is not None and any(a <= when <= b for a, b in windows)
+        row = parts["ours" if mine else "theirs"]
+        row["cost"] += price(family(model), u)
+        row["tokens"] += sum(u.get(k, 0) for k in
+                             ("input_tokens", "output_tokens",
+                              "cache_creation_input_tokens", "cache_read_input_tokens"))
+        row["messages"] += 1
+    return parts
+
+
+def run_residual(session_file: Path, steps: list[dict], tabs,
+                 programs=BUILD_PROGRAMS) -> dict:
+    """`split_residual` over a whole run, each transcript judged by its own builds.
+
+    The dedupe is `gather_turns`' — one entry per `message.id`, first transcript to carry it
+    wins — so the two halves returned here still add up to the same residual `tab_costs`
+    reports, and the phase table still balances.
+    """
+    total = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0} for k in ("ours", "theirs")}
+    best: dict[str, tuple] = {}
+    for path, side in run_files(session_file):
+        windows = _merge(_command_windows(path, programs))
+        before = set(best)
+        _scan(path, None, side, best, None)
+        fresh = [best[mid] for mid in best.keys() - before]
+        part = split_residual(fresh, steps, windows, tabs)
+        for half, row in part.items():
+            for field in row:
+                total[half][field] += row[field]
+    return total
+
+
+#: How a tool call is described to somebody reading the row, most specific rule first — a
+#: `pytest` is a test run before it is a shell command. `SHELL_BUCKET` is the catch-all and
+#: is ranked last however big it gets: it is the commonest bucket on every transcript and
+#: also the one that says least, so letting it compete on count would print "shell (1340)"
+#: where the reader needed "editing files, running tests, browser checks".
+SHELL_BUCKET = "other shell commands"
+OTHER_WORK = (
+    ("editing files", lambda n, t: n in ("Write", "Edit", "MultiEdit", "NotebookEdit")),
+    ("running tests", lambda n, t: n == "Bash" and "pytest" in t),
+    ("browser checks", lambda n, t: n.startswith("mcp__claude-in-chrome")
+                                    or (n == "Bash" and "playwright" in t.lower())),
+    ("editing files from the shell", lambda n, t: n == "Bash" and __import__("re").search(
+        r"(?:^|[;&|]\s*)(?:sed -i|tee |cat\s*>|python3? - <<)", t)),
+    ("git", lambda n, t: n == "Bash" and "git " in t),
+    ("delegating to subagents", lambda n, t: n in ("Task", "Agent")),
+    ("reading code", lambda n, t: n in ("Read", "Grep", "Glob")),
+    (SHELL_BUCKET, lambda n, t: n == "Bash"),
+)
+
+
+def other_work(session_file: Path, steps: list[dict], tabs, limit: int = 4,
+               programs=BUILD_PROGRAMS) -> str:
+    """What the part of the session that was *not* this report spent its turns on.
+
+    Derived from the tool calls of those turns and nothing else, because a row saying
+    "$127 of this session was something else" and stopping there is a row a reader cannot
+    act on — they have to go and read a transcript to find out whether they should care.
+    Naming the four commonest kinds of call turns it into a sentence: editing files,
+    running tests, driving a browser. A guess about *which project* would be a guess; a
+    count of what the turns did is a measurement.
+    """
+    closed = _claimed(steps, tabs)
+    counts: dict[str, int] = {}
+    files: set[str] = set()
+    for path, _side in run_files(session_file):
+        windows = _merge(_command_windows(path, programs))
+        for rec in _rows(path):
+            when = _parse_iso(rec.get("timestamp"))
+            if when is not None and (any(s["start"] <= when <= s["end"] for s in closed)
+                                     or any(a <= when <= b for a, b in windows)):
+                continue
+            for b in _blocks(rec):
+                if b.get("type") != "tool_use":
+                    continue
+                name = str(b.get("name") or "")
+                text = _tool_text(b.get("input"))
+                if name in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+                    inp = b.get("input") or {}
+                    for p in [inp.get("file_path") or inp.get("path")]:
+                        if p:
+                            files.add(Path(str(p)).name)
+                for what, matches in OTHER_WORK:
+                    if matches(name, text):
+                        counts[what] = counts.get(what, 0) + 1
+                        break
+    if not counts:
+        return "turns with no tool call — reading, deciding, answering"
+    ranked = sorted(counts.items(), key=lambda kv: (kv[0] == SHELL_BUCKET, -kv[1]))[:limit]
+    out = ", ".join(f"{what} ({n})" for what, n in ranked)
+    if files:
+        out += f"; {len(files)} file(s) written"
+    return out
+
+
 def tab_cost_tip(row: dict) -> str:
     """Plain text — `data-tip` is read with `textContent`, not innerHTML."""
     if not row["has_closed"]:
@@ -825,7 +1100,13 @@ PHASE_LABELS = {
     "video": "demo video",
     "images": "view images",
     "page_build": "page build",
+    "not_this_report": "not this report — other work in the pinned session",
 }
+
+#: The rows that are measured and still do not belong to this report's bill. Kept as a set
+#: rather than a flag on the label, because the page and the terminal both have to agree on
+#: which rows the total may add, and one list is how they cannot drift.
+EXCLUDED_PHASES = {"not_this_report"}
 
 
 @__import__("functools").lru_cache(maxsize=1)
@@ -917,14 +1198,21 @@ def _window(path: Path, since, until, skip=()) -> dict:
 
 
 def _row(key: str, measured: bool, data: dict | None = None, reason: str | None = None,
-         window=None, detail: str | None = None) -> dict:
+         window=None, detail: str | None = None, excluded: bool = False) -> dict:
     """One line of the breakdown. An unmeasurable phase carries a reason, never a zero.
 
     `$0.00` and "we could not date this" render identically to a reader and mean opposite
     things — one is a phase that cost nothing, the other is a phase whose cost is sitting
     in some other row. The reason is what stops the table from quietly balancing itself.
+
+    `excluded` is a third state, and it is not the same as unmeasured: the row is measured,
+    exactly, and still does not belong to this report. It is printed — hiding a measured
+    number is how the next reader concludes the page was cheaper than the evening was — but
+    it is left out of the total, because a bill adds up what was bought, not what was
+    standing next to it in the shop.
     """
     out = {"key": key, "label": PHASE_LABELS.get(key, key), "measured": measured,
+           "excluded": excluded,
            "cost": 0.0, "tokens": 0, "messages": 0, "reason": reason, "detail": detail,
            "window": [w.isoformat() if w else None for w in (window or (None, None))]}
     if data:
@@ -1036,7 +1324,13 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
         steps, _found = load_steps(Path(steps_path))
         wanted = sorted({t for s in steps for t in s["tabs"] if t != GUIDE_TAB}
                         | {"video", "dsaudit"})
-        report = tab_cost_report(run_session, None, Path(steps_path), wanted)
+        run_path = transcript(run_session)
+        # Scanned once and handed to everything below: the tab report, the build-window
+        # split and the row that names the rest all price the SAME turns, and a second scan
+        # is both the slowest thing here and the way two of them come to disagree.
+        run_turns = gather_turns(run_path, None)[0] if run_path is not None else None
+        report = tab_cost_report(run_session, None, Path(steps_path), wanted,
+                                 turns=run_turns)
         for key, tab in (("video", "video"), ("images", "dsaudit")):
             row = report["tabs"].get(tab) or {}
             if row.get("measured"):
@@ -1048,17 +1342,32 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
                                                      or report.get("reason")
                                                      or "no step named it")))
         residual = report.get("residual") or {}
-        if residual.get("measured"):
-            page = {k: residual[k] for k in ("cost", "tokens", "messages")}
+        if residual.get("measured") and run_path is not None:
+            # The guide pseudo-tab is page building with a window; the tab steps are page
+            # building with a window; the build programs are page building without one. The
+            # rest of the session is somebody else's evening and gets its own row.
+            known = set(wanted) | {GUIDE_TAB}
+            split = run_residual(run_path, steps, known)
+            guide = ((report.get("residual_parts") or {}).get("guide")) or {}
+            page = {k: (guide.get(k) or 0) + split["ours"][k]
+                    for k in ("cost", "tokens", "messages")}
             others = [t for t in wanted if t not in ("video", "dsaudit")]
             for tab in others:
                 row = report["tabs"].get(tab) or {}
                 for k in ("cost", "tokens", "messages"):
                     page[k] += row.get(k) or 0
+            page["tokens"] = round(page["tokens"])
             rows.append(_row("page_build", True, page, detail=(
-                "assembling the guide, the other " f"{len(others)} tab(s), and whatever no "
-                "step covered" if others else
-                "assembling the guide, plus whatever no step covered")))
+                f"assembling the guide, the other {len(others)} tab(s) the ledger timed, "
+                f"and every turn that ran {', '.join(BUILD_PROGRAMS)}" if others else
+                "assembling the guide, plus every turn that ran "
+                f"{', '.join(BUILD_PROGRAMS)}")))
+            rest = split["theirs"]
+            if rest["messages"]:
+                rest = {**rest, "tokens": round(rest["tokens"])}
+                rows.append(_row(
+                    "not_this_report", True, rest, excluded=True,
+                    detail=other_work(run_path, steps, known)))
         else:
             rows.append(_row("page_build", False,
                              reason=residual.get("tip") or "the page-building run is not "
@@ -1069,11 +1378,17 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
         for key in ("video", "images", "page_build"):
             rows.append(_row(key, False, reason=why))
 
-    measured = [r for r in rows if r["measured"]]
+    # The total is this REPORT's bill: the phases of the work that produced the change, the
+    # model steps, and building the page. A measured row flagged `excluded` is deliberately
+    # not in it — the pinned session may have spent the same evening on something else
+    # entirely, and a page that added that in would be claiming credit for an afternoon it
+    # had no part in. It is still printed, one row above, so nothing is hidden.
+    measured = [r for r in rows if r["measured"] and not r.get("excluded")]
     return {
         "rows": rows,
         "measured": bool(measured),
         "unmeasured": [r["key"] for r in rows if not r["measured"]],
+        "excluded": [r["key"] for r in rows if r.get("excluded")],
         "cost": sum(r["cost"] for r in measured),
         "tokens": sum(r["tokens"] for r in measured),
         "messages": sum(r["messages"] for r in measured),

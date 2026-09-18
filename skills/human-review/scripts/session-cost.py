@@ -175,6 +175,10 @@ def report(doc: dict, notes: list[str], how: str, out: Path | None) -> None:
         if r["measured"]:
             line = (f"  {r['label']:<{width}}  {rc.money(r['cost']):>8}  "
                     f"{rc.human(r['tokens']):>7} tok  {r['messages']:>4} turns")
+            # Measured is not the same as owed. The terminal marks the row the total
+            # leaves out, so the column here reads the way the table on the page does.
+            if r.get("excluded"):
+                line += "   [not in the total]"
             if r["detail"]:
                 line += f"   {r['detail']}"
             print(line)

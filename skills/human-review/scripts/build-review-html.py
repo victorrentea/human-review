@@ -157,7 +157,8 @@ from hrbuild.tabs.owners import (
 )
 from hrbuild.tabs.cost import (
     COST_CACHE, cost_chip, cost_ledger_html, cost_ledger_report, COST_TAB_ID, PASS_ROWS,
-    PHASE_ROWS, phase_rows_html, RESIDUAL_ROWS, tab_cost_report, _cost_inputs, _cost_money,
+    PHASE_ROWS, phase_rows_html, RESIDUAL_ROWS, tab_cost_report, TOTAL_FORMULA,
+    _cost_inputs, _cost_money,
     _cost_tab_rows, _cost_tokens, _when
 )
 

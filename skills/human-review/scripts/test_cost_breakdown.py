@@ -657,6 +657,15 @@ PHASES = {"rows": [
      "reason": "no step in the ledger named it"},
 ]}
 
+#: The row that is measured, printed, and still none of this page's business.
+OTHER_ROW = {
+    "key": "not_this_report",
+    "label": "not this report — other work in the pinned session",
+    "measured": True, "excluded": True,
+    "cost": 308.66, "tokens": 449_672_199, "messages": 2349,
+    "detail": "git (335), editing files from the shell (246), running tests (156)",
+}
+
 
 def test_a_phase_that_cannot_be_dated_says_so_rather_than_printing_zero():
     """`$0.00` and "we could not date this" render identically to a reader and mean
@@ -737,6 +746,49 @@ def test_the_footer_totals_the_rows_on_screen_and_not_another_cut_of_them():
     # …and with no phases it is the ledger's own total, exactly as before.
     plain = build.cost_ledger_html({**led, "phases": None}, [])
     assert "$702.99" in plain
+
+
+def test_the_other_work_row_is_printed_grey_and_says_it_is_not_in_the_total():
+    """The session that builds a page is rarely doing only that. The row is printed because
+    hiding a measured number teaches the reader the evening was cheaper than it was, and it
+    is marked because a page may not bill for work it had no part in."""
+    out = build.phase_rows_html({"rows": [*PHASES["rows"], OTHER_ROW]})
+    row = [r for r in out.split("<tr") if "not this report" in r][0]
+    assert "costquiet" in row
+    assert "not in the total" in row
+    assert "$308.66" in row, "measured, exactly, and printed"
+
+
+def test_the_other_work_row_carries_a_tooltip_saying_what_that_work_was():
+    """"$308 of something else" is a number nobody can act on without opening a transcript.
+    The tool calls of those turns are what turn it into a sentence."""
+    out = build.phase_rows_html({"rows": [*PHASES["rows"], OTHER_ROW]})
+    row = [r for r in out.split("<tr") if "not this report" in r][0]
+    assert 'data-tip="' in row
+    assert "Not added to the total" in row
+    assert "running tests (156)" in row
+
+
+def test_the_footer_spells_out_what_the_total_added():
+    """One row above it is deliberately left out of the sum, which is exactly the case
+    where a footer nobody can derive from the column above stops being believable."""
+    led = {"writing": {"measured": True, "sessions": []}, "run": {"measured": True},
+           "tabs": {}, "total": 702.99, "total_tokens": 1_100_000_000,
+           "phases": {**PHASES, "rows": [*PHASES["rows"], OTHER_ROW],
+                      "cost": 96.99, "tokens": 159_507_539}}
+    out = build.cost_ledger_html(led, [])
+    assert build.TOTAL_FORMULA in out
+    assert "$96.99" in out, "the phases' own total, which excludes the row above"
+    assert "$308.66" in out, "…and the excluded row is still on screen"
+    # With no phase cut there is nothing to spell out: `total` is the ledger's own
+    # three-source reconciliation, and the caption already explains it.
+    plain = build.cost_ledger_html({**led, "phases": None}, [])
+    assert build.TOTAL_FORMULA not in plain
+
+
+def test_the_excluded_row_is_last_so_the_bill_reads_before_the_footnote():
+    out = build.phase_rows_html({"rows": [OTHER_ROW, *PHASES["rows"]]})
+    assert out.index("implementation") < out.index("not this report")
 
 
 def test_the_tab_pill_says_what_the_table_says():

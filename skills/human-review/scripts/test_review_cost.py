@@ -860,7 +860,10 @@ def test_the_page_building_rows_come_from_the_step_ledger_of_that_run(tmp_path,
     page = next(r for r in doc["rows"] if r["key"] == "page_build")
     assert video["measured"] and video["messages"] == 1
     assert images["measured"] and images["messages"] == 1
-    assert page["measured"] and page["messages"] == 2, "the guide turn plus the stray one"
+    assert page["measured"] and page["messages"] == 1, (
+        "the guide turn only -- the stray one ran nothing and is somebody else's work")
+    rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
+    assert rest["measured"] and rest["excluded"] and rest["messages"] == 1
 
 
 def test_a_narrow_tab_list_must_not_report_the_other_tabs_as_drift(tmp_path, monkeypatch,
@@ -923,6 +926,240 @@ def test_the_ledger_carries_the_phases_through_to_the_page(tmp_path, monkeypatch
     assert got["phases"]["rows"][0]["key"] == "implementation"
     assert got["total"] == pytest.approx(0.0), (
         "the phases are a view INSIDE the same money, never added to it")
+
+
+# --------------------------------------------------------------------------- #
+# Which turns built THIS report -- and which ones the pinned session spent on
+# something else entirely
+# --------------------------------------------------------------------------- #
+
+def _bash(when, command, mid=None):
+    """An assistant turn whose tool call is a shell command, with its result on the next."""
+    tid = mid or f"b{when}"
+    return {"type": "assistant", "timestamp": when,
+            "message": {"id": tid, "model": "claude-sonnet-5-20260101",
+                        "usage": {"input_tokens": 1000, "output_tokens": 100},
+                        "content": [{"type": "tool_use", "id": tid, "name": "Bash",
+                                     "input": {"command": command}}]}}
+
+
+def _result(when, tid):
+    return {"type": "user", "timestamp": when,
+            "message": {"content": [{"type": "tool_result", "tool_use_id": tid,
+                                     "content": "ok"}]}}
+
+
+@pytest.mark.parametrize("command", [
+    "python3 refresh-report.py --no-model",
+    "refresh-report.py",
+    "cd /repo && python3 .claude/skills/human-review/scripts/build-review-html.py c.json",
+    "timeout 600 python3 run-steps.py --steps 3",
+    "FOO=1 python3 rerun-model.py",
+    "python3 -c 'import x' && refresh-report.py --redraw",
+])
+def test_a_turn_that_runs_a_builder_is_page_building(command):
+    assert rc.runs_builder(command) is True
+
+
+@pytest.mark.parametrize("command", [
+    "sed -i '' 's/a/b/' build-review-html.py",
+    "git add run-steps.py && git commit -m 'wip'",
+    "grep -n residual refresh-report.py",
+    "cat build-review-html.py | head -20",
+    "ls -la scripts/refresh-report.py",
+    "rg rerun-model.py .",
+])
+def test_editing_or_reading_a_builder_is_not_running_it(command):
+    """The distinction the whole row rests on. The sessions that build these pages are
+    usually also *writing* the program that builds them, and a rule that matched the
+    filename anywhere in the line would put the skill's own development straight back into
+    the row this exists to take it out of."""
+    assert rc.runs_builder(command) is False
+
+
+def test_a_build_window_covers_the_call_and_the_turn_that_reads_it(tmp_path):
+    session = _session_tree(tmp_path, rows=[
+        _bash("2026-09-03T10:00:00Z", "python3 refresh-report.py", mid="t1"),
+        _result("2026-09-03T10:02:00Z", "t1"),
+        _assistant("m2", "2026-09-03T10:02:30Z"),
+    ])
+    windows = rc.build_windows(session)
+    assert len(windows) == 1
+    start, end = windows[0]
+    assert start == _ts("2026-09-03T10:00:00+00:00")
+    assert end == _ts("2026-09-03T10:02:30+00:00"), (
+        "reading the build's output is the other half of running it")
+
+
+def test_overlapping_build_windows_are_merged_not_double_counted(tmp_path):
+    """The build is often driven from a subagent while the parent waits on it. Two
+    overlapping windows would charge the same turn to the same row twice."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-bbbbbbbbbbbb", {"name": "builder"}, [
+            _bash("2026-09-03T10:01:00Z", "python3 build-review-html.py c.json", mid="s1"),
+            _result("2026-09-03T10:04:00Z", "s1")])],
+        rows=[_bash("2026-09-03T10:00:00Z", "python3 refresh-report.py", mid="t1"),
+              _result("2026-09-03T10:03:00Z", "t1")])
+    windows = rc.build_windows(session)
+    assert len(windows) == 1
+    assert windows[0][0] == _ts("2026-09-03T10:00:00+00:00")
+    assert windows[0][1] == _ts("2026-09-03T10:04:00+00:00")
+
+
+def _steps_doc(*rows):
+    return [{"tabs": list(t), "label": l, "start": _ts(a), "end": _ts(b)}
+            for t, l, a, b in rows]
+
+
+def test_the_residual_splits_into_ours_and_somebody_else_s(tmp_path):
+    steps = _steps_doc((["data"], "diagram", "2026-09-03T09:00:00+00:00",
+                        "2026-09-03T09:10:00+00:00"))
+    windows = [(_ts("2026-09-03T10:00:00+00:00"), _ts("2026-09-03T10:10:00+00:00"))]
+    turns = [_turn("2026-09-03T09:05:00Z"),   # inside a step: neither half
+             _turn("2026-09-03T10:05:00Z"),   # ran the build: ours
+             _turn("2026-09-03T11:05:00Z"),   # somebody else's evening
+             _turn(None)]                     # no timestamp: cannot be ours
+    got = rc.split_residual(turns, steps, windows, {"data", rc.GUIDE_TAB})
+    assert got["ours"]["messages"] == 1
+    assert got["theirs"]["messages"] == 2
+
+
+def test_a_step_naming_only_tabs_this_page_lacks_does_not_claim_its_turns(tmp_path):
+    """Same filter `tab_costs` uses. A split of the residual that disagreed about what the
+    residual IS would not add up to it."""
+    steps = _steps_doc((["ghost"], "renamed", "2026-09-03T09:00:00+00:00",
+                        "2026-09-03T09:10:00+00:00"))
+    got = rc.split_residual([_turn("2026-09-03T09:05:00Z")], steps, [], {"data"})
+    assert got["theirs"]["messages"] == 1
+
+
+def test_the_other_work_row_says_what_it_was_from_its_own_tool_calls(tmp_path):
+    """"$347 of something else" is a number nobody can act on without opening a
+    transcript. Counting what those turns did turns it into a sentence."""
+    session = _session_tree(tmp_path, rows=[
+        _bash("2026-09-03T11:00:00Z", "python3 -m pytest test_x.py"),
+        _bash("2026-09-03T11:01:00Z", "python3 -m pytest test_y.py"),
+        _tool_use("2026-09-03T11:02:00Z", "Write", {"file_path": "/repo/skill.py"}),
+        _bash("2026-09-03T11:03:00Z", "git commit -m wip"),
+    ])
+    said = rc.other_work(session, [], {"data"})
+    assert "running tests (2)" in said
+    assert "editing files (1)" in said and "git (1)" in said
+    assert "1 file(s) written" in said
+
+
+def test_the_catch_all_shell_bucket_never_crowds_out_what_the_turns_were_doing(tmp_path):
+    """It is the commonest bucket on every transcript and the one that says least."""
+    rows = [_bash(f"2026-09-03T11:{n:02d}:00Z", f"ls -la /tmp/{n}") for n in range(20)]
+    rows.append(_bash("2026-09-03T11:30:00Z", "python3 -m pytest test_x.py"))
+    session = _session_tree(tmp_path, rows=rows)
+    said = rc.other_work(session, [], {"data"}, limit=1)
+    assert said.startswith("running tests (1)"), said
+    assert rc.SHELL_BUCKET not in said
+
+
+def test_a_session_with_no_tool_calls_at_all_still_says_something(tmp_path):
+    session = _session_tree(tmp_path, rows=[_assistant("m1", "2026-09-03T11:00:00Z")])
+    assert "no tool call" in rc.other_work(session, [], {"data"})
+
+
+def test_a_build_in_one_agent_does_not_claim_what_another_did_meanwhile(tmp_path):
+    """A run forks. While one agent sits inside a two-minute `run-steps.py`, three others
+    are doing something else entirely — and judged against one merged timeline all three
+    would be billed to the page. A build belongs to the conversation that ran it."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-cccccccccccc", {"name": "builder"}, [
+                    _bash("2026-09-03T10:00:00Z", "python3 run-steps.py --steps all",
+                          mid="s1"),
+                    _result("2026-09-03T10:05:00Z", "s1")]),
+                ("agent-dddddddddddd", {"name": "other"}, [
+                    _assistant("o1", "2026-09-03T10:02:00Z"),
+                    _assistant("o2", "2026-09-03T10:03:00Z")])],
+        rows=[])
+    got = rc.run_residual(session, [], {"data"})
+    assert got["ours"]["messages"] == 1, "the turn that ran the build, and only it"
+    assert got["theirs"]["messages"] == 2, "the other agent was not building anything"
+    # The merged view still answers "when was this run building", which is a real question
+    # and the reason it is kept.
+    assert rc.build_windows(session) == [(_ts("2026-09-03T10:00:00+00:00"),
+                                          _ts("2026-09-03T10:05:00+00:00"))]
+
+
+def test_the_two_halves_still_add_up_to_the_residual_they_split(tmp_path):
+    """The dedupe has to be `gather_turns`' or the phase table quietly stops balancing."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-eeeeeeeeeeee", {"name": "x"}, [
+            _bash("2026-09-03T10:00:00Z", "python3 refresh-report.py", mid="s1"),
+            _result("2026-09-03T10:00:30Z", "s1"),
+            _assistant("o1", "2026-09-03T11:00:00Z")])],
+        rows=[_assistant("p1", "2026-09-03T09:00:00Z")])
+    got = rc.run_residual(session, [], {"data"})
+    turns, _ = rc.gather_turns(session, None)
+    assert got["ours"]["messages"] + got["theirs"]["messages"] == len(turns)
+    assert got["ours"]["cost"] + got["theirs"]["cost"] == pytest.approx(
+        sum(rc.price(rc.family(m), u) for _k, m, u, _s, _w in turns))
+
+
+def _build_run(tmp_path, monkeypatch, rows):
+    build = tmp_path / "build.jsonl"
+    build.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    steps = tmp_path / ".steps.json"
+    steps.write_text(json.dumps([
+        {"tabs": ["guide"], "label": "assemble", "start": "2026-09-03T12:00:00+00:00",
+         "end": "2026-09-03T12:10:00+00:00"},
+    ]), encoding="utf-8")
+    monkeypatch.setattr(rc, "transcript", lambda s: build)
+    monkeypatch.setattr(rc, "subagent_transcripts", lambda path: [])
+    return rc.phase_costs(None, None, None, None, None, None, [],
+                          run_session="build-run", steps_path=steps)
+
+
+def test_the_page_is_not_charged_for_the_rest_of_the_session_that_built_it(tmp_path,
+                                                                          monkeypatch):
+    """The regression this row exists for: the pinned session spent the same evening
+    writing the skill, and `page build` swallowed all of it -- $170 of a $207 total for a
+    page whose own build was $23."""
+    doc = _build_run(tmp_path, monkeypatch, [
+        _assistant("g1", "2026-09-03T12:05:00Z"),                       # the guide step
+        _bash("2026-09-03T13:00:00Z", "python3 refresh-report.py", mid="t1"),
+        _result("2026-09-03T13:01:00Z", "t1"),
+        _bash("2026-09-03T14:00:00Z", "python3 -m pytest test_skill.py"),
+        _tool_use("2026-09-03T14:05:00Z", "Edit", {"file_path": "/repo/skill.py"}),
+    ])
+    page = next(r for r in doc["rows"] if r["key"] == "page_build")
+    rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
+    assert page["messages"] == 2, "the guide step and the turn that ran the builder"
+    assert rest["messages"] == 2, "the pytest run and the edit to the skill"
+    assert rest["label"].startswith("not this report")
+    assert "running tests" in rest["detail"] and "editing files" in rest["detail"]
+
+
+def test_the_other_work_is_measured_and_still_kept_out_of_the_total(tmp_path, monkeypatch):
+    """Measured is not the same as owed. It is printed -- hiding a real number teaches the
+    reader the evening was cheaper than it was -- and it is not summed."""
+    doc = _build_run(tmp_path, monkeypatch, [
+        _assistant("g1", "2026-09-03T12:05:00Z"),
+        _assistant("x1", "2026-09-03T15:00:00Z", in_tok=999_000),
+    ])
+    rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
+    assert rest["measured"] is True and rest["excluded"] is True
+    assert rest["cost"] > 0
+    assert doc["excluded"] == ["not_this_report"]
+    assert doc["cost"] == pytest.approx(
+        sum(r["cost"] for r in doc["rows"] if r["measured"] and not r["excluded"]))
+    assert rest["cost"] not in [doc["cost"]]
+    assert doc["messages"] == sum(r["messages"] for r in doc["rows"]
+                                 if r["measured"] and not r["excluded"])
+
+
+def test_a_session_that_did_nothing_else_grows_no_extra_row(tmp_path, monkeypatch):
+    """The row is evidence of a shared session, not furniture. A run that only built the
+    page must not print `$0.00 of other work` and invite the question."""
+    doc = _build_run(tmp_path, monkeypatch, [_assistant("g1", "2026-09-03T12:05:00Z")])
+    assert [r["key"] for r in doc["rows"] if r["key"] == "not_this_report"] == []
 
 
 if __name__ == "__main__":

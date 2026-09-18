@@ -222,8 +222,23 @@ PASS_ROWS = [
 #: would let the table and the terminal disagree about what a row is. Order is fixed here
 #: rather than trusted to the file, so a phase nobody could date still holds its place in
 #: the sequence instead of vanishing from the middle of it.
+#:
+#: `not_this_report` is last and is not part of the sum. The session that builds a page is
+#: rarely doing only that — on the run this was written for it spent the same evening
+#: writing the skill that builds the page, mending the branch under review and answering
+#: unrelated questions, and the old `page build` row swallowed all of it: $170 of a $207
+#: total, for a page whose own build was $23. It is printed because hiding a measured
+#: number teaches the reader the evening was cheaper than it was, and it is excluded
+#: because a page may not bill for work it had no part in.
 PHASE_ROWS = ["implementation", "code_review", "post_review_fixes", "review_points",
-              "video", "images", "page_build"]
+              "video", "images", "page_build", "not_this_report"]
+
+#: What the total adds, spelled out under it. A footer number nobody can derive from the
+#: column above it is a number the reader has to take on faith, and this table now has a
+#: row on it that is deliberately not in the sum — which is exactly the case where faith
+#: runs out.
+TOTAL_FORMULA = ("implementation + code-review + post-review fixes + review-points + "
+                 "model steps + page build")
 
 
 def _when(raw: str | None) -> str:
@@ -279,6 +294,20 @@ def phase_rows_html(phases: dict | None) -> str:
             (f'{_when(window[0])} &rarr; {_when(window[1])}'
              if len(window) == 2 and _when(window[0]) else ""),
         ) if x)
+        if r.get("excluded"):
+            # Measured, printed, and grey, because it is none of this page's business. The
+            # tooltip is the row's whole point: "$347 of something else" is a number the
+            # reader cannot act on, and the tool calls of those turns are what turn it into
+            # a sentence they can.
+            tip = html.escape(
+                "Not added to the total — this is the rest of the session that built the "
+                "page, and it was not building the page. It was: "
+                + str(r.get("detail") or "other work") + ".", quote=True)
+            out.append(f'<tr class="costquiet"><td><span data-tip="{tip}">{label}</span>'
+                       f'<span class="costsub">{sub} &middot; not in the total</span></td>'
+                       f'<td>{_cost_tokens(r.get("tokens") or 0)}</td>'
+                       f'<td>{_cost_money(r.get("cost") or 0.0)}</td></tr>')
+            continue
         out.append(f'<tr><td>{label}<span class="costsub">{sub}</span></td>'
                    f'<td>{_cost_tokens(r.get("tokens") or 0)}</td>'
                    f'<td>{_cost_money(r.get("cost") or 0.0)}</td></tr>')
@@ -419,7 +448,12 @@ def cost_ledger_html(led: dict | None, tabs: list[dict]) -> str:
         total, total_tokens = phase_doc.get("cost") or 0.0, phase_doc.get("tokens") or 0
     else:
         total, total_tokens = led.get("total") or 0.0, led.get("total_tokens") or 0
-    foot = (f'<tr class="costtotal"><td>total</td>'
+    # Under the phase cut the total is an addition the reader can check, and one row above
+    # it is deliberately left out of that addition, so the formula is printed rather than
+    # implied. Without the phases there is nothing to spell out — `total` is the ledger's
+    # own three-source reconciliation, explained in the caption.
+    total_sub = (f'<span class="costsub">{TOTAL_FORMULA}</span>' if phases else "")
+    foot = (f'<tr class="costtotal"><td>total{total_sub}</td>'
             f'<td>{_cost_tokens(total_tokens)}</td>'
             f'<td>{_cost_money(total)}</td></tr>')
     return (
