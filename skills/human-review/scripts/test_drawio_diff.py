@@ -32,6 +32,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import page_source
+
 HERE = Path(__file__).resolve().parent
 
 _spec = importlib.util.spec_from_file_location("drawio_diff", HERE / "drawio-diff.py")
@@ -600,7 +602,7 @@ def test_the_added_green_is_the_report_s_own_added_green():
     second meaning."""
     puml_diff = (HERE.parent / "puml-diff" / "puml_diff.py").read_text()
     assert f'ADDED = "{dd.ADDED_COLOR}"' in puml_diff
-    build = (HERE / "build-review-html.py").read_text()
+    build = page_source()
     assert f'"{dd.ADDED_COLOR}": "--dgm-diff-add"' in build
     assert dd.ADDED_COLOR_DARK.lower() in build.lower()
 

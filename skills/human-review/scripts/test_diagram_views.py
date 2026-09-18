@@ -26,11 +26,20 @@ import re
 import subprocess
 from pathlib import Path
 
+from conftest import page_source
+
 HERE = Path(__file__).resolve().parent
 
 _spec = importlib.util.spec_from_file_location("build_review", HERE / "build-review-html.py")
 build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
+
+# The page builder is a package now (`hrbuild/`), and `build-review-html.py` re-exports
+# every name in it so the rest of the skill still finds them here. A *patch* is the one
+# thing a re-export cannot carry: rebinding `build.X` leaves the module that defines `X`
+# calling the original. So the handful of tests below that replace a function reach for
+# the module that owns it.
+diagrams = importlib.import_module("hrbuild.shared.diagrams")
 
 PANES = [("diff", "<i>D</i>"), ("new", "<i>N</i>"), ("old", "<i>O</i>")]
 
@@ -254,7 +263,7 @@ def test_the_control_is_delegated_so_hand_written_markup_works_too():
 
 def test_there_is_exactly_one_place_that_emits_the_control():
     """Two implementations of this would be the mistake worth failing a build over."""
-    source = (HERE / "build-review-html.py").read_text()
+    source = page_source()
     emitters = [line for line in source.splitlines()
                 if 'class="dgmviews"' in line and "CSS" not in line]
     assert len(emitters) == 1, emitters
@@ -957,9 +966,9 @@ def test_an_unchanged_diagrams_header_links_into_vs_code_too(tmp_path, monkeypat
     nothing. A reader who wants the rule behind `Packages` has to go and read the file."""
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "packages.puml").write_text("@startuml\n@enduml\n")
-    monkeypatch.setattr(build, "_context_svg",
+    monkeypatch.setattr(diagrams, "_context_svg",
                         lambda rel, root, out_dir: (tmp_path / "x.svg", ""))
-    monkeypatch.setattr(build, "inline_svg", lambda cache, root: "<svg/>")
+    monkeypatch.setattr(diagrams, "inline_svg", lambda cache, root: "<svg/>")
     out = build.render_puml({"src": "docs/packages.puml", "name": "Packages"},
                             tmp_path, tmp_path)
     assert 'href="vscode://file/' + str(tmp_path / "docs" / "packages.puml") + ':1:1"' in out

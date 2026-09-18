@@ -34,6 +34,13 @@ _spec = importlib.util.spec_from_file_location("build_review", HERE / "build-rev
 build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
 
+# The page builder is a package now (`hrbuild/`), and `build-review-html.py` re-exports
+# every name in it so the rest of the skill still finds them here. A *patch* is the one
+# thing a re-export cannot carry: rebinding `build.X` leaves the module that defines `X`
+# calling the original. So the handful of tests below that replace a function reach for
+# the module that owns it.
+snippets = importlib.import_module("hrbuild.shared.snippets")
+
 
 # --------------------------------------------------------------------------- #
 # the transcript, and the app links that live inside it
@@ -3009,7 +3016,7 @@ def test_the_three_tabs_head_a_quoted_block_with_the_same_bar(tmp_path, monkeypa
     face, same full path on hover."""
     r = _repo_with_a_buried_file(tmp_path)
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
-    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
 
     bars = [
         build.diff_html(rel, "HEAD^", r, head="HEAD"),                    # Review
@@ -3053,7 +3060,7 @@ def test_the_bar_reads_handles_then_file_then_badge(tmp_path, monkeypatch):
     is the three-headers problem coming back."""
     r = _repo_with_a_buried_file(tmp_path)
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
-    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
     subprocess.run(["git", "-C", str(r), "remote", "add", "origin",
                     "https://github.com/victorrentea/petclinic.git"], check=True)
     badged = 0
@@ -3082,7 +3089,7 @@ def test_a_quoted_snippet_offers_the_same_two_ways_out_a_diff_does(tmp_path, mon
     sp.run(["git", "-C", str(r), "remote", "add", "origin",
             "https://github.com/victorrentea/petclinic.git"], check=True)
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java"
-    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
     out = build.snippet_html(f"{rel}:1-2", None, r, exact=True)
     bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
     assert "ico-vsc" in bar and "ico-gh" in bar
@@ -3122,7 +3129,7 @@ def test_a_snippets_handles_open_where_its_own_face_says(tmp_path, monkeypatch):
     of the file inside a compare page. Both are now the line the face names, because the
     three parts of one bar may not be three answers to one question."""
     r = _repo_whose_change_is_far_from_the_quote(tmp_path)
-    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
     monkeypatch.setenv("HUMAN_REVIEW_DIFF_URI_HANDLER", "victorrentea.victor-vsc")
     build.diff_uri_handler.cache_clear()
     out = build.snippet_html("A.java:10", None, r, exact=True)
@@ -3144,7 +3151,7 @@ def test_a_quoted_line_the_compare_page_never_draws_keeps_the_file_anchor(tmp_pa
     page that can be forty files long. So an untouched line far from any hunk keeps the
     file anchor and gives up the line."""
     r = _repo_whose_change_is_far_from_the_quote(tmp_path)
-    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
     build._shown_in_compare.cache_clear()
     out = build.snippet_html("A.java:6", None, r, exact=True)
     href = re.search(r'href="(https://[^"]*/compare/[^"]*)"', out).group(1)
@@ -3161,7 +3168,7 @@ def test_the_logging_boxs_handles_follow_it_to_the_statement(tmp_path, monkeypat
     above the statement the box is about. The face already said `:10`; the two handles
     beside it were still aiming at the file's first change."""
     r = _repo_whose_change_is_far_from_the_quote(tmp_path)
-    monkeypatch.setattr(build, "SNIPPET_BASE", "HEAD^")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
     build._shown_in_compare.cache_clear()
     out = build.snippet_html("A.java:8-11", None, r, exact=True, link_at=(10, 5))
     bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
@@ -3178,7 +3185,7 @@ def test_a_snippet_whose_base_is_not_there_still_gets_its_bar(tmp_path, monkeypa
     button. What must not happen is the bar going with it: the file it came from is a
     fact regardless of what git can be asked."""
     r = _repo_with_a_buried_file(tmp_path)
-    monkeypatch.setattr(build, "SNIPPET_BASE", "no/such/ref")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", "no/such/ref")
     out = build.snippet_html("README.md:1-2", None, r, exact=True)
     assert '<div class="srcbar">' in out
     assert "ico-vsc" not in out and "ico-gh" not in out

@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import page_source
+
 HERE = Path(__file__).resolve().parent
 
 _spec = importlib.util.spec_from_file_location("review_points", HERE / "review-points.py")
@@ -266,7 +268,7 @@ def test_the_item_keys_are_the_ones_the_renderer_reads(tmp_path):
                                         "refs", "snippets", "diffs", "alternative"}
     assert set(doc["assumptions"][0]) <= {"title", "body", "why", "source", "refs",
                                           "snippets", "alternative", "diffs"}
-    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    src = page_source()
     for key in ("refs", "snippets", "diffs", "severity", "alternative", "why"):
         assert f'"{key}"' in src or f"'{key}'" in src
 

@@ -24,6 +24,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import page_source
+
 HERE = Path(__file__).resolve().parent
 
 
@@ -145,7 +147,7 @@ def test_nothing_folds_a_command_any_more():
     """The fold under each diagram held nothing but the command, and its `&&` chains were
     the longest lines on the page by a factor of five — in a box the reader had to open,
     for the sake of a paste."""
-    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    src = page_source()
     assert "_cmdfold" not in src
     assert "cmdline" not in src
     # The class survives in one comment saying why it is gone; no markup emits it.
@@ -156,7 +158,7 @@ def test_one_renderer_and_not_a_copy_per_caller():
     """The point of the function. Several places offer a command — the aftermath band's
     regenerate, the Demo row, the diagram offers — and one more would have been one more
     set of affordances behaving almost the same."""
-    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
+    src = page_source()
     body = src[src.index("def command_html("):]
     body = body[:body.index("\ndef ", 1)]
     assert "{CMD_RUN}" in body and "{CMD_COPY}" in body
