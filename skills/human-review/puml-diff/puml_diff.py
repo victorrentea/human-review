@@ -65,9 +65,43 @@ _BRACKET_COMPONENT = re.compile(r"^\[([^\]]+)\]")
 ADDED = "#2E7D32"
 REMOVED = "#C62828"
 
-# An element header takes its colour as `#line:<c>;text:<c>`, not as inline creole.
-def _paint_header(colour: str) -> str:
-    return f" #line:{colour};text:{colour}"
+# How far an element sits from what changed, said as a wash behind it. Green and red
+# answer "what moved?"; they say nothing about what a reviewer has to read next, which is
+# whatever the moved thing is attached to. So the boxes one hop out are tinted hardest,
+# two hops out less, three hops barely, and anything further is left at PlantUML's own
+# grey: a ripple spreading from the change. It earns its keep most in the unpruned
+# picture, where the focus chooser is not doing the pruning for the reader — there the
+# epicentre is the only box with saturated text on it, and the ripple is what says how
+# far the blast reached.
+#
+# Amber, and not a paler green or red, because those two are a *direction* and this is a
+# *distance*: a third meaning laid on the same pair of hues would read as a fourth
+# strength of the first two. The elements wearing a ripple tint are by definition the
+# ones this change did not touch, so nothing green or red is ever drawn on top of one —
+# only PlantUML's plain black label, which the page carries to near-white in dark mode.
+# Index 0 is one hop out; `build-review-html.py` maps all three to `--dgm-ripple-*`.
+RIPPLE = ("#F2CF8E", "#F4DCB4", "#F2EBDB")
+
+
+def _hex(colour: str) -> str:
+    """`#2E7D32` -> `2E7D32`.
+
+    PlantUML's compound element colour — `#back:…;line:…;text:…` — takes each value
+    *without* a `#` of its own; `#line:#2E7D32` is a syntax error. It went unnoticed
+    because a PlantUML syntax error still writes a perfectly valid .svg (a green-on-black
+    "Syntax Error?" dump) and because only a whole element added or removed paints a
+    header at all, which no diagram in the demo branch happened to do."""
+    return colour.lstrip("#")
+
+
+# An element header takes its colours as `#back:<c>;line:<c>;text:<c>`, not as inline creole.
+def _paint_header(colour: str = None, back: str = None) -> str:
+    keys = []
+    if back:
+        keys.append(f"back:{_hex(back)}")
+    if colour:
+        keys += [f"line:{_hex(colour)}", f"text:{_hex(colour)}"]
+    return f" #{';'.join(keys)}" if keys else ""
 
 
 def _strip_markup(s: str) -> str:
@@ -75,7 +109,9 @@ def _strip_markup(s: str) -> str:
     s = re.sub(r"</?color[^>]*>", "", s)
     s = s.replace("<s>", "").replace("</s>", "")
     s = re.sub(r"\[#[0-9A-Za-z_]+\]", "", s)      # coloured connector: -[#C62828]-
-    s = re.sub(r"\s*#line:[^;\s]+;text:\S+", "", s)  # coloured element header
+    # coloured element header: `#back:FFE3AE;line:2E7D32;text:2E7D32`, in any subset and
+    # in either spelling of the value — a diagram written before `_hex` still says `#2E7D32`.
+    s = re.sub(r"\s*#(?:back|line|text):[^;\s]+(?:;(?:back|line|text):[^;\s]+)*", "", s)
     return s.strip()
 
 
@@ -421,6 +457,39 @@ def _impacted(old: Diagram, new: Diagram) -> set:
     return touched
 
 
+def _distances(old: Diagram, new: Diagram) -> dict:
+    """Every reachable element, by how many relationships it sits from the change.
+
+    Zero is the change itself; one is what it is directly attached to; and so on outwards
+    until nothing new is reached. An element no chain of relationships connects to the
+    change is absent from the map entirely — not infinitely far, simply not on it.
+
+    Both sides' relationships are walked, so an element reachable only through an edge
+    this change deleted is on the map too.
+
+    Two readers of this one walk: `_within` cuts it at a hop count to decide what the
+    picture contains, and `diff` reads the same numbers back to decide how hard to tint
+    what survived. They were one loop run twice before, which is how a focus level and
+    the shading in it could have disagreed about what "one hop" meant.
+    """
+    dist = {name: 0 for name in _impacted(old, new)}
+    edges = [(_endpoint(raw_left), _endpoint(raw_right))
+             for raw_left, _conn, raw_right, _label in old.relationships + new.relationships]
+    frontier, hop = set(dist), 0
+    while frontier:
+        hop += 1
+        nxt = set()
+        for left, right in edges:
+            if left in frontier and right not in dist:
+                nxt.add(right)
+            if right in frontier and left not in dist:
+                nxt.add(left)
+        for name in nxt:
+            dist[name] = hop
+        frontier = nxt
+    return dist
+
+
 def _within(old: Diagram, new: Diagram, hops: int) -> set:
     """The impacted elements, grown outwards `hops` relationships at a time.
 
@@ -429,30 +498,24 @@ def _within(old: Diagram, new: Diagram, hops: int) -> set:
     adds what it is directly attached to, which is what makes a change *readable* — a new
     column means little without the table it hangs off, and a new relationship means
     little without both things it relates.
-
-    Both sides' relationships are walked, so an element pulled in by an edge this change
-    deleted is reachable too.
     """
-    frontier = _impacted(old, new)
-    keep = set(frontier)
-    edges = old.relationships + new.relationships
-    for _ in range(hops):
-        nxt = set()
-        for raw_left, _conn, raw_right, _label in edges:
-            left, right = _endpoint(raw_left), _endpoint(raw_right)
-            if left in keep and right not in keep:
-                nxt.add(right)
-            if right in keep and left not in keep:
-                nxt.add(left)
-        if not nxt:
-            break
-        keep |= nxt
-    return keep
+    return {name for name, d in _distances(old, new).items() if d <= hops}
 
 
 def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     names = set(old.elements) | set(new.elements)
-    keep = names if focus == ALL else _within(old, new, int(focus))
+    rings = _distances(old, new)
+    keep = names if focus == ALL else {n for n, d in rings.items() if d <= int(focus)}
+
+    def ripple(name):
+        """The wash behind one element, or None for the change itself and the far field.
+
+        Hop 0 is left at PlantUML's grey on purpose: it is already the only box on the
+        picture wearing a saturated colour, and a tint under green would be a second
+        thing shouting the same word. The ladder starts one hop out, where there is
+        otherwise nothing at all to say "this is what the change touches"."""
+        d = rings.get(name)
+        return RIPPLE[d - 1] if d and d <= len(RIPPLE) else None
 
     # Under the picture, not in the title above it: this is the footer band where a
     # reader already looks to ask "what am I being shown?", and a legend belongs where
@@ -460,11 +523,16 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     # something says so in words. The scope rides along, because it answers the same
     # question at the same moment.
     caption = f"caption {legend()}"
+    shaded = any(ripple(n) for n in keep)      # a colour is only a legend once words say so
     if focus != ALL:
         hops = int(focus)
         scope = "the impacted elements only" if hops == 0 else (
             f"impacted + {hops} neighbour" + ("s" if hops > 1 else ""))
+        if shaded:
+            scope += ", shaded by distance"
         caption += f" — {scope} ({len(keep)} of {len(names)} shown)"
+    elif shaded:
+        caption += " — shaded by distance from the change"
 
     # The caption goes FIRST, not after the preamble. A source that opens a `<style>` block
     # ends its preamble on the `<style>` line itself — the block's body arrives later — so
@@ -485,7 +553,7 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
         current = {_identity(m) for m in el.members}
         removed = [m for m in old_members if _identity(m) not in current]
 
-        header = el.header + (_paint_header(ADDED) if is_new else "")
+        header = el.header + _paint_header(ADDED if is_new else None, ripple(name))
         if not el.has_body and not removed:
             out.append(header)
             continue
@@ -503,7 +571,7 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     for name, el in old.elements.items():
         if name in new.elements or name not in keep:
             continue
-        header = _struck_header(el.header) + _paint_header(REMOVED)
+        header = _struck_header(el.header) + _paint_header(REMOVED, ripple(name))
         if not el.members:
             out.append(header)
             continue

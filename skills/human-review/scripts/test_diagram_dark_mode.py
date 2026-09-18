@@ -104,6 +104,9 @@ def test_the_map_holds_exactly_the_literals_the_differs_paint_with():
     assert build.DIAGRAM_COLOR_VARS[puml.REMOVED] == "--dgm-diff-del"
     assert build.DIAGRAM_COLOR_VARS[seq.ADDED_TINT] == "--dgm-diff-add-bg"
     assert build.DIAGRAM_COLOR_VARS[seq.REMOVED_TINT] == "--dgm-diff-del-bg"
+    for hop, tint in enumerate(puml.RIPPLE, start=1):
+        assert build.DIAGRAM_COLOR_VARS[tint] == f"--dgm-ripple-{hop}", tint
+    assert len(set(puml.RIPPLE)) == len(puml.RIPPLE), "two rungs of the ladder are one colour"
 
 
 def test_the_hand_styled_puml_palette_is_covered_too():
@@ -194,6 +197,47 @@ def test_the_diff_tints_still_hold_their_labels_in_dark_mode():
     for name in ("--dgm-diff-add-bg", "--dgm-diff-del-bg"):
         tint = re.search(rf"{name}:(#[0-9a-fA-F]{{6}})", dark)[1]
         assert contrast(fg, tint) >= 4.5, f"a label on {name} is too dim to read"
+
+
+def test_the_ripple_holds_its_labels_and_still_descends_in_dark_mode():
+    """Two things have to survive the flip, and only one of them is contrast.
+
+    The wash behind a rippled box carries PlantUML's plain black label, rewritten to
+    --dgm-fg — near-white here — so each rung has to be dark enough to read on. And the
+    ladder has to keep *descending towards the far field*: the whole signal is that one
+    hop is louder than two and two than three, so a dark-mode set picked rung by rung for
+    contrast alone could easily land out of order and say the opposite of light mode."""
+    light, dark = build.CSS.split("@media (prefers-color-scheme: dark)", 1)
+    fg = re.search(r"--dgm-fg:(#[0-9a-fA-F]{6})", dark)[1]
+    rungs = [re.search(rf"--dgm-ripple-{n}:(#[0-9a-fA-F]{{6}})", dark)[1] for n in (1, 2, 3)]
+    for n, tint in enumerate(rungs, start=1):
+        assert contrast(fg, tint) >= 4.5, f"a label on --dgm-ripple-{n} is too dim to read"
+
+    box = re.search(r"--dgm-box:(#[0-9a-fA-F]{6})", dark)[1]
+    gaps = [abs(luminance(t) - luminance(box)) for t in rungs]
+    assert gaps[0] > gaps[1] > gaps[2] > 0, "the dark ripple does not fade towards the far field"
+
+    light_box = re.search(r"--dgm-box:(#[0-9a-fA-F]{6})", light)[1]
+    light_rungs = [re.search(rf"--dgm-ripple-{n}:(#[0-9a-fA-F]{{6}})", light)[1] for n in (1, 2, 3)]
+    gaps = [abs(luminance(t) - luminance(light_box)) for t in light_rungs]
+    assert gaps[0] > gaps[1] > gaps[2] > 0, "the light ripple does not fade towards the far field"
+
+
+def test_the_ripple_is_not_a_shade_of_either_diff_hue():
+    """Distance and direction are two different questions. A ripple mixed from the
+    addition green would answer the first in the vocabulary of the second, and the
+    faintest rung would read as "slightly added" rather than "three hops away"."""
+    light = build.CSS.split("@media (prefers-color-scheme: dark)", 1)[0]
+
+    def hue_is_warm(hexval):
+        r, g, b = (int(hexval[i:i + 2], 16) for i in (1, 3, 5))
+        return r >= g > b          # amber: red-leaning, and never blue-leaning or green-led
+
+    for n in (1, 2, 3):
+        val = re.search(rf"--dgm-ripple-{n}:(#[0-9a-fA-F]{{6}})", light)[1]
+        assert hue_is_warm(val), f"--dgm-ripple-{n} is not the amber the ladder is drawn in"
+        assert val not in (re.search(r"--dgm-diff-add:(#[0-9a-fA-F]{6})", light)[1],
+                           re.search(r"--dgm-diff-del:(#[0-9a-fA-F]{6})", light)[1])
 
 
 def test_the_c2_boxes_hold_their_labels_in_both_themes():

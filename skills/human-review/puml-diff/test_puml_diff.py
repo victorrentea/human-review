@@ -1,5 +1,6 @@
 """Tests for puml_diff. Run: python3 -m pytest -q, or `python3 test_puml_diff.py`."""
 import os
+import re
 
 import puml_diff as m
 
@@ -64,6 +65,11 @@ def test_cardinality_dots_not_mistaken_for_connector():
 
 ADD = m.ADDED
 DEL = m.REMOVED
+# An element header's compound colour takes each value without a `#` of its own — see
+# `_hex`. Inline creole (`<color:#2E7D32>`) keeps it; the two spellings are not
+# interchangeable, and PlantUML answers the wrong one with a picture of the words
+# "Syntax Error?", which is still a valid .svg.
+HEX_ADD, HEX_DEL = m._hex(ADD), m._hex(DEL)
 
 
 def test_added_member_green():
@@ -71,7 +77,7 @@ def test_added_member_green():
 
 
 def test_added_class_green_solid_header():
-    assert f"class Invoice #line:{ADD};text:{ADD} {{" in _diff()
+    assert f"class Invoice #line:{HEX_ADD};text:{HEX_ADD} {{" in _diff()
 
 
 def test_added_relationship_and_label_green():
@@ -86,7 +92,7 @@ def test_removed_member_struck():
 
 def test_removed_class_title_struck():        # struck *and* red → doubly distinct from added
     out = _diff()
-    assert f'class "<color:{DEL}><s>Role</s></color>" as Role #line:{DEL};text:{DEL} {{' in out
+    assert f'class "<color:{DEL}><s>Role</s></color>" as Role #line:{HEX_DEL};text:{HEX_DEL} {{' in out
     assert f"<color:{DEL}><s>name : String</s></color>" in out   # its members struck too
 
 
@@ -184,7 +190,7 @@ def test_bracket_component_parsed_as_element_not_preamble():
 
 
 def test_added_bracket_component_gets_green_header():
-    assert f"[Notification] <<..notification>> #line:{ADD};text:{ADD}" in _pkg_diff()
+    assert f"[Notification] <<..notification>> #line:{HEX_ADD};text:{HEX_ADD}" in _pkg_diff()
 
 
 def test_unchanged_bracket_component_stays_plain():
@@ -257,6 +263,83 @@ def test_the_caption_says_what_is_being_shown():
     assert "impacted + 1 neighbour" in _focused("1")
     assert "impacted + 2 neighbours" in _focused("2")
     assert "shown)" not in _diff()          # the whole diagram needs no qualifier
+
+
+# ── The ripple ───────────────────────────────────────────────────────────────
+# A focus level answers "how much do I want on screen?"; it does not answer, once the
+# picture is on screen, "which of these is near the change?" — and in the unpruned view
+# nothing did. The boxes one hop out are washed hardest, two hops less, three barely,
+# and the far field is left at PlantUML's own grey.
+
+
+def _back(out, element):
+    """The `#back:` colour on one element's header, or None."""
+    for ln in out.splitlines():
+        if not ln.startswith(("class ", "enum ", "entity ")):
+            continue
+        if m._element_name(m._strip_markup(ln.rstrip("{").strip())) != element:
+            continue
+        mark = re.search(r"#back:([0-9A-Fa-f]{6})", ln)
+        return f"#{mark[1].upper()}" if mark else None
+    return None
+
+
+def test_a_direct_neighbour_wears_the_first_tint():
+    """Pet is untouched, and one relationship from both Owner and Visit — exactly the box
+    a reviewer has to read next and, before this, the box that looked like every other."""
+    assert _back(_diff(), "Pet") == m.RIPPLE[0]
+
+
+def test_the_ripple_fades_with_each_hop():
+    out = _diff()
+    assert _back(out, "Pet") == m.RIPPLE[0]          # Owner -- Pet
+    assert _back(out, "PetType") == m.RIPPLE[1]      # PetType -- Pet -- Owner
+    assert m.RIPPLE[0] != m.RIPPLE[1] != m.RIPPLE[2]
+
+
+def test_the_change_itself_is_left_untinted():
+    """Hop zero is already the only box wearing a saturated colour. A wash under a green
+    header would be a second thing shouting the same word — and the green would have to
+    stay legible on it, which is a contrast problem invented for no gain."""
+    out = _diff()
+    for changed in ("Owner", "Vet", "Visit", "Invoice"):
+        assert _back(out, changed) is None, changed
+
+
+def test_past_the_last_ring_the_box_keeps_plantuml_grey():
+    """The ladder has three rungs and then stops: a fourth wash indistinguishable from
+    white would claim a relationship to the change that the reader cannot see."""
+    lines = ["@startuml"] + [f"class C{i}" for i in range(6)]
+    lines += [f"C{i} -- C{i + 1}" for i in range(5)] + ["@enduml"]
+    chain = "\n".join(lines) + "\n"
+    grown = chain.replace("class C0", "class C0 {\n  id : Integer\n}")
+    out = m.diff(m.parse(chain), m.parse(grown))
+    assert [_back(out, f"C{i}") for i in range(5)] == [None, *m.RIPPLE, None]
+
+
+def test_an_element_no_relationship_reaches_is_not_on_the_ladder():
+    """Unreachable is not "far away, tinted faintly" — it is absent from the walk."""
+    plain = "@startuml\nclass A\nclass B\nclass Island\nA -- B\n@enduml\n"
+    grown = plain.replace("class A", "class A {\n  id : Integer\n}")
+    before, after = m.parse(plain), m.parse(grown)
+    assert "Island" not in m._distances(before, after)
+    assert _back(m.diff(before, after), "Island") is None
+
+
+def test_the_caption_says_the_shading_means_distance():
+    """A colour is only a legend once something says so in words — the same rule the two
+    hues above it already answer to."""
+    assert "shaded by distance from the change" in _diff()
+    assert "impacted + 1 neighbour, shaded by distance" in _focused("1")
+    assert "shaded" not in _focused("0")     # nothing but hop zero is on screen
+
+
+def test_a_header_colour_carries_no_inner_hash():
+    """`#line:#2E7D32` is a PlantUML syntax error, and a syntax error still writes a
+    perfectly valid .svg — a picture of the words "Syntax Error?" — so nothing downstream
+    can notice it. Every value in a compound element colour goes bare."""
+    for out in (_diff(), _focused("1"), _pkg_diff()):
+        assert not re.search(r"#(?:back|line|text):#", out)
 
 
 # An identical pair has nothing impacted, and an empty diagram is a PlantUML error page.

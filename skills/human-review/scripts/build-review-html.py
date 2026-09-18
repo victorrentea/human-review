@@ -156,6 +156,14 @@ CSS = """
      hue there is a slab that swallows the black label PlantUML draws on it. */
   --dgm-diff-add:#2e7d32; --dgm-diff-del:#c62828;
   --dgm-diff-add-bg:#eaf6ec; --dgm-diff-del-bg:#ffebeb;
+  /* The blast radius, one hop out to three, fading into PlantUML's own box grey past
+     that. Amber rather than a fourth and fifth green: the pair above marks a direction,
+     this marks a distance, and one hue cannot carry both without the ladder reading as
+     "slightly added". Nothing green or red is ever drawn on one — an element a ripple
+     tints is by definition one this change did not touch. All three sit *under* the
+     lightness of --dgm-box rather than over it, so the ladder descends into the far
+     field instead of overshooting it and coming back up as a paler-than-plain box. */
+  --dgm-ripple-1:#f2cf8e; --dgm-ripple-2:#f4dcb4; --dgm-ripple-3:#f2ebdb;
   /* Which of the three pictures you are looking at, said by the frame around it rather
      than by reading the buttons. Red is the delta's own removal red, taken by reference
      so the border and the strokes inside it can never disagree; blue and green are the
@@ -190,6 +198,12 @@ CSS = """
           --dgm-arrow-accent:#7f97a6;
           --dgm-diff-add:#8fd39c; --dgm-diff-del:#f08a8a;
           --dgm-diff-add-bg:#1f3329; --dgm-diff-del-bg:#3a1f1f;
+          /* The ripple inverts like the two tints above it and for the same reason: the
+             label inside a diagram box is #000000 -> --dgm-fg, near-white here, so a
+             wash that stayed pale is a box that reads as empty. The hue is kept amber
+             and only the lightness flips, so the ladder still descends *towards*
+             --dgm-box (#26262e) and the far field still looks like the far field. */
+          --dgm-ripple-1:#4a3a1e; --dgm-ripple-2:#3a3126; --dgm-ripple-3:#2e2b27;
           /* --view-diff is not repeated: it is `var(--dgm-diff-del)`, so it follows the
              line above on its own. These two are lifted to the same footing as the
              page's dark link colour — #1a4fa0 and #1f7a45 are both under 3:1 on a
@@ -4376,6 +4390,11 @@ DIAGRAM_COLOR_VARS = {
     # test_diagram_dark_mode.py rather than by memory.
     "#2E7D32": "--dgm-diff-add", "#C62828": "--dgm-diff-del",
     "#EAF6EC": "--dgm-diff-add-bg", "#FFEBEB": "--dgm-diff-del-bg",
+    # puml_diff.RIPPLE — the three washes that say how far a box sits from the change,
+    # one hop out to three. Same bookkeeping, sharper stakes: these are *fills*, so a
+    # tint left unthemed is not merely off-palette in dark mode, it is a pale slab with
+    # a near-white name written on it.
+    "#F2CF8E": "--dgm-ripple-1", "#F4DCB4": "--dgm-ripple-2", "#F2EBDB": "--dgm-ripple-3",
     # packages.puml's own <style> block (Material blue-grey): component fill,
     # component border, arrow. Same treatment, different source — see the CSS.
     "#ECEFF1": "--dgm-box-accent", "#546E7A": "--dgm-line-accent",
