@@ -33,6 +33,7 @@ import json
 import os
 import re
 import socketserver
+import subprocess
 import sys
 import threading
 import time
@@ -787,9 +788,10 @@ def test_a_page_that_is_not_served_has_no_rerun_button():
     would be handing back the terminal round trip this exists to remove."""
     assert 'id="hr-rerun" hidden' in build.RERUN_CHIP
     assert 'aria-disabled="true"' in build.RERUN_CHIP
-    assert "if (!caps || !caps.rerun) return;" in build.RERUN_JS
+    # Per button, from the probe's own answer for that verb — not from "is there a server".
+    assert "if (!window.HR.can(btn.getAttribute('data-rerun'))) return;" in build.RERUN_JS
     assert "btn.hidden = false;" in build.RERUN_JS
-    assert "fetch('/__rerun__'" in build.SERVER_JS
+    assert "fetch(route, {" in build.SERVER_JS and "'/__rerun__'" in build.SERVER_JS
     # No clipboard consolation prize: there is nothing to paste that would be this button.
     assert "clipboard" not in build.RERUN_JS
 
@@ -816,3 +818,244 @@ def test_a_failed_rerun_shows_the_last_lines_rather_than_a_shrug():
     assert "rerunfail-log" in build.RERUN_JS
     assert "log.slice(-14)" in build.RERUN_JS
     assert "snap.exit" in build.RERUN_JS
+
+
+# --------------------------------------------------------------------------- #
+# Rerun + AI
+# --------------------------------------------------------------------------- #
+#
+# The same verb with the model's half in front of it, and the only control on the page that
+# spends money. Everything below is about the three things that keeps honest: it is a
+# *second* endpoint rather than a flag, it shares the first one's lock, and nothing in the
+# test suite may ever actually call a model.
+
+
+def test_the_ai_rerun_runs_the_model_step_before_the_refresh(tmp_path):
+    """The order is the whole claim. The model writes the matrix and the catalogue, then
+    the build turns them into the page; reversed, the click would rebuild the page from the
+    matrix it is about to replace and leave the reader looking at the old one under a green
+    tick. `&&` and not `;`, so a model step that failed is not followed by a build that
+    hides it."""
+    _fresh(tmp_path)
+    (tmp_path / ".human-review").mkdir()
+    srv.ROOT = tmp_path
+    argv, cwd = srv.rerun_ai_plan(tmp_path / ".human-review")
+    assert cwd == tmp_path
+    assert argv[:2] == ["/bin/sh", "-c"]
+    line = argv[2]
+    assert line.index("rerun-model.py") < line.index("refresh-report.py"), \
+        "the build must not run before the model it is building from"
+    assert " && " in line and "; " not in line
+    assert "--allow-model" in line and "--no-serve" in line
+    assert "--steps static" in line
+    # Never the film, and never the model's *other* half: `content.json` is the layout and
+    # the ledes, which is a human's answer and no button's.
+    assert "all" not in line.split() and "content.json" not in line
+
+
+def test_the_printed_command_is_the_command_that_runs(tmp_path):
+    """The page prints this line beside the button. A page printing a different line from
+    the one the button runs is the only failure mode that control has."""
+    _fresh(tmp_path)
+    srv.ROOT = tmp_path
+    argv, _ = srv.rerun_ai_plan(tmp_path)
+    assert argv[2] == srv.rerun_ai_command(".")
+
+
+def test_no_model_step_beside_us_means_no_paid_button(tmp_path, monkeypatch):
+    """The free button survives a skill directory without `rerun-model.py`; the paid one
+    does not. A button that quietly did less than its label is worse than no button."""
+    _fresh(tmp_path)
+    srv.ROOT = tmp_path
+    monkeypatch.setattr(srv, "MODEL_STEP", tmp_path / "nowhere.py")
+    assert srv.rerun_ai_plan(tmp_path) is None
+    assert srv.rerun_plan(tmp_path) is not None
+
+
+def test_a_review_directory_outside_the_repository_gets_no_paid_rerun(tmp_path):
+    """Same honesty condition as the free one: the producers write to a relative
+    `.human-review/`, so a rerun from anywhere else would rebuild the page beside evidence
+    it never touched — and this one would have paid for the privilege."""
+    _fresh(tmp_path)
+    srv.ROOT = tmp_path / "repo"
+    srv.ROOT.mkdir()
+    assert srv.rerun_ai_plan(tmp_path) is None
+
+
+def test_the_probe_answers_for_each_verb_separately(server, tmp_path, monkeypatch):
+    """Two capabilities, not one. A page that inferred the paid one from the free one would
+    draw a $5 button over a server with no model step beside it."""
+    srv.ROOT = tmp_path
+    both = json.loads(_call(server, "GET", srv.MARKER)[1])
+    assert both["rerun"] is True and both["rerunAi"] is True
+    monkeypatch.setattr(srv, "MODEL_STEP", tmp_path / "nowhere.py")
+    one = json.loads(_call(server, "GET", srv.MARKER)[1])
+    assert one["rerun"] is True and one["rerunAi"] is False
+
+
+def test_the_paid_endpoint_launches_the_model_step(server, tmp_path):
+    """Run for real, against the real program, in a directory with no report in it — so
+    what comes back is `rerun-model.py`'s own refusal and its own sentence about it. That
+    is the proof the endpoint reaches the program and not a lookalike, and it is safe to
+    run because the program checks the directory before it checks the model."""
+    srv.ROOT = tmp_path
+    status, payload = _call(server, "POST", srv.RERUN_AI, body={})
+    assert status == 200, payload
+    snap = _finish(server, json.loads(payload)["run"], deadline=30.0)
+    assert snap["state"] == "failed"
+    assert "is not a review directory" in snap["output"]
+    # And nothing was asked of a model on the way to that refusal. This is the test that
+    # would have spent real money: `--dir` is computed *relative to the repository root*,
+    # so it is `.` whenever the report is served from the root — and `.` is a directory
+    # that exists. Only the content-file check stops a model being handed the repository.
+    assert "claude -p" not in snap["output"]
+
+
+def test_the_model_step_spends_nothing_on_a_dry_run(tmp_path):
+    """Every test of the paid half, and every check that the button is wired to the right
+    program, goes through `--dry-run`. So it has to print the whole invocation — the model
+    included, because "which model did that page cost" is a question the command answers
+    rather than one the invoice does — and call nothing."""
+    review = tmp_path / ".human-review"
+    (review / "test-index").mkdir(parents=True)
+    (review / "test-index" / "rest.json").write_text("[]", encoding="utf-8")
+    (review / "assets").mkdir()
+    (review / "assets" / "requirements-map.html").write_text("<div/>", encoding="utf-8")
+    (review / "content.json").write_text("{}", encoding="utf-8")
+    out = subprocess.run(
+        [sys.executable, str(HERE / "rerun-model.py"), "--dir", str(review), "--dry-run"],
+        capture_output=True, text=True, cwd=str(tmp_path))
+    assert out.returncode == 0, out.stderr
+    assert "claude -p --model sonnet" in out.stdout
+    assert "dry run" in out.stdout
+    # The prompt is 60 lines long; a log line carrying all of it is a log line nobody
+    # reads. It goes in on stdin — as the trailing argument it was swallowed by the
+    # variadic `--add-dir`, and `claude` exited with "Input must be provided".
+    assert "< matrix-prompt.md" in out.stdout
+    # The redirection is the fix, not decoration: `--add-dir` comes last in the argv and
+    # takes a list, so anything after it is another directory.
+    assert re.search(r"--add-dir \S+\s+< matrix-prompt", out.stdout)
+    # And it left the pair alone: a dry run that had already copied files away would be a
+    # dry run with a side effect.
+    assert not (review / ".model-prev").exists()
+
+
+def test_the_model_step_refuses_rather_than_half_writing(tmp_path, monkeypatch):
+    """A model run that ends with one of the two artifacts missing leaves the report in the
+    one state `refresh-report.py` is built to refuse. Saying so here, before the build is
+    reached, is the difference between a named failure and a page that quietly lost its
+    matrix."""
+    model = _load("rerun_model", "rerun-model.py")
+    review = tmp_path / ".human-review"
+    (review / "assets").mkdir(parents=True)
+    (review / "assets" / "requirements-map.html").write_text("<div/>", encoding="utf-8")
+    assert model.missing(review) == ["test-index"]
+    # An empty directory is the same absence as no directory: a catalogue a dead run left
+    # behind is not a smaller catalogue.
+    (review / "test-index").mkdir()
+    assert model.missing(review) == ["test-index"]
+    (review / "test-index" / "rest.json").write_text("[]", encoding="utf-8")
+    assert model.missing(review) == []
+
+
+def test_the_pair_being_replaced_is_kept_out_of_the_published_copy(tmp_path):
+    """This replaces a judgement rather than refreshing it, so the copy the reader was
+    looking at has to survive the click. Dot-prefixed, because `publish-demo.sh` publishes
+    what does not start with a dot and a demo carrying two matrices is a demo with a bug."""
+    model = _load("rerun_model", "rerun-model.py")
+    review = tmp_path / ".human-review"
+    (review / "assets").mkdir(parents=True)
+    (review / "assets" / "requirements-map.html").write_text("old", encoding="utf-8")
+    (review / "test-index").mkdir()
+    (review / "test-index" / "rest.json").write_text("[1]", encoding="utf-8")
+    kept = model.keep_previous(review)
+    assert kept.name.startswith(".")
+    assert (kept / "requirements-map.html").read_text() == "old"
+    assert (kept / "test-index" / "rest.json").read_text() == "[1]"
+    # Copied, not moved: the prompt asks the model to diff its work against what was there.
+    assert (review / "assets" / "requirements-map.html").is_file()
+
+
+def test_one_rerun_at_a_time_across_both_endpoints(server, tmp_path, monkeypatch):
+    """The lock is shared, and that is not tidiness: the paid rerun ends in a
+    `refresh-report.py` of its own, so the free button and the paid one are two names for
+    the same collision over one directory. A click on either while the other is working
+    joins the run in flight — which is also the only answer that shows a reader who could
+    not tell the first one had started what is actually happening."""
+    srv.ROOT = tmp_path
+    monkeypatch.setattr(srv, "REFRESH", _slow_refresh(tmp_path))
+    monkeypatch.setattr(srv, "MODEL_STEP", _slow_refresh(tmp_path))
+    paid = json.loads(_call(server, "POST", srv.RERUN_AI, body={})[1])
+    free = json.loads(_call(server, "POST", srv.RERUN, body={})[1])
+    assert free["run"] == paid["run"], "the free click started a second build"
+    assert free["action"] == srv.RERUN_AI_ACTION
+    assert len([r for r in srv.RUNS.values()
+                if r.action in srv.RERUN_ACTIONS]) == 1
+    srv.RUNS[paid["run"]]._kill()
+
+
+def test_the_free_click_never_starts_the_paid_run(server, tmp_path, monkeypatch):
+    """A join hands back a running Run; it does not launch anything. So the worst a shared
+    lock can do is give a reader more than they asked for and tell them so in the tail they
+    are watching — never spend money on a click that asked for the free half."""
+    srv.ROOT = tmp_path
+    monkeypatch.setattr(srv, "REFRESH", _slow_refresh(tmp_path))
+    first = json.loads(_call(server, "POST", srv.RERUN, body={})[1])
+    second = json.loads(_call(server, "POST", srv.RERUN_AI, body={})[1])
+    assert second["run"] == first["run"]
+    assert second["action"] == srv.RERUN_ACTION, "a free run was relabelled as the paid one"
+    srv.RUNS[first["run"]]._kill()
+
+
+@pytest.mark.parametrize("headers, why", [
+    ({"Sec-Fetch-Site": "cross-site"}, "a page on the internet may not spend this money"),
+    ({"Host": "review.example.com"}, "a rebound name may not either"),
+    ({"X-Human-Review-Token": "not-the-token"}, "nor a caller that never read the probe"),
+])
+def test_the_paid_rerun_is_guarded_exactly_like_the_rest(server, tmp_path, headers, why):
+    srv.ROOT = tmp_path
+    status, _ = _call(server, "POST", srv.RERUN_AI, body={}, headers=headers)
+    assert status == 403, why
+
+
+def test_a_form_post_cannot_spend_money(server, tmp_path):
+    srv.ROOT = tmp_path
+    status, _ = _call(server, "POST", srv.RERUN_AI, body={},
+                      headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert status == 415
+
+
+def test_the_paid_button_says_the_price_before_it_is_pressed(tmp_path):
+    """The price is in the hover, in those words, because "costs money" is the part a
+    reader cannot see and the part they are right to worry about."""
+    tip = re.search(r'data-tip="([^"]*)"', build.RERUN_AI_CHIP).group(1)
+    assert "costs money" in tip and "$5" in tip and "Sonnet" in tip
+    assert ">Rerun + AI</button>" in build.RERUN_AI_CHIP
+    assert 'id="hr-rerun-ai" hidden' in build.RERUN_AI_CHIP
+
+
+def test_the_confirmation_is_the_pages_own_and_defaults_to_not_spending():
+    """`window.confirm` cannot say the price in this page's voice, cannot make the safe
+    answer the default one, and is the dialog every reader has been trained to dismiss
+    unread — a reflex that on a native confirm costs five dollars and here lands on
+    Cancel."""
+    # Not called anywhere — the phrase survives in a comment saying why.
+    assert "window.confirm(" not in build.RERUN_JS
+    assert "confirm(" not in build.RERUN_JS.replace("confirmSpend(", "")
+    assert "$5" in build.RERUN_AI_CONFIRM or "$5" in build.RERUN_AI_CHIP
+    assert 'role="dialog"' in build.RERUN_AI_CONFIRM
+    assert "hrconfirm" in build.RERUN_AI_CONFIRM and "hidden" in build.RERUN_AI_CONFIRM
+    # Cancel takes focus when the panel opens, and Escape and the backdrop both mean no.
+    assert "if (no && no.focus) no.focus();" in build.RERUN_JS
+    assert "ev.key === 'Escape'" in build.RERUN_JS
+    assert "if (t === panel) return done(false);" in build.RERUN_JS
+    # The free button never reaches it.
+    assert "if (!paid) { go(btn); return; }" in build.RERUN_JS
+
+
+def test_pressing_one_rerun_disables_the_other():
+    """The server runs one at a time and a second press on the other would join this run
+    rather than start its own — correct, and unreadable: a reader who pressed the free
+    button and watched the paid one's log scroll past has been told the wrong thing."""
+    assert "buttons.forEach(function (other) { other.disabled = true; });" in build.RERUN_JS
+    assert "buttons.forEach(function (other) { other.disabled = false; });" in build.RERUN_JS

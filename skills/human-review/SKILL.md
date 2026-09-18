@@ -291,13 +291,32 @@ producers that need nothing up: the diagram deltas, the container view, the comp
 increment, the REST contract and its second opinions, the logging scan, code owners and the
 test manifest. It rebuilds and the tab reloads itself on the same tab, keeping its place.
 It is deliberately *not* `--steps cheap`: that one keeps `traces`, whose configured commands
-are the project's own e2e suite. And it is deliberately not the model's half or the film —
-the button says so on its hover, because those are the two a reader is right to worry about.
+are the project's own e2e suite. And it is deliberately not the film — the button says so on
+its hover, because that is the one a reader is right to worry about.
 
-The button exists only where the page is served; read off disk or out of the zip there is
-nothing behind it, so there is nothing there. A rerun that fails puts the recorder's last
-lines in a red band under the header rather than leaving the reader guessing, and only one
-runs at a time — a second click joins the first.
+Beside it, **Rerun + AI** is the same thing with *this skill's own model step* in front of
+it. It is the button form of the matrix instruction above: `rerun-model.py` hands
+`reference/matrix-prompt.md` to `claude -p --model sonnet`, which rewrites
+`assets/requirements-map.html` and `test-index/`, and then the static refresh runs with
+`--allow-model`. Sonnet is named in the program, not left to a default, for the same reason
+it is named in Step 4.
+
+Spelt as a program rather than as a fork because a *reader* is the one pressing it: the page
+is read outside any Claude session, and someone with the report open in front of them and a
+branch that has moved cannot fork a subagent. From inside a run, Step 4 is still the way —
+the fork has the conversation's context and this does not.
+
+It costs about $5, so it says so on its hover and asks in the page's own confirmation panel
+before it spends anything, and the pair it replaces is copied to `.human-review/.model-prev/`
+first: this replaces a judgement rather than refreshing one. `content.json` is not in it —
+the layout and the ledes are yours, and no button regenerates them.
+
+Both buttons exist only where the page is served; read off disk or out of the zip there is
+nothing behind them, so there is nothing there, and the paid one is also absent where
+`rerun-model.py` is not beside the server. A rerun that fails puts the program's last lines
+in a red band under the header rather than leaving the reader guessing, and only one runs at
+a time **across both** — a second click joins the run in flight, and a click that asked for
+the free half never starts the paid one.
 
 That is the loop for "the branch moved, catch the page up", and it is the reason to prefer it
 over a terminal: the three commands are one command here, and the one it runs is the one that

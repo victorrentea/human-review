@@ -249,6 +249,38 @@ button.chip-rerun.running::before { content:""; display:inline-block; width:.62e
 @keyframes hrspin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) {
   button.chip-rerun.running::before { animation:none; } }
+/* The paid one, beside the free one. Amber and not red: red on this page means a failure
+   or a regression, and a control that is merely expensive is not either of those — it is
+   the page's one "are you sure", and amber is what every other "look before you press"
+   mark here already uses. Dashed, so the pair reads as one control with two prices rather
+   than as two unrelated chips: the dash is the only thing that survives being glanced at. */
+button.chip-rerun-ai { border-style:dashed; border-color:var(--drift); color:var(--drift); }
+button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
+            background:rgba(181,115,10,.09); color:var(--fg); }
+/* The page's own confirmation, over the page. Fixed and full-viewport because the click it
+   guards costs money and a panel the reader can scroll away from is a panel they can
+   answer by accident. */
+.hrconfirm { position:fixed; inset:0; z-index:60; display:flex; align-items:center;
+            justify-content:center; padding:1.2rem; background:rgba(12,12,14,.62); }
+.hrconfirm[hidden] { display:none; }
+.hrconfirm-box { max-width:34rem; background:var(--card); color:var(--fg);
+            border:1px solid var(--drift); border-radius:12px; padding:1rem 1.15rem;
+            box-shadow:0 18px 50px rgba(0,0,0,.42); }
+.hrconfirm-t { margin:0 0 .5rem; font-size:1rem; }
+.hrconfirm-t b { color:var(--drift); }
+.hrconfirm-b { margin:.45rem 0 0; font-size:.88rem; line-height:1.65; color:var(--fg); }
+.hrconfirm-alt { color:var(--muted); }
+.hrconfirm-b code { font-size:.92em; }
+.hrconfirm-row { display:flex; gap:.6rem; justify-content:flex-end; margin-top:.9rem; }
+.hrconfirm-row button { font:inherit; font-size:.86rem; cursor:pointer; border-radius:999px;
+            padding:.4rem .9rem; border:1px solid var(--line); background:var(--code-bg);
+            color:var(--fg); }
+/* Cancel is the one with focus when the panel opens, so it is the one that has to look
+   like the default — the spend is the deliberate answer and is dressed as the exception. */
+.hrconfirm-no { font-weight:600; }
+.hrconfirm-no:focus-visible { outline:2px solid var(--link); outline-offset:2px; }
+.hrconfirm-yes { border-color:var(--drift) !important; color:var(--drift) !important; }
+.hrconfirm-yes:hover { background:rgba(181,115,10,.12); }
 /* Only ever on screen after a rebuild failed, which is why it may be a band at all: it
    costs the normal read nothing, and the lines a producer printed on its way out are the
    whole of the fix. Dismissible, because the reader is the one who decides it is read. */
@@ -1624,7 +1656,17 @@ window.HR = (function () {
       return j;
     });
 
-  function can(id) { return !!(caps && caps.actions && caps.actions[id]); }
+  // Two ids are not manifest entries and never can be: the two reruns are the server's own
+  // commands, answered by the probe rather than declared by a build (see `rerun` below).
+  // They are spelt like actions anyway so that every control on the page — the play mark
+  // beside a printed command included — asks one question and gets one answer, instead of
+  // each caller growing its own special case for the two verbs that are not in the list.
+  var OWN = {'__rerun__': 'rerun', '__rerun_ai__': 'rerunAi'};
+
+  function can(id) {
+    if (OWN[id]) return !!(caps && caps[OWN[id]]);
+    return !!(caps && caps.actions && caps.actions[id]);
+  }
 
   // Fires once, with the answer, whenever it arrives — before or after registration.
   // `settled` and not `caps !== null`, because "no server" is an answer and null is how
@@ -1657,6 +1699,12 @@ window.HR = (function () {
   // the case where the caller has to fall back to the clipboard.
   function run(id, params, onprogress) {
     if (!can(id)) return Promise.reject(new Error(id + ' is not available here'));
+    // The two server-owned verbs route to their own endpoints. Here rather than in every
+    // caller: `run(id)` is what the whole page reaches for, and a play mark beside the
+    // refresh command that had to know it was special would be the one control on the page
+    // whose wiring depended on which command it was printing.
+    if (id === '__rerun__') return rerun(onprogress);
+    if (id === '__rerun_ai__') return rerunAi(onprogress);
     return fetch('/__run__', {
       method: 'POST', cache: 'no-store',
       // Both halves deliberate. POST + a non-simple Content-Type is not a request a
@@ -1683,10 +1731,26 @@ window.HR = (function () {
   // is the server's own refresh program. So this is gated on `caps.rerun`, which the
   // probe answers, and not on a manifest entry a build could forget to write.
   function rerun(onprogress) {
-    if (!caps || !caps.rerun) {
+    return ask('/__rerun__', 'rerun', onprogress);
+  }
+
+  // The same verb with the model's half in front of it: the requirements matrix and the
+  // per-test catalogue, rewritten by `claude -p --model sonnet`, and then the same static
+  // refresh with `--allow-model`. A second endpoint and a second capability, not a flag on
+  // the first — the difference between the two is money, and a boolean in a request body is
+  // the wrong place for that to live: a page that sent it by mistake would have bought a
+  // judgement nobody asked for. The server shares one lock between them, so a click on
+  // either while the other is working joins the run in flight rather than starting a
+  // second build over the same directory.
+  function rerunAi(onprogress) {
+    return ask('/__rerun_ai__', 'rerunAi', onprogress);
+  }
+
+  function ask(route, capability, onprogress) {
+    if (!caps || !caps[capability]) {
       return Promise.reject(new Error('this page cannot rebuild itself here'));
     }
-    return fetch('/__rerun__', {
+    return fetch(route, {
       method: 'POST', cache: 'no-store',
       headers: {'Content-Type': 'application/json',
                 'X-Human-Review-Token': (caps && caps.token) || ''},
@@ -1784,7 +1848,8 @@ window.HR = (function () {
     });
   });
 
-  return {ready: ready, can: can, onready: onready, run: run, rerun: rerun, tail: tail};
+  return {ready: ready, can: can, onready: onready, run: run, rerun: rerun,
+          rerunAi: rerunAi, tail: tail};
 })();
 </script>"""
 
@@ -1803,9 +1868,63 @@ window.HR = (function () {
 # see and the part they are right to worry about: the findings on this page are a judgement
 # bought once, and the film costs minutes and a running application.
 RERUN_CHIP = ('<button type="button" class="chip chip-rerun" id="hr-rerun" hidden '
-              'aria-disabled="true" data-tip="Re-derive the evidence and rebuild this '
+              'aria-disabled="true" data-rerun="__rerun__" '
+              'data-tip="Re-derive the evidence and rebuild this '
               'page: diagrams, complexity, the REST contract, the logging scan, the test '
-              'manifest. Not the findings, and not the film.">Rerun</button>')
+              'manifest. Not the findings, and not the film. Free.">Rerun</button>')
+
+# The same button with the model's half in front of it, and the only control on this page
+# that spends money.
+#
+# It is a second button rather than a modifier on the first because the difference between
+# them is not a degree of thoroughness — it is that one of them is free and reproducible
+# and the other buys a judgement. A single Rerun that sometimes called a model would make
+# every press a question about what it was about to do; two buttons make the answer the
+# label.
+#
+# Three things guard it, in this order, and none of them is a substitute for another:
+# the price is in the hover before the click, the click opens a dialog that says the price
+# again and defaults to nothing, and the server will not honour it at all unless
+# `rerun-model.py` is really beside it. The tooltip leads with the money, in those words,
+# because "costs money" is the part a reader cannot see and the part they are right to
+# worry about — everything else about this button is legible from its label.
+RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
+                 'id="hr-rerun-ai" hidden aria-disabled="true" '
+                 'data-rerun="__rerun_ai__" '
+                 'data-tip="costs money: ~$5 on Sonnet. Rewrites the requirements↔tests '
+                 'matrix and the per-test catalogue with a model, then re-derives the '
+                 'evidence and rebuilds the page.">Rerun + AI</button>')
+
+# The confirmation, in the page rather than in the browser.
+#
+# `window.confirm` was the first version of this and it is the wrong control for the job in
+# three ways at once: it cannot say the price in the page's own voice, it cannot make the
+# safe answer the default one, and it is the dialog every abusive site on the internet has
+# trained readers to dismiss without reading. A reader who reflexively clicks OK on a
+# native confirm has spent five dollars; the same reflex here lands on Cancel, because
+# Cancel is what has focus when the panel opens and what Escape and a click on the backdrop
+# both mean.
+#
+# In the markup of every copy of the page, hidden, like every other control here — the
+# button that opens it is what the probe raises, so a static copy never reaches this.
+RERUN_AI_CONFIRM = (
+    '<div class="hrconfirm" id="hr-ai-confirm" hidden role="dialog" aria-modal="true"'
+    ' aria-labelledby="hr-ai-confirm-t">'
+    '<div class="hrconfirm-box">'
+    '<p class="hrconfirm-t" id="hr-ai-confirm-t"><b>This one costs money.</b></p>'
+    '<p class="hrconfirm-b">Rerun&nbsp;+&nbsp;AI rewrites the requirements↔tests matrix '
+    'and the per-test catalogue by asking a model — <b>about $5 on Sonnet</b> — and then '
+    're-derives the evidence and rebuilds the page. The matrix you are looking at is '
+    'replaced, not confirmed: a second pass over the same diff words and ranks it '
+    'differently. The copy being replaced is kept in '
+    '<code>.human-review/.model-prev/</code>.</p>'
+    '<p class="hrconfirm-b hrconfirm-alt">Plain <b>Rerun</b> does everything except the '
+    'model half, and costs nothing.</p>'
+    '<div class="hrconfirm-row">'
+    '<button type="button" class="hrconfirm-no" data-tip="Nothing is spent">Cancel</button>'
+    '<button type="button" class="hrconfirm-yes" '
+    'data-tip="Runs the model step, then rebuilds">Spend it, rerun with AI</button>'
+    '</div></div></div>')
 
 # Under the masthead rather than inside it: the header is a block that never scrolls, and
 # a log tail pinned to the top of the viewport for the rest of the read is a worse artifact
@@ -1839,12 +1958,18 @@ RERUN_JS = """<script>
 // Hidden unless the probe says this server can honour it, like every other control here.
 // A static copy has no process behind it to rebuild anything, and a button that copied a
 // shell line instead would be offering the terminal round-trip this exists to remove.
+//
+// Since there are two of them, everything below is keyed off `data-rerun` rather than off
+// an element id. The second button is the same machine with the model's half in front of
+// it — `rerun-model.py`, then the same refresh with `--allow-model` — and the only thing
+// that differs is the price, which is why the only thing the code below branches on is
+// whether a button has a confirmation to show first. A copy of this block per button is
+// how the free one and the paid one end up reporting failure differently.
 (function () {
-  var btn = document.getElementById('hr-rerun');
-  if (!btn) return;
+  var buttons = [].slice.call(
+    document.querySelectorAll('button.chip-rerun[data-rerun]'));
+  if (!buttons.length) return;
   var fail = document.getElementById('hr-rerun-fail');
-  var face = btn.textContent;
-  var idle = btn.getAttribute('data-tip') || '';
   // Per page, because a reader keeps several of these open and each is a different branch.
   var KEY = 'hr-rerun-place:' + location.pathname;
 
@@ -1871,11 +1996,14 @@ RERUN_JS = """<script>
     }
   });
 
-  function stop(problem, snap) {
+  function stop(btn, problem, snap) {
     btn.disabled = false;
     btn.classList.remove('running');
-    btn.textContent = face;
-    btn.setAttribute('data-tip', idle);
+    btn.textContent = btn.getAttribute('data-face') || btn.textContent;
+    btn.setAttribute('data-tip', btn.getAttribute('data-idle-tip') || '');
+    // Both of them: the lock is shared, so while one was working the other was disabled
+    // for a run it did not start, and leaving it that way would strand it.
+    buttons.forEach(function (other) { other.disabled = false; });
     if (!fail) return;
     // The last lines, not the whole log: a build prints hundreds and the answer is at the
     // end of them. Shown at all because "it failed" is not actionable and this is — the
@@ -1894,14 +2022,17 @@ RERUN_JS = """<script>
     });
   }
 
-  btn.addEventListener('click', function () {
-    if (btn.disabled) return;
+  function go(btn) {
     if (fail) fail.hidden = true;
-    btn.disabled = true;
+    // Every rerun button, not only this one: the server runs one at a time and a second
+    // press on the other would join this run rather than start its own, which is correct
+    // and unreadable — a reader who pressed the free button and watched the paid one's log
+    // scroll past has been told the wrong thing by the page.
+    buttons.forEach(function (other) { other.disabled = true; });
     btn.classList.add('running');
     btn.textContent = 'Running\\u2026';
     remember();
-    window.HR.rerun(function (snap) {
+    window.HR.run(btn.getAttribute('data-rerun'), {}, function (snap) {
       // One line, in the hover: the button has room for a word and the reader who wants
       // to know which producer it is on is the reader already pointing at it.
       var line = window.HR.tail(snap);
@@ -1913,16 +2044,82 @@ RERUN_JS = """<script>
         location.reload();
         return;
       }
-      stop('the rebuild did not finish', snap);
+      stop(btn, 'the rebuild did not finish', snap);
     }).catch(function (e) {
-      stop(e.message || 'the review server could not be reached', null);
+      stop(btn, e.message || 'the review server could not be reached', null);
+    });
+  }
+
+  // The page's own confirmation, for the one button that spends money. Not
+  // `window.confirm`: it cannot say the price in this page's voice, it cannot make the
+  // safe answer the default one, and it is the dialog every reader on the internet has
+  // been trained to dismiss unread — a reflex that on a native confirm costs five dollars
+  // and here lands on Cancel.
+  //
+  // Resolved rather than returned as a boolean, because the answer arrives later than the
+  // click and a caller that had to poll for it would be a second state machine.
+  var panel = document.getElementById('hr-ai-confirm');
+  var lastFocus = null;
+
+  function shut() {
+    if (!panel) return;
+    panel.hidden = true;
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  function confirmSpend() {
+    if (!panel) return Promise.resolve(true);
+    lastFocus = document.activeElement;
+    panel.hidden = false;
+    // Cancel, not the spend: whatever a stray Return or a reflexive click lands on has to
+    // be the answer that costs nothing.
+    var no = panel.querySelector('.hrconfirm-no');
+    if (no && no.focus) no.focus();
+    return new Promise(function (resolve) {
+      function done(answer) {
+        panel.removeEventListener('click', onClick);
+        document.removeEventListener('keydown', onKey);
+        shut();
+        resolve(answer);
+      }
+      function onClick(ev) {
+        var t = ev.target;
+        if (t.closest && t.closest('.hrconfirm-yes')) return done(true);
+        if (t.closest && t.closest('.hrconfirm-no')) return done(false);
+        // The backdrop is the panel itself; a click that never reached the box is a click
+        // outside the dialog, which everywhere else on the web means "no".
+        if (t === panel) return done(false);
+      }
+      function onKey(ev) {
+        if (ev.key === 'Escape') { ev.preventDefault(); done(false); }
+      }
+      panel.addEventListener('click', onClick);
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
+  buttons.forEach(function (btn) {
+    // Stashed on the element so `stop` can put the button back exactly as it was without
+    // a closure per button holding the strings.
+    btn.setAttribute('data-face', btn.textContent);
+    btn.setAttribute('data-idle-tip', btn.getAttribute('data-tip') || '');
+    var paid = btn.getAttribute('data-rerun') === '__rerun_ai__';
+    btn.addEventListener('click', function () {
+      if (btn.disabled) return;
+      if (!paid) { go(btn); return; }
+      confirmSpend().then(function (yes) { if (yes) go(btn); });
     });
   });
 
   window.HR.onready(function (caps) {
-    if (!caps || !caps.rerun) return;
-    btn.hidden = false;
-    btn.removeAttribute('aria-disabled');
+    if (!caps) return;
+    // Per button, from the probe's own answer for that verb. Inferring the paid one from
+    // the free one would draw a $5 control over a server that has no model step beside it.
+    buttons.forEach(function (btn) {
+      if (!window.HR.can(btn.getAttribute('data-rerun'))) return;
+      btn.hidden = false;
+      btn.removeAttribute('aria-disabled');
+    });
   });
 })();
 </script>"""
@@ -9734,8 +9931,11 @@ def main(argv=None) -> int:
         # And, on the served copy only, the way to make the page catch up with the
         # repository. Both pieces are constants above, so what the page carries is one
         # thing a test can read rather than a string assembled inside a 400-line function.
-        mode_html += RERUN_CHIP
-        rerun_fail_html = RERUN_FAIL
+        # Two of them: the free one, and the same thing with the model's half in front of
+        # it. Side by side and in that order, because the cheap answer is the one a reader
+        # should reach first and the expensive one should be the deliberate second look.
+        mode_html += RERUN_CHIP + RERUN_AI_CHIP
+        rerun_fail_html = RERUN_FAIL + RERUN_AI_CONFIRM
         allbtn_html = (
             '<div class="allbar">'
             '<button type="button" class="allbtn" aria-pressed="false" '

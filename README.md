@@ -184,19 +184,46 @@ when a human asks — a second pass over the same diff does not confirm the firs
 it at full price. Everything else is the output of a program, the three Review piles
 included: those are parsed from the branch's own `review-points.md`.
 
-So on the served copy the masthead carries a **Rerun** beside the `served` badge: it runs
-`refresh-report.py --steps static` — the diagram deltas, the container view, the complexity
-increment, the REST contract and its two second opinions, the logging scan, code owners and
-the test manifest — rebuilds the page, and reloads the tab you are on, in place, keeping its
-scroll. Not the model's half. Not the feature film, which needs the application up and is a
-decision, not a refresh. Not the traced suites either, whose `commands` are the project's own
-e2e run.
+So on the served copy the masthead carries **two** buttons beside the `served` badge, one
+per half.
 
-It appears only where there is a server behind the page: read off disk, out of the zip or off
-GitHub Pages there is nothing to run it, so there is no button. One rerun goes at a time (a
-second click joins the first), the button carries a spinner while it works, and a rebuild
-that failed puts the program's last lines in a red band under the header instead of leaving
-you to go and look.
+**Rerun** is the free one, and the one to reach for. It runs `refresh-report.py --steps
+static` — the diagram deltas, the container view, the complexity increment, the REST
+contract and its two second opinions, the logging scan, code owners and the test manifest —
+rebuilds the page, and reloads the tab you are on, in place, keeping its scroll. Not the
+model's half. Not the feature film, which needs the application up and is a decision, not a
+refresh. Not the traced suites either, whose `commands` are the project's own e2e run.
+
+**Rerun + AI** is the same thing with the model's half in front of it: `rerun-model.py`
+(`claude -p --model sonnet` over `skills/human-review/reference/matrix-prompt.md`) rewrites
+`assets/requirements-map.html` and `test-index/`, and then the same static refresh runs with
+`--allow-model`, so the build may also make the Logging tab's uncached privacy calls. It is
+the only control on the page that spends money — **about $5 on Sonnet** — and it is guarded
+three times over, in this order: the price is in the hover before you click, the click opens
+the page's own confirmation panel (not `window.confirm` — it cannot say the price in the
+page's voice, cannot make the safe answer the default one, and is the dialog everyone has
+been trained to dismiss unread), and the server refuses the verb outright unless
+`rerun-model.py` is really beside it. The matrix being replaced is copied to
+`.human-review/.model-prev/` first, because this replaces a judgement rather than refreshing
+one: the copy you were reading has to survive the click. `content.json` is *not* in it — the
+layout and the ledes are a human's answer to what the page is for, and no button regenerates
+those.
+
+Two buttons rather than one with a modifier, because the difference between them is not a
+degree of thoroughness: one is free and reproducible, the other buys a judgement. A single
+Rerun that sometimes called a model would make every press a question about what it was
+about to do; two buttons make the answer the label.
+
+They appear only where there is a server behind the page: read off disk, out of the zip or
+off GitHub Pages there is nothing to run them, so there is no button — and each one is
+raised by the probe's own answer for *its* verb (`rerun`, `rerunAi`), so a skill directory
+without the model step offers the free one and not the paid one. **One rerun goes at a time,
+across both** — they share a single lock, because the paid one ends in a `refresh-report.py`
+of its own and two refreshes over one directory collide whichever button started them. A
+second click joins the run in flight rather than starting another (and joining never
+launches the paid one: a click that asked for the free half cannot spend money). The button
+carries a spinner while it works, and a rebuild that failed puts the program's last lines in
+a red band under the header instead of leaving you to go and look.
 
 ## What it needs
 

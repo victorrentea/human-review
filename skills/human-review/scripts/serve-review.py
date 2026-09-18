@@ -38,6 +38,13 @@ bending it. It takes no id, because the command is not the page's to name: it is
 the masthead asks for. A page read off disk has no button there at all — the probe below
 says whether this server can honour one, and the button rises only when it does.
 
+`/__rerun_ai__` is the same exception with the model's half in front of it — `rerun-model.py`
+(`claude -p --model sonnet` over the matrix prompt), then the same refresh with
+`--allow-model` — and it is a **second endpoint rather than a flag** on the first, because
+the two are not the same offer. One is free and reproducible; the other buys a judgement at
+several dollars, and a page that forgot to send a boolean would have bought it. They share
+one lock: two refreshes over one directory collide whichever button started them.
+
 That mortality is not in tension with running commands, because every action here is a
 batch: `start-docker.sh up` exits once the stack answers, the drawio rerun exits once the
 picture is redrawn. Nothing here supervises a daemon — the environment reaps itself.
@@ -57,6 +64,12 @@ OPEN_DIFF = "/__open_diff__"
 RUN = "/__run__"
 RUN_STATUS = "/__run_status__"
 RERUN = "/__rerun__"
+# The same verb with the model's half in front of it. A second endpoint rather than a flag
+# on the first, because the two are not the same offer: one is free and reproducible and
+# the other buys a judgement at several dollars, and a boolean in a request body is the
+# wrong place for that difference to live — a page that forgot to send it would have bought
+# something. They share the lock and nothing else.
+RERUN_AI = "/__rerun_ai__"
 WATCH = "/__watch__"
 
 # The page asks "is there a review server here?" and a *wrong* yes is expensive: the demo
@@ -82,9 +95,20 @@ ACTIONS_FILE = ".actions.json"
 # cannot ask for it because there is nobody there to ask.
 REFRESH = Path(__file__).resolve().parent / "refresh-report.py"
 
+# The model half of the skill, spelt as a command — `claude -p --model sonnet` over the
+# matrix prompt. Beside us for the same reason `refresh-report.py` is: a directory somebody
+# copied out of a run has no skill behind it, and the honest answer there is no button.
+MODEL_STEP = Path(__file__).resolve().parent / "rerun-model.py"
+
 # The id that rerun's Run wears in RUNS, so a second click can find the first one. Dunder
 # so it can never collide with an action name out of a manifest.
 RERUN_ACTION = "__rerun__"
+RERUN_AI_ACTION = "__rerun_ai__"
+
+# Both reruns, for the one question every guard here asks: "is a rerun already going?" One
+# tuple rather than two comparisons, because the lock is shared and a second membership
+# test added in one of the three places that ask would be a lock with a hole in it.
+RERUN_ACTIONS = (RERUN_ACTION, RERUN_AI_ACTION)
 
 # A ref, and nothing that could be a flag or a second argument. `git show` is invoked
 # without a shell, so this is not about quoting — it is about `--upload-pack=…` and
@@ -725,26 +749,77 @@ def rerun_plan(served_root):
              "--steps", "static", "--no-serve"], ROOT)
 
 
-def start_rerun(served_root):
-    """`(Run, problem, status)` for `POST /__rerun__`.
+def rerun_ai_command(rel) -> str:
+    """The shell line behind **Rerun + AI**, as one string.
 
-    One rerun at a time, and a second click joins the first rather than being refused:
-    two `refresh-report.py` runs over one directory would have the second build reading
-    assets the first is halfway through rewriting. The lock is the join — there is no
-    second process to serialise — and it holds across tabs, because RUNS is per server,
-    not per page."""
-    plan = rerun_plan(served_root)
+    One line and not two argv lists because it is two programs in a fixed order and the
+    order is the whole claim: the model writes the matrix and the catalogue, *then* the
+    build turns them into the page. Reversed, the click would rebuild the page from the
+    matrix it is about to replace and the reader would be looking at the old one under a
+    green tick.
+
+    `&&` and not `;`: a model step that failed must not be followed by a build that hides
+    it. `refresh-report.py` refuses to build without the pair anyway, but "refuses" and
+    "was never asked" are different lines in the log a reader is about to read.
+
+    Exposed as a function because the page prints this command beside the button (the
+    parenthesised command every action on the page now carries), and a page printing a
+    different line from the one the button runs is the only failure mode that control has.
+    """
+    return (f"{shlex.quote(sys.executable)} {shlex.quote(str(MODEL_STEP))}"
+            f" --dir {shlex.quote(str(rel))}"
+            f" && {shlex.quote(sys.executable)} {shlex.quote(str(REFRESH))}"
+            f" --dir {shlex.quote(str(rel))} --steps static --allow-model --no-serve")
+
+
+def rerun_ai_plan(served_root):
+    """`(argv, cwd)` for **Rerun + AI**, or None when this page cannot have one.
+
+    The same two honesty conditions as `rerun_plan` — the programs have to be beside us,
+    and the review directory has to sit inside the repository so the producers land where
+    the page is reading from — plus a third: `rerun-model.py` has to be there too. It is
+    the half nothing else can fake, so a server without it offers the free button and not
+    this one, rather than offering a button that quietly does less than its label."""
+    if ROOT is None or not REFRESH.is_file() or not MODEL_STEP.is_file():
+        return None
+    try:
+        rel = Path(served_root).resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        return None
+    return (["/bin/sh", "-c", rerun_ai_command(rel)], ROOT)
+
+
+def start_rerun(served_root, ai=False):
+    """`(Run, problem, status)` for `POST /__rerun__` and `POST /__rerun_ai__`.
+
+    One rerun at a time — **across both endpoints** — and a second click joins the first
+    rather than being refused: two `refresh-report.py` runs over one directory would have
+    the second build reading assets the first is halfway through rewriting, and the AI one
+    ends in a `refresh-report.py` of its own, so the free button and the paid one are two
+    names for the same collision. The lock is the join — there is no second process to
+    serialise — and it holds across tabs, because RUNS is per server, not per page.
+
+    Joining across the two is deliberate rather than convenient. Pressing Rerun while
+    Rerun + AI is working must not start a second build, and it must not *refuse* either:
+    the reader who pressed it could not tell the first one had started, and handing them
+    the run in flight is the only answer that shows them what is actually happening. The
+    paid one is never started by a click that asked for the free one — a join hands back a
+    running Run, it does not launch anything — so the worst case is a reader who gets more
+    than they asked for and is told so by the tail they are watching.
+    """
+    plan = rerun_ai_plan(served_root) if ai else rerun_plan(served_root)
     if plan is None:
-        return None, "this page has no refresh program behind it", 404
+        return None, ("this page has no model step behind it" if ai
+                      else "this page has no refresh program behind it"), 404
     with RUNS_LOCK:
         for run in reversed(RUNS.values()):
-            if run.action == RERUN_ACTION and run.state == "running":
+            if run.action in RERUN_ACTIONS and run.state == "running":
                 return run, None, 200
     argv, cwd = plan
     if WATCHER:
         WATCHER.hold()
     try:
-        run = Run(RERUN_ACTION, {"reload": True}, argv, cwd,
+        run = Run(RERUN_AI_ACTION if ai else RERUN_ACTION, {"reload": True}, argv, cwd,
                   on_done=lambda _r: WATCHER and WATCHER.release())
     except Exception:
         # A hold whose run never started is a watcher that never reloads anything again.
@@ -846,7 +921,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         Handler.last_seen = time.time()
         route = self.path.split("?")[0]
-        if route not in (RUN, RERUN):
+        if route not in (RUN, RERUN, RERUN_AI):
             self.reply_text("no", 404)
             return
         problem = refuse_reason(self.headers)
@@ -871,10 +946,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             self.reply_text("could not read the request body", 400)
             return
-        if route == RERUN:
-            # No id and no parameters: there is exactly one thing this asks for, and the
-            # command behind it is the server's own, not something the page named.
-            run, problem, status = start_rerun(Handler.root)
+        if route in (RERUN, RERUN_AI):
+            # No id and no parameters: there is exactly one thing each of these asks for,
+            # and the command behind it is the server's own, not something the page named.
+            # Which of the two is in the URL, not in the body — a paid verb must not be
+            # reachable by a field a caller can flip.
+            run, problem, status = start_rerun(Handler.root, ai=route == RERUN_AI)
         else:
             try:
                 body = json.loads(raw)
@@ -942,6 +1019,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              # control on this page is: a button drawn live that turns
                              # out not to apply has already been clicked by then.
                              "rerun": bool(rerun_plan(Handler.root)),
+                             # And whether the paid one has anything behind it. A separate
+                             # answer because it needs a program the free one does not,
+                             # and a page that inferred the second from the first would
+                             # draw a $5 button over a server that cannot honour it.
+                             "rerunAi": bool(rerun_ai_plan(Handler.root)),
                              "actions": {name: {"params": e.get("params") or {},
                                                 "reload": bool(e.get("reload")),
                                                 "label": e.get("label") or ""}
