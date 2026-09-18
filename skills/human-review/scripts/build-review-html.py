@@ -62,9 +62,9 @@ from hrbuild.shared.actions import (
     RERUN_ACTION, RERUN_AI_ACTION, write_actions
 )
 from hrbuild.shared.assets import (
-    APP_ENV_JS, CAPTION_JS, CSS, DGM_VIEWS_JS, EDITOR_JS, FOCUS_JS, FRAME_JS, GENSEQ_JS,
-    HSCROLL_JS, LATE_CSS, PAINT_HOLD_JS, PAINT_RELEASE_JS, RERUN_JS, SEQFOLD_JS, SEQLINK_JS,
-    SERVER_JS, TABS_JS, TIP_JS, TRACE_JS, XREF_CSS, XREF_JS
+    APP_ENV_JS, CAPTION_JS, CSS, DGM_VIEWS_JS, EDITOR_JS, FOCUS_JS, FOOTER_CSS, FRAME_JS,
+    GENSEQ_JS, HSCROLL_JS, LATE_CSS, PAINT_HOLD_JS, PAINT_RELEASE_JS, RERUN_JS, SEQFOLD_JS,
+    SEQLINK_JS, SERVER_JS, TABS_JS, TIP_JS, TRACE_JS, XREF_CSS, XREF_JS
 )
 from hrbuild.shared.commands import (
     CMD_COPY, CMD_OPEN, CMD_PLAY, CMD_RUN, CMD_STOP, command_html, COPY_TIP,
@@ -1104,7 +1104,7 @@ def main(argv=None) -> int:
 <title>{html.escape(spec.get('title', 'Review guide'))}</title>
 <link rel="icon" type="image/svg+xml" href="{FAVICON}">
 {PAINT_HOLD_JS}
-<style>{CSS}{extra_css.rstrip()}
+<style>{CSS}{FOOTER_CSS}{extra_css.rstrip()}
 {LATE_CSS}{XREF_CSS}</style></head>
 <body><div class="wrap">
 {masthead_html(spec, mode_html + title_score, chips, strip_html, base_st)}

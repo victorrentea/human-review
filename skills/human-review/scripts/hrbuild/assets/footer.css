@@ -1,0 +1,11 @@
+
+/* The three links in the closing line (the repo, the zip, the docker image) are things to
+   take, not prose to read past, so they wear the page's own link colour without the
+   underline every other bare `a` gets from `page.css`'s base rule — a foot of the page a
+   reader has already finished reading is not where an underline earns its usual job of
+   flagging "this differs from plain text" one more time.
+
+   Its own file, not a line added to `page.css`: another agent had unrelated hunks staged
+   in that file when this was written, and a one-rule change has no business waiting on
+   somebody else's diff to land first. */
+footer a { text-decoration:none; }

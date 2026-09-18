@@ -31,6 +31,14 @@ def _script(name: str) -> str:
 CSS = _text("page.css")
 
 
+# The footer's own rule, in its own file rather than a line in `page.css`: see
+# `assets/footer.css` for why. Emitted straight after `CSS`, ahead of a generator's
+# `extra_css` and of `LATE_CSS`, so either can still outrank it the way they outrank the
+# base sheet — nothing here needs to win a fight, it only needs to not lose the one
+# `page.css`'s bare `a { color:var(--link); }` would otherwise hand it by default.
+FOOTER_CSS = _text("footer.css")
+
+
 # Emitted *after* every other stylesheet — the fragments' own CSS included — because these
 # rules exist to outrank the base sheet's `button.tab { padding:0 .85rem }`. Anywhere
 # earlier in the block and the cascade quietly reverts them, with no error and no visible

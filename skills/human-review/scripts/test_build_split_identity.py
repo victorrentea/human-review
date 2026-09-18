@@ -125,7 +125,7 @@ def test_a_script_asset_is_javascript_and_not_an_html_fragment():
 #: The stylesheet, in the order `main` writes it into the single `<style>` element. Order
 #: is not cosmetic here: these are cascading rules, and `LATE_CSS` is named for the fact
 #: that it has to come after the page's own and after whatever a generator contributed.
-CSS_ORDER = ["CSS", "extra_css", "LATE_CSS", "XREF_CSS"]
+CSS_ORDER = ["CSS", "FOOTER_CSS", "extra_css", "LATE_CSS", "XREF_CSS"]
 
 #: Every `<script>` the page carries, in the order they appear at the foot of the body.
 #: `PAINT_HOLD_JS` is the exception that proves the rule — it is emitted up in the
