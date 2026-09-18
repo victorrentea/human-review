@@ -101,3 +101,9 @@ there is a diff, and no record of which of its lines the agent would have argued
 Never re-run a pass to "confirm" a finding. Two runs over the same diff word and rank
 their findings differently, so a second invocation does not confirm the first — it produces
 a different review at full price, and whichever ran last wins.
+
+## The demo PR is this flow plus hand retouches
+
+`petclinic`'s `test-pr` branch runs this flow, then has a handful of deliberate retouches
+on top — one per review-page tab, so the demo has something to show everywhere.
+`demo/DEMO-PR-RECIPE.md` lists them, with the commit each one landed in and how to redo it.
