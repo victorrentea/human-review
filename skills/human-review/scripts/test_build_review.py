@@ -1623,6 +1623,12 @@ def test_the_pinned_state_is_observed_not_assumed(tmp_path):
     assert ".masthead.pinned" in page
     assert "classList.toggle('pinned'" in page
     assert "sticky.getBoundingClientRect().top" in page
+    # And the other half of the comparison. A rendered top of 0 means "pinned" only for
+    # something that sits lower unpinned; the masthead is the first thing in `.wrap`, whose
+    # top padding `:has(.masthead)` zeroes, so it reads 0 at rest as well — and the page
+    # wore the pinned edge before anything had scrolled under it. `pageYOffset` is not a
+    # threshold and copies no height: it is "has this scrolled at all".
+    assert "window.pageYOffset > 0.5" in page
 
 
 def test_shrinking_the_strip_did_not_turn_its_height_into_a_constant(tmp_path):

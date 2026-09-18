@@ -42,8 +42,16 @@
   // where it would sit unpinned -- offsetTop is relative to `.wrap`, which is static, so
   // the difference IS the scroll the strip has absorbed. Marks the pinned state so the
   // stylesheet can put an edge under it; nothing here measures or sets a height.
+  //
+  // The second half is not a threshold — it is the other half of the same comparison.
+  // A rendered top of 0 means "pinned" only for a strip that sits lower down the page
+  // unpinned, which is what this was written against. In the masthead it is the first
+  // thing in `.wrap`, and `.wrap:has(.masthead)` zeroes the padding above it, so its
+  // rendered top is 0 at rest too and the edge was drawn over text nothing had scrolled
+  // under yet. `pageYOffset` says whether anything has scrolled at all; it hardcodes no
+  // height and survives the masthead changing shape, which is the whole point.
   function syncPinned() {
-    var pinned = sticky.getBoundingClientRect().top <= 0.5;
+    var pinned = sticky.getBoundingClientRect().top <= 0.5 && window.pageYOffset > 0.5;
     sticky.classList.toggle('pinned', pinned);
   }
   syncPinned();
