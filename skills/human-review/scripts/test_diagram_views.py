@@ -20,6 +20,7 @@ Run with:  python3 -m pytest test_diagram_views.py
 from __future__ import annotations
 
 import importlib.util
+import html
 import json
 import re
 import subprocess
@@ -757,9 +758,16 @@ def test_the_button_copies_exactly_what_the_page_shows(tmp_path):
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    shown = re.search(r'<code>(.*?)</code>', out, re.S).group(1)
-    copied = re.search(r'data-copy="(.*?)" data-tip', out, re.S).group(1)
-    assert shown == copied
+    # The command is on the page exactly twice, on two attributes of two controls — the
+    # offer, whose click copies it off disk, and the copy glyph beside it — plus once more
+    # inside that glyph's hover. All of them one string, because two renderings of one
+    # command is how the one that gets run stops matching the one that gets read.
+    copied = set(re.findall(r'data-copy="(.*?)"', out, re.S))
+    assert len(copied) == 1
+    line = copied.pop()
+    assert build.ACTIONS["drawio:conceptual"]["command"] == html.unescape(line)
+    tip = re.search(r'class="copycmd cmd-copy"[^>]*data-tip="([^"]*)"', out, re.S).group(1)
+    assert tip.endswith(line)
 
 
 def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
@@ -767,7 +775,7 @@ def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
     A command assembled from guesses is worse than no command — it is tried first."""
     out = build.drawio_widget_html("conceptual", _drawio_set(tmp_path / "assets"),
                                    tmp_path, REBUILD)
-    assert "cmdline" not in out
+    assert "cmd-copy" not in out and "cmd-play" not in out
 
 
 def test_the_command_says_what_it_is_for(tmp_path):
@@ -778,18 +786,29 @@ def test_the_command_says_what_it_is_for(tmp_path):
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
     line = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
-    assert "run this</button></span> to update the report." in line
+    assert ">click here</button>" in line
+    assert " to update the report." in line
+    # The command is not in the sentence and not in a block under it: it is in the hover of
+    # the copy glyph between the offer and the full stop.
+    assert line.index("cmd-copy") < line.index(" to update the report.")
+    assert "<code>" not in line
 
 
-def test_the_command_itself_is_folded_away_until_it_is_asked_for(tmp_path):
+def test_the_command_is_in_a_hover_and_not_in_a_block(tmp_path):
     """A code block under a diagram is read once and then sits in front of the picture on
-    every look after that. The fold costs the reader who wants it one click."""
+    every look after that. It used to be behind a fold, which cost the reader who wanted
+    it one click and everyone else a control to ignore — and these are the longest lines
+    on the page by a factor of five. Now the offer carries a clipboard and the line is in
+    its hover, which is the only place a reader who wants to paste it looks."""
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert '<div class="cmdline" id="cmd-conceptual" hidden>' in out
-    assert 'class="cmdpeek" aria-expanded="false"' in out
+    assert "cmdline" not in out and "cmdpeek" not in out
+    assert "<code>" not in out
+    tip = re.search(r'class="copycmd cmd-copy"[^>]*data-tip="([^"]*)"', out).group(1)
+    assert "Copy command to paste in terminal" in tip
+    assert "drawio-diff.py" in tip and "build-review-html.py" in tip
 
 
 def test_each_copy_of_the_report_shows_the_route_it_can_actually_take(tmp_path):
@@ -800,11 +819,17 @@ def test_each_copy_of_the_report_shows_the_route_it_can_actually_take(tmp_path):
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert 'class="runhere" data-action="drawio:conceptual"' in out
-    assert ".rerun .offer .runhere { display:none; }" in build.CSS, "static by default"
+    # One control in both copies, and it always sends the same id: the difference is what
+    # the page does with it, which the probe decides. The last offer with two renderings is
+    # `reveal_html`, whose subject is the sentence's own noun.
+    assert 'data-action="drawio:conceptual"' in out
+    assert ".rerun .offer .runhere { display:none; }" in build.CSS, "reveal, static"
     assert ".rerun .offer.served .runhere { display:inline; }" in build.CSS
-    assert ".rerun .offer.served .cmdpeek" in build.CSS, "served, no command is shown"
+    assert ".rerun .offer.served .plainword { display:none; }" in build.CSS
     assert "offer.classList.add('served')" in build.SERVER_JS, "the probe is what flips it"
+    # And the play glyph beside it is the visible statement that this copy can run it.
+    assert 'class="runhere cmd-play" hidden' in out
+    assert "if (b.classList.contains('cmd-play')) b.hidden = false;" in build.SERVER_JS
 
 
 def test_both_editors_are_offered_and_named(tmp_path):
@@ -860,11 +885,18 @@ def test_the_web_link_is_dropped_when_the_verdict_has_none(tmp_path):
 
 def test_the_copy_button_reuses_the_one_clipboard_and_the_one_toast():
     """A second clipboard-and-toast implementation for one button is how two of them end
-    up behaving differently."""
+    up behaving differently — and it happened: there were two, they had drifted, and the
+    one *without* the `execCommand` fallback was the one on the control that only exists
+    off disk, where `navigator.clipboard` is the half that may not be there."""
     js = build.EDITOR_JS
     assert "button.copycmd" in js
-    assert js.count("function copy(") == 1
     assert js.count("toast.id = 'copy-toast'") == 1
+    assert "var copy = window.HR.copy;" in js
+    # One implementation, on HR, and it has the fallback a `file://` page needs.
+    assert build.SERVER_JS.count("function copy(") == 1
+    assert "document.execCommand('copy')" in build.SERVER_JS
+    assert "function copy(" not in js
+    assert build.APP_ENV_JS.count("navigator.clipboard") == 0
 
 
 def test_the_rebuild_command_is_never_an_interpreter_that_is_about_to_vanish():
@@ -958,7 +990,12 @@ def _as_read(html_out: str, served: bool) -> str:
     plain words behind it — so stripping the tags off the raw line renders every label
     twice. The tests read the sentence the way the browser lays it out, in one world or
     the other, because that is the thing being asserted about."""
-    drop = (r'class="cmdpeek"', r'class="plainword"') if served else (r'class="runhere"',)
+    # `reveal_html` is the one offer with two renderings left — the subject of the
+    # sentence is a control served and two plain words off disk — so it is the only thing
+    # CSS still picks between. Everything else is one control in both copies. The glyphs
+    # come out either way: they carry no text a reader reads in the sentence.
+    drop = [r'class="plainword"'] if served else [r'class="runhere"']
+    drop += [r'class="copycmd cmd-copy"', r'class="runhere cmd-play"']
     for cls in drop:
         html_out = re.sub(r'<(button|span)[^>]*' + cls + r'[^>]*>.*?</\1>', '',
                           html_out, flags=re.S)
@@ -977,7 +1014,9 @@ def test_the_offer_to_start_over_runs_the_restore_the_redraw_and_the_re_render(t
     with a green tick beside it: the picture in the page is an inlined SVG, and only
     `drawio-diff.py` rewrites it."""
     out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
-    line = re.search(r'id="redraw-conceptual"[^>]*><code>(.*?)</code>', out, re.S).group(1)
+    line = html.unescape(re.search(
+        r'offer-words" data-action="drawio-redraw:conceptual" data-copy="(.*?)" data-tip',
+        out, re.S).group(1))
     assert "git checkout origin/main -- docs/CM.drawio.png" in line
     assert "docs/patch.py" in line
     assert RERUN["command"] in line, "the picture on the page is re-rendered too"
@@ -992,17 +1031,27 @@ def test_starting_over_is_the_same_offer_in_the_same_shape(tmp_path):
     assert ">start over</button>" in sentence
     assert 'data-action="drawio-redraw:conceptual"' in sentence, \
         "it runs through the review server like the other offer, not only in a terminal"
-    fold = re.search(r'id="redraw-conceptual".*?</div>', out, re.S).group(0)
-    assert "git checkout origin/main" in fold and "Copy" in fold
-    assert "runhere" not in fold, "nothing runs from inside a fold any more"
+    # The glyphs beside it, like every other command on the page: a clipboard in both
+    # copies of the report, and a play the probe raises where there is a server.
+    after = out[out.index(">start over</button>"):]
+    glyphs = after[:after.index("</span>") + 7]
+    assert 'class="copycmd cmd-copy"' in glyphs
+    assert 'class="runhere cmd-play" hidden' in glyphs
+    assert glyphs.count('data-action="drawio-redraw:conceptual"') == 1
+    assert "git checkout origin/main" in glyphs, "in the hover, not in the text"
+    assert "<code>" not in glyphs
 
 
-def test_the_two_folds_are_opened_by_id_and_not_by_position(tmp_path):
-    """Two commands under one picture: "the first .cmdline in here" would open the one
-    that re-renders when the reader asked for the one that starts over."""
+def test_each_offer_carries_its_own_command_and_not_the_neighbours(tmp_path):
+    """Two commands under one picture, and they used to live in two folds keyed by id
+    because "the first .cmdline in here" would open the one that re-renders when the reader
+    asked for the one that starts over. There are no folds now — each offer wears its own
+    clipboard — so the thing to pin is that the two clipboards differ."""
     out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
-    assert 'aria-controls="cmd-conceptual"' in out
-    assert 'aria-controls="redraw-conceptual"' in out
+    copied = {html.unescape(c) for c in re.findall(r'data-copy="(.*?)"', out, re.S)}
+    assert len(copied) == 2, "one command per offer, and they are not the same command"
+    assert any("git checkout" in c for c in copied)
+    assert sum("drawio-diff.py" in c for c in copied) == 2, "both end in the re-render"
 
 
 def test_a_repository_that_declared_no_redraw_is_offered_none(tmp_path):
@@ -1024,17 +1073,19 @@ def test_the_undo_offer_names_all_four_stages(tmp_path):
     at build time, so an undo that stopped at the file would leave the reader looking at
     their own layout with the committed one on disk."""
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
-    fold = re.search(r'id="undo-conceptual" hidden><code>(.*?)</code>', out, re.S).group(1)
-    assert "cd /repo" in fold and "git stash push" in fold
-    assert REVERT["sha"] in fold, "the fold names the revision, so a step too far is walkable"
-    assert RERUN["command"] in fold and REBUILD in fold
+    line = html.unescape(re.search(
+        r'offer-words" data-action="drawio-undo:conceptual" data-copy="(.*?)" data-tip',
+        out, re.S).group(1))
+    assert "cd /repo" in line and "git stash push" in line
+    assert REVERT["sha"] in line, "it names the revision, so a step too far is walkable"
+    assert RERUN["command"] in line and REBUILD in line
 
 
 def test_the_undo_offer_says_where_the_layout_goes_before_it_is_clicked(tmp_path):
     """The reassurance is the whole reason this is a stash and not a checkout, and a reader
     weighing an undo needs it *before* pressing, not in a paragraph underneath."""
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT)
-    tip = re.search(r'data-action="drawio-undo:conceptual" data-tip="([^"]*)"', out).group(1)
+    tip = re.search(r'offer-words" data-action="drawio-undo:conceptual"[^>]*? data-tip="([^"]*)"', out).group(1)
     assert "stash" in tip
 
 
@@ -1055,10 +1106,13 @@ def test_both_ways_back_are_one_short_sentence(tmp_path):
     line = re.search(r'<p class="dgm-open">(.*?)</p>',
                      _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW),
                      re.S).group(1)
-    assert _as_read(line, served=True).endswith(
-        "click here to update the report.You can undo your edits or start over.")
-    assert _as_read(line, served=False).endswith(
-        "run this to update the report.You can undo your edits or start over.")
+    # And the same words in both copies. `click here` / `run this` was a sentence that
+    # quietly read differently depending on where the reader opened the file; what differs
+    # now is only what the click does — it runs where there is a server, and copies the
+    # command where there is not.
+    for served in (True, False):
+        assert _as_read(line, served=served).endswith(
+            "click here to update the report.You can undo your edits or start over.")
 
 
 def test_the_hover_is_where_the_two_ways_back_are_told_apart(tmp_path):
@@ -1066,10 +1120,10 @@ def test_the_hover_is_where_the_two_ways_back_are_told_apart(tmp_path):
     line no longer says. So the tooltips have to: one keeps the branch's own layout and
     banks the edits, the other goes to the base and lets the script restage its to-do."""
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW)
-    undo = re.search(r'data-action="drawio-undo:conceptual" data-tip="([^"]*)"', out).group(1)
-    over = re.search(r'data-action="drawio-redraw:conceptual" data-tip="([^"]*)"', out).group(1)
+    undo = re.search(r'offer-words" data-action="drawio-undo:conceptual"[^>]*? data-tip="([^"]*)"', out).group(1)
+    over = re.search(r'offer-words" data-action="drawio-redraw:conceptual"[^>]*? data-tip="([^"]*)"', out).group(1)
     assert REVERT["short"] in undo and "stash" in undo
-    btn = re.search(r'data-action="drawio-undo:conceptual"[^>]*'
+    btn = re.search(r'offer-words" data-action="drawio-undo:conceptual"[^>]*'
                     r'data-tip-served="([^"]*)"', out).group(1)
     assert REVERT["short"] in btn, "the served hover is the one most readers ever see"
     assert REDRAW["base"] not in undo, "the one way back that names no base ref"
@@ -1083,11 +1137,19 @@ def test_no_undo_is_offered_for_a_diagram_with_nothing_committed(tmp_path):
     assert "undo your edits" not in out and "drawio-undo" not in out
 
 
-def test_a_folded_command_is_actually_folded(tmp_path):
-    """`display:flex` on a class beats the browser's own `[hidden] { display:none }`, so
-    both commands were folded in the markup and open on the screen, one under the other —
-    which read as the same line printed twice."""
-    assert ".rerun .cmdline[hidden] { display:none; }" in build.CSS
-    body = build.CSS[build.CSS.index(".rerun .cmdline {"):]
-    assert body.index("[hidden]") < body.index(".rerun code"), \
-        "after the rule it has to beat, or specificity decides it the other way"
+def test_the_play_glyph_is_hidden_by_the_attribute_and_not_by_a_class(tmp_path):
+    """What this replaces: a fold whose `display:flex` beat the browser's own
+    `[hidden] { display:none }`, so both commands were folded in the markup and open on
+    the screen, one under the other, reading as the same line printed twice.
+
+    The lesson survives the fold. `.cmd` is `inline-flex`, and the play glyph inside it is
+    hidden with the `hidden` attribute — so no rule in this stylesheet may give the glyph
+    itself a `display`, or the attribute stops working and every static copy of the report
+    grows a button that cannot do anything."""
+    css = build.CSS
+    glyph_rules = [r for r in css.split("}") if ".cmd-play" in r and "@media" not in r]
+    assert glyph_rules, "the glyph has to be styled somewhere"
+    for rule in glyph_rules:
+        assert "display:" not in rule, f"a display on the glyph defeats [hidden]: {rule}"
+    out = _widget_with(tmp_path, rerun=RERUN)
+    assert 'class="runhere cmd-play" hidden' in out

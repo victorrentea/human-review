@@ -188,10 +188,10 @@ def test_every_verb_starts_hidden_and_is_raised_by_the_probe(tmp_path):
         assert " hidden " in tag and 'aria-disabled="true"' in tag
 
 
-def test_off_disk_the_command_replaces_the_verbs_instead_of_standing_beside_them(tmp_path):
+def test_off_disk_the_verbs_are_hidden_and_the_commands_are_the_route(tmp_path):
     """Off disk nothing in the row can run: no process here runs a command, and Reset has
-    nothing to reset until one has. One offer in the register that copy of the report can
-    honour — not greyed buttons above the command that replaces them.
+    nothing to reset until one has. So the verbs are hidden — a control that always fails
+    is worse than an absent one — and the commands underneath are the route.
 
     Both halves are in the markup because the same file is opened both ways and only the
     script knows which; the stylesheet hides the half that would be lying."""
@@ -201,19 +201,44 @@ def test_off_disk_the_command_replaces_the_verbs_instead_of_standing_beside_them
     assert "appenv-start" in out and "appenv-manual" in out
     for cls in ("appenv-start", "appenv-stop", "appenv-reset"):
         assert f".appenv:not(.appenv-served) .{cls}" in build.CSS
-    assert ".appenv.appenv-served .appenv-manual { display:none; }" in build.CSS
 
 
-def test_the_command_sits_on_its_own_line_with_nothing_introducing_it(tmp_path):
-    """A line that is visibly a shell command does not need "run this in a terminal to
-    start it" in front of it — that was the page reading itself out loud."""
+def test_served_the_commands_stay_beside_the_verbs(tmp_path):
+    """This used to be hidden the moment the probe answered, on the reasoning that a shell
+    line beside a button that already does the job is noise. It is not noise to the reader
+    this page is written for: they have a terminal open next to it, half of what they do
+    with the stack is not on this row, and hiding it made "what does this button actually
+    run" a question with no answer in the copy where the button works."""
+    assert ".appenv.appenv-served .appenv-manual" not in build.CSS
+    s = _video_dir(tmp_path, filmed=True)
+    s["runtime"] = {"command": "up", "stop": "down", "urlCommand": "where"}
+    out = build.video_html(s, tmp_path)
+    # All three, not just `up`. `stop` and `where` were declared for the buttons and never
+    # shown to anybody, so the one reader who needed to know how the host is asked where
+    # the stack is answering had to read the manifest to find out.
+    for verb in ("start", "stop", "where"):
+        assert f'<span class="appenv-verb">{verb}</span>' in out
+    # And each of them is the one command renderer, with a play the probe raises.
+    assert out.count('class="copycmd cmd-copy"') == 3
+    assert out.count('class="runhere cmd-play" hidden') == 3
+
+
+def test_the_command_is_a_clipboard_and_not_a_line_of_text(tmp_path):
+    """It used to be printed here, and a `cd … && ./start-docker.sh up --ref abc123` was
+    the widest thing in the Demo tab and was read exactly once. What the row carries now is
+    the affordance, labelled with the verb; the line is in the glyph's hover."""
     s = _video_dir(tmp_path, filmed=True)
     s["runtime"] = {"command": "./start-docker.sh up"}
     out = build.video_html(s, tmp_path)
     assert out.index("appenv-run") < out.index("appenv-manual")
     assert "Run this in a terminal" not in out
-    assert '<p class="appenv-manual"><code>./start-docker.sh up</code>' in out
-    assert "appenv-copy" in out
+    assert "<code>./start-docker.sh up</code>" not in out
+    assert '<span class="appenv-verb">start</span>' in out
+    # The clipboard is `command_html`'s now, through the page's one copy-and-toast handler.
+    # A second implementation for one button is how two of them end up behaving differently.
+    assert "appenv-copy" not in out
+    assert 'data-copy="./start-docker.sh up"' in out
+    assert "Copy command to paste in terminal" in out
 
 
 def test_the_stop_control_appears_only_when_a_command_is_declared(tmp_path):
@@ -221,10 +246,12 @@ def test_the_stop_control_appears_only_when_a_command_is_declared(tmp_path):
     s["runtime"] = {"command": "up", "stop": "./start-docker.sh down --ref abc"}
     out = build.video_html(s, tmp_path)
     assert "appenv-stop" in out and ">Stop<" in out
-    # The command itself never reaches the page: the button sends the id of the action and
-    # the server holds the line.
-    assert "start-docker.sh down" not in out
+    # The command is printed for the reader now — but the *button* still sends only the id
+    # of the action, and the server holds the line. Showing a command and accepting one
+    # from the page are different things, and it is the second that was never on offer.
+    assert "start-docker.sh down" in out
     assert build.ACTIONS["demo-env-stop"]["command"] == "./start-docker.sh down --ref abc"
+    assert 'data-action="demo-env-stop"' in out
 
 
 def test_the_reset_control_appears_only_when_an_endpoint_is_declared(tmp_path):

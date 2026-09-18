@@ -318,6 +318,13 @@ in a red band under the header rather than leaving the reader guessing, and only
 a time **across both** — a second click joins the run in flight, and a click that asked for
 the free half never starts the paid one.
 
+**The free rerun is offered a second time, in the aftermath band.** A red band says a human
+moved the code after the review was written, and there are two honest answers to that, as
+two buttons: **Revert it** and **Regenerate the report**. The second is this same Rerun,
+offered from the place the reader is actually looking at the problem — so when the commits
+were legitimate (the infrastructure cherry-pick that had to land here), catching the page up
+does not mean scrolling back to the header. Nothing for you to write: the band renders both.
+
 That is the loop for "the branch moved, catch the page up", and it is the reason to prefer it
 over a terminal: the three commands are one command here, and the one it runs is the one that
 cannot cost anything.
@@ -328,6 +335,20 @@ it: the machine half of this skill is reproducible and free, the model half is n
 typing the commands by hand is how the two ended up being run together every time somebody
 wanted a page refreshed. `--steps` exists so "refresh the page" never silently means
 "record the feature film again".
+
+### Every command the page offers, it offers the same way
+
+Anywhere the page offers an action that is a shell command underneath, the offer wears a
+**copy glyph** and — served — a **play glyph**. The command itself is *not printed on the
+page*; it is in the copy glyph's hover. A click on the offer runs it where there is a server
+and copies it where there is not, so a reader with a terminal open beside the page always
+has the line and a reader with a server always has the button, and neither has to know which
+copy of the report they are on.
+
+This matters to you only as things not to do. Do not write "run this in a terminal" into a
+lede. Do not retype a command into `content.json` — declare it (`runtime`, a diagram's
+`rerun`) and let the renderer wear it. Do not describe what the glyphs do: the hovers say
+it, and a sentence repeating them is the page reading itself out loud.
 
 The refresh pins the build to the session that did the work (`.human-review/.session`),
 because a build run in a later session cannot recompute what the first one spent and a page

@@ -328,27 +328,24 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
 .rband li { font-size:.86rem; line-height:1.65; }
 .rband li + li { margin-top:.35rem; }
 .rband code { font-size:.95em; }
-.rband .rb-files { color:var(--muted); font-size:.82rem; display:block; }
 .rband .rb-gen { color:var(--muted); }
-/* The revert offer inside a commit's row. The display rules are the same pair the offers
-   under a diagram use — one route on show, and the probe picks which — but those are
-   scoped to `.rerun`, and a control that looks like two controls off disk is exactly the
-   failure that scoping caused here the first time. */
-.rband .offer .runhere { display:none; }
-.rband .offer.served .runhere { display:inline; }
-.rband .offer.served .cmdpeek { display:none; }
-.rband .runhere, .rband .cmdpeek { cursor:pointer; font:inherit; font-size:.84rem;
-            color:var(--fg); font-weight:600; background:none; border:0; padding:0;
-            margin-left:.5rem; text-decoration:underline; text-underline-offset:2px; }
-.rband .runhere:hover, .rband .cmdpeek:hover { text-decoration-thickness:2px; }
-.rband .cmdline { display:flex; align-items:flex-start; gap:.5rem; margin-top:.35rem; }
-.rband .cmdline[hidden] { display:none; }
-.rband .cmdline code { flex:1; min-width:0; overflow-x:auto; white-space:pre;
-            display:block; background:var(--card); border:1px solid var(--line);
-            border-radius:5px; padding:.35rem .5rem; font-size:.78rem; }
-.rband .cmdline button { flex:none; margin:0; font-weight:400; color:var(--muted);
-            text-decoration:none; background:var(--card); border:1px solid var(--line);
-            border-radius:5px; padding:.35rem .55rem; }
+/* The two things to do about a commit that landed after the review was written: take it
+   back, or make the rest of the page catch up with it. They are buttons on a row of their
+   own under the commit, not underlined words inside the sentence — an inline link in a red
+   band carries the same weight as the prose around it and gets read as part of it, and
+   these two are what the band is *for*. */
+.rband .rb-actions { display:flex; flex-wrap:wrap; gap:.45rem .8rem; margin:.4rem 0 0; }
+.rband .rb-act { display:inline-flex; align-items:center; gap:.3rem; }
+.rband .offer-pill { cursor:pointer; font:inherit; font-size:.82rem; font-weight:600;
+            color:var(--fg); background:var(--card); border:1px solid var(--line);
+            border-radius:999px; padding:.26rem .8rem; text-decoration:none; }
+.rband .offer-pill:hover:not(:disabled) { border-color:var(--link);
+            background:var(--accent-soft); }
+.rband .offer-pill:disabled { cursor:progress; color:var(--muted); }
+/* The sha carries the file list in its hover now, so it has to look askable. A dotted
+   underline and nothing louder: it is still a sha, and the page is full of them. */
+.rband li > code[data-tip] { cursor:help; text-decoration:underline dotted;
+            text-underline-offset:2px; }
 .rband-alert { border-color:#c62828; background:rgba(198,40,40,.07); }
 .rband-alert > p:first-child b, .rband-alert > p:first-child { color:#c62828; }
 .rband-warn { border-color:var(--drift); background:rgba(181,115,10,.07); }
@@ -706,48 +703,74 @@ pre.code code { white-space:pre; }
 .dgm-open a { color:var(--fg); font-weight:600; text-decoration:underline;
               text-underline-offset:2px; }
 .dgm-open a:hover { text-decoration-thickness:2px; }
-/* The command that re-draws the picture above. It sits under the diagram rather than in
-   a README because the reader who needs it is the reader who has just been told, inside
-   the picture, to go and re-lay the thing out by hand — and a rebuild step they have to
-   go and look up is a rebuild step that does not happen. One line, selectable, with the
-   button that puts it on the clipboard. */
+/* What to do about the picture above. It sits under the diagram rather than in a README
+   because the reader who needs it is the reader who has just been told, inside the
+   picture, to go and re-lay the thing out by hand — and a rebuild step they have to go
+   and look up is a rebuild step that does not happen. A sentence, with the offers inside
+   it; the commands behind them are in their copy glyphs' hovers.
+
+   There used to be a fold here with three `&&`-joined stages in it, which were the longest
+   lines on this page by a factor of five, in a box the reader had to open, for the sake of
+   a paste. */
 .rerun { margin:.6rem .6rem .1rem; font-size:.78rem; color:var(--muted); line-height:1.6; }
 .rerun .dgm-open { margin:0; }
-.rerun .cmdline { display:flex; align-items:flex-start; gap:.5rem; margin-top:.35rem; }
-/* `display:flex` on a class beats the browser's own `[hidden] { display:none }`, so a
-   folded command was folded in the markup and open on the screen — both of them, one
-   under the other, reading as the same line printed twice. Specificity, not the fold. */
-.rerun .cmdline[hidden] { display:none; }
-.rerun code { flex:1; min-width:0; overflow-x:auto; white-space:pre; display:block;
-              background:var(--code-bg); border:1px solid var(--rule); border-radius:5px;
-              padding:.4rem .55rem; font-size:.94em; }
-.rerun .cmdline button { flex:none; cursor:pointer; font:inherit; color:var(--muted);
-                background:var(--code-bg); border:1px solid var(--rule); border-radius:5px;
-                padding:.4rem .6rem; }
-.rerun .cmdline button:hover { color:var(--fg); border-color:var(--muted); }
-/* The two offers inside the sentence are worded as things you do, not as things you
-   press, so they are dressed as the draw.io links beside them and not as buttons: three
-   boxed controls in one line under a picture read as a toolbar, which is exactly what
-   this line stopped being. `button` and not `a` because neither goes anywhere. */
-.rerun .dgm-open .runhere, .rerun .cmdpeek { cursor:pointer; font:inherit; color:var(--fg);
+/* ---------------------------------------------------------------------------------
+   The affordances of a command, beside the control that describes it. Two glyphs and
+   nothing else: the command itself is not printed anywhere on the page, because a
+   two-hundred-character absolute path in the middle of a sentence is a wall the eye has
+   to climb on every read, for the benefit of the one reader in ten who wants to paste it.
+   It is in the copy glyph's hover, which is where that reader looks.
+
+   One rule set, because there is one `command_html` and the point of it is that the
+   reader learns this pair once: a clipboard means "copy the line", a play means "and this
+   copy of the report can run it". */
+.cmd { display:inline-flex; align-items:center; gap:.2rem; vertical-align:baseline; }
+.cmd .cmd-copy, .cmd .cmd-play { font:inherit; font-size:.92em; line-height:1.15;
+            cursor:pointer; color:var(--muted); background:var(--card);
+            border:1px solid var(--line); border-radius:999px; padding:.1rem .4rem;
+            text-decoration:none; font-weight:400; }
+.cmd .cmd-copy:hover, .cmd .cmd-play:hover { color:var(--fg); border-color:var(--muted);
+            background:var(--accent-soft); }
+/* Green, and the only green glyph on this page that is not a passing check — which is
+   exactly why it earns the exception: it says "something can happen here", and the reader
+   has already learnt that green in the masthead's `served` badge. */
+.cmd .cmd-play { color:#2e7d32; border-color:#2e7d32; }
+.cmd .cmd-play:hover { color:#2e7d32; border-color:#2e7d32; }
+@media (prefers-color-scheme: dark) {
+  .cmd .cmd-play { color:#6bd48a; border-color:#3f7f52; }
+  .cmd .cmd-play:hover { color:#6bd48a; border-color:#6bd48a; } }
+.cmd .cmd-play[disabled], .cmd .cmd-copy[disabled] { cursor:progress; }
+/* A glyph mid-run, without the glyph becoming a word: this is a pill one character wide
+   and "Running…" in it would reflow the line it sits in. */
+.cmd .cmd-play.running { animation:hrspin .9s linear infinite; }
+@media (prefers-reduced-motion:reduce) { .cmd .cmd-play.running { animation:none; } }
+/* The offers inside the sentence are worded as things you do, not as things you press, so
+   they are dressed as the draw.io links beside them and not as buttons: three boxed
+   controls in one line under a picture read as a toolbar, which is exactly what this line
+   stopped being. `button` and not `a` because neither goes anywhere. */
+/* `:not(.cmd-play)` is load-bearing, not defensive. A play glyph is also a `.runhere` —
+   that is how the page's one handler runs it — and this rule and the glyph's own pill are
+   the same specificity, so whichever came later in the stylesheet won. This one comes
+   later, so without the exclusion every ▶ under a diagram lost its border, its background
+   and its padding and read as a stray character in the sentence. */
+.rerun .runhere:not(.cmd-play) { cursor:pointer; font:inherit; color:var(--fg);
               font-weight:600; background:none; border:0; padding:0;
               text-decoration:underline; text-underline-offset:2px; }
-.rerun .dgm-open .runhere:hover, .rerun .cmdpeek:hover { text-decoration-thickness:2px; }
+.rerun .runhere:not(.cmd-play):hover { text-decoration-thickness:2px; }
 /* A sentence of its own, and a sentence's worth of air before it: the offer that throws
    work away is found by the reader who goes looking for it rather than met by the reader
    who does not. */
 .rerun .rerun-back::before { content:"\\00a0\\00a0"; }
-/* One route on show, and it is the one that works where the page is being read. `click
-   here (or run this)` offered both at once, which meant every reader was shown the route
-   they could not take: off disk the button is a promise the page cannot keep, and served,
-   the shell command is a line of noise beside a control that already runs it. So the pair
-   is rendered and the probe picks — `run this` until a server answers for that action,
-   `click here` after. No chevron on the fold: its state is the command box itself, which
-   is either under the sentence or not, and a mark repeating that is the page narrating
-   itself. */
+/* `reveal_html` is the one offer left with two renderings — the *subject* of the sentence
+   is the control ("this diagram"), and where nothing can run, two words are two words
+   again rather than a control explaining why it does not work. Every other offer under
+   this picture is one control in both copies; only the click differs. */
 .rerun .offer .runhere { display:none; }
 .rerun .offer.served .runhere { display:inline; }
-.rerun .offer.served .cmdpeek, .rerun .offer.served .plainword { display:none; }
+.rerun .offer.served .plainword { display:none; }
+/* The glyphs sit inside a sentence here, and the sentence is .78rem: a pill sized off the
+   text keeps the line height it already had. */
+.rerun .cmd { margin-left:.25rem; }
 /* Progressive disclosure: the diagram arrives simplified, and an arrow that has more
     to say is clickable. The hit area is a transparent rect the script lays under each
     such arrow, so the whole band — label, line, marker — answers to one click. */
@@ -1046,9 +1069,15 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
 /* The state and the address sit where the row starts reading, not off at the far right:
     there is at most one of them at a time, and it is the subject of the verbs after it. */
 .appenv .appenv-at { display:flex; gap:.35rem; align-items:center; min-width:0; }
-.appenv .appenv-manual { display:flex; gap:.4rem; align-items:center; margin:0;
-    min-width:0; color:var(--fg); }
-.appenv .appenv-manual code { overflow-x:auto; white-space:nowrap; flex:1; min-width:0; }
+/* One clipboard per command, each labelled with the verb it is the long form of: `start`,
+    `stop`, `where`. The verbs match the buttons in the row above, so the two halves line
+    up by eye without a heading saying so — and this row is the one that is there in both
+    copies of the report, which is why the labels are words rather than icons. */
+.appenv .appenv-manual { display:flex; flex-wrap:wrap; gap:.3rem .9rem; margin:.25rem 0 0;
+    align-items:center; color:var(--fg); }
+.appenv .appenv-cmd { display:inline-flex; align-items:center; gap:.28rem; }
+.appenv .appenv-verb { color:var(--muted); font-size:11.5px; letter-spacing:.06em;
+    text-transform:uppercase; }
 .appenv button { font:inherit; cursor:pointer; border:1px solid var(--line); border-radius:4px;
     background:var(--bg); color:var(--fg); padding:.2rem .55rem; white-space:nowrap; }
 .appenv button:hover { background:var(--accent-soft); }
@@ -1058,13 +1087,17 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
     text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .appenv .appenv-url:hover { text-decoration:underline; }
 /* Off disk no verb in this row can run: there is no process here to run a command, and
-    Reset needs one to have been started. So the command takes their place rather than
-    standing beside them greyed — one route offered once, instead of the same offer made
-    twice in two registers. Served, the command goes the other way for the same reason. */
+    Reset needs one to have been started. So the verbs are hidden there — a control that
+    always fails is worse than an absent one — and the commands underneath are the route.
+    Served, the verbs come up and the commands **stay**: that is the one thing about this
+    row that changed. Hiding them was defended as removing noise beside a button that
+    already does the job, but it made "what does this button actually run" a question with
+    no answer in the copy where the button works, and it deleted the `stop` and `where`
+    lines from the reader who has a terminal open beside the page — which is most of them.
+    The play glyph on each command is what says the verbs above are live. */
 .appenv:not(.appenv-served) .appenv-start,
 .appenv:not(.appenv-served) .appenv-stop,
 .appenv:not(.appenv-served) .appenv-reset { display:none; }
-.appenv.appenv-served .appenv-manual { display:none; }
 /* Three states, and the page must never claim the third without having asked: unknown
     until the probe answers, then live — where the address speaks for it and the pill
     steps out of the way — or down, where "Offline" is the whole truth there is. */
@@ -1643,13 +1676,23 @@ SERVER_JS = """<script>
 window.HR = (function () {
   var caps = null, settled = false, waiting = [];
 
-  var ready = fetch('/__human_review__', {cache: 'no-store'})
+  // `file:` and nothing else. The *general* protocol check is the bug this whole probe
+  // replaced — the demo on GitHub Pages is https, so `location.protocol === 'http:'` said
+  // "not served" about a page that was, and `=== 'https:'` would say "served" about one
+  // that is not. `file:` is different in kind: a page read off disk cannot have been
+  // served by us under any circumstances, and fetching a relative URL from it is not a
+  // failed probe, it is a request the browser refuses and logs as an error in the console
+  // of every reader who opens the guide off disk. Skipping it is the difference between a
+  // clean console and one red line that means nothing.
+  var ready = (location.protocol === 'file:' ? Promise.resolve(null)
+    : fetch('/__human_review__', {cache: 'no-store'})
     .then(function (r) { return r.ok ? r.json() : null; })
     // `humanReview` present, or this is somebody else's JSON on somebody else's port.
     .then(function (j) { return (j && j.humanReview) ? j : null; })
-    // A file:// page cannot fetch at all, and that throw is the *normal* path for a
-    // guide read off disk or out of the zip. It is not a failure to report.
-    .catch(function () { return null; })
+    // And a fetch that failed for any other reason — no server on this port, somebody
+    // else's server, a reap mid-load — is the same answer: not served. It is the normal
+    // path out of the zip and off GitHub Pages, not a failure to report.
+    .catch(function () { return null; }))
     .then(function (j) {
       caps = j; settled = true;
       waiting.splice(0).forEach(function (fn) { try { fn(j); } catch (e) {} });
@@ -1761,6 +1804,33 @@ window.HR = (function () {
     }).then(function (first) { return poll(first, onprogress); });
   }
 
+  // The clipboard, once, for the whole page.
+  //
+  // `navigator.clipboard` is not available on a `file://` page in every browser — and a
+  // page read off disk is precisely the copy whose only route is the clipboard, so the
+  // fallback is not a nicety there, it is the feature. A hidden textarea and
+  // `document.execCommand('copy')` is the one thing that works in that case.
+  //
+  // Here rather than in each script that needs it: there were two of these, they had
+  // drifted (one had the fallback, one did not), and the one without it was the one on the
+  // control that only exists off disk.
+  function copy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(fallback);
+    }
+    return Promise.resolve(fallback());
+    function fallback() {
+      var box = document.createElement('textarea');
+      box.value = text;
+      box.setAttribute('readonly', '');
+      box.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(box);
+      box.select();
+      try { document.execCommand('copy'); } catch (e) { /* nothing else to try */ }
+      box.remove();
+    }
+  }
+
   // The last line the command has printed, for a control with room for one line.
   function tail(snap) {
     var lines = (snap.output || '').split('\\n');
@@ -1845,11 +1915,17 @@ window.HR = (function () {
         || b.getAttribute('data-tip'));
       var offer = b.closest ? b.closest('.offer') : null;
       if (offer) offer.classList.add('served');
+      // The play glyph beside a printed command. It ships `hidden` in every copy of the
+      // report — a glyph that says "this runs here" on a page with nothing behind it is a
+      // lie in one character — and this is the line that raises it, per action, off the
+      // same answer that decides the words beside it. In the static copy nothing calls
+      // this, so the reader sees the command and its copy button and no play at all.
+      if (b.classList.contains('cmd-play')) b.hidden = false;
     });
   });
 
   return {ready: ready, can: can, onready: onready, run: run, rerun: rerun,
-          rerunAi: rerunAi, tail: tail};
+          rerunAi: rerunAi, tail: tail, copy: copy};
 })();
 </script>"""
 
@@ -2148,7 +2224,6 @@ APP_ENV_JS = """<script>
   var startBtn = bar.querySelector('.appenv-start');
   var stopBtn = bar.querySelector('.appenv-stop');
   var reset = bar.querySelector('.appenv-reset');
-  var copy = bar.querySelector('.appenv-copy');
   // Raised by the probe in SERVER_JS, never assumed: a page on GitHub Pages is https and
   // is not served by us, and the buttons here must not believe otherwise.
   var served = false;
@@ -2258,12 +2333,10 @@ APP_ENV_JS = """<script>
     return true;
   }
 
-  if (copy) copy.addEventListener('click', function () {
-    var cmd = bar.querySelector('.appenv-manual code').textContent;
-    navigator.clipboard.writeText(cmd).then(function () {
-      copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy'; }, 1200);
-    }).catch(function () { copy.textContent = 'Copy failed'; });
-  });
+  // The copy button used to be this block's own, with its own clipboard call and its own
+  // "Copied" label. It is `command_html`'s now, like every other command on the page, and
+  // handled by the one clipboard-and-toast handler in EDITOR_JS — a second implementation
+  // for one button is how two of them end up behaving differently.
 
   // While a command is in flight nothing else in the row may be pressed — a Stop sent
   // into the middle of a docker build is a half-torn-down instance nobody asked for —
@@ -2341,9 +2414,9 @@ APP_ENV_JS = """<script>
         return;
       }
       var cmd = tmpl.replace(/\\{n\\}/g, btn.dataset.n).replace(/\\{base\\}/g, base());
-      navigator.clipboard.writeText(cmd).then(function () {
+      window.HR.copy(cmd).then(function () {
         tick('&#10003;', 1400);
-      }).catch(function () { btn.title = 'could not copy'; });
+      }).catch(function () { btn.dataset.tip = 'could not copy'; });
     });
   });
 
@@ -3261,21 +3334,9 @@ EDITOR_JS = r"""<script>
   var SERVED = false;
   window.HR.onready(function (caps) { SERVED = !!caps; });
 
-  function copy(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).catch(fallback);
-    }
-    return Promise.resolve(fallback());
-    function fallback() {
-      var box = document.createElement('textarea');
-      box.value = text;
-      box.style.cssText = 'position:fixed;opacity:0';
-      document.body.appendChild(box);
-      box.select();
-      try { document.execCommand('copy'); } catch (e) { /* nothing else to try */ }
-      box.remove();
-    }
-  }
+  // One implementation, on HR, because a `file://` page needs the `execCommand` fallback
+  // and two copies of that had already drifted apart once.
+  var copy = window.HR.copy;
 
   var toast = null;
   // `sticky` is for a command that is still running: a docker build outlasts 2.6 seconds
@@ -3313,28 +3374,25 @@ EDITOR_JS = r"""<script>
   // "then reload this page" in the copy message exists to prevent.
   document.addEventListener('click', function (ev) {
     var cmd = ev.target.closest &&
-      ev.target.closest('button.copycmd, button.runhere, button.cmdpeek');
+      ev.target.closest('button.copycmd, button.runhere');
     if (!cmd) return;
-    // The fold at the end of the sentence. The command is one click away and costs the
-    // page nothing until someone asks for it.
-    if (cmd.classList.contains('cmdpeek')) {
-      // By id, not by position: a diagram block carries two of these folds — the one that
-      // re-renders and the one that throws the layout away — and "the first .cmdline in
-      // here" would open the wrong command as soon as the second offer exists.
-      var box = document.getElementById(cmd.getAttribute('aria-controls'));
-      if (!box) return;
-      var opening = box.hidden;
-      box.hidden = !opening;
-      cmd.setAttribute('aria-expanded', opening ? 'true' : 'false');
-      return;
-    }
+    // There used to be a third class here, `cmdpeek`, which opened a fold with the command
+    // in it. Both are gone: the command is not printed on the page at all any more, so
+    // there is nothing to fold and no trigger to fold it with. What is left is the offer
+    // (runs served, copies off disk) and the copy glyph beside it.
     var action = cmd.getAttribute('data-action');
     if (action && window.HR.can(action)) { rerun(cmd, action); return; }
-    // Static: the offer stays on the page and says what it needs, rather than vanishing
-    // between two copies of the same report. The line that gets the reader to served mode
-    // is already on the badge in the title row, so this points at it instead of growing a
-    // second copy of it here.
-    if (cmd.classList.contains('runhere')) {
+    // Static, and the offer knows its own command: the click *copies* it. That is the one
+    // thing this copy of the report can do with it, so it is what the click does — a
+    // control whose whole answer is a sentence explaining why it did nothing is a control
+    // the reader learns to stop pressing. The copy glyph beside it is what keeps that from
+    // being a magic trick — it is the visible statement that a click here copies something
+    // — and its hover carries the line that goes on the clipboard.
+    var runhere = cmd.classList.contains('runhere');
+    if (runhere && !cmd.getAttribute('data-copy')) {
+      // Nothing to copy — the only offers left in this state are the ones whose command
+      // lives in a fold beside them. The line that gets the reader to served mode is
+      // already on the badge in the title row, so this points at it.
       flash('This copy of the report is static, so nothing in it can run. Serve the page '
         + '\u2014 the "static" badge at the top copies the line that does \u2014 and this '
         + 'will re-render the diagram and reload.');
@@ -3346,13 +3404,25 @@ EDITOR_JS = r"""<script>
     copy(cmd.getAttribute('data-copy') || '')
       .then(function () { flash(serve
         ? 'Copied \u2014 run it in a terminal: it starts the review server and opens this page served'
-        : 'Copied \u2014 run it in a terminal, then reload this page'); });
+        : runhere
+        ? 'Copied \u2014 this copy of the report cannot run it, so run it in a terminal'
+        // The glyph, on a page that may or may not have a server. "…then reload this
+        // page" used to ride along here and was only ever true of one of the commands
+        // this now renders: `git revert` stages a diff and changes nothing the page
+        // shows. Where a reload *is* part of the job, the play glyph does it.
+        : 'Copied \u2014 paste it in a terminal'); });
   });
 
   function rerun(button, action) {
     var was = button.textContent, last = '';
+    // A play glyph is a pill one character wide; 'Running\u2026' in it would reflow the line it
+    // sits in, and 'Done' would leave a word where the reader learnt to find a mark. So
+    // the glyph spins in place and the sentence goes in the toast, which is where the
+    // progress of every other command on this page is already read.
+    var glyph = button.classList.contains('cmd-play');
     button.disabled = true;
-    button.textContent = 'Running\u2026';
+    if (glyph) button.classList.add('running');
+    else button.textContent = 'Running\u2026';
     // Two offers under the same picture run through here, and "Re-rendering the diagram"
     // over a click that has just thrown the layout away would be the page describing the
     // wrong half of what it is doing.
@@ -3364,19 +3434,26 @@ EDITOR_JS = r"""<script>
       if (line && line !== last) { last = line; flash(line, true); }
     }).then(function (done) {
       if (done.state === 'done') {
-        button.textContent = 'Done';
+        if (glyph) button.classList.remove('running');
+        else button.textContent = 'Done';
         flash('Rebuilt \u2014 reloading this page', true);
         // A beat, so the sentence is readable before the page goes. `reload()` and not a
         // cache-busting navigation: the server sends no-store for exactly this.
         setTimeout(function () { location.reload(); }, 800);
         return;
       }
-      button.disabled = false; button.textContent = was;
+      restore();
       flash(window.HR.tail(done) || ('The command exited ' + done.exit));
     }).catch(function (e) {
-      button.disabled = false; button.textContent = was;
+      restore();
       flash(e.message || 'The review server is no longer running');
     });
+
+    function restore() {
+      button.disabled = false;
+      button.classList.remove('running');
+      if (!glyph) button.textContent = was;
+    }
   }
 
   document.addEventListener('click', function (ev) {
@@ -4785,56 +4862,111 @@ def reveal_html(reveal: dict | None, name: str) -> str:
             '<span class="plainword">this diagram</span></span>')
 
 
-def _cmdfold(fold_id: str, line: str) -> str:
-    """One shell command, folded away: the box, the line, and the button that copies it.
+#: The two glyphs every command on this page wears. Characters and not SVG: they are one
+#: text node each, they inherit the pill's colour and size for free in both themes, and a
+#: page that carries eleven of these does not want eleven inline documents in it.
+CMD_COPY = "\U0001F4CB"   # 📋
+CMD_PLAY = "\u25B6"       # ▶
 
-    Nothing runs from in here. The offer to run is up in the sentence, where the reader
-    who does not want to read a shell command never has to scroll past one."""
-    return (f'<div class="cmdline" id="{html.escape(fold_id, quote=True)}" hidden>'
-            f'<code>{html.escape(line)}</code>'
-            f'<button type="button" class="copycmd" '
-            f'data-copy="{html.escape(line, quote=True)}" '
-            'data-tip="Copy the command">Copy</button></div>')
+#: What a static click does, appended to the static tooltip of any offer that carries its
+#: command. A sentence and not a word, because "copies it" leaves out the half a reader
+#: needs — that the page cannot run it here, and that the copy is therefore the offer.
+STATIC_COPIES = ("This copy of the report cannot run it, so clicking here copies the "
+                 "command instead.")
+
+#: The copy glyph's hover. Says what the click does and then the line it will put on the
+#: clipboard, which is the only place a command appears on this page in full.
+COPY_TIP = "Copy command to paste in terminal"
 
 
-def _run_or_read(fold_id: str, act: str, static_tip: str, served_tip: str,
-                 running: str = "", run_label: str = "click here",
-                 read_label: str = "run this") -> str:
-    """One offer, worded for the copy of the report it is being read in.
+def command_html(cmd: str, action_id: str | None = None, *, tip: str = "",
+                 running: str = "") -> str:
+    """The affordances of one shell command, beside the control that describes it.
 
-    Both routes are in the markup and only one of them is on screen. Off disk the page
-    says `run this` and opens the command to copy; served, the probe finds the action and
-    the words become `click here`, which runs it — and the command is not shown at all,
-    because a shell line beside a control that already runs it is noise.
+    **The command itself is not printed.** It used to be, in a parenthesis, and it was the
+    right instinct and the wrong artifact: a review page is prose and pictures, and a
+    forty-to-two-hundred-character absolute path in the middle of a sentence is a wall the
+    eye has to climb over on every read. The information was for the one reader in ten who
+    wanted to paste it, charged to all ten, forever.
 
-    It used to offer both at once, `click here (or run this)`, on the reasoning that a
-    control missing from one copy of the report teaches the reader the report is
-    unreliable. What it actually taught them was that half of every offer on the page was
-    for somebody else: on a static copy the button is a promise the page cannot keep, and
-    a reader who has a server does not want a command to paste. The honest version of that
-    principle is that *an* offer is always there, in the same place, in the same words'
-    worth of line — not that both are.
+    So what is on screen is the *offer*, not its implementation: a copy glyph, and — served
+    — a play glyph. The command lives in the copy glyph's hover, which is where a reader who
+    wants to check the line before pasting it looks, and nowhere else in the page's text.
 
-    The two labels are the same word for most callers: `undo your edits` names what the
-    offer does, so it reads correctly whether the click runs the command or opens it. Only
-    the re-render offer, whose words are a place to press rather than a name, has to say
-    `click here` served and `run this` off disk.
+    Two glyphs and not one, because they answer two different questions and only one of
+    them is always true. Copy is the route every copy of the report can honour, including
+    off disk, out of the zip and on GitHub Pages. Play is the *visible* statement that this
+    copy has a server behind it — it is not rendered at all where it would not work, so its
+    presence is information rather than decoration.
 
-    `static_tip` is therefore the tooltip of nothing: the button carrying it is not on
-    screen where it would apply. It stays in the signature because the probe swaps it in
-    the same pass either way, and a served page that loses its server mid-visit falls back
-    to a button that explains itself rather than to one that lies.
+    `action_id` is what the server will be asked for: a manifest id, or one of the two
+    server-owned verbs (`__rerun__`, `__rerun_ai__`, which `window.HR.can` answers off the
+    probe rather than out of the manifest). No id means no play glyph, which is the honest
+    rendering of a command the build did not declare — the line is real, and nothing here
+    can run it.
     """
-    return ('<span class="offer">'
-            f'<button type="button" class="runhere"{act} '
-            f'data-tip="{html.escape(static_tip, quote=True)}" '
+    quoted = html.escape(cmd, quote=True)
+    # The command in the hover, on its own line after the sentence. This is the only place
+    # it appears in full, so it is not truncated: a half-copied command in a tooltip is
+    # worse than none, because the reader cannot tell which half they are looking at.
+    copy_tip = html.escape(f"{COPY_TIP}:\n{cmd}", quote=True)
+    out = [f'<span class="cmd">'
+           f'<button type="button" class="copycmd cmd-copy" data-copy="{quoted}" '
+           f'data-tip="{copy_tip}" aria-label="{html.escape(COPY_TIP, quote=True)}">'
+           f'{CMD_COPY}</button>']
+    if action_id:
+        # `runhere` because the page's existing handler runs a `runhere` with a
+        # `data-action` through the action server — spinner, log tail and reload included.
+        # `hidden` from the start and raised by the probe, like every other control here.
+        play_tip = html.escape(
+            ((tip.rstrip(".") + ". ") if tip else "")
+            + f"Runs it through the server serving this page:\n{cmd}", quote=True)
+        out.append('<button type="button" class="runhere cmd-play" hidden '
+                   f'data-action="{html.escape(action_id, quote=True)}" '
+                   f'data-tip="{play_tip}"'
+                   + (f' data-run-say="{html.escape(running, quote=True)}"' if running else "")
+                   + f' aria-label="Run this command">{CMD_PLAY}</button>')
+    out.append('</span>')
+    return "".join(out)
+
+
+def offer_words_html(label: str, action_id: str, static_tip: str, served_tip: str,
+                     running: str = "", cmd: str = "", pill: bool = False) -> str:
+    """The words of an offer — one control, in both copies of the report.
+
+    This replaces the pair `_run_or_read` used to render. That function put *two* controls
+    in the markup and let CSS choose: `click here` served, `run this` off disk, the second
+    one opening a fold with the command in it. The whole arrangement existed to answer "the
+    command is only useful in one of the two copies", and it answered it by making the same
+    control read differently in each — so a reader could not learn the page, and "what does
+    this button run" had no answer in the copy where the button worked.
+
+    One control, and the *click* differs rather than the words:
+
+      * **served**, it runs the command through the review server;
+      * **off disk**, it copies it, with a `copied` toast. That is the only thing that copy
+        of the report can do with the command, so it is what the click does. A control
+        whose whole answer is a sentence explaining why it did nothing is a control readers
+        learn to stop pressing.
+
+    The copy glyph beside it (`command_html`) is what keeps that from being a magic trick:
+    it is the signal that a click here copies something, and its hover carries the line.
+
+    `pill` dresses it as a button rather than as an underlined word. For the offers in the
+    aftermath band, which are the page's answer to "somebody changed the code after the
+    review was written" — a fact in a red band, with two things to do about it. Inline
+    links inside that sentence were the same weight as the prose around them and were read
+    as part of it; the two things to do are the point of the band.
+    """
+    tip = f"{static_tip} {STATIC_COPIES}" if cmd else static_tip
+    cls = "runhere offer-words" + (" offer-pill" if pill else "")
+    return (f'<button type="button" class="{cls}" '
+            f'data-action="{html.escape(action_id, quote=True)}" '
+            + (f'data-copy="{html.escape(cmd, quote=True)}" ' if cmd else "")
+            + f'data-tip="{html.escape(tip, quote=True)}" '
             f'data-tip-served="{html.escape(served_tip, quote=True)}"'
             + (f' data-run-say="{html.escape(running, quote=True)}"' if running else "")
-            + f'>{html.escape(run_label)}</button>'
-            f'<button type="button" class="cmdpeek" aria-expanded="false" '
-            f'aria-controls="{html.escape(fold_id, quote=True)}" '
-            'data-tip="Show the command, to read or to paste in a terminal">'
-            f'{html.escape(read_label)}</button></span>')
+            + f'>{html.escape(label)}</button>')
 
 
 def revert_html(revert: dict | None, rerun: dict, rebuild: str,
@@ -4869,11 +5001,10 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
         return "", ""
     line = (f'cd {shlex.quote(revert["cwd"])} \\\n  && {revert["command"]} \\\n'
             f'  && {rerun["command"]} \\\n  && {rebuild}')
-    act = ""
+    aid = None
     if name:
         aid = declare_action(f"drawio-undo:{name}", line, reload=True,
                              label=f"Undo hand edits to {name} and rebuild this page")
-        act = f' data-action="{html.escape(aid, quote=True)}"'
     where = revert.get("short") or revert.get("sha", "")[:8]
     subject = revert.get("subject") or ""
     # Two different answers, and the reader is owed the difference. Landing on a drawing
@@ -4888,7 +5019,6 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
            + (f", at {where} — {subject}" if where else "") + ". It runs no script and "
            "does not go near the base. Anything still loose in the work tree is banked, "
            "not binned: `git stash pop` brings it back.")
-    fold = f"undo-{name or 'diagram'}"
     # The served hover names the target too. It is the one most readers ever see — the
     # probe swaps it in wherever the button can actually run — and "reloads with the
     # committed drawing back" told them the least at the moment they most needed to know
@@ -4898,10 +5028,10 @@ def revert_html(revert: dict | None, rerun: dict, rebuild: str,
                  if revert.get("machine_drawn") else "the previous drawing back")
               + (f" — {where}, {subject}" if where else "")
               + ". Your own edits go to the git stash.")
-    return (_run_or_read(fold, act, tip, served,
-                         "Putting the previous drawing back…",
-                         run_label="undo your edits", read_label="undo your edits"),
-            _cmdfold(fold, line))
+    return (offer_words_html("undo your edits", aid or "", tip, served,
+                             "Putting the previous drawing back…", cmd=line)
+            + command_html(line, aid, tip=served,
+                           running="Putting the previous drawing back…"), "")
 
 
 def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
@@ -4934,21 +5064,19 @@ def redraw_html(redraw: dict | None, rerun: dict, rebuild: str,
     # against.
     line = (f'cd {shlex.quote(redraw["cwd"])} \\\n  && {redraw["command"]} \\\n'
             f'  && {rerun["command"]} \\\n  && {rebuild}')
-    act = ""
+    aid = None
     if name:
         aid = declare_action(f"drawio-redraw:{name}", line, reload=True,
                              label=f"Restore {name} to its base state and redraw it")
-        act = f' data-action="{html.escape(aid, quote=True)}"'
     base = redraw.get("base") or "the base branch"
     tip = (f"Throws the hand-drawn layout away: restores the drawing to {base} and runs "
            "the repository's own script over it, which draws what the code has and the "
            "map lacks — in red, as a to-do — again.")
-    fold = f"redraw-{name or 'diagram'}"
-    return (_run_or_read(fold, act, tip,
-                         "Runs it here, then reloads with automation's drawing back",
-                         "Putting automation's drawing back…",
-                         run_label="start over", read_label="start over"),
-            _cmdfold(fold, line))
+    served = "Runs it here, then reloads with automation's drawing back"
+    return (offer_words_html("start over", aid or "", tip, served,
+                             "Putting automation's drawing back…", cmd=line)
+            + command_html(line, aid, tip=served,
+                           running="Putting automation's drawing back…"), "")
 
 
 def _ways_back(undo: str, over: str) -> str:
@@ -5010,11 +5138,10 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     # `reload`, because the last stage of this line rewrites the very file the browser is
     # displaying. Leaving the reader on the old bytes with a green tick beside them would
     # be the worst possible outcome: the page would look like it had picked the edit up.
-    act = ""
+    aid = None
     if name:
         aid = declare_action(f"drawio:{name}", line, reload=True,
                              label=f"Re-render {name} and rebuild this page")
-        act = f' data-action="{html.escape(aid, quote=True)}"'
     # `runhere` is rendered on the static page too, and says so when pressed rather than
     # being absent from it. A control that disappears between two copies of the same
     # report teaches the reader that the report is unreliable; one that explains what it
@@ -5027,23 +5154,28 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     # reader wants either way, and a button that says what it needs when pressed teaches
     # them what served mode is; a sentence that quietly reads differently in the two copies
     # of the same report teaches them the report is unreliable.
-    fold = f"cmd-{name or 'diagram'}"
     # Gentlest first. The three offers on this line go one way only — refresh the report,
     # undo my edits, start over — and a reader who stops reading partway through has
     # stopped on the milder of the two ways back, not on the one that discards the branch's
     # drawing as well as their own.
-    undo, undo_fold = revert_html(revert, rerun, rebuild, name)
-    over, over_fold = redraw_html(redraw, rerun, rebuild, name)
+    undo, _ = revert_html(revert, rerun, rebuild, name)
+    over, _ = redraw_html(redraw, rerun, rebuild, name)
+    served = "Runs it here, then reloads with the new picture"
+    # No fold any more, and nothing left to fold: the command is not printed on the page at
+    # all. The three `&&` chains under a diagram were the longest lines on this page by a
+    # factor of five, they were in a box the reader had to open, and what they were for was
+    # a paste. They are in the copy glyph's hover, where the reader who wants to paste one
+    # looks and nobody else has to.
     return ('<div class="rerun">'
             f'<p class="dgm-open">{f"Edit {it} in {edit}, then " if edit else ""}'
-            + _run_or_read(fold, act, STATIC_RUN_TIP,
-                           "Runs it here, then reloads with the new picture")
+            + offer_words_html("click here", aid if name else "", STATIC_RUN_TIP,
+                               served, cmd=line)
+            + command_html(line, aid if name else None, tip=served)
             + " to update the report."
             # Second sentence, same line: it is the same subject — this drawing, and what
             # you can do to it — and a paragraph of its own would put the offer nobody
             # takes on most visits on a line of its own under the picture.
-            + _ways_back(undo, over) + '</p>'
-            + _cmdfold(fold, line) + undo_fold + over_fold + '</div>')
+            + _ways_back(undo, over) + '</p></div>')
 
 
 def expand_drawio(text: str, out_dir: Path, root: Path, rebuild: str) -> str:
@@ -6374,20 +6506,34 @@ AFTERMATH_JSON = "aftermath.json"
 AFTERMATH_FILES = 6
 
 
-def _numstat_face(f: dict) -> str:
-    """`+18 −1`, or `binary` — the same signs the scope bar uses, for the same reason."""
-    if f.get("binary"):
-        return "binary"
+def _aftermath_files_tip(c: dict) -> str:
+    """What this commit touched, as one hover on its sha.
+
+    It used to be a line of its own under every commit — `human-review.json +18 −1` — and
+    on a branch with six commits that was six lines of filenames and arithmetic between the
+    reader and the two things they can do about any of it. The band's job is to say *that
+    the page is describing an older branch*; which file moved is the follow-up question, and
+    a follow-up question belongs on the thing it is about, which is the sha.
+
+    Plain text, not markup: a tooltip is read in one glance with a hand on the mouse."""
+    files = c.get("files") or []
+    if not files:
+        # A merge commit prints no numstat. "Nothing changed" is the wrong reading of it.
+        return "No file list — a merge, or nothing git could count."
     parts = []
-    if f.get("added"):
-        parts.append(f'<span class="added">+{f["added"]}</span>')
-    if f.get("deleted"):
-        parts.append(f'<span class="removed">−{f["deleted"]}</span>')
-    return " ".join(parts) or "no lines"
+    for f in files[:AFTERMATH_FILES]:
+        counts = " ".join(x for x in (
+            f"+{f['added']}" if f.get("added") else "",
+            f"\u2212{f['deleted']}" if f.get("deleted") else "") if x) or "no lines"
+        parts.append(f"{f['path']} {counts}"
+                     + (" (generated)" if f.get("generated") else ""))
+    if len(files) > AFTERMATH_FILES:
+        parts.append(f"and {len(files) - AFTERMATH_FILES} more")
+    return "\n".join(parts)
 
 
-def _aftermath_commit(c: dict, root: Path) -> str:
-    """One commit's row: what it is, what it touched, and the way to take it back.
+def _aftermath_commit(c: dict, root: Path, regen: str = "") -> str:
+    """One commit's row: what it is, and the two things to do about it.
 
     The revert is offered per commit rather than for the range, because the range is
     usually not what anyone wants undone: the infrastructure cherry-pick that has to land
@@ -6395,38 +6541,83 @@ def _aftermath_commit(c: dict, root: Path) -> str:
     one at a time is also the only form of this that is safe to put behind a button —
     `git revert --no-commit` stages an inverse and stops, so the click produces a diff for
     the reader to look at rather than a commit made on their behalf.
+
+    Both offers are **buttons**, side by side, rather than underlined words inside the
+    sentence. Inline links in a red band carry the same weight as the prose around them and
+    get read as part of it; the two things to do about the fact the band reports are the
+    point of the band, not a footnote to it.
     """
-    files = c.get("files") or []
-    shown = files[:AFTERMATH_FILES]
-    face = " · ".join(
-        f'<code>{html.escape(Path(f["path"]).name)}</code> {_numstat_face(f)}'
-        + (' <span class="rb-gen">generated</span>' if f.get("generated") else "")
-        for f in shown)
-    if len(files) > len(shown):
-        face += f" · and {len(files) - len(shown)} more"
-    if not files:
-        # A merge commit prints no numstat. "Nothing changed" is the wrong reading of it.
-        face = "no file list — a merge, or nothing git could count"
-    line = f'cd {shlex.quote(str(root.resolve()))} && git revert --no-commit {c["sha"]}'
+    # The short sha, not the full one. The command is what the copy glyph puts on the
+    # clipboard and what its hover shows, and a reader checking that line before pasting it
+    # stops checking at forty characters of hex. `git revert` resolves a short sha, and a
+    # prefix that is genuinely ambiguous makes git refuse loudly rather than revert the
+    # wrong commit — which is the failure mode worth having.
+    line = f'cd {shlex.quote(str(root.resolve()))} && git revert --no-commit {c["short"]}'
     aid = declare_action(f"aftermath-revert:{c['short']}", line,
                          label=f"Stage the inverse of {c['short']} in the working tree")
-    fold = f"revert-{c['short']}"
-    offer = _run_or_read(
-        fold, f' data-action="{html.escape(aid, quote=True)}"',
+    served = (f"Runs `git revert --no-commit {c['short']}` here. It stages the inverse and "
+              "stops: nothing is committed, nothing is pushed, and `git reset` undoes it.")
+    offer = offer_words_html(
+        "Revert it", aid,
         f"Stages the inverse of {c['short']} in the working tree and stops: "
         "`git revert --no-commit`. Nothing is committed and nothing is pushed — you get "
         "a diff to look at.",
-        f"Runs `git revert --no-commit {c['short']}` here. It stages the inverse and "
-        "stops: nothing is committed, nothing is pushed, and `git reset` undoes it.",
-        "Staging the inverse…", run_label="revert it", read_label="revert it")
+        served, "Staging the inverse…", cmd=line, pill=True)
     when = (c.get("when") or "")[:10]
     return ('<li>'
-            f'<code>{html.escape(c["short"])}</code> '
+            f'<code data-tip="{html.escape(_aftermath_files_tip(c), quote=True)}">'
+            f'{html.escape(c["short"])}</code> '
             f'{html.escape(c.get("subject", ""))}'
             + (f' <span class="rb-gen">{html.escape(when)}</span>' if when else "")
-            + f'<span class="rb-files">{face}</span>'
-            + offer + _cmdfold(fold, line)
+            + '<span class="rb-actions">'
+            + '<span class="rb-act">' + offer
+            + command_html(line, aid, tip=served, running="Staging the inverse…")
+            + '</span>' + regen + '</span>'
             + '</li>')
+
+
+def _regenerate_offer(out_dir: Path, root: Path) -> str:
+    """The second answer to a commit in the aftermath band, beside taking it back.
+
+    The band says a human moved the code after the review was written, and everything else
+    on the page describes the branch as the agent left it. There have always been two
+    honest responses to that and the band only offered one. *Revert it* is right when the
+    commit was a mistake. When it was not — the infrastructure cherry-pick that had to land
+    on this branch, a fix somebody made while reading — the thing wanted is not to undo it
+    but to make the rest of the page catch up with it, which is the masthead's Rerun, from
+    the place where the reader is actually looking at the problem.
+
+    A button beside the revert rather than a word inside the sentence, for the same reason
+    that one is: these two are what the band is *for*, and a reader who has just been told
+    the page describes an older branch should be able to see both answers without reading
+    the paragraph again.
+
+    `__rerun__` is not a manifest id — it is the server's own verb, and `window.HR.can`
+    answers for it off the probe. Which means the play glyph here appears under exactly the
+    same condition as the Rerun in the masthead, and the copy glyph carries the same command
+    a reader would type. One offer, two places, one command.
+    """
+    try:
+        rel = str(out_dir.resolve().relative_to(root.resolve()))
+    except ValueError:
+        rel = str(out_dir.resolve())
+    line = (f'cd {shlex.quote(str(root.resolve()))}'
+            f' && {shlex.quote(str(HERE / "refresh-report.py"))}'
+            f' --dir {shlex.quote(rel)} --steps static')
+    return ('<span class="rb-act">'
+            + offer_words_html(
+                "Regenerate the report", "__rerun__",
+                "Re-derives the evidence a program can re-derive — diagrams, complexity, "
+                "the REST contract, the logging scan, the test manifest — and rebuilds "
+                "this page around the branch as it is now. Free, and not the findings.",
+                "Rebuilds this page against the branch as it is now and reloads. The "
+                "same thing the Rerun in the header does. Free.",
+                "Rebuilding this page…", cmd=line, pill=True)
+            + command_html(line, "__rerun__",
+                           tip="Rebuilds this page against the branch as it is now and "
+                               "reloads",
+                           running="Rebuilding this page…")
+            + '</span>')
 
 
 def aftermath_html(out_dir: Path, root: Path) -> str:
@@ -6483,7 +6674,11 @@ def aftermath_html(out_dir: Path, root: Path) -> str:
         role = "status"
     return (f'<div class="rband {cls}" role="{role}">' + head
             + f'<p class="rb-sub">{sub}</p><ul>'
-            + "".join(_aftermath_commit(c, root) for c in commits)
+            # Rendered once and handed to every row: the offer is the same command however
+            # many commits landed, and the id it sends is the server's own verb rather than
+            # a per-commit action.
+            + "".join(_aftermath_commit(c, root, _regenerate_offer(out_dir, root))
+                      for c in commits)
             + '</ul></div>')
 
 
@@ -6969,12 +7164,37 @@ def runtime_html(rt) -> str:
         declare_action("cue-drive", rt["drive"], params={"n": "int", "base": "url"},
                        label="Drive the app to one caption of the walkthrough")
 
-    # The command, with no sentence introducing it. Where it shows it is the only thing
-    # in the row that does anything, and "run this in a terminal to start it" in front of
-    # a line that is visibly a shell command was the page reading itself out loud.
-    manual = (f'<p class="appenv-manual"><code>{html.escape(cmd)}</code>'
-              '<button type="button" class="appenv-copy" data-tip="Copy the command">'
-              'Copy</button></p>') if cmd else ""
+    # The commands this row is made of, as a clipboard each — and, served, a play each.
+    #
+    # In *both* copies of the report, which is the change. The stylesheet used to print the
+    # `up` line off disk and hide it the moment the probe answered, so "what does this
+    # button actually run" had no answer in the copy where the button worked. Now the
+    # affordance is there either way, and the line itself is in the glyph's hover rather
+    # than in the row: a `cd … && ./start-docker.sh up --ref abc123` printed in a bar of
+    # four controls was the widest thing in the Demo tab and was read once.
+    #
+    # All three, not just `up`. `stop` and `url` were declared for the buttons and never
+    # offered to anybody, which meant the one reader who needed to know how the host is
+    # asked where the stack is answering had to go and read the manifest.
+    rows = []
+    if cmd:
+        rows.append(("start", command_html(
+            cmd, "demo-env", tip="Starts the app and fills the address in from what it "
+            "prints", running="Starting the app…")))
+    if rt.get("stop"):
+        rows.append(("stop", command_html(rt["stop"], "demo-env-stop",
+                                          tip="Stops the app and frees its port",
+                                          running="Stopping…")))
+    if rt.get("urlCommand"):
+        rows.append(("where", command_html(
+            rt["urlCommand"], "demo-env-url",
+            tip="Asks the host where the app is already answering",
+            running="Asking the host…")))
+    manual = ('<p class="appenv-manual">'
+              + "".join(f'<span class="appenv-cmd">'
+                        f'<span class="appenv-verb">{face}</span>{box}</span>'
+                        for face, box in rows)
+              + '</p>') if rows else ""
 
     return (f'<div class="appenv" data-fallback="{html.escape(fallback)}"'
             f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}'

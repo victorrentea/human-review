@@ -45,7 +45,14 @@ PROBE = """() => {
     start: vis(q('.appenv-start')),
     stop: vis(q('.appenv-stop')),
     reset: vis(q('.appenv-reset')) ? q('.appenv-reset').textContent : null,
-    command: vis(q('.appenv-manual')) ? q('.appenv-manual code').textContent : null,
+    // The command is not printed any more: what is on screen is a clipboard per verb,
+    // with the line in its hover. So what a reader "can see" of it is which copy glyphs
+    // are there and what each one would put on the clipboard.
+    commands: [...document.querySelectorAll('.appenv-cmd')]
+      .filter(vis)
+      .map(e => [e.querySelector('.appenv-verb').textContent,
+                 e.querySelector('.cmd-copy').getAttribute('data-copy'),
+                 vis(e.querySelector('.cmd-play'))]),
   };
 }"""
 
@@ -112,6 +119,10 @@ def test_offline_says_offline_and_shows_no_address(row):
     # The one verb that changes what the row just said, and nothing that acts on an app
     # that is not there.
     assert seen["start"] and not seen["stop"] and seen["reset"] is None
+    # And the clipboards are there in this copy too. (Whether the play beside each one is
+    # on screen is SERVER_JS's answer, which this page deliberately stubs out — see
+    # test_command_html.py for the raising and the real page for the effect.)
+    assert [c[0] for c in seen["commands"]] == ["start", "stop"]
 
 
 def test_live_shows_the_address_as_a_link_into_a_new_tab(row):
@@ -122,15 +133,18 @@ def test_live_shows_the_address_as_a_link_into_a_new_tab(row):
     assert seen["state"] is None
     assert seen["url"] == ["http://localhost:4200", "http://localhost:4200", "_blank"]
     assert not seen["start"] and seen["stop"] and seen["reset"] == "Reset DB"
+    assert [c[0] for c in seen["commands"]] == ["start", "stop"]
 
 
-def test_off_disk_the_command_stands_where_the_verbs_would_be(row):
+def test_off_disk_the_clipboard_stands_where_the_verbs_would_be(row):
     """No process here runs a command, so Start and Stop cannot work and Reset has nothing
-    to reset. One offer, in the register this copy of the report can honour."""
+    to reset. What is left is the clipboard for each command, with no play beside it —
+    which is the honest statement that this copy of the report cannot run them."""
     seen = row(served=False, live=False)
     assert seen["state"] == "Offline"
     assert not seen["start"] and not seen["stop"] and seen["reset"] is None
-    assert seen["command"] == RUNTIME["command"]
+    assert seen["commands"] == [["start", RUNTIME["command"], False],
+                                ["stop", RUNTIME["stop"], False]]
 
 
 def test_off_disk_an_app_that_is_up_is_still_reported(row):
@@ -139,7 +153,8 @@ def test_off_disk_an_app_that_is_up_is_still_reported(row):
     — otherwise every link in the narration looks dead while it works."""
     seen = row(served=False, live=True)
     assert seen["url"] == ["http://localhost:4200", "http://localhost:4200", "_blank"]
-    assert seen["command"] == RUNTIME["command"], "still the only way to have started it"
+    assert seen["commands"][0] == ["start", RUNTIME["command"], False], \
+        "still the only way to have started it"
 
 
 SPINNER = """() => {

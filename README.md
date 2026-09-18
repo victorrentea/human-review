@@ -225,6 +225,55 @@ launches the paid one: a click that asked for the free half cannot spend money).
 carries a spinner while it works, and a rebuild that failed puts the program's last lines in
 a red band under the header instead of leaving you to go and look.
 
+### Commands: copy everywhere, play when served
+
+Every control on this page that is a shell command underneath wears the same two marks, in
+both copies of the report: a **copy glyph** (📋) and — served only — a **play glyph** (▶).
+
+```
+753f724c  Let the review run start the stack its film is recorded against   2026-09-17
+          [ Revert it ] 📋 ▶     [ Regenerate the report ] 📋 ▶
+```
+
+**The command itself is not printed.** The first version of this put it in a parenthesis
+beside the offer, which was the right instinct and the wrong artifact: a review page is
+prose and pictures, and a two-hundred-character absolute path in the middle of a sentence is
+a wall the eye has to climb on every read — charged to all ten readers for the benefit of
+the one who wanted to paste it. The line lives in the **copy glyph's hover**, which is where
+that reader looks and nowhere else.
+
+What a click does differs by what the copy of the report can honour:
+
+- **Served**, clicking the offer runs the command through the review server — the spinner,
+  the log tail in the tooltip, the reload. The **play glyph** is the visible statement that
+  this copy has a server behind it: it is a second, smaller target for the same thing, its
+  hover says what it will run, and it is not rendered at all where it would not work, so
+  its presence is information rather than decoration.
+- **Off disk** (`file://`, the zip, GitHub Pages), clicking the offer **copies** the
+  command, with a *copied* toast. That is the one thing that copy can do with it, so it is
+  what the click does — a control whose whole answer is a sentence explaining why it did
+  nothing is a control readers learn to stop pressing. The copy glyph is what keeps that
+  from being a magic trick: it is the visible sign that a click here copies something.
+
+One renderer does all of it (`command_html` in `build-review-html.py`), and the places it
+reaches are the aftermath band's **Revert it** and **Regenerate the report**, the three
+commands in the Demo tab's **Deployed app** row (`start`, `stop`, `where` — the last two
+were declared for the buttons and never offered to anybody), and the three offers under a
+hand-drawn diagram. The clipboard itself is one function too, on `window.HR`, with the
+`document.execCommand` fallback a `file://` page needs — there were two of these and the one
+*without* the fallback was on the control that only exists off disk.
+
+Two things went away with the printed line: the fold under each diagram (it held nothing
+but the command, and its `&&` chains were the longest lines on the page by a factor of
+five) and the per-file line under each commit in the aftermath band (`human-review.json
++18 −1` — six commits made six lines of filenames and arithmetic between the reader and the
+two things they can do about any of it). The file list is now the hover on the commit's sha.
+
+Nothing about this widens what the server will run. The page still sends an **id**; the
+command behind it is in `.human-review/.actions.json`, written by the build. Showing a
+command to a reader and accepting one from the page are different things, and it is the
+second that was never on offer.
+
 ## What it needs
 
 The skill drives tools that belong to your project, and degrades rather than fails when

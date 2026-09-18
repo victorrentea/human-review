@@ -445,8 +445,12 @@ def test_each_diagram_declares_its_own_rerun():
     assert entry["reload"] is True
     # The copied line and the run line are the same line — two renderings of one command
     # is how the one that gets run quietly stops matching the one that gets read.
-    assert entry["command"] == html.unescape(
-        re.search(r'data-copy="(.*?)" data-tip', out, re.S).group(1))
+    # Every copy target on the block, not just the first: the sentence's own offer copies
+    # the command off disk now, and the fold's copy glyph copies it too. They must all be
+    # the one line the server was told to run — two renderings of one command is how the
+    # one that gets run quietly stops matching the one that gets read.
+    copied = {html.unescape(c) for c in re.findall(r'data-copy="(.*?)"', out, re.S)}
+    assert copied == {entry["command"]}
 
 
 def test_the_manifest_is_written_even_when_it_is_empty(tmp_path):
@@ -482,9 +486,17 @@ def test_every_control_starts_degraded_and_rises():
 def test_the_clipboard_path_is_still_there_behind_every_button():
     """The requirement at the centre of this: with no server, or with a server that does
     not declare the action, the page does exactly what it did before."""
-    assert "navigator.clipboard.writeText(cmd)" in build.APP_ENV_JS
-    assert build.APP_ENV_JS.count("navigator.clipboard.writeText") == 2
+    # One clipboard for the page, on HR, with the `execCommand` fallback a `file://` page
+    # needs — there were two of these and the one *without* the fallback was on the control
+    # that only exists off disk, which is where `navigator.clipboard` may not be there.
+    assert build.SERVER_JS.count("function copy(") == 1
+    assert "document.execCommand('copy')" in build.SERVER_JS
+    assert "window.HR.copy(cmd)" in build.APP_ENV_JS
+    assert "navigator.clipboard" not in build.APP_ENV_JS
     assert "copy(cmd.getAttribute('data-copy')" in build.EDITOR_JS
+    # And off disk a click on the words of an offer copies its command rather than
+    # explaining why nothing happened.
+    assert "if (runhere && !cmd.getAttribute('data-copy'))" in build.EDITOR_JS
     # Each of the three is guarded by its own verb, not by "am I served".
     assert "window.HR.can('cue-drive')" in build.APP_ENV_JS
     assert "window.HR.can('demo-env')" in build.APP_ENV_JS

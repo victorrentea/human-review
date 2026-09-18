@@ -26,6 +26,8 @@ Run with:  python3 -m pytest test_aftermath.py
 from __future__ import annotations
 
 import importlib.util
+import html
+import re
 import json
 import subprocess
 from pathlib import Path
@@ -268,11 +270,54 @@ def test_every_commit_offers_a_revert_that_only_stages_it(tmp_path):
     click produces a diff to look at, not a commit made on the reader's behalf."""
     out = _band(tmp_path, _doc(code_files=1))
     entry = build.ACTIONS["aftermath-revert:753f724c"]
-    assert entry["command"].endswith("git revert --no-commit " + "753f724c" * 5)
+    # The *short* sha. The command is printed beside the offer now, in a parenthesis a
+    # human is being asked to read before pressing or copying — and forty characters of
+    # hex in that line is a line they stop reading. `git revert` resolves a short sha, and
+    # a prefix that is genuinely ambiguous makes git refuse loudly rather than revert the
+    # wrong commit, which is the failure mode worth having.
+    assert entry["command"].endswith("git revert --no-commit 753f724c")
     assert entry["command"].startswith("cd ")
     assert entry["reload"] is False, "the band reports commits; a revert does not move HEAD"
-    assert "revert it" in out
+    assert ">Revert it</button>" in out
     assert "nothing is committed" in out
+    # And the command the copy glyph puts on the clipboard is the command the button sends
+    # the id of: one line in the manifest, one line on the clipboard, no third version of
+    # it anywhere. The page prints it nowhere — it is in the glyph's hover.
+    assert f'<code>{html.escape(entry["command"])}</code>' not in out
+    copied = {html.unescape(c) for c in re.findall(r'data-copy="(.*?)"', out, re.S)}
+    assert entry["command"] in copied
+
+
+def test_the_band_offers_a_regenerate_beside_every_revert(tmp_path):
+    """Two honest answers to "a human moved the code after the review was written", and the
+    band used to offer one. Reverting is right when the commit was a mistake; when it was
+    not — the infrastructure cherry-pick that had to land here — the thing wanted is for
+    the rest of the page to catch up with it, which is the masthead's Rerun said from the
+    place the reader is actually looking at the problem."""
+    out = _band(tmp_path, _doc(code_files=1))
+    # Buttons, side by side, and not underlined words inside the sentence: an inline link
+    # in a red band carries the same weight as the prose around it and gets read as part of
+    # it, and these two are what the band is *for*.
+    assert ">Revert it</button>" in out and ">Regenerate the report</button>" in out
+    assert out.count("offer-pill") == 2
+    assert '<span class="rb-actions">' in out
+    assert out.index("Revert it") < out.index("Regenerate the report")
+    # The server's own verb, not a manifest id: the play glyph here appears under exactly
+    # the condition the Rerun in the header does.
+    assert 'data-action="__rerun__"' in out
+    assert "__rerun__" not in build.ACTIONS
+    assert "refresh-report.py" in out and "--steps static" in out
+
+
+def test_both_offers_copy_their_command_where_nothing_can_run(tmp_path):
+    """Off disk the click on the words *is* the copy. A control whose whole answer is a
+    sentence explaining why it did nothing is a control the reader stops pressing."""
+    out = _band(tmp_path, _doc(code_files=1))
+    for words in ("Revert it", "Regenerate the report"):
+        at = out.index(f">{words}</button>")
+        tag = out[out.rindex("<button", 0, at):at]
+        assert "data-copy=" in tag, f"{words} cannot be copied by clicking it"
+        assert "clicking here copies the command" in tag
 
 
 def test_a_merge_commit_with_no_numstat_is_not_read_as_harmless(tmp_path):
@@ -281,4 +326,9 @@ def test_a_merge_commit_with_no_numstat_is_not_read_as_harmless(tmp_path):
     doc["commits"][0]["measured"] = False
     doc["commits"][0]["generated_only"] = False
     out = _band(tmp_path, doc)
-    assert "no file list" in out
+    # In the sha's hover now, with the rest of what this commit touched. "Nothing changed"
+    # is the wrong reading of a merge that printed no numstat, and it is the reading a
+    # blank leaves behind.
+    assert "No file list" in out
+    tip = re.search(r'<code data-tip="([^"]*)"', out).group(1)
+    assert "No file list" in tip and "merge" in tip
