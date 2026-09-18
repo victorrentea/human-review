@@ -47,6 +47,14 @@ report, and nothing else. Work in the repository you are started in.
   covers it — and it is the failure this step actually had: a Gherkin UI scenario landed in
   `test-index/` and never appeared under *Covering tests*. `rerun-model.py` now refuses a
   run that ends that way, so a matrix left behind is a failed step rather than a quiet one.
+- **The frame is not yours to place.** The build re-lays the fragment on every run
+  (`hrbuild/tabs/tests.py:reqmap_layout`): the ticket's own title goes over the ticket
+  frame, the colour legend moves under it, the UI/API/unit key moves under the card, and
+  the two frames are put on one line. Keep the class names — `rm-body`, `rm-text`,
+  `rm-side`, `rm-ticket`, `rm-legend`, `rm-cats`, `rm-code` — because they are what that
+  rewrite finds its footing by; rename one and it gives up, says so on stderr, and ships
+  your layout instead. Do not write a heading over the ticket: one is added, from GitHub,
+  and a second would be the page saying the ticket's name twice.
 - **Never say a test's state yourself.** Whether a test is new, edited, deleted, commented
   out or sitting under an `@Disabled` is read out of the code by
   `scripts/test-changes.py`, and its manifest is already on the page. Name the test under

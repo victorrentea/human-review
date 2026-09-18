@@ -115,6 +115,25 @@ base has moved ahead of the fork point, or the local branch named here is behind
 remote. The mark is recomputed on every build from the refs as they stand, so merging main
 in (or fetching) clears it by itself; there is nothing to reset.
 
+`ticket` names the **issue the branch answers**, which is not always the PR: a PR titled
+*Link Visit with Vet (#37), reimplemented unguided by Opus* answers #37 and is #49. The
+Tests tab heads the ticket frame with it, linked to the issue.
+
+```json
+"pr": {"number": 49, "title": "…", "ticket": 37}
+"pr": {"number": 49, "title": "…",
+       "ticket": {"number": 37, "title": "Link Visit with Vet",
+                  "url": "https://github.com/victorrentea/petclinic/issues/37"}}
+```
+
+Optional, like everything else here, and usually unnecessary: with no `ticket` at all the
+build reads the first `#<n>` out of the PR's own title that is not the PR's own number, asks
+`gh issue view` for its name **once**, and writes the answer to `.human-review/ticket.json`
+— so a rebuild, a machine with no `gh` and the published zip all draw the same heading. Give
+the block a `title` to overrule both. What never supplies it is the model that writes the
+matrix: a heading whose wording changed between two paid runs of the same branch would be
+the page disagreeing with GitHub about what the ticket is called.
+
 ```json
 "scope": [
   {"label":"commits","value":"2 (pushed to main)","href":"https://github.com/…/compare/…"},

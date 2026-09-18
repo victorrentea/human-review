@@ -135,7 +135,9 @@ from hrbuild.tabs.sequence import (
 )
 from hrbuild.tabs.tests import (
     LEDGER_TAB, render_requirements, render_test_ledger, render_tests, render_traces,
-    resolve_tests, SILENCED_LABEL, test_index, TEST_STATES, tests_chip, _ms, _test_changes_module
+    REQMAP_CSS, reqmap_layout, resolve_tests, SILENCED_LABEL, test_index, TEST_STATES,
+    TICKET_CACHE, ticket_head, ticket_ref, tests_chip, _append_inside, _element, _find,
+    _gh_issue, _issue_url, _ms, _take, _test_changes_module
 )
 from hrbuild.tabs.demo import (
     embed_html, VERDICT_FACE, video_html, VIDEO_VERDICT, video_verdict_html, _link_captions
@@ -347,6 +349,13 @@ def main(argv=None) -> int:
         inc = ""
         if s.get("includeHtml"):
             inc = (out_dir / s["includeHtml"]).read_text(encoding="utf-8")
+            # One include is written by a model and is the whole of a tab: the
+            # requirements↔tests matrix. What it *says* is the model's; where its two
+            # columns sit, and the ticket title over them, is the same on every branch and
+            # is put back here on every build. Every other fragment passes through
+            # untouched — the function recognises the matrix by its own class and hands
+            # anything else straight back.
+            inc = reqmap_layout(inc, spec, out_dir)
         # Usually the include is commentary on the prose, so it follows it. `includeFirst`
         # is for the one shape where it is the other way round: the fragment *is* what the
         # section is about — the Tests tab opens on the ticket the branch answers —
