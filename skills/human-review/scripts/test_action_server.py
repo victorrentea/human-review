@@ -866,6 +866,47 @@ def test_a_failed_rerun_shows_the_last_lines_rather_than_a_shrug():
     assert "snap.exit" in build.RERUN_JS
 
 
+def test_a_finished_rerun_says_how_much_of_it_was_skipped():
+    """The README promises a band saying "how many steps re-ran and how many did not, so a
+    fast rerun reads as a fast rerun instead of as a button that did nothing" — and there
+    was only the failure band. The sentence existed, in `run-steps.py`'s stdout, where a
+    reader who pressed a button in a browser never sees it.
+
+    It survives the reload the run ends in, because the run ends in one: stashed on the
+    way out, read and cleared on the way in."""
+    js = build.RERUN_JS
+    assert '<div class="rerundone"' in build.RERUN_DONE
+    assert 'id="hr-rerun-done"' in build.RERUN_DONE
+    # Status, not alert: nothing here needs interrupting what a screen reader is saying.
+    assert 'role="status"' in build.RERUN_DONE and 'role="alert"' not in build.RERUN_DONE
+    assert "document.getElementById('hr-rerun-done')" in js
+    # Read out of the run's own log, through the same status endpoint the progress line
+    # already polls — not recomputed in the page from a second source.
+    assert "/^\\[run-steps\\] (.+)$/m" in js
+    assert "stash(snap)" in js and "location.reload()" in js
+    assert "sessionStorage.setItem(SAID" in js
+    assert "sessionStorage.removeItem(SAID)" in js
+    # It takes itself away: it is news about a press, and the press is over.
+    assert "done.classList.add('going')" in js and "done.hidden = true" in js
+    # And the terminal's own `--force` advice is not carried into the page's prose: every
+    # command this page offers lives on a clipboard, in a hover.
+    assert "split('`--force`')[0]" in js
+
+
+def test_the_bands_summary_is_the_sentence_run_steps_actually_prints():
+    """Two halves of one string, a program apart. `run-steps.py` writes it for this band
+    by name; if its wording moves, the regex above stops matching and the band silently
+    never appears again — which is the failure this test exists to make loud."""
+    import re
+    steps = (HERE / "run-steps.py").read_text(encoding="utf-8")
+    assert '[run-steps] {ran_n} step(s) re-run, {len(cached_rows)} unchanged and ' in steps
+    line = ("\n[run-steps] 0 step(s) re-run, 10 unchanged and skipped \u2014 about 45 s "
+            "saved. `--force` re-runs everything.\n[review] wrote review.html\n")
+    m = re.search(r"^\[run-steps\] (.+)$", line, re.M)
+    assert m and m[1].split("`--force`")[0].strip() == (
+        "0 step(s) re-run, 10 unchanged and skipped \u2014 about 45 s saved.")
+
+
 # --------------------------------------------------------------------------- #
 # Rerun + AI
 # --------------------------------------------------------------------------- #

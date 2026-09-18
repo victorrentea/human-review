@@ -69,7 +69,8 @@ from hrbuild.shared.assets import (
 from hrbuild.shared.commands import (
     CMD_COPY, CMD_OPEN, CMD_PLAY, CMD_RUN, CMD_STOP, command_html, COPY_TIP,
     drawio_open_html,
-    regenerate_html, RERUN_AI_CHIP, RERUN_AI_CONFIRM, RERUN_CHIP, RERUN_FAIL, rerun_html,
+    regenerate_html, RERUN_AI_CHIP, RERUN_AI_CONFIRM, RERUN_CHIP, RERUN_DONE, RERUN_FAIL,
+    rerun_html,
     reveal_html, runtime_html, STATIC_RUN_TIP, _app_anchor
 )
 from hrbuild.shared.snippets import (
@@ -1069,7 +1070,7 @@ def main(argv=None) -> int:
         # it. Side by side and in that order, because the cheap answer is the one a reader
         # should reach first and the expensive one should be the deliberate second look.
         mode_html += RERUN_CHIP + RERUN_AI_CHIP
-        rerun_fail_html = RERUN_FAIL + RERUN_AI_CONFIRM
+        rerun_fail_html = RERUN_DONE + RERUN_FAIL + RERUN_AI_CONFIRM
         allbtn_html = (
             '<div class="allbar">'
             '<button type="button" class="allbtn" aria-pressed="false" '

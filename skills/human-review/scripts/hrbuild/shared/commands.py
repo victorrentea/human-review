@@ -163,6 +163,24 @@ RERUN_FAIL = ('<div class="rerunfail" id="hr-rerun-fail" hidden role="alert">'
               'aria-label="Dismiss this report" data-tip="Dismiss">✕</button></div>'
               '<pre class="rerunfail-log"></pre></div>')
 
+# And the other outcome, in the same row of the masthead, because a rerun had only ever
+# been able to report the bad one.
+#
+# `run-steps.py` prints `N step(s) re-run, M unchanged and skipped — about N s saved` and
+# says in its own comment that the line is "phrased for the status band on the served page
+# rather than for this terminal". There was no such band: the page reloaded, the tab and
+# the scroll came back exactly where they were, and the six seconds the press took read as
+# a button that did nothing. On a page whose whole argument is that a fast rerun should be
+# legible as a fast rerun, the one artifact saying so never left stdout.
+#
+# `role="status"`, not `alert`: nothing here needs interrupting, and a screen reader should
+# hear it when it finishes what it is saying. It takes itself away after a few seconds —
+# it is news about a press, and a press is over — which is the other difference from the
+# failure beside it, where the reader decides when it is read.
+RERUN_DONE = ('<div class="rerundone" id="hr-rerun-done" hidden role="status">'
+              '<span class="rerundone-ico" aria-hidden="true">↻</span>'
+              '<span class="rerundone-say"></span></div>')
+
 
 def drawio_open_html(app_url: str, web_url: str = "") -> str:
     """The two ways to edit the drawing, as links.

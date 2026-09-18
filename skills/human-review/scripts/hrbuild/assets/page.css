@@ -202,6 +202,19 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
 .hrconfirm-no:focus-visible { outline:2px solid var(--link); outline-offset:2px; }
 .hrconfirm-yes { border-color:var(--drift) !important; color:var(--drift) !important; }
 .hrconfirm-yes:hover { background:rgba(181,115,10,.12); }
+/* The good outcome, in the same place as the bad one, and quiet about it: one line, no
+   log, no dismiss. It is news about a press that is already over, so it goes away on its
+   own after a few seconds rather than sitting in the masthead for the rest of the read —
+   and it fades rather than vanishing, so a reader looking back at it sees it leaving
+   instead of wondering whether they imagined it. */
+.rerundone { margin:.8rem 0 0; border:1px solid var(--line); border-radius:8px;
+            background:var(--code-bg); padding:.45rem .8rem; font-size:.85rem;
+            color:var(--muted); display:flex; align-items:baseline; gap:.45rem;
+            transition:opacity .4s ease; }
+.rerundone[hidden] { display:none; }
+.rerundone.going { opacity:0; }
+.rerundone-ico { color:var(--ok,#2e7d32); }
+@media (prefers-color-scheme: dark) { .rerundone-ico { color:#8fd39c; } }
 /* Only ever on screen after a rebuild failed, which is why it may be a band at all: it
    costs the normal read nothing, and the lines a producer printed on its way out are the
    whole of the fix. Dismissible, because the reader is the one who decides it is read. */

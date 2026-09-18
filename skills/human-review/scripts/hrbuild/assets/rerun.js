@@ -29,6 +29,47 @@
     document.querySelectorAll('button.chip-rerun[data-rerun]'));
   if (!buttons.length) return;
   var fail = document.getElementById('hr-rerun-fail');
+  var done = document.getElementById('hr-rerun-done');
+
+  // What `run-steps.py` prints last, which its own comment says is "phrased for the status
+  // band on the served page rather than for this terminal": `N step(s) re-run, M unchanged
+  // and skipped \u2014 about N s saved.` It had nowhere to go. The band beside this one
+  // could only ever report a failure, so the six seconds a fast rerun takes read exactly
+  // like a button that does nothing \u2014 which is the thing that sentence exists to
+  // prevent.
+  var SUMMARY = /^\[run-steps\] (.+)$/m;
+  // Stashed across the reload this run ends in, and cleared as it is read. sessionStorage
+  // rather than a query string or a global: the reload is `location.reload()` on the same
+  // URL (the address bar is part of what a reader may have copied), and it is this tab's
+  // news, not another tab's.
+  var SAID = 'hr-rerun-said';
+
+  function stash(snap) {
+    var m = SUMMARY.exec((snap && snap.output) || '');
+    if (!m) return;         // nothing was skipped: there is no fast to explain
+    // Without the `--force` sentence the terminal ends on. A shell flag printed in prose
+    // is the one thing this page does not do \u2014 every command it hands out lives in a
+    // hover, on the control that copies it \u2014 and the reader of this band is holding a
+    // mouse, not a terminal.
+    var line = m[1].split('`--force`')[0].trim();
+    try { sessionStorage.setItem(SAID, line); } catch (e) { /* private window */ }
+  }
+
+  // Read once, on the load the reload produced. Removed as it is read, so a reader who
+  // refreshes the page five minutes later is not told about a rerun they have forgotten.
+  (function sayWhatHappened() {
+    if (!done) return;
+    var line = null;
+    try { line = sessionStorage.getItem(SAID); sessionStorage.removeItem(SAID); }
+    catch (e) { return; }
+    if (!line) return;
+    done.querySelector('.rerundone-say').textContent = line;
+    done.hidden = false;
+    setTimeout(function () {
+      done.classList.add('going');
+      setTimeout(function () { done.hidden = true; done.classList.remove('going'); }, 500);
+    }, 6000);
+  })();
   // Where the reader was, restored after the reload this ends in — `HR.keepPlace`, which
   // the diagram offers and every other `reload` action call too. It used to live here, and
   // "the same scroll position, saved under the same key, restored on the same event" is
@@ -63,6 +104,9 @@
 
   function go(btn) {
     if (fail) fail.hidden = true;
+    // And last run's summary, if it is still on screen: it is about the press before this
+    // one, and leaving it up while a new run works reads as this one having finished.
+    if (done) { done.hidden = true; done.classList.remove('going'); }
     // Every rerun button, not only this one: the server runs one at a time and a second
     // press on the other would join this run rather than start its own, which is correct
     // and unreadable — a reader who pressed the free button and watched the paid one's log
@@ -81,6 +125,8 @@
       btn.setAttribute('data-tip', line || 'Rebuilding this page\u2026');
     }).then(function (snap) {
       if (snap.state === 'done') {
+        // What the run said about itself, kept for the other side of the reload.
+        stash(snap);
         // The server holds its reload-watcher for the length of the rerun, so this is the
         // single reload of the whole run rather than one per producer.
         location.reload();
