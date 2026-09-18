@@ -147,8 +147,30 @@ window.HR = (function () {
       body: '{}'
     }).then(function (r) {
       if (r.ok) return r.json();
-      return r.text().then(function (t) { throw new Error(t || 'the review server refused'); });
+      // A refusal may be a sentence or it may be a refusal *with the run it is refusing
+      // for* — the paid rerun answers 409 and names what is already going, because "yours
+      // did not start" is useless to a reader who cannot see what did.
+      return r.text().then(function (t) {
+        var body = null;
+        try { body = JSON.parse(t); } catch (e) {}
+        var err = new Error((body && body.error) || t || 'the review server refused');
+        err.status = r.status;
+        err.busy = body;
+        throw err;
+      });
     }).then(function (first) { return poll(first, onprogress); });
+  }
+
+  // Is anything running on this server at all — not "how is *my* run doing". There was no
+  // way to ask, and the gap cost real money: a press on the paid button was joined in
+  // silence to a paid run somebody else had started an hour earlier, over a working tree
+  // that had moved since, and the only way out was to pay for a second one. A page cannot
+  // warn about a run it cannot see.
+  function status() {
+    return fetch('/__run_status__', {cache: 'no-store'}).then(function (r) {
+      if (!r.ok) throw new Error('the review server did not answer');
+      return r.json();
+    });
   }
 
   // Where the reader was, kept across the reload a command ends in.
@@ -319,5 +341,6 @@ window.HR = (function () {
   });
 
   return {ready: ready, can: can, onready: onready, run: run, rerun: rerun,
-          rerunAi: rerunAi, tail: tail, copy: copy, keepPlace: keepPlace};
+          rerunAi: rerunAi, tail: tail, copy: copy, keepPlace: keepPlace,
+          status: status, caps: function () { return caps; }};
 })();

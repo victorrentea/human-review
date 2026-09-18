@@ -198,7 +198,7 @@ refresh. Not the traced suites either, whose `commands` are the project's own e2
 (`claude -p --model sonnet` over `skills/human-review/reference/matrix-prompt.md`) rewrites
 `assets/requirements-map.html` and `test-index/`, and then the same static refresh runs with
 `--allow-model`, so the build may also make the Logging tab's uncached privacy calls. It is
-the only control on the page that spends money — **about $5 on Sonnet** — and it is guarded
+the only control on the page that spends money, and it is guarded
 three times over, in this order: the price is in the hover before you click, the click opens
 the page's own confirmation panel (not `window.confirm` — it cannot say the price in the
 page's voice, cannot make the safe answer the default one, and is the dialog everyone has
@@ -208,6 +208,18 @@ been trained to dismiss unread), and the server refuses the verb outright unless
 one: the copy you were reading has to survive the click. `content.json` is *not* in it — the
 layout and the ledes are a human's answer to what the page is for, and no button regenerates
 those.
+
+**What it costs is measured, not asserted.** The label read *~$5 on Sonnet* for a long
+time, and it was a number somebody typed once: three real runs on the demo page came in at
+**$4.00, $8.09 and $10.63**, so a reader who budgeted for the label was out by a factor of
+two in the direction that matters. `rerun-model.py` records every run in
+`.human-review/.model-runs.json` — dot-prefixed like the manifest, because it is this
+machine's spending and not a fact about the branch — taking the figure out of
+`claude -p --output-format json`'s own `total_cost_usd`. The server averages the last five
+and hands it to the page on the probe: the hover says the average, the confirmation panel
+says the average *and* what the last one really cost, because an average is what you budget
+with and the last invoice is what makes you believe it. With no ledger yet the label is a
+range, **~$5–$10**, because a number with nothing behind it is a promise.
 
 Two buttons rather than one with a modifier, because the difference between them is not a
 degree of thoroughness: one is free and reproducible, the other buys a judgement. A single
@@ -220,8 +232,16 @@ raised by the probe's own answer for *its* verb (`rerun`, `rerunAi`), so a skill
 without the model step offers the free one and not the paid one. **One rerun goes at a time,
 across both** — they share a single lock, because the paid one ends in a `refresh-report.py`
 of its own and two refreshes over one directory collide whichever button started them. A
-second click joins the run in flight rather than starting another (and joining never
-launches the paid one: a click that asked for the free half cannot spend money). The button
+second click on **Rerun** joins the run in flight rather than starting another, and the
+answer says `joined: true`, so the page can tell a press that started something from a
+press that was handed somebody else's run. **Rerun + AI is never joined.** With anything
+running it answers `409` and names the run — *a paid run started at 14:05 is still going;
+wait for it, then decide* — and the page shows that in the confirmation panel instead of
+starting. A silent join was the old behaviour and it cost eight dollars: a press was joined
+to a paid run somebody else had started an hour earlier, over a working tree that had moved
+since, and the only way out was to press again and pay again. `GET /__run_status__` with no
+`run` answers the question that made it possible — *is anything running here at all* — with
+`{active, kind, started, joined}`. The button
 carries a spinner while it works, and a rebuild that failed puts the program's last lines in
 a red band under the header instead of leaving you to go and look.
 
@@ -292,7 +312,7 @@ mark are the same target**, so it does not matter which one is pressed:
 One renderer does all of it (`command_html` in `hrbuild/shared/commands.py`), and the places
 it reaches are the aftermath band's **Regenerate the report**, the Demo tab's **Deployed
 app** row (Start, Stop, Where — each with its own mark, since none of them is a rerun), and
-the two offers under every hand-drawn diagram, **Update the report** and **Regenerate the
+the two offers under every hand-drawn diagram, **Update the report** and **Revert the
 diagram**. Both faces are in the markup of every copy and the probe raises exactly one, so
 the page never has to be built twice. The clipboard itself is one function too, on
 `window.HR`, with the `document.execCommand` fallback a `file://` page needs.
@@ -446,7 +466,7 @@ the page with no way back — the layout is in the file, the file is in the repo
 `--redraw '<command>'` closes that: half the line falls out of the flags this run already
 has (`git stash push -- <diagram>`, then `git checkout <base> -- <diagram>`), the other half
 is the repository's own patch script, and the report turns the chain into one button under
-the picture — **Regenerate the diagram**. It is passed in and never guessed: a script that
+the picture — **Revert the diagram**. It is passed in and never guessed: a script that
 rewrites a checked-in file is not something to derive from a naming convention and then give
 a reader a button for.
 
@@ -455,9 +475,13 @@ drawing and *start over* ran the script; two commands, two tooltips, and one que
 every press of either — *give me back the diagram the machine makes*. Only the second
 answers it: the first hands back a human's layout from an earlier commit, which is a
 different drawing and is not generated in any sense the reader meant. So the one that runs
-the generator stayed, named after what it produces rather than after the gesture that gets
-you there, and it took the other's one good property with it — the stash, so the layout it
-replaces is banked rather than binned.
+the generator stayed, named after what it gives back rather than after the gesture that
+gets you there, and it took the other's one good property with it — the stash, so the
+layout it replaces is banked rather than binned. It read *Regenerate the diagram* for a
+while, and the word was the problem: beside *Update the report* on the same row and
+*Regenerate the report* in the aftermath band, a third *Regenerate* made three controls
+sound like three doses of one thing. *Revert* is the question a reader is actually asking
+here, and the only word on that row that admits the layout goes away.
 
 ```sh
 ./drawio-diff.py --base origin/main --diagram docs/ConceptualModel.drawio.png \

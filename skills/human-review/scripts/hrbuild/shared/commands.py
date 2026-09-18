@@ -91,9 +91,16 @@ RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
                  'id="hr-rerun-ai" hidden aria-disabled="true" '
                  'data-rerun="__rerun_ai__" '
                  'aria-label="Rerun with AI \u2014 costs about $5" '
-                 'data-tip="costs money: ~$5 on Sonnet. Rewrites the requirements↔tests '
-                 'matrix and the per-test catalogue with a model, then re-derives the '
-                 'evidence and rebuilds the page.">'
+                 # `{price}` is filled by RERUN_JS out of the probe, which derives it
+                 # from what this page's own paid runs have really cost. The rendered
+                 # `data-tip` carries the range as its fallback, because the markup is
+                 # built once and read by a static copy too, where nothing fills anything.
+                 'data-tip-fmt="costs money: {price} on Sonnet. Rewrites the '
+                 'requirements↔tests matrix and the per-test catalogue with a model, then '
+                 're-derives the evidence and rebuilds the page." '
+                 'data-tip="costs money: ~$5\u2013$10 on Sonnet. Rewrites the '
+                 'requirements↔tests matrix and the per-test catalogue with a model, then '
+                 're-derives the evidence and rebuilds the page.">'
                  # The free one's mark, a plus, then the two things this one adds to it:
                  # a model, and money leaving. The `+` is the whole sentence — this chip is
                  # the one beside it *and* something more — and without it the three marks
@@ -122,12 +129,21 @@ RERUN_AI_CONFIRM = (
     ' aria-labelledby="hr-ai-confirm-t">'
     '<div class="hrconfirm-box">'
     '<p class="hrconfirm-t" id="hr-ai-confirm-t"><b>This one costs money.</b></p>'
+    # A run already going is the first thing this panel says, before the price: a reader
+    # about to spend needs to know that pressing may not even start anything of theirs.
+    # Filled and raised by RERUN_JS off `/__run_status__`; absent from every static copy.
+    '<p class="hrconfirm-busy" hidden></p>'
     '<p class="hrconfirm-b">Rerun&nbsp;+&nbsp;AI rewrites the requirements↔tests matrix '
-    'and the per-test catalogue by asking a model — <b>about $5 on Sonnet</b> — and then '
+    'and the per-test catalogue by asking a model — <b class="hrconfirm-price">about '
+    '$5–$10 on Sonnet</b> — and then '
     're-derives the evidence and rebuilds the page. The matrix you are looking at is '
     'replaced, not confirmed: a second pass over the same diff words and ranks it '
     'differently. The copy being replaced is kept in '
     '<code>.human-review/.model-prev/</code>.</p>'
+    # The last real invoice, where the decision is made. An average is what a reader
+    # budgets with; the figure that makes them believe it is what the last press actually
+    # cost, and a tooltip they may never open is the wrong place for it.
+    '<p class="hrconfirm-b hrconfirm-last" hidden></p>'
     '<p class="hrconfirm-b hrconfirm-alt">Plain <b>Rerun</b> does everything except the '
     'model half, and costs nothing.</p>'
     '<div class="hrconfirm-row">'
@@ -351,9 +367,14 @@ def regenerate_html(redraw: dict | None, rerun: dict, rebuild: str,
     hands back a human's layout from an earlier commit, which is a different drawing and
     is not "generated" in any sense the reader meant.
 
-    So the one that runs the generator stays, and it is named after what it produces rather
-    than after the gesture that gets you there: *Regenerate the diagram*, not *start over*,
-    which is a direction and not a destination.
+    So the one that runs the generator stays, and it is named after what it gives back
+    rather than after the gesture that gets you there: *Revert the diagram*, not *start
+    over*, which is a direction and not a destination. It was *Regenerate the diagram* for
+    a while, and the word was the problem: on a row whose other button reads *Update the
+    report*, and beside an aftermath band whose button reads *Regenerate the report*, a
+    third *Regenerate* made three controls sound like three doses of one thing. *Revert*
+    is what a reader is actually asking for here — put back what was there before they
+    drew on it — and it is the one word on this row that admits the layout goes away.
 
     It is destructive — the hand-drawn layout goes — so it banks the work first. The
     command that went away was the survivable one (`git stash push` before the checkout),
@@ -387,9 +408,9 @@ def regenerate_html(redraw: dict | None, rerun: dict, rebuild: str,
     # rest of what the old three-line tooltip said — which file, which base, what the
     # script draws — is what the *command* says, and the command is one hover away on the
     # clipboard face of the same control.
-    served = ("Regenerate the diagram \u2014 runs on the server serving this page; your "
+    served = ("Revert the diagram \u2014 runs on the server serving this page; your "
               "layout is banked with git stash")
-    return (command_html(line, aid, label="Regenerate the diagram", tip=served,
+    return (command_html(line, aid, label="Revert the diagram", tip=served,
                          running="Putting automation's drawing back…"), aid)
 
 

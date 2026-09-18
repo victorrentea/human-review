@@ -1101,7 +1101,7 @@ def test_a_repository_that_declared_no_redraw_is_offered_none(tmp_path):
 
 def test_there_is_one_way_back_and_it_is_the_generated_drawing(tmp_path):
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW)
-    assert '<span class="cmd-word">Regenerate the diagram</span>' in out
+    assert '<span class="cmd-word">Revert the diagram</span>' in out
     # Named after what it produces, not after the gesture that gets you there: "start over"
     # is a direction and not a destination, and "undo your edits" is gone entirely.
     assert "start over" not in out and "undo your edits" not in out
@@ -1191,7 +1191,7 @@ def test_no_way_back_is_offered_for_a_repository_that_declared_no_script(tmp_pat
     naming convention and running it on a reader's click is not a trade worth making, so a
     diagram with no `redraw` gets the sentence and one offer."""
     out = _widget_with(tmp_path, rerun=RERUN)
-    assert "Regenerate the diagram" not in out and "drawio-redraw" not in out
+    assert "Revert the diagram" not in out and "drawio-redraw" not in out
     assert '<span class="cmd-word">Update the report</span>' in out
 
 

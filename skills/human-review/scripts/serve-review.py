@@ -110,6 +110,50 @@ RERUN_AI_ACTION = "__rerun_ai__"
 # test added in one of the three places that ask would be a lock with a hole in it.
 RERUN_ACTIONS = (RERUN_ACTION, RERUN_AI_ACTION)
 
+# What the paid reruns on this page have actually cost, written by `rerun-model.py` after
+# each run. Beside the page and dot-prefixed like the manifest, so it never travels in the
+# zip: it is a record of this machine's spending, not a fact about the branch.
+MODEL_RUNS_FILE = ".model-runs.json"
+
+# What the button says when the ledger is empty. A range and not a number, because a number
+# with nothing behind it is a promise — and the one that was there, "~$5 on Sonnet", was
+# wrong in the direction that matters: three real runs on this page came in at $4.00, $8.09
+# and $10.63, so a reader who budgeted for the label was out by a factor of two.
+PRICE_UNKNOWN = "~$5\u2013$10"
+PRICE_SAMPLE = 5
+
+
+def price_estimate(served_root) -> dict:
+    """`{"text", "last", "n"}` — what to tell a reader before they spend.
+
+    Derived from what this page's own paid runs cost, not from a constant somebody typed
+    once. The average of the last few, because the spread is real: the same branch costs
+    more on a day the matrix has more tests to map, and a single last-run figure would
+    swing the label by a factor of two between two presses.
+
+    `last` rides along separately and goes in the confirmation dialog rather than in the
+    hover. An average is what a reader budgets with; the last real invoice is what makes
+    them believe the average, and it belongs at the point of deciding rather than on a
+    tooltip they may never open.
+
+    No ledger, an unreadable one, or one with no costs in it yields the range and `n: 0`.
+    A ledger that cannot be read is not an error here: it is a page nobody has spent money
+    on yet, which is also what it looks like from outside.
+    """
+    try:
+        doc = json.loads((Path(served_root) / MODEL_RUNS_FILE).read_text(encoding="utf-8"))
+        runs = doc["runs"] if isinstance(doc, dict) else doc
+        costs = [float(r["cost"]) for r in runs
+                 if isinstance(r, dict) and isinstance(r.get("cost"), (int, float))
+                 and float(r["cost"]) > 0]
+    except Exception:
+        costs = []
+    if not costs:
+        return {"text": PRICE_UNKNOWN, "last": None, "n": 0}
+    recent = costs[-PRICE_SAMPLE:]
+    return {"text": f"~${sum(recent) / len(recent):.2f}", "last": round(costs[-1], 2),
+            "n": len(recent)}
+
 # A ref, and nothing that could be a flag or a second argument. `git show` is invoked
 # without a shell, so this is not about quoting — it is about `--upload-pack=…` and
 # friends arriving from a query string. Hence the first character: a ref may not open with
@@ -601,6 +645,13 @@ class Run:
         self.id = secrets.token_urlsafe(9)
         self.action = action_id
         self.state = "running"
+        # When it started, because "is something running" is not the question a reader
+        # arrives with — "is the thing running *mine*" is, and the answer is a clock.
+        self.started = time.time()
+        # How many presses have been handed this run instead of one of their own. Reported
+        # rather than counted for its own sake: three joins on one run is three readers who
+        # each think they started it.
+        self.joins = 0
         self.exit = None
         self.result = {}
         self.reload = bool(entry.get("reload"))
@@ -673,7 +724,8 @@ class Run:
         with self._lock:
             return {"run": self.id, "action": self.action, "state": self.state,
                     "exit": self.exit, "output": "\n".join(self._lines),
-                    "result": dict(self.result), "reload": self.reload}
+                    "result": dict(self.result), "reload": self.reload,
+                    "started": self.started}
 
 
 # Keyed by run id, and kept after the process exits: the page polls for the final state,
@@ -832,11 +884,32 @@ def start_rerun(served_root, ai=False):
     plan = rerun_ai_plan(served_root) if ai else rerun_plan(served_root)
     if plan is None:
         return None, ("this page has no model step behind it" if ai
-                      else "this page has no refresh program behind it"), 404
+                      else "this page has no refresh program behind it"), 404, False
     with RUNS_LOCK:
         for run in reversed(RUNS.values()):
             if run.action in RERUN_ACTIONS and run.state == "running":
-                return run, None, 200
+                if ai:
+                    # The paid one is never joined, and this is the change. A silent join
+                    # is the right answer for the free button — the reader could not tell
+                    # the first one had started and the run in flight is what they wanted.
+                    # For this one it is the wrong answer twice over: they are not told
+                    # what they joined, so a run somebody else started an hour ago over a
+                    # working tree three commits older looks like the one they just asked
+                    # for; and when it turns out not to be, the only way out is to press
+                    # again and pay again. It happened, and it cost eight dollars.
+                    #
+                    # So: refused, with the run named, and the decision handed back. 409
+                    # rather than 200, because "yours did not start" is the fact the page
+                    # has to be able to tell from "yours started".
+                    started = time.strftime("%H:%M", time.localtime(run.started))
+                    which = ("a paid run" if run.action == RERUN_AI_ACTION
+                             else "a rerun")
+                    return (run, f"{which} started at {started} is still going; wait for "
+                            "it, then decide \u2014 it may already be doing what you want, "
+                            "and it may be building from a working tree that has moved "
+                            "since.", 409, False)
+                run.joins += 1
+                return run, None, 200, True
     argv, cwd = plan
     if WATCHER:
         WATCHER.hold()
@@ -848,7 +921,7 @@ def start_rerun(served_root, ai=False):
         if WATCHER:
             WATCHER.release()
         raise
-    return remember(run), None, 200
+    return remember(run), None, 200, False
 
 
 def runs_in_flight() -> bool:
@@ -973,8 +1046,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # and the command behind it is the server's own, not something the page named.
             # Which of the two is in the URL, not in the body — a paid verb must not be
             # reachable by a field a caller can flip.
-            run, problem, status = start_rerun(Handler.root, ai=route == RERUN_AI)
+            run, problem, status, joined = start_rerun(Handler.root, ai=route == RERUN_AI)
+            if problem:
+                # The refusal carries the run it is refusing for. A sentence alone would
+                # leave the page unable to show the reader *what* is going on, which is
+                # the whole of what they need before deciding to spend again.
+                body = dict(run.snapshot(), error=problem) if run else {"error": problem}
+                self.reply_json(body, status)
+                return
         else:
+            joined = False
             try:
                 body = json.loads(raw)
                 action_id, params = body["id"], body.get("params") or {}
@@ -988,7 +1069,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.reply_text(problem, status)
             return
         Handler.runs += 1
-        self.reply_json(run.snapshot())
+        # `joined` and not silence: a press that handed back somebody else's run looks
+        # exactly like a press that started one, and the page has to be able to say which.
+        self.reply_json(dict(run.snapshot(), joined=joined))
 
     def do_GET(self):
         # Everything but the watch poll. The reaper asks "is anyone using this server?",
@@ -1046,6 +1129,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              # and a page that inferred the second from the first would
                              # draw a $5 button over a server that cannot honour it.
                              "rerunAi": bool(rerun_ai_plan(Handler.root)),
+                             # What the paid button should say it costs, out of what this
+                             # page's own paid runs have cost. Answered here rather than
+                             # written into the markup, because the markup is built once
+                             # and the price is a fact that moves every time somebody
+                             # presses the button.
+                             "price": price_estimate(Handler.root),
                              "actions": {name: {"params": e.get("params") or {},
                                                 "reload": bool(e.get("reload")),
                                                 "label": e.get("label") or ""}
@@ -1057,8 +1146,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.reply_text(problem, 403)
                 return
             q = urllib.parse.parse_qs(self.path.partition("?")[2])
+            asked = q.get("run", [""])[0]
+            if not asked:
+                # No id: *is anything running here at all*. There was no way to ask that,
+                # and the gap cost real money — a reader pressed Rerun + AI, was silently
+                # joined to a paid run somebody else had started an hour earlier over an
+                # older working tree, and had to pay for a second one when it turned out
+                # not to be theirs. A page cannot warn about a run it cannot see.
+                with RUNS_LOCK:
+                    live = [r for r in RUNS.values() if r.state == "running"]
+                    run = live[-1] if live else None
+                if run is None:
+                    self.reply_json({"active": None, "kind": None, "started": None,
+                                     "joined": 0})
+                    return
+                kind = ("rerun_ai" if run.action == RERUN_AI_ACTION
+                        else "rerun" if run.action == RERUN_ACTION else "action")
+                self.reply_json({"active": run.snapshot(), "kind": kind,
+                                 "started": run.started, "joined": run.joins})
+                return
             with RUNS_LOCK:
-                run = RUNS.get(q.get("run", [""])[0])
+                run = RUNS.get(asked)
             if run is None:
                 self.reply_text("no such run", 404)
                 return

@@ -32,6 +32,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import socketserver
 import subprocess
 import sys
@@ -961,6 +962,136 @@ def test_the_two_reruns_are_not_reachable_through_the_plain_run_endpoint(tmp_pat
         run, problem, status = srv.start_run(verb, {}, tmp_path)
         assert run is None and status == 400
         assert "endpoint of its own" in problem
+
+
+# --------------------------------------------------------------------------- #
+# what is already running, and what it has cost
+# --------------------------------------------------------------------------- #
+
+def test_the_run_status_endpoint_answers_without_a_run_id(server, tmp_path):
+    """"Is anything running here" had no answer, and the gap cost real money.
+
+    A reader pressed Rerun + AI, was joined in silence to a paid run somebody else had
+    started an hour earlier over a working tree that had moved since, and had to pay for a
+    second one when it turned out not to be theirs. A page cannot warn about a run it
+    cannot see, and with no id this endpoint only ever said `no such run`."""
+    _fresh(tmp_path)
+    srv.ROOT = tmp_path
+    status, payload = _call(server, "GET", srv.RUN_STATUS)
+    assert status == 200
+    idle = json.loads(payload)
+    assert idle == {"active": None, "kind": None, "started": None, "joined": 0}
+
+
+def test_the_global_status_names_the_run_and_when_it_started(server, tmp_path, monkeypatch):
+    _fresh(tmp_path, {"version": 1, "actions": {
+        "slow": {"command": f"{shlex.quote(sys.executable)} -c 'import time; time.sleep(20)'",
+                 "params": {}}}})
+    srv.ROOT = tmp_path
+    run, problem, _ = srv.start_run("slow", {}, tmp_path)
+    assert problem is None
+    try:
+        state = json.loads(_call(server, "GET", srv.RUN_STATUS)[1])
+        assert state["kind"] == "action"
+        assert state["active"]["run"] == run.id
+        assert state["started"] == pytest.approx(run.started, abs=5)
+    finally:
+        run._kill()
+
+
+def _slow_rerun(tmp_path, monkeypatch):
+    """A rerun really in flight, so the lock and the refusal are tested against a process
+    rather than against a fake state.
+
+    Through `monkeypatch` and never by assigning on the module: `REFRESH` and `MODEL_STEP`
+    are process-wide, and a test that leaves a twenty-second sleep behind in one of them
+    hands the next test a rerun that never finishes.
+    """
+    monkeypatch.setattr(srv, "REFRESH", _slow_refresh(tmp_path, 20))
+    monkeypatch.setattr(srv, "MODEL_STEP", _slow_refresh(tmp_path, 20))
+    run, problem, status, _ = srv.start_rerun(tmp_path / ".human-review")
+    assert problem is None and status == 200
+    return run
+
+
+def test_a_paid_rerun_is_refused_while_anything_is_running_rather_than_joined(
+        tmp_path, monkeypatch):
+    """The free button joins; this one must not.
+
+    A join is the right answer for `Rerun`: the reader could not tell the first one had
+    started and the run in flight is what they were asking for. For the paid one it is
+    wrong twice over — they are not told what they joined, so somebody else's hour-old run
+    over an older tree looks like theirs; and when it turns out not to be, the only way out
+    is to press again and pay again. 409, with the run named, and the decision handed back.
+    """
+    _fresh(tmp_path)
+    (tmp_path / ".human-review").mkdir()
+    srv.ROOT = tmp_path
+    live = _slow_rerun(tmp_path, monkeypatch)
+    try:
+        run, problem, status, joined = srv.start_rerun(tmp_path / ".human-review", ai=True)
+        assert status == 409 and joined is False
+        assert run is live, "the refusal has to name what is already going"
+        assert "still going" in problem and "wait for it" in problem.lower()
+        # …and the free one still joins, and says so.
+        run, problem, status, joined = srv.start_rerun(tmp_path / ".human-review")
+        assert (problem, status, joined) == (None, 200, True)
+        assert run is live
+    finally:
+        live._kill()
+
+
+def test_the_page_is_told_it_joined_rather_than_started(server, tmp_path, monkeypatch):
+    """A press handed somebody else's run looks exactly like a press that started one."""
+    _fresh(tmp_path)
+    (tmp_path / ".human-review").mkdir()
+    srv.ROOT = tmp_path
+    live = _slow_rerun(tmp_path, monkeypatch)
+    try:
+        status, payload = _call(server, "POST", srv.RERUN, body={})
+        assert status == 200
+        assert json.loads(payload)["joined"] is True
+        status, payload = _call(server, "POST", srv.RERUN_AI, body={})
+        assert status == 409
+        refused = json.loads(payload)
+        assert "still going" in refused["error"]
+        assert refused["run"] == live.id, "the page needs the run to show it"
+    finally:
+        live._kill()
+
+
+def test_the_price_is_derived_from_what_this_pages_runs_really_cost(tmp_path):
+    """`~$5 on Sonnet` was a constant somebody typed once. Three real runs on the demo page
+    came in at $4.00, $8.09 and $10.63, so a reader who budgeted for the label was out by a
+    factor of two, in the direction that matters."""
+    (tmp_path / srv.MODEL_RUNS_FILE).write_text(json.dumps({"version": 1, "runs": [
+        {"when": "2026-09-18T09:00:00+00:00", "cost": 4.00},
+        {"when": "2026-09-18T12:00:00+00:00", "cost": 8.09},
+        {"when": "2026-09-18T18:00:00+00:00", "cost": 10.63}]}), encoding="utf-8")
+    price = srv.price_estimate(tmp_path)
+    assert price["text"] == "~$7.57"
+    assert price["last"] == 10.63, "the last real invoice goes in the dialog"
+    assert price["n"] == 3
+
+
+def test_a_page_nobody_has_paid_for_says_a_range_and_not_a_number(tmp_path):
+    """A number with nothing behind it is a promise. A ledger that is missing, unreadable,
+    or holds only runs whose cost could not be read all mean the same thing here."""
+    assert srv.price_estimate(tmp_path) == {"text": "~$5\u2013$10", "last": None, "n": 0}
+    (tmp_path / srv.MODEL_RUNS_FILE).write_text("{not json", encoding="utf-8")
+    assert srv.price_estimate(tmp_path)["n"] == 0
+    (tmp_path / srv.MODEL_RUNS_FILE).write_text(
+        json.dumps({"runs": [{"when": "x", "cost": None}]}), encoding="utf-8")
+    assert srv.price_estimate(tmp_path)["text"] == "~$5\u2013$10"
+
+
+def test_the_probe_carries_the_price_so_the_button_can_stop_guessing(server, tmp_path):
+    _fresh(tmp_path)
+    srv.ROOT = tmp_path
+    (tmp_path / srv.MODEL_RUNS_FILE).write_text(json.dumps({"runs": [{"cost": 9.5}]}),
+                                                encoding="utf-8")
+    caps = json.loads(_call(server, "GET", srv.MARKER)[1])
+    assert caps["price"]["text"] == "~$9.50" and caps["price"]["last"] == 9.5
 
 
 def test_no_model_step_beside_us_means_no_paid_button(tmp_path, monkeypatch):

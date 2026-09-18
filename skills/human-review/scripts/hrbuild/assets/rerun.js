@@ -88,6 +88,18 @@
       }
       stop(btn, 'the rebuild did not finish', snap);
     }).catch(function (e) {
+      // 409 is not a failure of the rebuild, it is the server saying this press started
+      // nothing. It belongs back in the dialog the reader just came out of rather than in
+      // the red band at the top of the page, which reads as "your run broke".
+      if (e && e.status === 409 && panel) {
+        stop(btn, '', null);
+        if (fail) fail.hidden = true;
+        panel.hidden = false;
+        sayBusy({active: e.busy || {}, kind: (e.busy && e.busy.action === '__rerun_ai__')
+                   ? 'rerun_ai' : 'rerun',
+                 started: e.busy && e.busy.started, joined: 0});
+        return;
+      }
       stop(btn, e.message || 'the review server could not be reached', null);
     });
   }
@@ -109,10 +121,44 @@
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
 
+  // What the panel says about a run already in flight, and what that does to the answer.
+  // A paid press is never joined in silence any more — the server refuses it with 409 and
+  // names the run — so the panel has to be able to show a reader the thing that is going
+  // before they decide whether to want one of their own.
+  function sayBusy(state) {
+    var box = panel && panel.querySelector('.hrconfirm-busy');
+    var yes = panel && panel.querySelector('.hrconfirm-yes');
+    if (!box) return false;
+    if (!state || !state.active) {
+      box.hidden = true;
+      box.textContent = '';
+      if (yes) { yes.disabled = false; yes.textContent = 'Spend it, rerun with AI'; }
+      return false;
+    }
+    var at = new Date((state.started || 0) * 1000);
+    var clock = at.getHours() + ':' + ('0' + at.getMinutes()).slice(-2);
+    box.textContent = (state.kind === 'rerun_ai' ? 'A paid run' : 'A rerun')
+      + ' started at ' + clock + ' is still going'
+      + (state.joined ? ' (' + state.joined + ' other press joined it)' : '')
+      + '. Wait for it, then decide \u2014 it may already be doing what you want, and it may '
+      + 'be building from a working tree that has moved since.';
+    box.hidden = false;
+    // Not merely discouraged. The press that cost eight dollars was a press this panel
+    // would have allowed.
+    if (yes) { yes.disabled = true; yes.textContent = 'Something is already running'; }
+    return true;
+  }
+
   function confirmSpend() {
     if (!panel) return Promise.resolve(true);
     lastFocus = document.activeElement;
+    sayBusy(null);
     panel.hidden = false;
+    // Asked at the moment of deciding, not at load: a run somebody started in another tab
+    // three minutes ago is exactly the case this exists for.
+    if (window.HR.status) {
+      window.HR.status().then(sayBusy).catch(function () {});
+    }
     // Cancel, not the spend: whatever a stray Return or a reflexive click lands on has to
     // be the answer that costs nothing.
     var no = panel.querySelector('.hrconfirm-no');
@@ -155,6 +201,28 @@
 
   window.HR.onready(function (caps) {
     if (!caps) return;
+    // The price the button claims, out of what this page's own paid runs have cost. The
+    // label used to read `~$5 on Sonnet` and it was a constant somebody typed once: three
+    // real runs on this page came in at $4.00, $8.09 and $10.63, so a reader who budgeted
+    // for the label was out by a factor of two. The markup keeps the range as its
+    // fallback, which is what a static copy and a server with no ledger both show.
+    var price = caps.price;
+    if (price && price.text) {
+      buttons.forEach(function (btn) {
+        var fmt = btn.getAttribute('data-tip-fmt');
+        if (!fmt) return;
+        btn.setAttribute('data-tip', fmt.replace('{price}', price.text));
+        btn.setAttribute('data-idle-tip', btn.getAttribute('data-tip'));
+      });
+      var face = panel && panel.querySelector('.hrconfirm-price');
+      if (face) face.textContent = 'about ' + price.text + ' on Sonnet';
+      var last = panel && panel.querySelector('.hrconfirm-last');
+      if (last && price.last) {
+        last.textContent = 'The last one really cost $' + price.last.toFixed(2)
+          + (price.n > 1 ? ', and that average is over the last ' + price.n + '.' : '.');
+        last.hidden = false;
+      }
+    }
     // Per button, from the probe's own answer for that verb. Inferring the paid one from
     // the free one would draw a $5 control over a server that has no model step beside it.
     buttons.forEach(function (btn) {

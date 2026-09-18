@@ -36,11 +36,13 @@ button is wired to the right program, runs through it. Nothing below it may cost
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -56,6 +58,16 @@ WRITES = ("assets/requirements-map.html", "test-index")
 
 #: Where the copy being replaced goes. Dot-prefixed: see the module docstring.
 PREV = ".model-prev"
+
+#: What each paid run really cost, appended here so the button that spends it can stop
+#: guessing. The label used to read `~$5 on Sonnet` — a number typed once, never measured —
+#: and three real runs on the demo page came in at $4.00, $8.09 and $10.63. A reader who
+#: budgeted for the label was out by a factor of two, in the direction that matters.
+#:
+#: Dot-prefixed like the manifest, and for the same reason: it is a record of this
+#: machine's spending, not a fact about the branch, so it must not travel in the zip.
+RUNS_LEDGER = ".model-runs.json"
+RUNS_KEPT = 20
 
 #: The model, named rather than defaulted. `HUMAN_REVIEW_MODEL` overrides it for the one
 #: case that is not a preference — a harness where `sonnet` resolves to nothing.
@@ -89,7 +101,7 @@ def claude_argv(root: Path) -> list[str]:
     """
     extra = (os.environ.get("HUMAN_REVIEW_MODEL_ARGS") or "").split()
     return ["claude", "-p", "--model", MODEL, "--permission-mode", "acceptEdits",
-            "--add-dir", str(root), *extra]
+            "--output-format", "json", "--add-dir", str(root), *extra]
 
 
 def missing(review: Path) -> list[str]:
@@ -175,6 +187,53 @@ def keep_previous(review: Path) -> Path:
     return dest
 
 
+def _priced(out: str):
+    """`(cost, what the model said)` out of `claude -p --output-format json`.
+
+    `(None, "")` for anything this does not recognise, which is not an error: the run
+    happened and the artifacts are on disk either way, and a bookkeeping field that moved
+    between CLI versions must never be the reason a $5 run reports as a failure.
+    """
+    try:
+        doc = json.loads(out)
+        if not isinstance(doc, dict):
+            raise ValueError
+    except Exception:
+        return None, ""
+    cost = doc.get("total_cost_usd")
+    return (float(cost) if isinstance(cost, (int, float)) else None,
+            doc.get("result") or "")
+
+
+def record_run(review: Path, cost, seconds: float) -> None:
+    """Append what this run cost, so the button can stop guessing what the next one will.
+
+    Appended even when the cost could not be read, with `cost: null` — the *number* of runs
+    is itself the answer to "has anybody ever pressed this", and a ledger that only records
+    the runs it could price would quietly claim a page had never been rerun.
+
+    Bounded, and failures are swallowed whole. This is bookkeeping running after the money
+    has already been spent; an unwritable directory is not a reason to report a successful
+    run as a failed one.
+    """
+    path = review / RUNS_LEDGER
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        runs = doc.get("runs") if isinstance(doc, dict) else doc
+        if not isinstance(runs, list):
+            runs = []
+    except Exception:
+        runs = []
+    runs.append({"when": datetime.datetime.now(datetime.timezone.utc)
+                 .isoformat(timespec="seconds"),
+                 "model": MODEL, "cost": cost, "seconds": round(seconds, 1)})
+    try:
+        path.write_text(json.dumps({"version": 1, "runs": runs[-RUNS_KEPT:]}, indent=2)
+                        + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -214,7 +273,23 @@ def main(argv=None) -> int:
     kept = keep_previous(review)
     print(f"[model] the pair being replaced is in {kept}/ — this is a judgement, not a "
           "refresh, and the copy you were reading has to survive the click.")
-    proc = subprocess.run(argvec, cwd=str(root), input=prompt, text=True)
+    started = time.time()
+    # `--output-format json` rather than plain text, for one field: `total_cost_usd`. `-p`
+    # does not stream in either mode — the prose arrives when the run is over — so nothing
+    # a reader watches is lost by taking it out of an object instead of off stdout, and
+    # what is gained is the only honest source for what this button costs.
+    proc = subprocess.run(argvec, cwd=str(root), input=prompt, text=True,
+                          capture_output=True)
+    cost, said = _priced(proc.stdout)
+    if said:
+        print(said)
+    elif proc.stdout:
+        # An older CLI, or a shape this does not know: print what came back rather than
+        # swallowing the run's own last word over a bookkeeping field.
+        print(proc.stdout, end="")
+    if proc.stderr:
+        print(proc.stderr, end="", file=sys.stderr)
+    record_run(review, cost, time.time() - started)
     if proc.returncode != 0:
         print(f"[model] {MODEL} exited {proc.returncode}; the artifacts on disk are "
               "whatever it managed to write.", file=sys.stderr)
