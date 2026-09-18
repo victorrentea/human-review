@@ -244,25 +244,29 @@ a { color:var(--link); }
 .chip b { color:var(--fg); font-weight:600; }
 a.chip-link { text-decoration:none; }
 a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
-button.chip-mode { font:inherit; font-size:.82rem; cursor:copy; }
-.chip-served { color:#2e7d32; border-color:#2e7d32; cursor:default; }
+button.chip-mode { font:inherit; cursor:copy; }
+/* Green, and the same green the run glyph wears further down: on this page it is the one
+   colour that means "something can happen here" rather than "a check passed". */
+.chip-served { color:#2e7d32; border-color:#2e7d32; }
+@media (prefers-color-scheme:dark) {
+  .chip-served { color:#6bd48a; border-color:#3f7f52; } }
 /* Rerun: re-derive what a program can re-derive and rebuild the page. A chip like its
    neighbour rather than a call to action, because it is furniture of the served copy and
    not a verdict about the branch — and shaped like the mode badge beside it so the two
    read as one pair of facts about *this copy of the page*, not as a control competing
    with the score. Emitted hidden; the probe raises it. */
-button.chip-rerun { font:inherit; font-size:.82rem; cursor:pointer; color:var(--fg); }
+button.chip-rerun { font:inherit; cursor:pointer; }
 button.chip-rerun:hover:not(:disabled) { border-color:var(--link); background:var(--accent-soft); }
 button.chip-rerun:disabled { cursor:progress; color:var(--muted); }
-/* The spinner is on the chip, not beside it: a second element in the title row would
-   reflow the masthead the instant the button is pressed. */
-button.chip-rerun.running::before { content:""; display:inline-block; width:.62em;
-            height:.62em; margin-right:.42rem; vertical-align:baseline;
-            border:2px solid currentColor; border-right-color:transparent;
-            border-radius:50%; animation:hrspin .7s linear infinite; }
+/* The chip's face is its glyph, so the glyph is what turns: a borrowed ring drawn beside
+   it would be a second circular mark saying the same thing, and a word in its place would
+   reflow the masthead the instant the button is pressed. `.rr-ico` is the run mark alone,
+   so the robot and the banknote on the paid chip stay still while it spins. */
+.rr-ico { display:inline-block; }
+button.chip-rerun.running .rr-ico { animation:hrspin .7s linear infinite; }
 @keyframes hrspin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) {
-  button.chip-rerun.running::before { animation:none; } }
+  button.chip-rerun.running .rr-ico { animation:none; } }
 /* The paid one, beside the free one. Amber and not red: red on this page means a failure
    or a regression, and a control that is merely expensive is not either of those — it is
    the page's one "are you sure", and amber is what every other "look before you press"
@@ -343,12 +347,11 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
 .rband li + li { margin-top:.35rem; }
 .rband code { font-size:.95em; }
 .rband .rb-gen { color:var(--muted); }
-/* The two things to do about a commit that landed after the review was written: take it
-   back, or make the rest of the page catch up with it. They are buttons on a row of their
-   own under the commit, not underlined words inside the sentence — an inline link in a red
-   band carries the same weight as the prose around it and gets read as part of it, and
-   these two are what the band is *for*. */
-.rband .rb-actions { display:flex; flex-wrap:wrap; gap:.45rem .8rem; margin:.4rem 0 0; }
+/* The one thing to do about the commits the band reports: make the rest of the page catch
+   up with them. A button on a row of its own under the list, not an underlined word inside
+   the paragraph — an inline link in a red band carries the same weight as the prose around
+   it and gets read as part of it, and this is what the band is *for*. */
+.rband .rb-actions { display:flex; flex-wrap:wrap; gap:.45rem .8rem; margin:.55rem 0 0; }
 .rband .rb-act { display:inline-flex; align-items:center; gap:.3rem; }
 .rband .offer-pill { cursor:pointer; font:inherit; font-size:.82rem; font-weight:600;
             color:var(--fg); background:var(--card); border:1px solid var(--line);
@@ -739,38 +742,38 @@ pre.code code { white-space:pre; }
    reader learns this pair once: a clipboard means "copy the line", a play means "and this
    copy of the report can run it". */
 .cmd { display:inline-flex; align-items:center; gap:.2rem; vertical-align:baseline; }
-.cmd .cmd-copy, .cmd .cmd-play { font:inherit; font-size:.92em; line-height:1.15;
+.cmd .cmd-copy, .cmd .cmd-run { font:inherit; font-size:.92em; line-height:1.15;
             cursor:pointer; color:var(--muted); background:var(--card);
             border:1px solid var(--line); border-radius:999px; padding:.1rem .4rem;
             text-decoration:none; font-weight:400; }
-.cmd .cmd-copy:hover, .cmd .cmd-play:hover { color:var(--fg); border-color:var(--muted);
+.cmd .cmd-copy:hover, .cmd .cmd-run:hover { color:var(--fg); border-color:var(--muted);
             background:var(--accent-soft); }
 /* Green, and the only green glyph on this page that is not a passing check — which is
    exactly why it earns the exception: it says "something can happen here", and the reader
    has already learnt that green in the masthead's `served` badge. */
-.cmd .cmd-play { color:#2e7d32; border-color:#2e7d32; }
-.cmd .cmd-play:hover { color:#2e7d32; border-color:#2e7d32; }
+.cmd .cmd-run { color:#2e7d32; border-color:#2e7d32; }
+.cmd .cmd-run:hover { color:#2e7d32; border-color:#2e7d32; }
 @media (prefers-color-scheme: dark) {
-  .cmd .cmd-play { color:#6bd48a; border-color:#3f7f52; }
-  .cmd .cmd-play:hover { color:#6bd48a; border-color:#6bd48a; } }
-.cmd .cmd-play[disabled], .cmd .cmd-copy[disabled] { cursor:progress; }
+  .cmd .cmd-run { color:#6bd48a; border-color:#3f7f52; }
+  .cmd .cmd-run:hover { color:#6bd48a; border-color:#6bd48a; } }
+.cmd .cmd-run[disabled], .cmd .cmd-copy[disabled] { cursor:progress; }
 /* A glyph mid-run, without the glyph becoming a word: this is a pill one character wide
    and "Running…" in it would reflow the line it sits in. */
-.cmd .cmd-play.running { animation:hrspin .9s linear infinite; }
-@media (prefers-reduced-motion:reduce) { .cmd .cmd-play.running { animation:none; } }
+.cmd .cmd-run.running { animation:hrspin .9s linear infinite; }
+@media (prefers-reduced-motion:reduce) { .cmd .cmd-run.running { animation:none; } }
 /* The offers inside the sentence are worded as things you do, not as things you press, so
    they are dressed as the draw.io links beside them and not as buttons: three boxed
    controls in one line under a picture read as a toolbar, which is exactly what this line
    stopped being. `button` and not `a` because neither goes anywhere. */
-/* `:not(.cmd-play)` is load-bearing, not defensive. A play glyph is also a `.runhere` —
+/* `:not(.cmd-run)` is load-bearing, not defensive. A play glyph is also a `.runhere` —
    that is how the page's one handler runs it — and this rule and the glyph's own pill are
    the same specificity, so whichever came later in the stylesheet won. This one comes
    later, so without the exclusion every ▶ under a diagram lost its border, its background
    and its padding and read as a stray character in the sentence. */
-.rerun .runhere:not(.cmd-play) { cursor:pointer; font:inherit; color:var(--fg);
+.rerun .runhere:not(.cmd-run) { cursor:pointer; font:inherit; color:var(--fg);
               font-weight:600; background:none; border:0; padding:0;
               text-decoration:underline; text-underline-offset:2px; }
-.rerun .runhere:not(.cmd-play):hover { text-decoration-thickness:2px; }
+.rerun .runhere:not(.cmd-run):hover { text-decoration-thickness:2px; }
 /* A sentence of its own, and a sentence's worth of air before it: the offer that throws
    work away is found by the reader who goes looking for it rather than met by the reader
    who does not. */
@@ -851,7 +854,10 @@ pre.code code { white-space:pre; }
 #copy-toast.shown { opacity:1; transform:translateX(-50%) translateY(0); }
 .badge { border-radius:4px; padding:.1rem .45rem; font-size:.74rem; font-weight:600; text-transform:uppercase;
           letter-spacing:.04em; background:var(--accent-soft); color:var(--accent); }
-.city { display:block; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:1rem 0; }
+/* No top margin: with the lede gone, this picture is the first thing in the panel and
+   the strip above it is already a gutter's worth of air. */
+.city { display:block; border:1px solid var(--line); border-radius:8px; overflow:hidden;
+        margin:0 0 1rem; }
 .city img { display:block; width:100%; height:auto; }
 ol.findings { list-style:none; counter-reset:f; padding:0; margin:1rem 0; }
 ol.findings > li { counter-increment:f; background:var(--card); border:1px solid var(--line);
@@ -976,17 +982,28 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .titlerow.oneline h1 { min-width:0; overflow:hidden; text-overflow:ellipsis;
                         white-space:nowrap; }
 .titlerow.oneline .titlescore { flex:0 0 auto; }
-/* The served/static badge rides the title row, against the score: pushed hard right
-   with the pill, so the title keeps the whole left and the two facts read as one. */
-.titlerow .chip-mode { flex:0 0 auto; margin-left:auto; align-self:center; }
-.titlerow .chip-mode + .titlescore { margin-left:0; }
-/* Rerun travels with the mode badge — the two are both facts about this copy of the page
-   — so the badge keeps the `margin-left:auto` that pushes the pair right and this one
-   only needs to stop stretching. `[hidden]` is spelled out because `display:inline-flex`
-   further down would otherwise beat the attribute. */
-.titlerow .chip-rerun { flex:0 0 auto; align-self:center; }
-.titlerow .chip-rerun[hidden] { display:none; }
-.titlerow .chip-rerun + .titlescore { margin-left:0; }
+/* The right-hand end of the title row: what this copy of the page can do, then how the
+   branch did. Whichever of them comes first takes the `margin-left:auto` that pushes the
+   group against the right edge — the badge is hidden once the rerun chip replaces it, and
+   `:first-child` would be the title, so the push is written as "the first of these that
+   is on screen" rather than pinned to one of them.
+
+   One box for all three, and it is the score's. They are the same beige-and-border pill
+   at a glance and they were not the same height: the chips took their height from the
+   text and the score added a `line-height:1.6` to its own digits, so the pill on the right
+   stood a couple of pixels taller than the pair beside it and sat on a baseline they did
+   not share. Now the padding, the border, the radius, the type size and the line box are
+   declared once, here, for the three of them, and they are centred on each other rather
+   than on a baseline — a glyph, a word and a fraction have no common baseline to sit on. */
+.titlerow .chip-mode, .titlerow .chip-rerun, .titlerow .titlescore {
+            flex:0 0 auto; align-self:center;
+            padding:.15rem .7rem; border-radius:999px; border-width:1px;
+            border-style:solid; font-size:.82rem; line-height:1.6; }
+.titlerow > .chip-mode:not([hidden]),
+.titlerow > .chip-mode[hidden] ~ .chip-rerun:not([hidden]) { margin-left:auto; }
+/* `[hidden]` is spelled out because the `display` these carry would otherwise beat the
+   attribute. */
+.titlerow .chip-mode[hidden], .titlerow .chip-rerun[hidden] { display:none; }
 .masthead .scopebar { margin:.3rem 0 .05rem; }
 /* Inside the masthead the strip is no longer its own sticky, full-bleed band: the block
    around it does the bleeding, the pinning and the edge. */
@@ -1012,16 +1029,16 @@ table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace
 .chip.refchip.drifted { border-color:var(--drift); }
 h1 .prref { text-decoration:none; }
 h1 .prref:hover { text-decoration:underline; }
-/* One size, and it is the size of the `static` badge it sits next to. A 1.5rem `6`
-   against a .8rem `/10` made the numerator the loudest thing in the masthead and the
-   denominator its footnote — two halves of one fraction, set as if they were two facts.
-   The pill keeps its colour, its shape and its right edge; only the type is levelled,
-   down to the chip's own .82rem, and the padding and the transparent border are what
-   make it exactly as tall as a chip. */
-.titlescore { display:inline-flex; align-items:baseline; gap:.2rem; padding:.15rem .7rem;
-              border:1px solid transparent; border-radius:999px; white-space:nowrap;
-              font-size:.82rem; }
-.titlescore b { font-size:1em; line-height:1.6; letter-spacing:0; }
+/* One size, and it is the size of the badge it sits next to. A 1.5rem `6` against a .8rem
+   `/10` made the numerator the loudest thing in the masthead and the denominator its
+   footnote — two halves of one fraction, set as if they were two facts. The pill keeps its
+   colour and its shape; the box it is drawn in — padding, radius, type size, line box — is
+   declared once for it and the chips together, up in the title row, which is the only way
+   three pills on one line stay the same height as each other. The border is transparent
+   rather than absent so the width it takes is the chips' width. */
+.titlescore { display:inline-flex; align-items:baseline; gap:.2rem;
+              border-color:transparent; white-space:nowrap; }
+.titlescore b { font-size:1em; line-height:inherit; letter-spacing:0; }
 .titlescore small { font-size:1em; opacity:.6; }
 .titlescore i { font-style:normal; font-size:.82rem; opacity:.85; margin-left:.25rem; }
 /* The score is a link now — to the tab holding the findings that produced it, which is
@@ -1912,8 +1929,13 @@ window.HR = (function () {
     // Nothing left to copy: the line it offered is the one that got the reader here.
     chip.classList.remove('copycmd');
     chip.removeAttribute('data-copy');
-    chip.setAttribute('data-tip', 'Served by the review server: buttons run their command '
-      + 'from this page, and recordings play in it.');
+    chip.setAttribute('data-tip', 'Served by the review server: commands run from this '
+      + 'page, and recordings play in it.');
+    // …and where the rerun chip can really run, *it* is this badge and this one goes: the
+    // two were one fact written twice. The word stays for the served page whose server
+    // cannot rebuild it — rarer than it sounds, and the only case where `served` has
+    // something to say that the glyph beside it would not be able to honour. RERUN_JS
+    // does the hiding, because it is the half that knows whether the chip came up.
     // Where an action can actually run, the offer under the diagram changes from `run
     // this` to `click here` and the command stops being shown: the button does the job,
     // and a shell line beside it is for a reader who is not here. Per action and not per
@@ -1929,12 +1951,23 @@ window.HR = (function () {
         || b.getAttribute('data-tip'));
       var offer = b.closest ? b.closest('.offer') : null;
       if (offer) offer.classList.add('served');
-      // The play glyph beside a printed command. It ships `hidden` in every copy of the
-      // report — a glyph that says "this runs here" on a page with nothing behind it is a
-      // lie in one character — and this is the line that raises it, per action, off the
-      // same answer that decides the words beside it. In the static copy nothing calls
-      // this, so the reader sees the command and its copy button and no play at all.
-      if (b.classList.contains('cmd-play')) b.hidden = false;
+      // The run glyph beside an offer. It ships `hidden` in every copy of the report — a
+      // glyph that says "this runs here" on a page with nothing behind it is a lie in one
+      // character — and this is the line that raises it, per action, off the same answer
+      // that decides the words beside it.
+      //
+      // And the clipboard beside it goes, in the same breath. The two used to sit side by
+      // side on a served page and the pair asked the reader a question the page already
+      // knew the answer to: one of them runs the command here, the other hands them the
+      // line to go and run somewhere else, and nothing on screen said which was which
+      // until they had pressed one. Exactly one glyph per command, per copy of the report
+      // — the clipboard where nothing can run, this where something can — so the mark
+      // *is* the answer instead of an option beside it.
+      if (!b.classList.contains('cmd-run')) return;
+      b.hidden = false;
+      var pair = b.closest ? b.closest('.cmd') : null;
+      var clip = pair && pair.querySelector('.cmd-copy');
+      if (clip) clip.hidden = true;
     });
   });
 
@@ -1944,24 +1977,48 @@ window.HR = (function () {
 </script>"""
 
 
-# The masthead's Rerun, and the only place a failed one is reported.
+#: The one glyph a command wears — whichever of the two is true of *this* copy of the
+#: report. Characters and not SVG: they are one text node each, they inherit the pill's
+#: colour and size for free in both themes, and a page that carries eleven of these does
+#: not want eleven inline documents in it.
+#:
+#: The run glyph is the clockwise arrows and not a ▶ because every command this page
+#: offers is a *rerun*: it re-derives something the page is already showing and the page
+#: then catches up with it. A play triangle promises a thing that starts and plays; this
+#: promises the thing that comes round again, which is also what the masthead's badge and
+#: the spinner mid-run are drawn from. One mark, learnt once, everywhere it can happen.
+CMD_COPY = "\U0001F4CB"   # 📋
+CMD_RUN = "\U0001F503"    # 🔃
+
+# The masthead's Rerun — which is also the served badge, because they are one fact.
 #
 # Not to be confused with `rerun_html` further down, which is the offer under a *diagram*
 # — one picture, re-rendered, from a command the build declared in the manifest. This one
 # is the whole page, from a command the build never sees: it belongs to the server.
 #
+# It used to be a chip reading `Rerun` beside a chip reading `served`, and the two were
+# saying the same thing twice. A page is served *exactly when* it can rerun itself: the
+# badge announced the condition and the button beside it was the only thing that condition
+# let you do. So the badge is the button. The glyph is the run mark every command on the
+# page now wears, which makes the masthead the place a reader learns it — and its absence
+# is what `static` means, in the one word that is left when nothing can run here.
+#
 # Emitted hidden and raised by the probe, like every other control here. A static copy has
 # no process behind it, and a button that copied a shell line instead would be handing back
 # the terminal round trip this exists to remove.
 #
-# The tooltip names what the button will NOT do, because that is the part a reader cannot
-# see and the part they are right to worry about: the findings on this page are a judgement
-# bought once, and the film costs minutes and a running application.
-RERUN_CHIP = ('<button type="button" class="chip chip-rerun" id="hr-rerun" hidden '
-              'aria-disabled="true" data-rerun="__rerun__" '
-              'data-tip="Re-derive the evidence and rebuild this '
+# The tooltip carries both halves, and names what the button will NOT do, because that is
+# the part a reader cannot see and the part they are right to worry about: the findings on
+# this page are a judgement bought once, and the film costs minutes and a running
+# application.
+RERUN_CHIP = ('<button type="button" class="chip chip-rerun chip-served" id="hr-rerun" '
+              'hidden aria-disabled="true" data-rerun="__rerun__" '
+              'aria-label="Served by the review server \u2014 rerun and rebuild this page" '
+              'data-tip="Served by the review server: commands run from this page and '
+              'recordings play in it. Click to re-derive the evidence and rebuild the '
               'page: diagrams, complexity, the REST contract, the logging scan, the test '
-              'manifest. Not the findings, and not the film. Free.">Rerun</button>')
+              f'manifest. Not the findings, and not the film. Free.">'
+              f'<span class="rr-ico">{CMD_RUN}</span></button>')
 
 # The same button with the model's half in front of it, and the only control on this page
 # that spends money.
@@ -1981,9 +2038,17 @@ RERUN_CHIP = ('<button type="button" class="chip chip-rerun" id="hr-rerun" hidde
 RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
                  'id="hr-rerun-ai" hidden aria-disabled="true" '
                  'data-rerun="__rerun_ai__" '
+                 'aria-label="Rerun with AI \u2014 costs about $5" '
                  'data-tip="costs money: ~$5 on Sonnet. Rewrites the requirements↔tests '
                  'matrix and the per-test catalogue with a model, then re-derives the '
-                 'evidence and rebuilds the page.">Rerun + AI</button>')
+                 'evidence and rebuilds the page.">'
+                 # The free one's mark, then the two things this one adds to it: a model,
+                 # and money leaving. Three characters and no words, because the sentence
+                 # that matters here is the price and the price is in the hover and again
+                 # in the dialog — a label reading `Rerun + AI` said neither, and cost the
+                 # masthead the width of two words to say `rerun` a second time.
+                 f'<span class="rr-ico">{CMD_RUN}</span>'
+                 '\U0001F916\U0001F4B8</button>')
 
 # The confirmation, in the page rather than in the browser.
 #
@@ -2089,7 +2154,6 @@ RERUN_JS = """<script>
   function stop(btn, problem, snap) {
     btn.disabled = false;
     btn.classList.remove('running');
-    btn.textContent = btn.getAttribute('data-face') || btn.textContent;
     btn.setAttribute('data-tip', btn.getAttribute('data-idle-tip') || '');
     // Both of them: the lock is shared, so while one was working the other was disabled
     // for a run it did not start, and leaving it that way would strand it.
@@ -2119,8 +2183,11 @@ RERUN_JS = """<script>
     // and unreadable — a reader who pressed the free button and watched the paid one's log
     // scroll past has been told the wrong thing by the page.
     buttons.forEach(function (other) { other.disabled = true; });
+    // The glyph turns; nothing is written over it. These chips are two and three
+    // characters wide and 'Running\\u2026' in one reflowed the whole masthead the instant it
+    // was pressed — and the mark that spins is the same mark the run glyphs down the page
+    // already spin, so a reader who has seen one knows this one is working.
     btn.classList.add('running');
-    btn.textContent = 'Running\\u2026';
     remember();
     window.HR.run(btn.getAttribute('data-rerun'), {}, function (snap) {
       // One line, in the hover: the button has room for a word and the reader who wants
@@ -2190,8 +2257,8 @@ RERUN_JS = """<script>
 
   buttons.forEach(function (btn) {
     // Stashed on the element so `stop` can put the button back exactly as it was without
-    // a closure per button holding the strings.
-    btn.setAttribute('data-face', btn.textContent);
+    // a closure per button holding the strings. Only the tooltip: the face is a glyph the
+    // run never replaces, so there is nothing else to put back.
     btn.setAttribute('data-idle-tip', btn.getAttribute('data-tip') || '');
     var paid = btn.getAttribute('data-rerun') === '__rerun_ai__';
     btn.addEventListener('click', function () {
@@ -2209,6 +2276,12 @@ RERUN_JS = """<script>
       if (!window.HR.can(btn.getAttribute('data-rerun'))) return;
       btn.hidden = false;
       btn.removeAttribute('aria-disabled');
+      // The free one *is* the served badge, so the word steps aside for it. Only the free
+      // one: `Rerun + AI` is a second thing this page can do, not a second way of saying
+      // what this page is.
+      if (btn.getAttribute('data-rerun') !== '__rerun__') return;
+      var mode = document.getElementById('hr-mode');
+      if (mode) mode.hidden = true;
     });
   });
 })();
@@ -3433,7 +3506,7 @@ EDITOR_JS = r"""<script>
     // sits in, and 'Done' would leave a word where the reader learnt to find a mark. So
     // the glyph spins in place and the sentence goes in the toast, which is where the
     // progress of every other command on this page is already read.
-    var glyph = button.classList.contains('cmd-play');
+    var glyph = button.classList.contains('cmd-run');
     button.disabled = true;
     if (glyph) button.classList.add('running');
     else button.textContent = 'Running\u2026';
@@ -4881,12 +4954,6 @@ def reveal_html(reveal: dict | None, name: str) -> str:
             '<span class="plainword">this diagram</span></span>')
 
 
-#: The two glyphs every command on this page wears. Characters and not SVG: they are one
-#: text node each, they inherit the pill's colour and size for free in both themes, and a
-#: page that carries eleven of these does not want eleven inline documents in it.
-CMD_COPY = "\U0001F4CB"   # 📋
-CMD_PLAY = "\u25B6"       # ▶
-
 #: What a static click does, appended to the static tooltip of any offer that carries its
 #: command. A sentence and not a word, because "copies it" leaves out the half a reader
 #: needs — that the page cannot run it here, and that the copy is therefore the offer.
@@ -4908,21 +4975,24 @@ def command_html(cmd: str, action_id: str | None = None, *, tip: str = "",
     eye has to climb over on every read. The information was for the one reader in ten who
     wanted to paste it, charged to all ten, forever.
 
-    So what is on screen is the *offer*, not its implementation: a copy glyph, and — served
-    — a play glyph. The command lives in the copy glyph's hover, which is where a reader who
-    wants to check the line before pasting it looks, and nowhere else in the page's text.
+    So what is on screen is the *offer*, not its implementation: one glyph, and it is the
+    one that is true here. Off disk, out of the zip and on GitHub Pages that is the
+    clipboard, and the command lives in its hover — the only place the line appears in
+    full on this page. Served, the probe raises the run glyph and takes the clipboard
+    away, because the command has somewhere to go.
 
-    Two glyphs and not one, because they answer two different questions and only one of
-    them is always true. Copy is the route every copy of the report can honour, including
-    off disk, out of the zip and on GitHub Pages. Play is the *visible* statement that this
-    copy has a server behind it — it is not rendered at all where it would not work, so its
-    presence is information rather than decoration.
+    Both are in the markup and only one is ever on screen, which is not the same as
+    rendering both. They were both visible for a while and the pair asked the reader a
+    question the page already knew the answer to — press this and it runs, press that and
+    you get a line to run somewhere else, and neither glyph said which was which. A
+    control whose whole job is to say *what this copy of the report can do* must not need
+    a click to say it.
 
     `action_id` is what the server will be asked for: a manifest id, or one of the two
     server-owned verbs (`__rerun__`, `__rerun_ai__`, which `window.HR.can` answers off the
-    probe rather than out of the manifest). No id means no play glyph, which is the honest
-    rendering of a command the build did not declare — the line is real, and nothing here
-    can run it.
+    probe rather than out of the manifest). No id means no run glyph and the clipboard
+    stays, which is the honest rendering of a command the build did not declare — the line
+    is real, and nothing here can run it.
     """
     quoted = html.escape(cmd, quote=True)
     # The command in the hover, on its own line after the sentence. This is the only place
@@ -4940,11 +5010,11 @@ def command_html(cmd: str, action_id: str | None = None, *, tip: str = "",
         play_tip = html.escape(
             ((tip.rstrip(".") + ". ") if tip else "")
             + f"Runs it through the server serving this page:\n{cmd}", quote=True)
-        out.append('<button type="button" class="runhere cmd-play" hidden '
+        out.append('<button type="button" class="runhere cmd-run" hidden '
                    f'data-action="{html.escape(action_id, quote=True)}" '
                    f'data-tip="{play_tip}"'
                    + (f' data-run-say="{html.escape(running, quote=True)}"' if running else "")
-                   + f' aria-label="Run this command">{CMD_PLAY}</button>')
+                   + f' aria-label="Run this command">{CMD_RUN}</button>')
     out.append('</span>')
     return "".join(out)
 
@@ -6551,70 +6621,52 @@ def _aftermath_files_tip(c: dict) -> str:
     return "\n".join(parts)
 
 
-def _aftermath_commit(c: dict, root: Path, regen: str = "") -> str:
-    """One commit's row: what it is, and the two things to do about it.
+def _aftermath_commit(c: dict) -> str:
+    """One commit's row: what it is, and nothing to press.
 
-    The revert is offered per commit rather than for the range, because the range is
-    usually not what anyone wants undone: the infrastructure cherry-pick that has to land
-    on the PR branch is legitimate and the hand edit beside it is the question. Reverting
-    one at a time is also the only form of this that is safe to put behind a button —
-    `git revert --no-commit` stages an inverse and stops, so the click produces a diff for
-    the reader to look at rather than a commit made on their behalf.
+    It used to carry a *Revert it* button, per commit, running `git revert --no-commit`.
+    That is gone, and not because it did not work. It answered the wrong question: a
+    commit in this band is not a mistake to be undone, it is a commit the page has not
+    caught up with, and the overwhelmingly common case on a branch like this one is the
+    infrastructure cherry-pick that *had* to land here. Offering to reverse it first, in
+    red, made the band read as an accusation — and put a button that rewrites the working
+    tree at the top of a page whose whole contract is that it only ever reads the
+    repository. A reader who really does want a commit back has `git revert` and does not
+    need a review page to type it.
 
-    Both offers are **buttons**, side by side, rather than underlined words inside the
-    sentence. Inline links in a red band carry the same weight as the prose around them and
-    get read as part of it; the two things to do about the fact the band reports are the
-    point of the band, not a footnote to it.
+    So the row is what it always was underneath: the sha, what it did, when. The one
+    action the band offers is the band's, rendered once beside the list rather than once
+    per commit — the answer is the same command however many commits landed, and three
+    copies of it down a list is three chances to wonder whether they differ.
     """
-    # The short sha, not the full one. The command is what the copy glyph puts on the
-    # clipboard and what its hover shows, and a reader checking that line before pasting it
-    # stops checking at forty characters of hex. `git revert` resolves a short sha, and a
-    # prefix that is genuinely ambiguous makes git refuse loudly rather than revert the
-    # wrong commit — which is the failure mode worth having.
-    line = f'cd {shlex.quote(str(root.resolve()))} && git revert --no-commit {c["short"]}'
-    aid = declare_action(f"aftermath-revert:{c['short']}", line,
-                         label=f"Stage the inverse of {c['short']} in the working tree")
-    served = (f"Runs `git revert --no-commit {c['short']}` here. It stages the inverse and "
-              "stops: nothing is committed, nothing is pushed, and `git reset` undoes it.")
-    offer = offer_words_html(
-        "Revert it", aid,
-        f"Stages the inverse of {c['short']} in the working tree and stops: "
-        "`git revert --no-commit`. Nothing is committed and nothing is pushed — you get "
-        "a diff to look at.",
-        served, "Staging the inverse…", cmd=line, pill=True)
     when = (c.get("when") or "")[:10]
     return ('<li>'
             f'<code data-tip="{html.escape(_aftermath_files_tip(c), quote=True)}">'
             f'{html.escape(c["short"])}</code> '
             f'{html.escape(c.get("subject", ""))}'
             + (f' <span class="rb-gen">{html.escape(when)}</span>' if when else "")
-            + '<span class="rb-actions">'
-            + '<span class="rb-act">' + offer
-            + command_html(line, aid, tip=served, running="Staging the inverse…")
-            + '</span>' + regen + '</span>'
             + '</li>')
 
 
 def _regenerate_offer(out_dir: Path, root: Path) -> str:
-    """The second answer to a commit in the aftermath band, beside taking it back.
+    """The band's one answer, once, under the list of commits.
 
     The band says a human moved the code after the review was written, and everything else
-    on the page describes the branch as the agent left it. There have always been two
-    honest responses to that and the band only offered one. *Revert it* is right when the
-    commit was a mistake. When it was not — the infrastructure cherry-pick that had to land
-    on this branch, a fix somebody made while reading — the thing wanted is not to undo it
-    but to make the rest of the page catch up with it, which is the masthead's Rerun, from
-    the place where the reader is actually looking at the problem.
+    on the page describes the branch as the agent left it. The thing a reader wants at that
+    point is not to undo the commit — it is legitimate more often than not — but to make
+    the rest of the page catch up with it, which is the masthead's rerun, offered here
+    because here is where the reader is actually looking at the problem.
 
-    A button beside the revert rather than a word inside the sentence, for the same reason
-    that one is: these two are what the band is *for*, and a reader who has just been told
-    the page describes an older branch should be able to see both answers without reading
-    the paragraph again.
+    Once per band and not once per commit: the command does not name a commit, so three
+    copies of it under three shas would be three identical buttons inviting the reader to
+    work out which one applies to which row. The answer is the band's, so it sits with the
+    band.
 
     `__rerun__` is not a manifest id — it is the server's own verb, and `window.HR.can`
-    answers for it off the probe. Which means the play glyph here appears under exactly the
-    same condition as the Rerun in the masthead, and the copy glyph carries the same command
-    a reader would type. One offer, two places, one command.
+    answers for it off the probe. Which means the run glyph here appears under exactly the
+    same condition as the rerun chip in the masthead, and where nothing can run, the
+    clipboard in its place carries the same command a reader would type. One offer, two
+    places, one command.
     """
     try:
         rel = str(out_dir.resolve().relative_to(root.resolve()))
@@ -6623,7 +6675,7 @@ def _regenerate_offer(out_dir: Path, root: Path) -> str:
     line = (f'cd {shlex.quote(str(root.resolve()))}'
             f' && {shlex.quote(str(HERE / "refresh-report.py"))}'
             f' --dir {shlex.quote(rel)} --steps static')
-    return ('<span class="rb-act">'
+    return ('<p class="rb-actions"><span class="rb-act">'
             + offer_words_html(
                 "Regenerate the report", "__rerun__",
                 "Re-derives the evidence a program can re-derive — diagrams, complexity, "
@@ -6636,7 +6688,7 @@ def _regenerate_offer(out_dir: Path, root: Path) -> str:
                            tip="Rebuilds this page against the branch as it is now and "
                                "reloads",
                            running="Rebuilding this page…")
-            + '</span>')
+            + '</span></p>')
 
 
 def aftermath_html(out_dir: Path, root: Path) -> str:
@@ -6693,12 +6745,10 @@ def aftermath_html(out_dir: Path, root: Path) -> str:
         role = "status"
     return (f'<div class="rband {cls}" role="{role}">' + head
             + f'<p class="rb-sub">{sub}</p><ul>'
-            # Rendered once and handed to every row: the offer is the same command however
-            # many commits landed, and the id it sends is the server's own verb rather than
-            # a per-commit action.
-            + "".join(_aftermath_commit(c, root, _regenerate_offer(out_dir, root))
-                      for c in commits)
-            + '</ul></div>')
+            + "".join(_aftermath_commit(c) for c in commits)
+            # After the list, not inside it: the commits are what happened, and this is the
+            # one thing to do about all of them.
+            + '</ul>' + _regenerate_offer(out_dir, root) + '</div>')
 
 
 #: The three block types that render the one list. Named so `render_block` can hand all
@@ -9543,13 +9593,26 @@ def main(argv=None) -> int:
     city = spec.get("codecity")
     city_html = ""
     if city:
-        # No heading, and `title` on the block is ignored — same reason `logging` has none.
-        # The tab is called *Code City* and the picture is the first thing under it, so a
-        # heading above it is the tab's label said a second time. The anchor moves to the
-        # line under it so `#codecity` still lands here.
+        # No heading and no lede: the picture starts immediately under the tab strip.
+        #
+        # `title` was already ignored, for the reason `logging` has no heading — the tab is
+        # called *Code City* and a heading above the picture is the tab's label said a
+        # second time. `body` now goes the same way, and it earned it. The line it held was
+        # always some version of *"10 buildings lit — the classes this change set touched,
+        # in a city of the whole backend"*, which is three claims the reader can already
+        # see: the count is legible in the shot, the lit slice is what lit means, and the
+        # city being the whole backend is what a city is. It was also a **hand-typed
+        # number** in a file nothing revalidates — the exact thing this skill's own writing
+        # rule forbids — so it went stale silently the first time a class was added.
+        #
+        # The anchor moves onto the picture, so `#codecity` still lands here.
+        if city.get("body"):
+            print("[review] codecity.body is no longer rendered — the picture starts under "
+                  "the tab strip. Delete it from the content file; every sentence it can "
+                  "hold is either in the shot or a number that goes stale.", file=sys.stderr)
         city_html = (
-            f'<p id="codecity">{city.get("body", "")}</p>\n'
-            f'<a class="city" href="{html.escape(city["href"])}" target="_blank" rel="noopener"'
+            f'<a class="city" id="codecity" href="{html.escape(city["href"])}"'
+            f' target="_blank" rel="noopener"'
             f' data-tip="Open the interactive Code City in a new tab">'
             f'<img src="{html.escape(city["png"])}" alt="Code City with the branch change set highlighted"></a>\n'
             # Only when there is one: the empty <p> still took a paragraph's margin under

@@ -52,7 +52,7 @@ PROBE = """() => {
       .filter(vis)
       .map(e => [e.querySelector('.appenv-verb').textContent,
                  e.querySelector('.cmd-copy').getAttribute('data-copy'),
-                 vis(e.querySelector('.cmd-play'))]),
+                 vis(e.querySelector('.cmd-run'))]),
   };
 }"""
 

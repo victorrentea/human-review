@@ -77,27 +77,46 @@ def test_a_command_with_no_action_behind_it_gets_no_play():
     """The honest rendering of a command the build did not declare: the line is real, and
     nothing on this page can run it. A play glyph there would be a lie in one character."""
     out = build.command_html("git status")
-    assert build.CMD_PLAY not in out
-    assert "cmd-play" not in out
+    assert build.CMD_RUN not in out
+    assert "cmd-run" not in out
 
 
-def test_the_play_ships_hidden_and_is_raised_by_the_probe():
+def test_the_run_glyph_ships_hidden_and_is_raised_by_the_probe():
     """Every control on this page starts degraded and rises. A glyph drawn live that turns
     out not to apply has already been clicked by the time the probe corrects it — and in
-    the static copy nothing ever raises it, which is how `file://` gets a copy and no play
-    without the build knowing which copy it is writing."""
+    the static copy nothing ever raises it, which is how `file://` gets a clipboard and no
+    run glyph without the build knowing which copy it is writing."""
     out = build.command_html("git status", "some-action")
-    tag = out[out.index('class="runhere cmd-play'):]
+    tag = out[out.index('class="runhere cmd-run'):]
     assert " hidden " in tag
     assert 'data-action="some-action"' in out
-    assert "if (b.classList.contains('cmd-play')) b.hidden = false;" in build.SERVER_JS
+    assert "if (!b.classList.contains('cmd-run')) return;" in build.SERVER_JS
+    assert "b.hidden = false;" in build.SERVER_JS
+
+
+def test_exactly_one_glyph_is_ever_on_screen():
+    """Never both. They were both visible on a served page and the pair asked the reader a
+    question the page already knew the answer to — one runs the command here, the other
+    hands over a line to run somewhere else, and neither glyph said which was which until
+    it had been pressed. The clipboard is the mark of a copy that cannot run; the run glyph
+    is the mark of one that can; raising the second takes the first away."""
+    out = build.command_html("git status", "some-action")
+    # Both in the markup — the build does not know which copy it is writing …
+    assert 'class="copycmd cmd-copy"' in out and 'class="runhere cmd-run"' in out
+    # … and the probe is what makes it one, in the same breath as raising the run glyph.
+    js = build.SERVER_JS
+    at = js.index("if (!b.classList.contains('cmd-run')) return;")
+    raised = js[at:at + 400]
+    assert "b.closest('.cmd')" in raised
+    assert ".querySelector('.cmd-copy')" in raised
+    assert "clip.hidden = true" in raised
 
 
 def test_the_play_says_what_it_will_run_and_where():
     """"Run it here" leaves out both halves a reader is asking about: *what*, and *which*
     here. The answer is the caller's sentence, then the server that served them the page,
     then the line."""
-    tip = html.unescape(re.search(r'class="runhere cmd-play"[^>]*data-tip="([^"]*)"',
+    tip = html.unescape(re.search(r'class="runhere cmd-run"[^>]*data-tip="([^"]*)"',
                         build.command_html("make all", "a",
                                            tip="Rebuilds the picture")).group(1))
     assert tip.startswith("Rebuilds the picture.")
@@ -134,22 +153,23 @@ def test_nothing_folds_a_command_any_more():
 
 
 def test_one_renderer_and_not_a_copy_per_caller():
-    """The point of the function. Four places offer a command — the aftermath band's two
-    buttons, the Demo row, the diagram offers — and a fifth would have been a fifth set of
-    affordances behaving almost the same."""
+    """The point of the function. Several places offer a command — the aftermath band's
+    regenerate, the Demo row, the diagram offers — and one more would have been one more
+    set of affordances behaving almost the same."""
     src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
     body = src[src.index("def command_html("):]
     body = body[:body.index("\ndef ", 1)]
-    assert "{CMD_PLAY}" in body and "{CMD_COPY}" in body
-    # The glyphs reach a button in exactly one place. (The play character also marks the
+    assert "{CMD_RUN}" in body and "{CMD_COPY}" in body
+    # The glyphs reach a button in exactly one place, bar the masthead chips, which name
+    # the constant rather than retyping the character. (The play triangle still marks the
     # browser tab of a served page — a different statement, in the title, not on a
-    # control — so counting the character alone would count that too.)
-    for glyph in (build.CMD_PLAY, build.CMD_COPY):
+    # control — so counting characters alone would count that too.)
+    for glyph in (build.CMD_RUN, build.CMD_COPY):
         for at in [m for m in range(len(src)) if src.startswith(glyph, m)]:
             line = src[src.rindex("\n", 0, at) + 1:src.index("\n", at)]
             assert "<button" not in line or "CMD_" in line, \
                 f"a glyph is being drawn on a button outside command_html: {line.strip()}"
-    for caller in ("_aftermath_commit", "_regenerate_offer", "runtime_html", "rerun_html"):
+    for caller in ("_regenerate_offer", "runtime_html", "rerun_html"):
         b = src[src.index(f"def {caller}("):]
         b = b[:b.index("\ndef ", 1)]
         assert "command_html(" in b, f"{caller} is drawing its own command"
@@ -191,10 +211,10 @@ def test_the_words_say_nothing_about_copying_when_they_carry_no_command():
 def test_the_glyph_spins_rather_than_becoming_a_word():
     """A play glyph is a pill one character wide. 'Running…' in it would reflow the line it
     sits in, and 'Done' would leave a word where the reader learnt to find a mark."""
-    assert "var glyph = button.classList.contains('cmd-play');" in build.EDITOR_JS
+    assert "var glyph = button.classList.contains('cmd-run');" in build.EDITOR_JS
     assert "if (glyph) button.classList.add('running');" in build.EDITOR_JS
-    assert ".cmd .cmd-play.running { animation:hrspin" in build.CSS
-    assert "@media (prefers-reduced-motion:reduce) { .cmd .cmd-play.running" in build.CSS
+    assert ".cmd .cmd-run.running { animation:hrspin" in build.CSS
+    assert "@media (prefers-reduced-motion:reduce) { .cmd .cmd-run.running" in build.CSS
 
 
 def test_the_glyphs_are_tooltipped_the_pages_own_way():
@@ -207,5 +227,5 @@ def test_the_glyphs_are_tooltipped_the_pages_own_way():
 
 def test_the_glyphs_are_dressed_as_the_pages_other_pills():
     assert ".cmd { display:inline-flex;" in build.CSS
-    assert ".cmd .cmd-copy, .cmd .cmd-play {" in build.CSS
+    assert ".cmd .cmd-copy, .cmd .cmd-run {" in build.CSS
     assert "border-radius:999px" in build.CSS[build.CSS.index(".cmd .cmd-copy, "):][:400]

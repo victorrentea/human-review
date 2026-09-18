@@ -775,7 +775,7 @@ def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
     A command assembled from guesses is worse than no command — it is tried first."""
     out = build.drawio_widget_html("conceptual", _drawio_set(tmp_path / "assets"),
                                    tmp_path, REBUILD)
-    assert "cmd-copy" not in out and "cmd-play" not in out
+    assert "cmd-copy" not in out and "cmd-run" not in out
 
 
 def test_the_command_says_what_it_is_for(tmp_path):
@@ -827,9 +827,11 @@ def test_each_copy_of_the_report_shows_the_route_it_can_actually_take(tmp_path):
     assert ".rerun .offer.served .runhere { display:inline; }" in build.CSS
     assert ".rerun .offer.served .plainword { display:none; }" in build.CSS
     assert "offer.classList.add('served')" in build.SERVER_JS, "the probe is what flips it"
-    # And the play glyph beside it is the visible statement that this copy can run it.
-    assert 'class="runhere cmd-play" hidden' in out
-    assert "if (b.classList.contains('cmd-play')) b.hidden = false;" in build.SERVER_JS
+    # And the run glyph beside it is the visible statement that this copy can run it —
+    # raised by the probe, which takes the clipboard beside it away in the same breath.
+    assert 'class="runhere cmd-run" hidden' in out
+    assert "if (!b.classList.contains('cmd-run')) return;" in build.SERVER_JS
+    assert "clip.hidden = true" in build.SERVER_JS
 
 
 def test_both_editors_are_offered_and_named(tmp_path):
@@ -995,7 +997,7 @@ def _as_read(html_out: str, served: bool) -> str:
     # CSS still picks between. Everything else is one control in both copies. The glyphs
     # come out either way: they carry no text a reader reads in the sentence.
     drop = [r'class="plainword"'] if served else [r'class="runhere"']
-    drop += [r'class="copycmd cmd-copy"', r'class="runhere cmd-play"']
+    drop += [r'class="copycmd cmd-copy"', r'class="runhere cmd-run"']
     for cls in drop:
         html_out = re.sub(r'<(button|span)[^>]*' + cls + r'[^>]*>.*?</\1>', '',
                           html_out, flags=re.S)
@@ -1036,7 +1038,7 @@ def test_starting_over_is_the_same_offer_in_the_same_shape(tmp_path):
     after = out[out.index(">start over</button>"):]
     glyphs = after[:after.index("</span>") + 7]
     assert 'class="copycmd cmd-copy"' in glyphs
-    assert 'class="runhere cmd-play" hidden' in glyphs
+    assert 'class="runhere cmd-run" hidden' in glyphs
     assert glyphs.count('data-action="drawio-redraw:conceptual"') == 1
     assert "git checkout origin/main" in glyphs, "in the hover, not in the text"
     assert "<code>" not in glyphs
@@ -1147,9 +1149,9 @@ def test_the_play_glyph_is_hidden_by_the_attribute_and_not_by_a_class(tmp_path):
     itself a `display`, or the attribute stops working and every static copy of the report
     grows a button that cannot do anything."""
     css = build.CSS
-    glyph_rules = [r for r in css.split("}") if ".cmd-play" in r and "@media" not in r]
+    glyph_rules = [r for r in css.split("}") if ".cmd-run" in r and "@media" not in r]
     assert glyph_rules, "the glyph has to be styled somewhere"
     for rule in glyph_rules:
         assert "display:" not in rule, f"a display on the glyph defeats [hidden]: {rule}"
     out = _widget_with(tmp_path, rerun=RERUN)
-    assert 'class="runhere cmd-play" hidden' in out
+    assert 'class="runhere cmd-run" hidden' in out

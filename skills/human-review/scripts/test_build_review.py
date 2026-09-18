@@ -220,7 +220,7 @@ def test_served_the_commands_stay_beside_the_verbs(tmp_path):
         assert f'<span class="appenv-verb">{verb}</span>' in out
     # And each of them is the one command renderer, with a play the probe raises.
     assert out.count('class="copycmd cmd-copy"') == 3
-    assert out.count('class="runhere cmd-play" hidden') == 3
+    assert out.count('class="runhere cmd-run" hidden') == 3
 
 
 def test_the_command_is_a_clipboard_and_not_a_line_of_text(tmp_path):

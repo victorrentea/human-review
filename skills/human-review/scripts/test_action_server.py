@@ -813,7 +813,36 @@ def test_the_button_says_what_it_will_not_do():
     findings are a judgement bought once, and the film costs minutes and a running app."""
     tip = re.search(r'data-tip="([^"]*)"', build.RERUN_CHIP).group(1)
     assert "Not the findings" in tip and "not the film" in tip
-    assert ">Rerun</button>" in build.RERUN_CHIP
+
+
+def test_the_rerun_chip_is_the_served_badge():
+    """They were one fact written twice: a page is served *exactly when* it can rerun
+    itself, so the badge announced the condition and the button beside it was the only
+    thing that condition let you do. The badge is the button now — it wears the run glyph
+    every command on the page wears, it says both halves in its hover, and the word
+    `served` steps aside the moment this one comes up."""
+    assert build.CMD_RUN in build.RERUN_CHIP
+    assert "chip-served" in build.RERUN_CHIP
+    tip = re.search(r'data-tip="([^"]*)"', build.RERUN_CHIP).group(1)
+    assert tip.startswith("Served by the review server")
+    assert "rebuild the page" in tip
+    # Only the free one takes the badge's place: `Rerun + AI` is a second thing the page
+    # can do, not a second way of saying what the page is.
+    assert "if (btn.getAttribute('data-rerun') !== '__rerun__') return;" in build.RERUN_JS
+    assert "if (mode) mode.hidden = true;" in build.RERUN_JS
+    # And the word is still there for the served page whose server cannot rebuild it.
+    assert "chip.textContent = 'served';" in build.SERVER_JS
+
+
+def test_a_running_chip_turns_its_glyph_rather_than_growing_a_word():
+    """These chips are one and three characters wide; `Running…` in one reflowed the whole
+    masthead the instant it was pressed. The mark that spins is the mark the run glyphs
+    down the page spin, so a reader who has seen one knows this one is working."""
+    assert "btn.textContent" not in build.RERUN_JS
+    assert "data-face" not in build.RERUN_JS
+    assert "button.chip-rerun.running .rr-ico { animation:hrspin" in build.CSS
+    # The robot and the banknote stay still: only the run mark is inside `.rr-ico`.
+    assert build.RERUN_AI_CHIP.index("rr-ico") < build.RERUN_AI_CHIP.index("\U0001F916")
 
 
 def test_where_the_reader_was_survives_the_rebuild():
@@ -1042,8 +1071,15 @@ def test_the_paid_button_says_the_price_before_it_is_pressed(tmp_path):
     reader cannot see and the part they are right to worry about."""
     tip = re.search(r'data-tip="([^"]*)"', build.RERUN_AI_CHIP).group(1)
     assert "costs money" in tip and "$5" in tip and "Sonnet" in tip
-    assert ">Rerun + AI</button>" in build.RERUN_AI_CHIP
     assert 'id="hr-rerun-ai" hidden' in build.RERUN_AI_CHIP
+    # The free one's mark, then the two things this one adds to it: a model, and money
+    # leaving. No words — `Rerun + AI` said neither the price nor anything the free chip
+    # beside it had not already said, and cost the masthead two words to say it.
+    assert build.RERUN_AI_CHIP.endswith("\U0001F916\U0001F4B8</button>")
+    assert build.CMD_RUN in build.RERUN_AI_CHIP
+    assert "Rerun" not in build.RERUN_AI_CHIP[build.RERUN_AI_CHIP.index('data-tip'):]
+    # The words are in the accessibility tree, where a glyph-only control has to put them.
+    assert 'aria-label="Rerun with AI' in build.RERUN_AI_CHIP
 
 
 def test_the_confirmation_is_the_pages_own_and_defaults_to_not_spending():

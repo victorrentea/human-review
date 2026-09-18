@@ -265,59 +265,51 @@ def test_no_measurement_is_not_a_reassuring_band(tmp_path):
     assert _band(tmp_path, None) == ""
 
 
-def test_every_commit_offers_a_revert_that_only_stages_it(tmp_path):
-    """`git revert --no-commit` is the only form of this safe to put behind a button: the
-    click produces a diff to look at, not a commit made on the reader's behalf."""
+def test_no_commit_offers_to_revert_itself(tmp_path):
+    """The band reports commits the page has not caught up with; it does not accuse them.
+
+    A per-commit *Revert it* used to sit here, running `git revert --no-commit`. It
+    answered the wrong question — on this kind of branch the commit is usually the
+    infrastructure cherry-pick that had to land — and it put the one control that rewrites
+    the working tree on a page whose whole contract is that it only reads the repository.
+    """
     out = _band(tmp_path, _doc(code_files=1))
-    entry = build.ACTIONS["aftermath-revert:753f724c"]
-    # The *short* sha. The command is printed beside the offer now, in a parenthesis a
-    # human is being asked to read before pressing or copying — and forty characters of
-    # hex in that line is a line they stop reading. `git revert` resolves a short sha, and
-    # a prefix that is genuinely ambiguous makes git refuse loudly rather than revert the
-    # wrong commit, which is the failure mode worth having.
-    assert entry["command"].endswith("git revert --no-commit 753f724c")
-    assert entry["command"].startswith("cd ")
-    assert entry["reload"] is False, "the band reports commits; a revert does not move HEAD"
-    assert ">Revert it</button>" in out
-    assert "nothing is committed" in out
-    # And the command the copy glyph puts on the clipboard is the command the button sends
-    # the id of: one line in the manifest, one line on the clipboard, no third version of
-    # it anywhere. The page prints it nowhere — it is in the glyph's hover.
-    assert f'<code>{html.escape(entry["command"])}</code>' not in out
-    copied = {html.unescape(c) for c in re.findall(r'data-copy="(.*?)"', out, re.S)}
-    assert entry["command"] in copied
+    assert "Revert it" not in out
+    assert "git revert" not in out
+    assert not [k for k in build.ACTIONS if k.startswith("aftermath-revert")]
+    # The row keeps what it always was underneath: the sha, what it did, when.
+    assert "753f724c" in out and "2026-09-17" in out
 
 
-def test_the_band_offers_a_regenerate_beside_every_revert(tmp_path):
-    """Two honest answers to "a human moved the code after the review was written", and the
-    band used to offer one. Reverting is right when the commit was a mistake; when it was
-    not — the infrastructure cherry-pick that had to land here — the thing wanted is for
-    the rest of the page to catch up with it, which is the masthead's Rerun said from the
-    place the reader is actually looking at the problem."""
-    out = _band(tmp_path, _doc(code_files=1))
-    # Buttons, side by side, and not underlined words inside the sentence: an inline link
-    # in a red band carries the same weight as the prose around it and gets read as part of
-    # it, and these two are what the band is *for*.
-    assert ">Revert it</button>" in out and ">Regenerate the report</button>" in out
-    assert out.count("offer-pill") == 2
-    assert '<span class="rb-actions">' in out
-    assert out.index("Revert it") < out.index("Regenerate the report")
-    # The server's own verb, not a manifest id: the play glyph here appears under exactly
-    # the condition the Rerun in the header does.
+def test_the_band_offers_one_regenerate_for_all_of_them(tmp_path):
+    """The command does not name a commit, so it is not offered once per commit.
+
+    Three identical buttons down a list of three shas invite the reader to work out which
+    one applies to which row, and the answer is that none of them does: the offer is the
+    band's — catch the whole page up with the branch as it is now — so it is rendered once,
+    after the list.
+    """
+    out = _band(tmp_path, _doc(code_files=1, commits=3))
+    assert out.count(">Regenerate the report</button>") == 1
+    assert out.count("offer-pill") == 1
+    assert out.count('<p class="rb-actions">') == 1
+    # After the commits, not among them.
+    assert out.index("</ul>") < out.index("Regenerate the report")
+    # The server's own verb, not a manifest id: the run glyph here appears under exactly
+    # the condition the rerun chip in the header does.
     assert 'data-action="__rerun__"' in out
     assert "__rerun__" not in build.ACTIONS
     assert "refresh-report.py" in out and "--steps static" in out
 
 
-def test_both_offers_copy_their_command_where_nothing_can_run(tmp_path):
+def test_the_offer_copies_its_command_where_nothing_can_run(tmp_path):
     """Off disk the click on the words *is* the copy. A control whose whole answer is a
     sentence explaining why it did nothing is a control the reader stops pressing."""
     out = _band(tmp_path, _doc(code_files=1))
-    for words in ("Revert it", "Regenerate the report"):
-        at = out.index(f">{words}</button>")
-        tag = out[out.rindex("<button", 0, at):at]
-        assert "data-copy=" in tag, f"{words} cannot be copied by clicking it"
-        assert "clicking here copies the command" in tag
+    at = out.index(">Regenerate the report</button>")
+    tag = out[out.rindex("<button", 0, at):at]
+    assert "data-copy=" in tag, "the offer cannot be copied by clicking it"
+    assert "clicking here copies the command" in tag
 
 
 def test_a_merge_commit_with_no_numstat_is_not_read_as_harmless(tmp_path):
