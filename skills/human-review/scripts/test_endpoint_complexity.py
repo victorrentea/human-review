@@ -14,6 +14,7 @@ Run it directly (`python3 test_endpoint_complexity.py`) or under pytest.
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -21,6 +22,11 @@ HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("endpoint_complexity", HERE / "endpoint-complexity.py")
 ec = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ec)
+
+_dspec = importlib.util.spec_from_file_location(
+    "endpoint_complexity_delta", HERE / "endpoint-complexity-delta.py")
+delta = importlib.util.module_from_spec(_dspec)
+_dspec.loader.exec_module(delta)
 
 
 def cc(body: str) -> int:
@@ -194,6 +200,75 @@ def test_recursion_costs_one():
 def test_comments_and_strings_are_not_read_as_code():
     # A `{` in a string and an `if` in a comment used to open a block and charge for it.
     assert cc('String s = "if (a) { b(); }"; // if (c) { d(); }') == 0
+
+
+# --------------------------------------------------------------------------- #
+# the fragment: a path that does not fit, and verbs that have to be readable
+# --------------------------------------------------------------------------- #
+
+LONGEST = "POST /api/owners/{ownerId}/pets/{petId}/visits"
+
+
+def _row(**over):
+    r = {"path": LONGEST, "method": "POST", "now": 12, "was": 8, "delta": 4,
+         "handler": "VisitRestController.addVisit", "entry": "", "kind": "http"}
+    r.update(over)
+    return r
+
+
+def test_a_path_too_wide_for_its_column_ends_in_an_ellipsis_and_keeps_its_full_text():
+    """It was chopped mid-token — `…/pets/{petId}/vis` — with nothing saying it had been.
+
+    `text-overflow` applies to a block container and <code> is inline, so the rule was
+    there and doing nothing while the cell's own `overflow:hidden` did the cutting. The
+    full route is on the cell's hover either way: this is the one column on the tab wide
+    enough to reach its edge, and the row that reaches it is the endpoint the branch is
+    about."""
+    css = delta.CSS
+    rule = re.search(r"^\.cx-path \{([^}]*)\}", css, re.S | re.M)[1]
+    assert "display:block" in rule.replace(" ", ""), \
+        "text-overflow does nothing on an inline <code>"
+    assert "text-overflow:ellipsis" in rule.replace(" ", "")
+    cell = delta._path_cell(_row())
+    assert LONGEST in cell, "the label itself"
+    tip = re.search(r'data-tip="([^"]*)"', cell)[1]
+    assert tip.split("&#10;")[0].replace("&#x27;", "'") .startswith("POST /api/owners"), tip
+    assert "{ownerId}" in tip.replace("&#123;", "{"), "the cut half comes back on the hover"
+    # A row whose entry point this checkout cannot place still gets the hover: the path is
+    # no shorter for being unlinkable.
+    plain = delta._path_cell(_row(entry="nothing::at::all"))
+    assert 'class="cx-cell"' in plain and "data-tip=" in plain
+
+
+def test_every_verb_chip_reads_against_the_dark_card():
+    """43 of them on this tab, at 2.9–3.3:1: the light palette was never re-themed, so
+    `GET` green and `POST` blue came out as grey smudges on `--card`. Every hue is checked,
+    in both themes, against the surface the chip actually sits on — `.cx-list` paints
+    `var(--card)`, so that is the background, not the page's."""
+    def lum(h):
+        v = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        v = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in v]
+        return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+
+    def ratio(a, b):
+        la, lb = sorted((lum(a), lum(b)), reverse=True)
+        return (la + 0.05) / (lb + 0.05)
+
+    page = (HERE / "hrbuild" / "assets" / "page.css").read_text(encoding="utf-8")
+    light_page, dark_page = page.split("@media (prefers-color-scheme: dark)", 1)
+    light_css, dark_css = delta.CSS.split("@media (prefers-color-scheme: dark)", 1)
+    verbs = re.compile(r"\.cx-([a-z]+)\s*\{\s*color:(#[0-9a-fA-F]{6})")
+    for css, page_block, theme in ((light_css, light_page, "light"),
+                                   (dark_css, dark_page, "dark")):
+        card = re.search(r"--card:(#[0-9a-fA-F]{6})", page_block)[1]
+        found = dict(verbs.findall(css))
+        assert found, f"no verb colours declared for {theme} mode"
+        for verb, hexval in found.items():
+            assert ratio(hexval, card) >= 4.5, \
+                f".cx-{verb} is {ratio(hexval, card):.2f}:1 on {card} in {theme} mode"
+    # Every verb the light palette paints is re-painted in dark; a hue left behind is
+    # exactly how this happened the first time.
+    assert set(dict(verbs.findall(light_css))) - {"any"} == set(dict(verbs.findall(dark_css)))
 
 
 if __name__ == "__main__":
