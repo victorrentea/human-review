@@ -192,6 +192,48 @@ change (it still listed `Visit.java`/`VisitMapper.java`/the three controllers as
 by hand — it's what `git push` forces the next time the guardrail runs against a
 stale `codecity.html`.
 
+### 7 — UX tab (design-system audit): the vet field on the edit form left bare
+
+The UX tab compares every screen of the branch against the same screen on the
+merge-base and flags native controls sitting in a role the design system covers.
+With both visit forms on `<app-combo>` the tab was honest but dull — **0 gaps**,
+nothing to point at. So one field was deliberately downgraded: on **Edit a
+visit** the vet picker is a plain `<select>`, while **Book a visit** keeps the
+`<app-combo>`. Two screens, the same field, one right and one wrong — which is
+the contrast the tab exists to show.
+
+- **commit**: `226755c3` — "Use a raw `<select>` for the vet on the edit form,
+  on purpose, so the design-system audit has a gap to show"
+- **file**: `petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.html`
+  (the template carries an HTML comment saying the mistake is planted, so nobody
+  "fixes" it by accident)
+- **what the audit says afterwards**: verdict `gaps`, `new.bare = 1`,
+  regression `new:select#vet` on *Edit a visit* — "not the design-system
+  component — a plain `<select>` where **combo** belongs", severity `high`.
+  Every other screen stays as it was (`old.bare = 0`, no pre-existing gaps), and
+  the two `<input type=text>` fields on the same form stay `uncovered`/info,
+  because no DS component claims that role.
+- **behaviour is unchanged**: `name="vetId"` + `[(ngModel)]="visit.vetId"` with
+  `[ngValue]` options, and `-- none --` bound to `null`, so the form still
+  submits the same payload; `visit-edit.component.spec.ts` needed no edit
+  (21/21 Karma specs under `visits/` green) and there is no Playwright scenario
+  on the edit screen to adapt.
+- **redo**: replace the `<app-combo inputId="vet" name="vetId" …>` on
+  `visit-edit.component.html` with
+
+  ```html
+  <select id="vet" name="vetId" class="form-control" [(ngModel)]="visit.vetId">
+    <option [ngValue]="null">-- none --</option>
+    <option *ngFor="let vetOption of vetOptions" [ngValue]="vetOption.id">{{ vetOption.name }}</option>
+  </select>
+  ```
+
+  then re-run the audit — `run-steps.py --only dsaudit --force` from
+  `~/workspace/petclinic-pr` (it starts its own two Docker instances, one per
+  side, and `down`s both) — and rebuild the page (`Rerun` on the served page, or
+  `refresh-report.py --steps static`). Leave `visit-add.component.html` alone:
+  the combo there is half the exhibit.
+
 ## Tooling cherry-picks, not part of the recipe
 
 These commits also land after `ce56d912`, on `test-pr`, but each is a byte-for-byte
@@ -224,7 +266,7 @@ Order matters — each step depends on the branch state the previous one left:
 3. Cherry-pick whatever tooling `main` carries at that point (the table above,
    or its current equivalents — check with the `git log --grep` recipe in
    Step 0).
-4. Apply the retouches in this file, items 1–4 and 6, in roughly the order
+4. Apply the retouches in this file, items 1–4, 6 and 7, in roughly the order
    listed (Sequence/Tests before Logging/red-matrix is how it happened, but the
    only real constraint is: all of them after the review commit).
 5. Re-run the model pass (`Rerun + AI` / `rerun-model.py`) so the requirements
