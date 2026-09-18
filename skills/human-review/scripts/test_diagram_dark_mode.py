@@ -268,6 +268,102 @@ def test_the_c2_boxes_hold_their_labels_in_both_themes():
                 f"the name on an {what} C2 container is too dim in {theme} mode"
 
 
+# --------------------------------------------------------------------------- #
+# the controls painted IN those hues, and the ink on top of them
+# --------------------------------------------------------------------------- #
+
+#: Every control whose background IS one of the themed hues, and the token it fills with.
+#: These are the *pressed* states — the ones on screen by default — so a ratio under AA
+#: here is not an edge case a reader has to go looking for.
+FILLED = (("pressed Diff", "--view-diff"), ("pressed New", "--view-new"),
+          ("pressed Old", "--view-old"), ("a pressed focus level", "--link"),
+          ("show single page", "--link"))
+
+
+def _tokens(block: str) -> dict:
+    """`--name: value` declarations in one theme's block, values unresolved."""
+    return {m[1]: m[2].strip()
+            for m in re.finditer(r"(--[a-z-]+):\s*([^;}]+)", block)}
+
+
+def _hex(name: str, theme: dict, base: dict) -> str:
+    """What `name` actually paints in this theme, following `var()` indirection.
+
+    `--view-diff` is declared once, as `var(--dgm-diff-del)`, precisely so the frame and
+    the strokes inside it can never disagree — which means the dark theme redeclares the
+    hue it points at and not the name itself. Following the chain is what lets this ask
+    about the control rather than about the spelling."""
+    seen, value = set(), theme.get(name, base.get(name))
+    while value and value.startswith("var("):
+        ref = value[4:].split(")")[0].split(",")[0].strip()
+        if ref in seen:
+            return ""
+        seen.add(ref)
+        value = theme.get(ref, base.get(ref))
+    return value if value and re.fullmatch(r"#[0-9a-fA-F]{6}", value) else ""
+
+
+def test_a_pressed_toggle_is_legible_in_both_themes():
+    """`Diff` was white on #f08a8a (2.41:1) and `New/Old` white on #8ab4f8 (2.11:1).
+
+    The dark palette lifts those fills to pastels on purpose — a border has to be visible
+    against a near-black page, which is a 3:1 question about a line — and then white text
+    on them is a 4.5:1 question about a word, which they fail. So the ink flips instead of
+    the fills: `--drift-fg` had already settled this for the amber, and `--on-fill` is the
+    same decision for the other three hues."""
+    light, dark = build.CSS.split("@media (prefers-color-scheme: dark)", 1)
+    base = _tokens(light)
+    for block, theme in ((light, "light"), (dark, "dark")):
+        tok = _tokens(block)
+        ink = _hex("--on-fill", tok, base)
+        assert ink, f"--on-fill is not a colour in {theme} mode"
+        for what, name in FILLED:
+            fill = _hex(name, tok, base)
+            assert fill, f"{name} does not resolve to a colour in {theme} mode"
+            assert contrast(ink, fill) >= 4.5, \
+                f"{what} reads at {contrast(ink, fill):.2f}:1 in {theme} mode"
+
+
+def test_no_control_paints_a_themed_fill_under_hardcoded_white():
+    """The bug coming back looks like one line: `background:var(--…); color:#fff`, where
+    the fill follows the theme and the ink does not. White is still right over a hue that
+    is dark in *both* themes — the three severity bubbles are — so what is checked is the
+    ratio, in both, rather than the spelling."""
+    light, dark = build.CSS.split("@media (prefers-color-scheme: dark)", 1)
+    base, night = _tokens(light), _tokens(dark)
+    for line in build.CSS.splitlines():
+        flat = line.replace(" ", "")
+        if "color:#fff" not in flat:
+            continue
+        for name in re.findall(r"background:var\((--[a-z-]+)", flat):
+            for tok, theme in ((base, "light"), (night, "dark")):
+                fill = _hex(name, tok, base)
+                if not fill:
+                    continue
+                assert contrast("#ffffff", fill) >= 4.5, (
+                    f"white on {name} ({fill}) is {contrast('#ffffff', fill):.2f}:1 in "
+                    f"{theme} mode: {line.strip()}")
+
+
+def test_the_design_system_audits_verdict_labels_read_in_both_themes():
+    """`✓ combo · added` sat at 2.31:1 and the regression beside it at 2.78:1 — white on
+    the pastel the dark palette lifts those hues to. They are the verdicts, which are the
+    one thing on that tab a reader has to be able to read."""
+    _s = importlib.util.spec_from_file_location("ds_audit", HERE / "ds-audit.py")
+    ds = importlib.util.module_from_spec(_s)
+    _s.loader.exec_module(ds)
+    assert "color: var(--dsa-label-fg)" in ds.CSS, "the label's ink is a token, not #fff"
+    light, dark = ds.CSS.split("@media (prefers-color-scheme: dark)", 1)
+    base = _tokens(light)
+    for block, theme in ((light, "light"), (dark, "dark")):
+        tok = _tokens(block)
+        ink = _hex("--dsa-label-fg", tok, base)
+        for hue in ("--dsa-ok", "--dsa-bad", "--dsa-new"):
+            fill = _hex(hue, tok, base)
+            assert contrast(ink, fill) >= 4.5, \
+                f"a {hue} verdict label reads at {contrast(ink, fill):.2f}:1 in {theme} mode"
+
+
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-q"]))

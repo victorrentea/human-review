@@ -799,8 +799,15 @@ CSS = """/* ds-audit — the annotated screenshots and the findings table, and n
 .dsa-mark.ok  { border: 2px solid var(--dsa-ok); background: color-mix(in srgb, var(--dsa-ok) 10%, transparent); }
 .dsa-mark.bad { border: 3px solid var(--dsa-bad); background: color-mix(in srgb, var(--dsa-bad) 14%, transparent); }
 .dsa-mark.new { border: 2px dashed var(--dsa-new); background: transparent; }
+/* The ink on a label whose background IS one of the verdict hues. Not always white:
+   the dark palette lifts every one of them to a pastel so the box outline can be seen
+   against a near-black page, and white on a pastel is what put `✓ combo · added` at
+   2.3:1 and the plain-control regression beside it at 2.8:1 — on the verdicts, which
+   are the one thing on this tab a reader must be able to read. The label's own colour flips
+   instead of the fills. (`--dsa-label-fg`, not `--dsa-ink`: `.dsa-ink` is already the
+   legend's name for the pen the screenshots are marked up with.) */
 .dsa-mark b { position: absolute; left: 0; top: -1.15rem; font: 700 .68rem/1.15rem
-  -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #fff;
+  -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--dsa-label-fg);
   padding: 0 .35rem; border-radius: .2rem; white-space: nowrap; }
 .dsa-mark.ok b  { background: var(--dsa-ok); }
 .dsa-mark.bad b { background: var(--dsa-bad); }
@@ -847,9 +854,11 @@ CSS = """/* ds-audit — the annotated screenshots and the findings table, and n
 .dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
   padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
 .dsa-unlisted code { color: inherit; }
-:root { --dsa-ok: #1f7a45; --dsa-bad: #c1121f; --dsa-new: #1a4fa0; --dsa-hot: #f0a500; }
+:root { --dsa-ok: #1f7a45; --dsa-bad: #c1121f; --dsa-new: #1a4fa0; --dsa-hot: #f0a500;
+        --dsa-label-fg: #ffffff; }
 @media (prefers-color-scheme: dark) {
-  :root { --dsa-ok: #46c07a; --dsa-bad: #ff6b6b; --dsa-new: #7aa9ef; --dsa-hot: #ffc94d; }
+  :root { --dsa-ok: #46c07a; --dsa-bad: #ff6b6b; --dsa-new: #7aa9ef; --dsa-hot: #ffc94d;
+          --dsa-label-fg: #15151a; }
   .dsa-shot img { filter: none; }
 }
 """
