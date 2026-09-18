@@ -809,8 +809,12 @@ def test_the_button_copies_exactly_what_the_page_shows(tmp_path):
     assert len(copied) == 1
     line = copied.pop()
     assert build.ACTIONS["drawio:conceptual"]["command"] == html.unescape(line)
-    tip = re.search(r'class="copycmd cmd-copy"[^>]*data-tip="([^"]*)"', out, re.S).group(1)
+    tip = re.search(r'class="copycmd cmd-copy[^"]*"[^>]*data-tip="([^"]*)"', out, re.S).group(1)
     assert tip.endswith(line)
+    # And the same line again on `data-cmd`, on both faces: it is the handle the one-string
+    # guardrail reads, and it has to say what the register says.
+    assert {html.unescape(c) for c in re.findall(r'data-cmd="(.*?)"', out, re.S)} == \
+        {build.ACTIONS["drawio:conceptual"]["command"]}
 
 
 def test_a_run_that_recorded_nothing_offers_no_half_command(tmp_path):
@@ -838,8 +842,11 @@ def test_the_command_says_what_it_is_for(tmp_path):
     assert "Edit " in line and "in draw.io" in line
     assert "offer-pill" not in line and "cmd-copy" not in line
     acts = re.search(r'<div class="rerun-acts">(.*?)</div>', out, re.S).group(1)
-    assert ">Update the report</button>" in acts
-    assert "offer-pill" in acts and "cmd-copy" in acts
+    # One control, not a pill and a mark beside it: the words and the glyph are the same
+    # button, which is the rule every command on this page follows.
+    assert '<span class="cmd-word">Update the report</span>' in acts
+    assert "offer-pill" not in acts
+    assert "cmd-copy" in acts and "cmd-run" in acts
     assert "<code>" not in out, "the command is in a hover, not on the page"
 
 
@@ -855,7 +862,7 @@ def test_the_command_is_in_a_hover_and_not_in_a_block(tmp_path):
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
     assert "cmdline" not in out and "cmdpeek" not in out
     assert "<code>" not in out
-    tip = re.search(r'class="copycmd cmd-copy"[^>]*data-tip="([^"]*)"', out).group(1)
+    tip = re.search(r'class="copycmd cmd-copy[^"]*"[^>]*data-tip="([^"]*)"', out).group(1)
     assert "Copy command to paste in terminal" in tip
     assert "drawio-diff.py" in tip and "build-review-html.py" in tip
 
@@ -878,7 +885,7 @@ def test_each_copy_of_the_report_shows_the_route_it_can_actually_take(tmp_path):
     assert "offer.classList.add('served')" in build.SERVER_JS, "the probe is what flips it"
     # And the run glyph beside it is the visible statement that this copy can run it —
     # raised by the probe, which takes the clipboard beside it away in the same breath.
-    assert 'class="runhere cmd-run" hidden' in out
+    assert 'class="runhere cmd-run has-word" hidden' in out
     assert "if (!b.classList.contains('cmd-run')) return;" in build.SERVER_JS
     assert "clip.hidden = true" in build.SERVER_JS
 
@@ -1094,7 +1101,7 @@ def test_a_repository_that_declared_no_redraw_is_offered_none(tmp_path):
 
 def test_there_is_one_way_back_and_it_is_the_generated_drawing(tmp_path):
     out = _widget_with(tmp_path, rerun=RERUN, revert=REVERT, redraw=REDRAW)
-    assert ">Regenerate the diagram</button>" in out
+    assert '<span class="cmd-word">Regenerate the diagram</span>' in out
     # Named after what it produces, not after the gesture that gets you there: "start over"
     # is a direction and not a destination, and "undo your edits" is gone entirely.
     assert "start over" not in out and "undo your edits" not in out
@@ -1117,9 +1124,11 @@ def test_the_one_way_back_runs_every_stage_and_banks_the_layout(tmp_path):
     work first — the command that went away was the survivable one, and losing that along
     with it would be a bad trade for a simpler line."""
     out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
-    line = html.unescape(re.search(
-        r'offer-pill" data-action="drawio-redraw:conceptual" data-copy="(.*?)" data-tip',
-        out, re.S).group(1))
+    # The register is where the command lives, and it is what the control renders: the
+    # clipboard's `data-copy`, both faces' `data-cmd` and the hover are all this string.
+    line = build.ACTIONS["drawio-redraw:conceptual"]["command"]
+    shown = {html.unescape(c) for c in re.findall(r'data-cmd="(.*?)"', out, re.S)}
+    assert line in shown
     assert "cd /repo" in line
     assert "git stash push" in line and REDRAW["diagram"] in line
     assert "git checkout origin/main -- docs/CM.drawio.png" in line
@@ -1134,12 +1143,17 @@ def test_the_hover_says_where_the_layout_goes_before_it_is_clicked(tmp_path):
     """The reassurance is the whole reason this is a stash and not a bare checkout, and a
     reader weighing it needs that *before* pressing, not in a paragraph underneath."""
     out = _widget_with(tmp_path, rerun=RERUN, redraw=REDRAW)
-    tip = re.search(r'offer-pill" data-action="drawio-redraw:conceptual"'
-                    r'[^>]*? data-tip="([^"]*)"', out).group(1)
-    assert "stash" in tip and REDRAW["base"] in tip and "red" in tip
-    served = re.search(r'offer-pill" data-action="drawio-redraw:conceptual"'
-                       r'[^>]*data-tip-served="([^"]*)"', out).group(1)
-    assert "stash" in served, "the served hover is the one most readers ever see"
+    # One control, one hover per face. The play's is a short sentence naming the action and
+    # where it runs, plus the one thing a label cannot carry: that this throws the layout
+    # away, and where it goes. What the command *is* lives on the clipboard face, which is
+    # the one a reader opens to read a line before pasting it.
+    tip = re.search(r'data-action="drawio-redraw:conceptual"[^>]*? data-tip="([^"]*)"',
+                    out).group(1)
+    assert "stash" in tip and "server" in tip
+    assert REDRAW["base"] not in tip, "the base is in the command, not in a three-line hover"
+    copy_tip = re.search(r'data-copy="[^"]*" data-cmd="[^"]*" data-tip="([^"]*)"',
+                         out).group(1)
+    assert "Copy command to paste in terminal" in copy_tip
 
 
 def test_the_row_carries_a_place_for_the_command_to_report_itself(tmp_path):
@@ -1178,7 +1192,7 @@ def test_no_way_back_is_offered_for_a_repository_that_declared_no_script(tmp_pat
     diagram with no `redraw` gets the sentence and one offer."""
     out = _widget_with(tmp_path, rerun=RERUN)
     assert "Regenerate the diagram" not in out and "drawio-redraw" not in out
-    assert ">Update the report</button>" in out
+    assert '<span class="cmd-word">Update the report</span>' in out
 
 
 def test_the_play_glyph_is_hidden_by_the_attribute_and_not_by_a_class(tmp_path):
@@ -1190,10 +1204,13 @@ def test_the_play_glyph_is_hidden_by_the_attribute_and_not_by_a_class(tmp_path):
     hidden with the `hidden` attribute — so no rule in this stylesheet may give the glyph
     itself a `display`, or the attribute stops working and every static copy of the report
     grows a button that cannot do anything."""
-    css = build.CSS
+    # Comments stripped first. A rule's neighbouring comment may quote the very thing this
+    # forbids — `[hidden] { display:none }` is the reason the rule exists — and a guardrail
+    # that fires on its own explanation is a guardrail somebody deletes.
+    css = re.sub(r"/\*.*?\*/", "", build.CSS, flags=re.S)
     glyph_rules = [r for r in css.split("}") if ".cmd-run" in r and "@media" not in r]
     assert glyph_rules, "the glyph has to be styled somewhere"
     for rule in glyph_rules:
         assert "display:" not in rule, f"a display on the glyph defeats [hidden]: {rule}"
     out = _widget_with(tmp_path, rerun=RERUN)
-    assert 'class="runhere cmd-run" hidden' in out
+    assert 'class="runhere cmd-run has-word" hidden' in out

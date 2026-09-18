@@ -58,7 +58,8 @@ from hrbuild.shared.util import (
     CODEOWNERS, EXTRACT, PENCIL, TESTCHANGES, _git, _pretty   # HERE: defined above, same value
 )
 from hrbuild.shared.actions import (
-    ACTIONS, ACTIONS_FILE, declare_action, write_actions
+    ACTIONS, ACTIONS_FILE, declare_action, declare_rerun_actions,
+    RERUN_ACTION, RERUN_AI_ACTION, write_actions
 )
 from hrbuild.shared.assets import (
     APP_ENV_JS, CAPTION_JS, CSS, DGM_VIEWS_JS, EDITOR_JS, FOCUS_JS, FRAME_JS, GENSEQ_JS,
@@ -66,9 +67,10 @@ from hrbuild.shared.assets import (
     SERVER_JS, TABS_JS, TIP_JS, TRACE_JS, XREF_CSS, XREF_JS
 )
 from hrbuild.shared.commands import (
-    CMD_COPY, CMD_RUN, command_html, COPY_TIP, drawio_open_html, offer_words_html,
+    CMD_COPY, CMD_OPEN, CMD_PLAY, CMD_RUN, CMD_STOP, command_html, COPY_TIP,
+    drawio_open_html,
     regenerate_html, RERUN_AI_CHIP, RERUN_AI_CONFIRM, RERUN_CHIP, RERUN_FAIL, rerun_html,
-    reveal_html, runtime_html, STATIC_COPIES, STATIC_RUN_TIP, _app_anchor
+    reveal_html, runtime_html, STATIC_RUN_TIP, _app_anchor
 )
 from hrbuild.shared.snippets import (
     DIFF_CONTEXT, diff_html, DIFF_INLINE_TOKEN, diff_link_html, DIFF_TOKEN, diff_uri_handler,
@@ -230,6 +232,10 @@ def main(argv=None) -> int:
     # module is imported and driven directly by the test suite, where two builds in one
     # process would otherwise leave the second one declaring the first one's actions.
     ACTIONS.clear()
+    # The masthead's two reruns go in first, before any tab renders: the aftermath band in
+    # the Review tab offers the free one and reads its command out of the register, and a
+    # band that rendered before the declaration would print an offer with no line behind it.
+    declare_rerun_actions(root, out_dir, HERE)
     # How to start this build again — the last stage of every command offered under a
     # hand-drawn diagram.
     #
