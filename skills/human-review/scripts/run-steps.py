@@ -405,29 +405,45 @@ def _sequence(ctx: Ctx):
     """
     cfg = ctx.step_cfg("sequence")
     commands = cfg.get("commands") or []
+    failed = []
     with app_instance(ctx, cfg.get("app"), _app_slots(ctx)) as app:
         if app.started:
             ctx.notes.append(f"the traced suites ran against {app.base}, started by this run "
                              "from the commit under review — not whatever was already listening")
         for cmd in commands:
-            r = sh(f"{app.env}{cmd}", ctx, check=False, capture=False)
+            r = sh(f"{app.env}{cmd}", ctx, check=False)
             if r.returncode != 0:
-                raise LookupError(
-                    f"the traced suite could not run (exit {r.returncode}: {cmd}). It needs the "
-                    "whole stack listening — a trace collector, the database, the backend "
-                    "started AFTER the collector so its agent attaches, and the front end. "
-                    "Configure `steps.sequence.app` to have this step start them itself, or "
-                    "start them by hand and re-run this step")
-    # A suite that could not start leaves a generated diagram deleted, and the delta then
-    # reports, in the branch's voice, that this branch removed it.
-    r = sh("git status --porcelain -- '*.genseq.puml'", ctx, capture=True)
+                failed.append(f"{cmd} (exit {r.returncode})")
+
+    # ALWAYS, and this is the whole reason the loop above does not raise. These commands
+    # sweep `generated/` before they regenerate it, so a suite that dies in the middle
+    # leaves diagrams DELETED — including the other suites', which it never meant to touch
+    # and cannot put back. Raising on the first failure skipped both the restore below and
+    # every later command, which is how one red suite took the backend's diagram with it.
+    # Since ONE deleted file gets restored the branch would otherwise be reported, in its
+    # own voice, as having removed a picture.
+    r = sh("git status --porcelain -- '*.genseq.puml' '*.genseq.json'", ctx, capture=True)
     deleted = [l.split(maxsplit=1)[-1] for l in (r.stdout or "").splitlines()
                if l.strip().startswith("D")]
     if deleted:
-        ctx.notes.append(f"restored {len(deleted)} diagram(s) a failed suite deleted; "
-                         "say in the guide that the suite could not run")
+        ctx.notes.append(f"restored {len(deleted)} diagram file(s) a failed suite deleted "
+                         "without regenerating; say in the guide that the suite could not run")
         sh("git checkout -- " + " ".join(deleted), ctx, check=False)
     sh(f"{HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
+
+    if failed and has_genseq():
+        # A red suite is a finding for the review to carry, not a reason to lose the tab —
+        # the same call `_city` makes. The pictures a passing part of the run did draw are
+        # still pictures of this branch.
+        ctx.notes.append("the traced suite was RED (" + "; ".join(failed)
+                         + "); the diagrams below are of that run, and the guide has to say so")
+    elif failed:
+        raise LookupError(
+            "the traced suite could not run and drew nothing: " + "; ".join(failed)
+            + ". It needs the whole stack listening — a trace collector, the database, the "
+            "backend started AFTER the collector so its agent attaches, and the front end. "
+            "Configure `steps.sequence.app` to have this step start them itself, or start "
+            "them by hand and re-run this step")
 
 
 def _c2(ctx: Ctx):

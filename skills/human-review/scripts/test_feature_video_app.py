@@ -508,3 +508,42 @@ def test_borrowing_a_block_that_is_not_there_is_an_error_and_not_a_silent_skip(
         "sequence": {"app": "video", "commands": ["npm run test:sequence"]}})
     with pytest.raises(LookupError, match="steps.video.app"):
         steps._sequence(ctx)
+
+
+def test_a_red_suite_keeps_the_diagrams_it_drew_and_puts_the_others_back(
+        tmp_path, monkeypatch):
+    """The commands sweep `generated/` before they refill it, so a suite that dies halfway
+    leaves the OTHER suites' diagrams deleted — it neither wrote them nor can put them back.
+    Raising on the first failure skipped both the restore and every later command, which is
+    how one red Cucumber run took the backend's @GenerateSequence diagram with it and the
+    branch was reported as having removed a picture."""
+    (tmp_path / ".human-review" / "assets").mkdir(parents=True)
+    gen = tmp_path / "generated"
+    gen.mkdir()
+    (gen / "Kept.genseq.puml").write_text("@startuml\n@enduml\n")
+    monkeypatch.chdir(tmp_path)
+    sh = Recorder([
+        ("run-tests-with-tracing.sh", 1, ""),
+        ("git status --porcelain", 0, " D generated/Gone.genseq.puml\n"
+                                      " M generated/Kept.genseq.puml\n"),
+    ])
+    monkeypatch.setattr(steps, "sh", sh)
+    # `has_genseq` asks git, and this fixture is a directory rather than a repository; the
+    # question it stands for here is "did anything survive the run", and something did.
+    monkeypatch.setattr(steps, "has_genseq", lambda: True)
+    ctx = steps.Ctx("origin/main", {"steps": {"sequence": {"commands": [
+        "cd petclinic-test && ./run-tests-with-tracing.sh",
+        "cd petclinic-backend && mvn -Pgenseq test",
+    ]}}}, dry=False)
+
+    steps._sequence(ctx)          # a red suite is a finding, not a lost tab
+
+    # every command still ran — the backend's diagram is drawn by the second one
+    assert sh.has("mvn -Pgenseq test")
+    # the deleted one is put back; the modified one is left exactly as the run left it
+    restored = sh.first("git checkout --")
+    assert "generated/Gone.genseq.puml" in restored
+    assert "Kept.genseq.puml" not in restored
+    # and the page is told, so the guide cannot present a red run as a clean one
+    assert any("RED" in n for n in ctx.notes)
+    assert any("restored 1 diagram file" in n for n in ctx.notes)
