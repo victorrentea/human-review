@@ -483,28 +483,16 @@ def classify(graph: Graph, containers: dict) -> None:
         # Technology is never guessed. A box with no `techn` reads as "we did not say";
         # a box reading "PostgreSQL" because the lifeline was called DB reads as a fact.
         node["tech"] = cfg.get("tech", "")
-        node["descr"] = cfg.get("descr", "") or _evidence(graph, name, node["kind"])
-
-
-def _evidence(graph: Graph, name: str, kind: str = "") -> str:
-    """The one line under a box: what the traces saw this container do.
-
-    Inbound operations, because that is what a container *offers* — the thing a reader of a
-    C2 wants from a box. A lifeline nothing calls is where the flows start, and says so.
-
-    A datastore gets nothing, for the same reason its arrow does: `11 operations` under a
-    database counts the statements one ORM happened to emit on one run, which no reader of
-    a container diagram is going to act on. See `is_datastore_edge`."""
-    if kind == "db":
-        return ""
-    served = set()
-    for (_src, dst), e in graph.edges.items():
-        if dst == name:
-            served |= set(e["ops"])          # keyed (name, route), so /pets/1 and /pets/2
-                                             # are one operation, which is the point
-    if not served:
-        return "entry point" if any(s == name for s, _ in graph.edges) else ""
-    return f"{len(served)} operation{'s' if len(served) != 1 else ''}"
+        # The description line used to be auto-filled from the traces — "N operations"
+        # under a box the traces called into, "entry point" under one nothing called. It
+        # duplicated what the arrows already say: an edge's own `[N ops]` label is the
+        # same count, drawn where the reader is already looking, and "entry point" was
+        # only ever "nothing points at this box", visible from the picture's own shape.
+        # Left with a job under every box on a branch that has many, it was ink the box
+        # spent on a fact the diagram had already drawn. A container still gets a
+        # description when the config says one explicitly (`containers.<name>.descr`) —
+        # that is authored, not guessed, and stays.
+        node["descr"] = cfg.get("descr", "")
 
 
 # --------------------------------------------------------------------------- the delta
@@ -909,15 +897,18 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     system = c2.get("system", "")
     title = c2.get("title", "C2 Containers")
-    # Two lines, in the order a reader needs them: what KIND of picture this is, then
-    # where its contents came from. The first is a link because "C2" is jargon the page
-    # cannot teach in the room it has — c4model.com is Simon Brown's own site and explains
-    # the four levels in a paragraph, so a reader meeting the word here has one click to
-    # the thing that defines it rather than a guess at what the boxes mean.
-    caption = (f"[[{C4_URL}{{What a container diagram is, on Simon Brown's own site}} "
-               f"C4 model — level 2, Containers]] · "
-               f"projected from {len(rels)} sequence diagram"
-               f"{'s' if len(rels) != 1 else ''} generated from test traces")
+    # The link used to live on the caption's "C4 model — level 2, Containers" text. It
+    # moved onto the title instead: the title is the label a reader meets FIRST, and it is
+    # the jargon the page cannot teach in the room it has — c4model.com is Simon Brown's
+    # own site and explains the four levels in a paragraph, so a reader meeting "C2" here
+    # has one click to the thing that defines it rather than a guess at what the boxes
+    # mean. The caption is left with the one fact it is for: where the picture's contents
+    # came from — and no count. A reviewer does not act differently on 4 traces than on 5,
+    # and the number moves on every unrelated test added or renamed on either side of the
+    # branch, which is not news this caption is trying to report.
+    title = (f"[[{C4_URL}{{What a container diagram is, on Simon Brown's own site}} "
+             f"{title}]]")
+    caption = "projected from sequence diagrams generated from test traces"
 
     # Two popup indexes, not one, and they are the two the manifest's `new_details` /
     # `old_details` columns name. The page inlines both and merges them work-tree-first,

@@ -284,10 +284,20 @@ def test_two_lifelines_can_be_folded_into_one_container():
     assert len(g.edges[("Browser", "Backend")]["ops"]) == 2
 
 
-def test_a_lifeline_nothing_calls_is_where_the_flows_start():
+def test_the_description_line_is_not_auto_filled_from_traces():
+    """It used to say "entry point" under a box nothing calls and "N operations" under one
+    the traces did — both facts the arrows already carry (an edge's own `[N ops]` label,
+    and a box with no inbound arrow at all), so the description line under a box is left
+    blank unless the config names one explicitly."""
     g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
-    assert g.nodes["Browser"]["descr"] == "entry point"
-    assert g.nodes["Backend"]["descr"] == "1 operation"
+    assert g.nodes["Browser"]["descr"] == ""
+    assert g.nodes["Backend"]["descr"] == ""
+
+
+def test_an_explicit_config_description_is_kept():
+    g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml",
+              containers={"Backend": {"descr": "the REST API"}})
+    assert g.nodes["Backend"]["descr"] == "the REST API"
 
 
 # --------------------------------------------------------------------------- the delta
@@ -515,15 +525,21 @@ def test_a_drop_is_read_after_a_rename_so_one_entry_covers_both_names():
     assert set(g.nodes) == {"Browser", "Backend"}
 
 
-def test_the_caption_says_which_kind_of_diagram_this_is_and_links_out():
-    """"C2" is jargon, and the caption has one line — not enough to teach the four levels
-    and plenty to point at the page that does."""
+def test_the_title_can_carry_a_link_out_and_the_caption_stays_plain():
+    """"C2" is jargon, and the title is the label a reader meets first — so that is where
+    the link to c4model.com belongs, not buried at the end of the caption. `render` itself
+    is agnostic about which of the two strings carries `[[ ]]` markup; it just emits both
+    lines as given, so this pins that a link in `title` comes out on the `title` line and
+    a plain caption comes out with no `[[` in it at all."""
     g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
-    out = c2.render(**c2.one_side(g), title="C2 Containers", system="",
-                    caption=f"[[{c2.C4_URL} C4 model]] · projected from 1", coloured=False)
-    assert "title C2 Containers" in out
+    out = c2.render(**c2.one_side(g),
+                    title=f"[[{c2.C4_URL}{{What a container diagram is}} C2 Containers]]",
+                    system="", caption="projected from sequence diagrams generated from "
+                    "test traces", coloured=False)
     assert c2.C4_URL.startswith("https://c4model.com")
-    assert f"caption [[{c2.C4_URL}" in out
+    assert f"title [[{c2.C4_URL}" in out
+    assert "caption projected from sequence diagrams generated from test traces" in out
+    assert "[[" not in out.split("caption ")[1]
 
 
 def test_a_link_out_of_the_page_does_not_replace_the_page():
@@ -651,6 +667,17 @@ def test_end_to_end_writes_a_manifest_the_page_can_read(tmp_path):
     model = json.loads((out / "C2-Containers.json").read_text())
     assert {"Browser", "Backend", "DB", "Payments"} == set(model["new"]["nodes"])
     assert model["diff"]["nodes"]["Payments"]["status"] == "added"
+
+    # The title line carries the link out to c4model.com now, and the caption is left
+    # with only the plain fact of provenance — no count of how many traces fed it (that
+    # number is not something a reviewer acts on, and it moves on every unrelated test
+    # added or renamed on either side of the branch).
+    puml = (out / "C2-Containers.diff.puml").read_text()
+    title_line = next(l for l in puml.splitlines() if l.startswith("title "))
+    caption_line = next(l for l in puml.splitlines() if l.startswith("caption "))
+    assert title_line == f"title [[{c2.C4_URL}{{What a container diagram is, on Simon " \
+                          "Brown's own site} C2 Containers]]"
+    assert caption_line == "caption projected from sequence diagrams generated from test traces"
 
 
 def test_end_to_end_says_nothing_to_draw_rather_than_drawing_nothing(tmp_path):
