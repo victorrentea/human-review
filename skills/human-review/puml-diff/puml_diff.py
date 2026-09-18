@@ -12,6 +12,13 @@ NEW, where:
   * added relationship                        -> green connector + green label
   * removed relationship                      -> red connector + struck red label (re-added)
 
+Everything the change did *not* touch is then shaded by how far it sits from it, on a
+BFS over the relationship graph (both directions, both sides' edges): the changed
+elements themselves wear the strongest amber wash, their direct neighbours a weaker one,
+their neighbours' neighbours the weakest, and anything three hops or further out keeps
+PlantUML's plain grey. An element already painted green or red is left unwashed — it is
+saying it louder already. See `RIPPLE` for why the ladder starts where it does.
+
 Direction is the whole point of the colour. Painting both sides red said only "something
 here moved" and left the reader to infer, from a strikethrough they had to look for,
 which way it went; green and red say it at a glance, the way the code diff on the same
@@ -67,20 +74,38 @@ REMOVED = "#C62828"
 
 # How far an element sits from what changed, said as a wash behind it. Green and red
 # answer "what moved?"; they say nothing about what a reviewer has to read next, which is
-# whatever the moved thing is attached to. So the boxes one hop out are tinted hardest,
-# two hops out less, three hops barely, and anything further is left at PlantUML's own
-# grey: a ripple spreading from the change. It earns its keep most in the unpruned
-# picture, where the focus chooser is not doing the pruning for the reader — there the
-# epicentre is the only box with saturated text on it, and the ripple is what says how
-# far the blast reached.
+# whatever the moved thing is attached to. So the epicentre is tinted hardest, one hop out
+# less, two hops out barely, and anything further is left at PlantUML's own grey: a ripple
+# spreading from the change. It earns its keep most in the unpruned picture, where the
+# focus chooser is not doing the pruning for the reader.
+#
+# The ladder used to start one hop *out*, on the reasoning that hop zero already wore a
+# saturated colour and did not need a second voice. That reasoning only holds for an
+# element the diff actually paints — one added whole, or removed whole. The far commoner
+# shape of a change is an element that merely *gained a field or an edge*: PlantUML draws
+# it in the same grey as every stranger on the picture, only the one green line inside it
+# or the one green arrow leaving it says anything at all. Shading from one hop out then
+# put the loudest wash on the box *beside* the change and left the change itself pale —
+# on the demo PR, the reader's eye landed on Pet and Owner while Visit and Vet, the two
+# classes the new `vet` relationship joins, looked like background. The ladder now starts
+# at zero, and only an element already carrying a green or red header is skipped, because
+# there the old reasoning still applies — and a wash under a green header would be a
+# second thing shouting the same word, with the green having to stay legible on it.
 #
 # Amber, and not a paler green or red, because those two are a *direction* and this is a
 # *distance*: a third meaning laid on the same pair of hues would read as a fourth
-# strength of the first two. The elements wearing a ripple tint are by definition the
-# ones this change did not touch, so nothing green or red is ever drawn on top of one —
-# only PlantUML's plain black label, which the page carries to near-white in dark mode.
-# Index 0 is one hop out; `build-review-html.py` maps all three to `--dgm-ripple-*`.
+# strength of the first two. Nothing green or red is ever drawn on top of a rippled
+# element — only PlantUML's plain black label, which the page carries to near-white in
+# dark mode.
+#
+# Index i is i hops from the change; `build-review-html.py` maps all three to
+# `--dgm-ripple-*`, which are numbered from 1 and so run one ahead of these.
 RIPPLE = ("#F2CF8E", "#F4DCB4", "#F2EBDB")
+
+# What each rung of the ladder means, in the words the caption prints beside its swatch.
+# A wash is only a legend once something says so: the two hues above already answer to
+# that rule, and a third visual language on the same picture cannot be the exception.
+RIPPLE_LABELS = ("touched", "1 hop", "2 hops")
 
 
 def _hex(colour: str) -> str:
@@ -137,6 +162,27 @@ def legend() -> str:
     Shared with the sequence differ, which prints the same line under its own delta: one
     legend, one wording, whichever diagram the reader happens to be looking at."""
     return f"{_added('added')} or {_struck('removed')}"
+
+
+#: A swatch, drawn as coloured glyphs rather than as a `<back:…>` span behind its label.
+#: Both read the same on paper; they do not survive the page the same way. PlantUML
+#: compiles a creole background into an SVG *filter* — `<feFlood flood-color="…">` — and
+#: the page's dark mode rewrites `fill` and `style` colours, not filters. The swatch would
+#: then have kept its daylight amber while every box it stands for went dark, and the
+#: label on it, being ordinary text, would have gone near-white on pale cream. Coloured
+#: text is a plain `fill`, so the legend and the boxes move together by construction.
+SWATCH = "███"
+
+
+def ripple_legend(rungs=RIPPLE) -> str:
+    """The distance ladder as swatches, each with the hop count it stands for.
+
+    Printed as real washes rather than named in prose, because the thing being explained
+    is a colour and the reader has to match one to the other by eye. Only the rungs that
+    actually appear in the picture are listed: a swatch for a ring the focus level pruned
+    away promises a box the reader can then hunt for and never find."""
+    labels = dict(zip(RIPPLE, RIPPLE_LABELS))
+    return " · ".join(f"<color:{c}>{SWATCH}</color> {labels[c]}" for c in rungs)
 
 
 def _mark_title(line: str) -> str:
@@ -507,15 +553,22 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     rings = _distances(old, new)
     keep = names if focus == ALL else {n for n, d in rings.items() if d <= int(focus)}
 
-    def ripple(name):
-        """The wash behind one element, or None for the change itself and the far field.
+    # An element the diff paints outright — added whole, or removed whole — carries its
+    # own saturated header already, and is the one place where a wash underneath would be
+    # a second voice saying the same word. Every other element on the picture, including
+    # one that merely gained a field or an edge, has nothing but the ripple to place it.
+    painted = set(old.elements) ^ set(new.elements)
 
-        Hop 0 is left at PlantUML's grey on purpose: it is already the only box on the
-        picture wearing a saturated colour, and a tint under green would be a second
-        thing shouting the same word. The ladder starts one hop out, where there is
-        otherwise nothing at all to say "this is what the change touches"."""
+    def ripple(name):
+        """The wash behind one element, or None past the last rung and under a paint job.
+
+        Index 0 is the change itself, so a class that gained a field or an edge — the
+        commonest shape of a change, and one PlantUML draws in plain grey — is the
+        hardest-washed box on the picture, and the ladder fades outwards from it."""
         d = rings.get(name)
-        return RIPPLE[d - 1] if d and d <= len(RIPPLE) else None
+        if d is None or d >= len(RIPPLE) or name in painted:
+            return None
+        return RIPPLE[d]
 
     # Under the picture, not in the title above it: this is the footer band where a
     # reader already looks to ask "what am I being shown?", and a legend belongs where
@@ -523,7 +576,13 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     # something says so in words. The scope rides along, because it answers the same
     # question at the same moment.
     caption = f"caption {legend()}"
-    shaded = any(ripple(n) for n in keep)      # a colour is only a legend once words say so
+    # A ladder is only readable as a ladder once it has two rungs on screen: at focus 0
+    # every box shown is the same distance from the change, so the wash carries no
+    # information and announcing it would invite the reader to compare shades that are
+    # all one shade.
+    tints = {ripple(n) for n in keep}
+    rungs = [c for c in RIPPLE if c in tints]
+    shaded = len(rungs) > 1
     if focus != ALL:
         hops = int(focus)
         scope = "the impacted elements only" if hops == 0 else (
@@ -533,6 +592,8 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
         caption += f" — {scope} ({len(keep)} of {len(names)} shown)"
     elif shaded:
         caption += " — shaded by distance from the change"
+    if shaded:
+        caption += f": {ripple_legend(rungs)}"
 
     # The caption goes FIRST, not after the preamble. A source that opens a `<style>` block
     # ends its preamble on the `<style>` line itself — the block's body arrives later — so

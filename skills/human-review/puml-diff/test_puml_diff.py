@@ -193,8 +193,13 @@ def test_added_bracket_component_gets_green_header():
     assert f"[Notification] <<..notification>> #line:{HEX_ADD};text:{HEX_ADD}" in _pkg_diff()
 
 
-def test_unchanged_bracket_component_stays_plain():
-    assert "\n[Domain] <<..domain>>\n" in _pkg_diff()
+def test_unchanged_bracket_component_keeps_its_name_and_wears_the_wash():
+    """[Domain] is not added and not removed, so no colour is painted on its name — but
+    both the added and the removed relationship hang off it, which makes it the box a
+    reviewer reads next and so the epicentre of the ripple."""
+    out = _pkg_diff()
+    assert f"\n[Domain] <<..domain>> #back:{m.RIPPLE[0].lstrip('#')}\n" in out
+    assert HEX_ADD not in out.split("[Domain]")[1].split("\n")[0]
 
 
 def test_removed_bracket_component_struck_but_keeps_alias():
@@ -268,8 +273,13 @@ def test_the_caption_says_what_is_being_shown():
 # ── The ripple ───────────────────────────────────────────────────────────────
 # A focus level answers "how much do I want on screen?"; it does not answer, once the
 # picture is on screen, "which of these is near the change?" — and in the unpruned view
-# nothing did. The boxes one hop out are washed hardest, two hops less, three barely,
+# nothing did. The changed boxes are washed hardest, one hop out less, two hops barely,
 # and the far field is left at PlantUML's own grey.
+#
+# The ladder used to start one hop *out*, which put the loudest wash on the neighbours of
+# the change and left the change itself looking like background — the exact opposite of
+# what the wash is for, whenever the change is a field or an edge rather than a whole new
+# class (PlantUML paints no header for those, so nothing else marks them either).
 
 
 def _back(out, element):
@@ -284,26 +294,45 @@ def _back(out, element):
     return None
 
 
-def test_a_direct_neighbour_wears_the_first_tint():
-    """Pet is untouched, and one relationship from both Owner and Visit — exactly the box
-    a reviewer has to read next and, before this, the box that looked like every other."""
-    assert _back(_diff(), "Pet") == m.RIPPLE[0]
+def test_the_changed_element_wears_the_strongest_tint():
+    """Owner gained a field and Visit lost one. PlantUML draws neither header any
+    differently — one green line inside a box is the whole signal — so if anything on the
+    picture is to be washed hardest it is these, not the boxes standing next to them."""
+    out = _diff()
+    assert _back(out, "Owner") == m.RIPPLE[0]
+    assert _back(out, "Visit") == m.RIPPLE[0]
 
 
 def test_the_ripple_fades_with_each_hop():
     out = _diff()
-    assert _back(out, "Pet") == m.RIPPLE[0]          # Owner -- Pet
-    assert _back(out, "PetType") == m.RIPPLE[1]      # PetType -- Pet -- Owner
+    assert _back(out, "Owner") == m.RIPPLE[0]        # gained `email`
+    assert _back(out, "Pet") == m.RIPPLE[1]          # Owner -- Pet
+    assert _back(out, "PetType") == m.RIPPLE[2]      # PetType -- Pet -- Owner
     assert m.RIPPLE[0] != m.RIPPLE[1] != m.RIPPLE[2]
 
 
-def test_the_change_itself_is_left_untinted():
-    """Hop zero is already the only box wearing a saturated colour. A wash under a green
-    header would be a second thing shouting the same word — and the green would have to
-    stay legible on it, which is a contrast problem invented for no gain."""
+def test_a_chain_leading_away_from_the_change_dims_one_rung_at_a_time():
+    """A-B-C-D-E, joined in a line, with the change in A: the three rungs come off the
+    ladder in order and E — four hops out — is left at PlantUML's own grey. The rule in
+    one picture, on a diagram small enough to hold in the head."""
+    names = ["A", "B", "C", "D", "E"]
+    lines = ["@startuml"] + [f"class {n}" for n in names]
+    lines += [f"{a} -- {b}" for a, b in zip(names, names[1:])] + ["@enduml"]
+    chain = "\n".join(lines) + "\n"
+    changed = chain.replace("class A", "class A {\n  id : Integer\n}")
+    out = m.diff(m.parse(chain), m.parse(changed))
+    assert [_back(out, n) for n in names] == [*m.RIPPLE, None, None]
+
+
+def test_an_element_the_diff_paints_is_left_untinted():
+    """A green or a red header is already the loudest thing on the picture, and a wash
+    under it would be a second voice saying the same word — with the green having to stay
+    legible on it, a contrast problem invented for no gain. Only *those* are skipped: an
+    element that merely gained a field carries no paint at all and keeps its wash."""
     out = _diff()
-    for changed in ("Owner", "Vet", "Visit", "Invoice"):
-        assert _back(out, changed) is None, changed
+    assert _back(out, "Invoice") is None             # added whole -> green header
+    assert _back(out, "Role") is None                # removed whole -> red header
+    assert _back(out, "Owner") is not None           # gained a field -> nothing else says so
 
 
 def test_past_the_last_ring_the_box_keeps_plantuml_grey():
@@ -314,7 +343,7 @@ def test_past_the_last_ring_the_box_keeps_plantuml_grey():
     chain = "\n".join(lines) + "\n"
     grown = chain.replace("class C0", "class C0 {\n  id : Integer\n}")
     out = m.diff(m.parse(chain), m.parse(grown))
-    assert [_back(out, f"C{i}") for i in range(5)] == [None, *m.RIPPLE, None]
+    assert [_back(out, f"C{i}") for i in range(5)] == [*m.RIPPLE, None, None]
 
 
 def test_an_element_no_relationship_reaches_is_not_on_the_ladder():
@@ -332,6 +361,31 @@ def test_the_caption_says_the_shading_means_distance():
     assert "shaded by distance from the change" in _diff()
     assert "impacted + 1 neighbour, shaded by distance" in _focused("1")
     assert "shaded" not in _focused("0")     # nothing but hop zero is on screen
+
+
+def test_the_caption_prints_the_ladder_as_swatches():
+    """Words alone cannot say which amber is which. The caption carries each rung as the
+    wash itself, labelled with the hop count it stands for, so the reader matches a box
+    to a rung by eye instead of by guessing which of three creams is "nearer"."""
+    out = _diff()
+    for tint, label in zip(m.RIPPLE, m.RIPPLE_LABELS):
+        assert f"<color:{tint}>{m.SWATCH}</color> {label}" in out, label
+
+
+def test_the_swatch_is_coloured_text_and_not_a_creole_background():
+    """PlantUML compiles `<back:…>` into an SVG filter, and the page's dark mode rewrites
+    fills, not filters — the legend would have stayed in daylight amber while every box it
+    stands for went dark, with a near-white label on top of it."""
+    assert "<back:" not in _diff()
+
+
+def test_the_legend_lists_only_the_rungs_the_picture_still_has():
+    """A swatch for a ring the focus level pruned away promises a box the reader can hunt
+    for and never find."""
+    out = _focused("1")
+    assert f"<color:{m.RIPPLE[1]}>{m.SWATCH}</color> {m.RIPPLE_LABELS[1]}" in out
+    assert m.RIPPLE[2] not in out
+    assert m.SWATCH not in _focused("0")     # one rung is not a ladder
 
 
 def test_a_header_colour_carries_no_inner_hash():
@@ -634,3 +688,68 @@ component {
     assert out.count("{") == out.count("}"), "unbalanced braces:\n" + out
     assert "component" not in out.split("</style>")[1], (
         "the stylesheet leaked into the diagram body as an element:\n" + out)
+
+
+# ── A lifeline PlantUML cannot name in one word ───────────────────────────────────
+#
+# A traced sequence diagram declares its lifelines by their human name — `participant
+# "Notification module"` — and names them quoted in every arrow. Marking one meant moving
+# that name into the display slot and putting it behind `as`, where PlantUML wants a
+# single word: `as Notification module` is a syntax error, and PlantUML answers a syntax
+# error with a picture of the complaint, not a failure. The pipeline drops that picture,
+# so the whole pair on the Sequence tab lost its diagram — one bad word in one line.
+
+def _frame(participants, body):
+    return "@startuml\n" + "\n".join(participants) + "\n" + body + "\n@enduml\n"
+
+
+SPACED = _frame(
+    ['participant Backend', 'participant "Notification module"'],
+    'Backend -> "Notification module": notify\nactivate "Notification module"',
+)
+SEQ_BEFORE = _frame(["participant Backend"], "Backend -> Backend: x")
+
+
+def test_a_multi_word_participant_gets_an_alias_plantuml_can_read():
+    out = sq.diff(SEQ_BEFORE, SPACED)
+    decl = [l for l in out.splitlines() if l.startswith("participant") and "as " in l]
+    assert decl, out
+    alias = decl[0].split(" as ")[1].split()[0]
+    assert sq.BARE_ALIAS_RE.match(alias), f"PlantUML cannot read {alias!r} as an alias"
+    # …and the human name is still what the picture shows
+    assert "Notification module</color>" in decl[0]
+
+
+def test_the_body_follows_the_participant_it_renamed():
+    """A declaration renamed and arrows left quoting the old name is two lifelines."""
+    out = sq.diff(SEQ_BEFORE, SPACED)
+    body = [l for l in out.splitlines()
+            if not l.startswith(("participant", "caption", "@"))]
+    assert '"Notification module"' not in "\n".join(body), body
+    assert any("> Notification_module:" in l for l in body), body
+    assert "activate Notification_module" in body
+
+
+def test_a_one_word_participant_is_left_alone():
+    """The rename is a last resort, not a policy: `Backend` stays `Backend`."""
+    out = sq.diff(_frame(["participant Backend"], "Backend -> Backend: x"),
+                  _frame(["participant Backend", "participant DB"],
+                         "Backend -> Backend: x\nBackend -> DB: y"))
+    assert "as DB " in out and "DB_2" not in out
+
+
+def test_an_alias_already_in_the_diagram_is_not_handed_out_twice():
+    out = sq.diff(SEQ_BEFORE, _frame(
+        ['participant Backend', 'participant Notification_module',
+         'participant "Notification module"'],
+        'Backend -> "Notification module": notify'))
+    aliases = [l.split(" as ")[1].split()[0]
+               for l in out.splitlines() if l.startswith("participant") and " as " in l]
+    assert len(aliases) == len(set(aliases)), aliases
+
+
+def test_a_participant_declared_with_a_colour_still_reports_its_alias():
+    """`"Long name" as Short #EEE` — the tint used to be read as part of the alias."""
+    assert sq._participant_name('"Notification module" as Notif #EAF6EC') == "Notif"
+    assert sq._participant_name('"Notification module"') == "Notification module"
+    assert sq._participant_name("Backend") == "Backend"
