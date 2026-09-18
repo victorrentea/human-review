@@ -1371,8 +1371,10 @@ def test_an_include_follows_the_prose_unless_the_section_asks_for_it_first(tmp_p
     one, two = page[first:second], page[second:]
     assert one.index("reqmap") < one.index("<p>a</p>")
     assert two.index("<p>b</p>") < two.index("reqmap")
-    # And it is pasted once, not once at each end.
-    assert one.count("reqmap") == 1 and two.count("reqmap") == 1
+    # And it is pasted once, not once at each end. Counted on the fragment's own opening
+    # tag rather than on the bare word: `reqmap_layout` appends a hover for the names the
+    # matrix has to cut, and its selector names the class too.
+    assert one.count('class="reqmap"') == 1 and two.count('class="reqmap"') == 1
 
 
 PR = dict(BARE, pr={"number": 37, "title": "Link Visit with Vet",
