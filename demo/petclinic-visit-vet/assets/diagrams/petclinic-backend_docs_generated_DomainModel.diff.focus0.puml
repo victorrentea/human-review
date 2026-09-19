@@ -7,12 +7,12 @@ hide empty members
 skinparam classAttributeIconSize 0
 skinparam hyperlinkUnderline false
 skinparam hyperlinkColor #000000
-class Vet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Vet.java:11{Click to open in editor}]] {
+class Vet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Vet.java:11{Click to open in editor}]] #back:F2CF8E {
   id : Integer
   firstName : String
   lastName : String
 }
-class Visit [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:11{Click to open in editor}]] {
+class Visit [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java:11{Click to open in editor}]] #back:F2CF8E {
   id : Integer
   date : LocalDate
   time : LocalTime

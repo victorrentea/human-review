@@ -16,6 +16,13 @@
 // Only one screen earns a workflow: the booking form, which is where the feature actually
 // happens. Everything else gets a beat and a caption, because a screen that gained a column
 // has nothing to demonstrate — passing through it IS the evidence.
+//
+// One thing changed against the previous implementation of this ticket, and it is the reason
+// this file is not the old one: the vet field is no longer a bare `<select id="vetId">`. It is
+// the design system's `<app-combo inputId="vet">`, which renders a `<select id="vet">` whose
+// option VALUES are array indices and whose empty option is the `-- none --` placeholder. So
+// the picker is found by `#vet` and driven by label, never by value — a value here is a
+// position in a list, and a film that clicked position 1 would be filming the seed order.
 
 const {changedScreens} = require("./changed-screens.js");
 
@@ -35,8 +42,8 @@ module.exports = async ({page, say, pause, get, app, apiUrl}) => {
   // Route parameters resolve from the collection segment in front of them — `pets/:id` is a pet,
   // `visits/:id` a visit — rather than from a table of route strings, which would be the same
   // hand-maintained list one level down.
-  const bag = {owners: () => owner.id, pets: () => pet.id, visits: () => bookedVisitId};
   let bookedVisitId = null;
+  const bag = {owners: () => owner.id, pets: () => pet.id, visits: () => bookedVisitId};
   const fill = (route) => {
     const segs = route.split("/");
     return segs.map((seg, i) => {
@@ -77,12 +84,18 @@ module.exports = async ({page, say, pause, get, app, apiUrl}) => {
       const description = `Human review demo ${Date.now()}`;
       await page.locator("input#description").fill(description);
 
-      const vetSelect = page.locator("select#vetId");
+      // `#vet` is the select the design-system combo renders from `inputId`, not the `vetId`
+      // the form control is called. Both spellings are in this template; only one is in the DOM.
+      const vetSelect = page.locator("select#vet");
+      await vetSelect.waitFor();
       await say("The booking form asks who will attend — and lets you say nobody yet.", vetSelect);
       await pause(2200);
 
-      const firstVet = vetSelect.locator('option:not([value$="null"]):not([value=""])').first();
+      // By label, never by value: the combo's option values are indices into `vetOptions`, so
+      // a value here would pin the film to the order the seed happened to load the roster in.
+      const firstVet = vetSelect.locator('option:not([value=""])').first();
       const vetName = (await firstVet.textContent() || "").trim();
+      if (!vetName) throw new Error("the vet picker offers nothing but the placeholder");
       await vetSelect.selectOption({label: vetName});
       await say(`We book this one with ${vetName}.`, vetSelect);
       await pause(1800);
@@ -119,7 +132,8 @@ module.exports = async ({page, say, pause, get, app, apiUrl}) => {
       await page.goto(`${app}/${fill(screen.route)}`);
       const combo = page.locator("app-combo").first();
       await combo.waitFor();
-      await say("And on the edit form the vet picker is the design-system combo.", combo);
+      await say("And on the edit form the vet picker is the design-system combo — "
+                + "picking “none” is what unassigns a vet.", combo);
       await pause(2100);
     },
   };

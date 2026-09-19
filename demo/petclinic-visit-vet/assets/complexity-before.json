@@ -1,0 +1,3130 @@
+[
+ {
+  "kind": "job",
+  "httpMethod": "JOB",
+  "path": "RagIngestion.poll",
+  "handler": "RagIngestion.poll()",
+  "metric": "cognitive",
+  "flowCc": 17,
+  "methods": 5,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.RagIngestion#poll",
+    "cognitive": 10
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.RagIngestion#applyChange",
+    "cognitive": 6
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.RagIngestion#docId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.RagIngestion#persist",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.RagIngestion#metaFile",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/owners",
+  "handler": "OwnerRestController.listOwners(String)",
+  "metric": "cognitive",
+  "flowCc": 11,
+  "methods": 60,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#listOwners",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.OwnerMapper#toOwnerDtoCollection",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.OwnerMapper#toOwnerDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getTelephone",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Role#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerDto#setPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setTelephone",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisitsSortedByDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/users",
+  "handler": "UserRestController.addUser(UserDto)",
+  "metric": "cognitive",
+  "flowCc": 11,
+  "methods": 29,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.UserRestController#addUser",
+    "cognitive": 7
+   },
+   {
+    "method": "victor.training.petclinic.domain.Role#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Role#getUser",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Role#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Role#setUser",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#getRoles",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#getUsername",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.UserMapper#toUser",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.UserMapper#toUserDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.UserMapper#toRoles",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#setEnabled",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#setPassword",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#setRoles",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#setUsername",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#getEnabled",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#getPassword",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#getRoles",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#getUsername",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.UserMapper#toRoleDtos",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#getEnabled",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.User#getPassword",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#setEnabled",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#setPassword",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#setRoles",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.UserDto#setUsername",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.UserMapper#toRole",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.UserMapper#toRoleDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.RoleDto#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.RoleDto#setName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/owners/{ownerId}",
+  "handler": "OwnerRestController.getOwner(int)",
+  "metric": "cognitive",
+  "flowCc": 9,
+  "methods": 59,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.OwnerMapper#toOwnerDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getTelephone",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Role#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerDto#setPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#setTelephone",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisitsSortedByDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/pets",
+  "handler": "PetRestController.listPets()",
+  "metric": "cognitive",
+  "flowCc": 9,
+  "methods": 37,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetRestController#listPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisitsSortedByDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/owners/{ownerId}/pets/{petId}",
+  "handler": "OwnerRestController.getOwnersPet(int, int)",
+  "metric": "cognitive",
+  "flowCc": 7,
+  "methods": 37,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#getOwnersPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPetById",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisitsSortedByDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/pets/{petId}",
+  "handler": "PetRestController.getPet(int)",
+  "metric": "cognitive",
+  "flowCc": 7,
+  "methods": 36,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetRestController#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisitsSortedByDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#setVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "mcp",
+  "httpMethod": "MCP",
+  "path": "call_vet_ambulance",
+  "handler": "PetClinicMcp.callVetAmbulance(McpSyncRequestContext)",
+  "metric": "cognitive",
+  "flowCc": 6,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#callVetAmbulance",
+    "cognitive": 6
+   }
+  ]
+ },
+ {
+  "kind": "mcp",
+  "httpMethod": "MCP",
+  "path": "create_visit",
+  "handler": "PetClinicMcp.createVisit(int, LocalDate, LocalTime, String)",
+  "metric": "cognitive",
+  "flowCc": 6,
+  "methods": 14,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#createVisit",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#requireFutureDate",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#requireUnderUpcomingVisitCap",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mcp.McpSecurity#currentOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#addVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setTime",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setPet",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/vets/{vetId}",
+  "handler": "VetRestController.updateVet(int, VetDto)",
+  "metric": "cognitive",
+  "flowCc": 5,
+  "methods": 19,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VetRestController#updateVet",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.rest.VetRestController#updateSpecialties",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#addSpecialty",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#clearSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialty",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#getSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getNrOfSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/visits",
+  "handler": "VisitRestController.listVisits()",
+  "metric": "cognitive",
+  "flowCc": 5,
+  "methods": 21,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#listVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitsDto",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/assistant",
+  "handler": "Assistant.assistant(String, OwnerJwtPrincipal)",
+  "metric": "cognitive",
+  "flowCc": 5,
+  "methods": 8,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.Assistant#assistant",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.ChatHistory#append",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.JudgeGuard#isAllowed",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.JudgeGuard#isReplyAllowed",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.notification.Lifeline#name",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.JudgeGuard#judge",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.JudgeGuard#reviewReply",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.JudgeGuard#classify",
+    "cognitive": 3
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/vets",
+  "handler": "VetRestController.listVets()",
+  "metric": "cognitive",
+  "flowCc": 4,
+  "methods": 19,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VetRestController#listVets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VetMapper#toVetDtos",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VetMapper#toVetDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialtyDtos",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialtyDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/vets",
+  "handler": "VetRestController.addVet(VetDto)",
+  "metric": "cognitive",
+  "flowCc": 4,
+  "methods": 24,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VetRestController#addVet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.VetRestController#updateSpecialties",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VetMapper#toVet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getNrOfSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialty",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#getSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetFieldsDto#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetFieldsDto#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetFieldsDto#getSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/owners/{ownerId}/pets",
+  "handler": "OwnerRestController.addPetToOwner(int, PetFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 3,
+  "methods": 39,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#addPetToOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#ownerOfId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetType",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toVisits",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#petOfId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/specialties",
+  "handler": "SpecialtyRestController.addSpecialty(SpecialtyDto)",
+  "metric": "cognitive",
+  "flowCc": 3,
+  "methods": 10,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyRestController#addSpecialty",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyFeed#invalidate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialty",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/visits/{visitId}",
+  "handler": "VisitRestController.getVisit(int)",
+  "metric": "cognitive",
+  "flowCc": 3,
+  "methods": 20,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#getVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#setPetName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "mcp",
+  "httpMethod": "MCP",
+  "path": "list_visits",
+  "handler": "PetClinicMcp.listVisits()",
+  "metric": "cognitive",
+  "flowCc": 3,
+  "methods": 10,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#listVisits",
+    "cognitive": 3
+   },
+   {
+    "method": "victor.training.petclinic.mcp.McpSecurity#currentOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisitsSortedByDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getTime",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/pettypes",
+  "handler": "PetTypeRestController.listPetTypes()",
+  "metric": "cognitive",
+  "flowCc": 2,
+  "methods": 7,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetTypeRestController#listPetTypes",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetTypeMapper#toPetTypeDtos",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetTypeMapper#toPetTypeDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/specialties",
+  "handler": "SpecialtyRestController.listSpecialties()",
+  "metric": "cognitive",
+  "flowCc": 2,
+  "methods": 9,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyRestController#listSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialtyDtos",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialtyDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/vets/{vetId}",
+  "handler": "VetRestController.getVet(int)",
+  "metric": "cognitive",
+  "flowCc": 2,
+  "methods": 18,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VetRestController#getVet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VetMapper#toVetDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialtyDtos",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Vet#getSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VetDto#setSpecialties",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialtyDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/history",
+  "handler": "Assistant.history(OwnerJwtPrincipal)",
+  "metric": "cognitive",
+  "flowCc": 2,
+  "methods": 3,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.Assistant#history",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.ChatHistory#transcript",
+    "cognitive": 2
+   },
+   {
+    "method": "victor.training.petclinic.notification.Lifeline#name",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "mcp",
+  "httpMethod": "MCP",
+  "path": "LocalTools.sendEmail",
+  "handler": "LocalTools.sendEmail(String, String, ToolContext)",
+  "metric": "cognitive",
+  "flowCc": 2,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.LocalTools#sendEmail",
+    "cognitive": 2
+   }
+  ]
+ },
+ {
+  "kind": "mcp",
+  "httpMethod": "MCP",
+  "path": "cancel_visit",
+  "handler": "PetClinicMcp.cancelVisit(LocalDate)",
+  "metric": "cognitive",
+  "flowCc": 2,
+  "methods": 7,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#cancelVisit",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#requireFutureDate",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.mcp.McpSecurity#currentOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getVisits",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getPet",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/owners/{ownerId}/pets/{petId}/visits",
+  "handler": "OwnerRestController.addVisitToOwner(int, int, VisitFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 1,
+  "methods": 23,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#addVisitToOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#bookVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#notifyOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.notification.FakeSmsNotificationSender#visitBooked",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPetById",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getTelephone",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#petOfId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.notification.FakeSmsNotificationSender#port",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.notification.Lifeline#name",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/pets/{petId}",
+  "handler": "PetRestController.updatePet(int, PetDto)",
+  "metric": "cognitive",
+  "flowCc": 1,
+  "methods": 12,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetRestController#updatePet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetDto#getType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetMapper#toPetType",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#getName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "DELETE",
+  "path": "/api/pettypes/{petTypeId}",
+  "handler": "PetTypeRestController.deletePetType(int)",
+  "metric": "cognitive",
+  "flowCc": 1,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetTypeRestController#deletePetType",
+    "cognitive": 1
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/specialties/feed",
+  "handler": "SpecialtyFeedController.feed(String)",
+  "metric": "cognitive",
+  "flowCc": 1,
+  "methods": 3,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyFeedController#feed",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyFeed#etag",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyFeed#load",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "mcp",
+  "httpMethod": "MCP",
+  "path": "LocalTools.currentDateTime",
+  "handler": "LocalTools.currentDateTime()",
+  "metric": "cognitive",
+  "flowCc": 1,
+  "methods": 3,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.LocalTools#currentDateTime",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#toString",
+    "cognitive": 1
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.ChatHistory#append",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/",
+  "handler": "FakeSmsGatewayController.receive(Sms)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 2,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.notification.FakeSmsGatewayController#receive",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.notification.Lifeline#name",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "ANY",
+  "path": "/",
+  "handler": "RootRestController.redirectToSwagger(HttpServletResponse)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.RootRestController#redirectToSwagger",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/owners",
+  "handler": "OwnerRestController.addOwner(OwnerFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 13,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#addOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.OwnerMapper#toOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setTelephone",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getTelephone",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/owners/count",
+  "handler": "OwnerRestController.countOwners()",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#countOwners",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/owners/{ownerId}",
+  "handler": "OwnerRestController.updateOwner(int, OwnerFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 11,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#updateOwner",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#setTelephone",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.OwnerFieldsDto#getTelephone",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "DELETE",
+  "path": "/api/owners/{ownerId}",
+  "handler": "OwnerRestController.deleteOwner(int)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#deleteOwner",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/owners/{ownerId}/pets/{petId}",
+  "handler": "OwnerRestController.updateOwnersPet(int, int, PetFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 7,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#updateOwnersPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getBirthDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getType",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "DELETE",
+  "path": "/api/pets/{petId}",
+  "handler": "PetRestController.deletePet(int)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetRestController#deletePet",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/pettypes",
+  "handler": "PetTypeRestController.addPetType(PetTypeFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 5,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetTypeRestController#addPetType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetTypeMapper#toPetType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeFieldsDto#getName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/pettypes/{petTypeId}",
+  "handler": "PetTypeRestController.getPetType(int)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 6,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetTypeRestController#getPetType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.PetTypeMapper#toPetTypeDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#setName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/pettypes/{petTypeId}",
+  "handler": "PetTypeRestController.updatePetType(int, PetTypeDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 3,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.PetTypeRestController#updatePetType",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.PetType#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.PetTypeDto#getName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/api/specialties/{specialtyId}",
+  "handler": "SpecialtyRestController.getSpecialty(int)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 8,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyRestController#getSpecialty",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.SpecialtyMapper#toSpecialtyDto",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#setName",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/specialties/{specialtyId}",
+  "handler": "SpecialtyRestController.updateSpecialty(int, SpecialtyDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 6,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyRestController#updateSpecialty",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Specialty#setName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.SpecialtyDto#getName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyFeed#invalidate",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "DELETE",
+  "path": "/api/specialties/{specialtyId}",
+  "handler": "SpecialtyRestController.deleteSpecialty(int)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 2,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyRestController#deleteSpecialty",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.SpecialtyFeed#invalidate",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "DELETE",
+  "path": "/api/vets/{vetId}",
+  "handler": "VetRestController.deleteVet(int)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VetRestController#deleteVet",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/visits",
+  "handler": "VisitRestController.addVisit(VisitDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 16,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#addVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#bookVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getPetId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#petOfId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setPet",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setId",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/visits/{visitId}",
+  "handler": "VisitRestController.updateVisit(int, VisitFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 5,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#updateVisit",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "DELETE",
+  "path": "/api/visits/{visitId}",
+  "handler": "VisitRestController.deleteVisit(int)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#deleteVisit",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/firefighter",
+  "handler": "FirefighterController.firefighter(String)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.firefighter.FirefighterController#firefighter",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "DELETE",
+  "path": "/history",
+  "handler": "Assistant.clearConversation(OwnerJwtPrincipal)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 3,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.Assistant#clearConversation",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.ChatHistory#clear",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.notification.Lifeline#name",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/model",
+  "handler": "Assistant.model()",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.assistant.Assistant#model",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "http",
+  "httpMethod": "GET",
+  "path": "/triage",
+  "handler": "TriageController.triage(String)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 1,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.chatbot.triage.TriageController#triage",
+    "cognitive": 0
+   }
+  ]
+ },
+ {
+  "kind": "mcp",
+  "httpMethod": "MCP",
+  "path": "get_owner_profile",
+  "handler": "PetClinicMcp.getOwnerProfile()",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 8,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.mcp.PetClinicMcp#getOwnerProfile",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.mcp.McpSecurity#currentOwnerId",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getAddress",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getCity",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getFirstName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getLastName",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPets",
+    "cognitive": 0
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getTelephone",
+    "cognitive": 0
+   }
+  ]
+ }
+]

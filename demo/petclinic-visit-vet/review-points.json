@@ -1,0 +1,291 @@
+{
+ "mode": "points",
+ "source": "review-points.md",
+ "fixed_in": "HEAD",
+ "findings": [
+  {
+   "title": "Make PUT /api/visits/{id} keep the vet when the body omits vetId",
+   "source": "/code-review high (the same finding, its design half)",
+   "severity": "medium",
+   "why": "&quot;assign only when the field is present&quot; is precisely the bug #37 tells me not to repeat.",
+   "body": "The endpoint already replaces <code>date</code> and <code>description</code> unconditionally \u2014 a body without <code>date</code> nulls the date. Special-casing <code>vetId</code> would make one field in one DTO behave differently from its neighbours, and telling absent from explicit-null needs a <code>JsonNullable</code> wrapper that nothing else in this codebase uses. The ticket&#x27;s second requirement is that clearing the field sticks; unconditional assignment is what makes it stick.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:88"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:88"
+    }
+   ]
+  },
+  {
+   "title": "Collapse the duplicated attendingVet helper",
+   "source": "/code-review high (duplication)",
+   "severity": "low",
+   "why": "three lines shared by two controllers that already duplicate the whole booking flow; the honest fix is collapsing those, which is a bigger change than #37 asks for.",
+   "body": "I first wrote it as one <code>default</code> method on <code>VetRepository</code>, which is where it belongs. It fails at runtime: Spring Data&#x27;s <code>NullnessMethodInvocationValidator</code> rejects a null argument to any repository method, so &quot;no vet chosen&quot; became a 500 \u2014 and neither <code>org.springframework.lang.@Nullable</code> nor <code>org.jspecify.@Nullable</code> on the parameter talks it out of that. A <code>@Component</code> wrapping one ternary would buy less than it costs.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:201"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:201"
+    }
+   ]
+  },
+  {
+   "title": "A denied @PreAuthorize answers 500 instead of 403",
+   "source": "me, while writing the test for the vet-picker fix",
+   "severity": "medium",
+   "why": "it is global error handling on every endpoint, and #37 is about a column on visits.",
+   "body": "<code>handleGeneralException</code> catches <code>Exception</code>, which includes <code>AuthorizationDeniedException</code>, so every authorization failure in <code>rest/</code> is reported as an internal error \u2014 and the <code>ProblemDetail</code> echoes the exception&#x27;s own message back to the caller. Worth its own ticket. <code>ownerAdmin_cannotAddAVet</code> therefore asserts the write is refused rather than pinning the status code, so fixing this will not fail it.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:75"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:75"
+    }
+   ]
+  },
+  {
+   "title": "The generated sequence diagram for booking with a vet is orphaned",
+   "source": "me, reading the repo before starting",
+   "severity": "low",
+   "why": "regenerating it needs the whole stack traced \u2014 browser, backend, Tempo \u2014 and the frontend&#x27;s dependencies are not installable here.",
+   "body": "This file predates my commit (it arrived with <code>0d534233</code> and survived the revert of the earlier attempt at #37). It deep-links to <code>add-visit.spec.ts:52</code> and <code>OwnerRestController.bookVisit:193</code>, neither of which exists, and describes a <code>VetRepository.getByIdOrNull</code> I deliberately did not build. It is stale either way; my change does not make it staler, and I did not add the e2e test it claims to picture.",
+   "refs": [
+    "petclinic-test/generated/add-visit.spec.ts.add-a-visit-attended-by-a-vet.genseq.puml:59"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-test/generated/add-visit.spec.ts.add-a-visit-attended-by-a-vet.genseq.puml:59"
+    }
+   ]
+  },
+  {
+   "title": "OwnerRestController&#x27;s constructor is now nine parameters",
+   "source": "me, anticipating SonarCloud java:S107 (this repo lowers the cap to 5)",
+   "severity": "low",
+   "why": "it was already eight, the ninth collaborator is genuinely needed, and every alternative is worse.",
+   "body": "Resolving the vet needs a repository, and <code>mapper \u2192 repository</code> is forbidden by <code>docs/packages.puml</code>. Sonar will re-flag S107 because the constructor&#x27;s lines changed, so this will show up as a new-code finding on a pre-existing violation.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:67"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:67"
+    }
+   ]
+  },
+  {
+   "title": "The user manual still describes the visit screens without a vet",
+   "source": "me",
+   "severity": "low",
+   "why": "<code>manual.md</code> and its screenshots are regenerated by crawling the running UI, which needs the frontend&#x27;s dependencies installed; hand-editing the prose would leave it disagreeing with its own screenshots.",
+   "refs": [
+    "user-manual/manual.md:100"
+   ],
+   "snippets": [
+    {
+     "ref": "user-manual/manual.md:100"
+    }
+   ]
+  }
+ ],
+ "autofixes": [
+  {
+   "title": "The vet picker could not load on the screens that need it",
+   "source": "/code-review high (cross-role read on a widened screen)",
+   "body": "<code>GET /api/vets</code> sat under the class&#x27;s <code>hasRole(VET_ADMIN)</code>, but the booking and edit forms are owner-admin screens. An owner-admin-only user opening *New Visit* got an error and a permanently empty combo \u2014 the one thing #37 asks for most. <code>PetTypeRestController</code> already solves the identical cross-role read, so this follows it, except narrower: only <code>listVets()</code> moves to <code>hasAnyRole(OWNER_ADMIN, VET_ADMIN)</code>; adding, editing and deleting vets stay VET_ADMIN.<br><br>Worth recording how the reviewer&#x27;s scenario differed from reality. It predicted a 403; the run produces a **500**, because <code>ExceptionControllerAdvice</code>&#x27;s catch-all handler swallows <code>AuthorizationDeniedException</code>. Same broken picker, uglier failure. It is also why the two new assertions live in <code>BasicAuthenticationConfigTest</code> and not next to the controller: <code>petclinic.security.enable</code> is <code>false</code> everywhere else, so every <code>@WithMockUser(roles = \u2026)</code> in the other suites decorates without enforcing, and a role test written beside <code>VetTest</code> passes whatever the rule says. The first version of this fix&#x27;s test did exactly that and proved nothing.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:50"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:50"
+    }
+   ],
+   "diffs": [
+    {
+     "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java",
+     "base": "a8cd9973"
+    }
+   ]
+  },
+  {
+   "title": "Booking a visit read the vet&#x27;s whole specialty list to set one foreign key",
+   "source": "/code-review high (efficiency)",
+   "body": "<code>VetRepository.findById</code> <code>LEFT JOIN FETCH</code>es <code>v.specialties</code>, which is right for the vet screens and pure waste for <code>attendingVet</code>, which reads nothing off the vet but its identity. Both booking paths now use a lean <code>findByIdWithoutSpecialties</code>.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:19"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:19"
+    }
+   ],
+   "diffs": [
+    {
+     "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
+     "base": "a8cd9973"
+    }
+   ]
+  },
+  {
+   "title": "The Cucumber update step dropped the vet out of its PUT body",
+   "source": "/code-review high (the PUT-clears-the-vet scenario)",
+   "body": "<code>iUpdateVisitDescription</code> rebuilt the body from the GET but stopped at <code>description</code>, so after this change renaming a visit unassigned its vet. The step now carries <code>vetId</code> through like every other field, and <code>visits.feature</code> gained the scenario that would have caught it. I kept the endpoint&#x27;s semantics (see Ignored) and fixed the client, which is where the defect actually was.",
+   "refs": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java:95"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java:95"
+    }
+   ],
+   "diffs": [
+    {
+     "path": "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java",
+     "base": "a8cd9973"
+    }
+   ]
+  }
+ ],
+ "assumptions": [
+  {
+   "title": "vet_id is ON DELETE SET NULL, so deleting a vet is never blocked",
+   "alternative": "the default RESTRICT \u2014 a vet who has attended anything can no longer be deleted, and <code>DELETE /api/vets/{id}</code> starts failing on real data",
+   "confidence": 0.55,
+   "why": "#37 says a visit with no vet is normal and &quot;never an error&quot;, so a vet&#x27;s departure landing their old visits in that case is the reading that keeps the ticket&#x27;s own rule true. RESTRICT would invent a new failure mode the ticket never asks for.",
+   "source": "assumption",
+   "body": "The index on <code>vet_id</code> is there for the same reason, not for searching (which is explicitly out of scope): without it the FK check behind a vet delete scans <code>visits</code>. It matches how <code>pet_id</code> and <code>owner_id</code> are already indexed.<br><br>The confidence is barely above a coin flip because #37 never mentions deleting a vet at all \u2014 I inferred the rule from a sentence written about booking \u2014 and the ticket&#x27;s own insistence that historical visits keep their state cuts the other way just as well: a clinic that wants to know who saw the animal in 2024 would rather the delete failed than have the answer quietly erased.",
+   "refs": [
+    "petclinic-backend/src/main/resources/db/migration/V4__visit_vet.sql:5"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/resources/db/migration/V4__visit_vet.sql:5"
+    }
+   ]
+  },
+  {
+   "title": "An unknown vetId is a 404, not a quietly unattended visit",
+   "alternative": "the house <code>petOfId</code> pattern \u2014 build a <code>Vet</code> carrying only the id, run no query, and let the foreign key reject a bad one as a 500",
+   "confidence": 0.7,
+   "why": "<code>petId</code> already takes the stub route, so consistency argued for it; correctness won. A typo&#x27;d vet id is a client error and reads like one, at the cost of one lean query per booking.",
+   "source": "assumption",
+   "body": "#37 says nothing about bad input, so none of this came from the ticket \u2014 but every other unknown id in this codebase already answers 404 through <code>.orElseThrow()</code>, and only <code>petOfId</code> pulls the other way. That precedent is what holds the number up; the consistency argument is what keeps it off 0.9.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:93"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:93"
+    }
+   ]
+  },
+  {
+   "title": "A visit with no vet reads &quot;none&quot;, and the dropdown offers &quot;-- none --&quot;",
+   "alternative": "an em dash, or leaving the cell empty and letting the reader infer",
+   "confidence": 0.9,
+   "why": "#37&#x27;s fourth requirement is that the visit reads as *having none* \u2014 not &quot;Unknown&quot;, not blank-because-broken. A blank cell is indistinguishable from a failed load, which is the thing the requirement rules out.",
+   "source": "assumption",
+   "body": "The highest number here, because this is the one decision the ticket argues out loud and even names the wrong answers. It is not 1.0 only because the ticket dictates the meaning and not the string: an em dash would satisfy every word of the requirement too.",
+   "refs": [
+    "petclinic-frontend/src/app/visits/visit.ts:14"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-frontend/src/app/visits/visit.ts:14"
+    }
+   ]
+  },
+  {
+   "title": "The seed gives some visits a vet and deliberately withholds one from others",
+   "alternative": "leave every seeded visit unattended, since the ticket only says old rows keep no vet",
+   "confidence": 0.45,
+   "why": "a demo dataset where nothing has a vet cannot show the feature at all, and one where everything does never exercises the &quot;none&quot; rendering. The older batch (the four visits on Alice&#x27;s cats) stays vet-less as the pre-change history; Milton&#x27;s three cover both.",
+   "source": "assumption",
+   "body": "Below a coin flip, and the entry I most expect to be argued with: #37 does not mention the seed, and its sentence about pre-existing rows keeping no vet reads, taken strictly, as an instruction to leave the dataset alone. I weighted demo value over that strict reading, and which vet got which visit is invention with no source but my own taste.",
+   "refs": [
+    "petclinic-backend/src/main/resources/db/seed/R__seed.sql:118"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/resources/db/seed/R__seed.sql:118"
+    }
+   ]
+  },
+  {
+   "title": "The vet rides on VisitDto as three flat fields, not a nested VetDto",
+   "alternative": "<code>vet: VetDto</code>, the shape the vet screens already speak",
+   "confidence": 0.8,
+   "why": "<code>VisitDto</code> already flattens the owner into <code>ownerId</code>/<code>ownerFirstName</code>/ <code>ownerLastName</code>, and a nested <code>VetDto</code> carries <code>specialties</code>, which would put a vet&#x27;s whole specialty list on every row of the all-visits table.",
+   "source": "assumption",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java:46"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java:46"
+    }
+   ]
+  },
+  {
+   "title": "MCP&#x27;s create_visit and the chatbot were left alone",
+   "alternative": "read &quot;everywhere throughout the app&quot; to include the MCP surface and let the assistant book with a vet",
+   "confidence": 0.6,
+   "why": "the ticket&#x27;s own four requirements name the booking form, the edit form, the owner&#x27;s page and the all-visits screen. The MCP tools keep booking without a vet, which is a valid visit under this change, so nothing there breaks.",
+   "source": "assumption",
+   "body": "The number is low because #37 contradicts itself on exactly this point: its opening line says the vet should show &quot;everywhere throughout the app&quot;, and its third requirement then narrows that to &quot;today that means the owner&#x27;s page and the all-visits screen&quot;. I took the narrowing as the operative one, but <code>list_visits</code> does show an owner their visits with details, so a reader who weights the opening line will say I left a screen out.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:48"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:48"
+    }
+   ]
+  },
+  {
+   "title": "Two generated files were written by hand because their generators cannot run here",
+   "alternative": "leave them stale and let CI&#x27;s regenerate-and-auto-commit fix them",
+   "confidence": 0.85,
+   "why": "stale TS types mean <code>visit.vetId</code> does not compile, so the working tree would not build for anyone who pulled it.",
+   "source": "assumption",
+   "body": "<code>npm ci</code> and <code>pip install</code> are both blocked in this environment, so <code>npm run generate:api</code> could not run. <code>api-types.ts</code> was written to match <code>openapi-typescript</code>&#x27;s output exactly. <code>DB.puml</code> was too \u2014 and that one is verified: the pre-commit hook bootstrapped its own venv, regenerated the file, and staged a result byte-identical to what I had written. The frontend&#x27;s Karma suite and <code>ng build</code> could not be run at all for the same reason; the backend suite, Spotless and every guardrail test are green.<br><br>This entry is a confession about the environment, not a reading of #37, so its number scores something narrower than the others: how sure I am that hand-writing beat leaving the files stale. Quite sure \u2014 stale types break the build for whoever pulls next \u2014 and <code>DB.puml</code> came back byte-identical from the real generator, which is as close to proof as this gets. It is not higher because <code>api-types.ts</code> got no such check.",
+   "refs": [
+    "petclinic-frontend/src/app/generated/api-types.ts:346"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-frontend/src/app/generated/api-types.ts:346"
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "ticket": "victorrentea/petclinic#37",
+  "base": "5dcf16c4",
+  "implementation": "a8cd9973",
+  "reviewers": "/code-review high",
+  "session": "47d2ba31-61ef-4ef6-ac2f-7d969121ce34"
+ },
+ "frontmatter": {
+  "ticket": "victorrentea/petclinic#37",
+  "base": "5dcf16c4",
+  "implementation": "a8cd9973",
+  "reviewers": "/code-review high",
+  "session": "47d2ba31-61ef-4ef6-ac2f-7d969121ce34"
+ },
+ "sections": {
+  "Fixed": "Fixed",
+  "Ignored": "Ignored",
+  "Assumptions": "Assumptions"
+ },
+ "items": 16,
+ "dropped": 0,
+ "warnings": [],
+ "empty": false
+}

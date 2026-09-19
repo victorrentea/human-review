@@ -6,12 +6,12 @@ footer db/migration/*.sql -> DB -> dump to DB.sql -> converted to DB.puml
 hide circle
 hide empty members
 skinparam linetype ortho
-entity "vets" as vets {
+entity "vets" as vets #back:F2CF8E {
   {field} id : int <<PK>>
   {field} first_name : text
   {field} last_name : text
 }
-entity "visits" as visits {
+entity "visits" as visits #back:F2CF8E {
   {field} id : int <<PK>>
   {field} pet_id : int <<FK>>
   {field} visit_date : date

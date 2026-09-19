@@ -1,16 +1,16 @@
 {
   "base": "origin/main",
   "totals": {
-    "added": 10,
-    "modified": 4,
+    "added": 16,
+    "modified": 6,
     "deleted": 0,
-    "unchanged": 24,
+    "unchanged": 21,
     "commented": 0,
     "disabled": 0,
     "reenabled": 0,
-    "runningBefore": 28,
-    "runningAfter": 38,
-    "gained": 10,
+    "runningBefore": 27,
+    "runningAfter": 43,
+    "gained": 16,
     "lost": 0
   },
   "tests": [
@@ -18,229 +18,259 @@
       "name": "getByIdOk",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 103
+      "line": 104
     },
     {
       "name": "getById_notFound",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 112
+      "line": 113
     },
     {
       "name": "getAll",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 118
+      "line": 119
     },
     {
       "name": "getAll_returnsEnrichedFields",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 133
+      "line": 134
     },
     {
       "name": "create_invalid",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 158
+      "line": 159
     },
     {
       "name": "update_invalid",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 171
+      "line": 172
     },
     {
       "name": "delete_ok",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 182
+      "line": 183
     },
     {
       "name": "delete_notFound",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 191
+      "line": 192
     },
     {
       "name": "create_ok",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 197
+      "line": 198
     },
     {
       "name": "update_ok",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "modified",
-      "line": 213
+      "line": 214
     },
     {
-      "name": "create_withVet",
+      "name": "create_withoutVet_leavesItUnassigned",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "added",
-      "line": 228
+      "line": 231
     },
     {
-      "name": "getById_exposesTheAttendingVet",
+      "name": "create_withVet_recordsWhoAttends",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "added",
-      "line": 248
+      "line": 250
     },
     {
-      "name": "update_changesTheAttendingVet",
+      "name": "bookingUnderTheOwnerRecordsTheVet",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "added",
-      "line": 261
+      "line": 270
+    },
+    {
+      "name": "create_unknownVet_notFound",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "added",
+      "line": 289
+    },
+    {
+      "name": "update_assignsTheVet",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "added",
+      "line": 303
+    },
+    {
+      "name": "getAll_namesTheVetAndLeavesUnattendedVisitsEmpty",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "added",
+      "line": 318
     },
     {
       "name": "findVisitsByPetId",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 290
+      "line": 353
+    },
+    {
+      "name": "passwordEncoder_encodesAndMatches",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/security/BasicAuthenticationConfigTest.java",
+      "status": "unchanged",
+      "line": 32
+    },
+    {
+      "name": "unauthenticated_isUnauthorized",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/security/BasicAuthenticationConfigTest.java",
+      "status": "unchanged",
+      "line": 39
+    },
+    {
+      "name": "adminUser_canAccessOwners",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/security/BasicAuthenticationConfigTest.java",
+      "status": "modified",
+      "line": 45
+    },
+    {
+      "name": "ownerAdmin_canListVets",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/security/BasicAuthenticationConfigTest.java",
+      "status": "added",
+      "line": 59
+    },
+    {
+      "name": "ownerAdmin_cannotAddAVet",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/security/BasicAuthenticationConfigTest.java",
+      "status": "added",
+      "line": 66
+    },
+    {
+      "name": "Schedule a visit for a pet",
+      "path": "petclinic-backend/src/test/resources/features/functional/visits.feature",
+      "status": "unchanged",
+      "line": 6
+    },
+    {
+      "name": "Edit a visit description",
+      "path": "petclinic-backend/src/test/resources/features/functional/visits.feature",
+      "status": "modified",
+      "line": 11
+    },
+    {
+      "name": "Renaming a visit leaves the vet who attended it alone",
+      "path": "petclinic-backend/src/test/resources/features/functional/visits.feature",
+      "status": "added",
+      "line": 17
     },
     {
       "name": "should create VisitAddComponent",
       "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
       "status": "unchanged",
-      "line": 105
+      "line": 109
     },
     {
       "name": "should submit visit and navigate to owner detail",
       "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
       "status": "unchanged",
-      "line": 109
+      "line": 113
     },
     {
       "name": "should navigate to owner detail via gotoOwnerDetail",
       "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
-      "status": "unchanged",
-      "line": 121
+      "status": "modified",
+      "line": 125
+    },
+    {
+      "name": "should offer every vet by full name, to pick from or to leave alone",
+      "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
+      "status": "added",
+      "line": 133
+    },
+    {
+      "name": "should submit the picked vet with the visit",
+      "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.spec.ts",
+      "status": "added",
+      "line": 140
     },
     {
       "name": "should create VisitEditComponent",
       "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.spec.ts",
       "status": "unchanged",
-      "line": 111
+      "line": 115
     },
     {
       "name": "should submit visit and navigate to owner detail",
       "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.spec.ts",
       "status": "unchanged",
-      "line": 115
+      "line": 119
     },
     {
       "name": "should navigate to owner detail via gotoOwnerDetail",
       "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.spec.ts",
-      "status": "unchanged",
-      "line": 125
+      "status": "modified",
+      "line": 129
     },
     {
-      "name": "should create VisitListComponent",
-      "path": "petclinic-frontend/src/app/visits/visit-list/visit-list.component.spec.ts",
-      "status": "unchanged",
-      "line": 87
-    },
-    {
-      "name": "should show the attending vet",
-      "path": "petclinic-frontend/src/app/visits/visit-list/visit-list.component.spec.ts",
+      "name": "should offer every vet by full name, to pick from or to leave alone",
+      "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.spec.ts",
       "status": "added",
-      "line": 91
-    },
-    {
-      "name": "should call deleteVisit() method",
-      "path": "petclinic-frontend/src/app/visits/visit-list/visit-list.component.spec.ts",
-      "status": "unchanged",
-      "line": 97
+      "line": 137
     },
     {
       "name": "should create",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "unchanged",
-      "line": 55
+      "line": 54
     },
     {
       "name": "loads and sorts visits descending by date",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "unchanged",
-      "line": 59
+      "line": 58
     },
     {
       "name": "shows \"No visits found.\" when service returns empty list",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "unchanged",
-      "line": 68
+      "line": 67
+    },
+    {
+      "name": "names the attending vet, and says \"none\" for a visit that has none",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 77
     },
     {
       "name": "renders owner cell as a link to /owners/{ownerId}",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "modified",
-      "line": 78
-    },
-    {
-      "name": "renders the attending vet, and a dash when none is assigned",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 90
-    },
-    {
-      "name": "adds an owner from the New Owner form and finds them by last name",
-      "path": "petclinic-test/src/add-owner.spec.ts",
-      "status": "added",
-      "line": 47
-    },
-    {
-      "name": "edits an owner from their own page and the change sticks",
-      "path": "petclinic-test/src/add-owner.spec.ts",
-      "status": "added",
-      "line": 59
-    },
-    {
-      "name": "A visit remembers the vet who attended it",
-      "path": "petclinic-test/src/add-visit.feature",
-      "status": "added",
-      "line": 16
-    },
-    {
-      "name": "A visit nobody attended says so, rather than saying nothing",
-      "path": "petclinic-test/src/add-visit.feature",
-      "status": "added",
-      "line": 20
+      "status": "unchanged",
+      "line": 89
     },
     {
       "name": "Add a visit to an existing pet from the owner detail page",
       "path": "petclinic-test/src/add-visit.spec.ts",
       "status": "modified",
-      "line": 35
+      "line": 34
     },
     {
       "name": "Add a visit attended by a vet",
       "path": "petclinic-test/src/add-visit.spec.ts",
       "status": "added",
-      "line": 52
+      "line": 51
     },
     {
-      "name": "Visits Page",
-      "path": "petclinic-test/src/visits.spec.ts",
-      "status": "unchanged",
-      "line": 7
+      "name": "The vet chosen while booking is named everywhere the visit is listed",
+      "path": "petclinic-test/src/book-visit-with-vet.feature",
+      "status": "added",
+      "line": 18
     },
     {
-      "name": "shows all visits on initial load",
-      "path": "petclinic-test/src/visits.spec.ts",
-      "status": "modified",
-      "line": 27
-    },
-    {
-      "name": "rows are sorted descending by date",
-      "path": "petclinic-test/src/visits.spec.ts",
-      "status": "unchanged",
-      "line": 45
-    },
-    {
-      "name": "owner link navigates to owner detail",
-      "path": "petclinic-test/src/visits.spec.ts",
-      "status": "unchanged",
-      "line": 53
+      "name": "A visit nobody attended says so, rather than saying nothing",
+      "path": "petclinic-test/src/book-visit-with-vet.feature",
+      "status": "added",
+      "line": 23
     }
   ]
 }

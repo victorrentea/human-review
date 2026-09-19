@@ -1,28 +1,28 @@
 @startuml
-caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — impacted + 1 neighbour (4 of 9 shown)
+caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — impacted + 1 neighbour, shaded by distance (4 of 9 shown): <color:#F2CF8E>███</color> touched · <color:#F4DCB4>███</color> 1 hop
 
 title Database Schema (ERD) - Diff
 footer db/migration/*.sql -> DB -> dump to DB.sql -> converted to DB.puml
 hide circle
 hide empty members
 skinparam linetype ortho
-entity "pets" as pets {
+entity "pets" as pets #back:F4DCB4 {
   {field} id : int <<PK>>
   {field} name : text
   {field} birth_date : date
   {field} type_id : int <<FK>> not null
   {field} owner_id : int <<FK>>
 }
-entity "vet_specialties" as vet_specialties {
+entity "vet_specialties" as vet_specialties #back:F4DCB4 {
   {field} vet_id : int <<FK>> not null
   {field} specialty_id : int <<FK>> not null
 }
-entity "vets" as vets {
+entity "vets" as vets #back:F2CF8E {
   {field} id : int <<PK>>
   {field} first_name : text
   {field} last_name : text
 }
-entity "visits" as visits {
+entity "visits" as visits #back:F2CF8E {
   {field} id : int <<PK>>
   {field} pet_id : int <<FK>>
   {field} visit_date : date
