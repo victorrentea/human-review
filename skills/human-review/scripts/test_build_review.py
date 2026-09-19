@@ -1532,24 +1532,27 @@ def test_the_footer_is_one_centred_line_with_the_control_under_it(tmp_path):
     assert line.count("<span") >= 2 and "<div" not in line
 
 
-def test_the_footer_offers_both_ways_to_take_the_page_away(tmp_path):
+def test_the_footer_offers_both_ways_to_reach_the_page_again(tmp_path):
     """A review page is nearly always read on someone else's screen — projected in a
     room, or shared for the length of a call. The reader who reaches the bottom has
-    nothing afterwards unless the page tells them where a copy lives, so the build says it
-    on every page, and it says it twice because the two copies are not the same page: the
-    zip is read off disk, where a review cannot reliably fetch its own content and every
-    request it makes is cross-origin, while the container serves it the way it is being
-    demoed."""
+    nothing afterwards unless the page tells them where it lives, so the build says it on
+    every page, and it says it twice because the two copies are not the same page: Pages
+    is a click and costs nothing, while the container serves it on the reader's own
+    machine, at their own address, the way it is being demoed to them."""
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert ">Download zip</a> · or " in foot
-    assert ">a runnable docker of this report</a>." in foot
-    assert "https://github.com/victorrentea/human-review/releases/tag/demo" in foot
+    assert "See this report <a" in foot
+    assert ">online</a> or " in foot
+    assert ">run it locally</a>." in foot
+    assert "https://victorrentea.github.io/human-review/" in foot
     assert "pkgs/container/human-review" in foot
-    # The links are the nouns. `Download here a standalone demo zip` put the verb in the
-    # link and the noun after it, so the eye landed on words that said nothing about what
-    # arrives and had to read on to find out.
-    assert "Download here" not in foot
+    # Online first: free, instant, and the only one of the two a reader can act on from a
+    # phone in the back of the room.
+    assert foot.index(">online</a>") < foot.index(">run it locally</a>")
+    # The offer is about where the page *is*, not about file formats. `Download zip · or a
+    # runnable docker of this report` named two packagings, which answers a question the
+    # reader has not asked yet.
+    assert "Download here" not in foot and "Download zip" not in foot
     # After the sentence and before the control, so the row still reads sentence-first.
     assert foot.index("takeaway") < foot.index("allbar")
 
@@ -1564,14 +1567,14 @@ def test_the_docker_hover_carries_the_command_the_link_cannot(tmp_path):
     assert "8642" in tip
 
 
-def test_the_zip_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
+def test_the_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
     """The footer sentence is the author's and may be missing entirely; the offer is the
     build's. A page with no `footer` in its content file still tells its reader where to
-    get one."""
+    find it again."""
     spec = {k: v for k, v in BARE.items() if k != "footer"}
     page, _ = _build(tmp_path, spec)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert ">Download zip</a>" in foot
+    assert ">online</a>" in foot and ">run it locally</a>" in foot
 
 
 def test_the_show_all_button_says_what_it_does_next(tmp_path):

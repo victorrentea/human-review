@@ -5,14 +5,27 @@ import re
 
 HOME_URL = "https://github.com/victorrentea/human-review"
 
-# Where a finished page lives once the projector is off. The `demo zip` workflow rebuilds
-# a zip per snapshot under `demo/` on every push to main and clobbers it onto a rolling
-# release under a fixed tag, so this address never moves and never goes stale — it is the
-# one URL worth reading out to a room, and the one worth forwarding afterwards.
+# Where a finished page lives once the projector is off. `.github/workflows/pages.yml`
+# publishes every snapshot under `demo/` to GitHub Pages on each push to main, so a reader
+# who saw this report on somebody else's screen can open the real thing — diagrams, Code
+# City, the feature video — by clicking, with nothing to install and nothing to download.
+# It is the one URL worth reading out to a room.
 #
-# The tag page rather than a particular `.zip`: which snapshot a reader wants is theirs to
-# pick, the release notes there name the commit the assets actually stand on, and a link
-# that starts a download the instant it is clicked is a poor thing to paste into a chat.
+# The gallery index rather than this report's own address, on purpose: `publish-demo.sh`
+# copies review.html into `demo/<slug>/` **verbatim**, so the page cannot carry a link to
+# where it is about to be published — at build time it has no slug and no way to learn
+# one. Rewriting the file on publish would buy a self-address at the cost of the property
+# that makes the snapshot trustworthy, which is a bad trade for one href. The index lists
+# every snapshot with a card, so the reader is one click from the right one.
+DEMO_PAGES_URL = "https://victorrentea.github.io/human-review/"
+
+# Still built and still linked from the index, just not from here: `.github/workflows/
+# demo-zip.yml` attaches a zip per snapshot to a rolling release. The footer used to offer
+# it beside the container and now offers neither it nor a third link — a closing line has
+# room for two, and of the three ways to keep this page the zip is the weakest, because
+# off disk a review cannot reliably fetch its own content and every request it makes is
+# cross-origin. Kept as a constant because the index page and the release notes both point
+# at it and a reader who wants it is one click away.
 DEMO_ZIP_URL = "https://github.com/victorrentea/human-review/releases/tag/demo"
 
 # The other way to keep this page, and the better one for anybody who is going to read it
@@ -42,21 +55,28 @@ DEMO_DOCKER_URL = ("https://github.com/victorrentea/human-review/"
 # content file and an author may write anything there or nothing, while this offer is the
 # build's and is owed to every page it produces.
 #
-# Two links and almost no prose between them. It read `Download here a standalone demo
-# zip.`, where the verb was the link and the noun trailed after it — so the reader's eye
-# landed on *Download here*, which says nothing about what arrives, and had to read on to
-# find out. The links are the nouns now (`Download zip`, `a runnable docker of this
-# report`), which is what a reader at the foot of a page is scanning for: a thing to take,
-# not a sentence about taking it. What each one actually is stays in the hover.
+# One sentence, two links, and almost no prose between them. It read `Download zip · or a
+# runnable docker of this report.` — two nouns side by side, each naming a *file format*,
+# which is an answer to a question the reader has not asked yet. The question they have is
+# where this page is, and the two links are now the two answers to it: somewhere I can
+# open it, and on my own machine. The verb in a link was a real mistake once (`Download
+# here a standalone demo zip`, where the noun trailed outside the href and the eye landed
+# on words that said nothing about what arrives); `online` and `run it locally` do not
+# repeat it, because each is complete on its own and needs no words after it to be
+# understood. What each one costs the reader stays in the hover.
+#
+# Online first: it is free, instant, and the only one of the two a reader can act on from
+# a phone in the back of a room.
 TAKEAWAY = (
     '<span class="takeaway">'
-    f'<a href="{DEMO_ZIP_URL}" target="_blank" rel="noopener" '
-    'data-tip="Sample review pages on GitHub, one zip each. Unzip it and open '
-    'review.html — no install, no server.">Download zip</a> · or '
+    'See this report '
+    f'<a href="{DEMO_PAGES_URL}" target="_blank" rel="noopener" '
+    'data-tip="Every published snapshot on GitHub Pages — the live page, diagrams, '
+    'Code City and the feature video. Nothing to install.">online</a> or '
     f'<a href="{DEMO_DOCKER_URL}" target="_blank" rel="noopener" '
     'data-tip="The same pages as a container: docker run --rm -p 8642:80 '
     'ghcr.io/victorrentea/human-review:&lt;snapshot&gt; — served rather than off disk, '
-    'so the page behaves the way it does here.">a runnable docker of this report</a>.'
+    'so the page behaves the way it does here.">run it locally</a>.'
     '</span>'
 )
 
