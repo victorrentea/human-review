@@ -641,7 +641,7 @@ def render_findings(findings) -> str:
 #: The confidence chip's tooltip, fixed rather than composed per item — Victor's own
 #: words, verbatim. It names the scale, not the one number already on the chip's own
 #: face; the number does not need saying twice.
-CONFIDENCE_TIP = "Confidence ∈ [0.9 .. 0.1]"
+CONFIDENCE_TIP = "Confidence ∈ [0.1 .. 0.9]"
 
 
 def _confidence_chip(f) -> str:

@@ -2826,7 +2826,7 @@ def test_an_assumptions_confidence_reads_verbatim_with_its_tooltip(tmp_path):
     # rewrite PlantUML's own hints go through — one tooltip mechanism, page-wide.
     # The tooltip is `CONFIDENCE_TIP`, fixed — Victor's own words, verbatim — not a
     # sentence composed around this item's own number.
-    assert '<span class="f-confidence" data-tip="Confidence ∈ [0.9 .. 0.1]">0.85</span>' \
+    assert '<span class="f-confidence" data-tip="Confidence ∈ [0.1 .. 0.9]">0.85</span>' \
         in item
     assert "sev-med" not in item, "0.85 is not a low confidence"
 
