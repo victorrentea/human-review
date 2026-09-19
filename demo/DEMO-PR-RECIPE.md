@@ -3,14 +3,14 @@
 This file is about **one exhibit**: `victorrentea/petclinic` PR #49 (ticket
 [#37 "Link Visit with Vet"](https://github.com/victorrentea/petclinic/issues/37),
 branch `test-pr`, base `main`), served on Pages as the
-[`petclinic-visit-vet`](https://victorrentea.github.io/human-review/petclinic-visit-vet/review.html)
+[`demo`](https://victorrentea.github.io/human-review/demo/review.html)
 snapshot. It exists to demonstrate `/human-review`, so every tab of the page has
 to have something worth looking at. `/implement-ticket` alone did not get there —
 after the agent finished, Victor made a handful of **deliberate retouches** on
 top of it, each aimed at one tab. This file is the list, so they can be redone
 if the implementation and/or the review step is ever re-run.
 
-It lives in `demo/`, next to `index.html` and the `petclinic-visit-vet/`
+It lives in `demo/`, next to `index.html` and the `demo/`
 snapshot it describes, rather than at the repo root: it is documentation *about*
 that one published exhibit, not about the skill in general. It is safe here —
 `.github/workflows/demo-zip.yml` only zips directories under `demo/` that carry

@@ -5,7 +5,7 @@ name: demo image
 # this repository's package registry, so a single command stands the page up on their own
 # machine, at their own address, with no clone, no install and no model in the loop:
 #
-#   docker run --rm -p 8642:80 ghcr.io/victorrentea/human-review:petclinic-visit-vet
+#   docker run --rm -p 8642:80 ghcr.io/victorrentea/human-review:demo
 #
 # 8642 rather than 8080 because a demo machine usually already has something on 8080, and a
 # port already taken is a terrible first second of a demo. Nginx listens on 80 inside.

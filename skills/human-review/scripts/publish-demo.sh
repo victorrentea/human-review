@@ -18,7 +18,7 @@ Usage:
   publish-demo.sh --help
 
 Arguments:
-  slug          Directory name under demo/ to publish as, e.g. petclinic-visit-vet.
+  slug          Directory name under demo/ to publish as, e.g. demo.
                 Letters, digits, dashes and underscores only. Defaults to the name of
                 the project the snapshot belongs to — the source directory's parent.
   source-dir    The snapshot directory to copy (default: .human-review), the one

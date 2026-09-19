@@ -10,8 +10,8 @@ describes.
 
 **Try it in the browser first** — nothing to install, clone or download. A page built on a
 real pull request is published on GitHub Pages, every tab clickable:
-[the `petclinic-visit-vet` snapshot](https://victorrentea.github.io/human-review/petclinic-visit-vet/review.html),
-listed with the others at <https://victorrentea.github.io/human-review/>.
+<https://victorrentea.github.io/human-review/demo/review.html> — listed with any other
+snapshot at <https://victorrentea.github.io/human-review/>.
 
 It was extracted from a real project's review loop, where it was used on real branches
 before it was made portable.
@@ -638,7 +638,7 @@ uploads the whole `demo/` directory and deploys it on every push to `main` that 
 `demo/**` (or the workflow itself), and on `workflow_dispatch`.
 
 `demo/DEMO-PR-RECIPE.md` records the retouches Victor made by hand on the
-`petclinic-visit-vet` exhibit after `/implement-ticket` finished it, one per tab, so they
+`demo` exhibit after `/implement-ticket` finished it, one per tab, so they
 can be redone if the demo PR is ever reimplemented or re-reviewed.
 
 To add one, `/publish-demo` from the reviewed project, once the run has finished. It is
@@ -712,7 +712,7 @@ container image, and running one is the only way to stand in front of exactly th
 being demoed without cloning anything:
 
 ```sh
-docker run --rm -p 8642:80 ghcr.io/victorrentea/human-review:petclinic-visit-vet
+docker run --rm -p 8642:80 ghcr.io/victorrentea/human-review:demo
 # then open http://localhost:8642
 ```
 

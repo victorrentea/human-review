@@ -1,0 +1,2391 @@
+{
+  "all": {
+    "logging": [
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java",
+        "line": 57,
+        "column": 9,
+        "end_line": 57,
+        "level": "INFO",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "info",
+        "format": "\"SMS to {}: {}\"",
+        "args": [
+          "phone",
+          "text"
+        ],
+        "raw_line": "        log.info(\"SMS to {}: {}\", phone, text);",
+        "text": "log.info(\"SMS to {}: {}\", phone, text)",
+        "method_start": 54,
+        "method_end": 58,
+        "origins": [
+          {
+            "line": 55,
+            "name": "phone",
+            "kind": "param",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "line": 199,
+        "column": 9,
+        "end_line": 199,
+        "level": "INFO",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "info",
+        "format": "\"Booked visit {} for pet {}\"",
+        "args": [
+          "visit.getId()",
+          "petId"
+        ],
+        "raw_line": "        log.info(\"Booked visit {} for pet {}\", visit.getId(), petId);",
+        "text": "log.info(\"Booked visit {} for pet {}\", visit.getId(), petId)",
+        "method_start": 190,
+        "method_end": 205,
+        "origins": [
+          {
+            "line": 192,
+            "name": "visit",
+            "kind": "local",
+            "text": "visitMapper.toVisit(visitFieldsDto)"
+          },
+          {
+            "line": 191,
+            "name": "petId",
+            "kind": "param",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "line": 201,
+        "column": 13,
+        "end_line": 201,
+        "level": "DEBUG",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "debug",
+        "format": "\"Attending vet: {}\"",
+        "args": [
+          "vet.getLastName()"
+        ],
+        "raw_line": "            log.debug(\"Attending vet: {}\", vet.getLastName());",
+        "text": "log.debug(\"Attending vet: {}\", vet.getLastName())",
+        "method_start": 190,
+        "method_end": 205,
+        "origins": [
+          {
+            "line": 196,
+            "name": "vet",
+            "kind": "local",
+            "text": "attendingVet(visitFieldsDto.getVetId())"
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "line": 75,
+        "column": 9,
+        "end_line": 75,
+        "level": "INFO",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "info",
+        "format": "\"Booking visit for pet {}: {}\"",
+        "args": [
+          "visitDto.getPetId()",
+          "visitDto.getDescription()"
+        ],
+        "raw_line": "        log.info(\"Booking visit for pet {}: {}\", visitDto.getPetId(), visitDto.getDescription());",
+        "text": "log.info(\"Booking visit for pet {}: {}\", visitDto.getPetId(), visitDto.getDescription())",
+        "method_start": 73,
+        "method_end": 80,
+        "origins": [
+          {
+            "line": 74,
+            "name": "visitDto",
+            "kind": "param",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 52,
+        "column": 9,
+        "end_line": 52,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "warn",
+        "format": "\"Validation failed: {}\"",
+        "args": [
+          "errors"
+        ],
+        "raw_line": "        log.warn(\"Validation failed: {}\", errors);",
+        "text": "log.warn(\"Validation failed: {}\", errors)",
+        "method_start": 47,
+        "method_end": 57,
+        "origins": [
+          {
+            "line": 51,
+            "name": "errors",
+            "kind": "local",
+            "text": "ValidationErrorExtractor.extract(ex)"
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 66,
+        "column": 9,
+        "end_line": 66,
+        "level": "WARN",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "warn",
+        "format": "\"Validation failed: {}\"",
+        "args": [
+          "errors"
+        ],
+        "raw_line": "        log.warn(\"Validation failed: {}\", errors);",
+        "text": "log.warn(\"Validation failed: {}\", errors)",
+        "method_start": 59,
+        "method_end": 71,
+        "origins": [
+          {
+            "line": 65,
+            "name": "errors",
+            "kind": "local",
+            "text": "ValidationErrorFieldExtractor.extract(bindingResult)"
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 76,
+        "column": 9,
+        "end_line": 76,
+        "level": "ERROR",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "error",
+        "format": "\"An unexpected error occurred: {}\"",
+        "args": [
+          "e.getMessage()",
+          "e"
+        ],
+        "raw_line": "        log.error(\"An unexpected error occurred: {}\", e.getMessage(), e);",
+        "text": "log.error(\"An unexpected error occurred: {}\", e.getMessage(), e)",
+        "method_start": 73,
+        "method_end": 81,
+        "origins": [
+          {
+            "line": 75,
+            "name": "e",
+            "kind": "param",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "line": 87,
+        "column": 9,
+        "end_line": 87,
+        "level": "ERROR",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "error",
+        "format": "\"Not found!\"",
+        "args": [],
+        "raw_line": "        log.error(\"Not found!\");",
+        "text": "log.error(\"Not found!\")",
+        "method_start": 84,
+        "method_end": 89,
+        "origins": []
+      }
+    ],
+    "antipattern": [
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/PetClinicApplication.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/PetClinicApplication.java",
+        "line": 22,
+        "column": 9,
+        "kind": "System.out",
+        "raw_line": "        System.out.println(\"\u2705 started petclinic-backend on port \" + event.getWebServer().getPort());",
+        "text": "System.out.println(\"\u2705 started petclinic-backend on port \" + event.getWebServer().getPort())"
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
+        "line": 47,
+        "column": 9,
+        "kind": "System.out",
+        "raw_line": "        System.out.println(\"Address: \" + address + \", City: \" + city);",
+        "text": "System.out.println(\"Address: \" + address + \", City: \" + city)"
+      },
+      {
+        "file": "petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "line": 133,
+        "column": 13,
+        "kind": "System.err",
+        "raw_line": "            System.err.println(\"\u26a0\ufe0f  genseq: could not record the trace window (\" + e.getMessage() + \")\");",
+        "text": "System.err.println(\"\u26a0\ufe0f  genseq: could not record the trace window (\" + e.getMessage() + \")\")"
+      },
+      {
+        "file": "petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "line": 154,
+        "column": 13,
+        "kind": "System.err",
+        "raw_line": "            System.err.println(\"\u26a0\ufe0f  genseq: could not clear the previous run's windows (\" + e.getMessage() + \")\");",
+        "text": "System.err.println(\"\u26a0\ufe0f  genseq: could not clear the previous run's windows (\" + e.getMessage() + \")\")"
+      },
+      {
+        "file": "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/JpaMatchesDBSchemaTest.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/test/java/victor/training/petclinic/guardrail/JpaMatchesDBSchemaTest.java",
+        "line": 34,
+        "column": 9,
+        "kind": "System.out",
+        "raw_line": "        System.out.println(\"a\");",
+        "text": "System.out.println(\"a\")"
+      }
+    ]
+  },
+  "stats": {
+    "files_with_loggers": 4,
+    "symbols": {
+      "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java": [
+        {
+          "name": "log",
+          "flavour": "SLF4J",
+          "evidence": "declared `Logger log`",
+          "confidence": "declared",
+          "line": 33
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java": [
+        {
+          "name": "log",
+          "flavour": "SLF4J",
+          "evidence": "declared `Logger log`",
+          "confidence": "declared",
+          "line": 54
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java": [
+        {
+          "name": "log",
+          "flavour": "SLF4J",
+          "evidence": "declared `Logger log`",
+          "confidence": "declared",
+          "line": 31
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java": [
+        {
+          "name": "log",
+          "flavour": "SLF4J",
+          "evidence": "declared `Logger log`",
+          "confidence": "declared",
+          "line": 35
+        }
+      ]
+    },
+    "fields": {
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java": [
+        {
+          "line": 29,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    protected Integer id;"
+        },
+        {
+          "line": 33,
+          "name": "firstName",
+          "type": "String",
+          "text": "@NotEmpty\n    protected String firstName;"
+        },
+        {
+          "line": 36,
+          "name": "lastName",
+          "type": "String",
+          "text": "@NotEmpty\n    protected String lastName;"
+        },
+        {
+          "line": 39,
+          "name": "address",
+          "type": "String",
+          "text": "@NotEmpty\n    private String address;"
+        },
+        {
+          "line": 42,
+          "name": "city",
+          "type": "String",
+          "text": "@NotEmpty\n    private String city;"
+        },
+        {
+          "line": 50,
+          "name": "telephone",
+          "type": "String",
+          "text": "@NotEmpty\n    @Digits(fraction = 0, integer = 10)\n    @Pattern(regexp = \"^[0-9]{10}$\", message = \"Phone number must be exactly 10 digits\")\n    private String telephone;"
+        },
+        {
+          "line": 55,
+          "name": "pets",
+          "type": "Set<Pet>",
+          "text": "@OneToMany(cascade = CascadeType.ALL, mappedBy = \"owner\", fetch = FetchType.LAZY)\n    private Set<Pet> pets = new HashSet<>();"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java": [
+        {
+          "line": 30,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    protected Integer id;"
+        },
+        {
+          "line": 34,
+          "name": "name",
+          "type": "String",
+          "text": "@NotEmpty\n    private String name;"
+        },
+        {
+          "line": 37,
+          "name": "birthDate",
+          "type": "LocalDate",
+          "text": "@Column(name = \"birth_date\", columnDefinition = \"DATE\")\n    @PastOrPresent(message = \"Birth date must not be in the future\")\n    private LocalDate birthDate;"
+        },
+        {
+          "line": 41,
+          "name": "type",
+          "type": "PetType",
+          "text": "@ManyToOne\n    @JoinColumn(name = \"type_id\")\n    private PetType type;"
+        },
+        {
+          "line": 45,
+          "name": "owner",
+          "type": "Owner",
+          "text": "@ManyToOne\n    @JoinColumn(name = \"owner_id\")\n    private Owner owner;"
+        },
+        {
+          "line": 49,
+          "name": "visits",
+          "type": "Set<Visit>",
+          "text": "@OneToMany(cascade = CascadeType.ALL, mappedBy = \"pet\", fetch = FetchType.LAZY)\n    private Set<Visit> visits = new HashSet<>();"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/PetType.java": [
+        {
+          "line": 9,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    protected Integer id;"
+        },
+        {
+          "line": 13,
+          "name": "name",
+          "type": "String",
+          "text": "@NotEmpty\n    private String name;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/Role.java": [
+        {
+          "line": 10,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    protected Integer id;"
+        },
+        {
+          "line": 14,
+          "name": "user",
+          "type": "User",
+          "text": "@ManyToOne\n    @JoinColumn(name = \"username\")\n    @JsonIgnore\n    private User user;"
+        },
+        {
+          "line": 19,
+          "name": "name",
+          "type": "String",
+          "text": "@Column(name = \"role\")\n    private String name;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/Specialty.java": [
+        {
+          "line": 9,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    protected Integer id;"
+        },
+        {
+          "line": 13,
+          "name": "name",
+          "type": "String",
+          "text": "private String name;"
+        },
+        {
+          "line": 16,
+          "name": "description",
+          "type": "String",
+          "text": "private String description;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/User.java": [
+        {
+          "line": 13,
+          "name": "username",
+          "type": "String",
+          "text": "@Id\n    private String username;"
+        },
+        {
+          "line": 16,
+          "name": "password",
+          "type": "String",
+          "text": "private String password;"
+        },
+        {
+          "line": 18,
+          "name": "enabled",
+          "type": "Boolean",
+          "text": "private Boolean enabled;"
+        },
+        {
+          "line": 20,
+          "name": "roles",
+          "type": "Set<Role>",
+          "text": "@OneToMany(cascade = CascadeType.ALL, mappedBy = \"user\", fetch = FetchType.EAGER)\n    private Set<Role> roles;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/Vet.java": [
+        {
+          "line": 13,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    protected Integer id;"
+        },
+        {
+          "line": 17,
+          "name": "firstName",
+          "type": "String",
+          "text": "@NotEmpty\n    protected String firstName;"
+        },
+        {
+          "line": 20,
+          "name": "lastName",
+          "type": "String",
+          "text": "@NotEmpty\n    protected String lastName;"
+        },
+        {
+          "line": 23,
+          "name": "specialties",
+          "type": "List<Specialty>",
+          "text": "@ManyToMany\n    @JoinTable(name = \"vet_specialties\",\n            joinColumns = @JoinColumn(name = \"vet_id\"),\n            inverseJoinColumns = @JoinColumn(name = \"specialty_id\"),\n            uniqueConstraints = @UniqueConstraint(columnNames = {\"specialty_id\", \"vet_id\"}))\n    private List<Specialty> specialties = new ArrayList<>();"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java": [
+        {
+          "line": 12,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    protected Integer id;"
+        },
+        {
+          "line": 16,
+          "name": "date",
+          "type": "LocalDate",
+          "text": "@Column(name = \"visit_date\", columnDefinition = \"DATE\")\n    private LocalDate date = LocalDate.now();"
+        },
+        {
+          "line": 20,
+          "name": "time",
+          "type": "LocalTime",
+          "text": "@Column(name = \"visit_time\", columnDefinition = \"TIME\")\n    private LocalTime time;"
+        },
+        {
+          "line": 23,
+          "name": "description",
+          "type": "String",
+          "text": "@NotEmpty\n    private String description;"
+        },
+        {
+          "line": 26,
+          "name": "pet",
+          "type": "Pet",
+          "text": "@ManyToOne\n    @JoinColumn(name = \"pet_id\")\n    private Pet pet;"
+        },
+        {
+          "line": 31,
+          "name": "vet",
+          "type": "Vet",
+          "text": "@ManyToOne\n    @JoinColumn(name = \"vet_id\")\n    private Vet vet;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/mapper/OwnerMapper.java": [
+        {
+          "line": 13,
+          "name": "petMapper",
+          "type": "PetMapper",
+          "text": "private final PetMapper petMapper;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/mapper/PetMapper.java": [
+        {
+          "line": 20,
+          "name": "visitMapper",
+          "type": "VisitMapper",
+          "text": "private final VisitMapper visitMapper;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VetMapper.java": [
+        {
+          "line": 13,
+          "name": "specialtyMapper",
+          "type": "SpecialtyMapper",
+          "text": "private final SpecialtyMapper specialtyMapper;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/mcp/McpSecurity.java": [
+        {
+          "line": 33,
+          "name": "apiKey",
+          "type": "String",
+          "text": "@Value(\"${petclinic.mcp.api-key}\")\n    private String apiKey;"
+        },
+        {
+          "line": 65,
+          "name": "apiKey",
+          "type": "String",
+          "text": "private final String apiKey;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java": [
+        {
+          "line": 35,
+          "name": "MAX_UPCOMING_VISITS_PER_PET",
+          "type": "int",
+          "text": "static final int MAX_UPCOMING_VISITS_PER_PET = 3;"
+        },
+        {
+          "line": 37,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "private final OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 38,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "private final PetRepository petRepository;"
+        },
+        {
+          "line": 39,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "private final VisitRepository visitRepository;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java": [
+        {
+          "line": 33,
+          "name": "log",
+          "type": "Logger",
+          "text": "private static final Logger log = LoggerFactory.getLogger(FakeSmsNotificationSender.class);"
+        },
+        {
+          "line": 36,
+          "name": "PARTICIPANT",
+          "type": "AttributeKey<String>",
+          "text": "private static final AttributeKey<String> PARTICIPANT = AttributeKey.stringKey(\"genseq.participant\");"
+        },
+        {
+          "line": 38,
+          "name": "MODULE",
+          "type": "String",
+          "text": "private static final String MODULE = \"Notification module\";"
+        },
+        {
+          "line": 41,
+          "name": "SMS_GATEWAY",
+          "type": "String",
+          "text": "private static final String SMS_GATEWAY = \"SMS gateway\";"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/ApiExamples.java": [
+        {
+          "line": 22,
+          "name": "VETS",
+          "type": "String",
+          "text": "public static final String VETS = \"\"\"\n            [\n              { \"id\": 1, \"firstName\": \"James\", \"lastName\": \"Carter\", \"specialties\": [] },\n              { \"id\": 2, \"firstName\": \"Helen\", \"lastName\": \"Leary\",\n                \"specialties\": [ { \"id\": 1, \"name\": \"radiology\", \"description\": \"x-rays and imaging\" } ] },\n              { \"id\": 3, \"firstName\": \"Linda\", \"lastName\": \"Douglas\",\n                \"specialties\": [ { \"id\": 2, \"name\": \"surgery\", \"description\": \"operations\" },\n                                 { \"id\": 3, \"name\": \"dentistry\", \"description\": \"teeth\" } ] }\n            ]\"\"\";"
+        },
+        {
+          "line": 32,
+          "name": "OWNERS",
+          "type": "String",
+          "text": "public static final String OWNERS = \"\"\"\n            [\n              { \"id\": 1, \"firstName\": \"George\", \"lastName\": \"Franklin\", \"address\": \"110 W. Liberty St.\",\n                \"city\": \"Madison\", \"telephone\": \"6085551023\",\n                \"pets\": [ { \"id\": 1, \"name\": \"Leo\", \"birthDate\": \"2010-09-07\",\n                            \"type\": { \"id\": 1, \"name\": \"cat\" }, \"ownerId\": 1, \"visits\": [] } ] },\n              { \"id\": 2, \"firstName\": \"Betty\", \"lastName\": \"Davis\", \"address\": \"638 Cardinal Ave.\",\n                \"city\": \"Sun Prairie\", \"telephone\": \"6085551749\", \"pets\": [] }\n            ]\"\"\";"
+        },
+        {
+          "line": 42,
+          "name": "PETS",
+          "type": "String",
+          "text": "public static final String PETS = \"\"\"\n            [\n              { \"id\": 1, \"name\": \"Leo\", \"birthDate\": \"2010-09-07\", \"type\": { \"id\": 1, \"name\": \"cat\" },\n                \"ownerId\": 1, \"visits\": [] },\n              { \"id\": 2, \"name\": \"Basil\", \"birthDate\": \"2012-08-06\", \"type\": { \"id\": 2, \"name\": \"hamster\" },\n                \"ownerId\": 2,\n                \"visits\": [ { \"id\": 1, \"date\": \"2013-01-01\", \"description\": \"rabies shot\", \"petId\": 2 } ] }\n            ]\"\"\";"
+        },
+        {
+          "line": 51,
+          "name": "VISITS",
+          "type": "String",
+          "text": "public static final String VISITS = \"\"\"\n            [\n              { \"id\": 1, \"date\": \"2013-01-01\", \"description\": \"rabies shot\", \"petId\": 7 },\n              { \"id\": 2, \"date\": \"2013-01-02\", \"description\": \"annual checkup\", \"petId\": 8 }\n            ]\"\"\";"
+        },
+        {
+          "line": 57,
+          "name": "SPECIALTIES",
+          "type": "String",
+          "text": "public static final String SPECIALTIES = \"\"\"\n            [\n              { \"id\": 1, \"name\": \"radiology\", \"description\": \"x-rays, broken bones, imaging\" },\n              { \"id\": 2, \"name\": \"surgery\", \"description\": \"operations, spaying, neutering\" },\n              { \"id\": 3, \"name\": \"dentistry\", \"description\": \"teeth cleaning, extractions\" }\n            ]\"\"\";"
+        },
+        {
+          "line": 64,
+          "name": "PET_TYPES",
+          "type": "String",
+          "text": "public static final String PET_TYPES = \"\"\"\n            [\n              { \"id\": 1, \"name\": \"cat\" },\n              { \"id\": 2, \"name\": \"dog\" },\n              { \"id\": 3, \"name\": \"hamster\" }\n            ]\"\"\";"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java": [
+        {
+          "line": 54,
+          "name": "log",
+          "type": "Logger",
+          "text": "private static final Logger log = LoggerFactory.getLogger(OwnerRestController.class);"
+        },
+        {
+          "line": 56,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "private final OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 57,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "private final PetRepository petRepository;"
+        },
+        {
+          "line": 58,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "private final VisitRepository visitRepository;"
+        },
+        {
+          "line": 59,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "private final PetTypeRepository petTypeRepository;"
+        },
+        {
+          "line": 60,
+          "name": "vetRepository",
+          "type": "VetRepository",
+          "text": "private final VetRepository vetRepository;"
+        },
+        {
+          "line": 62,
+          "name": "ownerMapper",
+          "type": "OwnerMapper",
+          "text": "private final OwnerMapper ownerMapper;"
+        },
+        {
+          "line": 64,
+          "name": "petMapper",
+          "type": "PetMapper",
+          "text": "private final PetMapper petMapper;"
+        },
+        {
+          "line": 66,
+          "name": "visitMapper",
+          "type": "VisitMapper",
+          "text": "private final VisitMapper visitMapper;"
+        },
+        {
+          "line": 68,
+          "name": "notificationSender",
+          "type": "NotificationSender",
+          "text": "private final NotificationSender notificationSender;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/PetRestController.java": [
+        {
+          "line": 24,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "private final PetRepository petRepository;"
+        },
+        {
+          "line": 25,
+          "name": "petMapper",
+          "type": "PetMapper",
+          "text": "private final PetMapper petMapper;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/PetTypeRestController.java": [
+        {
+          "line": 29,
+          "name": "petTypeMapper",
+          "type": "PetTypeMapper",
+          "text": "private final PetTypeMapper petTypeMapper;"
+        },
+        {
+          "line": 30,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "private final PetTypeRepository petTypeRepository;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/RootRestController.java": [
+        {
+          "line": 14,
+          "name": "servletContextPath",
+          "type": "String",
+          "text": "@Value(\"#{servletContext.contextPath}\")\n    private String servletContextPath;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/SpecialtyFeed.java": [
+        {
+          "line": 19,
+          "name": "specialtyRepository",
+          "type": "SpecialtyRepository",
+          "text": "private final SpecialtyRepository specialtyRepository;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/SpecialtyFeedController.java": [
+        {
+          "line": 22,
+          "name": "specialtyFeed",
+          "type": "SpecialtyFeed",
+          "text": "private final SpecialtyFeed specialtyFeed;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/SpecialtyRestController.java": [
+        {
+          "line": 25,
+          "name": "specialtyRepository",
+          "type": "SpecialtyRepository",
+          "text": "private final SpecialtyRepository specialtyRepository;"
+        },
+        {
+          "line": 26,
+          "name": "specialtyMapper",
+          "type": "SpecialtyMapper",
+          "text": "private final SpecialtyMapper specialtyMapper;"
+        },
+        {
+          "line": 27,
+          "name": "specialtyFeed",
+          "type": "SpecialtyFeed",
+          "text": "private final SpecialtyFeed specialtyFeed;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/UserRestController.java": [
+        {
+          "line": 20,
+          "name": "userRepository",
+          "type": "UserRepository",
+          "text": "private final UserRepository userRepository;"
+        },
+        {
+          "line": 21,
+          "name": "userMapper",
+          "type": "UserMapper",
+          "text": "private final UserMapper userMapper;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java": [
+        {
+          "line": 32,
+          "name": "vetMapper",
+          "type": "VetMapper",
+          "text": "private final VetMapper vetMapper;"
+        },
+        {
+          "line": 33,
+          "name": "specialtyMapper",
+          "type": "SpecialtyMapper",
+          "text": "private final SpecialtyMapper specialtyMapper;"
+        },
+        {
+          "line": 34,
+          "name": "vetRepository",
+          "type": "VetRepository",
+          "text": "private final VetRepository vetRepository;"
+        },
+        {
+          "line": 35,
+          "name": "specialtyRepository",
+          "type": "SpecialtyRepository",
+          "text": "private final SpecialtyRepository specialtyRepository;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java": [
+        {
+          "line": 31,
+          "name": "log",
+          "type": "Logger",
+          "text": "private static final Logger log = LoggerFactory.getLogger(VisitRestController.class);"
+        },
+        {
+          "line": 33,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "private final VisitRepository visitRepository;"
+        },
+        {
+          "line": 34,
+          "name": "vetRepository",
+          "type": "VetRepository",
+          "text": "private final VetRepository vetRepository;"
+        },
+        {
+          "line": 35,
+          "name": "visitMapper",
+          "type": "VisitMapper",
+          "text": "private final VisitMapper visitMapper;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/OwnerDto.java": [
+        {
+          "line": 12,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Nullable\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY, example = \"1\", description = \"The ID of the pet owner.\")\n    private Integer id;"
+        },
+        {
+          "line": 17,
+          "name": "pets",
+          "type": "List<PetDto>",
+          "text": "@Valid\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY,\n            description = \"The pets owned by this individual including any booked vet visits.\",\n            requiredMode = Schema.RequiredMode.REQUIRED)\n    private List<PetDto> pets = new ArrayList<>();"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/OwnerFieldsDto.java": [
+        {
+          "line": 8,
+          "name": "firstName",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 30)\n    @Schema(example = \"\\\"George\\\"\", description = \"The first name of the pet owner.\")\n    private String firstName;"
+        },
+        {
+          "line": 13,
+          "name": "lastName",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 30)\n    @Schema(example = \"\\\"Franklin\\\"\", description = \"The last name of the pet owner.\")\n    private String lastName;"
+        },
+        {
+          "line": 18,
+          "name": "address",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 255)\n    @Schema(example = \"\\\"110 W. Liberty St.\\\"\", description = \"The postal address of the pet owner.\")\n    private String address;"
+        },
+        {
+          "line": 23,
+          "name": "city",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 80)\n    @Schema(example = \"\\\"Madison\\\"\", description = \"The city of the pet owner.\")\n    private String city;"
+        },
+        {
+          "line": 28,
+          "name": "telephone",
+          "type": "String",
+          "text": "@NotNull\n    @Pattern(regexp = \"^[0-9]*$\")\n    @Size(min = 1, max = 20)\n    @Schema(example = \"\\\"6085551023\\\"\", description = \"The telephone number of the pet owner.\")\n    private String telephone;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/PetDto.java": [
+        {
+          "line": 17,
+          "name": "name",
+          "type": "String",
+          "text": "@NotBlank\n    @Size(max = 30)\n    @Schema(example = \"Leo\", description = \"The name of the pet.\")\n    private String name;"
+        },
+        {
+          "line": 22,
+          "name": "birthDate",
+          "type": "LocalDate",
+          "text": "@NotNull\n    @Valid\n    @PastOrPresent(message = \"Birth date must not be in the future\")\n    @Schema(example = \"2010-09-07\")\n    private LocalDate birthDate;"
+        },
+        {
+          "line": 28,
+          "name": "type",
+          "type": "PetTypeDto",
+          "text": "@NotNull\n    @Valid\n    private PetTypeDto type;"
+        },
+        {
+          "line": 32,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY, example = \"1\", description = \"The ID of the pet.\",\n            requiredMode = Schema.RequiredMode.REQUIRED)\n    private Integer id;"
+        },
+        {
+          "line": 37,
+          "name": "ownerId",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY, example = \"1\", description = \"The ID of the pet's owner.\")\n    private @Nullable Integer ownerId;"
+        },
+        {
+          "line": 41,
+          "name": "visits",
+          "type": "List<VisitDto>",
+          "text": "@Valid\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY, description = \"Vet visit bookings for this pet.\",\n            requiredMode = Schema.RequiredMode.REQUIRED)\n    private List<VisitDto> visits = new ArrayList<>();"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/PetFieldsDto.java": [
+        {
+          "line": 11,
+          "name": "name",
+          "type": "String",
+          "text": "@NotNull\n    @Size(max = 30)\n    @Schema(example = \"Leo\", description = \"The name of the pet.\")\n    private String name;"
+        },
+        {
+          "line": 16,
+          "name": "birthDate",
+          "type": "LocalDate",
+          "text": "@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)\n    @NotNull\n    @Valid\n    @Schema(example = \"2010-09-07\", description = \"The date of birth of the pet.\")\n    @PastOrPresent(message = \"Birth date must not be in the future\")\n    private LocalDate birthDate;"
+        },
+        {
+          "line": 23,
+          "name": "type",
+          "type": "PetTypeDto",
+          "text": "@NotNull\n    @Valid\n    @Schema\n    private PetTypeDto type;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/PetTypeDto.java": [
+        {
+          "line": 8,
+          "name": "name",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 80)\n    @Schema(example = \"cat\", description = \"The name of the pet type.\")\n    private String name;"
+        },
+        {
+          "line": 13,
+          "name": "id",
+          "type": "Integer",
+          "text": "@NotNull\n    @Min(0)\n    @Schema(example = \"1\", description = \"The ID of the pet type.\")\n    private Integer id;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/PetTypeFieldsDto.java": [
+        {
+          "line": 7,
+          "name": "name",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 80)\n    @Schema(example = \"cat\", description = \"The name of the pet type.\")\n    private String name;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/RoleDto.java": [
+        {
+          "line": 9,
+          "name": "name",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 80)\n    @Schema(example = \"admin\", description = \"The role's name\")\n    private String name;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/SpecialtyDto.java": [
+        {
+          "line": 8,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY, example = \"1\", description = \"The ID of the specialty.\",\n            requiredMode = Schema.RequiredMode.REQUIRED)\n    private Integer id;"
+        },
+        {
+          "line": 13,
+          "name": "name",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 80)\n    @Schema(example = \"radiology\", description = \"The name of the specialty.\")\n    private String name;"
+        },
+        {
+          "line": 18,
+          "name": "description",
+          "type": "String",
+          "text": "@Size(max = 4000)\n    @Schema(example = \"limping, broken bone, swollen leg, can't bear weight\",\n            description = \"The section that identifies this specialty (symptoms); vectorized into the chatbot RAG.\")\n    private String description;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/UserDto.java": [
+        {
+          "line": 14,
+          "name": "username",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 80)\n    @Schema(example = \"john.doe\", description = \"The username\")\n    private String username;"
+        },
+        {
+          "line": 19,
+          "name": "password",
+          "type": "String",
+          "text": "@Size(min = 1, max = 80)\n    @Schema(example = \"1234abc\", description = \"The password\")\n    private @Nullable String password;"
+        },
+        {
+          "line": 23,
+          "name": "enabled",
+          "type": "Boolean",
+          "text": "@Schema(example = \"true\", description = \"Indicates if the user is enabled\")\n    private @Nullable Boolean enabled;"
+        },
+        {
+          "line": 26,
+          "name": "roles",
+          "type": "List<@Valid RoleDto>",
+          "text": "@Valid\n    @Schema(description = \"The roles of an user\")\n    private List<@Valid RoleDto> roles = new ArrayList<>();"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VetDto.java": [
+        {
+          "line": 15,
+          "name": "firstName",
+          "type": "String",
+          "text": "@NotNull\n    @Pattern(regexp = \"\\\\w+\")\n    @Size(min = 1, max = 30)\n    @Schema(example = \"James\", description = \"The first name of the vet.\")\n    private String firstName;"
+        },
+        {
+          "line": 21,
+          "name": "lastName",
+          "type": "String",
+          "text": "@NotNull\n    @Pattern(regexp = \"\\\\w+\")\n    @Size(min = 1, max = 30)\n    @Schema(example = \"Carter\", description = \"The last name of the vet.\")\n    private String lastName;"
+        },
+        {
+          "line": 27,
+          "name": "specialties",
+          "type": "List<@Valid SpecialtyDto>",
+          "text": "@NotNull\n    @Valid\n    @Schema(description = \"The specialties of the vet.\")\n    private List<@Valid SpecialtyDto> specialties = new ArrayList<>();"
+        },
+        {
+          "line": 32,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY, example = \"1\", description = \"The ID of the vet.\",\n            requiredMode = Schema.RequiredMode.REQUIRED)\n    private Integer id;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VetFieldsDto.java": [
+        {
+          "line": 11,
+          "name": "firstName",
+          "type": "String",
+          "text": "@NotNull\n    @Pattern(regexp = \"^\\\\p{L}+([ '-][\\\\p{L}]+){0,2\")\n    @Size(min = 1, max = 30)\n    @Schema(example = \"James\", description = \"The first name of the vet.\")\n    private String firstName;"
+        },
+        {
+          "line": 17,
+          "name": "lastName",
+          "type": "String",
+          "text": "@NotNull\n    @Pattern(regexp = \"^\\\\p{L}+([ '-][\\\\p{L}]+){0,2}\\\\.\")\n    @Size(min = 1, max = 30)\n    @Schema(example = \"Carter\", description = \"The last name of the vet.\")\n    private String lastName;"
+        },
+        {
+          "line": 23,
+          "name": "specialties",
+          "type": "List<@Valid SpecialtyDto>",
+          "text": "@NotNull\n    @Valid\n    @Schema(description = \"The specialties of the vet.\")\n    private List<@Valid SpecialtyDto> specialties = new ArrayList<>();"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java": [
+        {
+          "line": 12,
+          "name": "date",
+          "type": "LocalDate",
+          "text": "@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)\n    @Valid\n    @Schema(example = \"2013-01-01\", description = \"The date of the visit.\")\n    private @Nullable LocalDate date;"
+        },
+        {
+          "line": 17,
+          "name": "description",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 255)\n    @Schema(example = \"rabies shot\", description = \"The description for the visit.\")\n    private String description;"
+        },
+        {
+          "line": 22,
+          "name": "id",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Schema(accessMode = Schema.AccessMode.READ_ONLY, example = \"1\", description = \"The ID of the visit.\",\n            requiredMode = Schema.RequiredMode.REQUIRED)\n    private Integer id;"
+        },
+        {
+          "line": 27,
+          "name": "petId",
+          "type": "Integer",
+          "text": "@NotNull\n    @Min(0)\n    @Schema(example = \"1\", description = \"The ID of the pet.\")\n    private Integer petId;"
+        },
+        {
+          "line": 32,
+          "name": "petName",
+          "type": "String",
+          "text": "@Schema(accessMode = Schema.AccessMode.READ_ONLY, description = \"Name of the pet (server-populated).\")\n    private @Nullable String petName;"
+        },
+        {
+          "line": 35,
+          "name": "ownerId",
+          "type": "Integer",
+          "text": "@Schema(accessMode = Schema.AccessMode.READ_ONLY, description = \"ID of the owner of the pet (server-populated).\")\n    private @Nullable Integer ownerId;"
+        },
+        {
+          "line": 38,
+          "name": "ownerFirstName",
+          "type": "String",
+          "text": "@Schema(accessMode = Schema.AccessMode.READ_ONLY, description = \"First name of the owner (server-populated).\")\n    private @Nullable String ownerFirstName;"
+        },
+        {
+          "line": 41,
+          "name": "ownerLastName",
+          "type": "String",
+          "text": "@Schema(accessMode = Schema.AccessMode.READ_ONLY, description = \"Last name of the owner (server-populated).\")\n    private @Nullable String ownerLastName;"
+        },
+        {
+          "line": 44,
+          "name": "vetId",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Schema(example = \"1\", description = \"The ID of the vet attending the visit; absent when none is assigned.\")\n    private @Nullable Integer vetId;"
+        },
+        {
+          "line": 48,
+          "name": "vetFirstName",
+          "type": "String",
+          "text": "@Schema(accessMode = Schema.AccessMode.READ_ONLY, description = \"First name of the vet (server-populated).\")\n    private @Nullable String vetFirstName;"
+        },
+        {
+          "line": 51,
+          "name": "vetLastName",
+          "type": "String",
+          "text": "@Schema(accessMode = Schema.AccessMode.READ_ONLY, description = \"Last name of the vet (server-populated).\")\n    private @Nullable String vetLastName;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java": [
+        {
+          "line": 12,
+          "name": "date",
+          "type": "LocalDate",
+          "text": "@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)\n    @Valid\n    @Schema(example = \"2013-01-01\", description = \"The date of the visit.\")\n    private @Nullable LocalDate date;"
+        },
+        {
+          "line": 17,
+          "name": "description",
+          "type": "String",
+          "text": "@NotNull\n    @Size(min = 1, max = 255)\n    @Schema(example = \"rabies shot\", description = \"The description for the visit.\")\n    private String description;"
+        },
+        {
+          "line": 24,
+          "name": "vetId",
+          "type": "Integer",
+          "text": "@Min(0)\n    @Schema(example = \"1\", description = \"The ID of the vet attending the visit; null for none.\")\n    private @Nullable Integer vetId;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java": [
+        {
+          "line": 35,
+          "name": "log",
+          "type": "Logger",
+          "text": "private static final Logger log = LoggerFactory.getLogger(ExceptionControllerAdvice.class);"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/security/BasicAuthenticationConfig.java": [
+        {
+          "line": 23,
+          "name": "dataSource",
+          "type": "DataSource",
+          "text": "private final DataSource dataSource;"
+        }
+      ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/security/Roles.java": [
+        {
+          "line": 8,
+          "name": "OWNER_ADMIN",
+          "type": "String",
+          "text": "public final String OWNER_ADMIN = \"ROLE_OWNER_ADMIN\";"
+        },
+        {
+          "line": 9,
+          "name": "VET_ADMIN",
+          "type": "String",
+          "text": "public final String VET_ADMIN = \"ROLE_VET_ADMIN\";"
+        },
+        {
+          "line": 10,
+          "name": "ADMIN",
+          "type": "String",
+          "text": "public final String ADMIN = \"ROLE_ADMIN\";"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/functional/DatabaseHooks.java": [
+        {
+          "line": 9,
+          "name": "jdbc",
+          "type": "JdbcTemplate",
+          "text": "@Autowired\n    private JdbcTemplate jdbc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/functional/HttpContext.java": [
+        {
+          "line": 15,
+          "name": "port",
+          "type": "int",
+          "text": "@Value(\"${local.server.port}\")\n    private int port;"
+        },
+        {
+          "line": 18,
+          "name": "lastResponse",
+          "type": "Response",
+          "text": "private Response lastResponse;"
+        },
+        {
+          "line": 19,
+          "name": "ids",
+          "type": "Map<String, Integer>",
+          "text": "private final Map<String, Integer> ids = new HashMap<>();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/functional/OwnerSteps.java": [
+        {
+          "line": 20,
+          "name": "http",
+          "type": "HttpContext",
+          "text": "@Autowired\n    private HttpContext http;"
+        },
+        {
+          "line": 23,
+          "name": "jdbc",
+          "type": "JdbcTemplate",
+          "text": "@Autowired\n    private JdbcTemplate jdbc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/functional/PetSteps.java": [
+        {
+          "line": 15,
+          "name": "http",
+          "type": "HttpContext",
+          "text": "@Autowired\n    private HttpContext http;"
+        },
+        {
+          "line": 18,
+          "name": "jdbc",
+          "type": "JdbcTemplate",
+          "text": "@Autowired\n    private JdbcTemplate jdbc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/functional/SmokeSteps.java": [
+        {
+          "line": 12,
+          "name": "http",
+          "type": "HttpContext",
+          "text": "@Autowired\n    private HttpContext http;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/functional/VetSteps.java": [
+        {
+          "line": 15,
+          "name": "http",
+          "type": "HttpContext",
+          "text": "@Autowired\n    private HttpContext http;"
+        },
+        {
+          "line": 18,
+          "name": "jdbc",
+          "type": "JdbcTemplate",
+          "text": "@Autowired\n    private JdbcTemplate jdbc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java": [
+        {
+          "line": 17,
+          "name": "http",
+          "type": "HttpContext",
+          "text": "@Autowired\n    private HttpContext http;"
+        },
+        {
+          "line": 20,
+          "name": "jdbc",
+          "type": "JdbcTemplate",
+          "text": "@Autowired\n    private JdbcTemplate jdbc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/genseq/Rest.java": [
+        {
+          "line": 32,
+          "name": "MAX_BODY_CHARS",
+          "type": "int",
+          "text": "private static final int MAX_BODY_CHARS = 4000;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java": [
+        {
+          "line": 46,
+          "name": "TEST_NAME",
+          "type": "AttributeKey<String>",
+          "text": "private static final AttributeKey<String> TEST_NAME = AttributeKey.stringKey(\"test.name\");"
+        },
+        {
+          "line": 48,
+          "name": "WINDOWS_DIR",
+          "type": "String",
+          "text": "private static final String WINDOWS_DIR = \"petclinic-test/test-results/trace-windows\";"
+        },
+        {
+          "line": 55,
+          "name": "PRE_PAD_MS",
+          "type": "long",
+          "text": "private static final long PRE_PAD_MS = 1_000;"
+        },
+        {
+          "line": 57,
+          "name": "POST_PAD_MS",
+          "type": "long",
+          "text": "private static final long POST_PAD_MS = 5_000;"
+        },
+        {
+          "line": 59,
+          "name": "NAMESPACE",
+          "type": "ExtensionContext.Namespace",
+          "text": "private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace\n            .create(SequenceTraceExtension.class);"
+        },
+        {
+          "line": 67,
+          "name": "swept",
+          "type": "AtomicBoolean",
+          "text": "private static final AtomicBoolean swept = new AtomicBoolean();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/genseq/Steps.java": [
+        {
+          "line": 39,
+          "name": "PARTICIPANT",
+          "type": "AttributeKey<String>",
+          "text": "static final AttributeKey<String> PARTICIPANT = AttributeKey.stringKey(\"genseq.participant\");"
+        },
+        {
+          "line": 41,
+          "name": "TEST_PARTICIPANT",
+          "type": "String",
+          "text": "static final String TEST_PARTICIPANT = \"Test\";"
+        },
+        {
+          "line": 44,
+          "name": "current",
+          "type": "ThreadLocal<Open>",
+          "text": "private static final ThreadLocal<Open> current = new ThreadLocal<>();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/C3ArchTest.java": [
+        {
+          "line": 37,
+          "name": "BASE_PKG",
+          "type": "String",
+          "text": "private static final String BASE_PKG = \"victor.training.petclinic\";"
+        },
+        {
+          "line": 40,
+          "name": "DSL_FILE",
+          "type": "Path",
+          "text": "private static final Path DSL_FILE = Paths.get(\"docs/c4model.c1+c2.dsl\");"
+        },
+        {
+          "line": 41,
+          "name": "VIEWS_DIR",
+          "type": "Path",
+          "text": "private static final Path VIEWS_DIR = Paths.get(\"docs/generated/c4views\");"
+        },
+        {
+          "line": 42,
+          "name": "BACKEND_CONTAINER",
+          "type": "String",
+          "text": "private static final String BACKEND_CONTAINER = \"Backend\";"
+        },
+        {
+          "line": 44,
+          "name": "workspace",
+          "type": "Workspace",
+          "text": "private static Workspace workspace;"
+        },
+        {
+          "line": 45,
+          "name": "backend",
+          "type": "Container",
+          "text": "private static Container backend;"
+        },
+        {
+          "line": 46,
+          "name": "patternByComponent",
+          "type": "Map<Component, String>",
+          "text": "private static Map<Component, String> patternByComponent;"
+        },
+        {
+          "line": 47,
+          "name": "classes",
+          "type": "JavaClasses",
+          "text": "private static JavaClasses classes;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/ConceptualModelDiagramTest.java": [
+        {
+          "line": 57,
+          "name": "DIAGRAM",
+          "type": "Path",
+          "text": "private static final Path DIAGRAM = Paths.get(\"docs/ConceptualModel.drawio.png\");"
+        },
+        {
+          "line": 59,
+          "name": "model",
+          "type": "DomainModelExtractor",
+          "text": "private final DomainModelExtractor model = new DomainModelExtractor();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/DbSchemaExtractorTest.java": [
+        {
+          "line": 20,
+          "name": "HEADER",
+          "type": "String",
+          "text": "private static final String HEADER = \"\"\"\n            -- AUTO-GENERATED by applying all Flyway incremental migrations (db/migration/V*.sql) on an empty database.\n\n            \"\"\";"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/DeploymentDiagramTest.java": [
+        {
+          "line": 54,
+          "name": "DIAGRAM",
+          "type": "Path",
+          "text": "private static final Path DIAGRAM = Paths.get(\"docs/Deployment.drawio.png\");"
+        },
+        {
+          "line": 55,
+          "name": "TRACE_DIAGRAMS",
+          "type": "Path",
+          "text": "private static final Path TRACE_DIAGRAMS = Paths.get(\"../petclinic-test/generated\");"
+        },
+        {
+          "line": 67,
+          "name": "DEPLOYED_SUITE",
+          "type": "Pattern",
+          "text": "private static final Pattern DEPLOYED_SUITE = Pattern.compile(\"\\\\.(?:spec\\\\.ts|feature)\\\\..*\\\\.genseq\\\\.puml$\");"
+        },
+        {
+          "line": 169,
+          "name": "CALL",
+          "type": "Pattern",
+          "text": "private static final Pattern CALL = Pattern.compile(\"^\\\\s*(\\\\w+)\\\\s+->\\\\s+(\\\\w+)\\\\s*:\", Pattern.MULTILINE);"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/DomainModelExtractor.java": [
+        {
+          "line": 47,
+          "name": "ONE",
+          "type": "String",
+          "text": "static final String ONE = \"1\";"
+        },
+        {
+          "line": 48,
+          "name": "MANY",
+          "type": "String",
+          "text": "static final String MANY = \"0..*\";"
+        },
+        {
+          "line": 50,
+          "name": "DOMAIN_MODEL_PKG",
+          "type": "String",
+          "text": "private static final String DOMAIN_MODEL_PKG = \"victor.training.petclinic.domain\";"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/DomainModelExtractorTest.java": [
+        {
+          "line": 51,
+          "name": "GENERATED_DIR",
+          "type": "Path",
+          "text": "private static final Path GENERATED_DIR = Paths.get(\"docs/generated\");"
+        },
+        {
+          "line": 52,
+          "name": "SOURCE_ROOT",
+          "type": "Path",
+          "text": "private static final Path SOURCE_ROOT = Paths.get(\"src/main/java\");"
+        },
+        {
+          "line": 56,
+          "name": "TOOLTIP",
+          "type": "String",
+          "text": "private static final String TOOLTIP = \"{Click to open in editor}\";"
+        },
+        {
+          "line": 59,
+          "name": "model",
+          "type": "DomainModelExtractor",
+          "text": "private final DomainModelExtractor model = new DomainModelExtractor();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/DrawioDiagram.java": [
+        {
+          "line": 40,
+          "name": "file",
+          "type": "Path",
+          "text": "private final Path file;"
+        },
+        {
+          "line": 41,
+          "name": "xml",
+          "type": "String",
+          "text": "private final String xml;"
+        },
+        {
+          "line": 42,
+          "name": "doc",
+          "type": "Document",
+          "text": "private final Document doc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/OpenApiExtractorTest.java": [
+        {
+          "line": 25,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/PackagesArchTest.java": [
+        {
+          "line": 30,
+          "name": "DIAGRAM",
+          "type": "Path",
+          "text": "private static final Path DIAGRAM = Paths.get(\"docs/packages.puml\");"
+        },
+        {
+          "line": 31,
+          "name": "SOURCE_ROOT",
+          "type": "Path",
+          "text": "private static final Path SOURCE_ROOT = Paths.get(\"src/main/java/victor/training/petclinic\");"
+        },
+        {
+          "line": 33,
+          "name": "adheresToDiagram",
+          "type": "ArchRule",
+          "text": "@ArchTest\n    static final ArchRule adheresToDiagram = classes().should(adhereToPlantUmlDiagram(\n            DIAGRAM,\n            consideringOnlyDependenciesInAnyPackage(\"..petclinic..\")));"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mapper/MapperTest.java": [
+        {
+          "line": 37,
+          "name": "BIRTH_DATE",
+          "type": "LocalDate",
+          "text": "private static final LocalDate BIRTH_DATE = LocalDate.of(2020, 1, 1);"
+        },
+        {
+          "line": 39,
+          "name": "specialtyMapper",
+          "type": "SpecialtyMapper",
+          "text": "private final SpecialtyMapper specialtyMapper = new SpecialtyMapper();"
+        },
+        {
+          "line": 40,
+          "name": "petTypeMapper",
+          "type": "PetTypeMapper",
+          "text": "private final PetTypeMapper petTypeMapper = new PetTypeMapper();"
+        },
+        {
+          "line": 41,
+          "name": "userMapper",
+          "type": "UserMapper",
+          "text": "private final UserMapper userMapper = new UserMapper();"
+        },
+        {
+          "line": 42,
+          "name": "visitMapper",
+          "type": "VisitMapper",
+          "text": "private final VisitMapper visitMapper = new VisitMapper();"
+        },
+        {
+          "line": 43,
+          "name": "petMapper",
+          "type": "PetMapper",
+          "text": "private final PetMapper petMapper = new PetMapper(visitMapper);"
+        },
+        {
+          "line": 44,
+          "name": "ownerMapper",
+          "type": "OwnerMapper",
+          "text": "private final OwnerMapper ownerMapper = new OwnerMapper(petMapper);"
+        },
+        {
+          "line": 45,
+          "name": "vetMapper",
+          "type": "VetMapper",
+          "text": "private final VetMapper vetMapper = new VetMapper(specialtyMapper);"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CallVetAmbulanceToolTest.java": [
+        {
+          "line": 24,
+          "name": "petClinicMcp",
+          "type": "PetClinicMcp",
+          "text": "@Autowired\n    PetClinicMcp petClinicMcp;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CancelVisitToolTest.java": [
+        {
+          "line": 32,
+          "name": "petClinicMcp",
+          "type": "PetClinicMcp",
+          "text": "@Autowired\n    PetClinicMcp petClinicMcp;"
+        },
+        {
+          "line": 34,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 36,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 38,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "@Autowired\n    VisitRepository visitRepository;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitShould.java": [
+        {
+          "line": 61,
+          "name": "OWNER_ID",
+          "type": "int",
+          "text": "private static final int OWNER_ID = 7;"
+        },
+        {
+          "line": 62,
+          "name": "PET_ID",
+          "type": "int",
+          "text": "private static final int PET_ID = 13;"
+        },
+        {
+          "line": 64,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Mock\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 66,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Mock\n    PetRepository petRepository;"
+        },
+        {
+          "line": 68,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "@Mock\n    VisitRepository visitRepository;"
+        },
+        {
+          "line": 71,
+          "name": "petClinicMcp",
+          "type": "PetClinicMcp",
+          "text": "PetClinicMcp petClinicMcp;"
+        },
+        {
+          "line": 74,
+          "name": "rex",
+          "type": "Pet",
+          "text": "Pet rex = aRex();"
+        },
+        {
+          "line": 75,
+          "name": "nextWeek",
+          "type": "LocalDate",
+          "text": "LocalDate nextWeek = LocalDate.now().plusWeeks(1);"
+        },
+        {
+          "line": 76,
+          "name": "morning",
+          "type": "LocalTime",
+          "text": "LocalTime morning = LocalTime.of(10, 30);"
+        },
+        {
+          "line": 150,
+          "name": "NEW_VISIT_ID",
+          "type": "int",
+          "text": "static final int NEW_VISIT_ID = 42;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/CreateVisitToolTest.java": [
+        {
+          "line": 35,
+          "name": "petClinicMcp",
+          "type": "PetClinicMcp",
+          "text": "@Autowired\n    PetClinicMcp petClinicMcp;"
+        },
+        {
+          "line": 37,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 39,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 41,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "@Autowired\n    VisitRepository visitRepository;"
+        },
+        {
+          "line": 44,
+          "name": "ownerId",
+          "type": "int",
+          "text": "private int ownerId;"
+        },
+        {
+          "line": 45,
+          "name": "petId",
+          "type": "int",
+          "text": "private int petId;"
+        },
+        {
+          "line": 46,
+          "name": "future",
+          "type": "LocalDate",
+          "text": "private final LocalDate future = LocalDate.now().plusDays(7);"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java": [
+        {
+          "line": 31,
+          "name": "petClinicMcp",
+          "type": "PetClinicMcp",
+          "text": "@Autowired\n    PetClinicMcp petClinicMcp;"
+        },
+        {
+          "line": 33,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 35,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 37,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "@Autowired\n    VisitRepository visitRepository;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/McpHttpSecurityTest.java": [
+        {
+          "line": 22,
+          "name": "VALID_JWT",
+          "type": "String",
+          "text": "static final String VALID_JWT = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\" +\n            \".eyJzdWIiOiIxIiwibmFtZSI6Ikdlb3JnZSBGcmFua2xpbiIsImlhdCI6MTc0OTE2ODAwMCwiZXhwIjoxODEyMjQwMDAwfQ\" +\n            \".Xk7mN3qR2vL8pY4sA6dW1eH0fT9bC5jOuQzEiWs\";"
+        },
+        {
+          "line": 26,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 29,
+          "name": "apiKey",
+          "type": "String",
+          "text": "@Value(\"${petclinic.mcp.api-key}\")\n    String apiKey;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/McpStreamableIdentityTest.java": [
+        {
+          "line": 38,
+          "name": "port",
+          "type": "int",
+          "text": "@LocalServerPort\n    int port;"
+        },
+        {
+          "line": 41,
+          "name": "apiKey",
+          "type": "String",
+          "text": "@Value(\"${petclinic.mcp.api-key}\")\n    String apiKey;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/McpTomcatCustomizerTest.java": [
+        {
+          "line": 27,
+          "name": "context",
+          "type": "ServletWebServerApplicationContext",
+          "text": "@Autowired\n    ServletWebServerApplicationContext context;"
+        },
+        {
+          "line": 29,
+          "name": "disableSoLinger",
+          "type": "WebServerFactoryCustomizer<TomcatServletWebServerFactory>",
+          "text": "@Autowired\n    WebServerFactoryCustomizer<TomcatServletWebServerFactory> disableSoLinger;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/OwnerMcpResourceTest.java": [
+        {
+          "line": 29,
+          "name": "petClinicMcp",
+          "type": "PetClinicMcp",
+          "text": "@Autowired\n    PetClinicMcp petClinicMcp;"
+        },
+        {
+          "line": 31,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 33,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/mcp/SickPetScenarioTest.java": [
+        {
+          "line": 41,
+          "name": "petClinicMcp",
+          "type": "PetClinicMcp",
+          "text": "@Autowired\n    PetClinicMcp petClinicMcp;"
+        },
+        {
+          "line": 43,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 45,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 47,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "@Autowired\n    VisitRepository visitRepository;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/perf/OwnerSearchThroughLatencyProxyTest.java": [
+        {
+          "line": 32,
+          "name": "PROXY_PORT",
+          "type": "int",
+          "text": "private static final int PROXY_PORT = 15432;"
+        },
+        {
+          "line": 48,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java": [
+        {
+          "line": 62,
+          "name": "VISIT_DATE",
+          "type": "String",
+          "text": "private static final String VISIT_DATE = \"2026-05-12\";"
+        },
+        {
+          "line": 64,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 67,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "private final ObjectMapper mapper = new ObjectMapper();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java": [
+        {
+          "line": 48,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 50,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 52,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 54,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "@Autowired\n    PetTypeRepository petTypeRepository;"
+        },
+        {
+          "line": 56,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "@Autowired\n    VisitRepository visitRepository;"
+        },
+        {
+          "line": 59,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "private final ObjectMapper mapper = new ObjectMapper()\n            .registerModule(new JavaTimeModule())\n            .setDateFormat(new SimpleDateFormat(\"yyyy-MM-dd\"))\n            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);"
+        },
+        {
+          "line": 64,
+          "name": "ownerId",
+          "type": "int",
+          "text": "private int ownerId;"
+        },
+        {
+          "line": 65,
+          "name": "petId",
+          "type": "int",
+          "text": "private int petId;"
+        },
+        {
+          "line": 66,
+          "name": "petType",
+          "type": "PetType",
+          "text": "private PetType petType;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java": [
+        {
+          "line": 50,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 53,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "ObjectMapper mapper = new ObjectMapper()\n            .registerModule(new JavaTimeModule())\n            .setDateFormat(new SimpleDateFormat(\"yyyy-MM-dd\"))\n            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);"
+        },
+        {
+          "line": 58,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 61,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 64,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "@Autowired\n    PetTypeRepository petTypeRepository;"
+        },
+        {
+          "line": 67,
+          "name": "ownerId",
+          "type": "int",
+          "text": "int ownerId;"
+        },
+        {
+          "line": 68,
+          "name": "petId",
+          "type": "int",
+          "text": "int petId;"
+        },
+        {
+          "line": 69,
+          "name": "petType",
+          "type": "PetType",
+          "text": "PetType petType;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTest.java": [
+        {
+          "line": 40,
+          "name": "BIRTH_DATE",
+          "type": "LocalDate",
+          "text": "public static final LocalDate BIRTH_DATE = LocalDate.of(2010, 10, 10);"
+        },
+        {
+          "line": 41,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 44,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "ObjectMapper mapper = new ObjectMapper()\n            .registerModule(new JavaTimeModule())\n            .setDateFormat(new SimpleDateFormat(\"yyyy-MM-dd\"))\n            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);"
+        },
+        {
+          "line": 48,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 50,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 52,
+          "name": "petId",
+          "type": "int",
+          "text": "int petId;"
+        },
+        {
+          "line": 53,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "@Autowired\n    private PetTypeRepository petTypeRepository;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/PetTypeTest.java": [
+        {
+          "line": 35,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 38,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "@Autowired\n    PetTypeRepository petTypeRepository;"
+        },
+        {
+          "line": 41,
+          "name": "entityManager",
+          "type": "EntityManager",
+          "text": "@Autowired\n    EntityManager entityManager;"
+        },
+        {
+          "line": 44,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 47,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 50,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "ObjectMapper mapper = new ObjectMapper();"
+        },
+        {
+          "line": 52,
+          "name": "petTypeId",
+          "type": "int",
+          "text": "int petTypeId;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/SpecialtyTest.java": [
+        {
+          "line": 35,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 38,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "ObjectMapper mapper = new ObjectMapper()\n            .setSerializationInclusion(JsonInclude.Include.ALWAYS);"
+        },
+        {
+          "line": 41,
+          "name": "specialtyRepository",
+          "type": "SpecialtyRepository",
+          "text": "@Autowired\n    SpecialtyRepository specialtyRepository;"
+        },
+        {
+          "line": 44,
+          "name": "cacheManager",
+          "type": "CacheManager",
+          "text": "@Autowired\n    CacheManager cacheManager;"
+        },
+        {
+          "line": 47,
+          "name": "specialtyId",
+          "type": "int",
+          "text": "int specialtyId;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/UserTest.java": [
+        {
+          "line": 26,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 29,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "ObjectMapper mapper = new ObjectMapper();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/ValidationErrorRenderingTest.java": [
+        {
+          "line": 23,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/VetTest.java": [
+        {
+          "line": 37,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 40,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "ObjectMapper mapper = new ObjectMapper()\n            .setSerializationInclusion(JsonInclude.Include.ALWAYS);"
+        },
+        {
+          "line": 43,
+          "name": "vetRepository",
+          "type": "VetRepository",
+          "text": "@Autowired\n    VetRepository vetRepository;"
+        },
+        {
+          "line": 46,
+          "name": "vetId",
+          "type": "int",
+          "text": "int vetId;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java": [
+        {
+          "line": 45,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 48,
+          "name": "mapper",
+          "type": "ObjectMapper",
+          "text": "ObjectMapper mapper = new ObjectMapper()\n            .registerModule(new JavaTimeModule())\n            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);"
+        },
+        {
+          "line": 52,
+          "name": "visitRepository",
+          "type": "VisitRepository",
+          "text": "@Autowired\n    VisitRepository visitRepository;"
+        },
+        {
+          "line": 55,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 58,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 61,
+          "name": "vetRepository",
+          "type": "VetRepository",
+          "text": "@Autowired\n    VetRepository vetRepository;"
+        },
+        {
+          "line": 64,
+          "name": "visitId",
+          "type": "int",
+          "text": "int visitId;"
+        },
+        {
+          "line": 65,
+          "name": "petId",
+          "type": "int",
+          "text": "int petId;"
+        },
+        {
+          "line": 66,
+          "name": "ownerId",
+          "type": "int",
+          "text": "int ownerId;"
+        },
+        {
+          "line": 67,
+          "name": "vetId",
+          "type": "int",
+          "text": "int vetId;"
+        },
+        {
+          "line": 68,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "@Autowired\n    private PetTypeRepository petTypeRepository;"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/error/ExceptionControllerAdviceTest.java": [
+        {
+          "line": 21,
+          "name": "advice",
+          "type": "ExceptionControllerAdvice",
+          "text": "private final ExceptionControllerAdvice advice = new ExceptionControllerAdvice();"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/security/BasicAuthenticationConfigTest.java": [
+        {
+          "line": 25,
+          "name": "mockMvc",
+          "type": "MockMvc",
+          "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 28,
+          "name": "passwordEncoder",
+          "type": "PasswordEncoder",
+          "text": "@Autowired\n    PasswordEncoder passwordEncoder;"
+        }
+      ]
+    }
+  },
+  "changed": {
+    "logging": [
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java",
+        "line": 57,
+        "column": 9,
+        "end_line": 57,
+        "level": "INFO",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "info",
+        "format": "\"SMS to {}: {}\"",
+        "args": [
+          "phone",
+          "text"
+        ],
+        "raw_line": "        log.info(\"SMS to {}: {}\", phone, text);",
+        "text": "log.info(\"SMS to {}: {}\", phone, text)",
+        "method_start": 54,
+        "method_end": 58,
+        "origins": [
+          {
+            "line": 55,
+            "name": "phone",
+            "kind": "param",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "line": 199,
+        "column": 9,
+        "end_line": 199,
+        "level": "INFO",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "info",
+        "format": "\"Booked visit {} for pet {}\"",
+        "args": [
+          "visit.getId()",
+          "petId"
+        ],
+        "raw_line": "        log.info(\"Booked visit {} for pet {}\", visit.getId(), petId);",
+        "text": "log.info(\"Booked visit {} for pet {}\", visit.getId(), petId)",
+        "method_start": 190,
+        "method_end": 205,
+        "origins": [
+          {
+            "line": 192,
+            "name": "visit",
+            "kind": "local",
+            "text": "visitMapper.toVisit(visitFieldsDto)"
+          },
+          {
+            "line": 191,
+            "name": "petId",
+            "kind": "param",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+        "line": 201,
+        "column": 13,
+        "end_line": 201,
+        "level": "DEBUG",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "debug",
+        "format": "\"Attending vet: {}\"",
+        "args": [
+          "vet.getLastName()"
+        ],
+        "raw_line": "            log.debug(\"Attending vet: {}\", vet.getLastName());",
+        "text": "log.debug(\"Attending vet: {}\", vet.getLastName())",
+        "method_start": 190,
+        "method_end": 205,
+        "origins": [
+          {
+            "line": 196,
+            "name": "vet",
+            "kind": "local",
+            "text": "attendingVet(visitFieldsDto.getVetId())"
+          }
+        ]
+      }
+    ],
+    "antipattern": []
+  }
+}
