@@ -1378,3 +1378,63 @@ def test_pressing_one_rerun_disables_the_other():
     button and watched the paid one's log scroll past has been told the wrong thing."""
     assert "buttons.forEach(function (other) { other.disabled = true; });" in build.RERUN_JS
     assert "buttons.forEach(function (other) { other.disabled = false; });" in build.RERUN_JS
+
+
+# --------------------------------------------------------------------------- #
+# opening the report is not a click
+# --------------------------------------------------------------------------- #
+
+def test_opening_the_served_page_runs_nothing_on_its_own(server, tmp_path):
+    """The deployed-app row used to ask the host for its address the moment the page
+    settled: `!current && window.HR.can('demo-env-url')` was true on every fresh browser
+    and every browser with site data blocked, so `POST /__run__ {"id": "demo-env-url"}`
+    — `./start-docker.sh url …`, a shell command of the project — ran merely because the
+    tab existed. `location.reload()` on a rebuild notification re-ran it every time too.
+
+    APP_ENV_JS no longer asks on its own. It is exercised here for real: the actual asset
+    file, served by the actual action server, opened in an actual browser, with a manifest
+    that declares `demo-env-url` and would happily run it if asked. After the row has
+    settled and had three seconds to think about it, `RUNS` must hold no `demo-env-url`
+    run and the global run status must still be idle."""
+    pw = pytest.importorskip("playwright.sync_api")
+    _fresh(tmp_path, {"version": 1, "actions": {
+        "demo-env": {"command": "printf 'listening\\nhttp://localhost:49521\\n'",
+                     "params": {}, "scrape": "url", "reload": False},
+        "demo-env-stop": {"command": "true", "params": {}, "scrape": "", "reload": False},
+        "demo-env-url": {"command": "printf 'http://localhost:49521\\n'",
+                          "params": {}, "scrape": "url", "reload": False},
+    }})
+    srv.ROOT = tmp_path
+
+    runtime = {"command": "./start-docker.sh up --ref abc123",
+               "stop": "./start-docker.sh down --ref abc123",
+               "urlCommand": "./start-docker.sh url petclinic-abc123"}
+    build.ACTIONS.clear()
+    page_html = ("<!doctype html><meta charset=utf-8><style>" + build.CSS + "</style>"
+                 + build.runtime_html(runtime) + build.SERVER_JS + build.APP_ENV_JS)
+    (tmp_path / "index.html").write_text(page_html, encoding="utf-8")
+
+    with pw.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except Exception as e:                       # no chromium installed on this box
+            pytest.skip(f"chromium unavailable: {e}")
+        try:
+            page = browser.new_page()
+            page.goto(f"http://{server[0]}:{server[1]}/index.html")
+            # `appenv-served` is added inside `window.HR.onready`, after the probe to
+            # `/__human_review__` has answered — the same tick the old code used to fire
+            # `demo-env-url` from. Settled past that point is the fairest test of whether
+            # it still does.
+            page.wait_for_function(
+                "() => document.querySelector('.appenv').classList"
+                ".contains('appenv-served')")
+            page.wait_for_timeout(3000)
+        finally:
+            browser.close()
+
+    assert not any(r.action == "demo-env-url" for r in srv.RUNS.values()), \
+        "opening the page ran demo-env-url without a click on Where, Start or Stop"
+    status, payload = _call(server, "GET", srv.RUN_STATUS)
+    assert status == 200
+    assert json.loads(payload)["active"] is None

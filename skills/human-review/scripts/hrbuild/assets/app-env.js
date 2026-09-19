@@ -298,15 +298,15 @@
       // of the three verbs.
       probe();
     }
-    // Nothing remembered and a host that can be asked: ask it. The base normally survives
-    // a reload in localStorage, so this is for the first reader of a page whose
-    // environment somebody else already started — and for the browser with site data
-    // blocked, where `stored()` has always come back empty by design.
-    if (!current && window.HR.can('demo-env-url')) {
-      window.HR.run('demo-env-url', {}).then(function (done) {
-        if (done.state === 'done') adopt(done.result && done.result.base);
-      }).catch(function () { /* nothing was running; the bar already says so */ });
-    }
+    // Asking the host used to happen right here, the instant nothing was remembered —
+    // which is every first visit, every browser with site data blocked, and every reload
+    // a rebuild notification triggers, `location.reload()` in SERVER_JS included. That
+    // made *opening the page* run `demo-env-url` — a shell command of the project,
+    // `./start-docker.sh url …` — merely because the tab existed, before anyone had
+    // touched anything. The row now shows only what it already knows (nothing remembered
+    // renders as Offline, same as any other base it cannot reach) and asks the host for
+    // real only from a press that already means it: Where, when nothing is remembered
+    // yet, falls through to exactly this command below.
   });
 
   // Explicit, never automatic. Resetting on every link click would throw away work the
