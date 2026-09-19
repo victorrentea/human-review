@@ -8,6 +8,11 @@ tests that pin it. Every code reference is a click into your editor, and every s
 cut from the working tree at build time, so the page cannot drift from the code it
 describes.
 
+**Try it in the browser first** — nothing to install, clone or download. A page built on a
+real pull request is published on GitHub Pages, every tab clickable:
+[the `petclinic-visit-vet` snapshot](https://victorrentea.github.io/human-review/petclinic-visit-vet/review.html),
+listed with the others at <https://victorrentea.github.io/human-review/>.
+
 It was extracted from a real project's review loop, where it was used on real branches
 before it was made portable.
 
