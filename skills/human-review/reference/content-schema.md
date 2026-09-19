@@ -116,7 +116,7 @@ shape whether or not it ever hesitated, and the anchor is the whole difference.
        "branch": "test-pr", "base": "main"}
 ```
 
-Every field is optional and so is the block. With it, the heading becomes `GH#37 Link Visit
+Every field is optional and so is the block. With it, the heading becomes `PR#37 Link Visit
 with Vet` and **`subtitle` does not render in the masthead at all** — keep `subtitle` for the
 `<title>` and for a page built without `pr`, and do not write the refs into it. `branch` and
 `base` render as the first two chips on the scope bar.
@@ -894,7 +894,7 @@ Four tabs need something said about how they are written:
     *what did not get picked* is half of what the column is for. Counts per kind ("×4
     asserted") head nothing — nobody acts on them.
   - **Head the tests card the way the ticket heads itself** — one strip, an icon and a
-    name — and give the ticket no title of its own: the masthead already carries `GH#37
+    name — and give the ticket no title of its own: the masthead already carries `PR#37
     <title>`, and repeating it above the card pushed the ticket a screen down. In the
     avatar's place goes the 🤖: the whole column is inference.
   - **A test draws the sentences it pins only when asked to**, through a control of its

@@ -1386,11 +1386,11 @@ PR = dict(BARE, pr={"number": 37, "title": "Link Visit with Vet",
 
 def test_the_page_is_named_the_way_the_reviewer_s_other_tabs_name_it(tmp_path):
     """The content file's own title is a sentence about the change; the reviewer is
-    looking at a pull request. `GH#37 Link Visit with Vet` is the name that matches their
+    looking at a pull request. `PR#37 Link Visit with Vet` is the name that matches their
     notifications, their tabs and their `gh pr` output, and the number is the link."""
     page, _ = _build(tmp_path, PR)
     head = page[page.index("<h1>"):page.index("</h1>")]
-    assert "GH#37" in head and "Link Visit with Vet" in head
+    assert "PR#37" in head and "Link Visit with Vet" in head
     assert "https://github.com/victorrentea/petclinic/pull/37" in head
 
 
@@ -1435,7 +1435,7 @@ def test_a_score_on_a_page_with_no_findings_tab_stays_a_plain_pill(tmp_path):
 def test_without_a_pr_block_the_title_is_the_one_the_content_file_wrote(tmp_path):
     page, _ = _build(tmp_path, BARE)
     assert "<h1>t</h1>" in page
-    assert "GH#" not in page
+    assert "PR#" not in page
 
 
 def test_the_two_refs_the_page_compares_lead_the_scope_bar_and_are_clickable(tmp_path):

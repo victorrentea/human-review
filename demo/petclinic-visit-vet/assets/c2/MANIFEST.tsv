@@ -1,2 +1,0 @@
-name	source	kind	status	diff_puml	svg	focus	new_svg	old_svg	old_details	new_details
-C2-Containers	.human-review/assets/c2/C2-Containers.new.puml	structural	modified	C2-Containers.diff.puml	C2-Containers.diff.svg		C2-Containers.new.svg	C2-Containers.old.svg	C2-Containers.details.old.json	C2-Containers.details.new.json

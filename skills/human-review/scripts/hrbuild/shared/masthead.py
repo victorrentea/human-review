@@ -29,17 +29,17 @@ def page_title(spec: dict) -> str:
     A content file’s own `title` is a sentence about the change ("Attending vet on a
     visit"). The reviewer, though, is looking at a pull request, and the name that
     matches what is in their tabs, their notifications and their `gh pr` output is
-    `GH#37 <the PR’s own title>`. So when the content file names a PR, that wins, and
+    `PR#37 <the PR’s own title>`. So when the content file names a PR, that wins, and
     the number is the link to it. With no `pr` block nothing changes.
 
-    `GH#37` is the only link on this page a reader cannot recognise as one by where it
+    `PR#37` is the only link on this page a reader cannot recognise as one by where it
     sits: it is the first word of the `<h1>`, so it wears the page's heading weight, not
     a link's. The hover says where it goes — the one thing a reader wants before clicking
     away from the review they just opened.
     """
     pr = spec.get("pr") or {}
     if pr.get("number") and pr.get("title"):
-        num = f'GH#{html.escape(str(pr["number"]))}'
+        num = f'PR#{html.escape(str(pr["number"]))}'
         if pr.get("url"):
             num = (f'<a class="prref" href="{html.escape(pr["url"])}" '
                    f'data-tip="Open #{html.escape(str(pr["number"]), quote=True)} '
