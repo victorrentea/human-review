@@ -727,8 +727,8 @@ pulled back byte-for-byte after the demo has been regenerated. The package is pu
 none of this needs a login.
 
 **Both are in every page's footer**, and that is the whole of the footer beside the address
-the page came from: `Built by <repo> on <date>. Download zip · or a runnable docker of this
-report.` Two links and no prose between them — a reader at the foot of a page is scanning
+the page came from: `Report built by <repo> on <date>. Browse it online or run it locally.
+Then adapt it to your liking.` Two links and almost no prose between them — a reader at the foot of a page is scanning
 for a thing to take, so the links are the nouns (what arrives) rather than the verb
 (*Download here*, which said nothing about what arrives and made them read on to find out).
 The `docker run` line above is in the second one's hover, because a footer is a place to
@@ -790,14 +790,24 @@ skills/human-review/scripts/
     shared/                what two or more tabs need: snippets and diffs, the diagram
                            gallery, the commands the page offers, the masthead, the
                            footer, the scope bar, the post-render rewrites
-    assets/                page.css, late.css, xref.css and every script, as real files,
-                           inlined verbatim by shared/assets.py
+    assets/                late.css, xref.css and every script, as real files, inlined
+                           verbatim by shared/assets.py
+      css/                 the base stylesheet, one file per module: core.css (the page's
+                           vocabulary), one <tab>.css per tab, one <module>.css per shared
+                           module, frame.css (tab strip, panels, footer) emitted last
 ```
 
-**A change to one tab is made in that tab's module.** That is the whole point of the
-split: two agents working on two tabs are editing two files and never rebase over each
-other. **`shared/` is touched by one agent at a time** — it is the part where they can
-collide, and a change there is a change to every tab at once.
+**A change to one tab is made in that tab's module, and its style in that tab's
+stylesheet, `assets/css/<tab>.css`.** That is the whole point of the split: two agents
+working on two tabs are editing two Python files and two CSS files and never rebase over
+each other. `page.css` used to be the one place they still collided — fifteen hundred
+lines with every tab's rules interleaved — so it is gone: `shared/assets.py` concatenates
+`css/*.css` in the order `CSS_FILES` declares, core first, frame last, shared modules
+before the tabs that reuse their classes. A rule goes in the file of the module that
+*emits* the class; a class two tabs emit goes in `core.css`. A new file is on the page only
+once it is named in `CSS_FILES` — `test_build_split_identity.py` fails a file that is not.
+**`shared/` and `css/core.css` are touched by one agent at a time** — they are the part
+where agents can still collide, and a change there is a change to every tab at once.
 
 Five tabs have no module, and that is not an omission. **API contract**, **Data model**,
 **Structure**, **UX** and **Complexity** are `includeHtml` fragments rendered whole by

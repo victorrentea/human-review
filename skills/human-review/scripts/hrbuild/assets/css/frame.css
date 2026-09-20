@@ -1,0 +1,170 @@
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.85rem; }
+/* The tab strip. A review is not one argument read top to bottom — it is five or six
+    separate questions ("does the contract still hold?", "where did it land?"), and a
+    reviewer answers them in whatever order their doubt takes them. Full-bleed and
+    sticky, so the questions stay reachable from anywhere in an answer. */
+/* Two rows is the strip's normal state at 1280px and 1440px -- its inner track is pinned
+   at ~1140px by the padding formula and fifteen pills need ~1210px -- so the height that
+   matters is the height of a row, paid twice, every scroll. Trimmed at three points: the
+   strip's own vertical padding, the row gap, and the pill line-height below. Nothing here
+   is a fixed height: `--strip-h` is still measured off the rendered box. */
+.tabstrip { position:sticky; top:0; z-index:30; margin:.5rem 0 .85rem;
+            margin-left:calc(50% - 50vw); width:100vw;
+            padding:.3rem max(1.25rem, calc(50vw - 540px + 1.25rem));
+            background:var(--bg); border-bottom:1px solid var(--line);
+            display:flex; gap:.2rem .3rem; flex-wrap:wrap; align-items:center; }
+/* The right padding is relaxed by ~80px into the full-bleed the strip already has, so
+   the pills get a track wider than the text column and stay on one row for one tab
+   longer. The left padding is untouched, so the first tab stays aligned with the body
+   text. It was relaxed originally to keep `show all` from dropping to a second row; that
+   button has since moved to the foot of the page, and the room it was making is now the
+   tabs' own — which is why there is no longer a `.grow` spacer pushing anything right. */
+.tabstrip { padding-right: max(1.25rem, calc(50vw - 620px + 1.25rem)); }
+/* Struck through, not hidden: the tab still holds the current state as context, and a
+   reviewer who cannot see that it exists cannot tell it was considered. */
+button.tab.quiet { text-decoration:line-through; text-decoration-thickness:1px; opacity:.5; }
+button.tab.quiet:hover, button.tab.quiet[aria-selected="true"] { opacity:.85; }
+/* Every tab wears its own edge, unpressed. They used to be bare words on the page's own
+   background, with a fill on the selected one and nothing at all on the other twelve: a
+   row of labels, one of which happened to be highlighted, which is what a *caption* looks
+   like. A reader cannot tell a label they can click from a label they cannot by reading
+   it, so the affordance is drawn — a card ground and a hairline each, the page's own chip
+   shape, so the strip reads as thirteen controls before anything is hovered. */
+button.tab { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:999px;
+             cursor:pointer; font:600 .87rem/1.8 inherit; padding:0 .85rem; white-space:nowrap;
+             display:inline-flex; align-items:center; gap:.42rem;
+             transition:background .12s, border-color .12s, color .12s; }
+/* Hover now has to be a *different* state from resting, not the arrival of one: the card
+   ground is already there, so the pointer buys the accent wash and the link colour on the
+   edge — the same pair `a.chip-link` uses, for the same reason. */
+button.tab:hover { color:var(--fg); background:var(--accent-soft); border-color:var(--link); }
+/* Selected keeps the inversion — the strongest signal on the strip, and the one thing
+   thirteen outlined pills must not be able to be confused with — and gains the lift, so
+   the current tab reads as the one standing in front of the others. */
+button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg);
+             box-shadow:0 1px 3px rgba(0,0,0,.2); }
+button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
+                font-variant-numeric:tabular-nums; }
+/* A tab the reviewer must not skip — a blocked merge — is red. It used to wear a `!` in
+   a red circle beside its name, which is the same fact said as an ornament: a glyph the
+   reader has to decode hung off a word that could simply have carried the colour itself.
+   The label *is* the alarm now. Selected, the strip inverts everything, so the red moves
+   to the fill and the word turns white rather than losing the one thing marking it. */
+button.tab.alarm { color:#c62828; }
+button.tab.alarm:hover { color:#a41f1f; background:var(--accent-soft); border-color:#c62828; }
+button.tab[aria-selected="true"].alarm { background:#c62828; color:#fff; border-color:#c62828; }
+/* Same alarm, one notch down: a required approval that is not the escalation of last
+   resort (an ordinary CODEOWNERS reviewer, not the team guarding the guardrails) reads
+   as amber rather than red, so the strip does not cry wolf on a routine sign-off. */
+button.tab.warn { color:#b56b00; }
+button.tab.warn:hover { color:#8f5500; background:var(--accent-soft); border-color:#b56b00; }
+button.tab[aria-selected="true"].warn { background:#b56b00; color:#fff; border-color:#b56b00; }
+/* A verdict the strip can carry without words: green nothing changed, amber changed
+   but nothing breaks, red a caller breaks. A number there ("+3") counted changes,
+   which is not the question anyone opens that tab with. */
+button.tab .n.dot-green, button.tab .n.dot-amber, button.tab .n.dot-red {
+  width:9px; height:9px; border-radius:50%; opacity:1; font-size:0; padding:0;
+  display:inline-block; vertical-align:middle; }
+@media (prefers-color-scheme:dark) {
+  button.tab.alarm { color:#ff8a8a; }
+  button.tab.alarm:hover { color:#ffb0b0; border-color:#ff8a8a; }
+  button.tab[aria-selected="true"].alarm { background:#ff8a8a; color:#1d1d24;
+                                           border-color:#ff8a8a; }
+  button.tab.warn { color:#e6c07b; }
+  button.tab.warn:hover { color:#f0d39a; border-color:#e6c07b; }
+  button.tab[aria-selected="true"].warn { background:#e6c07b; color:#1d1d24;
+                                          border-color:#e6c07b; }
+}
+button.tab .n.dot-green { background:#2e9e5b; }
+button.tab .n.dot-amber { background:#d98218; }
+button.tab .n.dot-red   { background:#d7263d; }
+button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--accent); }
+/* This used to be the last pill on the tab strip, where it sat in the corner of every
+   screenful for the whole read and was pressed roughly never — a permanent control for an
+   occasional act. It lives at the foot of the page now, which is where you arrive having
+   finished reading and is the moment the thing it offers ("show me all of it at once, so
+   ⌘F works") is actually worth wanting.
+   Under the footer's line, centred: it sat at the far end of that line for a while and
+   read as one more word of it. Alone on its own line, in the middle, it is unmistakably
+   the page's one control — the sentence above keeps its natural width and `flex-wrap`
+   still folds the two halves of that sentence on a narrow screen. */
+/* One line, centred, and the two halves are one sentence rather than two blocks pushed to
+   opposite ends of it. They were two spans in a `flex` row that wrapped: on a wide screen
+   the provenance sat left and the offer sat a long way right, reading as a header bar
+   rather than as the one closing line it is. `inline` spans in a centred paragraph put
+   them where a reader's eye lands after the last panel. */
+footer .footrow { text-align:center; }
+footer .footrow > span { display:inline; }
+footer .allbar { display:flex; justify-content:center; align-items:center; gap:.6rem;
+                 margin-top:.9rem; }
+button.allbtn { border:1px solid var(--line); background:var(--card); color:var(--muted);
+                border-radius:999px; cursor:pointer; font:600 .74rem/1.9 inherit; padding:0 .7rem; }
+button.allbtn:hover { color:var(--fg); border-color:var(--link); }
+button.allbtn[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:var(--on-fill); }
+.panel[hidden] { display:none; }
+/* The moment before the strip runs. Every panel is in the document and *visible* while
+   the earlier scripts measure it -- TABS_JS says why: getBBox() inside a display:none
+   subtree returns zeros -- so for the first few hundred milliseconds of every load the
+   document is all twelve panels stacked end to end, and the browser paints it. Measured
+   on the demo page: frames at 41, 90, 174, 206, 291 and 340ms, a document 37,000px tall
+   with twelve panels on screen, before the strip collapses it to one at ~490ms. On a
+   first load it reads as a page still arriving. On the reload the watcher fires after a
+   rebuild it is a flicker under a reader's eyes: the report they were reading, then a
+   pile of every other tab's content under it, then the report again.
+
+   `visibility:hidden` and not `display:none`, because that is the one way to keep a box
+   out of the paint while leaving it in layout -- which is exactly the bargain the
+   measuring scripts need. The class goes on in the head and comes off after TABS_JS has
+   chosen a tab, so nothing here survives into the page a reader interacts with.
+   Screen only: `@media print` deliberately shows every panel, and a print that raced
+   the load would otherwise come out blank. */
+@media screen { html.tabs-pending .panel { visibility:hidden; } }
+/* A hash lands the panel top flush against the viewport, where the sticky strip sits
+   on top of it and eats the first line. Push the scroll target down past the strip.
+   The push is the strip's OWN measured height (TABS_JS keeps `--strip-h` in step with
+   it, on load and on every resize), not a constant: the strip wraps to a second row
+   whenever the pills outgrow the track, and a literal tall enough for one row clips
+   every deep-linked heading the moment a tab is added. The fallback in the calc() is
+   one row, for the instant before the script runs and if it never does.
+   It applies to anything addressable inside a panel, not just the panel: a hash may
+   name a heading halfway down one, and `scrollIntoView` honours the target's own
+   scroll-margin, not its ancestor's. */
+.panel, .panel [id] { scroll-margin-top: calc(var(--strip-h, 2.6rem) + .6rem); }
+/* The counts line is the tab's table of contents, and the three chapters it names are
+   thousands of pixels apart: by the time a reader is standing in `Auto-fixed`, the link
+   that would take them to the assumptions scrolled off the top ten screenfuls ago. So it
+   pins too, directly under the masthead — `--strip-h` is the masthead's OWN measured
+   height (TABS_JS keeps it in step, on load and on every resize), so the two never
+   overlap however many rows the tab strip wraps onto, and the z-index is deliberately
+   below the masthead's 31: it slides under the block that owns the top of the page.
+   Opaque, because a line of links over a code card is unreadable. */
+.panel .counts.pilelede { position:sticky; top:var(--strip-h, 2.6rem); z-index:20;
+            margin:0; padding:.45rem 0 .4rem; background:var(--bg);
+            /* Heading size, not link size: it is the sentence that opens the tab's own
+               three chapters, sitting one scroll away from every `h2` it names, so it
+               reads at the weight of one rather than at the muted `.sub` size every other
+               line here shares. The `a`s inside stay inline and clickable — only the size
+               and weight of the line around them changed. */
+            font-size:1.3rem; font-weight:600; }
+/* And with a second pinned band above the panel, a deep link has to clear both of them --
+   otherwise `#fixed` lands its heading exactly behind the line that linked to it. Only in
+   the panel that actually carries the line: every other tab clears the masthead alone. */
+.panel:has(.counts.pilelede) [id] {
+            scroll-margin-top: calc(var(--strip-h, 2.6rem) + var(--lede-h, 0px) + .6rem); }
+.panel > h2:first-child, .panel > .paneltag + h2 { margin-top:.2rem; }
+/* Only meaningful once every panel is on screen at once, which is what "show all"
+    (and printing) do — otherwise the heading names the tab you are already on. */
+.paneltag { display:none; margin:2.6rem 0 0; font:700 .72rem/1.6 inherit; letter-spacing:.1em;
+            text-transform:uppercase; color:var(--muted); }
+body.showall .paneltag { display:block; }
+body.showall .panel { border-top:1px solid var(--line); }
+body.showall .panel:first-of-type { border-top:0; }
+/* Two words for two states, in the element's own content rather than in the markup: the
+   fold is a `<details>`, so the browser already knows which state it is in and nothing has
+   to be told about it when it changes. */
+.foldlbl { flex:0 0 auto; }
+@media print {
+  .tabstrip { display:none; }
+  .panel[hidden] { display:block !important; }
+  .paneltag { display:block; }
+}

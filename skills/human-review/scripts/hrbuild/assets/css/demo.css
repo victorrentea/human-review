@@ -1,0 +1,71 @@
+/* The recorder's verdict, over the player. Red and full width above the picture, because
+   the picture is the thing it contradicts: a film of a feature failing looks exactly like
+   a film of one working, and every other mark on this page would be read after the reader
+   had already believed the footage. It is not dismissible for the same reason. */
+.vidverdict { border:1px solid #c62828; border-left-width:4px; border-radius:8px;
+            background:rgba(198,40,40,.07); padding:.6rem .85rem; margin:0 0 .7rem; }
+.vidverdict p { margin:0; font-size:.9rem; line-height:1.6; }
+.vidverdict p + p, .vidverdict details { margin-top:.4rem; }
+.vidverdict .vv-head b { color:#c62828; }
+.vidverdict .vv-missed, .vidverdict .vv-note { color:var(--muted); font-size:.85rem; }
+.vidverdict .vv-missed code { font-size:.95em; }
+.vidverdict summary { cursor:pointer; color:var(--muted); font-size:.82rem; }
+.vidverdict pre { margin:.4rem 0 0; max-height:12rem; overflow:auto; white-space:pre-wrap;
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.78rem;
+            line-height:1.55; }
+@media (prefers-color-scheme: dark) {
+  .vidverdict .vv-head b { color:#f0757f; } }
+.embedded-note { margin:0 0 1rem; padding:.6rem .8rem; border-radius:8px; font-size:.85rem;
+                 background:var(--code-bg); border:1px solid var(--line); color:var(--muted); }
+/* The verdict band that used to stand here — a full-bleed amber strip holding the score a
+   second time, a ten-pip dial and the four bullets behind it — is gone. It repeated the
+   masthead's own pill one screenful lower and pushed the findings, which is what the
+   reader opened the page for, below the fold. `verdict.score` still colours and fills that
+   pill; `verdict.bullets` are no longer rendered anywhere. */
+.vidwrap { display:grid; grid-template-columns:minmax(0,1fr) 19rem; gap:.9rem;
+            align-items:start; margin:1rem 0; }
+.vidwrap video { width:100%; display:block; border:1px solid var(--line);
+                  border-radius:8px; background:#000; }
+.transcript { margin:0; padding:.3rem; list-style:none; border:1px solid var(--line);
+              border-radius:8px; background:var(--card); max-height:26rem; overflow-y:auto; }
+.transcript li { display:grid; grid-template-columns:2.9rem 1fr; gap:.5rem; align-items:baseline;
+                  padding:.4rem .5rem; border-radius:5px; cursor:pointer; font-size:.88rem; }
+.transcript li:hover { background:var(--accent-soft); }
+.transcript li.on { background:var(--accent-soft); font-weight:600; }
+/* The coverage row is not a cue: no frame to seek to, so no pointer and no hover
+   highlight, and a ruled edge above it to say the walkthrough has ended.
+   Stuck to the floor of the scroller rather than merely last in it. The cue list is a
+   fixed-height box that already overflows at six captions, so "last child" is another way
+   of saying "below the fold" — and a statement about what the film does NOT cover is
+   exactly the one a reader will never scroll to look for. Pinned, it is always the last
+   thing under the captions and still costs the page no height at all. */
+.transcript li.uncovered { position:sticky; bottom:-.3rem; z-index:1;
+                cursor:default; color:var(--muted); border-top:1px solid var(--line);
+                border-radius:0; margin-top:.3rem; padding:.55rem .5rem .4rem;
+                background:var(--card); }
+.transcript li.uncovered:hover { background:var(--card); }
+.transcript li.uncovered .ts { color:var(--muted); opacity:.6; }
+.transcript li.uncovered b { color:var(--fg); }
+.transcript .ts { font:600 11.5px/1.5 ui-monospace,Menlo,monospace; color:var(--link); }
+/* A link the running app can answer looks like the caption links around it; one that has
+    nowhere to point yet must not look clickable, because it is not. */
+.transcript a[data-app].dead { color:var(--muted); text-decoration:none; cursor:default; }
+/* The way into the app at this exact moment. Quiet until the row is hovered: the reader
+    is here to read the narration, and six play glyphs down the margin would compete with
+    the timestamps for the same job. */
+.cue-drive { float:right; margin-left:.4rem; border:1px solid var(--line); border-radius:3px;
+    background:var(--bg); color:var(--muted); cursor:pointer; line-height:1;
+    padding:.05rem .3rem; font-size:11px; opacity:0; transition:opacity .12s; }
+.transcript li:hover .cue-drive, .cue-drive:focus, .cue-drive.copied { opacity:1; }
+.cue-drive:hover, .cue-drive.copied { color:var(--link); border-color:var(--link); }
+/* Nothing is running, so there is nowhere to drive to. Shown rather than hidden: the row
+    still says this moment is reachable, once something is up. */
+.cue-drive[aria-disabled="true"] { cursor:not-allowed; opacity:.35; }
+.transcript li:hover .cue-drive[aria-disabled="true"] { opacity:.35; }
+/* A caption is a seek target, so a link inside one has to read as a *different* affordance
+    without shouting: the page's own link colour and the dotted underline it already uses
+    for .srcref, solid on hover. The click separation is in the script, not here. */
+.transcript a { color:var(--link); text-decoration:none;
+                border-bottom:1px dotted currentColor; }
+.transcript a:hover { border-bottom-style:solid; }
+@media (max-width:820px) { .vidwrap { grid-template-columns:1fr; } }

@@ -1,0 +1,111 @@
+/* The Review tab's bands: what the branch does not record, and what changed after the
+   agent stopped. Same shape as .vidverdict — a left-weighted rule, a tinted panel, one
+   sentence in colour — because they are the same kind of statement in the same place, and
+   a second visual vocabulary for "read the rest of this differently" would read as a
+   second meaning. `rband-none` is grey (an absence, not an alarm), `rband-warn` amber
+   (only generated files moved), `rband-alert` red (somebody changed the code). */
+.rband { border:1px solid var(--line); border-left-width:4px; border-radius:8px;
+            background:var(--code-bg); padding:.6rem .85rem; margin:0 0 .8rem; }
+.rband p { margin:0; font-size:.9rem; line-height:1.6; }
+.rband p + p, .rband ul { margin-top:.4rem; }
+.rband .rb-sub { color:var(--muted); font-size:.85rem; }
+.rband ul { margin:.45rem 0 0; padding-left:1.15rem; }
+.rband li { font-size:.86rem; line-height:1.65; }
+.rband li + li { margin-top:.35rem; }
+.rband code { font-size:.95em; }
+.rband .rb-gen { color:var(--muted); }
+/* The base's own commits, folded to one row so eight cherry-picked guardrails do not
+   bury the two commits that actually touched the feature. Same disclosure shape
+   `details.testsrc`/`details.testpair` already use elsewhere on the page — the marker is
+   drawn from `::before`, not the browser's own triangle, so every fold on the page looks
+   like the same control. Muted even when the band around it is red: this row is telling
+   the reader what it is *not* about. */
+.rband details.toolcommits { margin:.45rem 0 0; color:var(--muted); }
+.rband details.toolcommits > summary { cursor:pointer; list-style:none; font-size:.85rem; }
+.rband details.toolcommits > summary::-webkit-details-marker { display:none; }
+.rband details.toolcommits > summary::before { content:"▸"; font-size:.75rem;
+            margin-right:.3rem; display:inline-block; }
+.rband details.toolcommits[open] > summary::before { content:"▾"; }
+.rband details.toolcommits > summary:hover { color:var(--fg); }
+.rband details.toolcommits > ul { margin:.4rem 0 0; }
+/* The one thing to do about the commits the band reports: make the rest of the page catch
+   up with them. A button on a row of its own under the list, not an underlined word inside
+   the paragraph — an inline link in a red band carries the same weight as the prose around
+   it and gets read as part of it, and this is what the band is *for*. */
+.rband .rb-actions { display:flex; flex-wrap:wrap; gap:.45rem .8rem; margin:.55rem 0 0; }
+/* The sha carries the file list in its hover now, so it has to look askable. A dotted
+   underline and nothing louder: it is still a sha, and the page is full of them. */
+.rband li > code[data-tip] { cursor:help; text-decoration:underline dotted;
+            text-underline-offset:2px; }
+.rband-alert { border-color:#c62828; background:rgba(198,40,40,.07); }
+.rband-alert > p:first-child b, .rband-alert > p:first-child { color:#c62828; }
+.rband-warn { border-color:var(--drift); background:rgba(181,115,10,.07); }
+.rband-warn > p:first-child { color:var(--drift); }
+@media (prefers-color-scheme: dark) {
+  .rband-alert > p:first-child b, .rband-alert > p:first-child { color:#f0757f; } }
+ol.findings { list-style:none; counter-reset:f; padding:0; margin:1rem 0; }
+ol.findings > li { counter-increment:f; background:var(--card); border:1px solid var(--line);
+                    border-radius:8px; padding:.9rem 1.1rem; margin:.7rem 0; }
+/* The number carries the severity's own colour, so the bubble and the badge beside it say
+   the same thing. A uniform accent bubble made every item look equally urgent at a glance
+   and left the badge doing all the work; now the left margin *is* the triage column.
+   `--num-bg` falls back so an item with no severity still renders — to the literal the
+   light theme's --accent already is, rather than to --accent itself. The three severity
+   fills below are dark in BOTH themes and their white numeral is right in both; --accent
+   is not, it lifts to a pastel after dark, and the fallback bubble came out white on
+   #f08a8a at 2.4:1. `info` is the severity that lands here, so it is not a rare path. */
+ol.findings > li::before { content:counter(f); float:left; margin:.1rem .7rem 0 0; width:1.6rem; height:1.6rem;
+    border-radius:50%; background:var(--num-bg,#8a1c1c); color:#fff; font-size:.8rem; font-weight:700;
+    display:grid; place-items:center; }
+ol.findings > li.n-high { --num-bg:#8a1c1c; }
+ol.findings > li.n-med  { --num-bg:#8a5a12; }
+ol.findings > li.n-low  { --num-bg:#26518f; }
+ol.findings > li.n-info { --num-bg:#245c30; }
+/* An applied fix is still an item on the same list — same numbering, same shape — but it
+   is *done*, and the page must not spend a reviewer's attention on it the way it spends it
+   on an open call. Grey is the whole difference: the card recedes, the number keeps its
+   place, and the code inside is rendered exactly as loudly as everywhere else. */
+ol.findings > li.fixed { background:var(--code-bg); border-style:dashed; --num-bg:#6b7280; }
+ol.findings > li.fixed .f-title { font-weight:600; }
+@media (prefers-color-scheme: dark) {
+  ol.findings > li.n-high { --num-bg:#c05555; }
+  ol.findings > li.n-med  { --num-bg:#9a7a2a; }
+  ol.findings > li.n-low  { --num-bg:#3f68ad; }
+  ol.findings > li.n-info { --num-bg:#33724a; }
+  ol.findings > li.fixed  { --num-bg:#565e6b; }
+  ol.findings > li.n-assumed { --num-bg:#8b6fd4; border-left-color:#8b6fd4; }
+}
+ol.findings > li.n-assumed { --num-bg:#5b3fa8; border-left:3px solid #5b3fa8; }
+/* The road not taken, which is what makes an assumption checkable at a glance: the reader
+   recognises their own intent in one of the two readings without opening anything. */
+.f-alt { color:var(--muted); font-size:.9rem; margin:.35rem 0 0; }
+.f-alt b { color:var(--fg); font-weight:650; }
+/* Who raised it: a provenance stamp, so it is quiet and monospaced, and it sits after the
+   badge where the eye is already looking. It is a link where the pass has documentation —
+   the page names two slash commands a reader may never have run, and the alternative was a
+   line of prose under the verdict explaining them, which every reader after the first has
+   to scroll past. The stamp is the thing being asked about, so it is the thing that
+   answers. Same face either way; only the hover and the cursor say it opens. */
+.f-src { font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted);
+          border:1px solid var(--line); border-radius:4px; padding:.05rem .35rem; margin-left:.35rem;
+          vertical-align:.05em; }
+a.f-src { text-decoration:none; }
+a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--link); }
+/* The bit of `source:` that is not the pass and not its effort — which finding this is,
+   among several the same pass raised with the same title. Plain text beside the chip,
+   not a second chip: it is prose about this one item, not a second fact worth a border
+   of its own the way the pass name is. */
+.f-src-detail { font-size:.85rem; color:var(--muted); margin-left:.3rem; }
+.f-title { font-weight:650; }
+.f-why { color:var(--muted); font-size:.9rem; margin:.35rem 0 0; }
+/* Which chapter the reader is standing in, on the row that never scrolls away — the
+   alternative to freezing the `h2` itself, which the row already points at from a
+   distance. Set by a script beside the row (`PILELEDE_SPY_JS`), never by CSS alone, so
+   with JS off the links stay exactly as they always were: plain, clickable, unmarked.
+   A filled pill, not just bold-and-underlined text on the same blue every link on the
+   row already wears — the first cut read as identical to the other two at a glance,
+   which is the one thing a "you are here" mark cannot do. Same shape as the page's own
+   `.chip` (rounded, padded), so it reads as a place the reader is standing rather than
+   as emphasised prose. */
+.pilelede a.here { background:var(--accent-soft); color:var(--fg); font-weight:700;
+            padding:.1rem .55rem; border-radius:999px; text-decoration:none; }

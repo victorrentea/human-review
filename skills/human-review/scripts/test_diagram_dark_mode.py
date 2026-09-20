@@ -367,3 +367,31 @@ def test_the_design_system_audits_verdict_labels_read_in_both_themes():
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# ── a legend word's wash is a filter, and it is themed like a fill ────────────────
+# `<back:#hex>` in a caption compiles to `<feFlood flood-color="#hex">`, not to a
+# `fill`. The three ripple washes are in the map; a flood left literal would be the one
+# amber slab on a dark page, behind the very word that explains the amber.
+def test_a_flood_colour_is_themed_like_a_fill():
+    svg = '<feFlood flood-color="#F2CF8E" result="b"/><rect fill="#F2CF8E"/>'
+    out = build._theme_diagram_colors(svg)
+    assert 'flood-color="var(--dgm-ripple-1)"' in out
+    assert 'fill="var(--dgm-ripple-1)"' in out
+    assert build._theme_diagram_colors('<feFlood flood-color="#123456"/>') == \
+        '<feFlood flood-color="#123456"/>'
+
+
+# ── labels take their natural width in the reader's font ─────────────────────────
+# PlantUML writes `textLength` from the font it measured with; the browser stretches or
+# squeezes each label to that width in a font of its own, so labels on one diagram read
+# as set in two or three sizes. Both attributes go, on every `<text>`, and nothing else
+# on the element is touched.
+def test_textlength_and_lengthadjust_are_dropped_from_inlined_svg(tmp_path):
+    src = tmp_path / "d.svg"
+    src.write_text('<svg><text fill="#000000" font-size="13" lengthAdjust="spacing" '
+                   'textLength="99.28" x="1" y="2">select owners &#8853;</text></svg>',
+                   encoding="utf-8")
+    out = build.inline_svg(src, tmp_path)
+    assert "textLength" not in out and "lengthAdjust" not in out
+    assert '<text fill="var(--dgm-fg)" font-size="13" x="1" y="2">select owners &#8853;</text>' in out

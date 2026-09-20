@@ -1,0 +1,55 @@
+/* Progressive disclosure: the diagram arrives simplified, and an arrow that has more
+    to say is clickable. The hit area is a transparent rect the script lays under each
+    such arrow, so the whole band — label, line, marker — answers to one click. */
+/* The section header names the scenario the picture is of, so it is the reader's handle on
+   the test behind it. Underlined because it is a link and nothing else on a sequence diagram
+   is — dotted at rest so it reads as an offer rather than as emphasis, solid under the
+   pointer. The colour is PlantUML's own hyperlink colour, or the delta's green or red where
+   the header itself was added or removed. */
+.diagram svg a[href^="genseq-scenario:"] { cursor:pointer; }
+.diagram svg a[href^="genseq-scenario:"] text { text-decoration:underline;
+                                                text-decoration-style:dotted; }
+.diagram svg a[href^="genseq-scenario:"]:hover text { text-decoration-style:solid; }
+.genseq-hot { cursor:pointer; }
+.genseq-hit { fill:transparent; }
+.genseq-hot:hover .genseq-hit { fill:#1a4fa0; fill-opacity:.07; }
+.genseq-hot.genseq-open .genseq-hit { fill:#1a4fa0; fill-opacity:.12; }
+.genseq-hot.genseq-open a[href^="genseq:"] text { font-weight:700; }
+#genseq-panel { position:absolute; z-index:40; max-width:min(38rem,92vw); min-width:16rem;
+                background:var(--card); color:var(--fg); border:1px solid var(--line);
+                border-left:3px solid var(--link); border-radius:8px;
+                box-shadow:0 8px 28px rgba(0,0,0,.22); padding:.55rem .7rem .7rem; }
+#genseq-panel[hidden] { display:none; }
+#genseq-panel .genseq-head { display:flex; align-items:baseline; gap:.5rem; }
+/* The title takes only the room it needs, and the spacer after the toggle is what
+   pushes the step counter and the close button to the far edge. The toggle used to ride
+   out there with them, a hand's width from the statement it switches — it belongs
+   against the end of the title, where the eye already is. */
+#genseq-panel .genseq-title { font:600 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+                              flex:0 1 auto; min-width:0; word-break:break-all; }
+#genseq-panel .genseq-grow { flex:1 1 auto; }
+#genseq-panel .genseq-head { gap:.6rem; }
+#genseq-panel .genseq-step { color:var(--muted); font-size:.76rem; white-space:nowrap; }
+#genseq-panel .genseq-close { border:0; background:none; color:var(--muted); cursor:pointer;
+                        font-size:1.1rem; line-height:1; padding:0 .1rem; }
+#genseq-panel .genseq-close:hover { color:var(--fg); }
+#genseq-panel .genseq-label { color:var(--link); font-size:.8rem; margin:.15rem 0 .4rem; }
+#genseq-panel .genseq-label[hidden] { display:none; }
+/* The method that answers the route, at the same level as `request body`: both are
+   sub-headings of the arrow, one naming what travelled and the other where it landed. */
+#genseq-panel .genseq-handler { display:flex; align-items:baseline; gap:.4rem;
+                                font-size:.8rem; margin:.15rem 0 .4rem; }
+#genseq-panel .genseq-handler[hidden] { display:none; }
+#genseq-panel .genseq-handler .genseq-key { color:var(--muted); }
+#genseq-panel .genseq-toggle { border:1px solid var(--line); background:var(--code-bg);
+                        color:var(--muted); cursor:pointer; border-radius:999px;
+                        font:600 .7rem/1.6 inherit; padding:0 .55rem; white-space:nowrap; }
+#genseq-panel .genseq-toggle:hover { color:var(--fg); border-color:var(--link); }
+#genseq-panel .genseq-toggle[hidden] { display:none; }
+/* pre-wrap, not pre: a real controller's SELECT is far wider than the panel, and
+    `white-space:pre` cut it mid-statement behind an overlay scrollbar nobody sees on a
+    Mac. The payloads here are read, not copied into a terminal, so wrapping wins. */
+#genseq-panel pre { margin:0; max-height:24rem; overflow:auto; background:var(--code-bg);
+                    border-radius:6px; padding:.5rem .6rem; white-space:pre-wrap;
+                    overflow-wrap:anywhere;
+                    font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }

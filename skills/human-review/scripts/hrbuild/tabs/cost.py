@@ -319,6 +319,12 @@ def phase_rows_html(phases: dict | None) -> str:
         r = rows_by_key.get(key)
         if not r:
             continue
+        if key == "not_this_report":
+            # Measured and kept in the ledger JSON (the total above already leaves it
+            # out — see `EXCLUDED_PHASES` in `review-cost.py`), but not printed: it is
+            # other work in the same pinned session, not this report, and a reader of
+            # this table has no use for a row about work this page had no part in.
+            continue
         label = html.escape(str(r.get("label") or key))
         if not r.get("measured"):
             why = html.escape(str(r.get("reason") or "not measured"))

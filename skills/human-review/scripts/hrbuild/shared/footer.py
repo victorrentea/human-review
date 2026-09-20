@@ -59,24 +59,27 @@ DEMO_DOCKER_URL = ("https://github.com/victorrentea/human-review/"
 # runnable docker of this report.` — two nouns side by side, each naming a *file format*,
 # which is an answer to a question the reader has not asked yet. The question they have is
 # where this page is, and the two links are now the two answers to it: somewhere I can
-# open it, and on my own machine. The verb in a link was a real mistake once (`Download
-# here a standalone demo zip`, where the noun trailed outside the href and the eye landed
-# on words that said nothing about what arrives); `online` and `run it locally` do not
-# repeat it, because each is complete on its own and needs no words after it to be
-# understood. What each one costs the reader stays in the hover.
+# open it, and on my own machine. A verb sitting outside a link was the real mistake once
+# (`Download here a standalone demo zip`, where the noun trailed outside the href and the
+# eye landed on words that said nothing about what arrives); `Browse it online` and `run it
+# locally` do not repeat that mistake by leaving the verb out — they put it inside the
+# link, so the whole action is the one thing the eye lands on. What each one costs the
+# reader stays in the hover.
 #
 # Online first: it is free, instant, and the only one of the two a reader can act on from
-# a phone in the back of a room.
+# a phone in the back of a room. And a closing invitation after both links, not between the
+# provenance sentence and them: by the time the reader has been told where to find this
+# page and how to run it, the only thing left to say is that it is theirs to change.
 TAKEAWAY = (
     '<span class="takeaway">'
-    'See this report '
     f'<a href="{DEMO_PAGES_URL}" target="_blank" rel="noopener" '
     'data-tip="Every published snapshot on GitHub Pages — the live page, diagrams, '
-    'Code City and the feature video. Nothing to install.">online</a> or '
+    'Code City and the feature video. Nothing to install.">Browse it online</a> or '
     f'<a href="{DEMO_DOCKER_URL}" target="_blank" rel="noopener" '
     'data-tip="The same pages as a container: docker run --rm -p 8642:80 '
     'ghcr.io/victorrentea/human-review:&lt;snapshot&gt; — served rather than off disk, '
-    'so the page behaves the way it does here.">run it locally</a>.'
+    'so the page behaves the way it does here.">run it locally</a>. '
+    'Then adapt it to your liking.'
     '</span>'
 )
 
@@ -109,11 +112,12 @@ RUNNING_STACK = re.compile(r"\s+against the running stack", re.I)
 # It carried a sentence for a while — "Tell your agent to adapt this to your environment",
 # after "Fork, Clone and Port with your Agent" before that — on the reasoning that a GitHub
 # link in a footer reads as provenance and gets skipped, so it should be told what to do
-# with the address. Both readings are right and the conclusion was not: the two links
-# beside it already *are* the things to do, and an instruction sitting between the
-# provenance and the offer was a third voice in a line that has room for two. The empty
-# string is load-bearing — `_link_home` appends this, so emptying it empties the sentence
-# on every page rebuilt from here, including ones already published.
+# with the address. The reasoning was right and the placement was not: sitting between the
+# provenance sentence and the two links, the instruction was a third voice in a line that
+# has room for two. It lives at the end of the offer sentence now instead, after both
+# links, as the last step rather than an interruption before them — see TAKEAWAY. The empty
+# string here is still load-bearing — `_link_home` appends this, so emptying it empties the
+# sentence on every page rebuilt from here, including ones already published.
 INVITATION = ""
 
 #: The ones that shipped, so a footer written against any of them comes out clean.
@@ -141,6 +145,10 @@ def _link_home(footer: str) -> str:
     footer = RUNNING_STACK.sub("", FOOTER_BOILERPLATE.sub("", footer or "")).strip()
     if not footer or "/human-review" not in footer or 'human-review"' in footer:
         return footer
+    # "Built by" -> "Report built by": idempotent, so a footer already carrying the new
+    # wording (an older build's output re-used as a content file) is not doubled.
+    if footer.startswith("Built by") and not footer.startswith("Report built by"):
+        footer = "Report built by" + footer[len("Built by"):]
     linked = footer.replace(
         "/human-review",
         f'<a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a>', 1)

@@ -1,0 +1,149 @@
+.diagram { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem; margin:1.1rem 0; }
+.diagram .head { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap; }
+.diagram .head b { font-size:1rem; }
+.prov { margin:.5rem 0 0; display:flex; gap:.9rem; flex-wrap:wrap; }
+.prov .srcref { margin-bottom:0; }
+.diagram .head span { color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace; }
+/* --dgm-bg, not --card: the SVG's own canvas is already recoloured to --dgm-bg by
+    `_theme_diagram_colors` (build-review-html.py), and this box is what shows through
+    its margins — the same colour, or the diagram would sit in a visibly mismatched
+    frame in dark mode. */
+.diagram .svgbox { overflow-x:auto; margin-top:.7rem; background:var(--dgm-bg); border-radius:6px; padding:.6rem; }
+.diagram .svgbox svg { max-width:100%; height:auto; display:block; margin:0 auto; }
+.diagram .svgbox[hidden] { display:none; }
+/* A class name that opens the source looks exactly like one that does not. PlantUML's
+    tooltip says so, but only after a second of hovering and only if you were already
+    suspicious — so the name underlines the moment the pointer is over it. PlantUML draws
+    the class anchor around the whole box — icon, name and every field — which would make
+    a field look and act like the class; `_scope_entity_links` (build-review-html.py)
+    narrows it at inline time to the icon and the name, so only those two underline and
+    only those two are clickable. A field is inert: no link, no underline. */
+.diagram svg a[href^="vscode:"], .diagram svg a[href^="drawio:"] { cursor:pointer; }
+.diagram svg a[href^="vscode:"]:hover text,
+.diagram svg a[href^="drawio:"]:hover text { text-decoration:underline; }
+/* A removed element carries its strikethrough as a presentation attribute, which a CSS
+    declaration would silently outrank — underlining it would erase the one mark that
+    says it was deleted. Keep both. */
+.diagram svg a[href^="vscode:"]:hover text[text-decoration="line-through"] {
+  text-decoration:line-through underline; }
+/* How much unchanged context to draw around what changed. DomainModel and DB are big
+    enough that the whole diagram is a wall to hunt the delta in, and how much context
+    makes a given change legible is the reviewer's call, not the generator's. */
+.focus { display:flex; align-items:center; gap:.35rem; margin-top:.7rem; flex-wrap:wrap; }
+.focus .lbl { color:var(--muted); font-size:.78rem; margin-right:.15rem; }
+.focus button { border:1px solid var(--line); background:var(--card); color:var(--muted);
+                border-radius:999px; cursor:pointer; font:600 .74rem/1.7 inherit;
+                padding:0 .6rem; }
+.focus button:hover { border-color:var(--link); color:var(--fg); }
+.focus button[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:var(--on-fill); }
+/* Diff / New / Old, in two buttons and three states. The second button holds both
+   words and toggles between them, because a third pill would cost as much room as the
+   two that matter and this control has to fit above a sequence diagram as easily as
+   above a small one. Why it exists at all: a sequence diagram is generated from traces
+   whose call ORDER is not stable between runs, so the delta reports moves nobody made.
+   The reader needs a one-click escape to the raw before/after — this is it. */
+.dgmviews { margin-top:.7rem; }
+.dgmbar { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; margin-bottom:.5rem; }
+.dgmbar button { border:2px solid var(--line); background:var(--card); color:var(--muted);
+                 border-radius:999px; cursor:pointer; font:600 .78rem/1.75 inherit;
+                 padding:0 .75rem; }
+.dgmbar button:hover { border-color:currentColor; color:var(--fg); }
+.dgmbar .dgm-newold u { text-decoration:none; opacity:.55; }
+/* The active word, underlined inside the button — the only thing that separates the two
+   states the one button stands for. Thick and offset so it survives being read at a
+   glance next to the border. */
+.dgmbar .dgm-newold u.on { text-decoration:underline; text-decoration-thickness:2px;
+                           text-underline-offset:3px; opacity:1; }
+.dgmviews[data-state="diff"] .dgm-diff { background:var(--view-diff); border-color:var(--view-diff); color:var(--on-fill); }
+.dgmviews[data-state="new"] .dgm-newold { background:var(--view-new); border-color:var(--view-new); color:var(--on-fill); }
+.dgmviews[data-state="old"] .dgm-newold { background:var(--view-old); border-color:var(--view-old); color:var(--on-fill); }
+/* The frame. Deliberately loud: it is meant to be read peripherally, while the eye is
+   still on the picture, so nobody argues with a diagram they only think is the delta. */
+.dgmpane { border:5px solid var(--line); border-radius:8px; }
+.dgmpane[hidden] { display:none; }
+.dgmviews[data-state="diff"] .dgmpane { border-color:var(--view-diff); }
+.dgmviews[data-state="new"] .dgmpane { border-color:var(--view-new); }
+.dgmviews[data-state="old"] .dgmpane { border-color:var(--view-old); }
+.dgmpane > .svgbox { margin-top:0; border-radius:3px; }
+.dgmpane > .focus { margin:.5rem .6rem 0; }
+/* The header is a second, larger hit area for the same New/Old toggle — a sequence
+   diagram is tall, and reaching back up to a pill after scrolling is the friction this
+   removes. The BODY is deliberately not clickable: a stray click while scrolling or
+   selecting must never swap the picture out from under the reader.
+   Keyboard users get the two real buttons; the header is not focusable because it
+   already contains a link, and a focusable control wrapping a link is a worse trade. */
+.diagram.dgm-toggles .head { cursor:pointer; border-radius:6px; margin:-.25rem -.4rem .25rem;
+                             padding:.25rem .4rem; transition:background .12s; }
+.diagram.dgm-toggles .head:hover { background:var(--code-bg); }
+/* The literal character, never the CSS hex escape for it. This stylesheet is a plain
+   (non-raw) Python string, so a backslash-two-one-nine-four is read as an octal escape
+   by Python and eaten before CSS ever sees it: the arrow shipped as the text "94" on
+   every diagram header until someone looked. */
+.diagram.dgm-toggles .head b::after { content:"↔"; margin-left:.45rem; font-weight:400;
+                                      color:var(--muted); font-size:.8em; }
+.diagram.dgm-toggles .head:hover b::after { color:var(--fg); }
+/* The hand-drawn diagram's legend. Two colours inside the drawing, and they are not the
+   frame around it: the frame says which of the three pictures you are on, these say what
+   the picture means. The green is the report's own `--dgm-diff-add`, the one every other
+   delta on the page spends on "added", rather than a hex of this legend's own. It lives
+   here rather than in a <style> inside a section body, because the markup it dresses is
+   generated by `{{drawio:...}}` and a stylesheet the author has to paste alongside is one
+   more copy to keep in step. */
+.cmlegend { display:flex; gap:1rem; flex-wrap:wrap; margin:.55rem .6rem .1rem;
+            color:var(--muted); font-size:.78rem; line-height:1.6; }
+/* An entry is a run of text with a swatch at its head, not a flex row: made a flex
+   container, it turns each inline <b> in the sentence into a cell of its own, so a row
+   whose sentence emphasised a word mid-way came out as four columns with that word
+   standing alone in one of them. The swatch sits on the text baseline as an
+   inline-block, and the ordinary space after it is the gap. */
+.cmlegend i { display:inline-block; width:1.1rem; height:0; border-top:3px solid currentColor;
+              border-radius:2px; vertical-align:middle; margin-right:.25rem; }
+.cmlegend .new { color:var(--dgm-diff-add); }
+.cmlegend .todo { color:#d7263d; }
+.cmlegend b { color:var(--fg); font-weight:600; }
+@media (prefers-color-scheme:dark) { .cmlegend .todo { color:#ff9090; } }
+/* Inside the card the picture needs no frame of its own: a bordered box inside a bordered
+   box is two statements where the reader is looking at one thing. The card is the frame,
+   and what is left of the diagram is the diagram. */
+.testpair > .diagram { background:transparent; border:0; border-radius:0;
+  padding:0; margin:.55rem 0 0; }
+/* With the title gone, the .puml path is the only thing left in a paired diagram's
+   header row, and `space-between` would park it on the left under the fold arrow. */
+.diagram.dgm-bare .head .dgm-src { margin-left:auto; }
+/* …and then the header row went away entirely. A paired card had two rows of furniture
+   stacked on top of each other, each half empty: Diff/New/Old hard left on one, the
+   `.puml` path hard right on the other, a band of nothing between them. They are one
+   line about one picture — the controls, then what the picture is — so `DGM_VIEWS_JS`
+   moves the header's contents into the button bar and drops the empty row. The pieces
+   keep their own alignment; only the row they sit on changed. */
+.dgmbar .badge { margin-left:.2rem; }
+.dgmbar .dgm-src { margin-left:auto; color:var(--muted); font:inherit; text-decoration:none;
+  border-bottom:1px dotted var(--line); }
+.dgmbar .dgm-src:hover { color:var(--link); border-bottom-color:currentColor; }
+.diagram.dgm-bare > .head:empty { display:none; }
+
+/* The edit offer now opens the block, where the deleted caption sentence used to sit —
+   see `drawio_widget_html`. One row, not a sentence over a row of pills: the sentence and
+   its two buttons read as one action line about the same picture, wrapping only once the
+   card is too narrow to hold them side by side. `.runstatus` still drops to its own line
+   underneath — it is empty until a command is actually running, and squeezing it onto the
+   action row would jostle the buttons sideways the moment it filled in. */
+.diagram .rerun { display:flex; flex-wrap:wrap; align-items:baseline;
+                  column-gap:.7rem; row-gap:.3rem; }
+.diagram .rerun .runstatus { flex-basis:100%; }
+/* Update the report / Revert the diagram: the same green and red the legend just above
+   this picture already spends on "added by this PR" / "still waiting for a manual
+   re-layout" (`--dgm-diff-add` / `--dgm-diff-del`, both theme-aware in `core.css`) — not a
+   new pair of colours, the one the reader has already been reading on this exact diagram.
+   Both faces of each offer are tinted, copy and run, because only one is ever on screen
+   and the colour is what tells the two buttons apart, not which glyph they wear. */
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio:"]) .cmd-copy,
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio:"]) .cmd-run,
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio:"]) .cmd-copy:hover,
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio:"]) .cmd-run:hover {
+  color:var(--dgm-diff-add); border-color:var(--dgm-diff-add); }
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio-redraw:"]) .cmd-copy,
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio-redraw:"]) .cmd-run,
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio-redraw:"]) .cmd-copy:hover,
+.diagram .rerun-acts .cmd:has(.cmd-run[data-action^="drawio-redraw:"]) .cmd-run:hover {
+  color:var(--dgm-diff-del); border-color:var(--dgm-diff-del); }

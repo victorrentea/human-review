@@ -1,0 +1,87 @@
+/* The kinds of test a change set offers as acceptance evidence: e2e through the
+   browser, at the API, unit. They were one run of prose with bold lead-ins, and the
+   reader's question -- "is there anything at this level at all?" -- was answered only by
+   whoever read every sentence. As cards it is answered by looking: one panel per kind,
+   the kind's own colour on its edge, and a kind with nothing behind it is a card that
+   says so rather than a paragraph that never got written. The palette is the one the
+   requirements map already uses for the same three words, so a card and the map below
+   it do not disagree about what "e2e" is coloured. */
+.evidence { display:grid; gap:.7rem; margin:.8rem 0 1.1rem;
+        grid-template-columns:repeat(auto-fit,minmax(17rem,1fr)); }
+.evi { --evi:var(--muted); background:var(--card); border:1px solid var(--line);
+        border-top:3px solid var(--evi); border-radius:8px; padding:.65rem .9rem .8rem; }
+.evi > h4 { margin:0 0 .3rem; font-size:.95rem; display:flex; align-items:baseline;
+        gap:.4rem; }
+.evi > h4 .evi-ic { font-size:1rem; line-height:1; }
+.evi > h4 .evi-n { margin-left:auto; color:var(--evi); white-space:nowrap;
+        font:700 .7rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.evi p { margin:.3rem 0; font-size:.9rem; }
+.evi ul { margin:.35rem 0 0; padding-left:1.05rem; display:grid; gap:.28rem; font-size:.89rem; }
+.evi.e2e { --evi:#1c5aaf; }
+.evi.api { --evi:#703aa8; }
+.evi.unit { --evi:#147878; }
+/* A level nothing covers is the finding, not a gap in the page: it keeps its card and
+   says what is missing, in the colour the rest of the page uses for that. */
+.evi.none { --evi:#c62828; }
+.evi.none p { color:var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .evi.e2e { --evi:#78afff; } .evi.api { --evi:#c39bff; } .evi.unit { --evi:#5ad7d7; }
+  .evi.none { --evi:#f08a8a; }
+}
+/* Requirements, each with the tests that pin it nested underneath its own text. The
+   requirement is prose and keeps no bullet — the marker would compete with the flags on
+   the tests below it, which are the part carrying information. */
+ul.reqlist { list-style:none; margin:.6rem 0 1rem; padding:0; display:grid; gap:1.1rem; }
+ul.reqlist > li { border-left:2px solid var(--line); padding-left:.85rem; }
+.req-text { font-size:.96rem; }
+ul.req-tests { margin:.4rem 0 0; padding-left:1.05rem; display:grid; gap:.22rem;
+        font-size:.9rem; }
+ul.req-tests li { list-style:none; }
+/* The flag reuses `.added` / `.removed` for its colour rather than declaring its own, so
+   new/deleted read here exactly as they read in the diagram deltas and the line counts.
+   "modified" and "unchanged" get no colour: only the two ends of the scale are news. */
+.tflag { display:inline-block; min-width:5.4rem; margin-right:.5rem;
+        font:700 .64rem/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;
+        letter-spacing:.09em; text-transform:uppercase; vertical-align:baseline; }
+.tflag.added { color:#2e7d32; }
+.tflag.removed { color:#c62828; }
+.tflag.changed { color:var(--fg); }
+.tflag.same { color:var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .tflag.added { color:#8fd39c; } .tflag.removed { color:#f08a8a; }
+}
+.tloc { color:var(--muted); font-weight:400; }
+/* "does it still run" — amber, because it is neither a gain nor a removal but a warning:
+   the test is right there in the file, fully written, asserting nothing. Outlined rather
+   than filled so it reads as a stamp on the row instead of competing with the flag that
+   opens it. */
+.tsilenced, .tback { display:inline-block; margin-left:.45rem; padding:0 .34rem;
+        border:1px solid currentColor; border-radius:3px;
+        font:700 .62rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+        letter-spacing:.07em; text-transform:uppercase; vertical-align:baseline; }
+.tsilenced { color:#b26a00; }
+.tback { color:#2e7d32; }
+@media (prefers-color-scheme: dark) {
+  .tsilenced { color:#e0a458; } .tback { color:#8fd39c; }
+}
+.tnote { color:var(--muted); font-size:.86rem; }
+/* The ledger: the same rows as the requirement lists, grouped by what happened instead
+   of by what they pin. One column, because the groups are wildly uneven — twenty-two new
+   beside one that stopped running — and a grid would give the one that matters most the
+   least room. The group that matters most is first and carries the amber edge the row
+   stamps already use, so it reads as a warning band rather than a fourth heading. */
+.tledger { display:grid; gap:1.4rem; margin:.9rem 0 1rem; }
+.tgroup ul.req-tests { padding-left:0; }
+.tgroup-off { border-left:2px solid #b26a00; padding-left:.85rem; }
+.tgroup-off h3 { color:#b26a00; }
+@media (prefers-color-scheme: dark) {
+  .tgroup-off { border-left-color:#e0a458; } .tgroup-off h3 { color:#e0a458; }
+}
+/* The traces: one row per recorded test, each opening on the Playwright trace viewer
+   itself. The row is deliberately the same furniture as a ledger row — the same flag
+   column, the same `.tloc` — because it is the same test seen from a different angle,
+   and a second vocabulary for "this one failed" would be a second thing to learn. */
+/* The 📺 a covering-tests row wears when the run recorded that test. Served, it opens
+   the replay in a window of its own; off disk it copies the line that does. */
+.rm-tv { flex:0 0 auto; text-decoration:none; font-size:12px; line-height:1; }
+.rm-tv:hover { filter:brightness(1.2); }

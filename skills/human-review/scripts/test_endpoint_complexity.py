@@ -202,6 +202,81 @@ def test_comments_and_strings_are_not_read_as_code():
     assert cc('String s = "if (a) { b(); }"; // if (c) { d(); }') == 0
 
 
+# ── the breakdown behind a number ──────────────────────────────────────────────────────
+
+def test_the_increments_add_up_to_the_number_on_the_row():
+    """The fold under a row is the row's own arithmetic, so it has to be the same sum.
+
+    A breakdown that comes to 3 under a bar labelled 4 is worse than no breakdown: the
+    reviewer now distrusts both. `cognitive` is defined as the sum of `increments`, and
+    `flowCc` as the sum over the flow — this pins the whole chain end to end, on the same
+    fixture the rest of the file measures."""
+    for label, e in entries().items():
+        counted = sum(h["inc"] for f in e["flow"] for h in f["hits"])
+        assert counted == e["flowCc"], f"{label}: {counted} lines vs flowCc {e['flowCc']}"
+        for f in e["flow"]:
+            assert sum(h["inc"] for h in f["hits"]) == f["cognitive"], f["method"]
+    assert entries()["GET /api/owners"]["flowCc"] == 4
+
+
+def test_every_increment_names_the_line_it_was_read_off():
+    flow = {f["method"]: f for f in entries()["GET /api/owners"]["flow"]}
+    hits = flow["app.repo.OwnerRepository#search"]["hits"]
+    assert [(h["why"], h["inc"]) for h in hits] == [("if", 1), ("for", 1), ("if", 2)]
+    for h in hits:
+        assert h["file"] == "a/src/main/java/app/repo/OwnerRepository.java"
+        # The line is the line in the file, and the text is what is on it: the fold is
+        # evidence, and evidence that points a reader at the wrong line is a bug they
+        # cannot see. The nested `if` costs 2 — 1 for itself, 1 for the loop around it.
+        assert REPOSITORY.splitlines()[h["line"] - 1].strip() == h["code"]
+    assert hits[2]["code"].startswith("if (o.matches(")
+
+
+def test_recursion_is_charged_on_the_line_that_calls_back():
+    files = {"a/src/main/java/app/A.java":
+             "package app;\npublic class A {\n  @GetMapping(\"/a\")\n"
+             "  public void go(int n) { go(n - 1); }\n}\n"}
+    [hit] = ec.extract(files)[0]["flow"][0]["hits"]
+    assert (hit["why"], hit["inc"], hit["line"]) == ("recursion", 1, 4)
+
+
+def test_a_bar_folds_open_onto_its_own_lines():
+    """`[+1]` beside the real source line, each one a link into the editor — and the bar
+    is the handle, so it wears a hand rather than the `?` `tip.js` gives a plain mark."""
+    row = _row(why=[{"method": "app.repo.OwnerRepository#search",
+                     "display": "OwnerRepository.search(String)", "cognitive": 2,
+                     "hits": [{"file": "a/src/main/java/app/repo/OwnerRepository.java",
+                               "line": 6, "code": "if (lastName.isEmpty()) {",
+                               "inc": 1, "why": "if", "new": False},
+                              {"file": "a/src/main/java/app/repo/OwnerRepository.java",
+                               "line": 10, "code": "for (Owner o : all()) {",
+                               "inc": 1, "why": "for", "new": True}]}])
+    out = delta.render_row(row, 12, "main")
+    assert out.startswith("<details"), "closed by default, and a <details> without JS"
+    assert "<summary class=\"cx-head\">" in out
+    assert "[+1]" in out and "OwnerRepository.search(String)" in out
+    href = re.search(r'href="(vscode://file/[^"]*OwnerRepository[^"]*)"', out)[1]
+    assert href.endswith(":6:1") and "/a/src/main/java/" in href, href
+    assert href.split("vscode://file/")[1].startswith("/"), "absolute, resolved at build time"
+    assert "cx-why-new" in out, "a line the merge-base did not have is marked"
+    assert re.search(r"details\.cx-row \.cx-bar[^{]*\{[^}]*cursor:pointer", delta.CSS), \
+        "the bar opens the fold, so it must not wear tip.js's question mark"
+    # A row with nothing to count still opens — onto the sentence that says why it is 0.
+    assert "cx-why-none" in delta.render_row(_row(now=0, was=0, delta=0, why=[]), 12, "main")
+    # And a deleted entry point does not pretend to have a breakdown.
+    assert delta.render_row(_row(gone=True, why=[]), 12, "main").startswith("<div")
+
+
+def test_the_fold_needs_nothing_the_fragment_does_not_carry():
+    """The page pastes this fragment into a tab whole. A stylesheet or a script it had to
+    fetch from `hrbuild/assets` would be a tab that only works inside one builder."""
+    page = delta.render([_row(why=[])], "main")
+    assert "<script>" in page and "cx-head" in page
+    assert "src=" not in page and "hrbuild" not in page
+    for name in ("cx-why", "cx-why-line", "cx-why-inc", "cx-head"):
+        assert f".{name}" in delta.CSS, f"{name} is emitted but never styled"
+
+
 # --------------------------------------------------------------------------- #
 # the fragment: a path that does not fit, and verbs that have to be readable
 # --------------------------------------------------------------------------- #
@@ -254,7 +329,7 @@ def test_every_verb_chip_reads_against_the_dark_card():
         la, lb = sorted((lum(a), lum(b)), reverse=True)
         return (la + 0.05) / (lb + 0.05)
 
-    page = (HERE / "hrbuild" / "assets" / "page.css").read_text(encoding="utf-8")
+    page = (HERE / "hrbuild" / "assets" / "css" / "core.css").read_text(encoding="utf-8")
     light_page, dark_page = page.split("@media (prefers-color-scheme: dark)", 1)
     light_css, dark_css = delta.CSS.split("@media (prefers-color-scheme: dark)", 1)
     verbs = re.compile(r"\.cx-([a-z]+)\s*\{\s*color:(#[0-9a-fA-F]{6})")

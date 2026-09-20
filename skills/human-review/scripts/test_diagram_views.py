@@ -971,6 +971,19 @@ def test_both_editors_are_offered_and_named(tmp_path):
     assert "drawio:///repo/C.drawio.png" in out and "app.diagrams.net" in out
 
 
+def test_the_edit_offer_sits_where_the_caption_sentence_used_to(tmp_path):
+    """`content.json` no longer carries a sentence above the picture — that was deleted
+    for good, not just left off in this fixture. This offer and its two buttons take the
+    slot it held instead of trailing the picture, so the block reads: the head, then what
+    to do about the drawing, then the drawing."""
+    assets = _drawio_set(tmp_path / "assets")
+    (assets / "conceptual-diff.json").write_text(json.dumps({
+        "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN}))
+    out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
+    assert out.index('class="rerun"') < out.index('class="dgmviews"'), \
+        "the edit offer and its buttons come before the diagram, not after it"
+
+
 REVEAL = {"command": "open -R /repo/docs/C.drawio.png", "in": "the Finder"}
 
 

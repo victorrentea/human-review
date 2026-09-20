@@ -1,0 +1,10 @@
+.chip { background:var(--card); border:1px solid var(--line); border-radius:999px;
+        padding:.15rem .7rem; font-size:.82rem; color:var(--muted); }
+.chip b { color:var(--fg); font-weight:600; }
+a.chip-link { text-decoration:none; }
+a.chip-link:hover { border-color:var(--link); background:var(--accent-soft); }
+button.chip-mode { font:inherit; cursor:copy; }
+.changed { color:#9a6700; }
+@media (prefers-color-scheme: dark) {
+  .added{color:#8fd39c} .removed{color:#f08a8a} .changed{color:#d29922}
+}

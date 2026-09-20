@@ -669,10 +669,10 @@ def logging_fragment(block, root: Path):
     # of the very rule `logextract.py` runs, so the hover cannot claim a library the scan
     # does not actually search for.
     head = (f'<p class="lede" id="{html.escape(block.get("id", "logging-added"))}">'
-            f'Found structurally searching for '
+            f'Uses of '
             f'<span class="dfn" data-tip-side="right"'
             f' data-tip-html="{html.escape(logging_libraries_tip(), quote=True)}">'
-            f'common logging libraries</span>.</p>')
+            f'common Java logging libraries</span>.</p>')
     body = ""
     # No header bar and no surrounding card any more: no heading repeating "logging", no
     # count pill, no `path, base…HEAD` provenance line — the tab's own title already says

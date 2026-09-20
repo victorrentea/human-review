@@ -143,6 +143,14 @@ def scan(path: Path, wanted: set[str], repo: Path) -> tuple[dict[str, int], list
     megabytes and all but a handful of its lines mention none of the changed files, so
     `json.loads` on every one of them is the difference between a scan that takes a second
     and one nobody waits for.
+
+    And before that, the line is asked whether it carries a `tool_use` block at all: the
+    loop below reads nothing else, and most of a transcript is the model's prose and the
+    tools' output. A change set of fifty files over a project with two thousand
+    transcripts was thirty million `w in line` tests -- thirty seconds of a forty-five
+    second cost tab -- for lines the loop would then have skipped anyway. (Not a compiled
+    alternation of the fifty paths: `re` tries each branch at each position, and measured
+    on the same transcripts it was slower than the plain loop, not faster.)
     """
     hits: dict[str, int] = {}
     stamps: list[str] = []
@@ -159,7 +167,7 @@ def scan(path: Path, wanted: set[str], repo: Path) -> tuple[dict[str, int], list
         return {}, []
     with raw:
         for line in raw:
-            if not any(w in line for w in wanted):
+            if '"tool_use"' not in line or not any(w in line for w in wanted):
                 continue
             try:
                 rec = json.loads(line)

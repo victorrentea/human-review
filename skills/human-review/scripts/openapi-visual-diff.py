@@ -1124,9 +1124,17 @@ new MutationObserver(() => {
 // that scrolls internally traps the wheel and hides how much is left. Report our real
 // height instead and let the host size the frame — the outer page keeps the only
 // scrollbar. Cross-origin over file://, so it goes by postMessage, not by reading us.
+//
+// The height of the *content*, never of the viewport. `documentElement.scrollHeight` is
+// at least the viewport, and the viewport of a frame is whatever the host last set it
+// to from the number we posted, plus the few pixels it adds for the border: post that
+// and the host grows the frame, `resize` fires, we measure the taller viewport, post
+// again, and the frame creeps down the page four pixels at a time for as long as the
+// tab is open. The body's own box (margin 0, height auto) is the content and nothing
+// else, and does not move when the frame around it does.
 function postHeight() {
   if (window.parent === window) return;
-  const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+  const h = Math.ceil(document.body.getBoundingClientRect().height);
   if (h !== window.__dvH) {
     window.__dvH = h;
     window.parent.postMessage({ type: 'dv-height', height: h }, '*');

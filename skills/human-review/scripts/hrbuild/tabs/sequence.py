@@ -36,12 +36,14 @@ TEST_CATS = {
 #: refuses. The kind is a claim about what the run DID, which a path cannot answer. The
 #: runner IS the file: `.feature` is Gherkin because Gherkin is what a `.feature` file
 #: contains, and no diagram is needed to know it. Longest suffix first, so `.spec.ts` is
-#: not read as a bare `.ts`.
+#: not read as a bare `.ts`. The Playwright spec says `TypeScript`, the language, to sit
+#: beside `Gherkin` and `JUnit` as the thing a reader would have to read, not the tool
+#: that runs it; the tool stays in the hover.
 TEST_RUNNERS = (
     (".feature", "Gherkin", "a Cucumber scenario"),
-    (".spec.ts", "Playwright", "a Playwright spec"),
-    (".spec.tsx", "Playwright", "a Playwright spec"),
-    (".spec.js", "Playwright", "a Playwright spec"),
+    (".spec.ts", "TypeScript", "a Playwright spec, in TypeScript"),
+    (".spec.tsx", "TypeScript", "a Playwright spec, in TypeScript"),
+    (".spec.js", "TypeScript", "a Playwright spec, in TypeScript"),
     (".java", "JUnit", "a JUnit test"),
     (".kt", "JUnit", "a JUnit test"),
 )

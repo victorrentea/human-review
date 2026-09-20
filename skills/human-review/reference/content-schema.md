@@ -193,12 +193,17 @@ pathspecs; the built-in list cannot be switched off, and the tooltip states the 
 totals regardless — the generated files are ranked below the code, never hidden from it.
 
 `autofixed` names the model that did the reviewing, taken from the run's own transcript, so
-the chip reads `🤖Opus 5 review: 9 open, 3 auto-fixed` rather than needing a second,
-unverifiable `reviewed by` chip beside it. `{"by":"Opus 5"}` is the fallback for a page
-rebuilt outside the session that reviewed it. The pill is written as a **sentence** — robot,
-model, colon, then the two numbers with a comma between them — because a label followed by a
-gap and a row of figures reads as a measurement, and this is a claim somebody made about the
-diff. The applied half stays grey: it is there to be checked, not acted on.
+the chip reads `🤖Opus 5 review: 9 open, 3 fixed; 🤖coder: 7 assumptions` rather than needing
+a second, unverifiable `reviewed by` chip beside it. `{"by":"Opus 5"}` is the fallback for a
+page rebuilt outside the session that reviewed it; with no name at all the label is just
+`🤖Review:`, since the robot already says a model did it. The pill is written as a
+**sentence** — robot, model, colon, then the numbers — because a label followed by a gap and
+a row of figures reads as a measurement, and this is a claim somebody made about the diff.
+The applied half stays grey: it is there to be checked, not acted on, and it says `fixed`
+rather than `auto-fixed` because how the fix arrived is a word for the hover. The clause
+after the semicolon is a **second** claim by a **second** agent — the one that wrote the
+code, recording what it had to guess at — so it wears its own robot, counts only the
+assumptions the page actually renders, and is absent rather than zeroed when there are none.
 
 The `tests` chip is a **balance**, not a count — `+10 / −4 / ✍️4` — because the
 question it answers is whether the branch left fewer tests running than it found. The
@@ -212,7 +217,7 @@ smallest of them as the answer.
              "assets/complexity-delta.css", "assets/ds-audit.css"],
 "testChanges": "assets/test-changes.json",
 "playwrightTraces": "assets/traces.json",
-"footer": "Built by /human-review against the running stack on 2 Sep 2026."
+"footer": "Report built by /human-review against the running stack on 2 Sep 2026."
 ```
 
 The footer names the toolset and when, and stops — a sentence about the page's own honesty
@@ -744,6 +749,15 @@ beside the JSON; that test was deleted from the project in September 2026 and th
 with it, so the measurement now lives in `scripts/endpoint-complexity.py` and the bars are
 the whole tab. A section that embeds a report nothing produces renders as an apology.
 
+**The explanation came back inside the bars.** Each row folds open onto the increments its
+number is made of — one real source line per counted construct, `[+N]` hard right, every
+line a `vscode://file/<abs>:<line>:1` link — and the handle is the bar itself, so a reviewer
+who doubts a number clicks the thing they doubt. It is a plain `<details>`, closed by
+default, with its CSS in `--css` and its three-line toggle inline in the fragment: nothing
+on this tab reaches into `hrbuild/assets`, because the fragment is also produced and read
+outside the page builder. The annotated *snippets* are still gone and are not coming back —
+the question a bar raises is "which lines", and a list answers it in a third of the height.
+
 Default order, worth departing from only with a reason — **Review, Demo, API, Data,
 Tests, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
 order a review actually goes: what the passes raised, then the feature as a user meets it
@@ -1020,6 +1034,13 @@ Four tabs need something said about how they are written:
       had, so it says what it is without being unfolded and without spending a row to do it.
       What the bar clips is on the stub's own tooltip, because reading the end of a
       signature should not cost a click that changes the page.
+      - **That "first line" is the first line of real code, not the first line of the
+        slice.** A slice that opens on a blank line or a `/**` javadoc header would fold to
+        that instead of to anything a reader recognises — `/**` says nothing about which
+        test this is. Blank and comment lines are skipped until the first line that is
+        actually code (`Then("the clinic's visit list …`). The record carries this
+        ready-made as `preview`; the page reads that field and never re-derives it from
+        `lines[0]`.
     - The wiring needs two things from the markup, and they are both things this fragment
       already emits: each excerpt in a `.rm-part`, and inside it the editor link from the
       source bar (`a.srcref` that is not a `.rm-diff`) carrying the same `href` as the part's
@@ -1198,7 +1219,9 @@ Four tabs need something said about how they are written:
     the badges and then tells you to click is two sentences in a bubble read standing up,
     and the second one is about the tooltip rather than about the tests. The row a reader
     is pointing at already looks pressable. A sentence with no test is the exception and
-    keeps its one line, because *that* is a fact rather than an instruction.
+    keeps its one line, because *that* is a fact rather than an instruction — and the line
+    is exactly `no covering tests`, nothing else: no `missing ·` lead-in, no "click for
+    what is missing", just the fact.
   - With that column on the page, **do not also write an evidence-cards section** listing
     what the branch wrote — it is the same list, in fewer words, further down.
 - **Data** — the DB and domain deltas, and 2–5 core-logic bullets in domain language, each
@@ -1230,8 +1253,18 @@ Four tabs need something said about how they are written:
     `conceptual-model-patch.py` next to the red it is about — and both are gone the moment
     the layout is drawn. The same sentences written above the picture outlive the red: the
     colour goes, and the paragraph keeps telling the next reader to go and turn lines black.
-  - **One sentence above the picture, about the artefact and not about this build.** What
-    the drawing is and what holds it honest — *Hand-drawn in draw.io, but checked to match
-    the code by `ConceptualModelDiagramTest`* — and nothing that a rebuild can falsify.
+  - **Write nothing above the picture — the token owns that line too.** It used to be one
+    sentence about the artefact, hand-written into `content.json` beside the token:
+    *Hand-drawn in draw.io, but checked to match the code by `ConceptualModelDiagramTest`*.
+    That was prose about the drawing sitting above where the drawing's own controls live —
+    the offer to edit it and the two buttons that act on it — and the two ended up reading
+    as two separate rows for one picture. `{{drawio:conceptual}}` now renders the offer and
+    the buttons first, in the spot the sentence used to hold, with the picture right under
+    them; a sentence pasted above the token would sit above that instead of beside it.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the
-  repository can produce.
+  repository can produce. **Its lede is one sentence**, not a paragraph of method: *Every
+  screen is built and shot on this branch and on the merge-base, and the audit flags native
+  controls — like a bare `<select>` — used where the design system already has a component
+  for them.* The three sentences it used to carry (what the audit reads off the components,
+  why labelling what is right proves nothing, which screens get a viewer) are visible in
+  the fragment itself, one row per screen, so the page does not need them said twice.

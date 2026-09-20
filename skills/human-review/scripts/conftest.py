@@ -27,5 +27,5 @@ def page_source() -> str:
     pkg = HERE / "hrbuild"
     parts = [(HERE / "build-review-html.py").read_text(encoding="utf-8")]
     parts += [p.read_text(encoding="utf-8") for p in sorted(pkg.rglob("*.py"))]
-    parts += [p.read_text(encoding="utf-8") for p in sorted((pkg / "assets").iterdir())]
+    parts += [p.read_text(encoding="utf-8") for p in sorted((pkg / "assets").rglob("*")) if p.is_file()]
     return "\n".join(parts)

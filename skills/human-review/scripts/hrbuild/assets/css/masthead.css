@@ -1,0 +1,99 @@
+/* With a masthead the strip is no longer the only thing that survives a scroll: title,
+   refs, chips and tabs travel together, so the page opens with the title against the top
+   edge rather than behind a gutter that would then be pinned there for the whole read.
+   Zero, and not the .25rem of air it used to be: that air was *above* a `top:0` sticky,
+   so the masthead sat 4px down the viewport unpinned and snapped flush the instant the
+   page moved — every word in it jumping up 4px on the first wheel click. The air is the
+   same, it is just paid inside the masthead's own padding now (below), where it is part
+   of the block that pins and therefore cannot be scrolled out from under it. */
+.wrap:has(.masthead) { padding-top:0; }
+.scopebar { display:flex; flex-wrap:wrap; gap:.45rem; margin:0 0 .55rem; }
+.titlerow { display:flex; align-items:baseline; justify-content:space-between; gap:1.5rem;
+             flex-wrap:wrap; }
+.titlerow h1 { margin-bottom:0; }
+/* One block that never scrolls away: which change this is, what it is against, how big
+   it is, and where in it you are. Those four answers are the ones a reader needs *while*
+   reading a tab -- "which branch is this, again?" is asked halfway down a diff, not at
+   the top -- and the strip alone, pinned over a masthead that had scrolled off, answered
+   none of them. Full-bleed like the strip was, padded back to the text column. */
+.masthead { position:sticky; top:0; z-index:31; background:var(--bg);
+            margin-left:calc(50% - 50vw); width:100vw;
+            padding:.6rem max(1.25rem, calc(50vw - 540px + 1.25rem)) .3rem;
+            border-bottom:1px solid var(--line); }
+.masthead .titlerow { align-items:baseline; gap:.3rem .9rem; }
+/* One line, always: the PR and its name on the left, the score hard right. Nothing here
+   is allowed to wrap the masthead onto a second row, so the title is the part that gives
+   — it ellipsises rather than pushing the score down, and the full text is in the tab
+   title anyway. `min-width:0` is what lets a flex child shrink below its content. */
+.titlerow.oneline { flex-wrap:nowrap; align-items:baseline; }
+.titlerow.oneline h1 { min-width:0; overflow:hidden; text-overflow:ellipsis;
+                        white-space:nowrap; }
+.titlerow.oneline .titleside { flex:0 0 auto; }
+/* The right-hand end of the title row: what this copy of the page can do, then how the
+   branch did. They travel in a box of their own, which is what carries the
+   `margin-left:auto` that pushes the group against the right edge and the gap that spaces
+   it. Laid on the group and not on its members, because two of the three are hidden in one
+   copy of the report or the other: a `margin-left:auto` pinned to "the first of these that
+   is on screen" is a sibling selector that has to be right about which ones can disappear,
+   and the first version of it was not — it matched *both* rerun chips and opened a hole
+   between them.
+
+   One box for all three, and it is the score's. They are the same beige-and-border pill
+   at a glance and they were not the same height: the chips took their height from the
+   text and the score added a `line-height:1.6` to its own digits, so the pill on the right
+   stood a couple of pixels taller than the pair beside it and sat on a baseline they did
+   not share. Now the padding, the border, the radius, the type size and the line box are
+   declared once, here, for the three of them, and they are centred on each other rather
+   than on a baseline — a glyph, a word and a fraction have no common baseline to sit on. */
+.titleside { display:inline-flex; align-items:center; gap:.5rem; margin-left:auto; }
+.masthead .scopebar { margin:.3rem 0 .05rem; }
+/* Inside the masthead the strip is no longer its own sticky, full-bleed band: the block
+   around it does the bleeding, the pinning and the edge. */
+.masthead .tabstrip { position:static; margin:.1rem 0 0; width:auto;
+            padding:.1rem 0 .15rem; background:transparent; border-bottom:0; }
+/* The two refs the whole page is a comparison of: the first two chips on the scope bar,
+   each one click from its own page on GitHub. Monospaced names, because a git ref is a
+   name to be matched character for character against a terminal, and the branch under
+   review takes the link colour so the pair reads head-then-base at a glance. */
+.chip.refchip b.refname { font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+            font-size:.95em; }
+.chip.refchip b.refname.head { color:var(--link); }
+/* The `!` on the base chip: the pair of refs this page compares has drifted since it was
+   built. Amber and not the page's red — a stale base is not a finding about the code, it
+   is a caveat about the whole page, and dressing it in the same colour as a bug would
+   have it read as the thirteenth thing /code-review raised. It is a filled disc rather
+   than a bare glyph so it survives being skimmed past at the end of a row of chips, and
+   the chip it sits on keeps its border so the ref itself stays the thing being read. */
+.chip.refchip .drift { display:inline-flex; align-items:center; justify-content:center;
+            width:1.05em; height:1.05em; margin-left:.35rem; border-radius:50%;
+            background:var(--drift); color:var(--drift-fg); font-weight:700;
+            font-size:.78em; line-height:1; font-style:normal; cursor:help; }
+.chip.refchip.drifted { border-color:var(--drift); }
+h1 .prref { text-decoration:none; }
+h1 .prref:hover { text-decoration:underline; }
+/* One size, and it is the size of the badge it sits next to. A 1.5rem `6` against a .8rem
+   `/10` made the numerator the loudest thing in the masthead and the denominator its
+   footnote — two halves of one fraction, set as if they were two facts. The pill keeps its
+   colour and its shape; the box it is drawn in — padding, radius, type size, line box — is
+   declared once for it and the chips together, up in the title row, which is the only way
+   three pills on one line stay the same height as each other. The border is transparent
+   rather than absent so the width it takes is the chips' width. */
+.titlescore { display:inline-flex; align-items:baseline; gap:.2rem;
+              border-color:transparent; white-space:nowrap; }
+.titlescore b { font-size:1em; line-height:inherit; letter-spacing:0; }
+.titlescore small { font-size:1em; opacity:.6; }
+.titlescore i { font-style:normal; font-size:.82rem; opacity:.85; margin-left:.25rem; }
+/* The score is a link now — to the tab holding the findings that produced it, which is
+   the next thing anyone reading `5/10 not yet mergeable` wants. It keeps every colour it
+   had: an underline or a link colour on a pill that is already coloured by its verdict
+   would read as a second state, not as an affordance. The cursor and a hover lift say it
+   is clickable, and the tooltip says where it goes. */
+a.titlescore { text-decoration:none; cursor:pointer; }
+a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor inset; }
+.titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }
+.titlescore.v-mid  { background:rgba(217,130,24,.18); color:#9a5b06; }
+.titlescore.v-bad  { background:rgba(215,38,61,.16); color:#d7263d; }
+/* The strip is the top of the page once the masthead has scrolled away, so it carries
+   the edge that used to be the masthead's: a shadow under the border, only while it is
+   actually pinned, so content passing beneath it reads as passing *under* something. */
+.tabstrip.pinned, .masthead.pinned { box-shadow:0 2px 6px rgba(0,0,0,.13); }

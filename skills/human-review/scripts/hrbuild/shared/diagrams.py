@@ -174,12 +174,17 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
               file=sys.stderr)
         return (f'<p class="sub">not rendered — run the <code>diagrams</code> step to '
                 f'write <code>{html.escape(name)}-diff.svg</code></p>')
-    return (dgm_views_html(panes, initial="new" if red else "diff")
-            + rerun_html(verdict.get("rerun"), rebuild, name,
-                         verdict.get("drawio_url") or "",
-                         verdict.get("drawio_web_url") or "",
-                         verdict.get("redraw"), verdict.get("revert"),
-                         verdict.get("reveal")))
+    # `rerun_html` first, `dgm_views_html` after: this is where the caption sentence used
+    # to sit, above the picture, naming the artefact and how honest it is. That prose is
+    # gone from `content.json` now — the edit offer and its two buttons are the one thing
+    # above the picture instead, so the block reads title, then what to do about the
+    # drawing, then the drawing itself.
+    return (rerun_html(verdict.get("rerun"), rebuild, name,
+                       verdict.get("drawio_url") or "",
+                       verdict.get("drawio_web_url") or "",
+                       verdict.get("redraw"), verdict.get("revert"),
+                       verdict.get("reveal"))
+            + dgm_views_html(panes, initial="new" if red else "diff"))
 
 
 def expand_drawio(text: str, out_dir: Path, root: Path, rebuild: str) -> str:

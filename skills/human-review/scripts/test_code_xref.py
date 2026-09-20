@@ -212,6 +212,29 @@ def test_the_map_s_own_excerpts_are_linked_and_the_ones_pointed_at_are_folded():
     assert index["vscode://file//r/glue.ts:20:1"]["face"].startswith("When('I book a visit'")
 
 
+def test_a_collapsed_part_previews_the_first_real_code_line_not_a_doc_comment():
+    """A slice that opens on a `/**` javadoc header used to fold to that line verbatim,
+    which says nothing about which test it is. Both the part's own `preview` field and the
+    fold index's `face` skip the blank/comment lines the same way `preview_line` does for
+    the page's own snippet stub."""
+    doc = xref.cross_link(rm_page({"t1": {"parts": [
+        {"label": "a.feature:15-15", "href": "vscode://file//r/a.feature:15:1", "from": 15,
+         "html": ["  When I book a visit"]},
+        {"label": "glue.ts:20-24", "href": "vscode://file//r/glue.ts:20:1", "from": 20,
+         "html": ["/**", " * Books a visit.", " */",
+                  "When('I book a visit', async function () {", "});"]},
+    ]}}))
+    data = json.loads(re.search(r'class="rm-data">(.*?)</script>', doc, re.S)[1]
+                      .replace("<\\/", "</"))
+    parts = data["tests"]["t1"]["parts"]
+    assert parts[1]["preview"] == "When('I book a visit', async function () {"
+
+    index = json.loads(re.search(r'id="xref-index">(.*?)</script>', doc, re.S)[1]
+                       .replace("<\\/", "</"))
+    assert index["vscode://file//r/glue.ts:20:1"]["face"] == \
+        "When('I book a visit', async function () {"
+
+
 def test_one_window_quoted_twice_keeps_one_id():
     """Two tests can walk through the same helper. Two ids for one range would leave one of
     them naming an element the page never renders."""

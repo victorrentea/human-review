@@ -1,0 +1,327 @@
+/* Green, and the same green the run glyph wears further down: on this page it is the one
+   colour that means "something can happen here" rather than "a check passed". */
+.chip-served { color:#2e7d32; border-color:#2e7d32; }
+@media (prefers-color-scheme:dark) {
+  .chip-served { color:#6bd48a; border-color:#3f7f52; } }
+/* Rerun: re-derive what a program can re-derive and rebuild the page. A chip like its
+   neighbour rather than a call to action, because it is furniture of the served copy and
+   not a verdict about the branch — and shaped like the mode badge beside it so the two
+   read as one pair of facts about *this copy of the page*, not as a control competing
+   with the score. Emitted hidden; the probe raises it. */
+button.chip-rerun { font:inherit; cursor:pointer; }
+button.chip-rerun:hover:not(:disabled) { border-color:var(--link); background:var(--accent-soft); }
+button.chip-rerun:disabled { cursor:progress; color:var(--muted); }
+/* The chip's face is its glyph, so the glyph is what turns: a borrowed ring drawn beside
+   it would be a second circular mark saying the same thing, and a word in its place would
+   reflow the masthead the instant the button is pressed. `.rr-ico` is the run mark alone,
+   so the robot and the banknote on the paid chip stay still while it spins.
+
+   Set larger than the type around it and given a line box of its own: `↻` is one thin
+   stroke, and at the chip's .82rem it reads as punctuation rather than as a control. The
+   `line-height:1` is what lets it grow without the pill growing with it — the three pills
+   on that row share one height, and a glyph that pushed its own line box open would be the
+   one that broke it. */
+.rr-ico { display:inline-block; font-size:1.3em; line-height:1; vertical-align:-.12em; }
+/* The `+` that makes the paid chip readable as an equation rather than a row of marks.
+   Dimmed and set small: it is the joint between the two halves, not a third thing in the
+   label, and at full weight it competed with the marks it is there to separate. */
+.rr-plus { margin:0 .22em; opacity:.6; font-size:.9em; }
+button.chip-rerun.running .rr-ico { animation:hrspin .7s linear infinite; }
+@media (prefers-reduced-motion:reduce) {
+  button.chip-rerun.running .rr-ico { animation:none; } }
+/* The paid one, beside the free one. Amber and not red: red on this page means a failure
+   or a regression, and a control that is merely expensive is not either of those — it is
+   the page's one "are you sure", and amber is what every other "look before you press"
+   mark here already uses. Dashed, so the pair reads as one control with two prices rather
+   than as two unrelated chips: the dash is the only thing that survives being glanced at. */
+button.chip-rerun-ai { border-style:dashed; border-color:var(--drift); color:var(--drift); }
+button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
+            background:rgba(181,115,10,.09); color:var(--fg); }
+/* The page's own confirmation, over the page. Fixed and full-viewport because the click it
+   guards costs money and a panel the reader can scroll away from is a panel they can
+   answer by accident. */
+.hrconfirm { position:fixed; inset:0; z-index:60; display:flex; align-items:center;
+            justify-content:center; padding:1.2rem; background:rgba(12,12,14,.62); }
+.hrconfirm[hidden] { display:none; }
+.hrconfirm-box { max-width:34rem; background:var(--card); color:var(--fg);
+            border:1px solid var(--drift); border-radius:12px; padding:1rem 1.15rem;
+            box-shadow:0 18px 50px rgba(0,0,0,.42); }
+.hrconfirm-t { margin:0 0 .5rem; font-size:1rem; }
+.hrconfirm-t b { color:var(--drift); }
+.hrconfirm-b { margin:.45rem 0 0; font-size:.88rem; line-height:1.65; color:var(--fg); }
+.hrconfirm-alt { color:var(--muted); }
+.hrconfirm-b code { font-size:.92em; }
+.hrconfirm-row { display:flex; gap:.6rem; justify-content:flex-end; margin-top:.9rem; }
+.hrconfirm-row button { font:inherit; font-size:.86rem; cursor:pointer; border-radius:999px;
+            padding:.4rem .9rem; border:1px solid var(--line); background:var(--code-bg);
+            color:var(--fg); }
+/* Cancel is the one with focus when the panel opens, so it is the one that has to look
+   like the default — the spend is the deliberate answer and is dressed as the exception. */
+.hrconfirm-no { font-weight:600; }
+.hrconfirm-no:focus-visible { outline:2px solid var(--link); outline-offset:2px; }
+.hrconfirm-yes { border-color:var(--drift) !important; color:var(--drift) !important; }
+.hrconfirm-yes:hover { background:rgba(181,115,10,.12); }
+/* The good outcome, in the same place as the bad one, and quiet about it: one line, no
+   log, no dismiss. It is news about a press that is already over, so it goes away on its
+   own after a few seconds rather than sitting in the masthead for the rest of the read —
+   and it fades rather than vanishing, so a reader looking back at it sees it leaving
+   instead of wondering whether they imagined it. */
+.rerundone { margin:.8rem 0 0; border:1px solid var(--line); border-radius:8px;
+            background:var(--code-bg); padding:.45rem .8rem; font-size:.85rem;
+            color:var(--muted); display:flex; align-items:baseline; gap:.45rem;
+            transition:opacity .4s ease; }
+.rerundone[hidden] { display:none; }
+.rerundone.going { opacity:0; }
+.rerundone-ico { color:var(--ok,#2e7d32); }
+@media (prefers-color-scheme: dark) { .rerundone-ico { color:#8fd39c; } }
+/* Only ever on screen after a rebuild failed, which is why it may be a band at all: it
+   costs the normal read nothing, and the lines a producer printed on its way out are the
+   whole of the fix. Dismissible, because the reader is the one who decides it is read. */
+.rerunfail { margin:.8rem 0 0; border:1px solid #c62828; border-radius:8px;
+            background:rgba(198,40,40,.07); padding:.55rem .8rem; }
+.rerunfail-head { display:flex; align-items:baseline; gap:.5rem; font-size:.88rem;
+            color:#c62828; }
+@media (prefers-color-scheme: dark) {
+  .rerunfail-head { color:#f0757f; } }
+.rerunfail-x { margin-left:auto; background:none; border:0; color:var(--muted);
+            font:inherit; font-size:1rem; line-height:1; cursor:pointer; padding:0 .2rem; }
+.rerunfail-log { margin:.45rem 0 0; max-height:11rem; overflow:auto; white-space:pre-wrap;
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.78rem;
+            line-height:1.55; color:var(--fg); }
+.rerunfail-log:empty { display:none; }
+.rband .rb-act { display:inline-flex; align-items:center; gap:.3rem; }
+/* One control, not a pill with a mark parked next to it. The band used to draw a grey
+   `Regenerate the report` and a separate `↻` beside it — two elements, one action, and no
+   way for a reader who pressed one to know the other did the same thing. */
+.rband .rb-act .cmd-copy, .rband .rb-act .cmd-run { font-size:.82rem; font-weight:600;
+            padding:.26rem .8rem; }
+/* `Revert it` sits ON the row of the commit it reverts, so it stays on the line instead
+   of taking one: the .rb-actions row below is a block under the whole list, and a flex
+   row inside an <li> would push the subject off its own line. Quieter than the band's
+   own button, too — the row's subject is the commit, not the offer. */
+.rband li .rb-act { margin-left:.45rem; vertical-align:baseline; }
+.rband li .rb-act .cmd-copy, .rband li .rb-act .cmd-run { font-size:.74rem;
+            font-weight:600; padding:.1rem .5rem; }
+/* "Open it in draw.io": under the drawing, never on it. The invitation used to be
+   painted into the picture itself, which put a sentence about tooling on top of the map
+   and made the reader read it again on every look. In HTML it is a link — it looks like
+   one, the cursor says so, and it stays out of the diagram's way. */
+.dgm-open { margin:.35rem .6rem .1rem; font-size:.82rem; color:var(--fg); }
+.dgm-open a { color:var(--fg); font-weight:600; text-decoration:underline;
+              text-underline-offset:2px; }
+.dgm-open a:hover { text-decoration-thickness:2px; }
+/* What to do about the picture above. It sits under the diagram rather than in a README
+   because the reader who needs it is the reader who has just been told, inside the
+   picture, to go and re-lay the thing out by hand — and a rebuild step they have to go
+   and look up is a rebuild step that does not happen. A sentence, with the offers inside
+   it; the commands behind them are in their copy glyphs' hovers.
+
+   There used to be a fold here with three `&&`-joined stages in it, which were the longest
+   lines on this page by a factor of five, in a box the reader had to open, for the sake of
+   a paste. */
+.rerun { margin:.6rem .6rem .1rem; font-size:.78rem; color:var(--muted); line-height:1.6; }
+.rerun .dgm-open { margin:0; }
+/* ---------------------------------------------------------------------------------
+   The affordances of a command, beside the control that describes it. Two glyphs and
+   nothing else: the command itself is not printed anywhere on the page, because a
+   two-hundred-character absolute path in the middle of a sentence is a wall the eye has
+   to climb on every read, for the benefit of the one reader in ten who wants to paste it.
+   It is in the copy glyph's hover, which is where that reader looks.
+
+   One rule set, because there is one `command_html` and the point of it is that the
+   reader learns this once: the words of the action, then one mark — a clipboard where the
+   click copies the line, a play where it runs here. Never both, and never a mark standing
+   apart from the words it belongs to. */
+.cmd { display:inline-flex; align-items:center; gap:.2rem; vertical-align:baseline; }
+.cmd .cmd-copy, .cmd .cmd-run { font:inherit; font-size:.92em; line-height:1.15;
+            cursor:pointer; color:var(--muted); background:var(--card);
+            border:1px solid var(--line); border-radius:999px; padding:.1rem .4rem;
+            text-decoration:none; font-weight:400; }
+.cmd .cmd-copy:hover, .cmd .cmd-run:hover { color:var(--fg); border-color:var(--muted);
+            background:var(--accent-soft); }
+/* The action accent — the colour everything pressable on this page already wears, as one
+   variable, so it is the same in both themes without a second rule.
+   It was green, and green here was two mistakes at once. Green on this page means a check
+   passed, so a report whose controls turn green when a server happens to be up reads as
+   the branch being fine. And the green mark was `↻`, which belongs to the masthead badge,
+   where it means "this page can rebuild itself" — on a row of actions it said *rerun* over
+   verbs like Start and Stop that are not reruns of anything. */
+.cmd .cmd-run { color:var(--accent); border-color:var(--accent);
+            font-size:1.1em; line-height:1; padding:.16rem .42rem; }
+/* Keeps its accent on hover: the rule above it turns a glyph grey-to-foreground, which on
+   this one would read as it going out. */
+.cmd .cmd-run:hover { color:var(--accent); border-color:var(--accent); }
+.cmd .cmd-run[disabled], .cmd .cmd-copy[disabled] { cursor:progress; }
+/* A glyph mid-run, without the glyph becoming a word: this is a pill one character wide
+   and "Running…" in it would reflow the line it sits in. */
+.cmd .cmd-run.running { animation:hrspin .9s linear infinite; }
+@media (prefers-reduced-motion:reduce) { .cmd .cmd-run.running { animation:none; } }
+/* The pair with a word on it — the Demo row's Start, Stop and Where. The glyph alone is
+   sized up to read as a mark; beside a word it is a letter among letters, so the button
+   goes back to the page's size and only the mark keeps its lift. And the spin moves to the
+   mark: turning the whole pill would turn the word with it. */
+.cmd .cmd-run.has-word { font-size:.92em; line-height:1.15; padding:.1rem .45rem; }
+.cmd .cmd-copy.has-word, .cmd .cmd-run.has-word { font-weight:500; }
+/* `inline-block` lives on the mark and never on the button: `.cmd-run` is hidden with the
+   `hidden` attribute, and a `display` in any rule that reaches it would beat the browser's
+   own `[hidden] { display:none }` and put a dead play glyph in every static copy. The mark
+   needs it because a rotation does nothing to an inline box. */
+.cmd .has-word .cmd-ico { font-size:1.1em; line-height:1; margin-left:.35rem;
+   display:inline-block; }
+.cmd .cmd-run.has-word.running { animation:none; }
+.cmd .cmd-run.has-word.running .cmd-ico { animation:hrspin .9s linear infinite; }
+@media (prefers-reduced-motion:reduce) {
+  .cmd .cmd-run.has-word.running .cmd-ico { animation:none; } }
+/* One kind of emphasis, one meaning. This line used to carry seven underlined runs of
+   text — `this diagram`, `App`, `Web`, `click here`, `undo your edits`, `start over` and
+   the fold's trigger — which read as a wall of links with no rank, so a reader could not
+   tell the two things that *do* something from the four that go somewhere. Underlining is
+   now for the actions, the actions are pills below the sentence, and everything inside the
+   sentence is a quiet link that underlines only under the pointer. */
+.rerun a, .rerun .offer .runhere {
+              cursor:pointer; font:inherit; color:var(--fg); font-weight:600;
+              background:none; border:0; padding:0; text-decoration:none; }
+.rerun a:hover, .rerun .offer .runhere:hover {
+              text-decoration:underline; text-underline-offset:2px; }
+/* The actions, on their own row under the sentence. Two of them, and each wears the pair
+   of glyphs every command on this page wears. */
+.rerun .rerun-acts { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .9rem;
+              margin:.45rem 0 0; }
+/* Was `margin-left:-.55rem`, pulling the mark back against the pill it belonged to. There
+   is nothing to pull it against now: the label and the mark are one button. */
+/* What the command is doing, while it is doing it — and nothing at all otherwise.
+   The `[hidden]` rule is not belt-and-braces: `display:flex` on a class beats the browser's
+   own `[hidden] { display:none }`, so without it this line is on screen in every copy of
+   the page, empty, under every diagram, for ever. It is the same trap the folded command
+   fell into before it was deleted, two rules up in this file's history. */
+.runstatus { margin:.45rem 0 0; font-size:.78rem; color:var(--muted); line-height:1.6;
+              display:flex; align-items:baseline; gap:.5rem; min-width:0; }
+.runstatus[hidden] { display:none; }
+.runstatus .rs-phase { flex:none; color:var(--fg); font-weight:600; }
+/* One line, clipped. A build prints two-hundred-character sentences about dropped diff
+   links, and a status line that reflows the page under the reader while they are waiting
+   for it is its own small chaos. */
+.runstatus .rs-tail { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;
+              white-space:nowrap;
+              font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.94em; }
+.runstatus .rs-tail:empty { display:none; }
+.runstatus::before { content:""; display:inline-block; width:.62em; height:.62em;
+              margin-right:.45rem; vertical-align:baseline; border:2px solid currentColor;
+              border-right-color:transparent; border-radius:50%;
+              animation:hrspin .7s linear infinite; }
+.runstatus.done { color:#2e7d32; }
+.runstatus.done::before { animation:none; border:0; content:"\2713"; width:auto;
+              height:auto; font-weight:700; }
+@media (prefers-reduced-motion:reduce) { .runstatus::before { animation:none; } }
+/* `reveal_html` is the one offer left with two renderings — the *subject* of the sentence
+   is the control ("this diagram"), and where nothing can run, two words are two words
+   again rather than a control explaining why it does not work. Every other offer under
+   this picture is one control in both copies; only the click differs. */
+.rerun .offer .runhere { display:none; }
+.rerun .offer.served .runhere { display:inline; }
+.rerun .offer.served .plainword { display:none; }
+/* The glyphs sit inside a sentence here, and the sentence is .78rem: a pill sized off the
+   text keeps the line height it already had. */
+.rerun .cmd { margin-left:.25rem; }
+#copy-toast { position:fixed; left:50%; bottom:1.4rem; transform:translateX(-50%) translateY(.6rem);
+              background:var(--fg); color:var(--card); border-radius:999px; z-index:60;
+              padding:.45rem .9rem; font-size:.8rem; opacity:0; pointer-events:none;
+              transition:opacity .16s, transform .16s; max-width:80vw; overflow:hidden;
+              text-overflow:ellipsis; white-space:nowrap; }
+#copy-toast.shown { opacity:1; transform:translateX(-50%) translateY(0); }
+.titlerow .chip-mode, .titlerow .chip-rerun, .titlerow .titlescore {
+            flex:0 0 auto; align-self:center;
+            padding:.15rem .7rem; border-radius:999px; border-width:1px;
+            border-style:solid; font-size:.82rem; line-height:1.6; }
+/* `[hidden]` is spelled out because the `display` these carry would otherwise beat the
+   attribute. */
+.titlerow .chip-mode[hidden], .titlerow .chip-rerun[hidden] { display:none; }
+@media (prefers-color-scheme:dark) {
+  .titlescore.v-good { color:#6fce93; } .titlescore.v-mid { color:#e0a44a; }
+  .titlescore.v-bad { color:#f0757f; } }
+/* The bar that turns a static page into a live one. It sits above the player rather
+    than inside .vidwrap, which is a two-column grid the video and the transcript own. */
+.appenv { border:1px solid var(--line); border-radius:var(--r); background:var(--card);
+    padding:.55rem .7rem; margin:0 0 .7rem; display:flex; flex-direction:column;
+    gap:.4rem; font-size:12.5px; }
+.appenv code { font:12px/1.6 ui-monospace,Menlo,monospace; background:var(--accent-soft);
+    border-radius:4px; padding:.15rem .4rem; user-select:all; }
+/* One line: the state, then the verbs that act on it. It used to be two — word buttons
+    that only worked served, and under them `START ↻  STOP ↻  WHERE ↻`, the same three
+    commands again as clipboards. Six controls for three offers, and the lower row wore the
+    *rerun* mark, so a served page still looked like it was handing out lines to paste
+    somewhere else. One control per verb now, and the click is what differs between the two
+    copies of the report. */
+.appenv .appenv-run { display:flex; flex-wrap:wrap; gap:.4rem .5rem; align-items:center; }
+.appenv .appenv-title { font-weight:600; margin-right:.2rem; }
+/* The state and the address sit where the row starts reading, not off at the far right:
+    there is at most one of them at a time, and it is the subject of the verbs after it. */
+.appenv .appenv-at { display:flex; gap:.35rem; align-items:center; min-width:0; }
+/* One verb. The wrapper is what APP_ENV_JS takes out of the row when the verb does not
+    apply; which of the two buttons inside it is showing is SERVER_JS's answer. The
+    `[hidden]` rule is not redundant with the UA sheet: `display` set here would beat it. */
+.appenv .appenv-act { display:inline-flex; align-items:center; }
+.appenv .appenv-act[hidden] { display:none; }
+/* Stop is the one verb in this row that takes something away, and it is the one control
+    here that is filled rather than outlined.
+
+    Outlining it in red was the first attempt and it did not survive being looked at: the
+    page's action accent is itself a deep red, so a red-outlined Stop sat beside a
+    red-outlined Start and a red-outlined Where and said nothing at all. Filled, the square
+    reads as a stop from across the room, which is the point — pressing it tears down a
+    stack that took a minute to come up.
+
+    Only the play half. The clipboard half copies a line and destroys nothing, so it keeps
+    the neutral pill every other command on the page wears. */
+.appenv .appenv-stop .cmd-run, .appenv .appenv-stop .cmd-run:hover {
+    color:#fff; background:#c62828; border-color:#c62828; }
+@media (prefers-color-scheme: dark) {
+  .appenv .appenv-stop .cmd-run, .appenv .appenv-stop .cmd-run:hover {
+    color:#fff; background:#a3342c; border-color:#a3342c; } }
+.appenv button { font:inherit; cursor:pointer; border:1px solid var(--line); border-radius:4px;
+    background:var(--bg); color:var(--fg); padding:.2rem .55rem; white-space:nowrap; }
+.appenv button:hover { background:var(--accent-soft); }
+/* The address *is* the link — one thing to read and one thing to click, carrying the
+    port this instance happened to get. Shown only while something answers there. */
+.appenv .appenv-url { font:12px/1.6 ui-monospace,Menlo,monospace; color:var(--link);
+    text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.appenv .appenv-url:hover { text-decoration:underline; }
+/* Reset is the exception to the row's one-control-per-verb rule and the only thing in it
+    still hidden off disk. It is not a shell command — it is a POST the application
+    answers — so there is no line for anybody to paste and nothing for a clipboard to be
+    the honest form of. A button that always fails is worse than an absent one. */
+.appenv:not(.appenv-served) .appenv-reset { display:none; }
+/* Three states, and the page must never claim the third without having asked: unknown
+    until the probe answers, then live — where the address speaks for it and the pill
+    steps out of the way — or down, where "Offline" is the whole truth there is. */
+.appenv .appenv-state { font-weight:600; }
+.appenv .appenv-state[data-state="down"] { color:var(--muted); }
+/* "Starting…" can stand there for a whole docker build, and a line of text that never
+    moves is how a page says it has hung. The spinner is the row's only evidence that
+    something is still happening — the last line the command printed is in the tooltip,
+    which you have to know to go looking for.
+
+    A `::before` and not an element: the pill's text is written with textContent, which
+    would wipe any child out from under the script on the next status line. A ring drawn
+    in CSS and not a .gif: it inherits the pill's own colours, so it themes with the page
+    in dark mode, stays sharp on a retina screen, and keeps this report one file that
+    works off disk with no asset beside it.
+
+    Invisible for its first 300ms, because `unknown` is also the state of the probe on
+    every page load — a fetch that answers in milliseconds — and a spinner that flashes
+    once per load is the page twitching, not the page working. */
+@keyframes appenv-spin { to { transform:rotate(360deg); } }
+@keyframes appenv-reveal { to { opacity:1; } }
+.appenv .appenv-state[data-state="unknown"]::before {
+    content:""; display:inline-block; width:.8em; height:.8em; margin-right:.4em;
+    vertical-align:-.1em; box-sizing:border-box; border-radius:50%;
+    border:2px solid var(--line); border-top-color:var(--link); opacity:0;
+    animation:appenv-spin .7s linear infinite, appenv-reveal .12s linear .3s forwards; }
+/* Slowed rather than stopped: it is the only thing on the page saying the wait is not a
+    hang, and a still ring says the opposite of what it is there for. */
+@media (prefers-reduced-motion: reduce) {
+  .appenv .appenv-state[data-state="unknown"]::before { animation-duration:2.6s, .12s; }
+}
+/* A verb the row is mid-way through running: hidden a moment later by the same call that
+    disarms it, but greyed for the frame in between rather than flickering live. */
+.appenv button[aria-disabled="true"] { cursor:not-allowed; opacity:.45; }

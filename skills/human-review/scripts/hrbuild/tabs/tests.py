@@ -537,7 +537,7 @@ def ticket_head(ref: dict | None) -> str:
 
 
 #: The layout above, as the stylesheet that has to hold it. Emitted with the fragment
-#: rather than added to `page.css` on purpose: every rule here is scoped to `.reqmap` and
+#: rather than added to `css/tests.css` on purpose: every rule here is scoped to `.reqmap` and
 #: is meaningless — dead weight in every other tab's stylesheet — on a page built without
 #: the matrix. It lands after the model's own `<style>`, so equal specificity resolves the
 #: way it has to.

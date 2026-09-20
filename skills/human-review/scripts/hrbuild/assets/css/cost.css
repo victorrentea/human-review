@@ -1,0 +1,38 @@
+table.costtab { border-collapse:collapse; width:100%; font-size:.85rem; }
+table.costtab caption { caption-side:top; text-align:left; color:var(--muted);
+             font-size:.8rem; line-height:1.5; margin:0 0 .55rem; }
+table.costtab th { text-align:left; font:700 .68rem/1.7 inherit; letter-spacing:.09em;
+             text-transform:uppercase; color:var(--muted);
+             border-bottom:1px solid var(--line); padding:0 0 .2rem; }
+table.costtab td { padding:.24rem 0; border-bottom:1px solid var(--line); color:var(--fg); }
+table.costtab th + th, table.costtab td + td { text-align:right; padding-left:1.2rem;
+             font-variant-numeric:tabular-nums; white-space:nowrap; }
+table.costtab td:last-child { font-weight:600; }
+/* The bill's own tab, where the table is the panel rather than a drawer under a chip: it
+   gets the page's reading width and a size a reader can sit with, not the compressed
+   footnote a popover has to be. */
+.costledger { font-size:.95rem; max-width:64rem; }
+.costledger caption { font-size:.88rem; margin-bottom:.9rem; }
+/* The three acts — writing it, reviewing it, building this guide. A caption row rather
+   than three tables, because the whole point of the tab is comparing magnitudes ACROSS
+   them, and three tables means three column widths and nothing lines up. */
+table.costtab tr.costgroup td { padding:1.1rem 0 .3rem; border-bottom:0;
+             font:700 .68rem/1.7 inherit; letter-spacing:.09em; text-transform:uppercase;
+             color:var(--muted); }
+table.costtab tr.costgroup:first-child td { padding-top:.4rem; }
+/* What the row is measuring, under the row's own name. On its own line because these are
+   the caveats that keep the number honest — which window was costed, which command was
+   priced — and a reader scanning the money column should be able to skip them, not have
+   them wrapped into the label. */
+.costsub { display:block; color:var(--muted); font-size:.8rem; font-weight:400;
+             line-height:1.45; margin-top:.1rem; }
+.costsub code { font-size:.95em; }
+.costnote { color:var(--muted); font-weight:400; }
+/* A measured zero is an answer, not a gap — the tab was produced by a script, so it cost
+   nothing. Muted and folded onto one row so the answer is on the page without a wall of
+   zeros burying the three rows that carry the actual spend. */
+table.costtab tr.costquiet td, table.costtab tr.costquiet td:last-child {
+             color:var(--muted); font-weight:400; }
+table.costtab tfoot td { border-bottom:0; }
+table.costtab tfoot tr.costtotal td { border-top:1px solid var(--line);
+             padding-top:.35rem; font-weight:700; }

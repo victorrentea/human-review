@@ -263,10 +263,19 @@ def test_the_caption_spells_the_two_colours_out_in_words():
     assert f"caption <color:{ADD}>added</color> or <color:{DEL}><s>removed</s></color>" in _diff()
 
 
+def _plain_caption(out):
+    """The caption line with its creole stripped — the wording, without the paint."""
+    line = next(ln for ln in out.splitlines() if ln.startswith("caption"))
+    return re.sub(r"</?(?:back|color)[^>]*>", "", line)
+
+
 def test_the_caption_says_what_is_being_shown():
+    """One word per ring the focus level asked for, counting outwards — so the phrase that
+    names the scope is the same phrase that keys the colours, instead of a hop count in
+    prose followed by a swatch block saying the same three things again."""
     assert "the impacted elements only (6 of 9 shown)" in _focused("0")
-    assert "impacted + 1 neighbour" in _focused("1")
-    assert "impacted + 2 neighbours" in _focused("2")
+    assert "impacted + neighbours" in _plain_caption(_focused("1"))
+    assert "impacted + neighbours + neighbours" in _plain_caption(_focused("2"))
     assert "shown)" not in _diff()          # the whole diagram needs no qualifier
 
 
@@ -359,33 +368,58 @@ def test_the_caption_says_the_shading_means_distance():
     """A colour is only a legend once something says so in words — the same rule the two
     hues above it already answer to."""
     assert "shaded by distance from the change" in _diff()
-    assert "impacted + 1 neighbour, shaded by distance" in _focused("1")
+    assert "impacted + neighbours, shaded by distance" in _plain_caption(_focused("1"))
     assert "shaded" not in _focused("0")     # nothing but hop zero is on screen
 
 
-def test_the_caption_prints_the_ladder_as_swatches():
-    """Words alone cannot say which amber is which. The caption carries each rung as the
-    wash itself, labelled with the hop count it stands for, so the reader matches a box
-    to a rung by eye instead of by guessing which of three creams is "nearer"."""
-    out = _diff()
-    for tint, label in zip(m.RIPPLE, m.RIPPLE_LABELS):
-        assert f"<color:{tint}>{m.SWATCH}</color> {label}" in out, label
+def _washed(word_index, out):
+    """The `<back:…>` colour the caption's nth legend word wears, or None."""
+    line = next(ln for ln in out.splitlines() if ln.startswith("caption"))
+    spans = re.findall(r"<back:(#[0-9A-Fa-f]{6})>|(\bimpacted\b|\bneighbours\b)", line)
+    # Walk the caption, pairing each legend word with the wash opened just before it.
+    words, pending = [], None
+    for colour, word in spans:
+        if colour:
+            pending = colour
+        else:
+            words.append(pending)
+            pending = None
+    return words[word_index] if word_index < len(words) else None
 
 
-def test_the_swatch_is_coloured_text_and_not_a_creole_background():
-    """PlantUML compiles `<back:…>` into an SVG filter, and the page's dark mode rewrites
-    fills, not filters — the legend would have stayed in daylight amber while every box it
-    stands for went dark, with a near-white label on top of it."""
-    assert "<back:" not in _diff()
+def test_each_legend_word_wears_its_own_hop_colour():
+    """Words alone cannot say which amber is which, and two rings sharing the word
+    "neighbours" can only be told apart by the wash behind each. The nearer ring gets the
+    stronger wash, so the caption descends left to right exactly as the boxes do."""
+    out = _focused("2")
+    assert [_washed(i, out) for i in range(3)] == list(m.RIPPLE)
+    # ...and the second `neighbours` is weaker than the first, not merely different.
+    assert _washed(1, out) == m.RIPPLE[1] != _washed(2, out) == m.RIPPLE[2]
+    # One neighbours word per ring, and no leftover hop-count labels.
+    plain = _plain_caption(out)
+    assert plain.count("neighbours") == 2
+    assert "1 hop" not in plain and "2 hops" not in plain and "touched" not in plain
+
+
+def test_the_washed_words_carry_their_own_ink():
+    """A creole background compiles to an SVG *filter*, which the page's dark mode does
+    not rewrite — it rewrites fills. PlantUML's default black label would have been
+    rewritten, going near-white on a wash that stayed daylight cream. The legend names its
+    own ink, in a hex the themer does not know, so it stays dark under both themes."""
+    for out in (_diff(), _focused("2")):
+        assert f"<back:{m.RIPPLE[0]}><color:{m.LEGEND_INK}>impacted</color></back>" in out
+    # Black is the one ink the themer definitely rewrites; the diagram's own hues are the
+    # others it knows. The legend's ink must be none of them.
+    assert m.LEGEND_INK not in ("#000000", m.ADDED, m.REMOVED, *m.RIPPLE)
 
 
 def test_the_legend_lists_only_the_rungs_the_picture_still_has():
-    """A swatch for a ring the focus level pruned away promises a box the reader can hunt
-    for and never find."""
+    """A wash for a ring the focus level pruned away promises a box the reader can hunt
+    for and never find, so the third ring's cream never appears at focus 1."""
     out = _focused("1")
-    assert f"<color:{m.RIPPLE[1]}>{m.SWATCH}</color> {m.RIPPLE_LABELS[1]}" in out
+    assert f"<back:{m.RIPPLE[1]}><color:{m.LEGEND_INK}>neighbours</color></back>" in out
     assert m.RIPPLE[2] not in out
-    assert m.SWATCH not in _focused("0")     # one rung is not a ladder
+    assert "<back:" not in _focused("0")     # one rung is not a ladder
 
 
 def test_a_header_colour_carries_no_inner_hash():

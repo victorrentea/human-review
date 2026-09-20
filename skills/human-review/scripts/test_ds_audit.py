@@ -243,8 +243,11 @@ def test_what_was_let_past_is_shown_rather_than_left_to_trust():
 
 
 def test_an_empty_registry_is_not_a_clean_bill_of_health():
-    """No `data-ds` anywhere means no role is claimed, so nothing can be a gap — and the
-    page must say that rather than show a reassuring zero."""
+    """No `data-ds` anywhere means no role is claimed, so nothing can be a gap — an empty
+    registry must not read as a native control silently passing an audit. The "roles the
+    design system covers" list used to say so in prose on the page; the fragment no
+    longer shows the registry at all, but the JSON payload still carries it as `[]`,
+    and the finding itself still comes back `uncovered`, never `bare`."""
     reg = registry_of([control("bare", id="vetId")])
     assert reg["components"] == [] and reg["roles"] == []
     assert ds.audit_side(snap(control("bare", id="vetId")), reg, "new")[0]["verdict"] \
@@ -253,7 +256,9 @@ def test_an_empty_registry_is_not_a_clean_bill_of_health():
     result = _result_from_capture(registry=empty)
     assert result["summary"]["new"]["bare"] == 0
     frag = ds.render(result, "")
-    assert "not a clean bill of health" in frag
+    blob = re.search(r'<script type="application/json" class="ds-audit-data">(.*?)</script>',
+                     frag, re.S).group(1)
+    assert json.loads(blob.replace("<\\/", "</"))["registry"] == empty
 
 
 # ── the absence is the product ────────────────────────────────────────────────────
@@ -688,11 +693,14 @@ def _untouched(screen):
 
 
 def test_a_screen_the_branch_moved_is_the_one_drawn():
+    """Every screen row folds shut on load, the way the Sequence tab's own rows do — a
+    run audits the whole catalogue, and the summary line (icon, name, verdict) is the
+    only thing that has to be read before deciding which ones to open."""
     result = _both_screens()
     assert [ds.screen_touched(sc) for sc in result["screens"]] == [True, True]
     frag = ds.render(result, "")
-    assert frag.count('<details class="dsa-screen" open>') == 2
-    assert 'dsa-untouched' not in frag
+    assert frag.count('<details class="dsa-screen" id="dsa-') == 2
+    assert " open>" not in frag, "collapsed by default, like the Sequence tab's rows"
     assert "2 of 2 screens changed" in frag
     assert "in place" not in frag
 
@@ -708,41 +716,38 @@ def test_a_component_the_branch_added_is_said_to_be_added():
 
 def test_a_changed_screen_with_nothing_to_judge_says_so_and_folds():
     """A list that grew a column: the DOM changed, so the screen is on the page, but no
-    control on it is in a role the design system covers. `0 gaps · 0 components` read as
-    a verdict; the heading now says there is none, and the pictures fold closed."""
+    control on it is in a role the design system covers — no gap, so the same clean
+    verdict a screen with every control migrated gets. `0 gaps · 0 components` used to
+    read as a verdict of its own; now there is exactly one clean verdict, and this screen
+    gets it same as any other, folded shut like every row."""
     reg, screen = _screen_from_capture()
     sc = copy.deepcopy(screen)
     sc["summary"]["new"] = dict(sc["summary"]["new"], bare=0, ds=0)
     sc["summary"]["old"] = dict(sc["summary"]["old"], bare=0, ds=0)
     sc["summary"]["regressions"] = []
     sc["delta"]["dom"]["added"] = ["x"] * 3
-    dom = sc["delta"]["dom"]
-    n = sum(len(dom[k]) for k in ("added", "removed", "changed"))
     assert ds.screen_has_nothing_to_judge(sc)
     frag = ds.render(ds.build_result([sc], reg), "")
-    head = frag[frag.index('<h3 id="dsa-'):]
-    head = head[:head.index("<details")]
-    assert f"changed · {n} elements · no control the design system covers" in head
-    assert "0 gaps" not in head
-    assert '<details class="dsa-screen">' in frag and "<summary>pictures</summary>" in frag
+    row = frag[frag.index('<details class="dsa-screen"'):]
+    summary = row[:row.index("</summary>")]
+    assert " open>" not in row.split("</summary>", 1)[0]
+    assert "✅" in summary and "⚠" not in summary
+    assert "all controls from the design system" in summary
+    assert "elements" not in summary and "no control the design system covers" not in summary
+    assert "0 gaps" not in summary
 
 
 def test_a_screen_nothing_happened_on_is_named_and_not_drawn():
     """Every screen of the app is audited, and one was touched: the others would be three
-    full-page screenshots each of a picture that did not change. They are named in one
-    line under the verdict — so a reader who wonders why "Edit a pet" is missing gets the
-    answer — and get no viewer at all. The gaps already on them still count."""
+    full-page screenshots each of a picture that did not change, so they get no row and
+    no viewer at all. The roll-up count above still says how many of the catalogue
+    changed — the per-screen listing of the ones that did not is gone."""
     reg, screen = _screen_from_capture()
     sc = _untouched(screen)
     assert ds.screen_touched(sc) is False
     frag = ds.render(ds.build_result([sc], reg), "")
     assert 'class="dsa-screen"' not in frag
     assert "0 of 1 screens changed" in frag
-    line = frag[frag.index('<details class="dsa-untouched">'):]
-    line = line[:line.index("</details>")]
-    assert "1 unchanged screen</summary>Book a visit" in line
-    if sc["summary"]["new"]["bare"]:
-        assert f'{sc["summary"]["new"]["bare"]} gap' in line and "already there" in line
 
 
 def test_a_changed_routed_component_no_screen_reaches_is_red_and_first():
@@ -771,17 +776,72 @@ def test_an_element_that_only_moved_does_not_reopen_the_screen():
 
 
 def test_a_drawn_screen_states_its_gaps_above_the_fold():
-    """Folding a screen may hide the pictures; hiding the count would be hiding a
-    finding. The heading stays above the fold."""
+    """Folding a screen hides the pictures; hiding the verdict would be hiding a finding.
+    The icon and the short verdict live in the `<summary>` itself, so they read before
+    anything is opened."""
     reg, screen = _screen_from_capture()
     frag = ds.render(ds.build_result([screen], reg), "")
-    head, _, _ = frag.partition('<details class="dsa-screen" open>')
-    assert "gap" in head and "component" in head
+    row = frag[frag.index('<details class="dsa-screen"'):]
+    summary = row[row.index("<summary>") : row.index("</summary>")]
+    assert "⚠" in summary
+    assert "component outside the design system" in summary
 
 
-def test_the_registry_is_stated_once_for_the_whole_run():
-    frag = ds.render(_both_screens(), "")
-    assert frag.count("roles the design system covers") == 1
+def test_the_route_rides_in_the_summary_next_to_the_name():
+    """`build_screen`'s `route` kwarg is the same catalogue value the screen's name came
+    from (`--screen NAME=PATH`, or the URL a `--new`/`--old` pair names). Parenthesised
+    right after the Title-Cased name, the way a route reads in the code that serves it."""
+    reg, screen = _screen_from_capture()
+    with_route = copy.deepcopy(screen)
+    with_route["route"] = "/pets/11/visits/add"
+    frag = ds.render(ds.build_result([with_route], reg), "")
+    row = frag[frag.index('<details class="dsa-screen"'):]
+    summary = row[row.index("<summary>") : row.index("</summary>")]
+    assert "Book A Visit" in summary
+    assert '<span class="dsa-route">(/pets/11/visits/add)</span>' in summary
+
+
+def test_an_unknown_route_omits_the_parenthesis():
+    """`--from-capture` and a bare `--new`/`--old` URL sometimes carry no path at all —
+    the screen still gets a row, just with nothing in parentheses after its name."""
+    reg, screen = _screen_from_capture()
+    assert screen["route"] is None
+    frag = ds.render(ds.build_result([screen], reg), "")
+    row = frag[frag.index('<details class="dsa-screen"'):]
+    summary = row[row.index("<summary>") : row.index("</summary>")]
+    assert "dsa-route" not in summary
+    assert "()" not in summary
+
+
+def test_build_screen_carries_the_route_it_was_given():
+    reg, screen = _screen_from_capture()
+    new_snap = json.loads((CAPTURE / "book-a-visit.new.dom.json").read_text())
+    old_snap = json.loads((CAPTURE / "book-a-visit.old.dom.json").read_text())
+    dom = ds.dom_delta(old_snap, new_snap)
+    elements, _ = ds.combine(old_snap, new_snap, dom, CAPTURE / "book-a-visit.old.png",
+                             CAPTURE / "book-a-visit.new.png", 0.1)
+    sc = ds.build_screen(SCREEN, old_snap, new_snap, reg, sides_meta=screen["sides"],
+                         delta={"dom": dom, "elements": elements}, route="/pets/11/visits/add")
+    assert sc["route"] == "/pets/11/visits/add"
+    # The default, when nobody passes one, stays `None` — not `""` — so `render_screen`'s
+    # `if route` reads it the same way a falsy route from `_route_of` does.
+    assert ds.build_screen(SCREEN, old_snap, new_snap, reg, sides_meta=screen["sides"],
+                           delta={"dom": dom, "elements": elements})["route"] is None
+
+
+def test_route_of_the_url():
+    assert ds._route_of("http://localhost:4300/pets/11/visits/add") == "/pets/11/visits/add"
+    assert ds._route_of("http://localhost:4300") == ""
+    assert ds._route_of("http://localhost:4300/") == ""
+
+
+def test_the_screen_name_reads_as_title_case_in_the_summary():
+    reg, screen = _screen_from_capture()
+    assert screen["screen"] == "Book a visit"
+    frag = ds.render(ds.build_result([screen], reg), "")
+    row = frag[frag.index('<details class="dsa-screen"'):]
+    summary = row[row.index("<summary>") : row.index("</summary>")]
+    assert "Book A Visit" in summary
 
 
 def test_a_capture_remembers_what_the_screens_were_called():

@@ -1,0 +1,66 @@
+/* The edge is --link, not --accent. --accent is this page's red, and red is spent
+   everywhere else on something being wrong — a removed line, a failing test, a level
+   nothing covers. A lede states what the tab found; stamping it with the same red made
+   every tab open on what read as a warning. Blue is the page's other structural colour
+   and carries no verdict. */
+.lede { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--link);
+        border-radius:6px; padding:.9rem 1.1rem; }
+/* A phrase that is short because the long version is one hover away. It has to *look*
+   hoverable or the short version is simply less information: dotted underline, the help
+   cursor, and the page's own link colour on hover — the same vocabulary `.srcref` uses,
+   without pretending to be a link, because nothing navigates. */
+.dfn { border-bottom:1px dotted currentColor; cursor:help; }
+.dfn:hover { color:var(--link); }
+/* The logging tab: no separate line for the level and no second coloured pill — the
+   `log.warn(` in the code above says the level, in the colour Pygments gives every other
+   call. What is left under the code is the verdict alone. The location used to be pinned
+   to this row's far right as the box's corner marker; it has gone up into the source bar
+   that heads every quoted block on this page, which is where a reader now looks for it on
+   all three tabs instead of only here. */
+.log-footer { display:flex; flex-wrap:wrap; align-items:baseline;
+              column-gap:.8rem; row-gap:.25rem; margin:.6rem 0 0; font-size:.85rem; }
+/* One bullet per value the statement interpolates, under the verdict that sums them up.
+   The name is the argument as the source writes it, so a three-value statement can be
+   scanned for *which* value is the problem instead of read as one fused sentence. */
+.log-values { margin:.35rem 0 0; padding-left:1.15rem; display:grid; gap:.22rem;
+              font-size:.82rem; color:var(--muted); }
+.log-values code { background:var(--code-bg); border-radius:4px; padding:.05rem .3rem;
+                    font-size:.9em; color:var(--fg); }
+.log-values .val-unresolved { color:#8a4b00; font-style:italic; }
+/* The model-failure message: no per-value answers exist to bullet, so its one line sits
+   where they would have. */
+.log-note { margin:.35rem 0 0; font-size:.82rem; color:#8a4b00; font-style:italic; }
+@media (prefers-color-scheme: dark) {
+  .log-values .val-unresolved { color:#f0b558; }
+  .log-note { color:#f0b558; }
+}
+/* Where a logged value came from is shown as *code* now -- the origin lines pulled into
+   the same <pre>, with their real line numbers and a "N lines not shown" row across the
+   jump (`extract-snippet.py` renders both; the muting lives in its own stylesheet). The
+   list of hops that used to sit here, retyping those same lines as prose with a note
+   attached, is gone -- it said nothing the block above it does not now say itself. */
+/* The verdict's trace is spelled out right here, in the same row -- not a hover-only
+   tooltip, because it is the point of the mark. `.warn` is the loud "not evaluated"
+   state (the model could not be reached) -- never styled like DOUBT's muted amber, so
+   a reader cannot mistake "never asked" for "asked, and could not tell". */
+.privacy-verdict { color:var(--fg); }
+.privacy-verdict.added b { color:#2e7d32; }
+.privacy-verdict.removed { color:#8a1c1c; }
+.privacy-verdict.removed b { color:#c62828; }
+.privacy-verdict.warn { color:#8a4b00; font-weight:700; }
+@media (prefers-color-scheme: dark) {
+  .privacy-verdict.added b { color:#8fd39c; }
+  .privacy-verdict.removed { color:#f2a0a0; }
+  .privacy-verdict.removed b { color:#f08a8a; }
+  .privacy-verdict.warn { color:#f0b558; }
+}
+/* Where a verdict was reached by asking a model, the mark says so on the verdict itself
+   -- one glyph, hover for the words. A page that mixes measured facts with inferred ones
+   and marks neither leaves the reader to guess which is which. */
+.ai-mark { font-size:.62em; vertical-align:super; margin-left:.28em; cursor:help;
+           text-decoration:none; }
+.privacy-legend { margin:1rem 0 0; }
+.privacy-legend-title { margin:0 0 .35rem; font-weight:700; font-size:.85rem; }
+.privacy-legend-note { margin:0 0 .5rem; color:var(--muted); font-size:.78rem; line-height:1.6; }
+.privacy-legend-list { list-style:none; margin:0; padding:0; display:grid; gap:.35rem;
+                        color:var(--muted); font-size:.8rem; line-height:1.6; }

@@ -1004,8 +1004,8 @@ def test_the_logging_tab_opens_on_one_computed_line_and_no_heading(tmp_path, mon
     assert "Logging added/updated" not in frag and "not by grepping" not in frag, \
         "title and body on the logging block are the renderer's now, not the author's"
     assert 'id="logging-added"' in frag, "the deep link the heading carried still lands"
-    assert "Found structurally searching for" in frag
-    assert ">common logging libraries</span>." in frag
+    assert "Uses of <span" in frag
+    assert ">common Java logging libraries</span>." in frag
     # The hover, and the fact that it is read rather than typed.
     assert "org.slf4j" in frag and "ch.qos.logback" in frag
     assert r"org\.slf4j" in build._logextract().RULES["log-import"]  # escaped there
@@ -1541,14 +1541,16 @@ def test_the_footer_offers_both_ways_to_reach_the_page_again(tmp_path):
     machine, at their own address, the way it is being demoed to them."""
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert "See this report <a" in foot
-    assert ">online</a> or " in foot
+    assert ">Browse it online</a> or " in foot
     assert ">run it locally</a>." in foot
+    assert "Then adapt it to your liking." in foot
     assert "https://victorrentea.github.io/human-review/" in foot
     assert "pkgs/container/human-review" in foot
     # Online first: free, instant, and the only one of the two a reader can act on from a
     # phone in the back of the room.
-    assert foot.index(">online</a>") < foot.index(">run it locally</a>")
+    assert foot.index(">Browse it online</a>") < foot.index(">run it locally</a>")
+    # The closing invitation reads after both links, not before them.
+    assert foot.index(">run it locally</a>") < foot.index("Then adapt it to your liking.")
     # The offer is about where the page *is*, not about file formats. `Download zip · or a
     # runnable docker of this report` named two packagings, which answers a question the
     # reader has not asked yet.
@@ -1574,7 +1576,7 @@ def test_the_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
     spec = {k: v for k, v in BARE.items() if k != "footer"}
     page, _ = _build(tmp_path, spec)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert ">online</a>" in foot and ">run it locally</a>" in foot
+    assert ">Browse it online</a>" in foot and ">run it locally</a>" in foot
 
 
 def test_the_show_all_button_says_what_it_does_next(tmp_path):
@@ -1740,6 +1742,20 @@ def test_the_footer_mention_becomes_the_public_repo_url():
     assert 'href="https://github.com/victorrentea/human-review"' in out
 
 
+# "Built by" became "Report built by" so the footer's first sentence matches the offer's
+# framing ("Report built by … Browse it online or run it locally."). Rewritten in
+# `_link_home` so every page rebuilt from an existing content file picks up the new
+# wording, and written to be idempotent so a content file already carrying the new
+# wording (an older build's output re-used as one) is not doubled.
+def test_built_by_becomes_report_built_by():
+    out = build._link_home("Built by /human-review on 2 Sep 2026.")
+    assert out.startswith("Report built by")
+
+    out = build._link_home("Report built by /human-review on 2 Sep 2026.")
+    assert out.startswith("Report built by")
+    assert not out.startswith("Report Report built by")
+
+
 # ── the page does not editorialise about its own honesty ─────────────────────────
 # The sentence was true and it was still the first thing a reviewer read. Stripped
 # in the builder, not only in the writing guidance, because content files outlive
@@ -1752,7 +1768,7 @@ def test_the_methodology_boilerplate_is_stripped_from_the_footer():
     )
     assert "working tree at build time" not in out
     assert "measured by the step" not in out
-    assert "Built by" in out
+    assert "Report built by" in out
 
 
 # The footer line is the address the page came from and the date it was built, and that is
@@ -1785,7 +1801,7 @@ def test_an_older_footer_that_carries_the_instruction_is_cleaned(tmp_path):
 def test_the_running_stack_phrase_is_dropped():
     out = build._link_home("Built by /human-review against the running stack on 2 Sep 2026.")
     assert "running stack" not in out
-    assert "Built by" in out and "on 2 Sep 2026." in out
+    assert "Report built by" in out and "on 2 Sep 2026." in out
 
 
 # The sentence is appended once, when there is one. Written against the constant and not
@@ -2719,16 +2735,22 @@ def test_the_review_chip_leads_with_what_is_left_to_do(tmp_path):
     Open first, because that is the work; auto-fixed second, because it is the fact a
     reader cannot get anywhere else without opening the tab.
 
-    Written as a sentence — `🤖Opus 5 review: 9 open, 3 auto-fixed` — rather than as a
+    Written as a sentence — `🤖Opus 5 review: 9 open, 3 fixed` — rather than as a
     label, a gap and a row of figures: the second shape is what a measurement looks like,
-    and this is a claim a model made about the diff."""
+    and this is a claim a model made about the diff.
+
+    `fixed`, not `auto-fixed`: how the fix arrived is a word for the hover, and the pill
+    needs the characters for the coder's half of the sentence."""
     page, _ = _build(tmp_path, dict(
         BARE, scope=[{"auto": "autofixed", "href": "#one"}],
         findings=[{"title": f"f{i}", "body": "<p>b</p>", "source": "/code-review"}
                   for i in range(9)],
         autofixes=[{"title": f"a{i}", "source": "/simplify"} for i in range(3)]))
-    assert '9 open, <span class="sub">3 auto-fixed</span>' in page, \
+    assert '9 open, <span class="sub">3 fixed</span>' in page, \
         "the half that needs nothing from the reader is greyed, not equal-weight"
+    assert "auto-fixed" not in page[page.index('<header class="masthead">'):
+                                    page.index("</header>")], \
+        "the long word stays on the counts line under the tab, which has room for it"
     assert "12 raised" in page, "the total is in the hover, not on the face"
     assert "9 by /code-review, 3 by /simplify" in page, \
         "the hover splits the total by the pass that raised each item"
@@ -2756,7 +2778,9 @@ def test_a_page_rebuilt_with_no_idea_who_reviewed_it_says_exactly_that_much(tmp_
         BARE, scope=[{"auto": "autofixed", "href": "#one"}],
         findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
         env=_sessionless_env())
-    assert "LLM review" in page
+    assert "\U0001f916Review:" in page, \
+        "the robot already says a model did it; `LLM` was three letters saying it again"
+    assert "LLM review" not in page
     # Scoped to the masthead on purpose. The claim is about the chip's own words, and
     # the page inlines `server.js` verbatim — prose about what is "running on this
     # server" is a different sentence in a different place, and a whole-page search
@@ -3860,12 +3884,12 @@ def test_a_pair_also_says_what_wrote_the_test(tmp_path):
     a reader no way to tell which was which — though only one of them is written in a
     language a non-programmer reads. The runner qualifies the kind inside the same pill."""
     assert ">UI · Gherkin<" in build._cat_chip("e2e", "petclinic-test/src/book.feature")
-    assert ">UI · Playwright<" in build._cat_chip("e2e", "petclinic-test/src/add.spec.ts")
+    assert ">UI · TypeScript<" in build._cat_chip("e2e", "petclinic-test/src/add.spec.ts")
     assert ">API · JUnit<" in build._cat_chip("api", "src/test/java/AddVisitApiTest.java")
     # Unlike the kind, this IS the file: no diagram is consulted, and none is needed.
     assert build._pair_runner("a/b.feature") == ("Gherkin", "a Cucumber scenario")
     # Longest suffix first, or a Playwright spec would answer to a bare `.ts` rule.
-    assert build._pair_runner("a/b.spec.ts")[0] == "Playwright"
+    assert build._pair_runner("a/b.spec.ts")[0] == "TypeScript"
     # An extension this has never heard of leaves the chip exactly as it was.
     assert build._cat_chip("e2e", "a/b.rb") == build._cat_chip("e2e")
     assert ">UI<" in build._cat_chip("e2e", "a/b.rb")
@@ -4399,26 +4423,62 @@ def test_the_piles_are_named_for_what_they_are_in_each_mode(tmp_path):
 
 def test_the_scope_chip_says_the_same_thing_as_the_counts_line(tmp_path):
     """Two numbers over one review, in two places on the same screen. `3 fixed · 6
-    declined` beside `6 open, 3 auto-fixed` used to ask the reader which of them to
+    declined` beside `6 open, 3 fixed` used to ask the reader which of them to
     believe; both now read `pile_numbers`, so a mismatch cannot recur."""
     src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
     assert '"value": scope_chip_value(spec)' in src
     spec = {"findings": [{"title": f"f{i}"} for i in range(6)],
             "autofixes": [{"title": f"a{i}"} for i in range(3)],
             "assumptions": [{"title": f"s{i}"} for i in range(7)]}
-    # PR #49's own numbers — the boundary case `SCOPE_CHIP_MAX_LEN` was picked against:
-    # three numbers do not fit, so the chip stays at the two the reader can act on.
+    # PR #49's own numbers, which the old width cut used to drop the third of. The
+    # assumptions are not an extra on the review's sentence any more — they are a second
+    # sentence, by the agent that wrote the code, and it is never traded away for room.
     assert build.scope_chip_value(spec) == \
-        '6 open, <span class="sub">3 auto-fixed</span>'
+        '6 open, <span class="sub">3 fixed; \U0001f916coder: 7 assumptions</span>'
     small = {"findings": [{"title": "f"}], "autofixes": [{"title": "a"}],
              "assumptions": [{"title": "s"}]}
     assert build.scope_chip_value(small) == \
-        '1 open, <span class="sub">1 auto-fixed, 1 assumption</span>'
+        '1 open, <span class="sub">1 fixed; \U0001f916coder: 1 assumption</span>'
     build.reset_list()
     lede = build.opening_lede(dict(spec, tabs=[{"id": "review", "label": "R", "blocks": [
         {"type": "findings"}, {"type": "autofixes"}, {"type": "assumptions", "mode": "A"}]}]))
     assert "6 open LLM review issues" in lede and "3 auto-fixed" in lede
     assert lede.index("open") < lede.index("auto-fixed")
+
+
+def test_the_chip_carries_the_coders_assumptions_as_its_own_sentence(tmp_path):
+    """`; 🤖coder: 7 assumptions` — a second claim, by a second agent. The reviewer's half
+    is about the diff; this half is about what the agent that wrote the diff had to guess
+    at, which is the one thing on this page no later pass can reconstruct. Its own robot,
+    because the page's robot means "a model produced this" and the producer here is not
+    the reviewer.
+
+    Absent, not zeroed, when nothing was assumed: a chip that prints `0 assumptions`
+    asserts an agent that guessed at nothing, which is not what an empty pile means."""
+    page, _ = _build(tmp_path, dict(
+        BARE, scope=[{"auto": "autofixed", "href": "#one", "by": "Opus 5"}],
+        findings=[{"title": f"f{i}", "body": "<p>b</p>", "source": "/code-review"}
+                  for i in range(6)],
+        autofixes=[{"title": f"a{i}", "source": "/simplify"} for i in range(3)],
+        # Seven anchored and one floating: the unanchored one is dropped before the
+        # masthead is built, and the chip has to count what survived, not what was
+        # written. A number on the masthead that the tab cannot show is a hand-typed
+        # number by another route.
+        assumptions=[_assumption(title=f"s{i}") for i in range(7)]
+        + [_assumption(title="floating", refs=[])]),
+        env=_sessionless_env())
+    assert '6 open, <span class="sub">3 fixed; \U0001f916coder: 7 assumptions</span>' in page
+    assert "7 assumptions the coding agent recorded while implementing" in page, \
+        "the hover says who recorded them and where they are; the pill has no room to"
+    # Singular, so the chip reads as a sentence rather than as a field with a value in it.
+    assert build.scope_chip_value({"findings": [], "autofixes": [],
+                                   "assumptions": [{"title": "s"}]}) == \
+        '0 open, <span class="sub">0 fixed; \U0001f916coder: 1 assumption</span>'
+    # And gone entirely at zero — no `; 🤖coder: 0 assumptions`.
+    assert build.scope_chip_value({"findings": [{"title": "f"}], "autofixes": []}) == \
+        '1 open, <span class="sub">0 fixed</span>'
+    assert "coder" not in build.scope_chip_value(
+        {"findings": [{"title": "f"}], "autofixes": [], "assumptions": []})
 
 
 def test_the_counts_line_is_printed_once_even_when_every_pile_is_empty(tmp_path):
@@ -4439,10 +4499,9 @@ def test_the_counts_line_is_printed_once_even_when_every_pile_is_empty(tmp_path)
 
 
 def test_the_review_chip_drops_itself_when_nothing_records_a_review(tmp_path):
-    """`🤖 LLM review: 0 open, 0 auto-fixed` is the whole failure this flow exists to end,
-    in eleven characters: two measured-looking zeros asserting a review that found nothing.
-    Every other computed chip drops itself rather than print a number it cannot stand
-    behind."""
+    """`🤖Review: 0 open, 0 fixed` is the whole failure this flow exists to end: two
+    measured-looking zeros asserting a review that found nothing. Every other computed
+    chip drops itself rather than print a number it cannot stand behind."""
     src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
     i = src.index('if c.get("auto") == "autofixed":')
     head = src[i:i + 900]

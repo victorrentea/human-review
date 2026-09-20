@@ -62,7 +62,7 @@ from hrbuild.shared.actions import (
     RERUN_ACTION, RERUN_AI_ACTION, write_actions
 )
 from hrbuild.shared.assets import (
-    APP_ENV_JS, CAPTION_JS, CSS, DGM_VIEWS_JS, EDITOR_JS, FOCUS_JS, FOOTER_CSS, FRAME_JS,
+    APP_ENV_JS, CAPTION_JS, CSS, CSS_FILES, DGM_VIEWS_JS, EDITOR_JS, FOCUS_JS, FOOTER_CSS, FRAME_JS,
     GENSEQ_JS, HSCROLL_JS, LATE_CSS, PAINT_HOLD_JS, PAINT_RELEASE_JS, RERUN_JS, SEQFOLD_JS,
     SEQLINK_JS, SERVER_JS, TABS_JS, TIP_JS, TRACE_JS, XREF_CSS, XREF_JS
 )
@@ -82,7 +82,8 @@ from hrbuild.shared.snippets import (
 from hrbuild.shared.svg import (
     CREOLE_IN_TITLE, CREOLE_LINK, DIAGRAM_COLOR_VARS, DIAGRAM_FILL_ATTR, DIAGRAM_STYLE_COLOR,
     ENTITY_BLOCK, ENTITY_SOLE_ANCHOR, ENTITY_TITLE_BAND, inline_svg, resolve_source_links,
-    SRC_HANDLE, SVG_TITLE, _plain_svg_title, _scope_entity_links, _theme_diagram_colors
+    SRC_HANDLE, SVG_TITLE, TEXT_LENGTH_ATTRS, _plain_svg_title, _scope_entity_links,
+    _theme_diagram_colors
 )
 from hrbuild.shared.genseq import (
     genseq_by_test, GENSEQ_CALL_TITLE, genseq_details, genseq_details_at_base,
@@ -463,56 +464,66 @@ def main(argv=None) -> int:
         chips.append(chip_html(c))
 
     for c in scope:
-        # The other chip that must never be typed. `{"auto": "autofixed"}` counts the two
-        # lists this page actually renders — the open findings and the applied fixes — so
-        # the chip and the LLM Review tab can never disagree with each other. The reason
-        # it exists is that they already did: the hand-typed `/code-review 8 findings`
-        # outlived the ninth finding being added, and nothing caught it, because nothing
-        # was looking. `href` (and any label or tip) still comes from the content file.
+        # The other chip that must never be typed. `{"auto": "autofixed"}` counts the
+        # lists this page actually renders — the open findings, the fixes already
+        # applied, and the assumptions the coding agent recorded — so the chip and the
+        # Review tab can never disagree with each other. The reason it exists is that they
+        # already did: the hand-typed `/code-review 8 findings` outlived the ninth finding
+        # being added, and nothing caught it, because nothing was looking. `href` (and any
+        # label or tip) still comes from the content file.
         if c.get("auto") == "autofixed":
-            # No record, no chip. `🤖 LLM review: 0 open, 0 auto-fixed` is the whole
-            # failure this flow exists to end, in eleven characters: two measured-looking
-            # zeros asserting a review that found nothing, where the truth is that nothing
-            # says a review happened. Every other computed chip drops itself rather than
-            # print a number it cannot stand behind; this one now does too.
+            # No record, no chip. `🤖Review: 0 open, 0 fixed` is the whole failure
+            # this flow exists to end: two measured-looking zeros asserting a review that
+            # found nothing, where the truth is that nothing says a review happened. Every
+            # other computed chip drops itself rather than print a number it cannot stand
+            # behind; this one now does too.
             if (spec.get("_reviewPoints") or {}).get("missing"):
                 continue
-            open_n, fixed, _ = pile_numbers(spec)
+            # Counted here, after the unanchored assumptions have been dropped from `spec`
+            # further up, so the chip promises exactly the pile the tab goes on to render.
+            # A chip counting items the reader then cannot find is the same lie as a
+            # hand-typed number, arrived at by a longer route.
+            open_n, fixed, assumed = pile_numbers(spec)
             total = open_n + fixed
-            # Who reviewed is half of what this chip says, and it used to sit in a
-            # second chip beside it (`reviewed by  Opus 5`) that nobody could check. The
-            # run knows: `review-cost.py` returns the models it spent money on, most
-            # expensive first. Two chips carrying one thought become one carrying it
-            # fully -- `Opus 5 review  9 open · 3 autofixed` -- and the name is now as
-            # measured as the numbers next to it. `by` in the content file is the fallback
-            # for a page rebuilt outside the session that reviewed it; "LLM review" is the
-            # last resort, and says exactly as much as it knows.
             paid = resolved_cost() or {}
             reviewer = next((m for m in paid.get("models") or [] if m and m != "synthetic"),
                             None) or c.get("by")
             computed = {
-                # A colon, not a gap. The pill reads as one sentence — `🤖 Fable 5 review:
-                # 6 open, 4 auto-fixed` — where before it was a label, a gap and a row of
-                # numbers, which is the shape of a measurement rather than of a statement.
-                # The robot is the page's own mark for "a model produced this", the same
-                # one the inferred headings wear, and it is what makes the chip legible as
-                # a claim by a machine rather than as another count of the diff.
-                "label": f"\U0001f916{reviewer} review:" if reviewer else "\U0001f916LLM review:",
-                # Both halves computed. The chip used to read `auto-fixed <n>`, and the
+                # A colon, not a gap. The pill reads as one sentence — `🤖Fable 5
+                # review: 6 open, 4 fixed` — where before it was a label, a gap and a row
+                # of numbers, which is the shape of a measurement rather than of a
+                # statement. The robot is the page's own mark for "a model produced this",
+                # the same one the inferred headings wear, and it is what makes the chip
+                # legible as a claim by a machine rather than as another count of the diff.
+                # With no name it is `🤖Review:`, not `🤖LLM review:`: the robot
+                # already says a model did it, so those three letters only took the room
+                # the chip's second sentence now needs.
+                "label": f"\U0001f916{reviewer} review:" if reviewer else "\U0001f916Review:",
+                # Every half computed. The chip used to read `auto-fixed <n>`, and the
                 # label did the lying the tooltip then had to walk back: only three of the
                 # twelve were fixed, and a reader who never hovers was told all twelve
-                # were. Neither number here can drift from the lists behind it.
+                # were. No number here can drift from the lists behind it.
                 #
                 # Open leads, and the total is gone from the face: `12 raised` is the sum
-                # of the other two, so it is the one number on the chip nobody acts on,
-                # while `3 autofixed` is the fact a reader cannot get anywhere else
-                # without opening the tab. The order is the order of the work — what is
-                # left to do first, what was already done for you second. The total is
-                # still one hover away.
-                # The applied half is greyed: it is on the page so the reader can check
-                # it, not so they can act on it, and at full contrast it competes with the
-                # number that IS the work. Grey is the page's own "already handled" —
-                # the same treatment the fixes themselves get in the list below.
+                # of the two numbers beside it, so it is the one nobody acts on, while
+                # `3 fixed` is the fact a reader cannot get anywhere else without opening
+                # the tab. The order is the order of the work — what is left to do first,
+                # what was already done for you second. The total is still one hover away.
+                # `fixed`, not `auto-fixed`: how a fix arrived is the tooltip's business,
+                # and the counts line under the tab's header keeps the longer word because
+                # it has the width for it. The applied half is greyed: it is on the page so
+                # the reader can check it, not so they can act on it, and at full contrast
+                # it competes with the number that IS the work. Grey is the page's own
+                # "already handled" — the same treatment the fixes get in the list below.
+                #
+                # Then a second sentence, `; 🤖coder: 7 assumptions`, about a different
+                # agent: the one that wrote the code, recording what it had to guess at
+                # while writing it. It rides on this chip rather than on one of its own
+                # because it answers the other half of "what did the machines do to this
+                # branch", and because the masthead is a row, not a list. With nothing
+                # assumed the clause is absent rather than zeroed — the rule the whole
+                # chip lives by.
+                #
                 # One vocabulary now, not two. Read off `review-points.md` this used to
                 # swap to `fixed, … declined`, which described the same review as the
                 # counts line under the header in different words one scroll away — a
@@ -527,11 +538,18 @@ def main(argv=None) -> int:
                 # off each item's own `source`, so the breakdown cannot disagree with the
                 # stamps in the list below it.
                 #
+                # The coder's half gets the sentence the pill has no room for: who recorded
+                # those assumptions, when, and where to go and read them. The face says
+                # `🤖coder` and trusts the hover to unpack it.
+                #
                 # What is not here any more: `running on <model>`. The chip's own face
                 # reads `Opus 5 review` — a hover restating the word next to it is a hover
                 # that taught the reader not to bother with the next one.
                 "tip": _raised_by(spec.get("findings", []) + spec.get("autofixes", []),
-                                  total),
+                                  total)
+                + (f'. {assumed} assumption{"" if assumed == 1 else "s"} the coding agent '
+                   "recorded while implementing — listed under the Review tab"
+                   if assumed else ""),
             }
             c = {**computed, **{k: v for k, v in c.items() if k != "auto"}}
         # A chip that has to be kept up to date by hand is a chip that will be wrong. The

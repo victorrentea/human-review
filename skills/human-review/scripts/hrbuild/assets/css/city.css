@@ -1,0 +1,5 @@
+/* Under its heading, with a heading's worth of air — the same gap every other section on
+   this page leaves between its title and what it is the title of. */
+.city { display:block; border:1px solid var(--line); border-radius:8px; overflow:hidden;
+        margin:.55rem 0 1rem; }
+.city img { display:block; width:100%; height:auto; }

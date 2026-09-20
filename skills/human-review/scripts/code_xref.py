@@ -30,10 +30,27 @@ is what only a browser can do — fold, unfold, scroll and flash.
 """
 from __future__ import annotations
 
+import functools
 import html as _html
 import json
 import re
 from pathlib import Path
+
+
+@functools.lru_cache(maxsize=1)
+def _extract_module():
+    """`extract-snippet.py` is hyphenated, so it is not importable by name.
+
+    Same load-by-path this file's sibling modules already use for it (see
+    `hrbuild/shared/snippets.py:_extract_module`) — this script sits beside it directly,
+    so the path is just `__file__`'s own directory rather than a constant carried in from
+    `hrbuild/shared/util.py`."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "extract_snippet", str(Path(__file__).resolve().parent / "extract-snippet.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 # --- reading one line of already-highlighted HTML -------------------------------------
 # Every quoted line on this page arrives as Pygments output: text broken into <span>s at
@@ -299,6 +316,11 @@ class Window:
         self.defs = defined_names(self.suffix, self.text)
         self.steps = defined_steps(self.suffix, self.text)
         self.linked_from_elsewhere = False
+        # The collapsed row's preview: the first line of *actual code* in the slice, not
+        # its literal first line — which for a window that opens on a doc comment or a
+        # blank line would fold to `/**` or nothing, saying nothing about which test this
+        # is. `preview_line` already walks past blanks and comments for exactly this job.
+        self.preview = _extract_module().preview_line(self.text)[:400]
 
 
 def _line_href(href: str, line: int) -> str:
@@ -307,21 +329,13 @@ def _line_href(href: str, line: int) -> str:
     return swapped if n else href
 
 
-def _face(text: list[str]) -> str:
-    """The one line a folded window shows: its first line of actual code.
-
-    A fold that says only `⋯` makes the reader open it to find out whether it was the one
-    they wanted. Its signature says that without unfolding anything.
-
-    Kept whole, not cut to fit. The stub sits in the empty half of a source bar and clips
-    with an ellipsis wherever that runs out, which is a width the browser knows and this
-    does not — and what is clipped is on the stub's own tooltip, so the line is never
-    somewhere the reader cannot get to it. The cap is only a bound on the index."""
-    for line in text:
-        stripped = line.strip()
-        if stripped:
-            return stripped[:400]
-    return ""
+# The one line a folded window shows — its first line of *actual* code, skipping blanks
+# and comments — is `Window.preview`, computed once at construction time by
+# `preview_line()`. Kept whole there, not cut to fit: the stub sits in the empty half of a
+# source bar and clips with an ellipsis wherever that runs out, which is a width the
+# browser knows and this does not — and what is clipped is on the stub's own tooltip, so
+# the line is never somewhere the reader cannot get to it. The `[:400]` cap on `.preview`
+# is only a bound on the index.
 
 
 def _collect_figures(doc: str) -> tuple[list[tuple], list[Window]]:
@@ -482,9 +496,9 @@ def cross_link(doc: str) -> str:
     index = {}
     for w in part_windows:
         if w.linked_from_elsewhere and w.part_index > 0:
-            index[w.href] = {"id": w.wid, "shut": True, "face": _face(w.text)}
+            index[w.href] = {"id": w.wid, "shut": True, "face": w.preview}
         else:
-            index.setdefault(w.href, {"id": w.wid, "shut": False, "face": _face(w.text)})
+            index.setdefault(w.href, {"id": w.wid, "shut": False, "face": w.preview})
 
     # --- write both sides back ---------------------------------------------------------
     # As one list of splices applied from the end of the document forwards: the two kinds
@@ -507,6 +521,7 @@ def cross_link(doc: str) -> str:
     for m, data, mine in parts:
         for part, w in mine:
             part["html"] = w.code
+            part["preview"] = w.preview
         # `</script>` inside a JSON string would end the block that holds it; nothing here
         # writes one, and escaping the slash costs nothing to be sure of that.
         splices.append((m.start(), m.end(),

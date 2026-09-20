@@ -1,0 +1,177 @@
+:root {
+  /* The one declaration that tells the browser this page has two skins, so everything it
+     paints itself follows them: scrollbars first of all. Without it a code block that
+     scrolls sideways on a dark page gets the light grey bar Chrome paints by default —
+     a white stripe across the middle of a dark card, which reads as a rendering fault
+     rather than as a control. Form controls and the caret come along for free. */
+  color-scheme: light dark;
+  --bg:#fbfbfd; --fg:#1c1c22; --muted:#6b6b78; --line:#e2e2ea; --card:#ffffff;
+  --accent:#8a1c1c; --accent-soft:#fdeaea; --code-bg:#f6f6fa; --link:#1a4fa0;
+  --drift:#b5730a; --drift-fg:#ffffff;
+  /* PlantUML's own fixed palette, named — not reused from --bg/--fg/etc above, because
+     those are tuned for prose and would visibly change every diagram's light-mode look.
+     Each one equals exactly what PlantUML already emits, so light mode is pixel-identical
+     to an unthemed render; only the dark block below diverges. `inline_svg`
+     (`_theme_diagram_colors`) rewrites the SVG's own fill/stroke/background literals to
+     `var(--dgm-*)` at inline time — the .puml sources stay generator output, undecorated,
+     since driving this from PlantUML's own `!theme`/`skinparam` would mean regenerating
+     every diagram (out of reach here) rather than restyling the one already rendered. */
+  --dgm-bg:#ffffff; --dgm-box:#f1f1f1; --dgm-frame:#eeeeee; --dgm-legend:#dddddd;
+  --dgm-line:#181818; --dgm-fg:#000000; --dgm-icon:#add1b2; --dgm-activation:#e2e2f0;
+  --dgm-muted:#888888; --dgm-link:#1a4fa0;
+  /* PlantUML's default palette is not the only one on the page: a hand-authored
+     .puml may carry its own `<style>` block, and packages.puml does — Material
+     blue-grey, chosen so the architecture diagram reads as a diagram of *layers*
+     rather than of classes. Those three literals get variables of their own for
+     the same reason as the twelve above, and for one more: the text inside those
+     boxes is plain #000000, so it follows --dgm-fg into near-white in dark mode.
+     A fill left un-themed there is not merely off-palette, it is the box that
+     swallows its own label. */
+  --dgm-box-accent:#eceff1; --dgm-line-accent:#546e7a; --dgm-arrow-accent:#78909c;
+  /* The diff renderers' two hues — both puml_diff.py and seq_puml_diff.py paint an
+     addition ADDED and a removal REMOVED, one palette across both deltas. They equal the
+     page's own `.added`/`.removed` pair on purpose: a diagram and a code hunk on the same
+     page must not mean different things by the same green. Kept as their own variables
+     rather than folded into --accent because they mark a direction, not emphasis, and
+     must stay legible against whichever diagram surface they are drawn on. The two
+     tints are what a sequence delta fills a lifeline box or a note with — a full-strength
+     hue there is a slab that swallows the black label PlantUML draws on it. */
+  --dgm-diff-add:#2e7d32; --dgm-diff-del:#c62828;
+  --dgm-diff-add-bg:#eaf6ec; --dgm-diff-del-bg:#ffebeb;
+  /* The blast radius, one hop out to three, fading into PlantUML's own box grey past
+     that. Amber rather than a fourth and fifth green: the pair above marks a direction,
+     this marks a distance, and one hue cannot carry both without the ladder reading as
+     "slightly added". Nothing green or red is ever drawn on one — an element a ripple
+     tints is by definition one this change did not touch. All three sit *under* the
+     lightness of --dgm-box rather than over it, so the ladder descends into the far
+     field instead of overshooting it and coming back up as a paler-than-plain box. */
+  --dgm-ripple-1:#f2cf8e; --dgm-ripple-2:#f4dcb4; --dgm-ripple-3:#f2ebdb;
+  /* Which of the three pictures you are looking at, said by the frame around it rather
+     than by reading the buttons. Red is the delta's own removal red, taken by reference
+     so the border and the strokes inside it can never disagree; blue and green are the
+     page's link and "added" hues, which already mean "the current thing" and "the good
+     side" everywhere else on the page. */
+  --view-diff:var(--dgm-diff-del); --view-new:#1a4fa0; --view-old:#1f7a45;
+  /* The ink on a control whose whole background IS one of those hues — a pressed pill, a
+     filled badge. It is not always white, and that is the whole reason it is a token: the
+     dark palette lifts every one of those fills to a pastel so its BORDER can be seen on
+     a near-black page, and white on a pastel is 2.1–2.8:1. The ink flips instead, exactly
+     as --drift-fg already does for the amber. */
+  --on-fill:#ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#15151a; --fg:#e8e8ef; --muted:#9a9aa8; --line:#2c2c36; --card:#1d1d24;
+          --accent:#f08a8a; --accent-soft:#3a1f1f; --code-bg:#101015; --link:#8ab4f8;
+          --drift:#e0a33c; --drift-fg:#15151a;
+          /* PlantUML draws these as flat, fully-opaque shapes, so each is picked to read
+             the way its light counterpart does on white — not lifted from --bg/--card,
+             whose contrast ratios were tuned for text, not a diagram's fills and hairline
+             strokes. --dgm-icon is deliberately absent: the stereotype ellipse's pale
+             green already sits at ~9:1 against a dark box, better than it does on white,
+             so it is left un-overridden. Both diff hues lift to the page's own dark
+             added/removed pair: #2e7d32 and #c62828 sit near 4:1 against a near-black
+             canvas, under the 4.5:1 text minimum, where #8fd39c and #f08a8a clear it
+             comfortably and still read as green and red. Their two tints invert
+             outright — a pale wash behind a near-white label is the box that swallows
+             its own name — landing beside --accent-soft on the removal side. */
+          --dgm-bg:#1d1d24; --dgm-box:#26262e; --dgm-frame:#202028; --dgm-legend:#2c2c36;
+          --dgm-line:#8f8fa0; --dgm-fg:#e8e8ef; --dgm-activation:#2e2e42;
+          --dgm-muted:#9a9aa8; --dgm-link:#8ab4f8;
+          /* The blue-grey trio, kept blue-grey: the hue is what tells the
+             architecture diagram apart from the class diagrams beside it, so it
+             is preserved and only the lightness is flipped. The fill lands a
+             touch cooler than --dgm-box for exactly that reason, and reads at
+             ~11:1 against --dgm-fg; both strokes clear 3:1 on --dgm-bg. */
+          --dgm-box-accent:#29323a; --dgm-line-accent:#93a9b5;
+          --dgm-arrow-accent:#7f97a6;
+          --dgm-diff-add:#8fd39c; --dgm-diff-del:#f08a8a;
+          --dgm-diff-add-bg:#1f3329; --dgm-diff-del-bg:#3a1f1f;
+          /* The ripple inverts like the two tints above it and for the same reason: the
+             label inside a diagram box is #000000 -> --dgm-fg, near-white here, so a
+             wash that stayed pale is a box that reads as empty. The hue is kept amber
+             and only the lightness flips, so the ladder still descends *towards*
+             --dgm-box (#26262e) and the far field still looks like the far field. */
+          --dgm-ripple-1:#4a3a1e; --dgm-ripple-2:#3a3126; --dgm-ripple-3:#2e2b27;
+          /* --view-diff is not repeated: it is `var(--dgm-diff-del)`, so it follows the
+             line above on its own. These two are lifted to the same footing as the
+             page's dark link colour — #1a4fa0 and #1f7a45 are both under 3:1 on a
+             near-black ground, and a border nobody can see is not a signal. */
+          --view-new:#8ab4f8; --view-old:#6fce93;
+          /* Pressed Diff was white on #f08a8a (2.4:1), pressed New/Old white on #8ab4f8
+             (2.1:1) — and those are the SELECTED states, the ones on screen by default.
+             The page's own near-black reads at 7.5–9.5:1 on all three. */
+          --on-fill:#15151a; }
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+/* The masthead used to spend 276px before a word of the review: a 2.5rem gutter, a
+   1.9rem headline, then three separated rows (subtitle, chips, strip) each holding a
+   1.4-1.6rem cushion. Every one of those rows carries facts and stays; what goes is the
+   air between them. The rhythm is now one tight stack -- title, subtitle, chips, tabs --
+   read as a single masthead rather than four independent bands. */
+.wrap { max-width:1080px; margin:0 auto; padding:1.4rem 1.25rem 5rem; }
+h1 { font-size:1.5rem; margin:0 0 .15rem; letter-spacing:-.02em; }
+h2 { font-size:1.3rem; margin:2.8rem 0 .8rem; padding-bottom:.4rem; border-bottom:1px solid var(--line); }
+h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
+p { margin:.6rem 0; }
+a { color:var(--link); }
+.sub { color:var(--muted); margin:0 0 .55rem; font-size:.93rem; }
+/* The one `.sub` that is not an aside. Every other subtitle on the page repeats or
+   qualifies something the reader can already see, which is what earns them the muted
+   grey; this line is the only place the size of each pile is stated at all. Grey filed
+   the page's opening fact under "small print" — it reads at full text weight instead. */
+.sub.counts { color:var(--fg); }
+@keyframes hrspin { to { transform:rotate(360deg); } }
+/* The page's diff vocabulary, and the only three colours a signed number is allowed to
+   take: green added, red removed, yellow changed. The third joined the other two once
+   the scope bar started counting edited files beside `+` and `−` — a number left the
+   colour of the text beside two coloured ones reads as a different KIND of number, not
+   as the third member of a set. The pencil in front of it is a glyph, not a colour, and
+   the number behind it still needs to be the same yellow as everything else that
+   changed. */
+.added { color:#2e7d32; }
+.removed { color:#c62828; }
+.tgroup h3 { margin:0; font-size:.98rem; letter-spacing:.01em; }
+.tgroup h3 b { margin-left:.3rem; color:var(--muted);
+        font:700 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+        font-variant-numeric:tabular-nums; }
+.tgroup > p.sub { margin:.15rem 0 .3rem; }
+figure { margin:1rem 0; }
+figcaption { color:var(--muted); font-size:.86rem; }
+.badge { border-radius:4px; padding:.1rem .45rem; font-size:.74rem; font-weight:600; text-transform:uppercase;
+          letter-spacing:.04em; background:var(--accent-soft); color:var(--accent); }
+/* The number beside the purple `assumption` chip, when the branch declared a confidence.
+   Same shape as `.f-src` — monospace stamp, not prose — so the two read as the same kind
+   of fact beside a title. Below 0.5 it wears `.sev-med`'s amber, already this page's own
+   colour for "worth a second look", rather than a new one nobody has met yet. */
+.f-confidence { font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted);
+        border:1px solid var(--line); border-radius:4px; padding:.05rem .35rem; margin-left:.35rem;
+        vertical-align:.05em; }
+.f-confidence.sev-med { border-color:transparent; }
+.sev-high { background:#fdeaea; color:#8a1c1c; }
+.sev-med  { background:#fdf3e2; color:#8a5a12; }
+.sev-low  { background:#eef3fb; color:#26518f; }
+.sev-info { background:#eef7ef; color:#245c30; }
+.sev-fixed { background:#eceef1; color:#4b5563; }
+/* An assumption is not a severity. The reviewer's job on one of these is to confirm an
+   intent, not to weigh a risk, so it must not borrow red/amber/blue/green — a reader who
+   sees an assumption in amber reads "medium bug". Violet is the one hue the page had left,
+   and the left edge marks the card as a different *kind* of item without taking it off the
+   shared list. */
+.sev-assumed { background:#f1ecfb; color:#4c3391; }
+@media (prefers-color-scheme: dark) {
+  .sev-high{background:#3a1f1f;color:#f2a0a0}.sev-med{background:#3a3018;color:#e6c07b}
+  .sev-low{background:#1c2738;color:#9dc0f5}.sev-info{background:#1b2c1f;color:#9ad3a5}
+  .sev-fixed{background:#24282e;color:#9aa3af}.sev-assumed{background:#241f38;color:#c3b1f2}
+}
+/* A unified diff, drawn the way GitHub draws one: two gutters of line numbers, a colour
+   band per side, and the +/- marker inside the code column rather than as a third gutter.
+   It is a <table> because the gutters must not scroll away from their line when the code
+   overflows horizontally, and because copying a hunk should copy the code and not the
+   numbers — `user-select:none` on the gutters is what buys that. */
+:root { --diff-add-bg:#e6ffec; --diff-add-gutter:#ccffd8;
+        --diff-del-bg:#ffebe9; --diff-del-gutter:#ffd7d5; }
+@media (prefers-color-scheme: dark) {
+  :root { --diff-add-bg:#12261e; --diff-add-gutter:#1b4721;
+          --diff-del-bg:#2d1214; --diff-del-gutter:#5c2225; }
+}

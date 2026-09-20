@@ -104,7 +104,48 @@ def test_every_asset_file_is_inlined_exactly_as_it_sits_on_disk():
         want = raw if how == "_text" else "<script>\n" + raw + "</script>"
         assert getattr(assets, name) == want, f"{name} is not {filename} verbatim"
         seen += 1
-    assert seen >= 21, "an asset went missing from shared/assets.py"
+    assert seen >= 20, "an asset went missing from shared/assets.py"
+
+
+# --------------------------------------------------------------------------- #
+# the base stylesheet is one file per module, and the page carries every one of them
+# --------------------------------------------------------------------------- #
+
+def test_the_base_stylesheet_is_the_css_files_concatenated_in_the_declared_order():
+    """`CSS` is `assets/css/<name>.css` for every name in `CSS_FILES`, verbatim and in
+    that order -- the order is the cascade, so it is declared once and read from there.
+
+    `page.css` used to be one file of fifteen hundred lines with every tab's rules
+    interleaved: the one place two agents changing two tabs collided. It is now one file
+    per module, the same split as the Python under `tabs/` and `shared/`."""
+    assets = importlib.import_module("hrbuild.shared.assets")
+    want = "".join((PKG / "assets" / "css" / f"{name}.css").read_text(encoding="utf-8")
+                   for name in assets.CSS_FILES)
+    assert assets.CSS == want
+
+
+def test_every_css_file_on_disk_is_one_the_page_emits():
+    """A stylesheet dropped into `assets/css/` is not on the page until it is named in
+    `CSS_FILES` -- and a name listed there with no file behind it is a build that cannot
+    start. Either mistake is silent everywhere but here."""
+    assets = importlib.import_module("hrbuild.shared.assets")
+    on_disk = {p.stem for p in (PKG / "assets" / "css").glob("*.css")}
+    assert on_disk == set(assets.CSS_FILES)
+    assert len(assets.CSS_FILES) == len(set(assets.CSS_FILES)), "a file is emitted twice"
+
+
+def test_every_tab_module_has_a_stylesheet_of_its_own_or_none_at_all():
+    """A tab's rules live in `css/<tab>.css`, named after its module, so an agent working
+    on one tab knows without looking which stylesheet is theirs. `core.css` is the page
+    frame every tab shares and `frame.css` the strip and the panels, emitted last because
+    they have to outrank whatever a tab says about scroll margins and hidden panels."""
+    assets = importlib.import_module("hrbuild.shared.assets")
+    tabs = {p.stem for p in (PKG / "tabs").glob("*.py") if p.stem != "__init__"}
+    shared = {p.stem for p in (PKG / "shared").glob("*.py") if p.stem != "__init__"}
+    for name in assets.CSS_FILES:
+        assert name in tabs | shared | {"core", "frame"}, \
+            f"css/{name}.css is named after no module: a tab's rules go in css/<tab>.css"
+    assert assets.CSS_FILES[0] == "core" and assets.CSS_FILES[-1] == "frame"
 
 
 def test_a_script_asset_is_javascript_and_not_an_html_fragment():

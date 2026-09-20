@@ -1,0 +1,55 @@
+a.srcref.testref, span.srcref.testref { margin-bottom:0; font-size:11.5px; }
+span.srcref.testref.tgone { color:var(--muted); text-decoration:line-through;
+        text-decoration-thickness:1px; cursor:default; }
+.snippet { background:var(--card); border:1px solid var(--line); border-radius:8px;
+            padding:.7rem .9rem; margin:.9rem 0; overflow:hidden; }
+.snippet-note { margin:0 0 .45rem; color:var(--fg); font-size:.9rem; }
+.srcref { display:inline-block; font:600 12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+          color:var(--link); text-decoration:none; border-bottom:1px dotted currentColor; margin-bottom:.5rem; }
+.srcref:hover { background:var(--accent-soft); }
+/* The diff handle belongs to the snippet *above* it — a fix is a change, and this opens
+   the change. Left to flow normally it lands in the gap between two cards, equidistant
+   from both, and reads as a stray line belonging to neither. Pulled up tight under its
+   own card and indented to that card's text column so it reads as its footer. Boxed
+   rather than underlined, because it does something different from every other srcref on
+   the page: those open a file, this opens a comparison. */
+a.srcref.diffref { display:inline-block; margin:-.35rem 0 1.15rem 1rem; padding:.1rem .5rem;
+          border:1px solid var(--line); border-bottom:1px solid var(--line); border-radius:5px;
+          background:var(--card); }
+a.srcref.diffref:hover { border-color:var(--link); background:var(--accent-soft); }
+pre.code { margin:0; background:var(--code-bg); border-radius:6px; padding:.6rem .2rem .6rem 0;
+            overflow-x:auto; font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+pre.code code { white-space:pre; }
+.ln { display:inline-block; width:3.4em; padding-right:.9em; text-align:right; color:var(--muted);
+      user-select:none; opacity:.65; }
+#genseq-panel .genseq-handler .srcref { margin-bottom:0; }
+.ghdiff { border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:.9rem 0; background:var(--card); }
+/* The bar itself is the shared `.srcbar` (layout, pills, the file on the right — all of
+   it in extract-snippet.py's stylesheet, which is where the snippets get theirs). What is
+   local to a diff card is only the skin: this one is a card *header*, so it takes the
+   card's edge and its code background, where the same bar over a snippet floats on the
+   card's own paper. Styling the seam and not the component is what keeps the two the same
+   row wearing one set of rules. */
+.ghdiff > .srcbar { margin:0; padding:.45rem .7rem; border-bottom:1px solid var(--line);
+               background:var(--code-bg); font:600 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.ghdiff > .srcbar .stat { font-weight:700; white-space:nowrap; }
+.ghdiff-scroll { overflow-x:auto; }
+table.ghdiff-body { border-collapse:collapse; width:100%;
+                    font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+table.ghdiff-body td { padding:0 .5rem; vertical-align:top; white-space:pre; }
+table.ghdiff-body td.gln { width:1%; min-width:2.6rem; text-align:right; user-select:none;
+                          color:var(--muted); opacity:.7; border-right:1px solid var(--line); }
+table.ghdiff-body td.code { width:100%; }
+table.ghdiff-body tr.add td.code { background:var(--diff-add-bg); }
+table.ghdiff-body tr.add td.gln  { background:var(--diff-add-gutter); }
+table.ghdiff-body tr.del td.code { background:var(--diff-del-bg); }
+table.ghdiff-body tr.del td.gln  { background:var(--diff-del-gutter); }
+table.ghdiff-body tr.hunk td { background:var(--code-bg); color:var(--muted); font-style:italic;
+                               border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.ghdiff-note { margin:0; padding:.4rem .7rem .55rem; color:var(--muted); font-size:.86rem;
+               border-top:1px solid var(--line); }
+.ghdiff-note a.srcref { margin:0 .6rem 0 0; }
+table.stat { border-collapse:collapse; width:100%; font-size:.88rem; }
+table.stat td { border-bottom:1px solid var(--line); padding:.35rem .5rem; }
+table.stat td.n { text-align:right; color:var(--muted); font-family:ui-monospace,Menlo,monospace; white-space:nowrap; }
+.testpair > .snippet { margin:.5rem 0 0; }

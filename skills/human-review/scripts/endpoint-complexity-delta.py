@@ -29,6 +29,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 
@@ -119,10 +120,82 @@ def compare(before, after):
                 "handler": cur.get("handler", ""),
                 "entry": (cur.get("flow") or [{}])[0].get("method", ""),
                 "methods": cur.get("methods"),
+                "why": [] if gone else breakdown(cur, old),
             }
         )
     rows.sort(key=lambda r: (-max(r["now"], r["was"] or 0), r["path"]))
     return rows
+
+
+def breakdown(cur, old):
+    """How the branch's number was arrived at: every increment, under the method it was
+    counted in, in the order the flow walks them.
+
+    A bar is an assertion about somebody's code, and the reviewer it is shown to is the
+    person least able to check it. So the row opens onto its own arithmetic — the same
+    increments the extractor summed, each still carrying the line it was read off.
+
+    A line is marked `new` when the branch has one more of it than the merge-base did,
+    matched on (method, construct, source text) rather than on line number: an increment
+    pushed three lines down by an import is not new, and this is the cheapest comparison
+    that knows the difference. A brand-new entry point marks nothing — the badge already
+    says the whole flow is new, and painting every line green says it a second time.
+    """
+    seen = Counter()
+    for f in (old or {}).get("flow") or []:
+        for h in f.get("hits") or []:
+            seen[(f.get("method", ""), h.get("why"), h.get("code"))] += 1
+    groups = []
+    for f in cur.get("flow") or []:
+        hits = []
+        for h in f.get("hits") or []:
+            key = (f.get("method", ""), h.get("why"), h.get("code"))
+            fresh = bool(old) and seen[key] <= 0
+            if old and not fresh:
+                seen[key] -= 1
+            hits.append({**h, "new": fresh})
+        if hits:
+            groups.append({"method": f.get("method", ""),
+                           "display": f.get("display") or f.get("method", ""),
+                           "cognitive": f.get("cognitive"), "hits": hits})
+    return groups
+
+
+WHY_EMPTY = ("Nothing counted: every method behind this entry point is straight-line code. "
+             "Cognitive complexity charges for branching, loops and boolean runs, and there "
+             "are none here.")
+WHY_TIP = "{why} — +{inc}{deep}. {file}:{line} — open in VS Code"
+
+
+def _why_panel(r) -> str:
+    """The fold under a row: one line of real source per increment, `[+N]` on the right.
+
+    Not a highlighted snippet with a margin. The question the fold answers is "which
+    lines did this number come from", and the answer is a list you can run your eye down
+    and click; a rendered snippet per increment would be the same list, three times taller
+    and with the evidence padded out by the code around it."""
+    groups = r.get("why") or []
+    if not groups:
+        return f'<div class="cx-why"><p class="cx-why-none">{WHY_EMPTY}</p></div>'
+    out = ['<div class="cx-why">']
+    for g in groups:
+        total = sum(h["inc"] for h in g["hits"])
+        out.append(f'<div class="cx-why-m">{html.escape(g["display"])}'
+                   f'<span class="cx-why-mn">{total}</span></div>')
+        for h in g["hits"]:
+            target = (repo_root() / h["file"]).resolve()
+            deep = f' (1 + {h["inc"] - 1} nesting)' if h["inc"] > 1 else ""
+            tip = WHY_TIP.format(why=h["why"], inc=h["inc"], deep=deep,
+                                 file=h["file"], line=h["line"])
+            if h.get("new"):
+                tip += "\nNew on this branch."
+            out.append(
+                f'<a class="cx-why-line{" cx-why-new" if h.get("new") else ""}"'
+                f' href="vscode://file/{target}:{h["line"]}:1"{_tip(tip)}>'
+                f'<code>{html.escape(h["code"])}</code>'
+                f'<span class="cx-why-inc">[+{h["inc"]}]</span></a>')
+    out.append("</div>")
+    return "".join(out)
 
 
 def _path_cell(r) -> str:
@@ -175,21 +248,36 @@ def _tip(attr: str) -> str:
     return f' data-tip="{html.escape(attr)}"'
 
 
+def _row(cls, head: str, why: str) -> str:
+    """A row, and — for every row that has a branch to explain — the fold under it.
+
+    The fold is a real `<details>`: with the script below it opens on a click on the bar
+    and nowhere else, and without the script it opens on a click anywhere on the row.
+    Degrading to "the whole row is the handle" is the right way round — the reader still
+    gets the breakdown, they just get it from a wider target."""
+    if not why:
+        return f'<div class="cx-row {cls}"><div class="cx-head">{head}</div></div>'
+    return (f'<details class="cx-row {cls}"><summary class="cx-head">{head}</summary>'
+            f"{why}</details>")
+
+
 def render_row(r, peak, base) -> str:
     if r.get("gone"):
         # The branch deleted this entry point. Red for the whole width it used to occupy —
         # the same "red is what the branch removed" convention as everywhere else.
         was = r["was"] or 0
         gone_tip = TIP_GONE.format(baseline=was, base=base)
-        return (
-            f'<div class="cx-row cx-down cx-gone">'
+        # No fold: there is no branch code left to break down. A row whose flow the branch
+        # deleted has nothing to open onto, and an empty fold under it would read as a bug.
+        return _row(
+            "cx-down cx-gone",
             f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
             f'<s>{_path_cell(r)}</s>'
             f'<span class="cx-bar"{_tip(gone_tip)}>'
             f'<u style="width:{100.0 * was / peak:.1f}%"></u></span>'
             f'<span class="cx-badge">gone</span>'
-            f'<span class="cx-n">0</span>'
-            f"</div>"
+            f'<span class="cx-n">0</span>',
+            "",
         )
     if r["delta"] is None:
         badge, cls = "new", "cx-up"
@@ -226,16 +314,16 @@ def render_row(r, peak, base) -> str:
         # and the whole bar answers with the one fact there is.
         bar_tip = TIP_SAME.format(total=total, base=base)
         grey_tip = delta_tip = ""
-    return (
-        f'<div class="cx-row {cls}">'
+    return _row(
+        cls,
         f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
         f"{_path_cell(r)}"
         f'<span class="cx-bar"{_tip(bar_tip)}>'
         f'<i{_tip(grey_tip) if grey_tip else ""} style="width:{kept_pct:.1f}%"></i>'
         f'<u{_tip(delta_tip) if delta_tip else ""} style="width:{delta_pct:.1f}%"></u></span>'
         f'<span class="cx-badge">{badge}</span>'
-        f'<span class="cx-n">{r["now"]}</span>'
-        f"</div>"
+        f'<span class="cx-n">{r["now"]}</span>',
+        _why_panel(r),
     )
 
 
@@ -264,7 +352,7 @@ def render(rows, base="main") -> str:
         # hover what its colour and its number mean, and a reader counting moved rows is
         # reading the bars, not this line.
         '<p class="cx-lede">Cognitive complexity of the <em>whole flow</em> behind each entry '
-        "point.</p>",
+        "point. <span class=\"cx-hint\">Click a bar to see the lines it is made of.</span></p>",
     ]
     known = {kind for kind, _ in KIND_TITLES}
     groups = KIND_TITLES + [
@@ -282,7 +370,36 @@ def render(rows, base="main") -> str:
         out.append('<div class="cx-list">')
         out.extend(render_row(r, peak, base) for r in of_kind)
         out.append("</div></div>")
+    out.append(TOGGLE_JS)
     return "\n".join(out)
+
+
+# The bar is the handle, not the row. A `<summary>` is activated by a click anywhere in
+# it, so without this the verb, the path link and the two numbers would all open the fold
+# — and the path link would open it *instead of* opening the file in some browsers and *as
+# well as* in others. Three lines of delegation settle it: the bar toggles, a link
+# navigates and puts the fold back the way it found it, everything else does nothing.
+#
+# Inline in the fragment on purpose. The page pastes this HTML into a tab whole; a tab
+# that needed a file from `hrbuild/assets` would be a tab that only works inside one
+# builder. And with the script absent the `<details>` is still a `<details>`: the whole
+# row becomes the handle and the breakdown still opens.
+TOGGLE_JS = """<script>
+(function () {
+  document.addEventListener('click', function (e) {
+    var head = e.target.closest && e.target.closest('summary.cx-head');
+    if (!head) return;
+    if (e.target.closest('.cx-bar')) return;            /* the handle: let it toggle */
+    var row = head.parentNode;
+    if (e.target.closest('a')) {                        /* a link opens the file, not the fold */
+      var was = row.open;
+      setTimeout(function () { row.open = was; }, 0);
+      return;
+    }
+    e.preventDefault();                                 /* verb, badge, number: dead */
+  });
+})();
+</script>"""
 
 
 CSS = """
@@ -296,11 +413,28 @@ CSS = """
 .cx-count { opacity:.65; font-weight:400; }
 .cx-key { font-weight:700; }
 .cx-list { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); }
-.cx-row { display:grid; grid-template-columns:3.6rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
-          align-items:center; gap:.55rem; padding:.3rem .8rem; border-bottom:1px solid var(--line);
-          font-size:.84rem; }
+/* The grid moved off the row and onto `.cx-head`, because the row now has a second thing
+    in it: the fold, which must run the full width under the columns rather than sit in
+    one of them. A `<details>` cannot be a grid whose first track holds the summary and
+    whose second holds the panel, so the row stays a plain block and the columns live one
+    level in. `list-style:none` + the WebKit marker rule take away the disclosure triangle
+    — the bar is the affordance, and a triangle in the first column would be a second one
+    pointing at nothing. */
+.cx-row { border-bottom:1px solid var(--line); }
 .cx-row:last-child { border-bottom:0; }
+.cx-head { display:grid; grid-template-columns:3.6rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
+          align-items:center; gap:.55rem; padding:.3rem .8rem; font-size:.84rem;
+          cursor:default; list-style:none; }
+.cx-head::-webkit-details-marker { display:none; }
+summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
+.cx-hint { opacity:.75; }
 .cx-same { opacity:.5; }
+/* An untouched row is dimmed because the branch has nothing to say about it — but the
+    moment a reader opens one they are reading it on purpose, and code at half opacity is
+    code nobody reads. Opening restores it, and tints the head so the row and its fold
+    read as one block. */
+.cx-row[open] { opacity:1; }
+.cx-row[open] > .cx-head { background:var(--code-bg); }
 .cx-verb { font:700 10.5px/1 ui-monospace,Menlo,monospace; letter-spacing:.03em; }
 /* Amber is the one hue that never read on white either: #e08a00 is 2.7:1 there, well
     under the 4.5:1 a 10.5px bold monospace word needs. Darkened until it clears it,
@@ -319,6 +453,15 @@ a.cx-link:hover .cx-path { text-decoration:underline; }
 .cx-path { display:block; font:12px/1.4 ui-monospace,Menlo,monospace; overflow:hidden;
            text-overflow:ellipsis; white-space:nowrap; }
 .cx-bar { display:flex; height:9px; border-radius:5px; overflow:hidden; background:transparent; }
+/* The bar opens the breakdown, so it wears a hand. It has to out-specify `tip.js`, which
+    paints every `[data-tip]` outside a link or a summary with `cursor:help` — right for a
+    mark that only explains itself, wrong for one you can click. Two classes beat its
+    `[data-tip]:not(…):not(…)` chain. The grey `?` stays on the rows that open onto
+    nothing: a deleted endpoint's bar really is only a tooltip. */
+details.cx-row .cx-bar, details.cx-row .cx-bar i, details.cx-row .cx-bar u { cursor:pointer; }
+/* A hit target 9px tall is a hit target people miss. The padding is invisible and the
+    bar keeps its height; only the clickable box grows. */
+details.cx-row .cx-bar { padding:7px 0; margin:-7px 0; box-sizing:content-box; }
 .cx-bar i { background:#c9c9d4; border-radius:5px 0 0 5px; }
 .cx-bar u { border-radius:0 5px 5px 0; }
 .cx-up .cx-bar u { background:var(--cx-added); }
@@ -328,6 +471,32 @@ a.cx-link:hover .cx-path { text-decoration:underline; }
 .cx-up .cx-badge, .cx-up.cx-key { color:var(--cx-added); }
 .cx-down .cx-badge, .cx-down.cx-key { color:var(--cx-removed); }
 .cx-n { font:600 12px/1 ui-monospace,Menlo,monospace; text-align:right; }
+/* ── the breakdown ──────────────────────────────────────────────────────────────────
+    What the bar is made of, one counted construct per line: the source line it was read
+    off, and what it cost, hard right. The number on a row is an assertion about somebody
+    else's code; this is the working, and every line of it opens the file at that line.
+    Indented past the verb column so the fold reads as belonging to the row above it. */
+.cx-why { padding:.35rem .8rem .55rem 4.15rem; background:var(--code-bg);
+          border-top:1px dashed var(--line); }
+.cx-why-m { display:flex; align-items:baseline; gap:.4rem; margin:.35rem 0 .15rem;
+            font:600 10.5px/1.6 ui-monospace,Menlo,monospace; letter-spacing:.02em;
+            color:var(--muted); }
+.cx-why-m:first-child { margin-top:0; }
+.cx-why-mn { font-weight:700; opacity:.8; }
+.cx-why-none { margin:0; font-size:.8rem; color:var(--muted); }
+a.cx-why-line { display:flex; align-items:baseline; gap:.75rem; text-decoration:none;
+                color:inherit; padding:1px 0; }
+a.cx-why-line code { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+                     white-space:nowrap; font:12px/1.55 ui-monospace,Menlo,monospace; }
+a.cx-why-line:hover code { text-decoration:underline; }
+/* `[+1]` is a column, not a suffix: same width on every line, so the eye can add them up
+    without reading them. `tabular-nums` keeps `[+10]` from widening the column by a hair. */
+.cx-why-inc { flex:0 0 2.9rem; text-align:right; font-variant-numeric:tabular-nums;
+              font:700 10.5px/1.55 ui-monospace,Menlo,monospace; color:var(--muted); }
+/* Green is authorship everywhere else on this tab, and it means the same here: this line
+    was not behind this entry point at the merge-base. */
+a.cx-why-new code { color:var(--cx-added); }
+a.cx-why-new .cx-why-inc { color:var(--cx-added); }
 @media (prefers-color-scheme: dark) {
   .cx-lede, .cx-group { --cx-added:#4ec27f; --cx-removed:#ef6a6a; }
   .cx-bar i { background:#3d3d4a; }

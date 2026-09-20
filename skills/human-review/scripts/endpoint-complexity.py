@@ -136,12 +136,25 @@ NESTS = {"if", "for", "while", "do", "switch", "catch"}
 
 
 def cognitive(body: str) -> int:
-    """Campbell's Cognitive Complexity of an already-blanked method body.
+    """Campbell's Cognitive Complexity of an already-blanked method body."""
+    return sum(inc for _, inc, _ in increments(body))
+
+
+def increments(body: str) -> list[tuple[int, int, str]]:
+    """Every increment the score is made of: `(offset in body, how much, what counted)`.
+
+    The score is quoted to a reviewer as a measurement, and a measurement nobody can
+    audit is a number to be argued with. So the walk that used to add to a counter now
+    *files* each increment where it happened — the offset is enough to name the line,
+    because the blanked body keeps every character of the original in place. `cognitive`
+    is the sum of this list and nothing else, which is what keeps the breakdown under a
+    row and the number beside it from ever disagreeing.
 
     Nesting is counted by braces: a construct that opens a block hands its level to the
     next `{`, and a `;` first cancels the hand-off, so `if (x) return;` scores its 1 without
     deepening whatever block follows it."""
-    score = nesting = pending = 0
+    hits: list[tuple[int, int, str]] = []
+    nesting = pending = 0
     stack: list[tuple[int, str]] = []
     last_bool: str | None = None
     opened_by = ""
@@ -164,7 +177,7 @@ def cognitive(body: str) -> int:
             # A run of the same operator is one thing to hold in your head; the alternation
             # is what costs. `a && b && c` scores 1, `(a && b) || c` scores 2.
             if last_bool != t:
-                score += 1
+                hits.append((m.start(), 1, t))
             last_bool = t
         elif t == "->":
             pending = 1  # a lambda body nests what is inside it, and costs nothing itself
@@ -173,9 +186,9 @@ def cognitive(body: str) -> int:
             # `List<?>` and a label-less `x ? a : b` are the same character; only the second
             # has an expression in front of it.
             if body[max(0, m.start() - 1)] not in "<," and body[m.end():m.end() + 1] not in ">,":
-                score += 1 + nesting
+                hits.append((m.start(), 1 + nesting, "?:"))
         elif t == "else":
-            score += 1  # the `else` of an `else if` is the whole cost of the pair
+            hits.append((m.start(), 1, "else"))  # the `else` of an `else if` is the pair's whole cost
             pending, opened_by, skip_if = 1, "else", True
         elif t == "while" and skip_while:
             skip_while = False
@@ -183,10 +196,10 @@ def cognitive(body: str) -> int:
             skip_if, pending, opened_by = False, 1, "if"
         else:
             skip_if = False
-            score += 1 + nesting
+            hits.append((m.start(), 1 + nesting, t))
             if t in NESTS:
                 pending, opened_by = 1, t
-    return score
+    return hits
 
 
 def block(code: str, open_brace: int) -> int:
@@ -216,6 +229,7 @@ class Index:
 
     def _read(self, path: str, text: str):
         code = strip(text)
+        lines = text.splitlines()
         declared = PACKAGE.search(code)
         pkg = declared.group(1) if declared else ""
         decl = TYPE_DECL.search(code)
@@ -232,14 +246,24 @@ class Index:
             ret, name, params = m.group(1), m.group(2), m.group(3)
             if name in NOT_A_METHOD or (ret and ret.split("<")[0].strip() in NOT_A_METHOD):
                 continue
-            body = code[m.end() - 1:block(code, m.end() - 1)]
+            at = m.end() - 1
+            body = code[at:block(code, at)]
             key = f"{fqcn}#{name}"
             calls = {(recv, called) for recv, called in CALL.findall(body)
                      if called not in NOT_A_METHOD}
             method = self.methods.setdefault(
                 key, {"key": key, "display": f"{simple}.{name}({_params(params)})",
-                      "cc": 0, "calls": set(), "types": types})
-            method["cc"] += cognitive(body) + (1 if any(c == name for _, c in calls) else 0)
+                      "cc": 0, "hits": [], "calls": set(), "types": types})
+            hits = [_hit(path, code, lines, at + off, inc, why)
+                    for off, inc, why in increments(body)]
+            if any(c == name for _, c in calls):
+                # Self-recursion is charged once, at the first call that closes the loop —
+                # the line a reader has to see to believe the +1.
+                back = next((c for c in CALL.finditer(body) if c.group(2) == name), None)
+                hits.append(_hit(path, code, lines, at + (back.start(2) if back else 0),
+                                 1, "recursion"))
+            method["cc"] += sum(h["inc"] for h in hits)
+            method["hits"] += hits
             method["calls"] |= calls
             self.by_name.setdefault(name, []).append(key)
             self.of_class.setdefault(fqcn, {})[name] = key
@@ -329,6 +353,24 @@ class Index:
         return order
 
 
+MAX_LINE = 160
+
+
+def _hit(path: str, code: str, lines: list[str], at: int, inc: int, why: str) -> dict:
+    """One increment, told the way a reviewer can check it: the line it was counted on.
+
+    The offset is into the *blanked* copy, which is the same length as the original, so
+    counting newlines up to it names the line in the file on disk — no second parse, and
+    no line table to keep in step. The text is the real source line, trimmed: it is
+    evidence, not a snippet, and its indentation says nothing the nesting cost has not
+    already said."""
+    line = code.count("\n", 0, at) + 1
+    src = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+    return {"file": path, "line": line,
+            "code": src[:MAX_LINE] + ("…" if len(src) > MAX_LINE else ""),
+            "inc": inc, "why": why}
+
+
 def _params(params: str) -> str:
     """`@RequestBody @Validated VisitDto visitDto, int id` -> `VisitDto, int`.
 
@@ -375,7 +417,13 @@ def extract(files: dict[str, str]) -> list[dict]:
             "metric": "cognitive",
             "flowCc": sum(index.methods[k]["cc"] for k in flow),
             "methods": len(flow),
-            "flow": [{"method": k, "cognitive": index.methods[k]["cc"]} for k in flow],
+            # `hits` is what the tab folds open under the row: every increment, with the
+            # line it was read off. Carried per method rather than per entry point so the
+            # sum stays checkable one method at a time, and so a method reached from two
+            # entry points is described once, identically, under both.
+            "flow": [{"method": k, "display": index.methods[k]["display"],
+                      "cognitive": index.methods[k]["cc"],
+                      "hits": index.methods[k]["hits"]} for k in flow],
         })
     out.sort(key=lambda e: (-e["flowCc"], e["path"]))
     return out

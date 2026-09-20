@@ -333,9 +333,11 @@ def _pile_anchor(spec, kind, fallback):
 def pile_numbers(spec) -> tuple[int, int, int]:
     """`(open, fixed, assumed)` — the three counts every summary of this tab reads off the
     same three arrays, so a number cannot drift between the sticky line under the header
-    and the masthead's LLM-review chip above it. It used to be the other way round: a
-    hand-typed `/code-review 8 findings` outlived the ninth finding being added, and
-    nothing caught it, because nothing was looking. Both callers now count nothing twice."""
+    and the masthead's review chip above it — including the third, which the chip prints
+    as the coder's `N assumptions` and the line as `N implementation assumptions`. It used
+    to be the other way round: a hand-typed `/code-review 8 findings` outlived the ninth
+    finding being added, and nothing caught it, because nothing was looking. Both callers
+    now count nothing twice."""
     return (len(spec.get("findings", [])), len(spec.get("autofixes", [])),
             len(spec.get("assumptions", [])))
 
@@ -375,32 +377,37 @@ def review_tab_badge(spec) -> dict:
     return {"count": open_n, "label": label}
 
 
-#: How long the masthead's LLM-review chip's plain text (tags stripped) is allowed to run
-#: before its third, optional number stops fitting. The chip sits in a row that already
-#: carries the base/head refs and a diffstat, so `, N assumptions` rides along only while
-#: the two required numbers leave room for it — cut for space, it is cut whole, never
-#: trimmed mid-number. 34 is the width of `N open, N auto-fixed, N assumption` with every
-#: `N` a single digit: this project's own PR #49 (`6 open, 3 auto-fixed, 7 assumptions`,
-#: 35 characters — one over, on the plural `s`) is the boundary case that picked the
-#: number, and it lands on the side that leaves the chip two numbers, not three.
+#: Kept only because `build-review-html.py` imports it by name. It used to be the width
+#: at which the chip's third number stopped fitting and was cut whole — back when that
+#: number rode along as `, N assumptions` on the same clause as the fixes. The third pile
+#: is no longer an optional extra on the review's own sentence: it is a second sentence,
+#: about a different agent, and a chip that drops it for want of two characters drops the
+#: only trace on the masthead of what the coder guessed at. Nothing measures the face
+#: against this any more.
 SCOPE_CHIP_MAX_LEN = 34
 
 
 def scope_chip_value(spec) -> str:
-    """`6 open, <span class="sub">3 auto-fixed</span>` — read by the masthead's LLM-review
-    chip rather than composed a second time beside it, off the same `pile_numbers` the
-    counts line under the header reads. One vocabulary now, not two: the chip used to
-    swap to `fixed, … declined` on a branch reviewed through `review-points.md`, which
-    read as a different review from the one the line under the header described one
-    scroll away. `implementation assumptions` — the counts line's own name for the third
-    pile — is spelled out there; the chip says only `assumptions`, because the room a
-    tooltip has is the room a pill does not."""
+    """`6 open, <span class="sub">3 fixed; \U0001f916coder: 7 assumptions</span>` — read by
+    the masthead's review chip rather than composed a second time beside it, off the same
+    `pile_numbers` the counts line under the header reads. One vocabulary now, not two:
+    the chip used to swap to `fixed, … declined` on a branch reviewed through
+    `review-points.md`, which read as a different review from the one the line under the
+    header described one scroll away.
+
+    Two claims, two authors. The first clause is the reviewer's (what it found, what it
+    already fixed — `auto-fixed` on the face was a word about how the fix arrived, which
+    is the tooltip's business, not the pill's). The second is the coder's, and it carries
+    its own robot because the page's robot means "a model produced this", not "the
+    reviewer said this": the assumptions were recorded by the agent that wrote the code,
+    while it was writing it. With no assumptions there is no second claim to make, so the
+    clause is absent rather than zeroed. `implementation assumptions` — the counts line's
+    own name for the pile — is spelled out there; the chip says only `assumptions`,
+    because the room a tooltip has is the room a pill does not."""
     open_n, fixed_n, assumed_n = pile_numbers(spec)
-    sub = f"{fixed_n} auto-fixed"
+    sub = f"{fixed_n} fixed"
     if assumed_n:
-        widened = sub + f', {assumed_n} assumption{"" if assumed_n == 1 else "s"}'
-        if len(f"{open_n} open, {widened}") <= SCOPE_CHIP_MAX_LEN:
-            sub = widened
+        sub += f'; \U0001f916coder: {assumed_n} assumption{"" if assumed_n == 1 else "s"}'
     return f'{open_n} open, <span class="sub">{sub}</span>'
 
 
@@ -462,10 +469,18 @@ var io=null;
 function triggerY(){
   return (parseFloat(getComputedStyle(lede).top)||0)+lede.offsetHeight;
 }
+// A heading counts as reached once its top is at the trigger line -- or at its own
+// `scroll-margin-top`, whichever is lower on the page. The two are not the same line: a
+// deep link (`#fixed`, from the row itself) parks the heading exactly at its scroll
+// margin, which the stylesheet sets to strip + lede + .6rem so the heading clears the
+// pinned row, and that .6rem left it just *under* the trigger. The mark then stayed on
+// the previous chapter after a click on this one, which is the one moment a reader is
+// certain which chapter they asked for.
 function paint(){
   var t=triggerY(), current=null;
   pairs.forEach(function(p){
-    if(p.el.getBoundingClientRect().top<=t)current=p.id;
+    var margin=parseFloat(getComputedStyle(p.el).scrollMarginTop)||0;
+    if(p.el.getBoundingClientRect().top<=Math.max(t,margin)+1)current=p.id;
   });
   ids.forEach(function(id){links[id].classList.toggle('here', id===current);});
 }

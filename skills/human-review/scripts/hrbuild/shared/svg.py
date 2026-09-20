@@ -126,20 +126,36 @@ DIAGRAM_COLOR_VARS = {
     "#ECEFF1": "--dgm-box-accent", "#546E7A": "--dgm-line-accent",
     "#78909C": "--dgm-arrow-accent",
 }
-DIAGRAM_FILL_ATTR = re.compile(r'\bfill="(#[0-9A-Fa-f]{6})"')
+DIAGRAM_FILL_ATTR = re.compile(r'\b(fill|flood-color)="(#[0-9A-Fa-f]{6})"')
 DIAGRAM_STYLE_COLOR = re.compile(r'\b(stroke|background):(#[0-9A-Fa-f]{6})\b')
+
+# PlantUML measures every label with the font *it* had at render time and writes the
+# result into the SVG as `textLength`, with `lengthAdjust="spacing"` telling the browser
+# to space the letters out, or squeeze them, until the text is exactly that wide. The
+# browser draws with its own sans-serif, whose glyphs are not the same width -- and a
+# label that ends in a ⊕ or an ↗ the metrics font never had is measured wrongly on top
+# of that. On the page that reads as labels set in two or three different sizes on one
+# diagram: `select owners ⊕` airy, `VetRepository.findById ↗` tight, one line under the
+# other. Dropping both attributes lets every label take its natural width in the font
+# the reader actually sees; a box PlantUML sized for its own metrics is a few pixels
+# off at worst, which is the lesser of the two artefacts by a long way.
+TEXT_LENGTH_ATTRS = re.compile(r'\s+(?:textLength|lengthAdjust)="[^"]*"')
 
 
 def _theme_diagram_colors(svg: str) -> str:
     """Rewrite PlantUML's hardcoded palette to the page's `--dgm-*` variables.
+
+    `fill` and `flood-color` alike: a creole `<back:#hex>` on a legend word compiles to
+    an SVG filter whose `feFlood` carries the wash, and a wash left in daylight amber
+    behind a word on a dark page is the same pale slab the box fills used to be.
 
     A colour this generator is not known to emit is left exactly as written — degrading
     to an unthemed shape in the unlikely event PlantUML's defaults change, rather than
     guessing at what a var name for it should mean."""
 
     def fix_fill(m):
-        var = DIAGRAM_COLOR_VARS.get(m[1].upper())
-        return f'fill="var({var})"' if var else m[0]
+        var = DIAGRAM_COLOR_VARS.get(m[2].upper())
+        return f'{m[1]}="var({var})"' if var else m[0]
 
     def fix_style(m):
         var = DIAGRAM_COLOR_VARS.get(m[2].upper())
@@ -156,4 +172,5 @@ def inline_svg(path: Path, root: Path) -> str:
     svg = re.sub(r"<!DOCTYPE[^>]*>\s*", "", svg)
     svg = _scope_entity_links(svg)
     svg = _theme_diagram_colors(svg)
+    svg = TEXT_LENGTH_ATTRS.sub("", svg)
     return _plain_svg_title(resolve_source_links(svg, root))

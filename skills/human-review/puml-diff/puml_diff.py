@@ -102,10 +102,26 @@ REMOVED = "#C62828"
 # `--dgm-ripple-*`, which are numbered from 1 and so run one ahead of these.
 RIPPLE = ("#F2CF8E", "#F4DCB4", "#F2EBDB")
 
-# What each rung of the ladder means, in the words the caption prints beside its swatch.
-# A wash is only a legend once something says so: the two hues above already answer to
-# that rule, and a third visual language on the same picture cannot be the exception.
-RIPPLE_LABELS = ("touched", "1 hop", "2 hops")
+# What each rung of the ladder means, in the words the caption prints *wearing* that rung's
+# wash. A wash is only a legend once something says so: the two hues above already answer
+# to that rule, and a third visual language on the same picture cannot be the exception.
+#
+# The words used to be hop counts ("touched · 1 hop · 2 hops") beside a swatch block. That
+# made the reader translate twice — swatch to number, number to box — to answer a question
+# they were already asking in words: how much of the picture am I looking at? The caption
+# now says the scope itself ("impacted + neighbours + neighbours") and lets each word carry
+# its own ring's wash, so naming the scope and keying the colours is one phrase, not two.
+# Hence "neighbours" twice: one word per ring, the nearer ring in the stronger amber.
+RIPPLE_LABELS = ("impacted", "neighbours", "neighbours")
+
+# The ink the legend's washed words are written in. Deliberately *not* PlantUML's default
+# black: `build-review-html.py` rewrites `#000000` to `--dgm-fg`, which goes near-white in
+# dark mode, while a creole background compiles to an SVG *filter* (`<feFlood>`) that the
+# same pass does not rewrite — black ink would have gone white on daylight cream. A hex
+# the themer does not know is left exactly as written, so this one stays dark in both
+# modes, which is what the pale amber underneath it needs. Not a fourth diagram colour:
+# it is never painted on the diagram, only under the picture.
+LEGEND_INK = "#1A1A1A"
 
 
 def _hex(colour: str) -> str:
@@ -164,25 +180,33 @@ def legend() -> str:
     return f"{_added('added')} or {_struck('removed')}"
 
 
-#: A swatch, drawn as coloured glyphs rather than as a `<back:…>` span behind its label.
-#: Both read the same on paper; they do not survive the page the same way. PlantUML
-#: compiles a creole background into an SVG *filter* — `<feFlood flood-color="…">` — and
-#: the page's dark mode rewrites `fill` and `style` colours, not filters. The swatch would
-#: then have kept its daylight amber while every box it stands for went dark, and the
-#: label on it, being ordinary text, would have gone near-white on pale cream. Coloured
-#: text is a plain `fill`, so the legend and the boxes move together by construction.
-SWATCH = "███"
-
-
 def ripple_legend(rungs=RIPPLE) -> str:
-    """The distance ladder as swatches, each with the hop count it stands for.
+    """The distance ladder written as the scope it describes, each word in its own wash.
 
-    Printed as real washes rather than named in prose, because the thing being explained
-    is a colour and the reader has to match one to the other by eye. Only the rungs that
-    actually appear in the picture are listed: a swatch for a ring the focus level pruned
-    away promises a box the reader can then hunt for and never find."""
+    `impacted + neighbours + neighbours` — the word for each ring, wearing that ring's
+    amber as a text background, strongest first. Printed as real washes rather than named
+    in prose, because the thing being explained is a colour and the reader has to match
+    one to the other by eye; printed *as the scope wording* rather than beside it, because
+    the caption would otherwise say the same thing twice, once in words and once in
+    swatches. Only the rungs that actually appear in the picture are listed: a wash for a
+    ring the focus level pruned away promises a box the reader can hunt for and never find.
+
+    A creole background is an SVG *filter* (`<feFlood flood-color="…">`), which the page's
+    dark-mode pass — it rewrites `fill` and `style` colours — leaves at its daylight value.
+    That is survivable only because the ink on top is `LEGEND_INK` rather than black; see
+    there. It is also why the wash cannot be handed to a plain box on the diagram this way.
+
+    `rungs` names the rings to print, outward from the change. A `None` entry names a ring
+    that is on screen but wears no wash — every box in it is painted green or red, or it
+    lies past the last rung of the ladder — and its word is printed plain, so the phrase
+    still counts the rings correctly without promising a colour nothing on the picture has."""
     labels = dict(zip(RIPPLE, RIPPLE_LABELS))
-    return " · ".join(f"<color:{c}>{SWATCH}</color> {labels[c]}" for c in rungs)
+    words = []
+    for i, c in enumerate(rungs):
+        word = labels[c] if c else RIPPLE_LABELS[min(i, len(RIPPLE_LABELS) - 1)]
+        words.append(
+            f"<back:{c}><color:{LEGEND_INK}>{word}</color></back>" if c else word)
+    return " + ".join(words)
 
 
 def _mark_title(line: str) -> str:
@@ -583,17 +607,22 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     tints = {ripple(n) for n in keep}
     rungs = [c for c in RIPPLE if c in tints]
     shaded = len(rungs) > 1
+    # The scope and the colour key are one phrase, not two: `impacted + neighbours +
+    # neighbours`, each word wearing the wash of the ring it names. Said separately — a
+    # hop count in prose and a swatch block after it — the caption named the same three
+    # rings twice and asked the reader to line the two lists up themselves.
     if focus != ALL:
         hops = int(focus)
-        scope = "the impacted elements only" if hops == 0 else (
-            f"impacted + {hops} neighbour" + ("s" if hops > 1 else ""))
+        # One word per ring the focus level asked for — `impacted + neighbours +
+        # neighbours` at hops 2 — washed where that ring actually has a wash on screen.
+        ladder = [RIPPLE[i] if i < len(RIPPLE) and RIPPLE[i] in tints else None
+                  for i in range(hops + 1)]
+        scope = "the impacted elements only" if hops == 0 else ripple_legend(ladder)
         if shaded:
             scope += ", shaded by distance"
         caption += f" — {scope} ({len(keep)} of {len(names)} shown)"
     elif shaded:
-        caption += " — shaded by distance from the change"
-    if shaded:
-        caption += f": {ripple_legend(rungs)}"
+        caption += f" — {ripple_legend(rungs)}, shaded by distance from the change"
 
     # The caption goes FIRST, not after the preamble. A source that opens a `<style>` block
     # ends its preamble on the `<style>` line itself — the block's body arrives later — so

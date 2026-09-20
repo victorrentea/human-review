@@ -1,0 +1,102 @@
+/* The 🕵️ beside it, on a row whose test is tagged @generate_sequence: the way from the
+   test to the sequence that test's own run drew, in the tab that holds it. Deliberately
+   the same furniture as the 📺 — both are doors out of the row into a recording of the
+   same run, and a second vocabulary for "there is more of this elsewhere" would be a
+   second thing to learn. */
+.rm-seq { flex:0 0 auto; text-decoration:none; font-size:12px; line-height:1; }
+.rm-seq:hover { filter:brightness(1.2); }
+/* A test and the sequence its run recorded are one exhibit, not two: the diagram is
+   evidence for the test directly above it. One rounded card holds the pair together, and
+   one fold puts the whole exhibit away — closing over the test alone used to leave its
+   diagram standing there with nothing above it to explain what it draws.
+   A card rather than the ruled left edge it used to be, because shut is the state this tab
+   opens in: six edges down the left of a page are six marks in a margin, while six cards
+   are six things to click, which is what they are. */
+.testpair { background:var(--card); border:1px solid var(--line); border-radius:12px;
+            padding:.4rem .95rem; margin:.55rem 0; }
+/* The same margin open and shut, deliberately. They used to differ — a shut pair took
+   .3rem and an open one 1.5rem above it — and opening the FIRST pair therefore pushed the
+   whole list down by the difference, which read as a gap appearing above a list nobody had
+   touched. The air an open exhibit needs goes inside the card, where it cannot move
+   anything but its own contents. */
+details.testpair[open] { padding-bottom:.8rem; }
+/* Where the 🕵️ landed. A pair looks exactly like the three pairs around it, and the
+   reader arrives a whole tab away from the row they clicked, so the pair says once that
+   it is the one that was asked for. Its own border does the saying — nothing moves,
+   nothing is added, and a second click on a second row can say it again. A permanent
+   mark would still be there then, pointing at the previous question. */
+@keyframes seq-flash { from { border-color:var(--link); } to { border-color:var(--line); } }
+.testpair.seq-hit { animation:seq-flash 2s ease-out 1; }
+/* The quoted test, above the picture it explains, behind one control.
+   Closed on load: the tab is about the drawing, and the source is one click away.
+   That control is a single row — `Show Test`, then the file the bar names, the lines it
+   quotes and what changed in them — because the row that used to sit above the bar said
+   the line numbers a second time and nothing else. `SEQFOLD_JS` keeps a click on one of
+   the bar's own links from toggling the fold under it. */
+details.testsrc { margin:.55rem 0 0; }
+details.testsrc > summary { cursor:pointer; list-style:none; display:flex; gap:.5rem;
+  align-items:center; color:var(--muted); font-size:.82rem;
+  font-family:ui-monospace,Menlo,monospace; padding:.15rem 0; }
+details.testsrc > summary::-webkit-details-marker { display:none; }
+details.testsrc > summary::before { content:"▾"; font-size:.75rem; }
+details.testsrc:not([open]) > summary::before { content:"▸"; }
+details.testsrc > summary:hover > .foldlbl { color:var(--link); }
+details.testsrc > summary > .foldlbl::after { content:"Show Test"; }
+details.testsrc[open] > summary > .foldlbl::after { content:"Hide Test"; }
+/* The hoisted bar keeps its own right alignment and takes the rest of the row. */
+details.testsrc > summary > .srcbar { flex:1 1 auto; margin:0; }
+/* What the branch did to the quoted file, drawn rather than spelled — the Tests tab's own
+   glyph, at the size the marks beside it are. `NEW FILE` in caps was read before the file
+   name it is a fact about; the words are on the hover, and the `+` column in the gutter
+   below counts the lines the caps used to. Green for a file that did not exist, amber for
+   one this branch edited, the page's own quiet grey for one it left alone. */
+.srcbar .filemark { display:inline-flex; flex:0 0 auto; cursor:help; margin-left:-2px;
+  --fm:#1a7f37; }
+.srcbar .filemark[data-kind=edited] { --fm:var(--drift); }
+.srcbar .filemark[data-kind=unchanged] { --fm:var(--muted); }
+.srcbar .filemark svg { display:block; width:15px; height:15px; overflow:visible; }
+.srcbar .filemark .fm-page, .srcbar .filemark .fm-mark { fill:var(--fm); }
+@media (prefers-color-scheme: dark) {
+  .srcbar .filemark { --fm:#56d364; }
+}
+details.testsrc > .snippet { margin:.4rem 0 0; }
+.testlead { margin:.7rem 0 0; }
+/* The fold's own summary: the names of the scenarios drawn inside it. It used to be the
+   file name, set quiet and monospace because it was a control beside a picture that was
+   already on screen. Folded shut, it is the only thing on screen — the tab's table of
+   contents, one line per test — so it is set as what it now is: prose, at the page's own
+   weight, in the page's own face. Monospace was for a path; these are sentences. */
+details.testpair > summary { cursor:pointer; list-style:none; display:inline-flex; gap:.4rem;
+  align-items:baseline; color:var(--fg); font-size:.95rem; font-weight:600;
+  padding:.25rem 0; }
+details.testpair > summary::-webkit-details-marker { display:none; }
+details.testpair > summary::before { content:"▾"; font-size:.75rem; }
+details.testpair:not([open]) > summary::before { content:"▸"; }
+details.testpair > summary:hover { color:var(--link); }
+/* What kind of test drew the sequence, in the chip the Tests tab wears for the same three
+   words and in the same three colours — `.evi.e2e` / `.api` / `.unit` a few hundred lines
+   up are that palette, and the requirements map's own `--rm-*-bg` are the same hues again.
+   One vocabulary for "what level is this test at", drawn the same way wherever the page
+   says it, so a reader who learnt the blue pill on one tab is not taught it twice.
+   `baseline` alignment on the summary would hang the pill off the sentence's baseline and
+   leave its rounded bottom below the row; it is a mark ABOUT the line, so it centres.
+   No `cursor:help`, deliberately: it lives inside the summary, and a click on it opens the
+   fold like a click anywhere else on the row. The question mark is for a mark that only
+   explains itself — TIP_JS says so, and excludes everything inside a summary for it. */
+.testcat { flex:0 0 auto; align-self:center; min-width:2.6rem;
+  text-align:center; padding:2px 7px; border-radius:999px;
+  font:700 .62rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.08em; text-transform:uppercase;
+  background:color-mix(in srgb, var(--tc) 13%, transparent); color:var(--tc); }
+.testcat[data-cat=e2e]  { --tc:#164691; }
+.testcat[data-cat=api]  { --tc:#5c2c8e; }
+.testcat[data-cat=unit] { --tc:#0f5f5f; }
+/* The hover is the legend, so the chip must not also take the summary's link colour when
+   the row under it is hovered — a pill that changes colour reads as a second control. */
+details.testpair > summary:hover > .testcat { color:var(--tc); }
+@media (prefers-color-scheme: dark) {
+  .testcat { background:color-mix(in srgb, var(--tc) 16%, transparent); }
+  .testcat[data-cat=e2e]  { --tc:#a0c8ff; }
+  .testcat[data-cat=api]  { --tc:#d2b4ff; }
+  .testcat[data-cat=unit] { --tc:#87e4e4; }
+}

@@ -28,14 +28,29 @@ def _script(name: str) -> str:
     return "<script>\n" + _text(name) + "</script>"
 
 
-CSS = _text("page.css")
+# The base stylesheet is one file per module under ``assets/css/`` -- the same split as
+# the Python: a tab's rules sit in ``css/<tab>.css`` next to nothing but that tab's, and
+# what a shared module styles (the commands, the snippets, the diagram gallery, the
+# masthead) sits in a file named for that module. ``core.css`` is the page frame and the
+# vocabulary every tab uses: the variables, the body, the tab strip, the panels, the
+# diff colours. Two agents changing two tabs' styles now edit two files.
+#
+# Concatenated, in this order, into the one ``<style>`` the page carries. The order is
+# the cascade: core first so a module can override it, shared modules before the tabs
+# that reuse their classes. A new file is not picked up by being on disk -- it has to be
+# named here, and ``test_build_split_identity.py`` fails the build if one is not.
+CSS_FILES = (
+    "core", "masthead", "chips", "commands", "demo", "review", "cost", "tests",
+    "snippets", "sequence", "logging", "diagrams", "genseq", "city", "frame",
+)
+CSS = "".join(_text(f"css/{name}.css") for name in CSS_FILES)
 
 
-# The footer's own rule, in its own file rather than a line in `page.css`: see
+# The footer's own rule, in its own file rather than a line in `css/core.css`: see
 # `assets/footer.css` for why. Emitted straight after `CSS`, ahead of a generator's
 # `extra_css` and of `LATE_CSS`, so either can still outrank it the way they outrank the
 # base sheet — nothing here needs to win a fight, it only needs to not lose the one
-# `page.css`'s bare `a { color:var(--link); }` would otherwise hand it by default.
+# `core.css`'s bare `a { color:var(--link); }` would otherwise hand it by default.
 FOOTER_CSS = _text("footer.css")
 
 

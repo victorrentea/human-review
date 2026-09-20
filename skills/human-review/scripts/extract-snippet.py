@@ -462,6 +462,37 @@ def _first_code_line(lines: list[str], start: int, end: int) -> int:
     return i if i <= end else start
 
 
+# The comment styles the page ever snips: `//` (Java/TS/JS), `/* ... */` blocks — the
+# opener, the closer, and the `* ` continuation lines inside a `/** ... */` doc comment —
+# `#` (Python, and the tags a Gherkin `.feature` line can open with), and `--` (SQL). Wider
+# than `COMMENT_LINE` above on purpose: that one only has to recognise the two braced
+# languages `_first_code_line` snaps for, and folding `--` into it would change what a
+# hand-written SQL range snaps to, which nothing has asked for.
+PREVIEW_COMMENT = re.compile(r"^\s*(//|/\*|\*/|\*(?!\S)|#|--)")
+
+
+def preview_line(lines: list[str]) -> str:
+    """The first line of *actual code* in a quoted slice — what the collapsed row of a
+    folded snippet shows next to its `path:lines` reference.
+
+    A slice routinely opens on the comment above the construct it quotes — a step's own
+    JSDoc, a method's `//` note — because `_first_code_line` only snaps a *hand-written*
+    range, and an `exact` one (a step's line, found by matching its own decorator) is
+    quoted starting exactly where it was asked to start, comment included. Previewing that
+    opening line verbatim reads as `/**`, which says nothing about what the slice is —
+    so this walks past blank lines and comment lines the same way, but only to pick the
+    one line the collapsed row prints; the block itself, opened, still shows the comment.
+
+    A slice that is comment from its first line to its last has no line of code to find,
+    and previews as it always has: its own first line, so a doc-only quote still gets a
+    row rather than an empty one.
+    """
+    for line in lines:
+        if line.strip() and not PREVIEW_COMMENT.match(line):
+            return line.strip()
+    return lines[0].strip() if lines else ""
+
+
 def _depth(line: str) -> int:
     """Bracket balance of one line, ignoring anything after a `//`."""
     code = line.split("//")[0]

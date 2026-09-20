@@ -836,21 +836,31 @@ CSS = """/* ds-audit — the annotated screenshots and the findings table, and n
 .dsa-v.bad { color: var(--dsa-bad); }
 .dsa-v.ok  { color: var(--dsa-ok); }
 .dsa-table tr.ok td:first-child { border-left: 4px solid var(--dsa-ok); }
-.dsa-reg { font-size: .82rem; margin: .6rem 0; }
-.dsa-reg code { font-size: .95em; }
 .dsa-prov { opacity: .7; font-style: italic; }
 .dsa-sel { font-size: .78rem; opacity: .72; word-break: break-all; }
-.dsa-none { opacity: .7; font-style: italic; }
-.dsa-screen > summary { cursor: pointer; font-size: .82rem; opacity: .8;
-  margin: .1rem 0 .5rem; }
-.dsa-screen[open] > summary { margin-bottom: .3rem; }
+/* One collapsible row per screen, closed by default — the same furniture the Sequence
+   tab's `details.testpair` wears for the same reason: a run audits the whole catalogue,
+   and most of it did not change in a way worth a picture. The triangle and the
+   inline-flex summary are copied from `hrbuild/assets/css/sequence.css` rather than
+   shared with it, because a fragment meant to render standalone (`report_page.py`,
+   `--css`) cannot depend on a stylesheet that ships with the page around it; the two are
+   free to drift apart the day one of them needs to. */
+details.dsa-screen { background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: .4rem .95rem; margin: .55rem 0; }
+details.dsa-screen[open] { padding-bottom: .8rem; }
+details.dsa-screen > summary { cursor: pointer; list-style: none; display: flex; gap: .4rem;
+  align-items: baseline; color: var(--fg); font-size: .95rem; font-weight: 600;
+  padding: .25rem 0; }
+details.dsa-screen > summary::-webkit-details-marker { display: none; }
+details.dsa-screen > summary::before { content: "▾"; font-size: .75rem; }
+details.dsa-screen:not([open]) > summary::before { content: "▸"; }
+details.dsa-screen > summary:hover { color: var(--link); }
+.dsa-route { opacity: .7; font-weight: 400; }
 .dsa-considered { margin: .6rem 0 0; font-size: .84rem; opacity: .85; }
 .dsa-considered summary { cursor: pointer; }
 .dsa-considered ul { margin: .4rem 0 0 .2rem; }
 .dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
 .dsa-hdr .dsa-count { font-weight: 700; }
-.dsa-untouched { font-size: .82rem; opacity: .8; margin: .2rem 0 .4rem; }
-.dsa-untouched > summary, .dsa-reg > summary { cursor: pointer; }
 .dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
   padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
 .dsa-unlisted code { color: inherit; }
@@ -965,6 +975,14 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "screen"
 
 
+def _title_case(name: str) -> str:
+    """Every word's first letter up, everything else untouched — `str.title()`
+    mangles an apostrophe (`Owner'S`) and would lowercase an acronym the catalogue wrote
+    in caps. The summary line reads as a heading; the catalogue's own casing does not
+    have to."""
+    return re.sub(r"\b\w", lambda m: m.group().upper(), name)
+
+
 def screen_touched(screen: dict) -> bool:
     """Did this branch modify this screen at all?
 
@@ -1069,20 +1087,17 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
             f'<td>{churn_txt}</td></tr>')
 
     counts = screen["summary"]
-    nothing = screen_has_nothing_to_judge(screen)
-    dom = screen.get("delta", {}).get("dom", {})
-    moved = sum(len(dom.get(k) or ()) for k in ("added", "removed", "changed"))
-    if nothing:
-        verdict = (f'changed \u00b7 {moved} element{"" if moved == 1 else "s"} \u00b7 '
-                   'no control the design system covers')
-    else:
-        verdict = (f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
-                   f'{"" if counts["new"]["bare"] == 1 else "s"} '
-                   f'\u00b7 {ds_phrase(counts)}'
-                   + (f' \u00b7 {len(counts["improvements"])} migrated'
-                      if counts["improvements"] else ""))
-    head = (f'<h3 id="dsa-{slug(screen["screen"])}">{html.escape(screen["screen"])}</h3>'
-            f'<p class="dsa-hdr">{verdict}</p>')
+    # Binary, on purpose: the fold's own icon is the verdict now, and a reader who wants
+    # the gap count, the component count, or which ones migrated finds them in the table
+    # underneath \u2014 the summary just says whether this screen is the one to open.
+    has_gap = bool(counts["new"]["bare"])
+    icon = "\u26a0\ufe0f" if has_gap else "\u2705"
+    short_verdict = ("component outside the design system" if has_gap
+                     else "all controls from the design system")
+    route = screen.get("route")
+    route_html = (f' <span class="dsa-route">({html.escape(route)})</span>' if route else "")
+    summary = (f'{icon} {html.escape(_title_case(screen["screen"]))}{route_html} '
+              f'\u2014 changed \u00b7 {short_verdict}')
 
     table = ('<table class="dsa-table"><thead><tr><th></th><th>side</th><th>element</th>'
              '<th>role</th><th>why</th><th>delta</th><th>churn</th></tr></thead><tbody>'
@@ -1105,13 +1120,13 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
         considered = (f'<details class="dsa-considered"><summary>{len(passed)} control'
                       f'{"" if len(passed) == 1 else "s"} considered and deliberately not '
                       f'judged</summary><ul>{items}</ul></details>')
-    # The heading and its counts stay outside the fold: a folded screen still has to
-    # say how many gaps it carries, or folding it would be hiding a finding. A screen
-    # with nothing to judge folds closed: it is on the page because it changed, and the
-    # heading has already said the audit has no opinion on it.
-    return (f'<div class="dsa">{head}'
-            f'<details class="dsa-screen"{"" if nothing else " open"}>'
-            f'<summary>{"pictures" if nothing else "pictures and findings"}</summary>'
+    # Every screen folds shut on load, the way the Sequence tab's `details.testpair`
+    # rows do: a run audits the whole catalogue, and the summary line already carries the
+    # one thing worth scanning for — the icon — without paying for a picture nobody
+    # asked to see yet.
+    return (f'<div class="dsa">'
+            f'<details class="dsa-screen" id="dsa-{slug(screen["screen"])}">'
+            f'<summary>{summary}</summary>'
             f'{build.dgm_views_html(panes, initial="new")}{table}{considered}</details></div>')
 
 
@@ -1123,22 +1138,8 @@ def render(result: dict, assets_prefix: str) -> str:
     page would be the mistake worth failing a build over.
     """
     build = _build_review()
-    reg_rows = "".join(
-        f'<li><code>data-ds="{html.escape(c["ds"])}"</code> covers '
-        + (", ".join(f'<code>{html.escape(r)}</code>' for r in c["roles"])
-           or '<span class="dsa-none">nothing we could determine</span>')
-        + f' <span class="dsa-prov">\u2014 {html.escape(c["provenance"])}'
-        + (f': {html.escape(c["detail"])}' if c["detail"] else "") + "</span></li>"
-        for c in result["registry"]["components"])
-    if not reg_rows:
-        reg_rows = ('<li class="dsa-none">No <code>data-ds</code> component was found on '
-                    "either side or in the sources scanned, so no role is claimed and "
-                    "nothing can be called a gap. That is an empty registry, not a clean "
-                    "bill of health.</li>")
-
     counts = result["summary"]
     touched = [sc for sc in result["screens"] if screen_touched(sc)]
-    untouched = [sc for sc in result["screens"] if not screen_touched(sc)]
     n = len(result["screens"])
     verdict_line = (
         f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
@@ -1170,29 +1171,10 @@ def render(result: dict, assets_prefix: str) -> str:
         + (f' via <code>{html.escape(u["via"])}</code>' if u.get("via") else "")
         + ') changed and is not in <code>steps.dsaudit.screens</code>.</p>'
         for u in unlisted)
-    # The screens the branch left alone are named, not drawn: a reader who wonders why
-    # "Edit a pet" is missing gets the answer in one line instead of three screenshots of
-    # a form that did not change. A gap that was already there is still a gap, so the
-    # count rides along; it is just not this branch's doing.
-    if untouched:
-        names = ", ".join(
-            html.escape(sc["screen"])
-            + (f' <span class="dsa-prov">({sc["summary"]["new"]["bare"]} gap'
-               f'{"" if sc["summary"]["new"]["bare"] == 1 else "s"} already there)</span>'
-               if sc["summary"]["new"]["bare"] else "")
-            for sc in untouched)
-        untouched_line = (f'<details class="dsa-untouched"><summary>{len(untouched)} '
-                          f'unchanged screen{"" if len(untouched) == 1 else "s"}</summary>'
-                          f'{names}</details>')
-    else:
-        untouched_line = ""
     return (
         '<div class="dsa-run">'
         f'{unlisted_line}'
         f'<p class="dsa-hdr">{verdict_line}</p>'
-        f'{untouched_line}'
-        f'<details class="dsa-reg"><summary>roles the design system covers</summary>'
-        f'<ul>{reg_rows}</ul></details>'
         # Screens with a verdict first — a gap, a regression, a component — so the tab
         # opens on a marked-up picture; the changed-but-nothing-to-judge ones trail.
         + "".join(render_screen(sc, assets_prefix, build)
@@ -1281,7 +1263,8 @@ def _git_head(path: Path) -> str:
         return ""
 
 
-def build_screen(name, old_snap, new_snap, registry, *, sides_meta, delta) -> dict:
+def build_screen(name, old_snap, new_snap, registry, *, sides_meta, delta,
+                 route: str | None = None) -> dict:
     """One screen's verdicts, before and after. A run audits several — three of the four
     controls the sibling migrated live on three different forms, and "it flagged only the
     right one" is a claim you cannot make from one screen."""
@@ -1366,6 +1349,7 @@ def build_screen(name, old_snap, new_snap, registry, *, sides_meta, delta) -> di
 
     return {
         "screen": name,
+        "route": route,
         "sides": sides_meta,
         "settled": {"new": new_snap.get("settled"), "old": old_snap.get("settled")},
         "delta": delta,
@@ -1502,12 +1486,17 @@ def main():
     assets = Path(args.assets)
     assets.mkdir(parents=True, exist_ok=True)
 
-    # What to audit: `NAME=PATH` against two origins, or explicit URL pairs.
+    # What to audit: `NAME=PATH` against two origins, or explicit URL pairs. `routes`
+    # rides beside `wanted` on the same key (the screen name) rather than folding into
+    # its tuple: it is display-only, a name the catalogue already gave for free, and
+    # every caller of `wanted` that doesn't care about it stays a 3-tuple unpack.
     wanted = []
+    routes: dict[str, str] = {}
     for spec in args.screen:
         name, _, path = spec.partition("=")
         if not (args.base_new and args.base_old):
             ap.error("--screen needs --base-new and --base-old")
+        routes[name] = "/" + (path or name).strip("/")
         wanted.append((name, args.base_new.rstrip("/") + "/" + (path or name).lstrip("/"),
                        args.base_old.rstrip("/") + "/" + (path or name).lstrip("/")))
     if len(args.new) != len(args.old):
@@ -1518,8 +1507,11 @@ def main():
         # path, which is a poor heading and an unreadable asset filename for a file:// one.
         if sep and "://" in url:
             wanted.append((name, url, old_url.partition("=")[2] or old_url))
+            routes[name] = _route_of(url)
         else:
-            wanted.append((_name_from_url(new_url, i), new_url, old_url))
+            name = _name_from_url(new_url, i)
+            wanted.append((name, new_url, old_url))
+            routes[name] = _route_of(new_url)
 
     cap_dir = Path(args.from_capture) if args.from_capture else None
     keep = Path(args.keep_capture) if args.keep_capture else None
@@ -1604,7 +1596,8 @@ def main():
         }
         screens.append(build_screen(name, pair["old"], pair["new"], registry,
                                     sides_meta=sides_meta,
-                                    delta={"dom": dom, "elements": elements}))
+                                    delta={"dom": dom, "elements": elements},
+                                    route=routes.get(name)))
 
     result = build_result(screens, registry)
     result["unlisted"] = [dict(zip(("component", "route", "via"), u.split("=", 2)))
@@ -1623,6 +1616,14 @@ def main():
 def _name_from_url(url: str, i: int) -> str:
     path = re.sub(r"^\w+://[^/]+", "", url).strip("/")
     return path or f"screen {i + 1}"
+
+
+def _route_of(url: str) -> str:
+    """The path `url` carries, front-slashed — `/pets/11/edit`, not `pets/11/edit`.
+    Empty when the URL is bare (an origin with nothing after it is not a route worth
+    parenthesising in a screen's summary line)."""
+    path = re.sub(r"^\w+://[^/]+", "", url).strip("/")
+    return f"/{path}" if path else ""
 
 
 if __name__ == "__main__":
