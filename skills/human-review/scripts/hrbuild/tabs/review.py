@@ -1072,16 +1072,28 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
     plural = "" if n == 1 else "s"
     if code["files"]:
         lines = code["added"] + code["deleted"]
+        # What is stale and what is not, named. The band used to say that everything on
+        # every tab described the branch as it was — true of the page the agent built,
+        # false one press of *Regenerate* later, when every measured tab is rebuilt from
+        # the branch as it is now and only the model's half still dates from the review.
+        # A reader who had just regenerated read the band as the page contradicting
+        # itself, and asked why regenerating had not made the list go away. It cannot:
+        # the list is code the review never judged, and only a new review pass — a commit
+        # carrying `Review-Points:` — moves the point it is counted from. Said here, once,
+        # so the button under the list is not mistaken for the thing that clears it.
         head = (f'<p><b>{n} commit{plural}, {lines} line'
                 f'{"" if lines == 1 else "s"} changed since the agent finished.</b> '
-                'Everything else on this tab — and on every other tab — describes the '
-                'branch as it was when the review was written.</p>')
+                'The findings, the assumptions and the requirements matrix were written '
+                'before them and have not seen them; every measured tab is rebuilt from '
+                'the branch as it is now.</p>')
         sub = ('Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>. '
                + (f'{code["genFiles"]} generated file'
                   + ("" if code["genFiles"] == 1 else "s")
-                  + ' moved as well and are not counted here.'
+                  + ' moved as well and are not counted here. '
                   if code["genFiles"] else
-                  'None of it is a generated file.'))
+                  'None of it is a generated file. ')
+               + 'This list clears when a new review pass lands — a commit carrying a '
+                 '<code>Review-Points:</code> trailer — not when the page is regenerated.')
         cls = "rband-alert"
         role = "alert"
     elif n:

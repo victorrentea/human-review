@@ -3139,6 +3139,12 @@ def test_the_merge_that_brought_the_base_in_is_not_a_commit_of_its_own(tmp_path)
         "both picks, and the merge counted in neither half"
     assert "Merge main: mid tooling" not in out
     assert "1 commit, 1 line changed since the agent finished" in out
+    # Truthful after a *Regenerate*: the measured tabs are current, the model's half is
+    # not, and the list is cleared by a review pass, never by the button under it.
+    assert "were written before them and have not seen them" in out
+    assert "every measured tab is rebuilt from the branch as it is now" in out
+    assert "clears when a new review pass lands" in out
+    assert "describes the branch as it was" not in out
 
 
 def test_no_base_ref_folds_nothing(tmp_path):
