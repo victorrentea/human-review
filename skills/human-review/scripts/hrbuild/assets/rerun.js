@@ -31,6 +31,131 @@
   var fail = document.getElementById('hr-rerun-fail');
   var done = document.getElementById('hr-rerun-done');
 
+  // The run while it runs: a bar, the step it is on, how many are left, roughly how long.
+  //
+  // What the page can see is the run's tail (`snap.output`), and `run-steps.py` prints one
+  // line as it starts each step -- `  * diagrams -> data,packages` -- and `refresh-report.py`
+  // prints the build command when the steps are over. What the page cannot see is the
+  // future: how long `diagrams` will take is not in the log until it is over. So the band
+  // estimates from the last run, whose timings the build carried onto the element as
+  // `data-expect` (`.steps-cache.json`), and credits the step in flight with the time it
+  // has been running, capped just under its expectation so the bar never reaches the end
+  // before the run does.
+  //
+  // It survives a refresh, which the turning glyph never did. The server keeps the run and
+  // says which one is going (`HR.status()`), so a page that loads mid-run adopts it -- see
+  // the block at the bottom -- and the reader who reloaded to "check" finds the same bar
+  // further along rather than a page that looks like nothing was ever pressed.
+  var progress = (function () {
+    var box = document.getElementById('hr-rerun-progress');
+    var noop = function () {};
+    if (!box) return {start: noop, update: noop, finish: noop, hide: noop};
+    var expect = {};
+    try { expect = JSON.parse(box.getAttribute('data-expect') || '{}'); } catch (e) {}
+    var steps = expect.steps || {};
+    var order = Object.keys(steps);
+    var fill = box.querySelector('.rerunprog-fill');
+    var say = box.querySelector('.rerunprog-say');
+    var eta = box.querySelector('.rerunprog-eta');
+    // `run-steps.py`: `  * name -> tabs` (running), `  = name: unchanged…`, `  - name: skipped`.
+    var STEP = /^  ([*=-]) ([\w-]+)(?: ->|:)/gm;
+    // `refresh-report.py`: `[refresh] $ … build-review-html.py …` once the steps are done.
+    var BUILD = /\[refresh\] \$ [^\n]*build-review-html\.py/g;
+    var runStarted = 0, began = {}, primed = false, kind = 'rerun';
+
+    function expected(name) {
+      return typeof steps[name] === 'number' ? steps[name] : (expect['default'] || 5);
+    }
+    function total() {
+      var t = expect.build || 15;
+      order.forEach(function (n) { t += expected(n); });
+      return t;
+    }
+    // How long the phase in flight has been running. The page that pressed the button
+    // saw the phase's first line arrive and clocked it (`began`). A page that loaded
+    // mid-run did not, and reckons instead from the run's own clock -- the server says
+    // when it started, and says it again to whoever asks -- minus what the steps before
+    // this one are expected to have taken, a skipped or unchanged step counting as no
+    // time at all. Either way the bar stands where it stood before the reload, rather
+    // than restarting the step at zero.
+    function credit(name, spentBefore, cap) {
+      var since = began[name] > 0 ? began[name]
+        : (runStarted ? runStarted + spentBefore * 1000 : Date.now());
+      var elapsed = (Date.now() - since) / 1000;
+      return Math.max(0, Math.min(elapsed, cap * 0.95));
+    }
+    function start(k, startedAt) {
+      kind = k || 'rerun';
+      runStarted = startedAt ? startedAt * 1000 : Date.now();
+      began = {}; primed = false;
+      box.classList.remove('failed');
+      fill.style.width = '0%';
+      say.textContent = kind === 'rerun_ai' ? 'Asking the model…' : 'Rebuilding this page…';
+      eta.textContent = startedAt ? 'started ' + clock(startedAt) : '';
+      box.hidden = false;
+    }
+    function clock(epochSeconds) {
+      var at = new Date(epochSeconds * 1000);
+      return at.getHours() + ':' + ('0' + at.getMinutes()).slice(-2);
+    }
+    function update(snap) {
+      var out = (snap && snap.output) || '';
+      if (snap && snap.started && !runStarted) runStarted = snap.started * 1000;
+      var seen = [], m, lastStepAt = -1, buildAt = -1;
+      STEP.lastIndex = 0;
+      while ((m = STEP.exec(out))) { seen.push({mark: m[1], name: m[2]}); lastStepAt = m.index; }
+      BUILD.lastIndex = 0;
+      while ((m = BUILD.exec(out))) buildAt = m.index;
+      var building = buildAt > lastStepAt;
+      var now = Date.now();
+      // The first tail this page sees may be a run already well along: nothing in it
+      // "began now". A phase already in that tail is marked as such (-1) and reckoned
+      // from the run's clock for as long as it lasts; only a line that arrives on a
+      // later poll is clocked at the moment it arrives.
+      var clock = primed; primed = true;
+      var done = 0, spent = 0, current = null;
+      seen.forEach(function (st, i) {
+        var last = i === seen.length - 1;
+        if (!began[st.name]) began[st.name] = clock ? now : -1;
+        if (st.mark !== '*' || !last || building) {
+          done += expected(st.name);
+          if (st.mark === '*') spent += expected(st.name);
+          return;
+        }
+        current = st.name;
+        done += credit(st.name, spent, expected(st.name));
+      });
+      var all = total();
+      if (building) {
+        if (!began['\0build']) began['\0build'] = clock ? now : -1;
+        done = all - (expect.build || 15) + credit('\0build', spent, expect.build || 15);
+      }
+      var frac = Math.max(0, Math.min(1, all ? done / all : 0));
+      fill.style.width = (frac * 100).toFixed(1) + '%';
+      var n = order.length || seen.length;
+      if (building) {
+        say.textContent = 'Building the page…';
+      } else if (current) {
+        say.textContent = 'Rebuilding: ' + current + ' (' + seen.length + '/' + n + ')';
+      } else if (seen.length) {
+        say.textContent = 'Rebuilding: ' + seen[seen.length - 1].name + ' (' + seen.length + '/' + n + ')';
+      } else {
+        say.textContent = kind === 'rerun_ai' ? 'Asking the model…' : 'Starting…';
+      }
+      // No estimate while the model is thinking: nothing on the page has measured that.
+      if (!seen.length && kind === 'rerun_ai') return;
+      var left = Math.max(1, Math.round(all - done));
+      eta.textContent = '~' + left + ' s left';
+    }
+    function finish() {
+      fill.style.width = '100%';
+      say.textContent = 'Done — reloading…';
+      eta.textContent = '';
+    }
+    function hide() { box.hidden = true; }
+    return {start: start, update: update, finish: finish, hide: hide};
+  })();
+
   // What `run-steps.py` prints last, which its own comment says is "phrased for the status
   // band on the served page rather than for this terminal": `N step(s) re-run, M unchanged
   // and skipped \u2014 about N s saved.` It had nowhere to go. The band beside this one
@@ -78,6 +203,7 @@
   var remember = window.HR.keepPlace;
 
   function stop(btn, problem, snap) {
+    progress.hide();
     btn.disabled = false;
     btn.classList.remove('running');
     btn.setAttribute('data-tip', btn.getAttribute('data-idle-tip') || '');
@@ -118,13 +244,17 @@
     // already spin, so a reader who has seen one knows this one is working.
     btn.classList.add('running');
     remember();
+    progress.start(btn.getAttribute('data-rerun') === '__rerun_ai__' ? 'rerun_ai' : 'rerun');
     window.HR.run(btn.getAttribute('data-rerun'), {}, function (snap) {
       // One line, in the hover: the button has room for a word and the reader who wants
-      // to know which producer it is on is the reader already pointing at it.
+      // to know which producer it is on is the reader already pointing at it. The band
+      // under the masthead says the rest.
       var line = window.HR.tail(snap);
       btn.setAttribute('data-tip', line || 'Rebuilding this page\u2026');
+      progress.update(snap);
     }).then(function (snap) {
       if (snap.state === 'done') {
+        progress.finish();
         // What the run said about itself, kept for the other side of the reload.
         stash(snap);
         // The server holds its reload-watcher for the length of the rerun, so this is the
@@ -282,5 +412,38 @@
       var mode = document.getElementById('hr-mode');
       if (mode) mode.hidden = true;
     });
+    adopt();
   });
+
+  // A run that was going when this page loaded. The reader pressed Rerun, waited, and
+  // refreshed to see whether it was done -- and the old page answered with a masthead
+  // that looked exactly as it did before the press. The server still has the run; ask it,
+  // follow the tail to the same end the press would have, and reload when it is done. Only
+  // the two reruns: a diagram's own rerun has its own glyph and is not this band's news.
+  function adopt() {
+    if (!window.HR.status || !window.HR.follow) return;
+    window.HR.status().then(function (st) {
+      if (!st || !st.active || (st.kind !== 'rerun' && st.kind !== 'rerun_ai')) return;
+      var id = st.kind === 'rerun_ai' ? '__rerun_ai__' : '__rerun__';
+      var mine = null;
+      buttons.forEach(function (b) {
+        b.disabled = true;
+        if (b.getAttribute('data-rerun') === id) { mine = b; b.classList.add('running'); }
+      });
+      progress.start(st.kind, st.started);
+      progress.update(st.active);
+      window.HR.follow(st.active, progress.update).then(function (snap) {
+        if (snap.state === 'done') {
+          progress.finish();
+          stash(snap);
+          remember();
+          location.reload();
+          return;
+        }
+        stop(mine || buttons[0], 'the rebuild did not finish', snap);
+      }).catch(function (e) {
+        stop(mine || buttons[0], e.message || 'the review server could not be reached', null);
+      });
+    }).catch(function () {});
+  }
 })();

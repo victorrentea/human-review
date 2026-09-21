@@ -340,7 +340,10 @@ window.HR = (function () {
     });
   });
 
-  return {ready: ready, can: can, onready: onready, run: run, rerun: rerun,
+  // `follow`: the poller, for a page that loads while a run is already going -- it has
+  // the run's id from `status()` and needs the same tail, at the same cadence, to
+  // the same end.
+  return {ready: ready, can: can, onready: onready, run: run, rerun: rerun, follow: poll,
           rerunAi: rerunAi, tail: tail, copy: copy, keepPlace: keepPlace,
           status: status, caps: function () { return caps; }};
 })();

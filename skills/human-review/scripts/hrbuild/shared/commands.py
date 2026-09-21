@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import html
+import json
+from pathlib import Path
 import shlex
 
 from .actions import ACTIONS, declare_action
@@ -180,6 +182,53 @@ RERUN_FAIL = ('<div class="rerunfail" id="hr-rerun-fail" hidden role="alert">'
 RERUN_DONE = ('<div class="rerundone" id="hr-rerun-done" hidden role="status">'
               '<span class="rerundone-ico" aria-hidden="true">↻</span>'
               '<span class="rerundone-say"></span></div>')
+
+
+# The run itself, while it runs. A press used to turn one glyph and put the producer's
+# last line in a hover: on a fifty-second rebuild that is a page that looks exactly as it
+# did, with a reader wondering whether to press again, and a refresh of the tab lost even
+# the turning glyph. This band is the run's own progress: a bar, the step it is on, how
+# many are left and roughly how long — and it comes back on a reload, because the server
+# still knows which run is going and the page asks it on every load (`rerun.js`).
+#
+# The expectations are the last run's own timings, read out of `.steps-cache.json` at
+# build time and carried on the band as data: `run-steps.py` prints `* <step> -> <tabs>`
+# as it starts each one, so the page can tell which step it is on, and what it cannot
+# tell from the log — how long the ones ahead will take — it estimates from what they
+# took last time. A step with no history counts as a few seconds; the page build after
+# the steps counts as `build`. Only static steps are listed: the paid run's model half is
+# a wait the page names as such rather than pretends to measure.
+PROGRESS_BUILD_SECONDS = 15.0
+PROGRESS_STEP_DEFAULT = 5.0
+
+
+def step_expectations(out_dir) -> dict:
+    """`{step: seconds}` from the last run's cache, in the order the steps ran."""
+    try:
+        doc = json.loads((Path(out_dir) / ".steps-cache.json").read_text(encoding="utf-8"))
+        steps = doc.get("steps") or {}
+    except (OSError, ValueError, AttributeError):
+        return {}
+    out = {}
+    for name, rec in steps.items():
+        try:
+            out[name] = round(float(rec.get("seconds") or 0), 1)
+        except (TypeError, ValueError, AttributeError):
+            out[name] = 0.0
+    return out
+
+
+def rerun_progress_html(expected: dict) -> str:
+    data = {"steps": expected, "build": PROGRESS_BUILD_SECONDS,
+            "default": PROGRESS_STEP_DEFAULT}
+    return ('<div class="rerunprog" id="hr-rerun-progress" hidden role="status" '
+            'aria-live="polite" data-expect="'
+            + html.escape(json.dumps(data, separators=(",", ":")), quote=True) + '">'
+            '<div class="rerunprog-row"><span class="rerunprog-ico" aria-hidden="true">↻</span>'
+            '<span class="rerunprog-say">Rebuilding this page…</span>'
+            '<span class="rerunprog-eta"></span></div>'
+            '<div class="rerunprog-bar" aria-hidden="true"><i class="rerunprog-fill"></i></div>'
+            '</div>')
 
 
 def drawio_open_html(app_url: str, web_url: str = "") -> str:

@@ -71,6 +71,26 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
             color:var(--muted); display:flex; align-items:baseline; gap:.45rem;
             transition:opacity .4s ease; }
 .rerundone[hidden] { display:none; }
+/* The run's own band: the bar, the step, the estimate. Same row and frame as the two
+   outcome bands, because it is the third state of the same press -- going, done, failed --
+   and a reader should find all three in one place. The fill is a plain width, set by
+   `rerun.js` from what the log has said so far and what the steps took last time. */
+.rerunprog { margin:.8rem 0 0; border:1px solid var(--line); border-radius:8px;
+             padding:.5rem .8rem .55rem; font-size:.88rem; background:var(--card); }
+.rerunprog[hidden] { display:none; }
+.rerunprog-row { display:flex; align-items:baseline; gap:.5rem; }
+.rerunprog-ico { color:var(--link); display:inline-block;
+                 animation:hrspin 1.1s linear infinite; }
+.rerunprog-say { flex:1 1 auto; }
+.rerunprog-eta { color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.rerunprog-bar { margin:.45rem 0 0; height:6px; border-radius:999px; background:var(--code-bg);
+                 overflow:hidden; }
+.rerunprog-fill { display:block; height:100%; width:0; border-radius:999px;
+                  background:var(--link); transition:width .6s ease; }
+.rerunprog.failed .rerunprog-fill { background:#c62828; }
+.rerunprog.failed .rerunprog-ico { animation:none; color:#c62828; }
+@media (prefers-reduced-motion: reduce) { .rerunprog-ico { animation:none; }
+  .rerunprog-fill { transition:none; } }
 .rerundone.going { opacity:0; }
 .rerundone-ico { color:var(--ok,#2e7d32); }
 @media (prefers-color-scheme: dark) { .rerundone-ico { color:#8fd39c; } }

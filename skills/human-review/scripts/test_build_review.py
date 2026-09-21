@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import html
 import importlib.util
+import html as html_mod
 import json
 import re
 import subprocess
@@ -4659,3 +4660,50 @@ def test_the_diagram_rebuild_can_never_buy_a_privacy_verdict(tmp_path):
     src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
     body = src[src.index("rebuild_cmd = "):]
     assert '"--no-model"' in body[:body.index("\n\n")]
+
+
+# ── the rerun's own progress band ───────────────────────────────────────────────
+# A press used to turn one glyph and put the producer's last line in a hover; on a
+# fifty-second rebuild that is a page that looks exactly as it did, and a refresh of the
+# tab lost even the glyph. The band is the run's progress -- the step, the count, an
+# estimate -- and it comes back on a reload because the server still knows the run.
+
+
+def test_the_progress_band_carries_last_runs_timings_as_its_expectations(tmp_path):
+    (tmp_path / ".steps-cache.json").write_text(json.dumps({
+        "version": 3, "steps": {"diagrams": {"key": "x", "seconds": 32.7},
+                                "c2": {"key": "y", "seconds": 4.06}}}), encoding="utf-8")
+    page, _ = _build(tmp_path, BARE)
+    band = re.search(r'<div class="rerunprog" id="hr-rerun-progress"[^>]*>', page)
+    assert band, "no progress band under the masthead"
+    assert 'hidden' in band.group(0) and 'role="status"' in band.group(0)
+    expect = json.loads(html_mod.unescape(re.search(r'data-expect="([^"]*)"', band.group(0))[1]))
+    # In the order they ran, at the precision a reader would believe.
+    assert list(expect["steps"]) == ["diagrams", "c2"]
+    assert expect["steps"] == {"diagrams": 32.7, "c2": 4.1}
+    assert expect["build"] > 0 and expect["default"] > 0
+    # Going, done, failed: the three states of one press, in one row of the masthead.
+    assert page.index('id="hr-rerun-progress"') < page.index('id="hr-rerun-done"') \
+        < page.index('id="hr-rerun-fail"')
+
+
+def test_a_page_with_no_step_history_still_gets_the_band(tmp_path):
+    page, _ = _build(tmp_path, BARE)
+    expect = json.loads(html_mod.unescape(re.search(r'data-expect="([^"]*)"', page)[1]))
+    assert expect["steps"] == {}
+
+
+def test_the_band_reads_the_runner_s_step_lines_and_survives_a_reload():
+    """Grep-shaped, like every other guardrail on the page's scripts."""
+    js = (HERE / "hrbuild" / "assets" / "rerun.js").read_text(encoding="utf-8")
+    # The line `run-steps.py` prints as it starts a step, and the build line after them.
+    assert "([*=-]) ([\\w-]+)" in js
+    assert "build-review-html\\.py" in js
+    # A run already going when the page loads is adopted: asked of the server, followed
+    # to its end, and reloaded like a press would be.
+    assert "function adopt()" in js
+    assert "window.HR.status()" in js and "window.HR.follow(" in js
+    server = (HERE / "hrbuild" / "assets" / "server.js").read_text(encoding="utf-8")
+    assert "follow: poll" in server
+    # The estimate never claims the end before the run reaches it.
+    assert "cap * 0.95" in js
