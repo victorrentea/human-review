@@ -114,14 +114,15 @@ RIPPLE = ("#F2CF8E", "#F4DCB4", "#F2EBDB")
 # Hence "neighbours" twice: one word per ring, the nearer ring in the stronger amber.
 RIPPLE_LABELS = ("impacted", "neighbours", "neighbours")
 
-# The ink the legend's washed words are written in. Deliberately *not* PlantUML's default
-# black: `build-review-html.py` rewrites `#000000` to `--dgm-fg`, which goes near-white in
-# dark mode, while a creole background compiles to an SVG *filter* (`<feFlood>`) that the
-# same pass does not rewrite — black ink would have gone white on daylight cream. A hex
-# the themer does not know is left exactly as written, so this one stays dark in both
-# modes, which is what the pale amber underneath it needs. Not a fourth diagram colour:
-# it is never painted on the diagram, only under the picture.
-LEGEND_INK = "#1A1A1A"
+# The ink the legend's washed words are written in: the same black every box label wears,
+# so `build-review-html.py` themes it to `--dgm-fg` exactly as it themes those labels.
+# The wash under it is themed too — a creole background compiles to an SVG filter
+# (`<feFlood>`), and the themer rewrites `flood-color` alongside `fill` — so the pair
+# flips together: dark on pale amber by day, near-white on dark amber at night, the same
+# way a label sits on a rippled box. It used to be a hex the themer did not know, from
+# before the flood was themed; once the wash went dark the ink stayed dark on it and the
+# words vanished. Named rather than left to PlantUML's default so the pairing is on record.
+LEGEND_INK = "#000000"
 
 
 def _hex(colour: str) -> str:
@@ -191,10 +192,9 @@ def ripple_legend(rungs=RIPPLE) -> str:
     swatches. Only the rungs that actually appear in the picture are listed: a wash for a
     ring the focus level pruned away promises a box the reader can hunt for and never find.
 
-    A creole background is an SVG *filter* (`<feFlood flood-color="…">`), which the page's
-    dark-mode pass — it rewrites `fill` and `style` colours — leaves at its daylight value.
-    That is survivable only because the ink on top is `LEGEND_INK` rather than black; see
-    there. It is also why the wash cannot be handed to a plain box on the diagram this way.
+    A creole background is an SVG *filter* (`<feFlood flood-color="…">`); the page's
+    dark-mode pass rewrites that flood alongside `fill`, and the ink on top is the box
+    labels' own black, so word and wash flip together — see `LEGEND_INK`.
 
     `rungs` names the rings to print, outward from the change. A `None` entry names a ring
     that is on screen but wears no wash — every box in it is painted green or red, or it

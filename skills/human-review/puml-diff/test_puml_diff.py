@@ -401,16 +401,15 @@ def test_each_legend_word_wears_its_own_hop_colour():
     assert "1 hop" not in plain and "2 hops" not in plain and "touched" not in plain
 
 
-def test_the_washed_words_carry_their_own_ink():
-    """A creole background compiles to an SVG *filter*, which the page's dark mode does
-    not rewrite — it rewrites fills. PlantUML's default black label would have been
-    rewritten, going near-white on a wash that stayed daylight cream. The legend names its
-    own ink, in a hex the themer does not know, so it stays dark under both themes."""
+def test_the_washed_words_wear_the_box_labels_ink():
+    """A creole background compiles to an SVG *filter*, and the page's dark mode themes
+    that flood like any fill — the wash goes dark amber at night. The ink on it must go
+    near-white at the same time, and the one ink the themer is guaranteed to carry to
+    `--dgm-fg` is the black every box label already wears. Any other hex is left as
+    written and vanishes on the dark wash."""
     for out in (_diff(), _focused("2")):
         assert f"<back:{m.RIPPLE[0]}><color:{m.LEGEND_INK}>impacted</color></back>" in out
-    # Black is the one ink the themer definitely rewrites; the diagram's own hues are the
-    # others it knows. The legend's ink must be none of them.
-    assert m.LEGEND_INK not in ("#000000", m.ADDED, m.REMOVED, *m.RIPPLE)
+    assert m.LEGEND_INK == "#000000"
 
 
 def test_the_legend_lists_only_the_rungs_the_picture_still_has():
