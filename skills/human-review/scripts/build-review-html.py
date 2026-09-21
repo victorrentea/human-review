@@ -124,7 +124,7 @@ from hrbuild.shared.validate import (
 )
 from hrbuild.tabs.review import (
     AFTERMATH_FILES, aftermath_html, AFTERMATH_JSON, CONFIDENCE_TIP, opening_lede, PASS_DOCS,
-    PILE_BLOCKS, pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND,
+    PILE_BLOCKS, pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND, points_note_band,
     POINTS_PILES, render_assumptions, render_autofixes, render_findings, render_pile_block,
     review_tab_badge,
     reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_value,
@@ -713,9 +713,12 @@ def main(argv=None) -> int:
     # The aftermath first: it is the louder statement and it governs how the piles under
     # it should be read. The missing-record band is second, directly above the piles it
     # explains.
+    # The takeover note third: it is the file's own sentence about which commits the piles
+    # never saw, and it belongs directly above those piles.
     set_bands([aftermath_html(out_dir, root, base_ref=base_st["ref"] if base_st else None),
                POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
-               else ""])
+               else "",
+               points_note_band(spec.get("_reviewPoints"))])
 
     def render_block(block):
         """One block of a tab, as (html, weight, changes).

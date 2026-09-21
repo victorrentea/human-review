@@ -98,8 +98,25 @@ def resolve_review_points(spec: dict, out_dir: Path) -> dict | None:
         "missing": False, "asked": asked, "sections": doc.get("sections") or {},
         "source": doc.get("source") or "review-points.md",
         "fixed_in": doc.get("fixed_in"), "meta": doc.get("meta") or {},
+        "note": doc.get("note") if isinstance(doc.get("note"), dict) else None,
         "path": path.name}
     return spec["_reviewPoints"]
+
+
+def points_note_band(points: dict | None) -> str:
+    """The file's takeover note, as a band above the piles it qualifies.
+
+    Amber, like the aftermath band for generated-only drift, because it is the same kind
+    of statement: the piles below describe the branch at an earlier commit, and here is
+    what was folded in since without anyone re-reading them. Grey would say "absence" and
+    red would say "somebody changed the code"; this is neither — it is a decision, on
+    record, that the reader has to know before trusting a count."""
+    note = (points or {}).get("note")
+    if not note:
+        return ""
+    return (f'<div class="rband rband-warn" role="status">'
+            f'<p><b>{html.escape(note.get("heading", ""))}</b></p>'
+            f'<div class="rb-sub">{note.get("html", "")}</div></div>')
 
 
 #: The band that goes where the piles would have been. Not `render_findings([])`'s

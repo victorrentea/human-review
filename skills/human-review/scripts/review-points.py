@@ -62,6 +62,15 @@ SECTIONS = {
 }
 PILE_HEADING = {"autofixes": "Fixed", "findings": "Ignored", "assumptions": "Assumptions"}
 
+# The one section that is not a pile: a note, in prose, that the review point was moved
+# past commits nobody re-reviewed — `## Taken over without a new pass — 21 Sep 2026`. It
+# exists because a second `Review-Points:` commit resets where the aftermath band counts
+# from, and a reset with no sentence beside it would let the piles above read as a review
+# of commits they never saw. Matched on its opening words, so the heading can carry a
+# date; prose only — a `###` under it is refused, because an item filed here is an item
+# on no pile, and that is exactly the silent drop the three-pile rule forbids.
+NOTE_HEADINGS = ("taken over", "carried over", "not re-reviewed")
+
 FIELDS = {"file", "source", "severity", "alternative", "why", "fixed-in", "confidence"}
 SEVERITIES = {"high", "medium", "low", "info"}
 # How sure the agent is that the reading it chose is the right one. Only an assumption
@@ -118,6 +127,21 @@ def inline(text: str) -> str:
             paragraphs.append(CODE_SPAN.sub(
                 lambda m: f"<code>{html.escape(m.group(1))}</code>", html.escape(one)))
     return "<br><br>".join(paragraphs)
+
+
+def note_html(text: str) -> str:
+    """A note's prose as the band renders it: paragraphs through `inline`, and a block
+    whose every line is a `- ` bullet as a `<ul>` — the takeover note is mostly a list of
+    commits, and forty shas glued into one paragraph is not a list anyone can read."""
+    out = []
+    for block in re.split(r"\n\s*\n", text.strip()):
+        lines = [ln.strip() for ln in block.splitlines() if ln.strip()]
+        if lines and all(ln.startswith("- ") for ln in lines):
+            out.append("<ul>" + "".join(f"<li>{inline(ln[2:])}</li>" for ln in lines)
+                       + "</ul>")
+        else:
+            out.append(f"<p>{inline(block)}</p>")
+    return "".join(out)
 
 
 def parse_front(lines: list[str], problems: list[str]) -> tuple[dict, int]:
@@ -280,6 +304,8 @@ def parse(text: str) -> dict:
 
     piles: dict[str, list[dict]] = {"findings": [], "autofixes": [], "assumptions": []}
     seen_sections: dict[str, str] = {}
+    note: dict | None = None
+    note_lines: list[str] = []
     pile: str | None = None
     title: str | None = None
     fields: list[tuple[str, str]] = []
@@ -290,7 +316,7 @@ def parse(text: str) -> dict:
 
     def close() -> None:
         nonlocal title, fields, body, in_body
-        if title is not None and pile is not None:
+        if title is not None and pile is not None and pile in piles:
             piles[pile].append(build_item(title, fields, "\n".join(body), pile, front,
                                           problems, warnings, at))
         title, fields, body, in_body = None, [], [], False
@@ -314,6 +340,16 @@ def parse(text: str) -> dict:
             close()
             name = m2.group(1).strip().lower().rstrip(":")
             target = SECTIONS.get(name)
+            if target is None and name.startswith(NOTE_HEADINGS):
+                if note is not None:
+                    problems.append(f"line {n + 1}: '## {m2.group(1).strip()}' is a second "
+                                    f"note section; the first was '{note['heading']}' — "
+                                    "one takeover note per file, or the page cannot say "
+                                    "which one the review point was moved to")
+                note = {"heading": m2.group(1).strip(), "line": n + 1}
+                note_lines = []
+                pile = "note"
+                continue
             if target is None:
                 problems.append(
                     f"line {n + 1}: unknown section '## {m2.group(1).strip()}' — this "
@@ -331,6 +367,14 @@ def parse(text: str) -> dict:
             continue
 
         m3 = H3.match(raw)
+        if m3 and pile == "note":
+            problems.append(f"line {n + 1}: '### {m3.group(1).strip()[:40]}' sits under "
+                            f"the note '{note['heading']}' — a note is prose only; an "
+                            "item filed there is on no pile and would never be rendered")
+            continue
+        if pile == "note":
+            note_lines.append(raw)
+            continue
         if m3:
             close()
             if pile is None:
@@ -378,7 +422,15 @@ def parse(text: str) -> dict:
     if problems:
         raise Unparseable(problems)
 
-    return {"front": front, "piles": piles, "warnings": warnings,
+    if note is not None:
+        body = "\n".join(note_lines).strip()
+        if not body:
+            problems.append(f"line {note['line']}: the note '{note['heading']}' says "
+                            "nothing — a takeover with no sentence beside it is the "
+                            "silent reset it exists to prevent")
+            raise Unparseable(problems)
+        note = {"heading": note["heading"], "html": note_html(body)}
+    return {"front": front, "piles": piles, "warnings": warnings, "note": note,
             "sections": {PILE_HEADING[k]: v for k, v in seen_sections.items()}}
 
 
@@ -453,6 +505,7 @@ def document(path: Path, rel: str) -> dict:
                  ("ticket", "base", "implementation", "reviewers", "session") if k in front},
         "frontmatter": front,
         "sections": parsed["sections"],
+        "note": parsed.get("note"),
         "items": kept, "dropped": dropped, "warnings": warnings,
         "empty": total == 0,
     }
@@ -485,6 +538,8 @@ def report(doc: dict, out: Path, write: bool) -> None:
                 marks.append(f"from {item['source']}")
             print(f"      · {re.sub('<[^>]+>', '', item['title'])[:70]}"
                   + (f"   [{', '.join(marks)}]" if marks else ""))
+    if doc.get("note"):
+        print(f"  Note         ({doc['note']['heading']}) — prose, shown as a band")
     if doc["fixed_in"]:
         print(f"  fixed in     {doc['fixed_in']}")
     if doc["meta"]:

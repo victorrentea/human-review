@@ -88,6 +88,15 @@ Exactly three piles, as H2, case-insensitive, each at most once:
 does not recognise reads on the page exactly like a pile that was never written, and those
 are the two things a reviewer most needs told apart.
 
+One section that is not a pile is allowed, at most once: a **note** whose heading opens
+with `Taken over`, `Carried over` or `Not re-reviewed` (a date may follow — `## Taken over
+without a new pass — 21 Sep 2026`). It is for the case where a later commit carries a new
+`Review-Points:` trailer, moving the point the aftermath band counts from, *without* the
+reviewers being re-run: the piles still describe the branch as it stood at the earlier
+review, and the note says which commits were folded in since. Prose only — paragraphs,
+and `- ` bullets for the commit list; a `###` under it is refused, because an item filed
+there is on no pile. The page shows it as an amber band directly above the piles.
+
 An empty `## Ignored` after a multi-agent review is not credible, and the parser cannot
 know that — so it accepts it and the skill's prompt demands a sentence instead.
 

@@ -4304,6 +4304,20 @@ def test_an_absent_record_empties_the_piles_rather_than_keeping_stale_ones(tmp_p
     assert spec["autofixes"][0]["title"] == "left over from an older run"
 
 
+def test_a_takeover_note_becomes_an_amber_band_above_the_piles(tmp_path):
+    """The file's own sentence about commits the piles never saw, rendered where the
+    reader meets the piles — amber, like generated-only drift, because it is the same
+    kind of qualification and neither an absence nor an alarm."""
+    doc = dict(POINTS_DOC, note={"heading": "Taken over without a new pass — 21 Sep 2026",
+                                 "html": "<p>folded in.</p><ul><li>6ef4ae6b x</li></ul>"})
+    spec, points = _points_spec(doc, tmp_path)
+    band = build.points_note_band(points)
+    assert 'rband rband-warn' in band
+    assert "Taken over without a new pass" in band and "<li>6ef4ae6b x</li>" in band
+    assert build.points_note_band(_points_spec(POINTS_DOC, tmp_path)[1]) == ""
+    assert build.points_note_band(None) == ""
+
+
 def test_an_absent_record_never_reads_as_a_clean_review(tmp_path):
     """`render_findings([])` says *the automated passes came back clean*. That sentence is
     true of a review that found nothing and false — confidently, unfalsifiably — of a

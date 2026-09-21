@@ -109,6 +109,54 @@ def test_an_unknown_section_is_refused_rather_than_skipped(tmp_path):
     assert "unknown section" in str(bad.value) and "Findings" in str(bad.value)
 
 
+NOTE = FULL + """
+## Taken over without a new pass — 21 Sep 2026
+
+The commits below sit after the review commit `ce56d912` and were folded in
+without re-running the reviewers.
+
+- 6ef4ae6b Rename the no-vet scenario
+- f9f9faa4 Make DTO setters fluent
+
+The point this page counts from is now `6ef4ae6b`.
+"""
+
+
+def test_a_takeover_note_is_read_as_prose_and_not_as_a_pile(tmp_path):
+    """A second Review-Points commit moves the aftermath anchor; the note beside it is
+    the sentence that keeps the piles from reading as a review of commits they never
+    saw. It is carried to the page whole, bullets as a list, and adds nothing to any
+    pile."""
+    doc = _doc(tmp_path, NOTE)
+    assert doc["note"]["heading"] == "Taken over without a new pass — 21 Sep 2026"
+    assert "<ul><li>6ef4ae6b Rename the no-vet scenario</li>" in doc["note"]["html"]
+    assert "<code>ce56d912</code>" in doc["note"]["html"]
+    assert set(doc["sections"]) == {"Fixed", "Ignored", "Assumptions"}
+    assert doc["items"] == _doc(tmp_path, FULL)["items"]
+
+
+def test_a_file_without_a_note_says_so(tmp_path):
+    assert _doc(tmp_path, FULL)["note"] is None
+
+
+def test_an_item_under_the_note_is_refused(tmp_path):
+    with pytest.raises(rp.Unparseable) as bad:
+        _doc(tmp_path, FULL + "\n## Taken over\n\n### slipped in\n- file: a.py:1\n")
+    assert "prose only" in str(bad.value)
+
+
+def test_an_empty_note_is_refused(tmp_path):
+    with pytest.raises(rp.Unparseable) as bad:
+        _doc(tmp_path, FULL + "\n## Carried over\n\n")
+    assert "says nothing" in str(bad.value)
+
+
+def test_a_second_note_is_refused(tmp_path):
+    with pytest.raises(rp.Unparseable) as bad:
+        _doc(tmp_path, FULL + "\n## Taken over\n\nonce.\n\n## Taken over again\n\ntwice.\n")
+    assert "second note" in str(bad.value)
+
+
 def test_a_repeated_pile_is_refused(tmp_path):
     with pytest.raises(rp.Unparseable) as bad:
         _doc(tmp_path, "## Fixed\n### a\n- file: a.py:1\n## Applied\n### b\n- file: b.py:1\n")
