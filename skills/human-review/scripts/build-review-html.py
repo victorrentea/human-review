@@ -127,7 +127,7 @@ from hrbuild.tabs.review import (
     PILE_BLOCKS, pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND, points_note_band,
     POINTS_PILES, render_assumptions, render_autofixes, render_findings, render_pile_block,
     review_tab_badge,
-    reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_value,
+    reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_face,
     SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
     _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source,
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
@@ -143,7 +143,8 @@ from hrbuild.tabs.sequence import (
 )
 from hrbuild.tabs.tests import (
     LEDGER_TAB, render_requirements, render_test_ledger, render_tests, render_traces,
-    REQMAP_CSS, REQMAP_CUT, REQMAP_TIP_JS, reqmap_layout, resolve_tests, SILENCED_LABEL,
+    REQMAP_CSS, REQMAP_CUT, REQMAP_SEMCOV_JS, REQMAP_TIP_JS, reqmap_layout, resolve_tests,
+    SEMCOV_LABEL, semcov_switch, SILENCED_LABEL,
     test_index, TEST_STATES,
     TICKET_CACHE, ticket_head, ticket_ref, tests_chip, _append_inside, _element, _find,
     _gh_issue, _issue_url, _ms, _take, _test_changes_module
@@ -473,7 +474,7 @@ def main(argv=None) -> int:
         # being added, and nothing caught it, because nothing was looking. `href` (and any
         # label or tip) still comes from the content file.
         if c.get("auto") == "autofixed":
-            # No record, no chip. `🤖Review: 0 open, 0 fixed` is the whole failure
+            # No record, no chip. `🤖reviewer: 0 open, 0 fixed` is the whole failure
             # this flow exists to end: two measured-looking zeros asserting a review that
             # found nothing, where the truth is that nothing says a review happened. Every
             # other computed chip drops itself rather than print a number it cannot stand
@@ -491,15 +492,15 @@ def main(argv=None) -> int:
                             None) or c.get("by")
             computed = {
                 # A colon, not a gap. The pill reads as one sentence — `🤖Fable 5
-                # review: 6 open, 4 fixed` — where before it was a label, a gap and a row
-                # of numbers, which is the shape of a measurement rather than of a
+                # reviewer: 6 open, 4 fixed` — where before it was a label, a gap and a
+                # row of numbers, which is the shape of a measurement rather than of a
                 # statement. The robot is the page's own mark for "a model produced this",
                 # the same one the inferred headings wear, and it is what makes the chip
                 # legible as a claim by a machine rather than as another count of the diff.
-                # With no name it is `🤖Review:`, not `🤖LLM review:`: the robot
+                # With no name it is `🤖reviewer:`, not `🤖LLM review:`: the robot
                 # already says a model did it, so those three letters only took the room
-                # the chip's second sentence now needs.
-                "label": f"\U0001f916{reviewer} review:" if reviewer else "\U0001f916Review:",
+                # the chip's second sentence now needs. `reviewer`, an agent, to match the
+                # `coder` the second half names — the two are the same kind of thing.
                 # Every half computed. The chip used to read `auto-fixed <n>`, and the
                 # label did the lying the tooltip then had to walk back: only three of the
                 # twelve were fixed, and a reader who never hovers was told all twelve
@@ -529,9 +530,13 @@ def main(argv=None) -> int:
                 # swap to `fixed, … declined`, which described the same review as the
                 # counts line under the header in different words one scroll away — a
                 # reader who compared the two was asked which of them to believe.
-                # `scope_chip_value` reads `pile_numbers`, the same counts the counts
-                # line itself reads, so neither can drift from the other again.
-                "value": scope_chip_value(spec),
+                # `scope_chip_face` reads `pile_numbers`, the same counts the counts
+                # line itself reads, so neither can drift from the other again. It sets
+                # the whole face, label included: the two agents it names are peers and
+                # wear the same face and weight, which `label <b>value</b>` cannot give
+                # them — that shape bolds everything after the first word, and the coder
+                # then reads as a footnote to a bold `Review:`.
+                "face": scope_chip_face(spec, reviewer),
                 # The total, which the face no longer carries, split by the pass that
                 # raised each item. `by /code-review and /simplify` named the two passes
                 # and left the reader to guess the split — which is the only thing the

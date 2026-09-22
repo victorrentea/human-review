@@ -290,7 +290,14 @@ def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None,
 def chip_face(c: dict) -> str:
     """A chip's own words: the label it was given and the value it measured. Shared by
     every renderer below so that a chip which moves house — the cost chip becoming half of
-    the run chip — cannot pick up different markup on the way."""
+    the run chip — cannot pick up different markup on the way.
+
+    A chip may bring its own `face` instead — a sentence already set, where the bold does
+    not fall on "everything after the label". The review chip is one: it names two agents,
+    and `label <b>value</b>` could only ever bold the second of them along with the
+    numbers, which is how `🤖coder:` came to read as a footnote to a bold `Review:`."""
+    if c.get("face"):
+        return c["face"]
     return f'{html.escape(c["label"])} <b>{c["value"]}</b>'
 
 

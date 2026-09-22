@@ -404,28 +404,38 @@ def review_tab_badge(spec) -> dict:
 SCOPE_CHIP_MAX_LEN = 34
 
 
-def scope_chip_value(spec) -> str:
-    """`6 open, <span class="sub">3 fixed; \U0001f916coder: 7 assumptions</span>` — read by
-    the masthead's review chip rather than composed a second time beside it, off the same
-    `pile_numbers` the counts line under the header reads. One vocabulary now, not two:
-    the chip used to swap to `fixed, … declined` on a branch reviewed through
-    `review-points.md`, which read as a different review from the one the line under the
-    header described one scroll away.
+def scope_chip_face(spec, reviewer: str | None = None) -> str:
+    """`\U0001f916reviewer: <b>6 open</b>, 3 fixed; \U0001f916coder: <b>7 assumptions</b>`
+    — the masthead's review chip, whole, rather than a label and a value composed a
+    second time beside it, off the same `pile_numbers` the counts line under the header
+    reads. One vocabulary now, not two: the chip used to swap to `fixed, … declined` on a
+    branch reviewed through `review-points.md`, which read as a different review from the
+    one the line under the header described one scroll away.
 
-    Two claims, two authors. The first clause is the reviewer's (what it found, what it
-    already fixed — `auto-fixed` on the face was a word about how the fix arrived, which
-    is the tooltip's business, not the pill's). The second is the coder's, and it carries
-    its own robot because the page's robot means "a model produced this", not "the
-    reviewer said this": the assumptions were recorded by the agent that wrote the code,
-    while it was writing it. With no assumptions there is no second claim to make, so the
-    clause is absent rather than zeroed. `implementation assumptions` — the counts line's
-    own name for the pile — is spelled out there; the chip says only `assumptions`,
-    because the room a tooltip has is the room a pill does not."""
+    Two claims, two authors, one typography. The first clause is the reviewer's (what it
+    found, what it already fixed — `auto-fixed` on the face was a word about how the fix
+    arrived, which is the tooltip's business, not the pill's). The second is the coder's,
+    and it carries its own robot because the page's robot means "a model produced this",
+    not "the reviewer said this": the assumptions were recorded by the agent that wrote
+    the code, while it was writing it. The two agents are named the same way — `reviewer`
+    and `coder`, same robot, same face, same weight — because they are the same kind of
+    thing: a sentence used to open with a bold `Review:` and end with a greyed, bolded
+    `coder:` inside the number span, which read as a label and its footnote rather than
+    as two peers. What is bold is the number the reader acts on in each half: the open
+    findings, and the assumptions to check. `fixed` stays at the label's weight — it is
+    on the page so the reader can check it, not so they can act on it. With no
+    assumptions there is no second claim to make, so the clause is absent rather than
+    zeroed. `reviewer` takes the model's name when the run knows it (`Opus 5 reviewer:`);
+    `implementation assumptions` — the counts line's own name for the pile — is spelled
+    out there; the chip says only `assumptions`, because the room a tooltip has is the
+    room a pill does not."""
     open_n, fixed_n, assumed_n = pile_numbers(spec)
-    sub = f"{fixed_n} fixed"
+    who = f"{reviewer} reviewer" if reviewer else "reviewer"
+    face = f"\U0001f916{who}: <b>{open_n} open</b>, {fixed_n} fixed"
     if assumed_n:
-        sub += f'; \U0001f916coder: {assumed_n} assumption{"" if assumed_n == 1 else "s"}'
-    return f'{open_n} open, <span class="sub">{sub}</span>'
+        face += (f'; \U0001f916coder: <b>{assumed_n} assumption'
+                 f'{"" if assumed_n == 1 else "s"}</b>')
+    return face
 
 
 #: What lights up the counts line as the reader scrolls past the chapter each clause
