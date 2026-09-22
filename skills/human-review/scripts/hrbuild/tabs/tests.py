@@ -521,19 +521,37 @@ def ticket_ref(spec: dict, out_dir: Path) -> dict | None:
     return _gh_issue(pr, number, out_dir)
 
 
+#: The switch on the title row that turns the ticket's coverage fills on and off. On by
+#: default: the reader opens the tab and sees the matrix say what it was built to say; the
+#: box is there for the moment they want to read the ticket as the author wrote it, four
+#: sentences with no green under them, and then put the fills back.
+SEMCOV_LABEL = "Semantic Test Coverage"
+
+
+def semcov_switch() -> str:
+    """The `Semantic Test Coverage` checkbox, checked. Same markup with or without a
+    resolved ticket: it belongs to the matrix, not to the heading it shares a row with."""
+    return (f'<label class="rm-semcov"><input type="checkbox" checked> '
+            f'{SEMCOV_LABEL}</label>')
+
+
 def ticket_head(ref: dict | None) -> str:
-    """The ticket's title over its frame — the issue's own, never the PR's.
+    """The ticket's title over its frame — the issue's own, never the PR's — and, at the
+    row's other end, the coverage switch.
 
     GitHub's own shape, because that is where the reader has read this title before: the
     title, then the number after it in the muted weight. The whole of it is the link;
-    half a title being clickable is a target nobody aims at."""
-    if not ref:
-        return ""
-    face = (f'{html.escape(ref["title"])} '
-            f'<span class="rm-num">#{ref["number"]}</span>')
-    body = (f'<a class="rm-title" href="{html.escape(ref["url"])}">{face}</a>'
-            if ref.get("url") else f'<span class="rm-title">{face}</span>')
-    return f'<p class="rm-head">{body}</p>'
+    half a title being clickable is a target nobody aims at. With no ticket resolved the
+    row still exists, for the switch: a checkbox that comes and goes with `gh`'s mood
+    would be a control the reader cannot count on."""
+    if ref:
+        face = (f'{html.escape(ref["title"])} '
+                f'<span class="rm-num">#{ref["number"]}</span>')
+        title = (f'<a class="rm-title" href="{html.escape(ref["url"])}">{face}</a>'
+                 if ref.get("url") else f'<span class="rm-title">{face}</span>')
+    else:
+        title = ""
+    return f'<p class="rm-head">{title}{semcov_switch()}</p>'
 
 
 #: The layout above, as the stylesheet that has to hold it. Emitted with the fragment
@@ -557,7 +575,19 @@ REQMAP_CSS = """
 /* A heading's distance from the thing it heads, not a column gutter's: close enough under
    it to read as its title, with a little air over it so it does not hang off the tab strip. */
 .reqmap .rm-head{grid-column:1;grid-row:1;display:flex;align-items:center;
-  margin:10px 2px 8px;min-width:0}
+  justify-content:space-between;gap:12px;margin:10px 2px 8px;min-width:0}
+/* The switch keeps to the row's far end, out of the title's way, and reads in the
+   muted weight of a control rather than the weight of the heading beside it. */
+.reqmap .rm-semcov{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;
+  gap:6px;font-size:.85em;font-weight:500;color:var(--muted,#6b6b6b);cursor:pointer;
+  user-select:none;white-space:nowrap}
+.reqmap .rm-semcov input{margin:0;accent-color:var(--accent,#13783a);cursor:pointer}
+.reqmap .rm-semcov:hover{color:var(--fg,#1c1c1c)}
+/* Unchecked: the ticket as its author wrote it. The fills come off every sentence, and
+   the legend under the ticket - which explains nothing once nothing is coloured - keeps
+   its height but not its ink, so the card beside it does not jump. */
+.reqmap[data-semcov=off] .rm-f[data-cov]{background:none}
+.reqmap[data-semcov=off] .rm-legend{visibility:hidden}
 /* The ticket's own heading scale, not the page's h2: this is quoted furniture around
    quoted text, and an h2 here would outrank the tab's own heading. */
 .reqmap .rm-head .rm-title{font-size:1.35em;line-height:1.25;font-weight:600;
@@ -606,6 +636,23 @@ REQMAP_CUT = ".reqmap .rm-tt"
 #: which is what puts it ahead of `TIP_JS`'s own delegated `pointerover` on the same
 #: document — by the time the tooltip asks `closest('[data-tip]')`, the attribute is
 #: either there or gone. `focusin` alongside it, for a reader arriving by keyboard.
+#: The switch's one line of behaviour: the reqmap wears `data-semcov="off"` while the box is
+#: unchecked, and the stylesheet does the rest. Delegated on `document` like the hover, so
+#: it survives a fragment's own script rewriting rows under it. Not emitted on the give-up
+#: path: the switch is on the row this function draws, and a fragment it declined to
+#: rewrite has no such row.
+REQMAP_SEMCOV_JS = """
+<script>(function () {
+  document.addEventListener('change', function (ev) {
+    var box = ev.target;
+    if (!box || !box.matches || !box.matches('.rm-semcov input')) return;
+    var map = box.closest('.reqmap');
+    if (!map) return;
+    if (box.checked) map.removeAttribute('data-semcov');
+    else map.setAttribute('data-semcov', 'off');
+  });
+})();</script>"""
+
 REQMAP_TIP_JS = """
 <script>(function () {
   function measure(ev) {
@@ -677,4 +724,4 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
     side_col = _append_inside(side_col, cats)
     body = (m.group(0) + ticket_head(ticket_ref(spec, out_dir))
             + text_col + side_col + "</div>")
-    return frag[:a] + body + frag[b:] + REQMAP_CSS + REQMAP_TIP_JS
+    return frag[:a] + body + frag[b:] + REQMAP_CSS + REQMAP_TIP_JS + REQMAP_SEMCOV_JS
