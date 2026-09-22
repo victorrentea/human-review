@@ -116,7 +116,17 @@ def points_note_band(points: dict | None) -> str:
         return ""
     return (f'<div class="rband rband-warn" role="status">'
             f'<p><b>{html.escape(note.get("heading", ""))}</b></p>'
-            f'<div class="rb-sub">{note.get("html", "")}</div></div>')
+            f'<div class="rb-sub">{_fold_note_lists(note.get("html", ""))}</div></div>')
+
+
+def _fold_note_lists(body: str) -> str:
+    """Each list in the note folded to one row: the sentence is what the reader needs,
+    the thirty commit subjects are there to check, not to read before the piles."""
+    def fold(m: re.Match) -> str:
+        n = m.group(0).count("<li>")
+        return (f'<details class="toolcommits"><summary>{n} commit{"s" if n != 1 else ""}'
+                f'</summary>{m.group(0)}</details>')
+    return re.sub(r"<ul>.*?</ul>", fold, body, flags=re.S)
 
 
 #: The band that goes where the piles would have been. Not `render_findings([])`'s

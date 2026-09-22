@@ -4314,6 +4314,8 @@ def test_a_takeover_note_becomes_an_amber_band_above_the_piles(tmp_path):
     band = build.points_note_band(points)
     assert 'rband rband-warn' in band
     assert "Taken over without a new pass" in band and "<li>6ef4ae6b x</li>" in band
+    # The sentence stays open; the commit list folds to one row under it.
+    assert "<p>folded in.</p><details" in band and "<summary>1 commit</summary>" in band
     assert build.points_note_band(_points_spec(POINTS_DOC, tmp_path)[1]) == ""
     assert build.points_note_band(None) == ""
 
