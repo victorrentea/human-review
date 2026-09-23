@@ -49,8 +49,8 @@ def page_title(spec: dict) -> str:
 
 
 def ref_badges(spec: dict, state: dict | None = None) -> str:
-    """`branch test-pr` `base main` — the two refs every number on this page is a
-    comparison of, each one click from its own page on GitHub.
+    """`branch test-pr from main⚠️` — the two refs every number on this page is a
+    comparison of, in one chip, each ref one click from its own page on GitHub.
 
     They lead the scope bar rather than trailing the title, and both moves are the same
     decision. "Against what, again?" is a question asked halfway down the ninth tab, so
@@ -63,7 +63,7 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
     `files +1 / ✍️40` reads as an unlabelled number. The label is what makes the pair
     legible in one pass, and it costs four characters.
 
-    The base chip carries a `!` when the two refs have drifted apart — the base has moved
+    The chip ends in a ⚠️ when the two refs have drifted apart — the base has moved
     ahead of the fork point, or the local branch named here is behind the remote actually
     measured. It is on *this* chip and not in a banner because the question it answers is
     "compared against what, exactly?", which is the question the chip already exists to
@@ -75,33 +75,35 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
     pr = spec.get("pr") or {}
     repo = (pr.get("repo") or "").rstrip("/")
     warning = base_warning(state)
-    out = []
-    for key, label, cls, why in (("branch", "branch", "head", "the branch under review"),
-                                 ("base", "base", "base", "the base it is compared against")):
-        ref = pr.get(key)
-        if not ref:
-            continue
-        inner = (f'{label} <b class="refname {cls}">{html.escape(ref)}</b>')
-        # The chip is a link, so the hover's job is to say where the click goes — not to
-        # re-describe a ref whose name is already the thing being read. A chip that does
-        # not link anywhere gets no bubble at all rather than a sentence about itself.
-        tip = "Open in GitHub" if repo else ""
-        cls_extra = ""
-        if key == "base" and warning:
-            # The mark carries its own tooltip rather than extending the chip's: the chip
-            # says what the ref is, the mark says what is wrong with it, and a reader who
-            # hovers the `!` is asking the second question, not the first.
-            inner += (f'<span class="drift" role="img" aria-label="stale base" '
-                      f'data-tip="{html.escape(warning)}">!</span>')
-            cls_extra = " drifted"
-        tip = html.escape(tip)
-        if repo:
-            href = html.escape(f"{repo}/tree/{urllib.parse.quote(ref)}")
-            out.append(f'<a class="chip chip-link refchip{cls_extra}" href="{href}" '
-                       f'data-tip="{tip}">{inner}</a>')
-        else:
-            out.append(f'<span class="chip refchip{cls_extra}">{inner}</span>')
-    return "".join(out)
+
+    def ref_html(ref: str, cls: str) -> str:
+        name = f'<b class="refname {cls}">{html.escape(ref)}</b>'
+        if not repo:
+            return name
+        href = html.escape(f"{repo}/tree/{urllib.parse.quote(ref)}")
+        return (f'<a class="refl" href="{href}" data-tip="Open in GitHub" '
+                f'target="_blank" rel="noopener">{name}</a>')
+
+    branch, base = pr.get("branch"), pr.get("base")
+    if not branch and not base:
+        return ""
+    # One chip, one sentence: `branch test-pr from main`. Each ref is its own link, so
+    # the chip is a span holding two anchors rather than one anchor around both.
+    parts = []
+    if branch:
+        parts.append(f"branch {ref_html(branch, 'head')}")
+    if base:
+        parts.append(f"{'from' if branch else 'base'} {ref_html(base, 'base')}")
+    inner = " ".join(parts)
+    cls_extra = ""
+    if base and warning:
+        # The mark carries its own tooltip: the chip says what the refs are, the mark
+        # says what is wrong with the pair, and a reader who hovers the ⚠️ is asking the
+        # second question, not the first.
+        inner += (f'<span class="drift" role="img" aria-label="stale base" '
+                  f'data-tip="{html.escape(warning)}">\u26a0\ufe0f</span>')
+        cls_extra = " drifted"
+    return f'<span class="chip refchip{cls_extra}">{inner}</span>'
 
 
 def masthead_html(spec: dict, title_score: str, chips: str, strip_html: str,

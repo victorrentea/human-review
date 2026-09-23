@@ -64,10 +64,9 @@
    have it read as the thirteenth thing /code-review raised. It is a filled disc rather
    than a bare glyph so it survives being skimmed past at the end of a row of chips, and
    the chip it sits on keeps its border so the ref itself stays the thing being read. */
-.chip.refchip .drift { display:inline-flex; align-items:center; justify-content:center;
-            width:1.05em; height:1.05em; margin-left:.35rem; border-radius:50%;
-            background:var(--drift); color:var(--drift-fg); font-weight:700;
-            font-size:.78em; line-height:1; font-style:normal; cursor:help; }
+.chip.refchip .drift { margin-left:.3rem; font-style:normal; cursor:help; }
+.chip.refchip a.refl { text-decoration:none; }
+.chip.refchip a.refl:hover b { text-decoration:underline; }
 .chip.refchip.drifted { border-color:var(--drift); }
 h1 .prref { text-decoration:none; }
 h1 .prref:hover { text-decoration:underline; }

@@ -434,7 +434,7 @@ SCOPE_CHIP_MAX_LEN = 34
 
 
 def scope_chip_face(spec, reviewer: str | None = None) -> str:
-    """`\U0001f916Coder: <b>7 unsure</b>; \U0001f916Reviewer: <b>6 open</b>, <b>3 fixed</b>`
+    """`\U0001f916Code: <b>7 unsure</b>; \U0001f916Review: <b>6 open</b>, <b>3 fixed</b>`
     — the masthead's review chip, whole, off the same `pile_numbers` the counts line
     under the header reads, so the two cannot drift.
 
@@ -446,9 +446,9 @@ def scope_chip_face(spec, reviewer: str | None = None) -> str:
     model is not on the face (`reviewer` is accepted and ignored here): the pill names
     the role, the hover names the model."""
     open_n, fixed_n, assumed_n = pile_numbers(spec)
-    face = f"\U0001f916Reviewer: <b>{open_n} open</b>, <b>{fixed_n} fixed</b>"
+    face = f"\U0001f916Review: <b>{open_n} open</b>, <b>{fixed_n} fixed</b>"
     if assumed_n:
-        face = f"\U0001f916Coder: <b>{assumed_n} unsure</b>; " + face
+        face = f"\U0001f916Code: <b>{assumed_n} unsure</b>; " + face
     return face
 
 

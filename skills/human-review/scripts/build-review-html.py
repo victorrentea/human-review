@@ -522,7 +522,7 @@ def main(argv=None) -> int:
                 # it competes with the number that IS the work. Grey is the page's own
                 # "already handled" — the same treatment the fixes get in the list below.
                 #
-                # Then a second clause, `🤖Coder: 7 unsure;` — leading the pill — about a
+                # Then a second clause, `🤖Code: 7 unsure;` — leading the pill — about a
                 # different agent: the one that wrote the code, recording what it had to
                 # guess at while writing it. It rides on this chip rather than on one of its own
                 # because it answers the other half of "what did the machines do to this
@@ -552,7 +552,7 @@ def main(argv=None) -> int:
                 # those assumptions, when, and where to go and read them. The face says
                 # `🤖coder` and trusts the hover to unpack it.
                 #
-                # The model that reviewed opens the hover: the face says only `Reviewer`,
+                # The model that reviewed opens the hover: the face says only `Review`,
                 # so the name has one home and it is here.
                 "tip": (f"Reviewed by {reviewer}. " if reviewer else "")
                 + _raised_by(spec.get("findings", []) + spec.get("autofixes", []), total)
