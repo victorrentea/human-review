@@ -104,11 +104,15 @@ MODEL_STEP = Path(__file__).resolve().parent / "rerun-model.py"
 # so it can never collide with an action name out of a manifest.
 RERUN_ACTION = "__rerun__"
 RERUN_AI_ACTION = "__rerun_ai__"
+# The Tests tab's third press: run the suites (`--force`), then re-derive the tab. Free, so
+# it rides `/__rerun__` with `mode: "tests"` — the same lock and the same reload hold —
+# and only ever as a tab rerun: there is no page-wide "run every test" button.
+RERUN_TESTS_ACTION = "__rerun_tests__"
 
 # Both reruns, for the one question every guard here asks: "is a rerun already going?" One
 # tuple rather than two comparisons, because the lock is shared and a second membership
 # test added in one of the three places that ask would be a lock with a hole in it.
-RERUN_ACTIONS = (RERUN_ACTION, RERUN_AI_ACTION)
+RERUN_ACTIONS = (RERUN_ACTION, RERUN_AI_ACTION, RERUN_TESTS_ACTION)
 
 # What the paid reruns on this page have actually cost, written by `rerun-model.py` after
 # each run. Beside the page and dot-prefixed like the manifest, so it never travels in the
@@ -738,7 +742,9 @@ RUNS_KEEP = 40
 
 def start_run(action_id, params, served_root):
     """`(Run, problem, status)`. The id is looked up; the command never comes from the caller."""
-    if action_id in RERUN_ACTIONS:
+    # Tab-narrowed ids (`__rerun__:sequence`, `__rerun_tests__:requirements`) included: the
+    # part before the colon is what says which door it has to come through.
+    if action_id.split(":", 1)[0] in RERUN_ACTIONS:
         # They are in the manifest now, because that is where their command lives — but
         # they are not reachable here. `/__rerun__` and `/__rerun_ai__` carry the shared
         # lock, the watcher hold and, for the paid one, the confirmation in front of it;
@@ -866,7 +872,7 @@ def rerun_ai_plan(served_root):
 TAB_ID = re.compile(r"^[a-z][a-z0-9_-]{0,40}$")
 
 
-def tab_rerun_plan(served_root, ai: bool, tab: str):
+def tab_rerun_plan(served_root, ai: bool, tab: str, mode: str | None = None):
     """`(argv, cwd)` for one tab's ↻ (or ↻+AI), or None when the build declared none.
 
     Only ever out of the manifest: a tab's rerun is `refresh-report.py --steps <that tab's
@@ -874,13 +880,15 @@ def tab_rerun_plan(served_root, ai: bool, tab: str):
     tab name is a key into the manifest and nothing else — it never reaches a shell."""
     if ROOT is None or not TAB_ID.match(tab or ""):
         return None
-    entry = actions(served_root).get(f"{RERUN_AI_ACTION if ai else RERUN_ACTION}:{tab}")
+    base = (RERUN_AI_ACTION if ai else
+            RERUN_TESTS_ACTION if mode == "tests" else RERUN_ACTION)
+    entry = actions(served_root).get(f"{base}:{tab}")
     if not entry:
         return None
     return (["/bin/sh", "-c", entry["command"]], ROOT)
 
 
-def start_rerun(served_root, ai=False, tab: str | None = None):
+def start_rerun(served_root, ai=False, tab: str | None = None, mode: str | None = None):
     """`(Run, problem, status)` for `POST /__rerun__` and `POST /__rerun_ai__`.
 
     One rerun at a time — **across both endpoints** — and a second click joins the first
@@ -899,9 +907,12 @@ def start_rerun(served_root, ai=False, tab: str | None = None):
     than they asked for and is told so by the tail they are watching.
     """
     if tab:
-        plan = tab_rerun_plan(served_root, ai, tab)
+        plan = tab_rerun_plan(served_root, ai, tab, mode)
         if plan is None:
-            return None, f"the {tab} tab has no {'paid ' if ai else ''}rerun here", 404, False
+            what = ("paid rerun" if ai else "test run" if mode == "tests" else "rerun")
+            return None, f"the {tab} tab has no {what} here", 404, False
+    elif mode == "tests":
+        return None, "running the tests is a tab rerun; name the tab", 400, False
     else:
         plan = rerun_ai_plan(served_root) if ai else rerun_plan(served_root)
     if plan is None:
@@ -936,7 +947,9 @@ def start_rerun(served_root, ai=False, tab: str | None = None):
     if WATCHER:
         WATCHER.hold()
     try:
-        run = Run(RERUN_AI_ACTION if ai else RERUN_ACTION, {"reload": True}, argv, cwd,
+        run = Run(RERUN_AI_ACTION if ai else
+                  RERUN_TESTS_ACTION if mode == "tests" else RERUN_ACTION,
+                  {"reload": True}, argv, cwd,
                   on_done=lambda _r: WATCHER and WATCHER.release())
     except Exception:
         # A hold whose run never started is a watcher that never reloads anything again.
@@ -1071,13 +1084,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # One optional field: `tab`, which narrows the rerun to that tab's producers.
             # It names a manifest entry the build wrote, never a command, so the paid verb
             # is still only reachable through its own URL.
+            # And `mode: "tests"` on the free one only: run the suites before re-deriving.
             try:
-                tab = (json.loads(raw) or {}).get("tab")
+                req = json.loads(raw) or {}
+                tab, mode = req.get("tab"), req.get("mode")
             except Exception:
-                tab = None
+                tab = mode = None
             tab = tab if isinstance(tab, str) and tab else None
+            mode = "tests" if mode == "tests" and route == RERUN else None
             run, problem, status, joined = start_rerun(Handler.root, ai=route == RERUN_AI,
-                                                       tab=tab)
+                                                       tab=tab, mode=mode)
             if problem:
                 # The refusal carries the run it is refusing for. A sentence alone would
                 # leave the page unable to show the reader *what* is going on, which is
@@ -1160,6 +1176,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              # and a page that inferred the second from the first would
                              # draw a $5 button over a server that cannot honour it.
                              "rerunAi": bool(rerun_ai_plan(Handler.root)),
+                             # Whether any tab declared a run-the-suites press.
+                             "rerunTests": ROOT is not None and any(
+                                 k.startswith(RERUN_TESTS_ACTION + ":") for k in declared),
                              # What the paid button should say it costs, out of what this
                              # page's own paid runs have cost. Answered here rather than
                              # written into the markup, because the markup is built once
@@ -1192,7 +1211,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                      "joined": 0})
                     return
                 kind = ("rerun_ai" if run.action == RERUN_AI_ACTION
-                        else "rerun" if run.action == RERUN_ACTION else "action")
+                        else "rerun" if run.action in (RERUN_ACTION, RERUN_TESTS_ACTION)
+                        else "action")
                 self.reply_json({"active": run.snapshot(), "kind": kind,
                                  "started": run.started, "joined": run.joins})
                 return

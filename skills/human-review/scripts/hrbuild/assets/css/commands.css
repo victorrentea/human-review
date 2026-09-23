@@ -45,8 +45,10 @@ button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
 @media (prefers-color-scheme:dark) {
   button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#6bd48a;
             background:#6bd48a; color:#10261a; } }
-/* The robot on the paid chip: the arrow first, then what this press adds to it. */
-.rr-bot { display:inline-block; font-size:1.05em; line-height:1; margin-left:.12em;
+/* The second mark on a two-mark chip — the robot on the paid one, the test tube on the
+   Tests tab's run-the-suites one: the arrow first, then what this press adds to it.
+   (`.rr-bot` is the name it had while the robot was the only one.) */
+.rr-add, .rr-bot { display:inline-block; font-size:1.05em; line-height:1; margin-left:.12em;
           vertical-align:-.05em; }
 /* The same pair, narrowed to one tab, beside the selected pill on the strip. Shown only
    while its tab is the selected one: the strip is navigation, and thirteen glyphs on it
@@ -67,9 +69,14 @@ button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
    room depends on which of the two the probe raised, so the width is a variable the
    strip sets from what is actually visible — nothing raised, no room taken. The pull-back
    includes the strip's .5rem column gap (frame.css), which sits between the two boxes. */
-.tabstrip { --tabre-w:0px; }
-.tabstrip:has(.tab[aria-selected="true"] + .tabre > .tabrerun:not([hidden])) { --tabre-w:1.35rem; }
-.tabstrip:has(.tab[aria-selected="true"] + .tabre > .chip-rerun-ai:not([hidden])) { --tabre-w:5.55rem; }
+/* One term per kind of button — its fixed width (below) plus the pair's gap — so the room
+   is the sum of what the probe raised: the Tests tab's third press is one more term, not a
+   hand-measured total for every combination. */
+.tabstrip { --tabre-w1:0px; --tabre-w2:0px; --tabre-w3:0px;
+            --tabre-w:calc(var(--tabre-w1) + var(--tabre-w2) + var(--tabre-w3)); }
+.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun__"]:not([hidden])) { --tabre-w1:1.45rem; }
+.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_ai__"]:not([hidden])) { --tabre-w2:calc(2.45rem + .2rem); }
+.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_tests__"]:not([hidden])) { --tabre-w3:calc(2.45rem + .2rem); }
 .tabstrip .tab[aria-selected="true"]:has(+ .tabre > .tabrerun:not([hidden])) {
             padding-right:calc(var(--tabre-w) + .55rem); }
 .tabstrip .tab[aria-selected="true"] + .tabre:has(> .tabrerun:not([hidden])) {
@@ -79,8 +86,13 @@ button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
    (frame.css), and a box shorter than the tab would otherwise sink to that line too and
    sit low in the pill it is drawn over. */
 .tabstrip .tabre { align-self:stretch; }
-.tabre .tabrerun { padding:0 .25rem; border-radius:999px; border:1px solid;
-            font-size:.62rem; line-height:1.3; background:var(--card); }
+/* Fixed widths, so the sum above is exact, and an opaque ground, so the glyph never sits
+   on whatever the tab behind it is painted with. */
+.tabre .tabrerun { padding:0; border-radius:999px; border:1px solid;
+            font-size:.72rem; line-height:1.3; background:var(--card);
+            display:inline-flex; align-items:center; justify-content:center;
+            width:1.45rem; box-sizing:border-box; }
+.tabre .tabrerun.chip-rerun-ai, .tabre .tabrerun[data-rerun="__rerun_tests__"] { width:2.45rem; }
 .tabre .tabrerun.chip-rerun-ai { border-style:dashed; }
 .tabre .tabrerun[hidden] { display:none; }
 /* The page's own confirmation, over the page. Fixed and full-viewport because the click it

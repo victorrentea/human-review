@@ -103,16 +103,16 @@ RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
                  'data-tip="costs money: ~$5\u2013$10 on Sonnet. Rewrites the '
                  'requirements↔tests matrix and the per-test catalogue with a model, then '
                  're-derives the evidence and rebuilds the page.">'
-                 # The free one's mark, a plus, then the two things this one adds to it:
-                 # a model, and money leaving. The `+` is the whole sentence — this chip is
-                 # the one beside it *and* something more — and without it the three marks
-                 # ran together as one picture nobody could take apart. No words, because
-                 # the sentence that matters here is the price, and the price is in the
-                 # hover and again in the dialog: a label reading `Rerun + AI` said neither,
-                 # and cost the masthead two words to say `rerun` a second time.
+                 # Two marks and nothing else: the free one's arrow, and the model that
+                 # this one adds to it. The `+` and the flying banknote that used to sit
+                 # between and after them made a four-glyph rebus at .7rem, which Victor
+                 # read as noise; the money is said where it can be said in words — first
+                 # in the hover, then again in the dialog — and the amber dashed edge is
+                 # the at-a-glance "this one is different". No words on the face, because
+                 # a label reading `Rerun + AI` cost the masthead two words to say
+                 # `rerun` a second time.
                  f'<span class="rr-ico">{CMD_RUN}</span>'
-                 '<span class="rr-plus">+</span>'
-                 '\U0001F916\U0001F4B8</button>')
+                 '<span class="rr-add">\U0001F916</span></button>')
 
 def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
     """The masthead's ↻, narrowed to one tab, beside that tab's pill on the strip.
@@ -124,7 +124,7 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
     static copy, where the probe raises nothing.
 
     Same two faces as the masthead, and the same machine behind both (`rerun.js`): the
-    green ↻ re-runs this tab's producers and rebuilds the page, free; the amber ↻+🤖💸 is
+    green ↻ re-runs this tab's producers and rebuilds the page, free; the amber ↻🤖 is
     there only on a tab with a model half (Tests, Logging) and opens the same confirmation
     the masthead's paid chip does. Empty when the tab has no producer to re-run."""
     if not info:
@@ -149,8 +149,12 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
                 + (f'data-tip-fmt="costs money: {{price}} on Sonnet. {tip}" '
                    if info.get("priced") else "") +
                 f'data-tip="costs money. {tip}">'
-                f'<span class="rr-ico">{CMD_RUN}</span><span class="rr-plus">+</span>'
-                '\U0001F916\U0001F4B8</button>')
+                f'<span class="rr-ico">{CMD_RUN}</span>'
+                '<span class="rr-add">\U0001F916</span></button>')
+    # A tab's own further presses (the Tests tab's ↻🧪, which runs the suites first), drawn
+    # by the tab that owns them and placed here, inside the span: the strip shows `.tabre`
+    # only as the selected pill's next sibling, so a second span beside it would never show.
+    out += info.get("extra") or ""
     return out + "</span>"
 
 
@@ -691,7 +695,7 @@ def runtime_html(rt) -> str:
     verbs = []
     if cmd:
         verbs.append(("start", command_html(
-            cmd, "demo-env", label="Start", run_face=CMD_PLAY,
+            cmd, "demo-env", label="Start App in Docker", run_face=CMD_PLAY,
             tip="Starts the app and fills the address in from what it prints",
             running="Starting the app\u2026")))
     if rt.get("stop"):

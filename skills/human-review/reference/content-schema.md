@@ -467,7 +467,7 @@ environment first and the verbs that act on it after:
 
 ```
 served    Deployed app   http://localhost:53421     Stop ■   Where ↗   [Reset DB]
-off disk  Deployed app   Offline    Start 📋   Stop 📋   Where 📋
+off disk  Deployed app   Offline    Start App in Docker 📋   Stop 📋   Where 📋
 ```
 
 It was two lines: word buttons that only did anything on a served page, and under them

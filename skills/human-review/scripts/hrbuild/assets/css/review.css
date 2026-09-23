@@ -123,3 +123,18 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
    is there to part one chapter from the one before, and here there is no chapter before
    — only the row that names this one, which then floated a blank band away from it. */
 .pilelede + script + h2 { margin-top:.6rem; }
+/* Why the score is what it is: the panel the masthead's `grade 6/10` lands on, above the
+   three piles. Small and bordered in the grade's own colour, a few words a bullet — it is
+   read once on arrival and then left behind for the piles it summarises. */
+.gradewhy { border:1px solid var(--line); border-left:3px solid currentColor;
+            border-radius:8px; padding:.45rem .8rem .5rem; margin:.4rem 0 .7rem;
+            background:var(--card); font-size:.88rem; max-width:44rem; }
+.gradewhy.v-good { color:#1f7a45; } .gradewhy.v-mid { color:#9a5b06; }
+.gradewhy.v-bad { color:#d7263d; }
+.gradewhy-t { margin:0 0 .2rem; font-weight:650; font-size:.85rem; }
+.gradewhy ul { margin:0; padding-left:1.1rem; color:var(--fg); }
+.gradewhy li { margin:.08rem 0; line-height:1.45; }
+.gradewhy li[data-tip] { cursor:help; }
+@media (prefers-color-scheme:dark) {
+  .gradewhy.v-good { color:#6fce93; } .gradewhy.v-mid { color:#e0a44a; }
+  .gradewhy.v-bad { color:#f0757f; } }

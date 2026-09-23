@@ -1339,15 +1339,13 @@ def test_the_paid_button_says_the_price_before_it_is_pressed(tmp_path):
     tip = re.search(r'data-tip="([^"]*)"', build.RERUN_AI_CHIP).group(1)
     assert "costs money" in tip and "$5" in tip and "Sonnet" in tip
     assert 'id="hr-rerun-ai" hidden' in build.RERUN_AI_CHIP
-    # The free one's mark, a plus, then the two things this one adds to it: a model, and
-    # money leaving. The `+` is the sentence — this chip is the one beside it *and*
-    # something more — and it is what keeps three marks from running together into one
-    # picture. No words: `Rerun + AI` said neither the price nor anything the free chip
-    # beside it had not already said, and cost the masthead two words to say it.
-    assert build.RERUN_AI_CHIP.endswith(
-        '<span class="rr-plus">+</span>\U0001F916\U0001F4B8</button>')
+    # The free one's arrow and the model it adds, and nothing else: the `+` and the flying
+    # banknote made a four-glyph rebus nobody could read at chip size. The money is in the
+    # hover and the dialog, in words. No words on the face either: `Rerun + AI` said
+    # neither the price nor anything the free chip beside it had not already said.
+    assert build.RERUN_AI_CHIP.endswith('<span class="rr-add">\U0001F916</span></button>')
+    assert "\U0001F4B8" not in build.RERUN_AI_CHIP and "rr-plus" not in build.RERUN_AI_CHIP
     assert build.CMD_RUN in build.RERUN_AI_CHIP
-    assert ".rr-plus { margin:" in build.CSS
     assert "Rerun" not in build.RERUN_AI_CHIP[build.RERUN_AI_CHIP.index('data-tip'):]
     # The words are in the accessibility tree, where a glyph-only control has to put them.
     assert 'aria-label="Rerun with AI' in build.RERUN_AI_CHIP
@@ -1489,3 +1487,26 @@ def test_the_rerun_endpoint_takes_a_tab_and_only_a_declared_one(tmp_path):
     assert srv.tab_rerun_plan(tmp_path, False, "data; rm -rf /") is None
     run, problem, status, _ = srv.start_rerun(tmp_path, tab="city")
     assert run is None and status == 404
+
+
+def test_the_tests_tab_run_the_suites_press_has_its_own_door(tmp_path):
+    """`__rerun_tests__:requirements` rides `/__rerun__` with `mode: "tests"` — never
+    `/__run__`, and never without a tab."""
+    _fresh(tmp_path, {"version": 1, "actions": {
+        "__rerun__:requirements": {"command": "echo free", "params": {}},
+        "__rerun_tests__:requirements": {"command": "echo suites", "params": {}}}})
+    assert srv.tab_rerun_plan(tmp_path, False, "requirements", "tests")[0][-1] == "echo suites"
+    assert srv.tab_rerun_plan(tmp_path, False, "requirements")[0][-1] == "echo free"
+    _, problem, status = srv.start_run("__rerun_tests__:requirements", {}, tmp_path)
+    assert status == 400 and "endpoint of its own" in problem
+    _, _, status, _ = srv.start_rerun(tmp_path, mode="tests")
+    assert status == 400
+
+
+def test_the_tests_tab_carries_its_third_button_inside_the_pair():
+    """Inside the `.tabre` span, or the `+ .tabre` rule never shows it."""
+    out = build.tab_rerun_html("requirements", "Tests",
+                               {"steps": ["tests"], "ai": True, "aiTip": "x",
+                                "extra": '<button data-rerun="__rerun_tests__">t</button>'})
+    assert out.index('data-rerun="__rerun_tests__"') < out.rindex("</span>")
+    assert out.count("<button") == 3

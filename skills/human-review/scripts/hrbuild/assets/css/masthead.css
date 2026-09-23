@@ -84,6 +84,10 @@ h1 .prref:hover { text-decoration:underline; }
 .titlescore b { font-size:1em; line-height:inherit; letter-spacing:0; }
 .titlescore small { font-size:1em; opacity:.6; }
 .titlescore i { font-style:normal; font-size:.82rem; opacity:.85; margin-left:.25rem; }
+/* The noun in front of the number, so `6/10` says what it is out of ten. Lower-case and
+   quieter than the figure: it names the number, it does not compete with it. */
+.titlescore .ts-k { font-size:.82em; font-weight:600; opacity:.8; margin-right:.15rem;
+              letter-spacing:.01em; }
 /* The score is a link now — to the tab holding the findings that produced it, which is
    the next thing anyone reading `5/10 not yet mergeable` wants. It keeps every colour it
    had: an underline or a link colour on a pill that is already coloured by its verdict

@@ -194,19 +194,18 @@ def points_empty_html(kind: str, points: dict) -> str:
     }.get(kind, "")
 
 
-# The one list. Everything the reviewer has to act on, numbered straight through, because
-# a reviewer asking "how much is there for me here?" should get one answer and not three.
-# What separates the piles is the card's colour and one badge — not a restart of the
-# counter, and not a second surface. There are three of them, in the order the reader can
-# act on them: what only they can answer (assumptions), what they have to judge (findings),
-# and what is already done (applied fixes).
+# Three piles, three lists, each numbered from 1: what the reviewer has to judge
+# (findings), what is already done (applied fixes), what only they can answer
+# (assumptions). They were one list numbered straight through, on the theory that "how much
+# is there for me here?" wants one answer — but the counts line already gives that answer
+# per pile, and a pile opening on 7 under "3 auto-fixed" made the reader hunt for the six
+# that were not there. What separates the piles is their heading, the card's colour and one
+# badge.
 #
-# The list is rendered a pile at a time, and each pile has to know where the one before it
-# stopped. That is this counter. It is module state, and state is a thing to justify: the
-# alternative is threading a number through `render_block`, which renders blocks one at a
-# time by type and has no notion that three of them belong to the same list. Reading the
-# offset here rather than hard-coding "fixes come after findings" also means the numbering
-# follows the order the content file puts the blocks in, whatever that order is.
+# The counter below no longer numbers anything; it only records how many items have been
+# rendered so far, which is how the counts line knows it is at the top of the list. It is
+# module state rather than a number threaded through `render_block`, which renders blocks
+# one at a time by type and has no notion that three of them sit together.
 _LIST_OFFSET = 0
 
 #: Whether the counts line has already been printed on this page. The offset used to
@@ -230,15 +229,16 @@ def reset_list() -> None:
 
 
 def _open_list(n: int) -> str:
-    """The `<ol>` for the next pile, numbered on from wherever the last one stopped.
+    """The `<ol>` for the next pile, numbered from 1.
 
-    `counter-reset` sets the counter to N so the first `counter-increment` lands on N+1 —
-    the number straight after the last item already on the page."""
+    The piles used to be one list numbered straight through, so "Auto-fixed" opened on 7
+    under a counts line that said *3 auto-fixed* — and the reader's first question was
+    where the other six had gone. Each pile is its own section with its own heading and its
+    own count, so each counts from 1 and its last number is the count above it. The offset
+    still advances: it is how `review_lede` knows the top of the list has been printed."""
     global _LIST_OFFSET
-    start = _LIST_OFFSET
     _LIST_OFFSET += n
-    return (f'<ol class="findings" style="counter-reset:f {start}">' if start
-            else '<ol class="findings">')
+    return '<ol class="findings">'
 
 
 #: Where a reader can go to find out what a pass actually does. Only the two commands this
@@ -560,6 +560,80 @@ window.addEventListener('scrollend', paint, {passive:true});
 })();</script>"""
 
 
+#: Where a short clause ends inside a verdict bullet: the first stop, colon, semicolon,
+#: comma or dash. The verdict's bullets are paragraphs written for the band that used to
+#: sit under the score; their first clause is the claim, the rest is the evidence for it.
+_CLAUSE_END = re.compile(r"(?:[.:;,]\s|\s[\u2014\u2013-]\s|[.:;]$)")
+
+
+def _first_clause(text: str) -> str:
+    """`No build proved this commit` out of `No build proved this commit: <code>…</code>
+    failed for … .` — tags stripped, entities kept, cut at the first clause boundary."""
+    plain = html.unescape(re.sub(r"<[^>]+>", "", text or "")).strip()
+    m = _CLAUSE_END.search(plain)
+    return (plain[:m.start()] if m else plain).strip().rstrip(".")
+
+
+def grade_reasons(spec) -> list[tuple[str, str]]:
+    """`[(short, full), …]` — why the score is what it is, in a few words each.
+
+    Nothing here is written by the build: `verdict.why`, when the content file carries it,
+    is used as it is; otherwise the open findings are counted by severity, the assumptions
+    counted, and each of the verdict's own `bullets` is cut to its first clause, with the
+    whole bullet kept for the hover. The score was chosen by whoever wrote the verdict, so
+    its reasons are theirs — the page only makes them short enough to read at a glance."""
+    v = spec.get("verdict") or {}
+    if v.get("why"):
+        return [(_first_clause(w) if len(w) > 80 else html.unescape(re.sub(r"<[^>]+>", "", w)),
+                 html.unescape(re.sub(r"<[^>]+>", "", w))) for w in v["why"]]
+    out = []
+    findings = spec.get("findings") or []
+    if isinstance(findings, list) and findings:
+        by = {}
+        for f in findings:
+            by[f.get("severity", "info")] = by.get(f.get("severity", "info"), 0) + 1
+        split = ", ".join(f"{by[k]} {SEVERITIES[k][1]}{'s' if k == 'low' and by[k] > 1 else ''}"
+                          for k in ("high", "medium", "low", "info") if by.get(k))
+        n = len(findings)
+        out.append((f"{n} open review issue{'' if n == 1 else 's'}: {split}",
+                    "; ".join(f.get("title", "") for f in findings
+                              if f.get("severity") in ("high", "medium"))
+                    or "the open pile below"))
+    assumed = spec.get("assumptions") or []
+    if isinstance(assumed, list) and assumed:
+        unsure = sum(1 for a in assumed
+                     if isinstance(a.get("confidence"), (int, float)) and a["confidence"] < .7)
+        n = len(assumed)
+        out.append((f"{n} implementation assumption{'' if n == 1 else 's'} unconfirmed"
+                    + (f", {unsure} under 70% sure" if unsure else ""),
+                    "What the coder guessed at and nobody confirmed — the last pile below"))
+    for b in v.get("bullets") or []:
+        short = _first_clause(b)
+        if short:
+            out.append((short, html.unescape(re.sub(r"<[^>]+>", "", b)).strip()))
+    return out
+
+
+def grade_reasons_html(spec) -> str:
+    """The small panel above the three piles that the score in the masthead links to:
+    `Why 6/10`, then a bullet per reason. Empty when there is no verdict."""
+    v = spec.get("verdict")
+    if not v or "score" not in v:
+        return ""
+    reasons = grade_reasons(spec)
+    if not reasons:
+        return ""
+    n = int(v["score"])
+    band = "v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")
+    items = "".join(
+        f'<li data-tip="{html.escape(full, quote=True)}">{html.escape(short)}</li>'
+        if full and full != short else f"<li>{html.escape(short)}</li>"
+        for short, full in reasons)
+    return (f'<aside class="gradewhy {band}" id="grade-why">'
+            f'<p class="gradewhy-t">Why graded <b>{n}</b>/10</p>'
+            f'<ul>{items}</ul></aside>')
+
+
 def opening_lede(spec) -> str:
     """The shape of the whole list, for whichever pile opens it — and only for that one.
 
@@ -675,7 +749,11 @@ def opening_lede(spec) -> str:
     # `pilelede` is what the stylesheet pins: the line names three chapters that are
     # thousands of pixels apart, so it has to still be on screen when the reader is inside
     # one of them and wants the next. Sticky under the masthead, never over it.
-    return ('<p class="sub counts pilelede">' + " &middot; ".join(parts)
+    # The grade's reasons go above the counts line, not under it: the line is sticky and
+    # has to stay the topmost thing in the tab once the reader scrolls, and the panel is
+    # read once, on arrival from the score, and then left behind.
+    return (grade_reasons_html(spec)
+            + '<p class="sub counts pilelede">' + " &middot; ".join(parts)
             + "</p>" + PILELEDE_SPY_JS)
 
 

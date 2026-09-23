@@ -131,6 +131,7 @@ from hrbuild.tabs.review import (
     reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_face,
     SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
     _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source, _fold_note_lists,
+    grade_reasons, grade_reasons_html, _first_clause, _CLAUSE_END,
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
     _ref_link, _regenerate_offer, _revert_offer, _score_target, _tooling_commit_shas,
     _tooling_fold_html
@@ -255,6 +256,11 @@ def main(argv=None) -> int:
     # And one per tab, for the ↻ that sits beside the selected pill on the served page.
     tab_reruns = declare_tab_reruns(root, out_dir, HERE,
                                     [t.get("id") for t in spec.get("tabs") or [] if t.get("id")])
+    # And the Tests tab's third press — run the suites, then re-derive the tab — drawn in
+    # the same `.tabre` span as the other two, so it shows exactly when they do.
+    run_tests = declare_run_tests_rerun(root, out_dir, HERE)
+    if run_tests and tab_reruns.get(LEDGER_TAB):
+        tab_reruns[LEDGER_TAB]["extra"] = run_tests_button(run_tests)
     # How to start this build again — the last stage of every command offered under a
     # hand-drawn diagram.
     #
@@ -665,7 +671,9 @@ def main(argv=None) -> int:
         # The score belongs beside the title: it is the one thing a reader wants before
         # they have decided whether to read anything. The band below keeps the reasons.
         band = "v-good" if n >= 8 else ("v-mid" if n >= 5 else "v-bad")
-        face = (f'<b>{n}</b><small>/10</small>'
+        # `grade` in front of the number: a bare `6/10` beside a PR title is a number with
+        # no noun, and the first question it raised was *six out of ten of what?*.
+        face = (f'<span class="ts-k">grade</span><b>{n}</b><small>/10</small>'
                 f'<i>{html.escape(v.get("label", ""))}</i>')
         # `5/10 not yet mergeable` states a conclusion and shows none of the reasoning, so
         # the click every reader tries on it is the one that goes to the findings. It is
@@ -675,7 +683,8 @@ def main(argv=None) -> int:
         target, target_label = _score_target(spec)
         title_score = (
             f'<a class="titlescore {band}" href="#{html.escape(target, quote=True)}" '
-            f'data-tip="Open the {html.escape(target_label, quote=True)} tab">{face}</a>'
+            f'data-tip="Why {n}/10? Open the {html.escape(target_label, quote=True)} tab">'
+            f'{face}</a>'
             if target else f'<span class="titlescore {band}">{face}</span>')
 
     extra_css = "".join((out_dir / c).read_text(encoding="utf-8") for c in spec.get("extraCss", []))

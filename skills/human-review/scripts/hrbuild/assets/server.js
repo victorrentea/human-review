@@ -51,7 +51,9 @@ window.HR = (function () {
   // They are spelt like actions anyway so that every control on the page — the play mark
   // beside a printed command included — asks one question and gets one answer, instead of
   // each caller growing its own special case for the two verbs that are not in the list.
-  var OWN = {'__rerun__': 'rerun', '__rerun_ai__': 'rerunAi'};
+  // `__rerun_tests__` is the Tests tab's third press: run the suites, then re-derive it. It
+  // rides the free rerun's endpoint (same lock, same reload hold) with `mode: "tests"`.
+  var OWN = {'__rerun__': 'rerun', '__rerun_ai__': 'rerunAi', '__rerun_tests__': 'rerunTests'};
 
   function can(id) {
     if (OWN[id]) return !!(caps && caps[OWN[id]]);
@@ -96,6 +98,9 @@ window.HR = (function () {
     // `params.tab` narrows either one to a tab's own producers (the ↻ beside its pill).
     if (id === '__rerun__') return rerun(onprogress, params && params.tab);
     if (id === '__rerun_ai__') return rerunAi(onprogress, params && params.tab);
+    if (id === '__rerun_tests__') {
+      return ask('/__rerun__', 'rerunTests', onprogress, params && params.tab, 'tests');
+    }
     return fetch('/__run__', {
       method: 'POST', cache: 'no-store',
       // Both halves deliberate. POST + a non-simple Content-Type is not a request a
@@ -137,7 +142,7 @@ window.HR = (function () {
     return ask('/__rerun_ai__', 'rerunAi', onprogress, tab);
   }
 
-  function ask(route, capability, onprogress, tab) {
+  function ask(route, capability, onprogress, tab, mode) {
     if (!caps || !caps[capability]) {
       return Promise.reject(new Error('this page cannot rebuild itself here'));
     }
@@ -145,7 +150,7 @@ window.HR = (function () {
       method: 'POST', cache: 'no-store',
       headers: {'Content-Type': 'application/json',
                 'X-Human-Review-Token': (caps && caps.token) || ''},
-      body: tab ? JSON.stringify({tab: tab}) : '{}'
+      body: tab ? JSON.stringify(mode ? {tab: tab, mode: mode} : {tab: tab}) : '{}'
     }).then(function (r) {
       if (r.ok) return r.json();
       // A refusal may be a sentence or it may be a refusal *with the run it is refusing

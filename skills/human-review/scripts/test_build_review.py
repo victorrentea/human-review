@@ -235,7 +235,7 @@ def test_the_three_verbs_are_one_row_of_one_control_each(tmp_path):
     # All three, not just `up`. `stop` and `where` were declared for the buttons and never
     # offered to anybody, so the one reader who needed to know how the host is asked where
     # the stack is answering had to go and read the manifest.
-    for verb, word in (("start", "Start"), ("stop", "Stop"), ("where", "Where")):
+    for verb, word in (("start", "Start App in Docker"), ("stop", "Stop"), ("where", "Where")):
         assert f'<span class="appenv-act appenv-{verb}"' in out
         assert f'<span class="cmd-word">{word}</span>' in out
     # Each is the page's one command renderer with a word on it — not a fourth kind of
@@ -1417,7 +1417,7 @@ def test_the_score_opens_the_tab_that_holds_the_findings_behind_it(tmp_path):
                "blocks": [{"type": "findings"}]}]))
     row = page[page.index('<div class="titlerow'):page.index("</div>")]
     assert '<a class="titlescore v-mid" href="#verdicts"' in row
-    assert 'data-tip="Open the Review tab"' in row, "the hover says where the click goes"
+    assert 'data-tip="Why 5/10? Open the Review tab"' in row, "the hover says where the click goes"
     assert "🤖" not in row.split("data-tip=")[1][:40], "and says it without the emoji"
 
 
@@ -2311,18 +2311,18 @@ def test_a_manifest_that_was_never_generated_is_named_before_anything_is_built(t
     assert any("run scripts/test-changes.py first" in p for p in problems)
 
 
-# ── open calls and applied fixes are one list, numbered straight through ─────────
-# Two lists that both start at 1 make a reviewer add them up by hand to answer the
-# only question they had: how much did the automated passes find? The counter is
-# continued with `counter-reset`, so the assertion is on the offset the autofix
-# list starts from, not on rendered text a browser computes.
-def test_the_autofix_list_continues_the_findings_numbering():
+# ── each pile is numbered from 1 ────────────────────────────────────────────────
+# One list numbered straight through put "Auto-fixed" on 7 under a counts line that said
+# "3 auto-fixed", and the reader went looking for the other six. Each pile has its own
+# heading and its own count, so each counts from 1: no `counter-reset` offset on any of
+# them, and the stylesheet's own `counter-reset:f` restarts the counter per `<ol>`.
+def test_the_autofix_list_restarts_at_one_after_the_findings():
     findings = [{"title": "a", "body": "x"}, {"title": "b", "body": "y"},
                 {"title": "c", "body": "z"}]
     build.reset_list()
     build.render_findings(findings)
     out = build.render_autofixes([{"title": "d"}])
-    assert 'counter-reset:f 3' in out
+    assert out.startswith('<ol class="findings">') and "counter-reset" not in out
 
 
 def test_an_empty_findings_list_still_starts_the_fixes_at_one():
@@ -2878,9 +2878,8 @@ def test_assumptions_are_ordered_least_sure_first(tmp_path):
     assert (out.index("unsure") < out.index("sure") < out.index("unmeasured"))
 
 
-def test_the_three_piles_are_one_numbered_list(tmp_path):
-    """A reader shown three lists that all start at 1 has to add them up by hand. Each
-    pile opens where the last one stopped, in the order the content file puts them."""
+def test_the_three_piles_are_numbered_separately(tmp_path):
+    """Each pile opens on 1, whatever came before it: its last number is its own count."""
     page, _ = _build(tmp_path, dict(
         BARE,
         findings=[{"title": f"f{i}", "body": "<p>b</p>"} for i in range(2)],
@@ -2889,20 +2888,19 @@ def test_the_three_piles_are_one_numbered_list(tmp_path):
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "findings"}, {"type": "assumptions", "mode": "A"},
                           {"type": "autofixes"}]}]))
-    starts = re.findall(r"counter-reset:f (\d+)", page)
-    assert starts == ["2", "5"], "assumptions open at 3, the applied fix lands on 6"
+    assert re.findall(r"counter-reset:f (\d+)", page) == []
+    assert page.count('<ol class="findings">') == 3
 
 
-def test_the_order_in_the_content_file_is_the_order_of_the_numbers(tmp_path):
-    """The offset is read, not assumed: put the piles the other way round and the numbering
-    follows rather than the two of them both starting at 1."""
+def test_the_order_in_the_content_file_does_not_carry_numbers_across(tmp_path):
+    """Put the piles the other way round and each still opens on 1."""
     page, _ = _build(tmp_path, dict(
         BARE,
         findings=[{"title": "f", "body": "<p>b</p>"}],
         assumptions=[_assumption(title=f"a{i}") for i in range(2)],
         tabs=[{"id": "review", "label": "Review",
                "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert re.findall(r"counter-reset:f (\d+)", page) == ["2"]
+    assert re.findall(r"counter-reset:f (\d+)", page) == []
 
 
 def test_an_assumption_with_no_code_under_it_is_dropped_and_named(tmp_path):
@@ -4744,3 +4742,25 @@ def test_the_band_reads_the_runner_s_step_lines_and_survives_a_reload():
     assert "follow: poll" in server
     # The estimate never claims the end before the run reaches it.
     assert "cap * 0.95" in js
+
+
+# ── the grade says what it is, and why ──────────────────────────────────────────
+def test_the_grade_reasons_are_short_and_come_from_the_content():
+    """Counts by severity, the assumptions pile, then each verdict bullet cut to its first
+    clause — nothing the build writes itself. `verdict.why` wins when it is there."""
+    spec = {"verdict": {"score": 6, "bullets": [
+                "No build proved this commit: <code>ci</code> failed.",
+                "One commit landed after the agent finished, and it is not generated."]},
+            "findings": [{"title": "a", "severity": "medium"}, {"title": "b", "severity": "low"},
+                         {"title": "c", "severity": "low"}],
+            "assumptions": [{"title": "x", "confidence": 0.5}, {"title": "y", "confidence": 0.9}]}
+    short = [s for s, _ in build.grade_reasons(spec)]
+    assert short == ["3 open review issues: 1 worth a look, 2 nits",
+                     "2 implementation assumptions unconfirmed, 1 under 70% sure",
+                     "No build proved this commit",
+                     "One commit landed after the agent finished"]
+    out = build.grade_reasons_html(spec)
+    assert 'id="grade-why"' in out and "Why graded <b>6</b>/10" in out
+    spec["verdict"]["why"] = ["CI never ran"]
+    assert [s for s, _ in build.grade_reasons(spec)] == ["CI never ran"]
+    assert build.grade_reasons_html({}) == ""

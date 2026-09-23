@@ -124,7 +124,7 @@ def test_offline_says_offline_and_shows_no_address(row):
     # The one verb that changes what the row just said, and nothing that acts on an app
     # that is not there. Stop with nothing to stop and Where with nowhere to go are two
     # controls that can only fail, in a row a reader scans in one glance.
-    assert seen["start"]["word"] == "Start"
+    assert seen["start"]["word"] == "Start App in Docker"
     assert seen["stop"] is None and seen["where"] is None
     assert seen["reset"] is None
     # Which face that verb wears is SERVER_JS's answer, per action, and this page stubs
@@ -163,7 +163,7 @@ def test_off_disk_every_verb_is_on_screen_as_its_own_clipboard(row):
     assert seen["state"] == "Offline"
     assert seen["reset"] is None
     assert [seen[v]["word"] for v in ("start", "stop", "where")] == \
-        ["Start", "Stop", "Where"]
+        ["Start App in Docker", "Stop", "Where"]
     assert [seen[v]["copies"] for v in ("start", "stop", "where")] == \
         [RUNTIME["command"], RUNTIME["stop"], RUNTIME["urlCommand"]]
     assert all(seen[v]["runs"] is None for v in ("start", "stop", "where")), \
