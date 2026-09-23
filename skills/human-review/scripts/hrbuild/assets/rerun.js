@@ -68,6 +68,7 @@
     }
     function total() {
       var t = expect.build || 15;
+      if (!order.length) return t;
       order.forEach(function (n) { t += expected(n); });
       return t;
     }
@@ -84,8 +85,12 @@
       var elapsed = (Date.now() - since) / 1000;
       return Math.max(0, Math.min(elapsed, cap * 0.95));
     }
-    function start(k, startedAt) {
+    // `only`: the steps a tab's ↻ re-runs, so the bar measures that run and not the
+    // masthead's whole list.
+    function start(k, startedAt, only) {
       kind = k || 'rerun';
+      order = only && only.length
+        ? only.slice() : Object.keys(steps);
       runStarted = startedAt ? startedAt * 1000 : Date.now();
       began = {}; primed = false;
       box.classList.remove('failed');
@@ -244,8 +249,10 @@
     // already spin, so a reader who has seen one knows this one is working.
     btn.classList.add('running');
     remember();
-    progress.start(btn.getAttribute('data-rerun') === '__rerun_ai__' ? 'rerun_ai' : 'rerun');
-    window.HR.run(btn.getAttribute('data-rerun'), {}, function (snap) {
+    var tab = btn.getAttribute('data-tab');
+    progress.start(btn.getAttribute('data-rerun') === '__rerun_ai__' ? 'rerun_ai' : 'rerun',
+                   0, tab ? (btn.getAttribute('data-steps') || '').split(',') : null);
+    window.HR.run(btn.getAttribute('data-rerun'), tab ? {tab: tab} : {}, function (snap) {
       // One line, in the hover: the button has room for a word and the reader who wants
       // to know which producer it is on is the reader already pointing at it. The band
       // under the masthead says the rest.
@@ -325,8 +332,17 @@
     return true;
   }
 
-  function confirmSpend() {
+  // The panel's first paragraph describes the masthead's paid run. A tab's paid ↻ says
+  // what *it* buys instead (`data-confirm`), and the masthead's sentence comes back after.
+  var bodyP = panel && panel.querySelector('.hrconfirm-b');
+  var bodyDefault = bodyP ? bodyP.innerHTML : '';
+
+  function confirmSpend(btn) {
     if (!panel) return Promise.resolve(true);
+    if (bodyP) {
+      var own = btn && btn.getAttribute('data-confirm');
+      if (own) bodyP.textContent = own; else bodyP.innerHTML = bodyDefault;
+    }
     lastFocus = document.activeElement;
     sayBusy(null);
     panel.hidden = false;
@@ -371,7 +387,7 @@
     btn.addEventListener('click', function () {
       if (btn.disabled) return;
       if (!paid) { go(btn); return; }
-      confirmSpend().then(function (yes) { if (yes) go(btn); });
+      confirmSpend(btn).then(function (yes) { if (yes) go(btn); });
     });
   });
 
@@ -409,6 +425,7 @@
       // one: `Rerun + AI` is a second thing this page can do, not a second way of saying
       // what this page is.
       if (btn.getAttribute('data-rerun') !== '__rerun__') return;
+      if (btn.hasAttribute('data-tab')) return;   // a tab's ↻ is not the served badge
       var mode = document.getElementById('hr-mode');
       if (mode) mode.hidden = true;
     });
@@ -428,7 +445,9 @@
       var mine = null;
       buttons.forEach(function (b) {
         b.disabled = true;
-        if (b.getAttribute('data-rerun') === id) { mine = b; b.classList.add('running'); }
+        if (!mine && b.getAttribute('data-rerun') === id && !b.hasAttribute('data-tab')) {
+          mine = b; b.classList.add('running');
+        }
       });
       progress.start(st.kind, st.started);
       progress.update(st.active);

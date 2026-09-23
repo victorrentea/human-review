@@ -113,6 +113,104 @@ def declare_rerun_actions(root: Path, out_dir: Path, skill_dir: Path) -> None:
             reload=True, label="Rewrite the matrix with a model, then rebuild this page")
 
 
+def tab_rerun_id(base: str, tab: str) -> str:
+    """`__rerun__:sequence` — the manifest key of one tab's rerun, for either verb."""
+    return f"{base}:{tab}"
+
+
+def _load(path: Path, name: str):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def tab_steps(skill_dir: Path) -> dict[str, list[str]]:
+    """`{tab id: [steps a press on that tab re-runs]}` — a tab with no producer is absent.
+
+    Read from `run-steps.STEPS` rather than restated here: which producer feeds which tab
+    is a fact that table already owns (the cost ledger is keyed on it), and a second copy
+    is the one that would rot the day a step moves tabs.
+
+    A tab's static producers when it has any (`refresh-report.STATIC_STEPS`), else its own
+    heavy ones. The Tests tab is fed by `tests` *and* `traces`, and `traces` is a project's
+    whole e2e suite: the ↻ beside the ledger re-reads the manifest, it does not run
+    cucumber at you. But Sequence, Demo, Code City and UX have nothing *but* a heavy
+    producer, and a reader who presses ↻ on one of those is asking for exactly that — which
+    is the one thing the masthead's button must never do on their behalf."""
+    try:
+        table = [(row[0], row[1] or "") for row in
+                 _load(skill_dir / "run-steps.py", "hr_run_steps_table").STEPS]
+        static = set(_load(skill_dir / "refresh-report.py", "hr_refresh_table").STATIC_STEPS)
+    except Exception:              # noqa: BLE001 - no table, no per-tab buttons
+        return {}
+    feeds: dict[str, list[str]] = {}
+    for step, tabs in table:
+        for tab in filter(None, (t.strip() for t in tabs.split(","))):
+            feeds.setdefault(tab, []).append(step)
+    return {tab: ([s for s in steps if s in static] or steps) for tab, steps in feeds.items()}
+
+
+#: The tabs whose producer can also buy something from a model, and what the paid press
+#: adds in front of (or inside) the free one. The Tests tab's matrix and catalogue are
+#: `rerun-model.py`'s; the Logging tab's privacy verdicts are what `--allow-model` lets the
+#: build ask for. Nothing else on the page is a judgement a click could buy again.
+TAB_AI = {
+    "requirements": ("model", "Rewrites this tab's requirements↔tests matrix and the "
+                              "per-test catalogue with a model, then re-derives the test "
+                              "manifest and rebuilds the page."),
+    "logging": ("allow", "Re-scans the logging and asks a model for the privacy verdicts "
+                         "the cache does not have yet, then rebuilds the page."),
+}
+
+
+def declare_tab_reruns(root: Path, out_dir: Path, skill_dir: Path,
+                       tab_ids) -> dict[str, dict]:
+    """One free rerun per tab that has a producer, and a paid one where a tab has a model
+    half. Returns `{tab: {"steps": [...], "ai": bool, "aiTip": str}}` for the strip.
+
+    Same command shape as the masthead's, narrowed with `--steps <that tab's producers>`:
+    `refresh-report.py` still rebuilds the whole page (it is one file), but only this tab's
+    evidence is re-derived. Heavy producers are included when they are the tab's own — a
+    reader who presses ↻ on Sequence is asking for the sequences, which is exactly what the
+    masthead's button must never do on their behalf.
+    """
+    refresh = skill_dir / "refresh-report.py"
+    model = skill_dir / "rerun-model.py"
+    if not refresh.is_file():
+        return {}
+    try:
+        rel = str(out_dir.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return {}
+    here = shlex.quote(str(root.resolve()))
+    py = shlex.quote(sys.executable)
+    at = shlex.quote(rel)
+    feeds = tab_steps(skill_dir)
+    out: dict[str, dict] = {}
+    for tab in tab_ids:
+        steps = feeds.get(tab)
+        if not steps:
+            continue
+        only = shlex.quote(",".join(steps))
+        refresh_line = (f"{py} {shlex.quote(str(refresh))} --dir {at} --steps {only}"
+                        " --no-serve")
+        declare_action(tab_rerun_id(RERUN_ACTION, tab), f"cd {here} && {refresh_line}",
+                       reload=True, label=f"Re-derive the {tab} tab and rebuild this page")
+        info = {"steps": steps, "ai": False, "aiTip": ""}
+        how = TAB_AI.get(tab)
+        if how and (how[0] != "model" or model.is_file()):
+            paid = f"{refresh_line} --allow-model"
+            if how[0] == "model":
+                paid = f"{py} {shlex.quote(str(model))} --dir {at} && {paid}"
+            declare_action(tab_rerun_id(RERUN_AI_ACTION, tab), f"cd {here} && {paid}",
+                           reload=True, label=f"Re-derive the {tab} tab with a model")
+            info.update(ai=True, aiTip=how[1], priced=how[0] == "model")
+        out[tab] = info
+    return out
+
+
 def write_actions(out_dir: Path) -> Path:
     """Drop the manifest beside the page, always — an empty one included.
 

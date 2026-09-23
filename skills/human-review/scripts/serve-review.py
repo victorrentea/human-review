@@ -863,7 +863,24 @@ def rerun_ai_plan(served_root):
     return (["/bin/sh", "-c", rerun_ai_command(rel)], ROOT)
 
 
-def start_rerun(served_root, ai=False):
+TAB_ID = re.compile(r"^[a-z][a-z0-9_-]{0,40}$")
+
+
+def tab_rerun_plan(served_root, ai: bool, tab: str):
+    """`(argv, cwd)` for one tab's ↻ (or ↻+AI), or None when the build declared none.
+
+    Only ever out of the manifest: a tab's rerun is `refresh-report.py --steps <that tab's
+    producers>`, and which producers those are is the build's answer, not the caller's. The
+    tab name is a key into the manifest and nothing else — it never reaches a shell."""
+    if ROOT is None or not TAB_ID.match(tab or ""):
+        return None
+    entry = actions(served_root).get(f"{RERUN_AI_ACTION if ai else RERUN_ACTION}:{tab}")
+    if not entry:
+        return None
+    return (["/bin/sh", "-c", entry["command"]], ROOT)
+
+
+def start_rerun(served_root, ai=False, tab: str | None = None):
     """`(Run, problem, status)` for `POST /__rerun__` and `POST /__rerun_ai__`.
 
     One rerun at a time — **across both endpoints** — and a second click joins the first
@@ -881,7 +898,12 @@ def start_rerun(served_root, ai=False):
     running Run, it does not launch anything — so the worst case is a reader who gets more
     than they asked for and is told so by the tail they are watching.
     """
-    plan = rerun_ai_plan(served_root) if ai else rerun_plan(served_root)
+    if tab:
+        plan = tab_rerun_plan(served_root, ai, tab)
+        if plan is None:
+            return None, f"the {tab} tab has no {'paid ' if ai else ''}rerun here", 404, False
+    else:
+        plan = rerun_ai_plan(served_root) if ai else rerun_plan(served_root)
     if plan is None:
         return None, ("this page has no model step behind it" if ai
                       else "this page has no refresh program behind it"), 404, False
@@ -1046,7 +1068,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # and the command behind it is the server's own, not something the page named.
             # Which of the two is in the URL, not in the body — a paid verb must not be
             # reachable by a field a caller can flip.
-            run, problem, status, joined = start_rerun(Handler.root, ai=route == RERUN_AI)
+            # One optional field: `tab`, which narrows the rerun to that tab's producers.
+            # It names a manifest entry the build wrote, never a command, so the paid verb
+            # is still only reachable through its own URL.
+            try:
+                tab = (json.loads(raw) or {}).get("tab")
+            except Exception:
+                tab = None
+            tab = tab if isinstance(tab, str) and tab else None
+            run, problem, status, joined = start_rerun(Handler.root, ai=route == RERUN_AI,
+                                                       tab=tab)
             if problem:
                 # The refusal carries the run it is refusing for. A sentence alone would
                 # leave the page unable to show the reader *what* is going on, which is

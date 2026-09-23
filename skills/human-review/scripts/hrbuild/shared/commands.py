@@ -114,6 +114,46 @@ RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
                  '<span class="rr-plus">+</span>'
                  '\U0001F916\U0001F4B8</button>')
 
+def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
+    """The masthead's ↻, narrowed to one tab, beside that tab's pill on the strip.
+
+    A sibling of the pill and not inside it: the pill is a `<button>`, and a button in a
+    button is markup every browser repairs differently. CSS shows the pair only while its
+    tab is the selected one (`.tab[aria-selected="true"] + .tabre`), so the strip carries
+    one extra glyph, next to the name of the thing it re-derives — and nothing at all on a
+    static copy, where the probe raises nothing.
+
+    Same two faces as the masthead, and the same machine behind both (`rerun.js`): the
+    green ↻ re-runs this tab's producers and rebuilds the page, free; the amber ↻+🤖💸 is
+    there only on a tab with a model half (Tests, Logging) and opens the same confirmation
+    the masthead's paid chip does. Empty when the tab has no producer to re-run."""
+    if not info:
+        return ""
+    tid = html.escape(tab_id, quote=True)
+    name = html.escape(label, quote=True)
+    steps = html.escape(",".join(info.get("steps") or []), quote=True)
+    out = ('<span class="tabre">'
+           '<button type="button" class="chip chip-rerun chip-served tabrerun" hidden '
+           f'aria-disabled="true" data-rerun="__rerun__" data-tab="{tid}" '
+           f'data-steps="{steps}" aria-label="Rerun the {name} tab" '
+           f'data-tip="Re-derive the {name} tab ({steps}) and rebuild the page. Free.">'
+           f'<span class="rr-ico">{CMD_RUN}</span></button>')
+    if info.get("ai"):
+        tip = html.escape(info.get("aiTip") or "", quote=True)
+        out += ('<button type="button" class="chip chip-rerun chip-rerun-ai tabrerun" hidden '
+                f'aria-disabled="true" data-rerun="__rerun_ai__" data-tab="{tid}" '
+                f'data-steps="{steps}" aria-label="Rerun the {name} tab with AI \u2014 costs money" '
+                f'data-confirm="{tip}" '
+                # The probe's price is what *the matrix* has cost on this page; only the
+                # Tests tab's paid press is that run, so only it wears the figure.
+                + (f'data-tip-fmt="costs money: {{price}} on Sonnet. {tip}" '
+                   if info.get("priced") else "") +
+                f'data-tip="costs money. {tip}">'
+                f'<span class="rr-ico">{CMD_RUN}</span><span class="rr-plus">+</span>'
+                '\U0001F916\U0001F4B8</button>')
+    return out + "</span>"
+
+
 # The confirmation, in the page rather than in the browser.
 #
 # `window.confirm` was the first version of this and it is the wrong control for the job in

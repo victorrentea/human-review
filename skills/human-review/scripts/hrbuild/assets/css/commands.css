@@ -37,6 +37,16 @@ button.chip-rerun.running .rr-ico { animation:hrspin .7s linear infinite; }
 button.chip-rerun-ai { border-style:dashed; border-color:var(--drift); color:var(--drift); }
 button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
             background:rgba(181,115,10,.09); color:var(--fg); }
+/* The same pair, narrowed to one tab, beside the selected pill on the strip. Shown only
+   while its tab is the selected one: the strip is navigation, and thirteen glyphs on it
+   would make every pill read as a control with two halves. `[hidden]` still wins on a
+   static copy, where the probe raises nothing and the span stays empty space. */
+.tabre { display:none; gap:.2rem; align-items:center; }
+.tabstrip .tab[aria-selected="true"] + .tabre { display:inline-flex; }
+.tabre .tabrerun { padding:.05rem .5rem; border-radius:999px; border:1px solid;
+            font-size:.8rem; line-height:1.5; background:var(--card); }
+.tabre .tabrerun.chip-rerun-ai { border-style:dashed; }
+.tabre .tabrerun[hidden] { display:none; }
 /* The page's own confirmation, over the page. Fixed and full-viewport because the click it
    guards costs money and a panel the reader can scroll away from is a panel they can
    answer by accident. */

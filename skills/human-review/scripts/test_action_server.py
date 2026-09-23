@@ -1438,3 +1438,54 @@ def test_opening_the_served_page_runs_nothing_on_its_own(server, tmp_path):
     status, payload = _call(server, "GET", srv.RUN_STATUS)
     assert status == 200
     assert json.loads(payload)["active"] is None
+
+
+# --------------------------------------------------------------------------- #
+# one tab's rerun: the ↻ beside the selected pill
+# --------------------------------------------------------------------------- #
+
+def test_each_tab_reruns_its_own_producers_and_no_others(tmp_path):
+    """The strip's ↻ is the masthead's command narrowed with `--steps`, and the steps are
+    the ones `run-steps.STEPS` says feed that tab — static ones first, the tab's own heavy
+    ones only when it has nothing else (Sequence has nothing but the traced suite)."""
+    build.ACTIONS.clear()
+    review = tmp_path / ".human-review"
+    review.mkdir()
+    got = build.declare_tab_reruns(tmp_path, review, HERE,
+                                   ["review", "requirements", "sequence", "logging", "nope"])
+    assert got["requirements"]["steps"] == ["tests"]          # never `traces`: that is e2e
+    assert got["sequence"]["steps"] == ["sequence"]
+    assert "nope" not in got
+    free = build.ACTIONS["__rerun__:review"]
+    assert "--steps reviewpoints,aftermath --no-serve" in free["command"]
+    assert "--allow-model" not in free["command"]
+    # Paid only where a tab has a model half, and the Tests one writes the matrix first.
+    assert got["requirements"]["ai"] and got["logging"]["ai"] and not got["review"]["ai"]
+    paid = build.ACTIONS["__rerun_ai__:requirements"]["command"]
+    assert paid.index("rerun-model.py") < paid.index("refresh-report.py")
+    assert paid.endswith("--steps tests --no-serve --allow-model")
+    assert "rerun-model.py" not in build.ACTIONS["__rerun_ai__:logging"]["command"]
+
+
+def test_the_tab_rerun_markup_is_hidden_and_names_its_tab():
+    free_only = build.tab_rerun_html("data", "Data", {"steps": ["diagrams"], "ai": False})
+    assert 'data-tab="data"' in free_only and "hidden" in free_only
+    assert "chip-rerun-ai" not in free_only
+    both = build.tab_rerun_html("requirements", "Tests",
+                                {"steps": ["tests"], "ai": True, "aiTip": "x", "priced": True})
+    assert both.count("<button") == 2 and 'data-rerun="__rerun_ai__"' in both
+    assert build.tab_rerun_html("cost", "Cost", None) == ""
+
+
+def test_the_rerun_endpoint_takes_a_tab_and_only_a_declared_one(tmp_path):
+    _fresh(tmp_path, {"version": 1, "actions": {
+        "__rerun__:data": {"command": "echo data", "params": {}},
+        "__rerun_ai__:requirements": {"command": "echo paid", "params": {}}}})
+    assert srv.tab_rerun_plan(tmp_path, False, "data") == (["/bin/sh", "-c", "echo data"],
+                                                           tmp_path)
+    assert srv.tab_rerun_plan(tmp_path, True, "requirements")[0][-1] == "echo paid"
+    # The free verb cannot reach the paid entry, and a name is a key, never a command.
+    assert srv.tab_rerun_plan(tmp_path, False, "requirements") is None
+    assert srv.tab_rerun_plan(tmp_path, False, "data; rm -rf /") is None
+    run, problem, status, _ = srv.start_rerun(tmp_path, tab="city")
+    assert run is None and status == 404

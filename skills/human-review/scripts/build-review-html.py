@@ -58,7 +58,8 @@ from hrbuild.shared.util import (
     CODEOWNERS, EXTRACT, PENCIL, TESTCHANGES, _git, _pretty   # HERE: defined above, same value
 )
 from hrbuild.shared.actions import (
-    ACTIONS, ACTIONS_FILE, declare_action, declare_rerun_actions,
+    ACTIONS, ACTIONS_FILE, declare_action, declare_rerun_actions, declare_tab_reruns,
+    tab_rerun_id, tab_steps, TAB_AI, _load,
     RERUN_ACTION, RERUN_AI_ACTION, write_actions
 )
 from hrbuild.shared.assets import (
@@ -71,7 +72,7 @@ from hrbuild.shared.commands import (
     drawio_open_html,
     regenerate_html, RERUN_AI_CHIP, RERUN_AI_CONFIRM, RERUN_CHIP, RERUN_DONE, RERUN_FAIL,
     PROGRESS_BUILD_SECONDS, PROGRESS_STEP_DEFAULT, rerun_progress_html, step_expectations,
-    rerun_html,
+    rerun_html, tab_rerun_html,
     reveal_html, runtime_html, STATIC_RUN_TIP, _app_anchor
 )
 from hrbuild.shared.snippets import (
@@ -249,6 +250,9 @@ def main(argv=None) -> int:
     # the Review tab offers the free one and reads its command out of the register, and a
     # band that rendered before the declaration would print an offer with no line behind it.
     declare_rerun_actions(root, out_dir, HERE)
+    # And one per tab, for the ↻ that sits beside the selected pill on the served page.
+    tab_reruns = declare_tab_reruns(root, out_dir, HERE,
+                                    [t.get("id") for t in spec.get("tabs") or [] if t.get("id")])
     # How to start this build again — the last stage of every command offered under a
     # hand-drawn diagram.
     #
@@ -997,6 +1001,7 @@ def main(argv=None) -> int:
                    if tab_class and badge_label else "")
                 + f'>{html.escape(tab["label"])}{count}</button>'
             )
+            strip.append(tab_rerun_html(tab["id"], tab["label"], tab_reruns.get(tab["id"])))
             # `intro` is prose about the *tab*, not about any one block in it — where the
             # data behind a whole panel came from, or what it deliberately does not say. It
             # is raw HTML and carries no weight: a tab is not kept alive by its own preamble.

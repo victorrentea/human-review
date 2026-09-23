@@ -93,8 +93,9 @@ window.HR = (function () {
     // caller: `run(id)` is what the whole page reaches for, and a play mark beside the
     // refresh command that had to know it was special would be the one control on the page
     // whose wiring depended on which command it was printing.
-    if (id === '__rerun__') return rerun(onprogress);
-    if (id === '__rerun_ai__') return rerunAi(onprogress);
+    // `params.tab` narrows either one to a tab's own producers (the ↻ beside its pill).
+    if (id === '__rerun__') return rerun(onprogress, params && params.tab);
+    if (id === '__rerun_ai__') return rerunAi(onprogress, params && params.tab);
     return fetch('/__run__', {
       method: 'POST', cache: 'no-store',
       // Both halves deliberate. POST + a non-simple Content-Type is not a request a
@@ -120,8 +121,8 @@ window.HR = (function () {
   // it does not send is an id, because there is nothing for the page to name: the command
   // is the server's own refresh program. So this is gated on `caps.rerun`, which the
   // probe answers, and not on a manifest entry a build could forget to write.
-  function rerun(onprogress) {
-    return ask('/__rerun__', 'rerun', onprogress);
+  function rerun(onprogress, tab) {
+    return ask('/__rerun__', 'rerun', onprogress, tab);
   }
 
   // The same verb with the model's half in front of it: the requirements matrix and the
@@ -132,11 +133,11 @@ window.HR = (function () {
   // judgement nobody asked for. The server shares one lock between them, so a click on
   // either while the other is working joins the run in flight rather than starting a
   // second build over the same directory.
-  function rerunAi(onprogress) {
-    return ask('/__rerun_ai__', 'rerunAi', onprogress);
+  function rerunAi(onprogress, tab) {
+    return ask('/__rerun_ai__', 'rerunAi', onprogress, tab);
   }
 
-  function ask(route, capability, onprogress) {
+  function ask(route, capability, onprogress, tab) {
     if (!caps || !caps[capability]) {
       return Promise.reject(new Error('this page cannot rebuild itself here'));
     }
@@ -144,7 +145,7 @@ window.HR = (function () {
       method: 'POST', cache: 'no-store',
       headers: {'Content-Type': 'application/json',
                 'X-Human-Review-Token': (caps && caps.token) || ''},
-      body: '{}'
+      body: tab ? JSON.stringify({tab: tab}) : '{}'
     }).then(function (r) {
       if (r.ok) return r.json();
       // A refusal may be a sentence or it may be a refusal *with the run it is refusing
