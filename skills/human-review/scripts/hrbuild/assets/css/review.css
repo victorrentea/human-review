@@ -138,3 +138,8 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
 @media (prefers-color-scheme:dark) {
   .gradewhy.v-good { color:#6fce93; } .gradewhy.v-mid { color:#e0a44a; }
   .gradewhy.v-bad { color:#f0757f; } }
+/* The round a pile belongs to — I while coding, II code review — as a small kicker over
+   the first heading of each round, so the piles read as what happened in order. */
+.pileround { margin:2.4rem 0 -2.5rem; font-size:.74rem; letter-spacing:.06em;
+             text-transform:uppercase; color:var(--muted); }
+.pileround b { color:var(--fg); font-weight:700; }

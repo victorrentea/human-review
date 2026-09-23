@@ -836,7 +836,7 @@ def declare_run_tests_rerun(root: Path, out_dir: Path, skill_dir: Path) -> dict 
 
 def run_tests_button(info: dict | None) -> str:
     """The third button, in the free ↻'s own markup so the page's rerun machine drives it:
-    `↻🧪`, hidden until the server's probe says it can run it. Empty without `info`."""
+    `⏳`, hidden until the server's probe says it can run it. Empty without `info`."""
     if not info:
         return ""
     steps = html.escape(",".join(info["steps"]), quote=True)
@@ -847,5 +847,5 @@ def run_tests_button(info: dict | None) -> str:
             f'data-tip="{html.escape(info["tip"], quote=True)}">'
             # The paid one's shape — the arrow, then the one mark saying what this press
             # adds to it — and its `rr-bot` slot, so the strip sizes the two alike.
-            '<span class="rr-ico">\u21BB</span><span class="rr-bot">\U0001F9EA</span>'
+            '<span class="rr-ico">\u23F3</span>'
             '</button>')

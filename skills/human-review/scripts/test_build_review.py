@@ -2605,20 +2605,26 @@ def test_piles_out_of_canonical_order_are_called_out(tmp_path):
         "autofixes before assumptions, with no findings block at all, is already canonical"
 
 
-def test_findings_after_autofixes_is_out_of_canonical_order(tmp_path):
-    _, err = _build(tmp_path, dict(
-        BARE, findings=[{"title": "f", "body": "x"}], autofixes=[{"title": "fixed"}],
+def test_the_piles_render_as_rounds_whatever_the_content_file_order(tmp_path):
+    """Round I (assumptions, while coding) then round II (open, then auto-fixed), each
+    round's first heading wearing its kicker once; no round III without data for one."""
+    page, _ = _build(tmp_path, dict(
+        BARE, findings=[{"title": "ff", "body": "x"}], autofixes=[{"title": "fixed"}],
+        assumptions=[_assumption(title="aa")],
         tabs=[{"id": "review", "label": "Review",
-               "blocks": [{"type": "autofixes"}, {"type": "findings"}]}]))
-    assert "['autofixes', 'findings']" in err and "['findings', 'autofixes']" in err
+               "blocks": [{"type": "autofixes"}, {"type": "findings"},
+                          {"type": "assumptions", "mode": "A"}]}]))
+    assert page.index('id="assumed"') < page.index('id="first"') < page.index('id="fixed"')
+    assert page.count("<b>Round I</b>") == 1 and page.count("<b>Round II</b>") == 1
+    assert "Round III" not in page
 
 
-def test_assumptions_before_the_defect_piles_is_out_of_canonical_order(tmp_path):
-    _, err = _build(tmp_path, dict(
-        BARE, findings=[{"title": "f", "body": "x"}], assumptions=[_assumption()],
-        tabs=[{"id": "review", "label": "Review",
-               "blocks": [{"type": "assumptions", "mode": "A"}, {"type": "findings"}]}]))
-    assert "['assumptions', 'findings']" in err and "['findings', 'assumptions']" in err
+def test_open_issues_are_listed_worst_first():
+    out = build.render_findings([{"title": "n1", "severity": "low"},
+                                 {"title": "w1", "severity": "medium"},
+                                 {"title": "n2", "severity": "low"},
+                                 {"title": "m1", "severity": "high"}])
+    assert out.index("m1") < out.index("w1") < out.index("n1") < out.index("n2")
 
 
 # ── the aftermath band folds tooling commits away from the branch's own ─────────────
@@ -2878,11 +2884,11 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
         "the card's own purple chip already says which pile it is"
     assert "9 open LLM review issues" in page
     assert "3 auto-fixed" in page
-    assert ('<a href="#first">9 open LLM review issues</a> &middot; '
-            '<a href="#fixed">3 auto-fixed</a> &middot; '
-            '<a href="#assumed">2 implementation assumptions</a>') in page, \
-        "what a pass found comes first; what no pass could find comes after it — and every "\
-        "clause is the jump to the chapter it counts"
+    assert ('<a href="#assumed">2 implementation assumptions</a> &middot; '
+            '<a href="#first">9 open LLM review issues</a> &middot; '
+            '<a href="#fixed">3 auto-fixed</a>') in page, \
+        "in round order — what was assumed while coding, then what the review raised and "\
+        "fixed — and every clause is the jump to the chapter it counts"
     assert page.index('class="sub counts pilelede"') < page.index("Requires human review"), \
         "the line counts all three piles, so it cannot sit under the heading of one"
     assert "greyed out" not in page, \

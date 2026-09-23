@@ -75,8 +75,8 @@ button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
 .tabstrip { --tabre-w1:0px; --tabre-w2:0px; --tabre-w3:0px;
             --tabre-w:calc(var(--tabre-w1) + var(--tabre-w2) + var(--tabre-w3)); }
 .tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun__"]:not([hidden])) { --tabre-w1:1.45rem; }
-.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_ai__"]:not([hidden])) { --tabre-w2:calc(2.45rem + .2rem); }
-.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_tests__"]:not([hidden])) { --tabre-w3:calc(2.45rem + .2rem); }
+.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_ai__"]:not([hidden])) { --tabre-w2:calc(1.45rem + .2rem); }
+.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_tests__"]:not([hidden])) { --tabre-w3:calc(1.45rem + .2rem); }
 .tabstrip .tab[aria-selected="true"]:has(+ .tabre > .tabrerun:not([hidden])) {
             padding-right:calc(var(--tabre-w) + .55rem); }
 .tabstrip .tab[aria-selected="true"] + .tabre:has(> .tabrerun:not([hidden])) {
@@ -92,7 +92,10 @@ button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
             font-size:.72rem; line-height:1.3; background:var(--card);
             display:inline-flex; align-items:center; justify-content:center;
             width:1.45rem; box-sizing:border-box; }
-.tabre .tabrerun.chip-rerun-ai, .tabre .tabrerun[data-rerun="__rerun_tests__"] { width:2.45rem; }
+/* 🤖 and ⏳ are colour emoji, already heavier than the one-stroke ↺: set at the type's
+   own size rather than the arrow's 1.3em, or they overflow the round chip. */
+button.chip-rerun-ai .rr-ico, button[data-rerun="__rerun_tests__"] .rr-ico {
+            font-size:1em; vertical-align:-.05em; }
 .tabre .tabrerun.chip-rerun-ai { border-style:dashed; }
 .tabre .tabrerun[hidden] { display:none; }
 /* The page's own confirmation, over the page. Fixed and full-viewport because the click it

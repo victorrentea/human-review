@@ -734,7 +734,9 @@ def opening_lede(spec) -> str:
         # about *whose* — this pile is what the coder assumed while implementing, not a
         # reviewer's. Mode C is still the exception: there is no count to give, only the
         # reason there is none.
-        parts.append(clause(
+        # First, since the piles read as rounds: what was assumed while coding (I) came
+        # before anything the review raised or fixed (II).
+        parts.insert(0, clause(
             "coder could not be asked"
             if block.get("mode") == "C" and not assumed
             else f"{assumed} implementation assumption{'' if assumed == 1 else 's'}",
@@ -761,6 +763,11 @@ def render_findings(findings) -> str:
     if not findings:
         return '<p class="sub">Nothing outstanding \u2014 the automated passes came back clean.</p>'
     items = []
+    # Worst first, whatever order the source listed them in: a pile that read "worth a
+    # look, nit, worth a look" made the reader sort it in their head. Stable, so equal
+    # severities keep the author's order.
+    rank = {k: i for i, k in enumerate(SEVERITIES)}
+    findings = sorted(findings, key=lambda f: rank.get(f.get("severity", "info"), len(rank)))
     for f in findings:
         cls, label = SEVERITIES.get(f.get("severity", "info"), SEVERITIES["info"])
         refs = _finding_refs(f)
@@ -1254,6 +1261,28 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
 PILE_BLOCKS = ("findings", "assumptions", "autofixes")
 
 
+#: The rounds the piles belong to, in the order they happened: what the coder assumed while
+#: implementing (I), then what the code review raised or fixed (II). A round III — a second
+#: review after human corrections — has no data behind it yet, so it is never drawn.
+PILE_ROUND = {"assumptions": ("I", "while coding"),
+              "findings": ("II", "code review"), "autofixes": ("II", "code review")}
+
+
+def _round_kicker(spec, kind) -> str:
+    """`I · while coding` over the first pile of each round, and nothing over the second
+    pile of the same round. Read off the tab's own block list, so it needs no state."""
+    for tab in spec.get("tabs") or []:
+        kinds = [b.get("type") for b in tab.get("blocks") or [] if b.get("type") in PILE_ROUND]
+        if kind not in kinds:
+            continue
+        first = next(k for k in kinds if PILE_ROUND[k] == PILE_ROUND[kind])
+        if first != kind:
+            return ""
+        num, what = PILE_ROUND[kind]
+        return (f'<p class="pileround"><b>Round {num}</b> \u00b7 {what}</p>')
+    return ""
+
+
 def render_pile_block(spec, block, heading=None):
     """One of the three piles, as `(html, weight, changes)`.
 
@@ -1268,7 +1297,8 @@ def render_pile_block(spec, block, heading=None):
     def head_of(fallback_id, fallback_title):
         if heading is None:
             return ""
-        return heading(block, fallback_id, fallback_title)
+        return _round_kicker(spec, block.get("type")) + heading(block, fallback_id,
+                                                                  fallback_title)
 
     kind = block.get("type", "section")
     # Whether these three piles are the branch's record or the content file's own list. It

@@ -27,7 +27,10 @@ from .actions import ACTIONS, declare_action
 #: those come out a fifth to a third narrower, and over `⭮` (U+2BAE), which measured
 #: exactly as wide as a private-use codepoint — i.e. it was tofu.
 CMD_COPY = "\U0001F4CB"   # 📋
-CMD_RUN = "\u21BB"        # ↻
+#: `↺`, not `↻`, since Victor gave each refresh mode one mark of its own: ↺ regenerates
+#: the report (free), ⏳ re-runs the tests (free, minutes), 🤖 re-evaluates with a model
+#: (paid). One mark per press, so no chip is a sum of glyphs to be read left to right.
+CMD_RUN = "\u21BA"        # ↺
 
 #: The three marks the Demo row wears instead of `↻`, because none of its verbs is a
 #: rerun. Start begins something that then keeps running, Stop ends it, Where goes to it —
@@ -103,16 +106,16 @@ RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
                  'data-tip="costs money: ~$5\u2013$10 on Sonnet. Rewrites the '
                  'requirements↔tests matrix and the per-test catalogue with a model, then '
                  're-derives the evidence and rebuilds the page.">'
-                 # Two marks and nothing else: the free one's arrow, and the model that
-                 # this one adds to it. The `+` and the flying banknote that used to sit
+                 # One mark: the model. It used to be the free one's arrow plus this,
+                 # and before that a `+` and a banknote too; each refresh mode now has one
+                 # mark of its own (↺ regenerate, ⏳ re-run tests, 🤖 re-evaluate). The `+` and the flying banknote that used to sit
                  # between and after them made a four-glyph rebus at .7rem, which Victor
                  # read as noise; the money is said where it can be said in words — first
                  # in the hover, then again in the dialog — and the amber dashed edge is
                  # the at-a-glance "this one is different". No words on the face, because
                  # a label reading `Rerun + AI` cost the masthead two words to say
                  # `rerun` a second time.
-                 f'<span class="rr-ico">{CMD_RUN}</span>'
-                 '<span class="rr-add">\U0001F916</span></button>')
+                 '<span class="rr-ico">\U0001F916</span></button>')
 
 def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
     """The masthead's ↻, narrowed to one tab, beside that tab's pill on the strip.
@@ -124,7 +127,7 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
     static copy, where the probe raises nothing.
 
     Same two faces as the masthead, and the same machine behind both (`rerun.js`): the
-    green ↻ re-runs this tab's producers and rebuilds the page, free; the amber ↻🤖 is
+    green ↻ re-runs this tab's producers and rebuilds the page, free; the amber 🤖 is
     there only on a tab with a model half (Tests, Logging) and opens the same confirmation
     the masthead's paid chip does. Empty when the tab has no producer to re-run."""
     if not info:
@@ -149,8 +152,7 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
                 + (f'data-tip-fmt="costs money: {{price}} on Sonnet. {tip}" '
                    if info.get("priced") else "") +
                 f'data-tip="costs money. {tip}">'
-                f'<span class="rr-ico">{CMD_RUN}</span>'
-                '<span class="rr-add">\U0001F916</span></button>')
+                '<span class="rr-ico">\U0001F916</span></button>')
     # A tab's own further presses (the Tests tab's ↻🧪, which runs the suites first), drawn
     # by the tab that owns them and placed here, inside the span: the strip shows `.tabre`
     # only as the selected pill's next sibling, so a second span beside it would never show.
@@ -224,7 +226,7 @@ RERUN_FAIL = ('<div class="rerunfail" id="hr-rerun-fail" hidden role="alert">'
 # it is news about a press, and a press is over — which is the other difference from the
 # failure beside it, where the reader decides when it is read.
 RERUN_DONE = ('<div class="rerundone" id="hr-rerun-done" hidden role="status">'
-              '<span class="rerundone-ico" aria-hidden="true">↻</span>'
+              '<span class="rerundone-ico" aria-hidden="true">↺</span>'
               '<span class="rerundone-say"></span></div>')
 
 
@@ -268,7 +270,7 @@ def rerun_progress_html(expected: dict) -> str:
     return ('<div class="rerunprog" id="hr-rerun-progress" hidden role="status" '
             'aria-live="polite" data-expect="'
             + html.escape(json.dumps(data, separators=(",", ":")), quote=True) + '">'
-            '<div class="rerunprog-row"><span class="rerunprog-ico" aria-hidden="true">↻</span>'
+            '<div class="rerunprog-row"><span class="rerunprog-ico" aria-hidden="true">↺</span>'
             '<span class="rerunprog-say">Rebuilding this page…</span>'
             '<span class="rerunprog-eta"></span></div>'
             '<div class="rerunprog-bar" aria-hidden="true"><i class="rerunprog-fill"></i></div>'

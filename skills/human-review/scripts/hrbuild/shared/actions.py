@@ -154,14 +154,12 @@ def tab_steps(skill_dir: Path) -> dict[str, list[str]]:
 
 #: The tabs whose producer can also buy something from a model, and what the paid press
 #: adds in front of (or inside) the free one. The Tests tab's matrix and catalogue are
-#: `rerun-model.py`'s; the Logging tab's privacy verdicts are what `--allow-model` lets the
-#: build ask for. Nothing else on the page is a judgement a click could buy again.
+#: `rerun-model.py`'s. The Logging tab had one too (privacy verdicts under `--allow-model`)
+#: until its scan became deterministic; it keeps only the free ↺.
 TAB_AI = {
     "requirements": ("model", "Rewrites this tab's requirements↔tests matrix and the "
                               "per-test catalogue with a model, then re-derives the test "
                               "manifest and rebuilds the page."),
-    "logging": ("allow", "Re-scans the logging and asks a model for the privacy verdicts "
-                         "the cache does not have yet, then rebuilds the page."),
 }
 
 

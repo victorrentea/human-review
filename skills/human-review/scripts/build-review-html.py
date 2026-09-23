@@ -129,7 +129,7 @@ from hrbuild.tabs.review import (
     reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_face,
     SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
     _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source, _fold_note_lists,
-    grade_reasons, grade_reasons_html, _first_clause, _CLAUSE_END,
+    grade_reasons, grade_reasons_html, _first_clause, _CLAUSE_END, PILE_ROUND, _round_kicker,
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
     _ref_link, _regenerate_offer, _revert_offer, _score_target, _tooling_commit_shas,
     _tooling_fold_html
@@ -623,24 +623,16 @@ def main(argv=None) -> int:
                   "number and not one item carries a 'source' — the split the chip "
                   "summarises is nowhere on the page behind it", file=sys.stderr)
 
-    # The piles are one numbered list and each starts where the last stopped, so the order
-    # in this file is the order on the page — including the order of the numbers. That
-    # makes the ordering an editorial choice rather than a bug waiting to happen, and
-    # leaves one shape worth enforcing: open first, because that is the pile the reader
-    # still owes a decision to; what was fixed without asking next, because it is done and
-    # worth a glance rather than a verdict; what nobody could be asked about last, because
-    # it is the softest pile and the counts line above already puts it there. This used to
-    # require only that `autofixes` render last — true while the piles were two, and wrong
-    # once `assumptions` had a fixed place of its own to be after instead of before.
-    _canonical_pile_order = ("findings", "autofixes", "assumptions")
-    _blocks = [b.get("type") for tb in (spec.get("tabs") or []) for b in (tb.get("blocks") or [])
-               if b.get("type") in _canonical_pile_order]
-    _wanted = [k for k in _canonical_pile_order if k in _blocks]
-    if _blocks != _wanted:
-        print(f"[review] WARNING: the piles render as {_blocks!r}, not {_wanted!r} — open "
-              "should lead the list, the applied fixes come next, and what nobody could be "
-              "asked about is the tail, the same order the counts line above already reads "
-              "them in", file=sys.stderr)
+    # The piles are rounds, in the order they happened: I, what the coder assumed while
+    # implementing; II, what the code review raised (open) and fixed. So they render in
+    # that order whatever order the content file lists them in — the file's own order used
+    # to be enforced with a warning, and the page now simply puts them where they belong.
+    _pile_rank = {"assumptions": 0, "findings": 1, "autofixes": 2}
+    for _tb in spec.get("tabs") or []:
+        _bl = _tb.get("blocks") or []
+        _at = [i for i, b in enumerate(_bl) if b.get("type") in _pile_rank]
+        for i, b in zip(_at, sorted((_bl[i] for i in _at), key=lambda b: _pile_rank[b["type"]])):
+            _bl[i] = b
 
     v = spec.get("verdict")
     title_score = ""

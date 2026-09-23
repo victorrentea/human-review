@@ -1343,9 +1343,9 @@ def test_the_paid_button_says_the_price_before_it_is_pressed(tmp_path):
     # banknote made a four-glyph rebus nobody could read at chip size. The money is in the
     # hover and the dialog, in words. No words on the face either: `Rerun + AI` said
     # neither the price nor anything the free chip beside it had not already said.
-    assert build.RERUN_AI_CHIP.endswith('<span class="rr-add">\U0001F916</span></button>')
+    assert build.RERUN_AI_CHIP.endswith('<span class="rr-ico">\U0001F916</span></button>')
     assert "\U0001F4B8" not in build.RERUN_AI_CHIP and "rr-plus" not in build.RERUN_AI_CHIP
-    assert build.CMD_RUN in build.RERUN_AI_CHIP
+    assert build.CMD_RUN not in build.RERUN_AI_CHIP
     assert "Rerun" not in build.RERUN_AI_CHIP[build.RERUN_AI_CHIP.index('data-tip'):]
     # The words are in the accessibility tree, where a glyph-only control has to put them.
     assert 'aria-label="Rerun with AI' in build.RERUN_AI_CHIP
@@ -1458,11 +1458,12 @@ def test_each_tab_reruns_its_own_producers_and_no_others(tmp_path):
     assert "--steps reviewpoints,aftermath --no-serve" in free["command"]
     assert "--allow-model" not in free["command"]
     # Paid only where a tab has a model half, and the Tests one writes the matrix first.
-    assert got["requirements"]["ai"] and got["logging"]["ai"] and not got["review"]["ai"]
+    assert got["requirements"]["ai"] and not got["logging"]["ai"] and not got["review"]["ai"]
     paid = build.ACTIONS["__rerun_ai__:requirements"]["command"]
     assert paid.index("rerun-model.py") < paid.index("refresh-report.py")
     assert paid.endswith("--steps tests --no-serve --allow-model")
-    assert "rerun-model.py" not in build.ACTIONS["__rerun_ai__:logging"]["command"]
+    # Logging's scan is deterministic now: no paid press to declare.
+    assert "__rerun_ai__:logging" not in build.ACTIONS
 
 
 def test_the_tab_rerun_markup_is_hidden_and_names_its_tab():
