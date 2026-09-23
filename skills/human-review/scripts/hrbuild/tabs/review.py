@@ -415,7 +415,7 @@ SCOPE_CHIP_MAX_LEN = 34
 
 
 def scope_chip_face(spec, reviewer: str | None = None) -> str:
-    """`\U0001f916reviewer: <b>6 open</b>, 3 fixed; \U0001f916coder: <b>7 assumptions</b>`
+    """`<b>7 assumptions</b> from \U0001f916coder; <b>6 open</b>, <b>3 fixed</b> issues from \U0001f916reviewer`
     — the masthead's review chip, whole, rather than a label and a value composed a
     second time beside it, off the same `pile_numbers` the counts line under the header
     reads. One vocabulary now, not two: the chip used to swap to `fixed, … declined` on a
@@ -431,20 +431,23 @@ def scope_chip_face(spec, reviewer: str | None = None) -> str:
     and `coder`, same robot, same face, same weight — because they are the same kind of
     thing: a sentence used to open with a bold `Review:` and end with a greyed, bolded
     `coder:` inside the number span, which read as a label and its footnote rather than
-    as two peers. What is bold is the number the reader acts on in each half: the open
-    findings, and the assumptions to check. `fixed` stays at the label's weight — it is
-    on the page so the reader can check it, not so they can act on it. With no
-    assumptions there is no second claim to make, so the clause is absent rather than
-    zeroed. `reviewer` takes the model's name when the run knows it (`Opus 5 reviewer:`);
+    as two peers. Each half now reads as a sentence — the count first, then whose it is
+    (`7 assumptions from coder`) — rather than an agent's name with a colon and a field
+    after it, and the coder's half leads: the assumptions were made before the review
+    ran. Every count is bold together with what it counts, `3 fixed` included — the
+    numbers are what the eye scans the pill for, and a count in a different weight from
+    its neighbour read as a different kind of number. With no assumptions there is no
+    second claim to make, so the clause is absent rather than zeroed. `reviewer` takes
+    the model's name when the run knows it (`from 🤖Opus 5 reviewer`);
     `implementation assumptions` — the counts line's own name for the pile — is spelled
     out there; the chip says only `assumptions`, because the room a tooltip has is the
     room a pill does not."""
     open_n, fixed_n, assumed_n = pile_numbers(spec)
     who = f"{reviewer} reviewer" if reviewer else "reviewer"
-    face = f"\U0001f916{who}: <b>{open_n} open</b>, {fixed_n} fixed"
+    face = f"<b>{open_n} open</b>, <b>{fixed_n} fixed</b> issues from \U0001f916{who}"
     if assumed_n:
-        face += (f'; \U0001f916coder: <b>{assumed_n} assumption'
-                 f'{"" if assumed_n == 1 else "s"}</b>')
+        face = (f'<b>{assumed_n} assumption{"" if assumed_n == 1 else "s"}</b> '
+                f'from \U0001f916coder; ' + face)
     return face
 
 

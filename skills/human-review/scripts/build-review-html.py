@@ -518,9 +518,10 @@ def main(argv=None) -> int:
                 # it competes with the number that IS the work. Grey is the page's own
                 # "already handled" — the same treatment the fixes get in the list below.
                 #
-                # Then a second sentence, `; 🤖coder: 7 assumptions`, about a different
-                # agent: the one that wrote the code, recording what it had to guess at
-                # while writing it. It rides on this chip rather than on one of its own
+                # Then a second sentence, `7 assumptions from 🤖coder;` — now leading the
+                # pill, each half written count-first as `N things from whom` — about a
+                # different agent: the one that wrote the code, recording what it had to
+                # guess at while writing it. It rides on this chip rather than on one of its own
                 # because it answers the other half of "what did the machines do to this
                 # branch", and because the masthead is a row, not a list. With nothing
                 # assumed the clause is absent rather than zeroed — the rule the whole
