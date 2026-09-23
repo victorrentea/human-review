@@ -133,8 +133,52 @@ def test_the_cards_own_header_strip_stays_on_the_card(tmp_path):
     out = _laid_out(tmp_path)
     card = out[out.index('<aside class="rm-code">'):out.index("</aside>")]
     assert 'class="rm-tkhead"' in card
-    assert "Covering tests" in card and "as matched by AI" in card
-    assert out.count("Covering tests") == 1
+    assert T.CARD_WHO in card and T.CARD_WHEN in card
+    assert out.count(T.CARD_WHO) == 1
+
+
+def test_the_card_names_the_pairing_as_the_ai_part_not_the_tests(tmp_path):
+    """*Covering tests — as matched by AI* put the doubt on the tests, which are real and
+    resolve in the tree. What a model decided is the pairing, so the strip says that,
+    whatever words the paid run left there — and the robot's hover says the same."""
+    out = _laid_out(tmp_path)
+    card = out[out.index('<aside class="rm-code">'):out.index("</aside>")]
+    assert "Covering tests" not in card and "as matched by AI" not in card
+    assert '<span class="rm-who">Semantic test coverage</span>' in card
+    # The ticket's own strip is not the card's: its byline stays the author's.
+    assert '<span class="rm-who">victorrentea</span>' in out
+
+
+def test_the_card_head_is_left_alone_without_a_strip():
+    side = '<div class="rm-side"><aside class="rm-code"><div class="rm-list"></div></aside></div>'
+    assert T.card_head(side) == side
+
+
+def test_the_run_tests_press_runs_every_producer_of_the_tab_forced(tmp_path):
+    """The third mode: the tab's producers, the suite-running `traces` included, with the
+    step cache bypassed — a press that is about running the tests must run them."""
+    from hrbuild.shared import actions as A
+    skill = HERE
+    root = tmp_path / "repo"
+    (root / ".human-review").mkdir(parents=True)
+    saved = dict(A.ACTIONS)
+    try:
+        info = T.declare_run_tests_rerun(root, root / ".human-review", skill)
+        assert info and info["steps"] == T.run_tests_steps(skill)
+        assert "traces" in info["steps"] and "tests" in info["steps"]
+        cmd = A.ACTIONS[info["id"]]["command"]
+        assert info["id"] == "__rerun_tests__:requirements"
+        assert "--steps tests,traces --force --no-serve" in cmd
+        assert A.ACTIONS[info["id"]]["reload"] is True
+        btn = T.run_tests_button(info)
+        assert 'data-rerun="__rerun_tests__"' in btn and 'data-tab="requirements"' in btn
+        assert "hidden" in btn and "\U0001F9EA" in btn
+        assert T.run_tests_button(None) == ""
+        # Outside the repository there is nothing to rebuild with.
+        assert T.declare_run_tests_rerun(root, tmp_path / "elsewhere", skill) is None
+    finally:
+        A.ACTIONS.clear()
+        A.ACTIONS.update(saved)
 
 
 def test_the_side_column_keeps_its_full_width_in_the_grid(tmp_path):

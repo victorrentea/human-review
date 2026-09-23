@@ -536,6 +536,48 @@ def semcov_switch() -> str:
             f'{SEMCOV_LABEL}</label>')
 
 
+#: What the card's own header strip says, whatever the model wrote there. It said
+#: *Covering tests — as matched by AI*, which put the doubt on the wrong word: the tests on
+#: the card are real, they resolve in the tree and `test-changes.py` stamps what happened
+#: to each. What a model decided is only the *pairing* — which test pins which sentence of
+#: the ticket. So the strip names the pairing, and the robot at its left end owns that and
+#: nothing more. "Tests executing code changed by this PR" is a different list, and a
+#: measured one; it is kept for the per-test coverage run that can actually say it.
+CARD_WHO = "Semantic test coverage"
+CARD_WHEN = "paired with the ticket by AI"
+CARD_AI_TIP = ("The tests are real and resolve in the tree; which sentence each one "
+               "pins is AI's reading, not a measurement")
+
+
+def card_head(side: str) -> str:
+    """The card's header strip, re-worded — or `side` untouched when it has none.
+
+    Only the first `rm-tkhead` inside `rm-code` is touched, and only its two text spans
+    and the robot's hover: the strip's structure and classes stay the model's, because the
+    fragment's own stylesheet lays them out."""
+    i = _find(side, "rm-code")
+    if i is None:
+        return side
+    j = _find(side[i:], "rm-tkhead")
+    if j is None:
+        return side
+    span = _element(side, i + j)
+    if span is None:
+        return side
+    a, b = span
+    strip = side[a:b]
+    strip = re.sub(r'(<span class="rm-who"[^>]*>).*?(</span>)',
+                   lambda m: m.group(1) + html.escape(CARD_WHO) + m.group(2),
+                   strip, count=1, flags=re.S)
+    strip = re.sub(r'(<span class="rm-when"[^>]*>).*?(</span>)',
+                   lambda m: m.group(1) + html.escape(CARD_WHEN) + m.group(2),
+                   strip, count=1, flags=re.S)
+    strip = re.sub(r'(class="rm-av rm-av-ai"[^>]*?data-tip=")[^"]*(")',
+                   lambda m: m.group(1) + html.escape(CARD_AI_TIP, quote=True) + m.group(2),
+                   strip, count=1)
+    return side[:a] + strip + side[b:]
+
+
 def ticket_head(ref: dict | None) -> str:
     """The ticket's title over its frame — the issue's own, never the PR's.
 
@@ -725,6 +767,85 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
                       lambda h: h.group(1) + semcov_switch() + h.group(2),
                       text_col, count=1, flags=re.S)
     side_col = _append_inside(side_col, cats)
+    side_col = card_head(side_col)
     body = (m.group(0) + ticket_head(ticket_ref(spec, out_dir))
             + text_col + side_col + "</div>")
     return frag[:a] + body + frag[b:] + REQMAP_CSS + REQMAP_TIP_JS + REQMAP_SEMCOV_JS
+
+
+# --- the third run mode: run the tests, then re-derive ---------------------------------
+#
+# The ↻ beside the Tests pill re-reads what is on disk (`test-changes.py` over the tree),
+# and the ↻+🤖💸 buys the matrix again from a model. Neither re-runs a test, and a list of
+# the tests that execute this branch's code can only be answered by running them: whatever
+# the page last recorded is a claim about the tree as it was at that run. So this tab has
+# a third press, free and slow — every producer that feeds the tab, the suite-running ones
+# included, with the step cache bypassed so a suite whose inputs look unchanged runs anyway.
+#
+# The declaration lives here because *which* producers are "the tests" is this tab's
+# knowledge. Drawing the button beside the other two, routing it through the server's
+# rerun lock and teaching the page's rerun machine its id belong to the shared modules
+# (`shared/commands.py:tab_rerun_html`, `shared/actions.py`, `assets/server.js`,
+# `serve-review.py:tab_rerun_plan`); this is the half they call.
+
+#: The manifest id of the third press. A prefix of its own rather than a flag on
+#: `__rerun__:<tab>`: the server reaches a verb by its URL or its id, never by a field a
+#: caller could flip, and "run the whole e2e suite" is a different offer from "re-read".
+RUN_TESTS_ACTION = "__rerun_tests__"
+
+
+def run_tests_steps(skill_dir: Path) -> list[str]:
+    """Every `run-steps.STEPS` producer that feeds this tab, heavy ones included — in the
+    table's own order. `[]` when the table cannot be read."""
+    from ..shared.actions import _load
+    try:
+        table = _load(skill_dir / "run-steps.py", "hr_run_steps_table_tests").STEPS
+    except Exception:              # noqa: BLE001 - no table, no third press
+        return []
+    return [row[0] for row in table
+            if LEDGER_TAB in [t.strip() for t in (row[1] or "").split(",")]]
+
+
+def declare_run_tests_rerun(root: Path, out_dir: Path, skill_dir: Path) -> dict | None:
+    """Declare `__rerun_tests__:requirements` in the page's action manifest and return
+    `{"id", "steps", "tip"}` for the button — or None where the page cannot offer it.
+
+    `--force`, because the point of the press is that the suite RUNS: `run-steps.py` would
+    otherwise find `traces` unchanged since its last run and hand back the old recordings.
+    Only the producers are forced; the build after them keeps its own caches."""
+    from ..shared.actions import declare_action, tab_rerun_id
+    refresh = skill_dir / "refresh-report.py"
+    if not refresh.is_file():
+        return None
+    try:
+        rel = str(out_dir.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return None
+    steps = run_tests_steps(skill_dir)
+    if not steps:
+        return None
+    here = shlex.quote(str(root.resolve()))
+    line = (f"{shlex.quote(sys.executable)} {shlex.quote(str(refresh))} "
+            f"--dir {shlex.quote(rel)} --steps {shlex.quote(','.join(steps))} --force --no-serve")
+    action = declare_action(tab_rerun_id(RUN_TESTS_ACTION, LEDGER_TAB), f"cd {here} && {line}",
+                            reload=True, label="Re-run the tests, then re-derive the Tests tab")
+    tip = (f"Re-run the test suites, then re-derive this tab ({', '.join(steps)}). Free, "
+           "but minutes long, and it needs the application stack the suites drive to be up.")
+    return {"id": action, "steps": steps, "tip": tip}
+
+
+def run_tests_button(info: dict | None) -> str:
+    """The third button, in the free ↻'s own markup so the page's rerun machine drives it:
+    `↻🧪`, hidden until the server's probe says it can run it. Empty without `info`."""
+    if not info:
+        return ""
+    steps = html.escape(",".join(info["steps"]), quote=True)
+    return ('<button type="button" class="chip chip-rerun chip-served tabrerun tabrerun-tests" '
+            f'hidden aria-disabled="true" data-rerun="{RUN_TESTS_ACTION}" '
+            f'data-tab="{LEDGER_TAB}" data-steps="{steps}" '
+            'aria-label="Re-run the tests, then re-derive the Tests tab" '
+            f'data-tip="{html.escape(info["tip"], quote=True)}">'
+            # The paid one's shape — the arrow, then the one mark saying what this press
+            # adds to it — and its `rr-bot` slot, so the strip sizes the two alike.
+            '<span class="rr-ico">\u21BB</span><span class="rr-bot">\U0001F9EA</span>'
+            '</button>')

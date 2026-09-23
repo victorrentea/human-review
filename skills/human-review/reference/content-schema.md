@@ -1006,7 +1006,10 @@ Four tabs need something said about how they are written:
   - Once the card carries all four states, **the ledger at the foot of the tab is the same
     rows a second time**, grouped by a question the stamps already answer. Turn it off with
     **`"testLedger": false`** at the top level of the content file. The header strip then
-    reads *as matched by AI*, and nothing else. It has said three things in turn and each
+    reads *🤖 Semantic test coverage — paired with the ticket by AI*, and the build writes
+    those words itself (`tests.py:card_head`) whatever the model left there: the tests are
+    real, only the pairing is the model's. It used to read *Covering tests — as matched by
+    AI*, which put the doubt on the tests. It has said three things in turn and each
     replaced a worse one: first how many tests the branch **left alone** — a count of the
     tests a change set did not touch is not a fact about that change set, it is the size of
     the suite; then *every test this change set touched*, which was true and was the one

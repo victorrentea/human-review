@@ -148,6 +148,8 @@ from hrbuild.tabs.tests import (
     SEMCOV_LABEL, semcov_switch, SILENCED_LABEL,
     test_index, TEST_STATES,
     TICKET_CACHE, ticket_head, ticket_ref, tests_chip, _append_inside, _element, _find,
+    CARD_WHO, CARD_WHEN, CARD_AI_TIP, card_head,
+    RUN_TESTS_ACTION, run_tests_steps, declare_run_tests_rerun, run_tests_button,
     _gh_issue, _issue_url, _ms, _take, _test_changes_module
 )
 from hrbuild.tabs.demo import (
