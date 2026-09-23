@@ -129,7 +129,7 @@ from hrbuild.tabs.review import (
     review_tab_badge,
     reset_list, resolve_refs, resolve_review_points, REVIEW_POINTS_JSON, scope_chip_face,
     SCOPE_CHIP_MAX_LEN, SEVERITIES, _aftermath_commit, _aftermath_files_tip,
-    _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source,
+    _assumptions_block, _code_totals, _confidence_chip, _finding_refs, _finding_source, _fold_note_lists,
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
     _ref_link, _regenerate_offer, _revert_offer, _score_target, _tooling_commit_shas,
     _tooling_fold_html
