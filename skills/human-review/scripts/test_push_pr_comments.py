@@ -285,3 +285,21 @@ def test_from_review_points_then_check_against_a_real_diff(tmp_path, capsys):
     assert ppc.main(["--root", str(root), "--check", "--base", "main"]) == 0
     out = capsys.readouterr().out
     assert "3 comments: 2 on a line, 0 on a file, 1 folded" in out
+
+
+def test_the_pages_copy_of_slug_agrees_with_this_one():
+    """The Review tab links an item to its comment by recomputing this id from the title it
+    holds as HTML; `hrbuild/tabs/review.py` keeps its own copy of `slug` (the script is a
+    dataclass module, which `shared.actions._load` cannot load). Until that copy lands,
+    there is nothing to compare."""
+    src = (HERE / "hrbuild/tabs/review.py").read_text(encoding="utf-8")
+    if "def pr_comment_slug" not in src:
+        pytest.skip("the Review tab does not link to PR comments yet")
+    import importlib
+    import sys as _sys
+    _sys.path.insert(0, str(HERE))
+    review = importlib.import_module("hrbuild.tabs.review")
+    for title in ("vet_id is <code>ON DELETE SET NULL</code>, so &quot;none&quot;",
+                  "An unknown vetId is a 404, not a quietly unattended visit",
+                  "word " * 40, ""):
+        assert review.pr_comment_slug(title) == ppc.slug(title)
