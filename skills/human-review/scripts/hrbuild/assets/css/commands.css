@@ -42,7 +42,14 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
    would make every pill read as a control with two halves. `[hidden]` still wins on a
    static copy, where the probe raises nothing and the span stays empty space. */
 .tabre { display:none; gap:.2rem; align-items:center; }
-.tabstrip .tab[aria-selected="true"] + .tabre { display:inline-flex; }
+.tabstrip .tab[aria-selected="true"] + .tabre { display:inline-flex;
+            animation:tabre-in .16s ease-out .2s both; }
+/* Switching tabs: the new pill widens (its padding transitions, see frame.css) and only
+   then does its ↻ fade in, so the glyph never lands on the name while it is still moving. */
+@keyframes tabre-in { from { opacity:0; transform:scale(.7); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce) {
+  .tabstrip .tab[aria-selected="true"] + .tabre { animation:none; }
+  button.tab { transition:none; } }
 /* Drawn inside the selected pill, at its right end, rather than beside it: the pill makes
    room with its own right padding and the pair is pulled back over that room. Still a
    sibling in the markup (a button cannot hold a button); only the box moves. How much

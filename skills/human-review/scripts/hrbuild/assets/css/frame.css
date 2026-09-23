@@ -33,7 +33,8 @@ button.tab.quiet:hover, button.tab.quiet[aria-selected="true"] { opacity:.85; }
 button.tab { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:999px;
              cursor:pointer; font:600 .87rem/1.8 inherit; padding:0 .85rem; white-space:nowrap;
              display:inline-flex; align-items:center; gap:.42rem;
-             transition:background .12s, border-color .12s, color .12s; }
+             transition:background .18s, border-color .18s, color .18s, box-shadow .18s,
+                        padding .22s ease; }
 /* Hover now has to be a *different* state from resting, not the arrival of one: the card
    ground is already there, so the pointer buys the accent wash and the link colour on the
    edge — the same pair `a.chip-link` uses, for the same reason. */
