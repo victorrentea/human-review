@@ -1,0 +1,9 @@
+id: typed-catch
+language: java
+severity: hint
+message: catch parameter with its declared type
+rule:
+  kind: catch_formal_parameter
+  all:
+    - has: {kind: catch_type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}

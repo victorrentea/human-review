@@ -1,0 +1,10 @@
+id: method-ret
+language: java
+severity: hint
+message: method with its return type
+rule:
+  kind: method_declaration
+  all:
+    - has: {field: type, pattern: $RTYPE}
+    - has: {field: name, pattern: $MNAME}
+    - has: {field: parameters, pattern: $MPARAMS}

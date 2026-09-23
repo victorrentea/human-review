@@ -335,5 +335,38 @@ class RuleFilesTest(unittest.TestCase):
         self.assertEqual(set(logextract.RULES), on_disk)
 
 
+
+class ArgTypesTest(unittest.TestCase):
+    """The type hint in front of each logged value: read off declarations, never guessed."""
+
+    def types(self):
+        by, _, _ = scan("ArgTypes.java")
+        return {h.line: dict(zip(h.args, h.arg_types)) for h in by["ArgTypes.java"]}
+
+    def test_parameters_locals_and_var_resolve(self):
+        t = self.types()[27]
+        self.assertEqual({"pet.getId()": "Long", "pet.getName()": "String",
+                          "fresh": "ArgTypesPet", "count": "int"}, t)
+
+    def test_foreach_variable_record_accessor_and_jdk_size(self):
+        self.assertEqual({"p.getTags().size()": "int", "owner.email()": "String"},
+                         self.types()[29])
+
+    def test_an_untyped_lambda_parameter_shadows_a_field(self):
+        self.assertEqual({"o": None}, self.types()[31])
+
+    def test_concatenation_type_variables_and_static_calls(self):
+        self.assertEqual({'"a" + count': "String", "pick(pet)": None,
+                          "load(3).getId()": "Long"}, self.types()[32])
+
+    def test_what_is_not_in_the_repo_gets_no_hint(self):
+        self.assertEqual({"java.time.Instant.now()": None, "unknown.thing()": None},
+                         self.types()[33])
+
+    def test_catch_parameter_and_throwable_message(self):
+        self.assertEqual({"e.getMessage()": "String", "e": "IllegalStateException"},
+                         self.types()[37])
+
+
 if __name__ == "__main__":
     unittest.main()

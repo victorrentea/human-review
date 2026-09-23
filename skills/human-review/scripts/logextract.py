@@ -107,10 +107,10 @@ rule:
     - has: {field: superclass, pattern: $SUPER}
 """
 
-# --- pass 1f: method/constructor ranges, for the GDPR verdict's context window ------- #
+# --- pass 1f: method/constructor ranges ---------------------------------------------- #
 # Not part of the logger-detection surface at all: this is what lets a caller ask "what
-# method encloses line N", so the privacy verdict can be asked about a whole method —
-# parameters and locals both — instead of one line with nothing around it.
+# method encloses line N", which scopes both the origin walk and the type lookup to the
+# parameters and locals that are actually visible at the statement.
 RULES["method-decl"] = r"""
 id: method-decl
 language: java
@@ -193,6 +193,106 @@ rule:
   all:
     - has: {field: left, pattern: $ALEFT}
     - has: {field: right, pattern: $ARIGHT}
+"""
+
+# --- pass 1i: the static type of every name a logged value can start from ----------- #
+# What the Logging tab prints in front of each argument, IntelliJ-style: `[String]
+# vet.getLastName()`. Answered from declarations only — the type a local, a parameter, a
+# for-each variable or a catch clause was *declared* with, and the return type of the
+# repo's own methods for the calls chained off it. No inference engine: a name these
+# cannot see, or can see declared two different ways, gets no hint at all.
+
+RULES["typed-local"] = r"""
+id: typed-local
+language: java
+severity: hint
+message: local variable with its declared type
+rule:
+  kind: local_variable_declaration
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has:
+        field: declarator
+        has: {field: name, pattern: $VNAME}
+"""
+
+RULES["typed-param"] = r"""
+id: typed-param
+language: java
+severity: hint
+message: formal parameter with its declared type
+rule:
+  kind: formal_parameter
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}
+"""
+
+RULES["typed-catch"] = r"""
+id: typed-catch
+language: java
+severity: hint
+message: catch parameter with its declared type
+rule:
+  kind: catch_formal_parameter
+  all:
+    - has: {kind: catch_type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}
+"""
+
+# Scoped to the loop statement itself: the variable does not exist past its closing brace.
+RULES["typed-foreach"] = r"""
+id: typed-foreach
+language: java
+severity: hint
+message: enhanced-for variable with its declared type
+rule:
+  kind: enhanced_for_statement
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}
+"""
+
+# A lambda parameter written without a type. Recorded so that it *shadows*: `o -> log.info(
+# "{}", o)` inside a class with a field `o` must not borrow the field's type.
+RULES["lambda-param"] = r"""
+id: lambda-param
+language: java
+severity: hint
+message: lambda parameter list
+rule:
+  kind: lambda_expression
+  has: {field: parameters, pattern: $LPARAMS}
+"""
+
+RULES["method-ret"] = r"""
+id: method-ret
+language: java
+severity: hint
+message: method with its return type
+rule:
+  kind: method_declaration
+  all:
+    - has: {field: type, pattern: $RTYPE}
+    - has: {field: name, pattern: $MNAME}
+    - has: {field: parameters, pattern: $MPARAMS}
+"""
+
+# `record Owner(String name)`: each component is a field *and* an accessor `name()`.
+RULES["record-comp"] = r"""
+id: record-comp
+language: java
+severity: hint
+message: record component
+rule:
+  kind: formal_parameter
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}
+  inside:
+    kind: formal_parameters
+    inside:
+      kind: record_declaration
 """
 
 
@@ -408,6 +508,10 @@ class Hit:
     # came from — `{line, name, kind, text}` — for the renderer to *quote* rather than
     # paraphrase. Empty when every value is self-evident, or unresolvable, or capped out.
     origins: list = field(default_factory=list)
+    # The declared static type of each entry in `args`, in the same order — `"String"`,
+    # `"Integer"`, `"List<Pet>"` — or None where it could not be resolved from a
+    # declaration. None is an answer: the page shows no hint rather than a guessed one.
+    arg_types: list = field(default_factory=list)
 
 
 @dataclass
@@ -554,6 +658,15 @@ class Project:
         self.assigns: dict[str, list[tuple[int, str, str]]] = defaultdict(list)
         # file -> [(line, name)]
         self.params: dict[str, list[tuple[int, str]]] = defaultdict(list)
+        # The type tables `arg_type()` reads. `typed` is every name declared with a type
+        # (or, for an untyped lambda parameter, with None — a name that shadows): file ->
+        # [(line, scope end or None, name, type or None)]. `members` is the repo's own
+        # classes by simple name: fields and method return types, as *sets*, because two
+        # classes can share a simple name and a set of two answers is no answer.
+        self.typed: dict[str, list[tuple[int, int | None, str, str | None]]] = defaultdict(list)
+        self.members: dict[str, dict[str, dict]] = defaultdict(
+            lambda: {"fields": defaultdict(set), "methods": defaultdict(set)})
+        self._pending_members: list[tuple] = []
 
     def enclosing(self, f: str, line: int) -> str | None:
         chain = self.enclosing_chain(f, line)
@@ -562,7 +675,7 @@ class Project:
     def enclosing_method(self, f: str, line: int) -> tuple[int, int] | None:
         """The innermost method/constructor whose range contains `line`.
 
-        Used for the GDPR verdict's context window: a lambda or an anonymous inner
+        A lambda or an anonymous inner
         class's own method nests inside the outer one, so the innermost (largest
         start) match is the one actually enclosing the statement."""
         hits = [(s, e) for s, e in self.methods.get(f, []) if s <= line <= e]
@@ -689,6 +802,48 @@ def build_symbol_tables(matches: list[dict]) -> Project:
             name = _mv(m, "PNAME")
             if name:
                 p.params[f].append((line, name))
+
+        elif rid in ("typed-local", "typed-param", "typed-catch"):
+            name, typ = _mv(m, "VNAME"), (_mv(m, "VTYPE") or "").strip()
+            if name and typ:
+                p.typed[f].append((line, None, name, typ))
+
+        elif rid == "typed-foreach":
+            name, typ = _mv(m, "VNAME"), (_mv(m, "VTYPE") or "").strip()
+            if name and typ:
+                p.typed[f].append((line, m["range"]["end"]["line"] + 1, name, typ))
+
+        elif rid == "lambda-param":
+            lp = (_mv(m, "LPARAMS") or "").strip()
+            end = m["range"]["end"]["line"] + 1
+            # `x -> …` / `(x, y) -> …` only; a typed `(Pet p) -> …` is a formal_parameter
+            # and `typed-param` already has it.
+            for name in re.findall(r"[A-Za-z_$][\w$]*", lp):
+                if re.fullmatch(r"\(?\s*(?:[A-Za-z_$][\w$]*\s*,\s*)*[A-Za-z_$][\w$]*\s*\)?", lp):
+                    p.typed[f].append((line, end, name, None))
+
+        elif rid == "method-ret":
+            name, typ = _mv(m, "MNAME"), (_mv(m, "RTYPE") or "").strip()
+            params = (_mv(m, "MPARAMS") or "()").strip()[1:-1]
+            if name and typ:
+                p._pending_members.append(("methods", f, line, name, (_arity(params), typ)))
+
+        elif rid == "record-comp":
+            name, typ = _mv(m, "VNAME"), (_mv(m, "VTYPE") or "").strip()
+            if name and typ:
+                p._pending_members.append(("fields", f, line, name, typ))
+                p._pending_members.append(("methods", f, line, name, (0, typ)))
+
+    # Members are filed under their class only now that every class's range is known —
+    # ast-grep reports matches in whatever order its workers finish.
+    for f, fl in p.all_fields.items():
+        for line, name, typ, _text in fl:
+            p._pending_members.append(("fields", f, line, name, typ))
+    for kind, f, line, name, val in p._pending_members:
+        owner = p.enclosing(f, line)
+        if owner:
+            p.members[owner][kind][name].add(val)
+    p._pending_members.clear()
 
     # project-wide inheritance table: a *non-private* logger field is visible to
     # every subclass.  Spring's `protected final Log logger = LogFactory.getLog(
@@ -897,6 +1052,298 @@ def _record(out: list, lines_seen: set, oline: int, name: str, kind: str,
     out.append({"line": oline, "name": name, "kind": kind, "text": rhs})
 
 
+# --------------------------------------------------------------------------- #
+# The static type of a logged value — the hint the Logging tab puts in front of it
+#
+# Read off declarations, never inferred past them. An argument is taken apart as a chain
+# (`vet.getLastName()`, `this.owner.pets`, `Foo.bar(x).baz`) and each link is looked up:
+# the first in the scope the statement sits in (a local, a parameter, a for-each or catch
+# variable, a field of the enclosing class or one it extends), every following one as a
+# member of the type the previous link produced — a field, a method's declared return
+# type, or the getter convention over a field (`getLastName()` -> `lastName`, which is
+# also what Lombok generates). The JDK is not on disk to be read, so a handful of its
+# answers that cannot be wrong (`toString()` is a String, `size()` an int) are written
+# down; everything else outside the repo resolves to nothing, and nothing means no hint.
+# --------------------------------------------------------------------------- #
+
+PRIMITIVES = {"byte", "short", "int", "long", "float", "double", "boolean", "char"}
+# Answers that hold whatever the receiver is.
+ANY_METHODS = {"toString": "String", "hashCode": "int", "equals": "boolean"}
+STRING_METHODS = {"length": "int", "isEmpty": "boolean", "isBlank": "boolean",
+                  "trim": "String", "strip": "String", "toUpperCase": "String",
+                  "toLowerCase": "String", "substring": "String", "formatted": "String",
+                  "repeat": "String", "replace": "String", "concat": "String"}
+COLLECTION_TYPES = {"List", "Set", "Collection", "Map", "ArrayList", "LinkedList", "HashSet",
+                    "TreeSet", "LinkedHashSet", "HashMap", "TreeMap", "LinkedHashMap",
+                    "Queue", "Deque", "SortedSet", "SortedMap"}
+COLLECTION_METHODS = {"size": "int", "isEmpty": "boolean"}
+THROWABLE_METHODS = {"getMessage": "String", "getLocalizedMessage": "String"}
+# A type parameter (`T`, `E`, `K2`) says nothing about what the value is at this call.
+TYPE_VAR_RE = re.compile(r"^[A-Z][0-9]?$")
+IDENT = r"[A-Za-z_$][\w$]*"
+
+
+def _arity(params: str) -> int:
+    """How many arguments a comma-separated list holds, commas inside (), <>, [] and
+    string literals not counted."""
+    params = params.strip()
+    return len(_split_top(params, ",")) if params else 0
+
+
+def _split_top(text: str, sep: str) -> list[str]:
+    """`text` split on `sep` where it is not nested inside brackets or a literal."""
+    out, depth, cur, quote, i = [], 0, [], None, 0
+    while i < len(text):
+        c = text[i]
+        if quote:
+            cur.append(c)
+            if c == "\\" and i + 1 < len(text):
+                cur.append(text[i + 1])
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+            cur.append(c)
+        elif c in "([{<":
+            depth += 1
+            cur.append(c)
+        elif c in ")]}>":
+            depth -= 1
+            cur.append(c)
+        elif c == sep and depth == 0:
+            out.append("".join(cur))
+            cur = []
+        else:
+            cur.append(c)
+        i += 1
+    out.append("".join(cur))
+    return [p.strip() for p in out]
+
+
+def _simple(t: str) -> str:
+    """`java.util.List<Pet>` -> `List`: the name a class is filed under in `members`."""
+    return t.split("<")[0].strip().split(".")[-1].strip()
+
+
+def _literal_type(e: str) -> str | None:
+    if e.startswith('"'):
+        return "String"
+    if e.startswith("'"):
+        return "char"
+    if e in ("true", "false"):
+        return "boolean"
+    if re.fullmatch(r"\d[\d_]*[lL]", e) or re.fullmatch(r"0[xX][\da-fA-F_]+[lL]", e):
+        return "long"
+    if re.fullmatch(r"\d[\d_]*|0[xX][\da-fA-F_]+|0[bB][01_]+", e):
+        return "int"
+    if re.fullmatch(r"(\d[\d_]*\.?[\d_]*|\.\d[\d_]*)([eE][+-]?\d+)?[fF]", e):
+        return "float"
+    if re.fullmatch(r"(\d[\d_]*\.[\d_]*|\.\d[\d_]*)([eE][+-]?\d+)?[dD]?|\d+[eE][+-]?\d+[dD]?|\d+[dD]", e):
+        return "double"
+    return None
+
+
+def _chain(e: str) -> list[tuple[str, str | None]] | None:
+    """`a.b(x).c` -> `[("a", None), ("b", "x"), ("c", None)]` — each link's name and, for a
+    call, its argument text. None for anything that is not a plain chain (an operator, an
+    array index, a lambda, a `new` with a body)."""
+    links, i, n = [], 0, len(e)
+    while True:
+        m = re.compile(r"\s*(" + IDENT + r")\s*").match(e, i)
+        if not m:
+            return None
+        name, i = m.group(1), m.end()
+        args = None
+        if i < n and e[i] == "(":
+            depth, j, quote = 0, i, None
+            while j < n:
+                c = e[j]
+                if quote:
+                    if c == "\\":
+                        j += 1
+                    elif c == quote:
+                        quote = None
+                elif c in "\"'":
+                    quote = c
+                elif c == "(":
+                    depth += 1
+                elif c == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            if j >= n:
+                return None
+            args, i = e[i + 1:j], j + 1
+        links.append((name, args))
+        while i < n and e[i].isspace():
+            i += 1
+        if i == n:
+            return links
+        if e[i] != ".":
+            return None
+        i += 1
+
+
+class TypeScope:
+    """Everything `arg_type` needs to know about where one statement sits."""
+
+    def __init__(self, proj: "Project", f: str, line: int, method: tuple[int, int] | None):
+        self.proj, self.f, self.line = proj, f, line
+        self.ms, self.me = method if method else (None, None)
+        self.classes = proj.enclosing_chain(f, line)
+
+    def _in_method(self, n: int) -> bool:
+        return self.ms is None or self.ms <= n <= self.me
+
+    def variable(self, name: str) -> str | None | bool:
+        """The declared type of a name visible here; False when it is not declared in this
+        method at all (so the caller may try fields), None when it is declared but its
+        type cannot be read (untyped lambda parameter, conflicting declarations)."""
+        seen = set()
+        found = False
+        for dline, dend, dname, dtype in self.proj.typed.get(self.f, []):
+            if dname != name or dline > self.line or not self._in_method(dline):
+                continue
+            if dend is not None and self.line > dend:
+                continue
+            found = True
+            seen.add(dtype)
+        if not found:
+            return False
+        if len(seen) != 1:
+            return None
+        t = next(iter(seen))
+        if t == "var":
+            return self.var_initialiser(name)
+        return t
+
+    def var_initialiser(self, name: str) -> str | None:
+        inits = {val for vline, vname, val, _t in self.proj.locals_.get(self.f, [])
+                 if vname == name and vline <= self.line and self._in_method(vline)}
+        if len(inits) != 1:
+            return None
+        return self.expr(next(iter(inits)), depth=1)
+
+    def _class_member(self, cls: str, kind: str, name: str, arity: int | None = None,
+                      _seen=None) -> str | None:
+        """A field's type or a method's return type on `cls`, walking `extends`."""
+        seen = _seen or set()
+        while cls and cls not in seen:
+            seen.add(cls)
+            table = self.proj.members.get(cls)
+            if table is not None:
+                got = table[kind].get(name)
+                if got:
+                    if kind == "methods":
+                        exact = {t for a, t in got if arity is None or a == arity}
+                        got = exact or {t for _a, t in got}
+                    return next(iter(got)) if len(got) == 1 else None
+            cls = self.proj.supers.get(cls)
+        return None
+
+    def member(self, owner: str | None, name: str, args: str | None) -> str | None:
+        """The type `owner.name` or `owner.name(args)` produces."""
+        if owner is None:
+            return None
+        if owner.endswith("[]"):
+            return "int" if args is None and name == "length" else None
+        simple = _simple(owner)
+        if args is None:
+            return self._class_member(simple, "fields", name)
+        ret = self._class_member(simple, "methods", name, _arity(args))
+        if ret is None and simple in self.proj.members and _arity(args) == 0:
+            # The getter convention, which is also what Lombok writes for `@Getter`.
+            m = re.fullmatch(r"(get|is)([A-Z][\w$]*)", name)
+            if m:
+                ret = self._class_member(simple, "fields", m.group(2)[0].lower() + m.group(2)[1:])
+        if ret is None:
+            ret = ANY_METHODS.get(name)
+            if simple == "String":
+                ret = ret or STRING_METHODS.get(name)
+            elif simple in COLLECTION_TYPES:
+                ret = ret or COLLECTION_METHODS.get(name)
+            elif re.search(r"(Exception|Error|Throwable)$", simple) and simple not in self.proj.members:
+                ret = ret or THROWABLE_METHODS.get(name)
+        return ret
+
+    def first(self, name: str, args: str | None) -> tuple[str | None, bool]:
+        """The type the first link of a chain produces, and whether it named a class
+        (`Foo` in `Foo.bar()`) rather than a value."""
+        if args is not None:
+            for cls in self.classes:
+                t = self._class_member(cls, "methods", name, _arity(args))
+                if t:
+                    return t, False
+            return None, False
+        if name == "this":
+            return (self.classes[0] if self.classes else None), False
+        v = self.variable(name)
+        if v is not False:
+            return v, False
+        for cls in self.classes:
+            t = self._class_member(cls, "fields", name)
+            if t:
+                return t, False
+        if name[:1].isupper():
+            return name, True
+        return None, False
+
+    def expr(self, e: str, depth: int = 0) -> str | None:
+        e = (e or "").strip()
+        if not e or depth > 3:
+            return None
+        lit = _literal_type(e)
+        if lit:
+            return lit
+        if e == "null":
+            return None
+        # A string concatenation: any top-level `+` with a string literal on either side.
+        plus = _split_top(e, "+")
+        if len(plus) > 1:
+            return "String" if any(p.startswith('"') for p in plus) else None
+        m = re.fullmatch(r"\(\s*((?:" + PRIM_OR_CLASS + r"))\s*\)\s*(.+)", e, re.S)
+        if m and (m.group(1) in PRIMITIVES or m.group(1)[:1].isupper()):
+            return m.group(1)
+        m = re.fullmatch(r"new\s+(" + IDENT + r"(?:\s*\.\s*" + IDENT + r")*)\s*(<[^()]*>)?\s*\((.*)\)",
+                         e, re.S)
+        if m and "{" not in m.group(3):
+            gen = m.group(2) or ""
+            return m.group(1) + ("" if gen.replace(" ", "") == "<>" else gen)
+        if e.startswith("(") and e.endswith(")") and _split_top(e[1:-1], ",") == [e[1:-1].strip()]:
+            return self.expr(e[1:-1], depth + 1)
+        links = _chain(e)
+        if not links:
+            return None
+        t, is_class = self.first(*links[0])
+        if is_class:
+            # A class reference is only worth anything with a member after it, and only a
+            # class the repo declares (`Instant.now()` is not something we can read).
+            if len(links) == 1 or t not in self.proj.members:
+                return None
+        for name, args in links[1:]:
+            if t is None:
+                return None
+            t = self.member(t, name, args)
+        if t is None or TYPE_VAR_RE.match(t) or t in ("void", "var"):
+            return None
+        return t
+
+
+PRIM_OR_CLASS = IDENT + r"(?:\s*\.\s*" + IDENT + r")*(?:\s*<[^()]*>)?(?:\s*\[\s*\])*"
+
+
+def arg_type(proj: "Project", f: str, line: int, method: tuple[int, int] | None,
+             expr: str) -> str | None:
+    """The declared static type of one logged expression, or None — see the block above."""
+    try:
+        return TypeScope(proj, f, line, method).expr(expr)
+    except (RecursionError, ValueError):
+        return None
+
+
 class SourceCache:
     def __init__(self) -> None:
         self._c: dict[str, list[str]] = {}
@@ -1019,6 +1466,7 @@ def extract(paths: list[str], root: str | None = None,
             method_start=menc[0] if menc else None,
             method_end=menc[1] if menc else None,
             origins=origins_for(proj, f, ln, rest if fmt is not None else args, menc),
+            arg_types=[arg_type(proj, f, ln, menc, a) for a in rest],
         ))
 
     # Sorted for the same reason as the loop above, and it is this list that was actually
@@ -1050,9 +1498,8 @@ def extract(paths: list[str], root: str | None = None,
         sym_out.setdefault(rel(f), []).extend(
             asdict(LoggerSymbol(fname, fl, f"injected by Lombok `{ann}`", "lombok", start))
             for start, _end, fname, fl, ann in scopes)
-    # Every field, any type, per file — the GDPR verdict's class-level context: a value
-    # traced to `this.ownerName` or a bare inherited field needs the field's declared
-    # type in front of the reader (human or model), not just the method that used it.
+    # Every field, any type, per file: a value traced to `this.ownerName` or a bare
+    # inherited field needs the field's declared type, not just the method that used it.
     fields_out: dict[str, list] = {
         rel(f): [{"line": line, "name": name, "type": typ, "text": text}
                  for line, name, typ, text in sorted(fl)]

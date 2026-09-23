@@ -1,0 +1,9 @@
+id: typed-param
+language: java
+severity: hint
+message: formal parameter with its declared type
+rule:
+  kind: formal_parameter
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}

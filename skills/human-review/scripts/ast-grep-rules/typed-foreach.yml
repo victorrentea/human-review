@@ -1,0 +1,9 @@
+id: typed-foreach
+language: java
+severity: hint
+message: enhanced-for variable with its declared type
+rule:
+  kind: enhanced_for_statement
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}

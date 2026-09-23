@@ -1,0 +1,11 @@
+id: typed-local
+language: java
+severity: hint
+message: local variable with its declared type
+rule:
+  kind: local_variable_declaration
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has:
+        field: declarator
+        has: {field: name, pattern: $VNAME}

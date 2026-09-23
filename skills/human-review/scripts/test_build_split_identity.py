@@ -222,16 +222,15 @@ def _top_level_names(path: Path):
             yield node.target.id
 
 
-#: The three names a build *moves*, rather than reads: the two counters the Review tab's
-#: numbered list keeps (`reset_list` / `opening_lede`) and the Logging tab's `--no-model`
-#: switch, which `main` sets on `hrbuild.tabs.logging` before rendering anything.
+#: The two names a build *moves*, rather than reads: the two counters the Review tab's
+#: numbered list keeps (`reset_list` / `opening_lede`).
 #:
 #: They are why the sweep below asks identity of everything else and only existence of
-#: these: a re-export copies the *value* at import time, so `build.OFFLINE` is a snapshot
-#: of a switch that has since moved. Reading one of them off `build-review-html.py` is a
-#: bug waiting to happen, and so is patching one there — the module that declares it is
-#: the only honest handle.
-REBOUND = {"_LIST_OFFSET", "_LEDE_SHOWN", "OFFLINE"}
+#: these: a re-export copies the *value* at import time, so `build._LIST_OFFSET` is a
+#: snapshot of a counter that has since moved. Reading one of them off
+#: `build-review-html.py` is a bug waiting to happen, and so is patching one there — the
+#: module that declares it is the only honest handle.
+REBOUND = {"_LIST_OFFSET", "_LEDE_SHOWN"}
 
 
 def test_nothing_else_in_the_package_rebinds_a_module_global():
@@ -242,14 +241,6 @@ def test_nothing_else_in_the_package_rebinds_a_module_global():
             if isinstance(node, ast.Global):
                 found.update(node.names)
     assert found <= REBOUND
-
-
-def test_the_no_model_switch_is_set_on_the_module_that_reads_it():
-    """`main` used to say `global OFFLINE`. In a package that would rebind a re-exported
-    copy and leave the Logging tab calling the model on a `--no-model` build — which is
-    the one failure mode that costs money."""
-    assert "hrbuild.tabs.logging.OFFLINE = args.no_model" in SOURCE
-    assert "global OFFLINE" not in SOURCE
 
 
 def test_no_name_is_defined_in_two_modules_at_once():

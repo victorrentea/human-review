@@ -31,14 +31,12 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import code_xref  # noqa: E402 - resolved from next to this file, not from site-packages
 
-import hrbuild.tabs.logging  # noqa: E402 - `main` flips its OFFLINE switch, see below
-
 # --------------------------------------------------------------------------- #
 # the page, one module per tab
 # --------------------------------------------------------------------------- #
 #
 # Everything below `main` used to live here: 10,500 lines in which the Logging tab's
-# privacy prompts sat forty lines from the cost table and both sat inside the same file
+# model prompts sat forty lines from the cost table and both sat inside the same file
 # as the CSS. It is now a package next door, `hrbuild/`, split the way the work is split —
 # one module per tab under `hrbuild/tabs/`, everything two or more tabs share under
 # `hrbuild/shared/`, and the stylesheet and the scripts as real files under
@@ -160,13 +158,10 @@ from hrbuild.tabs.city import (
     CITY_HEADING
 )
 from hrbuild.tabs.logging import (
-    AI_MARK, LOGEXTRACT, logextract_root, logging_fragment, logging_libraries,
-    logging_libraries_tip, MAX_ORIGIN_LINES_SHOWN, OFFLINE, PRIVACY_MARK, privacy_verdict,
-    SRCREF_HREF, VERDICT_RANK, VERDICT_SCHEMA, VERDICT_SYSTEM_PROMPT, _aim_at_statement,
-    _call_privacy_model, _claude_bin, _load_verdict_cache, _LOG_PKGS_RE, _logextract,
-    _logging_aside, _logging_listing, _logging_ref, _offline_call, _save_verdict_cache,
-    _statement_context, _value_bullets, _value_bullets_html, _verdict_cache_path,
-    _verdict_prompt, _worst_verdict
+    LOGEXTRACT, logging_fragment, logging_libraries, logging_libraries_tip,
+    MAX_ORIGIN_LINES_SHOWN, SRCREF_HREF, type_hint_html, _aim_at_statement, _hint_arguments,
+    _CHAR, _insert_at, _LOG_PKGS_RE, _logextract, _logging_aside, _logging_listing,
+    _logging_ref, _plain, _PRE, _ROW, _TAG_SPLIT
 )
 from hrbuild.tabs.owners import (
     codeowners_fragment
@@ -220,21 +215,12 @@ def main(argv=None) -> int:
     )
     ap.add_argument("content", help="JSON content file")
     ap.add_argument("--out", required=True, help="where to write the HTML")
-    # The one thing in a build that is not a program: the Logging tab asks a model whether
-    # a logged value is a privacy problem. Cached by a hash of what was sent, so a rebuild
-    # of unchanged code neither re-asks nor re-pays — but a *new* statement would, and a
-    # refresh that quietly buys an answer is exactly the thing `refresh-report.py` exists
-    # to keep separate from the half a human asked for.
+    # Accepted and ignored. It kept the Logging tab from buying privacy verdicts off a
+    # model; that tab is read off declarations now and nothing in a build calls a model,
+    # but `refresh-report.py` and older rebuild commands still pass it.
     ap.add_argument("--no-model", action="store_true",
-                    help="use only cached privacy verdicts; render the rest as "
-                         "not evaluated instead of calling the model")
+                    help="no effect: nothing in a build calls a model any more")
     args = ap.parse_args(argv)
-
-    # Set on the module that reads it, not on this one. `OFFLINE` is the Logging tab's
-    # switch and lives with the code that consults it; declaring it global here would
-    # rebind the re-exported copy in this file and leave the tab calling the model on a
-    # build that was asked not to — the one failure mode on this page that costs money.
-    hrbuild.tabs.logging.OFFLINE = args.no_model
 
     root = Path(
         subprocess.run(
@@ -263,16 +249,8 @@ def main(argv=None) -> int:
         tab_reruns[LEDGER_TAB]["extra"] = run_tests_button(run_tests)
     # How to start this build again — the last stage of every command offered under a
     # hand-drawn diagram.
-    #
-    # `--no-model` always, whatever this build was run with. A reader pressing *Update the
-    # report* under a picture is asking for the picture to be picked up; they are not asking
-    # to buy a privacy verdict for a logging statement, and a click that can spend money is
-    # the one thing `refresh-report.py` goes out of its way to make impossible. It is also
-    # most of why the command is quick: cached verdicts still render, and an uncached one
-    # says *not evaluated* rather than going and asking.
     rebuild_cmd = " ".join([rebuild_interpreter(), shlex.quote(str(Path(__file__).resolve())),
-                            shlex.quote(args.content), "--out", shlex.quote(args.out),
-                            "--no-model"])
+                            shlex.quote(args.content), "--out", shlex.quote(args.out)])
 
     # Before `validate`, and before anything walks the piles: the three arrays may be a
     # delegation (`{"auto": "review-points"}`) rather than a list, and everything

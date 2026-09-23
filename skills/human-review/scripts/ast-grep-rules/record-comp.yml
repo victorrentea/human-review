@@ -1,0 +1,13 @@
+id: record-comp
+language: java
+severity: hint
+message: record component
+rule:
+  kind: formal_parameter
+  all:
+    - has: {field: type, pattern: $VTYPE}
+    - has: {field: name, pattern: $VNAME}
+  inside:
+    kind: formal_parameters
+    inside:
+      kind: record_declaration

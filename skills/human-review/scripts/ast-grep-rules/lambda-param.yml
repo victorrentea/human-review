@@ -1,0 +1,7 @@
+id: lambda-param
+language: java
+severity: hint
+message: lambda parameter list
+rule:
+  kind: lambda_expression
+  has: {field: parameters, pattern: $LPARAMS}

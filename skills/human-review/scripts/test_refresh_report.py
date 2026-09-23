@@ -170,33 +170,6 @@ def test_a_refresh_builds_with_no_model_unless_asked(tmp_path):
     assert "--no-model" not in allowed
 
 
-def test_offline_verdicts_come_out_of_the_cache_or_say_they_were_never_asked(tmp_path, monkeypatch):
-    """Not evaluated is a state the page already has words for, and it is the honest one:
-    a build that cannot ask is not a model that failed to answer."""
-    (tmp_path / "A.java").write_text("class A { }\n", encoding="utf-8")
-    h = {"text": 'log.warn("hi {}", id)', "file": "A.java", "line": 3, "args": [],
-         "abs_file": str(tmp_path / "A.java"), "raw_line": 'log.warn("hi {}", id);'}
-    monkeypatch.setattr(logging_tab, "OFFLINE", True)
-    monkeypatch.setattr(logging_tab, "_call_privacy_model",
-                        lambda p: pytest.fail("a --no-model build must not call out"))
-    got = build.privacy_verdict(h, tmp_path, {})
-    assert got["verdict"] == "error" and "--no-model" in got["note"]
-    assert got["cost_usd"] == 0.0
-
-    # …and a statement an earlier run already paid for still renders its real verdict.
-    monkeypatch.setattr(logging_tab, "OFFLINE", False)
-    build.privacy_verdict(h, tmp_path, cache := {},
-                          call=lambda p: {"verdict": "safe", "values": [], "cost_usd": 1.0})
-    monkeypatch.setattr(logging_tab, "OFFLINE", True)
-    again = build.privacy_verdict(h, tmp_path, cache)
-    assert again["verdict"] == "safe" and again["cached"] is True
-
-
-def test_the_flag_is_on_the_build_and_reaches_the_module(tmp_path):
-    src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
-    assert '"--no-model"' in src and "OFFLINE = args.no_model" in src
-
-
 # ── the cost the page reports ─────────────────────────────────────────────────────
 
 def test_a_refresh_keeps_the_session_that_did_the_work(tmp_path):
