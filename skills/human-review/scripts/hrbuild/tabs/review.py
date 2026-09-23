@@ -103,20 +103,39 @@ def resolve_review_points(spec: dict, out_dir: Path) -> dict | None:
     return spec["_reviewPoints"]
 
 
-def points_note_band(points: dict | None) -> str:
-    """The file's takeover note, as a band above the piles it qualifies.
+def points_note_band(points: dict | None, repo: str | None = None) -> str:
+    """The file's takeover note, as one amber row above the piles it qualifies:
+    `▸ 32 commits made after the reviewed version (ce56d912)`, which unfolds into the
+    commits themselves, each hash a link to it on github.com.
 
     Amber, like the aftermath band for generated-only drift, because it is the same kind
     of statement: the piles below describe the branch at an earlier commit, and here is
-    what was folded in since without anyone re-reading them. Grey would say "absence" and
-    red would say "somebody changed the code"; this is neither — it is a decision, on
-    record, that the reader has to know before trusting a count."""
+    what was folded in since without anyone re-reading them. The note's paragraph of
+    reasons is not on the page any more — a reader needs the count and the commit the
+    count starts from, and the heading (who decided, when) rides in the hover. The
+    reviewed commit is a link too, so "what came after it" is one click into the branch's
+    history on GitHub. A note with no commit list to fold stays the prose it was."""
     note = (points or {}).get("note")
     if not note:
         return ""
+    body = note.get("html", "")
+    commits = re.findall(r"<li>\s*([0-9a-f]{7,40})\s+(.*?)</li>", body, flags=re.S)
+    reviewed = re.search(r"<code>([0-9a-f]{7,40})</code>", body)
+    if not commits or not reviewed:
+        return (f'<div class="rband rband-warn" role="status">'
+                f'<p><b>{html.escape(note.get("heading", ""))}</b></p>'
+                f'<div class="rb-sub">{_fold_note_lists(body)}</div></div>')
+
+    def sha(h: str) -> str:
+        code = f"<code>{h}</code>"
+        return (f'<a href="{repo}/commit/{h}" target="_blank" rel="noopener">{code}</a>'
+                if repo else code)
+    n = len(commits)
+    rows = "".join(f"<li>{sha(h)} {subject}</li>" for h, subject in commits)
     return (f'<div class="rband rband-warn" role="status">'
-            f'<p><b>{html.escape(note.get("heading", ""))}</b></p>'
-            f'<div class="rb-sub">{_fold_note_lists(note.get("html", ""))}</div></div>')
+            f'<details class="takeover" title="{html.escape(note.get("heading", ""))}">'
+            f'<summary><b>{n} commit{"s" if n != 1 else ""}</b> made after the reviewed '
+            f'version ({sha(reviewed.group(1))})</summary><ul>{rows}</ul></details></div>')
 
 
 def _fold_note_lists(body: str) -> str:
@@ -415,39 +434,21 @@ SCOPE_CHIP_MAX_LEN = 34
 
 
 def scope_chip_face(spec, reviewer: str | None = None) -> str:
-    """`<b>7 assumptions</b> from \U0001f916coder; <b>6 open</b>, <b>3 fixed</b> issues from \U0001f916reviewer`
-    — the masthead's review chip, whole, rather than a label and a value composed a
-    second time beside it, off the same `pile_numbers` the counts line under the header
-    reads. One vocabulary now, not two: the chip used to swap to `fixed, … declined` on a
-    branch reviewed through `review-points.md`, which read as a different review from the
-    one the line under the header described one scroll away.
+    """`\U0001f916Coder: <b>7 unsure</b>; \U0001f916Reviewer: <b>6 open</b>, <b>3 fixed</b>`
+    — the masthead's review chip, whole, off the same `pile_numbers` the counts line
+    under the header reads, so the two cannot drift.
 
-    Two claims, two authors, one typography. The first clause is the reviewer's (what it
-    found, what it already fixed — `auto-fixed` on the face was a word about how the fix
-    arrived, which is the tooltip's business, not the pill's). The second is the coder's,
-    and it carries its own robot because the page's robot means "a model produced this",
-    not "the reviewer said this": the assumptions were recorded by the agent that wrote
-    the code, while it was writing it. The two agents are named the same way — `reviewer`
-    and `coder`, same robot, same face, same weight — because they are the same kind of
-    thing: a sentence used to open with a bold `Review:` and end with a greyed, bolded
-    `coder:` inside the number span, which read as a label and its footnote rather than
-    as two peers. Each half now reads as a sentence — the count first, then whose it is
-    (`7 assumptions from coder`) — rather than an agent's name with a colon and a field
-    after it, and the coder's half leads: the assumptions were made before the review
-    ran. Every count is bold together with what it counts, `3 fixed` included — the
-    numbers are what the eye scans the pill for, and a count in a different weight from
-    its neighbour read as a different kind of number. With no assumptions there is no
-    second claim to make, so the clause is absent rather than zeroed. `reviewer` takes
-    the model's name when the run knows it (`from 🤖Opus 5 reviewer`);
-    `implementation assumptions` — the counts line's own name for the pile — is spelled
-    out there; the chip says only `assumptions`, because the room a tooltip has is the
-    room a pill does not."""
+    Two agents, two clauses, one typography: each clause is `Agent: counts`, the coder's
+    first because its assumptions were made before the review ran. `unsure` is the
+    coder's own pile in one word — what it had to guess at — where the counts line has
+    the width for `implementation assumptions`. Every count is bold with what it counts.
+    With no assumptions the coder's clause is absent rather than zeroed. The reviewer's
+    model is not on the face (`reviewer` is accepted and ignored here): the pill names
+    the role, the hover names the model."""
     open_n, fixed_n, assumed_n = pile_numbers(spec)
-    who = f"{reviewer} reviewer" if reviewer else "reviewer"
-    face = f"<b>{open_n} open</b>, <b>{fixed_n} fixed</b> issues from \U0001f916{who}"
+    face = f"\U0001f916Reviewer: <b>{open_n} open</b>, <b>{fixed_n} fixed</b>"
     if assumed_n:
-        face = (f'<b>{assumed_n} assumption{"" if assumed_n == 1 else "s"}</b> '
-                f'from \U0001f916coder; ' + face)
+        face = f"\U0001f916Coder: <b>{assumed_n} unsure</b>; " + face
     return face
 
 

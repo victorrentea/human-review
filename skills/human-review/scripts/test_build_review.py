@@ -2747,7 +2747,7 @@ def test_the_review_chip_leads_with_what_is_left_to_do(tmp_path):
         findings=[{"title": f"f{i}", "body": "<p>b</p>", "source": "/code-review"}
                   for i in range(9)],
         autofixes=[{"title": f"a{i}", "source": "/simplify"} for i in range(3)]))
-    assert '<b>9 open</b>, <b>3 fixed</b> issues from \U0001f916reviewer' in page, \
+    assert '\U0001f916Reviewer: <b>9 open</b>, <b>3 fixed</b>' in page, \
         "every count is bold together with what it counts"
     assert "auto-fixed" not in page[page.index('<header class="masthead">'):
                                     page.index("</header>")], \
@@ -2764,11 +2764,9 @@ def test_the_review_chip_names_the_model_instead_of_a_second_chip_beside_it(tmp_
         BARE, scope=[{"auto": "autofixed", "href": "#one", "by": "Opus 5"}],
         findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
         env=_sessionless_env())
-    assert "from \U0001f916Opus 5 reviewer" in page, \
-        "robot, model, colon — the pill is one sentence, not a label beside a number"
-    # And nowhere else: the chip's face already reads `Opus 5 review`, so the hover
-    # restating it taught the reader that hovers here are not worth the trouble.
-    assert "running on Opus 5" not in page
+    assert "\U0001f916Reviewer: <b>1 open</b>" in page, "the face names the role"
+    # The model has one home, the hover.
+    assert "Reviewed by Opus 5." in page
     assert page.count("Opus 5") == 1
 
 
@@ -2779,7 +2777,7 @@ def test_a_page_rebuilt_with_no_idea_who_reviewed_it_says_exactly_that_much(tmp_
         BARE, scope=[{"auto": "autofixed", "href": "#one"}],
         findings=[{"title": "f", "body": "<p>b</p>", "source": "/code-review"}]),
         env=_sessionless_env())
-    assert "from \U0001f916reviewer" in page, \
+    assert "\U0001f916Reviewer:" in page and "Reviewed by" not in page, \
         "the robot already says a model did it; `LLM` was three letters saying it again"
     assert "LLM review" not in page
     # Scoped to the masthead on purpose. The claim is about the chip's own words, and
@@ -4314,8 +4312,19 @@ def test_a_takeover_note_becomes_an_amber_band_above_the_piles(tmp_path):
     band = build.points_note_band(points)
     assert 'rband rband-warn' in band
     assert "Taken over without a new pass" in band and "<li>6ef4ae6b x</li>" in band
-    # The sentence stays open; the commit list folds to one row under it.
+    # With no reviewed commit named, the prose stays and the list folds under it.
     assert "<p>folded in.</p><details" in band and "<summary>1 commit</summary>" in band
+    # Naming the reviewed commit, the whole note folds to one row, hashes linked.
+    doc = dict(POINTS_DOC, note={
+        "heading": "Taken over without a new pass — 21 Sep 2026",
+        "html": "<p>after <code>ce56d912</code>, folded in.</p>"
+                "<ul><li>6ef4ae6b Rename it</li><li>f9f9faa4 Chain it</li></ul>"})
+    band = build.points_note_band(_points_spec(doc, tmp_path)[1], "https://github.com/o/r")
+    assert ('<summary><b>2 commits</b> made after the reviewed version '
+            '(<a href="https://github.com/o/r/commit/ce56d912"') in band
+    assert '<a href="https://github.com/o/r/commit/6ef4ae6b"' in band and "Rename it" in band
+    assert "folded in." not in band, "the paragraph is gone; the heading rides in the hover"
+    assert 'title="Taken over without a new pass — 21 Sep 2026"' in band
     assert build.points_note_band(_points_spec(POINTS_DOC, tmp_path)[1]) == ""
     assert build.points_note_band(None) == ""
 
@@ -4457,13 +4466,13 @@ def test_the_scope_chip_says_the_same_thing_as_the_counts_line(tmp_path):
     # assumptions are not an extra on the review's sentence any more — they are a second
     # sentence, by the agent that wrote the code, and it is never traded away for room.
     assert build.scope_chip_face(spec) == \
-        ('<b>7 assumptions</b> from \U0001f916coder; '
-         '<b>6 open</b>, <b>3 fixed</b> issues from \U0001f916reviewer')
+        ('\U0001f916Coder: <b>7 unsure</b>; '
+         '\U0001f916Reviewer: <b>6 open</b>, <b>3 fixed</b>')
     small = {"findings": [{"title": "f"}], "autofixes": [{"title": "a"}],
              "assumptions": [{"title": "s"}]}
     assert build.scope_chip_face(small, "Opus 5") == \
-        ('<b>1 assumption</b> from \U0001f916coder; '
-         '<b>1 open</b>, <b>1 fixed</b> issues from \U0001f916Opus 5 reviewer')
+        ('\U0001f916Coder: <b>1 unsure</b>; '
+         '\U0001f916Reviewer: <b>1 open</b>, <b>1 fixed</b>')
     build.reset_list()
     lede = build.opening_lede(dict(spec, tabs=[{"id": "review", "label": "R", "blocks": [
         {"type": "findings"}, {"type": "autofixes"}, {"type": "assumptions", "mode": "A"}]}]))
@@ -4492,19 +4501,19 @@ def test_the_chip_carries_the_coders_assumptions_as_its_own_sentence(tmp_path):
         assumptions=[_assumption(title=f"s{i}") for i in range(7)]
         + [_assumption(title="floating", refs=[])]),
         env=_sessionless_env())
-    assert ('<b>7 assumptions</b> from \U0001f916coder; '
-            '<b>6 open</b>, <b>3 fixed</b> issues from \U0001f916Opus 5 reviewer') in page, \
+    assert ('\U0001f916Coder: <b>7 unsure</b>; '
+            '\U0001f916Reviewer: <b>6 open</b>, <b>3 fixed</b>') in page, \
         "two agents, one face: neither robot's name is bolder or greyer than the other's"
     assert "7 assumptions the coding agent recorded while implementing" in page, \
         "the hover says who recorded them and where they are; the pill has no room to"
     # Singular, so the chip reads as a sentence rather than as a field with a value in it.
     assert build.scope_chip_face({"findings": [], "autofixes": [],
                                   "assumptions": [{"title": "s"}]}) == \
-        ('<b>1 assumption</b> from \U0001f916coder; '
-         '<b>0 open</b>, <b>0 fixed</b> issues from \U0001f916reviewer')
+        ('\U0001f916Coder: <b>1 unsure</b>; '
+         '\U0001f916Reviewer: <b>0 open</b>, <b>0 fixed</b>')
     # And gone entirely at zero — no `; 🤖coder: 0 assumptions`.
     assert build.scope_chip_face({"findings": [{"title": "f"}], "autofixes": []}) == \
-        '<b>1 open</b>, <b>0 fixed</b> issues from \U0001f916reviewer'
+        '\U0001f916Reviewer: <b>1 open</b>, <b>0 fixed</b>'
     assert "coder" not in build.scope_chip_face(
         {"findings": [{"title": "f"}], "autofixes": [], "assumptions": []})
 

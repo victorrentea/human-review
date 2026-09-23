@@ -8,11 +8,15 @@ from __future__ import annotations
 #: they belong to the *tab*, not to whichever pile happens to open it. `main` fills the
 #: list before rendering; the first pile drains it.
 _BANDS: list[str] = []
+#: Bands that go above the counts line rather than under it: the takeover note, a
+#: one-row qualification of which commit every number in that line was counted at.
+_TOP_BANDS: list[str] = []
 
 
-def set_bands(bands) -> None:
+def set_bands(bands, top=()) -> None:
     """Replace the pending bands. Called once per page, beside `reset_list`."""
     _BANDS[:] = [b for b in bands if b]
+    _TOP_BANDS[:] = [b for b in top if b]
 
 
 def _flush_bands() -> str:
@@ -20,6 +24,12 @@ def _flush_bands() -> str:
     does not print the same red band three times."""
     out = "".join(_BANDS)
     _BANDS.clear()
+    return out
+
+
+def _flush_top_bands() -> str:
+    out = "".join(_TOP_BANDS)
+    _TOP_BANDS.clear()
     return out
 
 
@@ -35,6 +45,8 @@ def _lede_above(head: str, lede: str) -> str:
     The tab's bands land between the two: under the counts line, which is sticky and has
     to stay the topmost thing in the tab, and above the first heading, because what a band
     says ("nothing records this review", "someone changed the code after the agent
-    finished") governs how every item under it should be read.
+    finished") governs how every item under it should be read. The top bands go above
+    the counts line: the takeover row says at which commit those counts were taken.
     """
-    return (lede + _flush_bands() + head) if lede else (_flush_bands() + head)
+    top = _flush_top_bands()
+    return (top + lede + _flush_bands() + head) if lede else (top + _flush_bands() + head)

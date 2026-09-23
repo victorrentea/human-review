@@ -28,6 +28,16 @@
 .rband details.toolcommits[open] > summary::before { content:"▾"; }
 .rband details.toolcommits > summary:hover { color:var(--fg); }
 .rband details.toolcommits > ul { margin:.4rem 0 0; }
+/* The takeover note, folded to its one sentence: the count and the commit it starts from.
+   Same disclosure control as the tool-commit fold above, at the band's own size, since
+   here the row *is* the band. */
+.rband details.takeover > summary { cursor:pointer; list-style:none; }
+.rband details.takeover > summary::-webkit-details-marker { display:none; }
+.rband details.takeover > summary::before { content:"▸"; font-size:.75rem;
+            margin-right:.35rem; display:inline-block; }
+.rband details.takeover[open] > summary::before { content:"▾"; }
+.rband details.takeover > ul { margin:.45rem 0 0; color:var(--muted); font-size:.9rem; }
+.rband details.takeover a code { text-decoration:underline; text-underline-offset:2px; }
 /* The one thing to do about the commits the band reports: make the rest of the page catch
    up with them. A button on a row of its own under the list, not an underlined word inside
    the paragraph — an inline link in a red band carries the same weight as the prose around

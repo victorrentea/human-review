@@ -100,7 +100,7 @@ from hrbuild.shared.diagrams import (
     _source_link, _why_not_drawn
 )
 from hrbuild.shared.bands import (
-    set_bands, _BANDS, _flush_bands, _lede_above
+    set_bands, _BANDS, _TOP_BANDS, _flush_bands, _flush_top_bands, _lede_above
 )
 from hrbuild.shared.chips import (
     base_state, base_warning, chip_face, chip_html, diffstat_chips, GENERATED_PATHSPECS,
@@ -518,8 +518,7 @@ def main(argv=None) -> int:
                 # it competes with the number that IS the work. Grey is the page's own
                 # "already handled" — the same treatment the fixes get in the list below.
                 #
-                # Then a second sentence, `7 assumptions from 🤖coder;` — now leading the
-                # pill, each half written count-first as `N things from whom` — about a
+                # Then a second clause, `🤖Coder: 7 unsure;` — leading the pill — about a
                 # different agent: the one that wrote the code, recording what it had to
                 # guess at while writing it. It rides on this chip rather than on one of its own
                 # because it answers the other half of "what did the machines do to this
@@ -549,11 +548,10 @@ def main(argv=None) -> int:
                 # those assumptions, when, and where to go and read them. The face says
                 # `🤖coder` and trusts the hover to unpack it.
                 #
-                # What is not here any more: `running on <model>`. The chip's own face
-                # reads `Opus 5 review` — a hover restating the word next to it is a hover
-                # that taught the reader not to bother with the next one.
-                "tip": _raised_by(spec.get("findings", []) + spec.get("autofixes", []),
-                                  total)
+                # The model that reviewed opens the hover: the face says only `Reviewer`,
+                # so the name has one home and it is here.
+                "tip": (f"Reviewed by {reviewer}. " if reviewer else "")
+                + _raised_by(spec.get("findings", []) + spec.get("autofixes", []), total)
                 + (f'. {assumed} assumption{"" if assumed == 1 else "s"} the coding agent '
                    "recorded while implementing — listed under the Review tab"
                    if assumed else ""),
@@ -719,12 +717,12 @@ def main(argv=None) -> int:
     # The aftermath first: it is the louder statement and it governs how the piles under
     # it should be read. The missing-record band is second, directly above the piles it
     # explains.
-    # The takeover note third: it is the file's own sentence about which commits the piles
-    # never saw, and it belongs directly above those piles.
+    # The takeover note goes above the counts line itself: it says at which commit every
+    # number on that line was counted.
     set_bands([aftermath_html(out_dir, root, base_ref=base_st["ref"] if base_st else None),
                POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
-               else "",
-               points_note_band(spec.get("_reviewPoints"))])
+               else ""],
+              top=[points_note_band(spec.get("_reviewPoints"), github_blob_base(root))])
 
     def render_block(block):
         """One block of a tab, as (html, weight, changes).
