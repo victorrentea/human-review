@@ -183,7 +183,7 @@ def drawio_widget_html(name: str, assets: Path, root: Path, rebuild: str = "") -
                        verdict.get("drawio_url") or "",
                        verdict.get("drawio_web_url") or "",
                        verdict.get("redraw"), verdict.get("revert"),
-                       verdict.get("reveal"))
+                       verdict.get("reveal"), verdict.get("tested_against") or "")
             + dgm_views_html(panes, initial="new" if red else "diff"))
 
 

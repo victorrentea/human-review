@@ -132,6 +132,9 @@ from hrbuild.tabs.review import (
     grade_reasons, grade_reasons_html, _first_clause, _CLAUSE_END, PILE_ROUND, _round_kicker,
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
     _ref_link, _regenerate_offer, _revert_offer, _score_target, _tooling_commit_shas,
+    gh_comment_link, prepare_pr_push, pr_comment_slug, PR_COMMENTS_JSON, PR_PILE_LETTER,
+    PR_POSTED_JSON, PR_PUSH_JS, push_pr_button, push_pr_dialog, PUSH_PR_ACTION,
+    PUSH_PR_DRY_ACTION, _PR_SLUG_MAX,
     _tooling_fold_html
 )
 from hrbuild.tabs.sequence import (
@@ -257,6 +260,7 @@ def main(argv=None) -> int:
     # downstream — the validator, the ref resolution, the ledes, the renderers — takes
     # them as lists. This is the point at which the branch's own record becomes the page's.
     resolve_review_points(spec, out_dir)
+    prepare_pr_push(spec, out_dir, root, HERE)
 
     problems = validate(spec, out_dir)
     if problems:
@@ -1074,11 +1078,9 @@ def main(argv=None) -> int:
             '<span class="chip chip-mode" id="hr-mode">static</span>'
             '<button type="button" class="chip chip-serve copycmd" id="hr-serve" '
             f'data-copy="{html.escape(serve_cmd, quote=True)}" '
-            'data-tip="This page is a static file, so nothing on it can run: every button '
-            'only copies its command, and recordings open outside the page. Served, the '
-            'buttons run their command, recordings play here, and Rerun rebuilds the page. '
-            'Click to copy the line that starts the review server on this checkout and '
-            'opens this page from it.">'
+            # Victor's words, verbatim: what the click does, then why anyone wants it.
+            'data-tip="Copy terminal command to start this webpage via a backend so you '
+            'click buttons for actions, not copy terminal commands.">'
             f'{CMD_COPY} Serve</button>')
         # And, on the served copy only, the way to make the page catch up with the
         # repository. Both pieces are constants above, so what the page carries is one

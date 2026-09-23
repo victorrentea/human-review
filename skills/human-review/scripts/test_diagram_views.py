@@ -905,7 +905,7 @@ def test_the_command_says_what_it_is_for(tmp_path):
     # The sentence says where to edit, and that is all it says. The offer is a pill under
     # it — the line used to carry both, and by the time each offer had grown its glyphs it
     # was seven underlined runs of text with no rank between them.
-    assert "Edit " in line and "in draw.io" in line
+    assert "Update " in line and "in draw.io" in line
     assert "offer-pill" not in line and "cmd-copy" not in line
     acts = re.search(r'<div class="rerun-acts">(.*?)</div>', out, re.S).group(1)
     # One control, not a pill and a mark beside it: the words and the glyph are the same
@@ -1005,7 +1005,21 @@ def test_a_verdict_with_no_reveal_leaves_the_words_as_words(tmp_path):
     """An older verdict, or a run from before the command was recorded: the sentence reads
     exactly as it did, with nothing half-rendered where the control would have been."""
     out = _widget_with(tmp_path, rerun=RERUN, drawio_url="drawio:///repo/docs/C.drawio.png")
-    assert "Edit this diagram in" in out and "drawio-reveal" not in out
+    assert "Update this diagram in" in out and "drawio-reveal" not in out
+
+
+def test_a_named_guardrail_leads_the_sentence(tmp_path):
+    """`tested_against` (from human-review.json, via drawio-diff) turns the line into what
+    keeps the drawing honest first, then where to change it."""
+    out = _widget_with(tmp_path, rerun=RERUN, reveal=REVEAL,
+                       drawio_url="drawio:///repo/docs/C.drawio.png",
+                       tested_against="Java Domain Model")
+    line = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
+    assert '>This diagram</button>' in line
+    assert "unit-tested against Java Domain Model. Update it in draw.io" in line
+    plain = _widget_with(tmp_path, rerun=RERUN, drawio_url="drawio:///repo/docs/C.drawio.png",
+                         tested_against="Java Domain Model")
+    assert "This diagram unit-tested against Java Domain Model. Update it in draw.io" in plain
 
 
 def test_the_web_link_is_dropped_when_the_verdict_has_none(tmp_path):

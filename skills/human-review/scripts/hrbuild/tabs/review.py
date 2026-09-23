@@ -756,7 +756,7 @@ def opening_lede(spec) -> str:
     # read once, on arrival from the score, and then left behind.
     return (grade_reasons_html(spec)
             + '<p class="sub counts pilelede">' + " &middot; ".join(parts)
-            + "</p>" + PILELEDE_SPY_JS)
+            + push_pr_button(spec) + "</p>" + push_pr_dialog(spec) + PILELEDE_SPY_JS)
 
 
 def render_findings(findings) -> str:
@@ -776,6 +776,7 @@ def render_findings(findings) -> str:
             f'<span class="badge {cls}">{html.escape(label)}</span>'
             + _finding_source(f)
             + f' <span class="f-title">{f["title"]}</span>'
+            + gh_comment_link(f)
             + (f'<p>{f["body"]}</p>' if f.get("body") else "")
             + (f'<p class="f-why">{f["why"]}</p>' if f.get("why") else "")
             + (f"<p>{refs}</p>" if refs else "")
@@ -858,6 +859,7 @@ def render_assumptions(items, mode: str = "") -> str:
             f'{html.escape((f.get("source") or "assumption").strip())}</span>'
             + _confidence_chip(f)
             + f' <span class="f-title">{f["title"]}</span>'
+            + gh_comment_link(f)
             + (f'<p>{f["body"]}</p>' if f.get("body") else "")
             + (f'<p class="f-alt"><b>Read the other way:</b> {f["alternative"]}</p>'
                if f.get("alternative") else "")
@@ -898,6 +900,7 @@ def render_autofixes(fixes, badge: str = "auto-fixed") -> str:
             f'<span class="badge sev-fixed">{html.escape(badge)}</span>'
             + _finding_source(f)
             + f' <span class="f-title">{f["title"]}</span>'
+            + gh_comment_link(f)
             + (f'<p class="f-why">{f["why"]}</p>' if f.get("why") else "")
             + (f'<p>{f["body"]}</p>' if f.get("body") else "")
             + (f"<p>{refs}</p>" if refs else "")
@@ -1397,3 +1400,158 @@ def _score_target(spec) -> tuple[str, str]:
     if tabs:
         return tabs[0].get("id", ""), (tabs[0].get("label") or "").lstrip("🤖 ")
     return "", ""
+
+
+# --------------------------------------------------------------------------- #
+# Push to GitHub PR — the piles, as inline comments on the pull request
+# --------------------------------------------------------------------------- #
+
+#: Written by the agent that wrote `review-points.md` (reference/pr-comments.md), or by
+#: `push-pr-comments.py --from-review-points`; sent unchanged by `push-pr-comments.py`.
+PR_COMMENTS_JSON = "pr-comments.json"
+#: What the last push left behind: `{"comments": {"A:<slug>": {"html_url": …}}, …}`.
+PR_POSTED_JSON = "pr-comments.posted.json"
+PUSH_PR_ACTION = "__push_pr_comments__"
+PUSH_PR_DRY_ACTION = "__push_pr_comments__:dry"
+PR_PILE_LETTER = {"autofixes": "F", "findings": "I", "assumptions": "A"}
+_PR_SLUG_MAX = 48
+
+
+def pr_comment_slug(title: str) -> str:
+    """The id `push-pr-comments.py` hides in each comment, from the item's title.
+
+    A copy of that script's `slug`, not an import of it: the script is a dataclass module
+    and `shared.actions._load` does not register what it loads in `sys.modules`, which
+    `@dataclass` needs. `test_push_pr_comments.py` holds the two copies to one answer."""
+    text = html.unescape(re.sub(r"<[^>]+>", "", title or "")).lower()
+    s = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    if len(s) > _PR_SLUG_MAX:
+        s = s[:_PR_SLUG_MAX].rsplit("-", 1)[0]
+    return s or "item"
+
+
+def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> dict | None:
+    """Declare the two push actions and stamp each pile item with its PR comment's URL.
+
+    Runs right after `resolve_review_points`, when the piles are lists. No payload, no
+    button: the page never offers to post what nobody prepared. Each item gets `_ghUrl`
+    in place — the same trick as `_snippets` / `_diffs` — so the three renderers need no
+    new parameter."""
+    spec["_prPush"] = None
+    try:
+        payload = json.loads((out_dir / PR_COMMENTS_JSON).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    comments = payload.get("comments") if isinstance(payload, dict) else None
+    script = skill_dir / "push-pr-comments.py"
+    if not comments or not script.is_file():
+        return None
+    try:
+        rel = str(out_dir.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return None
+    here, py = shlex.quote(str(root.resolve())), shlex.quote(sys.executable)
+    push = (f"cd {here} && {py} {shlex.quote(str(script))}"
+            f" --file {shlex.quote(rel + '/' + PR_COMMENTS_JSON)}")
+    refresh = (f"{py} {shlex.quote(str(skill_dir / 'refresh-report.py'))}"
+               f" --dir {shlex.quote(rel)} --steps reviewpoints,aftermath --no-serve")
+    declare_action(PUSH_PR_DRY_ACTION, f"{push} --dry-run",
+                   label="Print the exact GitHub calls the push would make")
+    declare_action(PUSH_PR_ACTION, f"{push} && {refresh}", reload=True,
+                   label="Post the Review tab's items as comments on the pull request")
+    try:
+        posted = json.loads((out_dir / PR_POSTED_JSON).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        posted = {}
+    urls = {cid: (c or {}).get("html_url")
+            for cid, c in (posted.get("comments") or {}).items()}
+    for key, letter in PR_PILE_LETTER.items():
+        for item in spec.get(key) or []:
+            url = urls.get(f"{letter}:{pr_comment_slug(item.get('title', ''))}")
+            if url:
+                item["_ghUrl"] = url
+    counts = {p: sum(1 for c in comments if c.get("pile") == p)
+              for p in ("fixed", "ignored", "assumption")}
+    spec["_prPush"] = {"count": len(comments), "counts": counts,
+                       "posted": sum(1 for u in urls.values() if u),
+                       "pushedAt": posted.get("pushed_at"),
+                       "reviewUrl": posted.get("review_url"), "prUrl": posted.get("url")}
+    return spec["_prPush"]
+
+
+def gh_comment_link(f) -> str:
+    """↗ beside an item's title, once it has a comment on the PR."""
+    url = f.get("_ghUrl")
+    if not url:
+        return ""
+    return (f' <a class="f-gh" href="{html.escape(url, quote=True)}" target="_blank" '
+            'rel="noopener" data-tip="This item\'s comment on the pull request">↗</a>')
+
+
+# Run on DOMContentLoaded, not inline: this sits in the Review tab, far above the page's
+# own scripts, and `window.HR` (server.js) does not exist yet where it is parsed — an
+# inline IIFE returned early and the button was never raised.
+PR_PUSH_JS = """<script>document.addEventListener('DOMContentLoaded', function(){
+  var b = document.querySelector('.pr-push');
+  if (!b || !window.HR) return;
+  HR.onready(function () { if (HR.can(b.dataset.push)) b.hidden = false; });
+  var dlg = document.getElementById('pr-push-dlg');
+  var face = b.textContent;
+  function done(msg) { b.disabled = false; b.textContent = face; if (msg) alert(msg); }
+  b.addEventListener('click', function () {
+    b.disabled = true; b.textContent = 'Preparing the calls\\u2026';
+    HR.run(b.dataset.dry).then(function (s) {
+      if (s.exit !== 0) return done('The dry run failed:\\n\\n' + (s.output || ''));
+      dlg.querySelector('pre').textContent = s.output || '';
+      dlg.showModal();
+      dlg.addEventListener('close', function once() {
+        dlg.removeEventListener('close', once);
+        if (dlg.returnValue !== 'post') return done();
+        b.textContent = 'Posting\\u2026';
+        HR.keepPlace();
+        HR.run(b.dataset.push).then(function (s2) {
+          if (s2.exit !== 0) return done('GitHub refused:\\n\\n' + (s2.output || ''));
+          location.reload();
+        }, function (e) { done(e.message); });
+      });
+    }, function (e) { done(e.message); });
+  });
+});</script>"""
+
+
+def push_pr_button(spec) -> str:
+    """*Push to GitHub PR (16)*, at the end of the Review tab's sticky counts line.
+
+    Hidden until the probe says this server can run it — off disk, in the zip and on
+    GitHub Pages there is nothing to post with. A press runs `--dry-run` first and shows
+    its output (the summary, every downgrade, the exact `gh api` calls) in a dialog;
+    only *Post* sends anything, under the reader's own `gh` login, and then the Review
+    tab is re-derived so every item gets its ↗."""
+    pp = spec.get("_prPush")
+    if not pp:
+        return ""
+    c = pp["counts"]
+    again = pp["posted"] > 0
+    face = f"{'Update' if again else 'Push to'} GitHub PR ({pp['count']})"
+    tip = (f"{c['fixed']} auto-fixed · {c['ignored']} open · {c['assumption']} "
+           "assumptions, each as an inline comment on its line of the PR's diff — the "
+           "calls the reviewing agent prepared in .human-review/pr-comments.json, sent "
+           "unchanged. You see the exact calls (a dry run) before anything is posted. "
+           + (f"Last pushed {pp['pushedAt'][:16].replace('T', ' ')}; pushing again updates "
+              "those comments, it never duplicates them." if again and pp.get("pushedAt")
+              else "Re-pushing later updates the same comments instead of duplicating."))
+    return (f' <button type="button" class="pr-push" hidden '
+            f'data-dry="{PUSH_PR_DRY_ACTION}" data-push="{PUSH_PR_ACTION}" '
+            f'data-tip="{html.escape(tip, quote=True)}">{html.escape(face)}</button>')
+
+
+def push_pr_dialog(spec) -> str:
+    """The dry run's output and the *Post* that follows it — after the counts line, not in
+    it: a `<dialog>` inside a `<p>` is not HTML the parser keeps where it was written."""
+    if not spec.get("_prPush"):
+        return ""
+    return ('<dialog id="pr-push-dlg" class="pr-push-dlg"><form method="dialog">'
+            '<p><b>These calls will be made to GitHub, under your account:</b></p><pre></pre>'
+            '<menu><button value="cancel">Cancel</button> '
+            '<button value="post" class="primary">Post</button></menu></form></dialog>'
+            + PR_PUSH_JS)

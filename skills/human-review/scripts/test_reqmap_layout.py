@@ -172,7 +172,7 @@ def test_the_run_tests_press_runs_every_producer_of_the_tab_forced(tmp_path):
         assert A.ACTIONS[info["id"]]["reload"] is True
         btn = T.run_tests_button(info)
         assert 'data-rerun="__rerun_tests__"' in btn and 'data-tab="requirements"' in btn
-        assert "hidden" in btn and "\U0001F9EA" in btn
+        assert "hidden" in btn and "\u23F3" in btn
         assert T.run_tests_button(None) == ""
         # Outside the repository there is nothing to rebuild with.
         assert T.declare_run_tests_rerun(root, tmp_path / "elsewhere", skill) is None

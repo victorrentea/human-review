@@ -313,7 +313,7 @@ STATIC_RUN_TIP = ("This copy of the report is static, so nothing here can run: s
                   "this button does the job.")
 
 
-def reveal_html(reveal: dict | None, name: str) -> str:
+def reveal_html(reveal: dict | None, name: str, capital: bool = False) -> str:
     """"this diagram" as a handle on the file, rather than as a noun.
 
     The sentence already says *edit* it and *re-render* it; the one thing it says nothing
@@ -328,8 +328,9 @@ def reveal_html(reveal: dict | None, name: str) -> str:
     the command was recorded — the two words are two words again, and the sentence reads
     exactly as it did before any of this.
     """
+    word = "This diagram" if capital else "this diagram"
     if not reveal or not reveal.get("command") or not name:
-        return "this diagram"
+        return word
     aid = declare_action(f"drawio-reveal:{name}", reveal["command"],
                          label=f"Show {name} on disk")
     where = reveal.get("in") or "the file manager"
@@ -343,8 +344,8 @@ def reveal_html(reveal: dict | None, name: str) -> str:
             f'data-action="{html.escape(aid, quote=True)}" '
             f'data-tip="{html.escape(STATIC_RUN_TIP, quote=True)}" '
             f'data-tip-served="Selects the file on disk, in {html.escape(where, quote=True)}"'
-            '>this diagram</button>'
-            '<span class="plainword">this diagram</span></span>')
+            f'>{word}</button>'
+            f'<span class="plainword">{word}</span></span>')
 
 
 #: The copy glyph's hover. Says what the click does and then the line it will put on the
@@ -529,7 +530,8 @@ def regenerate_html(redraw: dict | None, rerun: dict, rebuild: str,
 
 def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
                app_url: str = "", web_url: str = "", redraw: dict | None = None,
-               revert: dict | None = None, reveal: dict | None = None) -> str:
+               revert: dict | None = None, reveal: dict | None = None,
+               tested_against: str = "") -> str:
     """Under the drawing: where to edit it, and the two things to do about it afterwards.
 
     The command is not a convenience. The picture above is inlined into the HTML, and it
@@ -555,9 +557,20 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     not work is worse than no command, because it is tried first.
     """
     edit = drawio_open_html(app_url, web_url)
-    it = reveal_html(reveal, name)
+    # With a guardrail named (`tested_against`), the sentence leads with it — "This diagram
+    # unit-tested against Java Domain Model. Update it in draw.io App ↗ or Web ↗." — so the
+    # reader learns the drawing is checked before being told how to change it. Without
+    # one, the plain offer.
+    if tested_against:
+        it = reveal_html(reveal, name, capital=True)
+        lead = f'{it} unit-tested against {html.escape(tested_against)}.'
+        sentence = (f'{lead} Update it in {edit}.' if edit else lead)
+    else:
+        it = reveal_html(reveal, name)
+        sentence = (f'Update {it} in {edit}.' if edit
+                    else (f'Update {it}.' if reveal else ""))
     if not rerun or not rerun.get("command"):
-        return f'<p class="dgm-open">Edit {it} in {edit}</p>' if edit else ""
+        return f'<p class="dgm-open">{sentence}</p>' if edit else ""
     line = f'cd {shlex.quote(rerun["cwd"])} \\\n  && {rerun["command"]} \\\n  && {rebuild}'
     # Per diagram, because a page can carry several and each one reruns its own. The id
     # is the diagram's name for the same reason every other handle on this page is: so a
@@ -587,8 +600,7 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     # there is no "in draw.io App ↗" to write, and `Edit this diagram in .` is worse than
     # silence — but the file itself is still worth naming if the verdict recorded how to
     # reveal it.
-    where = (f'<p class="dgm-open">Edit {it} in {edit}.</p>' if edit
-             else (f'<p class="dgm-open">Edit {it}.</p>' if reveal else ""))
+    where = f'<p class="dgm-open">{sentence}</p>' if sentence else ""
     return ('<div class="rerun">' + where
             + '<div class="rerun-acts">'
             + command_html(line, aid, label="Update the report", tip=served,

@@ -409,6 +409,9 @@ def _diagrams(ctx: Ctx):
     # the page simply does not offer to start over, which is the honest rendering of "this
     # project has no such script".
     redraw = f" --redraw {shlex.quote(d['redraw'])}" if d.get("redraw") else ""
+    # What a unit test checks the drawing against, for the sentence under the picture.
+    if d.get("tested_against"):
+        redraw += f" --tested-against {shlex.quote(d['tested_against'])}"
     sh(f"{HERE}/drawio-diff.py --base {ctx.base} --diagram {d['diagram']} "
        f"--concepts {d['concepts']} --out-dir {ART} --name {d.get('name', 'conceptual')}"
        + redraw, ctx)

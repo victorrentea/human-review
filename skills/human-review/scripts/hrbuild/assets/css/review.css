@@ -143,3 +143,15 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
 .pileround { margin:2.4rem 0 -2.5rem; font-size:.74rem; letter-spacing:.06em;
              text-transform:uppercase; color:var(--muted); }
 .pileround b { color:var(--fg); font-weight:700; }
+
+/* Push to GitHub PR — end of the sticky counts line, and the ↗ beside each pushed item */
+.pr-push { margin-left:.6rem; font:600 12px/1.4 inherit; padding:.1rem .55rem; border-radius:999px;
+  border:1px solid var(--line); background:var(--bg); color:var(--fg); cursor:pointer; }
+.pr-push:hover, .pr-push:focus-visible { border-color:var(--link); color:var(--link); }
+.pr-push:disabled { opacity:.6; cursor:progress; }
+.pr-push-dlg { max-width:min(960px, 92vw); border:1px solid var(--line); border-radius:8px;
+  background:var(--bg); color:var(--fg); }
+.pr-push-dlg pre { max-height:60vh; overflow:auto; font-size:11px; white-space:pre-wrap; }
+.pr-push-dlg menu { display:flex; gap:.5rem; justify-content:flex-end; padding:0; }
+a.f-gh { text-decoration:none; margin-left:.25rem; color:var(--muted); }
+a.f-gh:hover, a.f-gh:focus-visible { color:var(--link); }

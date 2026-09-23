@@ -940,6 +940,10 @@ def main():
                          "automation draw this diagram again. Not guessed from --base: a "
                          "script that rewrites a checked-in file is not something to "
                          "derive from a naming convention and run on a reader's click")
+    ap.add_argument("--tested-against", metavar="WHAT",
+                    help="what a unit test checks this drawing against (e.g. `Java Domain "
+                         "Model`), for the sentence under the picture. Recorded, not "
+                         "inferred: only the project knows which guardrail keeps it honest")
     ap.add_argument("--json", action="store_true",
                     help="print the verdict as JSON instead of a summary line")
     args = ap.parse_args()
@@ -989,6 +993,8 @@ def main():
     verdict["diagram"] = str(source)
     verdict["drawio_web_url"] = drawio_web_url(new_xml, source)
     verdict["reveal"] = reveal_in_file_manager(source)
+    if args.tested_against:
+        verdict["tested_against"] = args.tested_against
     # How to run this again, recorded by the run itself. The report inlines these SVGs at
     # build time — it has to, or the links drawn inside them go inert — so a reader who
     # has just re-laid the diagram out by hand needs a command, and the reader is not the
