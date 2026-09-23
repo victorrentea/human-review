@@ -319,6 +319,15 @@ def render(root: Path, data: dict) -> str:
     severity = data["severity"]
     sev_class = f" cow-severity-{severity}" if severity else ""
     parts = [f'<div class="cow cow-{state}{sev_class}">']
+    # The file every row below is read against, named once above them and opened the way
+    # every other path on the page opens: in the editor, at its first line. Without it the
+    # reader met rule links (`claimed by /petclinic-backend/...`) before learning which
+    # file they point into, and had no way into the file as a whole.
+    if data["codeowners"]:
+        rel = html.escape(data["codeowners"])
+        parts.append(f'<h3 class="cow-title"><a data-tip="Open in VS Code: {rel}"'
+                     f' href="vscode://file/{(root / data["codeowners"]).resolve()}:1:1">'
+                     f"{rel}</a></h3>")
     # The "APPROVAL REQUIRED" verdict used to be a banner of its own, above every row,
     # saying the same word for every owner even when their severities differ. Now each
     # row carries its own flag and its own "APPROVAL REQUIRED" — true per owner, not
@@ -392,6 +401,9 @@ CSS = """
        --cow-mark-a:rgba(19,120,58,.85); --cow-mark-m:rgba(190,105,0,.9);
        --cow-mark-d:rgba(168,22,22,.9);
        margin:.4rem 0 1rem; }
+.cow-title { font:600 1rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; margin:0 0 .7rem; }
+.cow-title a { color:var(--link); text-decoration:none; }
+.cow-title a:hover { text-decoration:underline; }
 .cow-verdict { display:flex; align-items:center; gap:.9rem; border:1px solid var(--line);
                border-left:4px solid var(--cow-flat); border-radius:10px; padding:.8rem 1rem;
                background:var(--card); }

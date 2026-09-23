@@ -146,3 +146,17 @@ if __name__ == "__main__":
                 failures += 1
                 print(f"FAIL {name}: {e}")
     sys.exit(1 if failures else 0)
+
+
+def test_the_tab_opens_on_the_codeowners_file_it_was_read_from(tmp_path):
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "CODEOWNERS").write_text("* @a\n")
+    data = {"state": "no_owners_touched", "severity": None, "codeowners": ".github/CODEOWNERS",
+            "shadowed": [], "owned": [], "problems": []}
+    frag = co.render(tmp_path, data)
+    title = frag[frag.index('<h3 class="cow-title">'):]
+    assert title.index("</h3>") < title.index("cow-verdict"), "the file is named above both sections"
+    assert f'href="vscode://file/{(tmp_path / ".github/CODEOWNERS").resolve()}:1:1"' in title
+    assert ">.github/CODEOWNERS</a></h3>" in title
+    none = dict(data, state="no_codeowners", codeowners=None)
+    assert "cow-title" not in co.render(tmp_path, none)
