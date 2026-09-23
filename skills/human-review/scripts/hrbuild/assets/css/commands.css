@@ -35,8 +35,19 @@ button.chip-rerun.running .rr-ico { animation:hrspin .7s linear infinite; }
    mark here already uses. Dashed, so the pair reads as one control with two prices rather
    than as two unrelated chips: the dash is the only thing that survives being glanced at. */
 button.chip-rerun-ai { border-style:dashed; border-color:var(--drift); color:var(--drift); }
+/* Hover fills the chip with its own colour and turns the glyph to the ground's: a 10%
+   wash over whatever sits under the chip read as nothing on a light tab and as mud on a
+   dark one, and the arrow — the one mark on the face — was what disappeared. */
 button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
-            background:rgba(181,115,10,.09); color:var(--fg); }
+            background:var(--drift); color:var(--drift-fg); }
+button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
+            background:#2e7d32; color:#fff; }
+@media (prefers-color-scheme:dark) {
+  button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#6bd48a;
+            background:#6bd48a; color:#10261a; } }
+/* The robot on the paid chip: the arrow first, then what this press adds to it. */
+.rr-bot { display:inline-block; font-size:1.05em; line-height:1; margin-left:.12em;
+          vertical-align:-.05em; }
 /* The same pair, narrowed to one tab, beside the selected pill on the strip. Shown only
    while its tab is the selected one: the strip is navigation, and thirteen glyphs on it
    would make every pill read as a control with two halves. `[hidden]` still wins on a
@@ -64,8 +75,12 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
 .tabstrip .tab[aria-selected="true"] + .tabre:has(> .tabrerun:not([hidden])) {
             margin-left:calc(-1 * var(--tabre-w) - .7rem); margin-right:0;
             position:relative; z-index:1; }
-.tabre .tabrerun { padding:0 .3rem; border-radius:999px; border:1px solid;
-            font-size:.7rem; line-height:1.35; background:var(--card); }
+/* Stretched to the row and centred in it: the strip stands its tabs on the bottom line
+   (frame.css), and a box shorter than the tab would otherwise sink to that line too and
+   sit low in the pill it is drawn over. */
+.tabstrip .tabre { align-self:stretch; }
+.tabre .tabrerun { padding:0 .25rem; border-radius:999px; border:1px solid;
+            font-size:.62rem; line-height:1.3; background:var(--card); }
 .tabre .tabrerun.chip-rerun-ai { border-style:dashed; }
 .tabre .tabrerun[hidden] { display:none; }
 /* The page's own confirmation, over the page. Fixed and full-viewport because the click it
