@@ -415,7 +415,11 @@ def test_a_graph_needs_edges_and_a_new_entry_point_marks_nothing():
 def test_the_row_offers_a_caret_and_the_group_is_not_titled_http_slash():
     row = delta.render_row(_row(why=[], graph=[]), 12, "main")
     assert '<summary class="cx-head"><span class="cx-caret"' in row
-    assert re.search(r"details\.cx-row\[open\][^{]*\.cx-caret::before\s*\{\s*content:\"▾\"", delta.CSS)
+    # The full-size ▼ (U+25BC), as text: the small ▾ stayed a speck at any font size.
+    assert re.search(r"details\.cx-row\[open\][^{]*\.cx-caret::before\s*\{\s*content:\"\\25BC\\FE0E\"",
+                     delta.CSS)
+    size = re.search(r"\.cx-caret \{[^}]*font-size:(\d+)px", delta.CSS)[1]
+    assert int(size) >= 13, "the caret is a handle, not punctuation"
     assert "HTTP /" not in delta.render([_row(why=[])], "main")
     cols = re.search(r"\.cx-head \{[^}]*grid-template-columns:([^;]*);", delta.CSS)[1].split()
     assert cols[1] == "2.45rem", "the verb column is as wide as DELETE and no wider"

@@ -558,13 +558,17 @@ CSS = """
     one: at 3.6rem + .55rem a `GET` sat 46px from its own path and read as two columns of
     unrelated things. The caret column in front is the fold's second handle, next to the
     word a reader looks at first. */
-.cx-head { display:grid; grid-template-columns:.7rem 2.45rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
+.cx-head { display:grid; grid-template-columns:1.1rem 2.45rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
           align-items:center; gap:.4rem; padding:.3rem .8rem .3rem .5rem; font-size:.84rem;
           cursor:default; list-style:none; }
-.cx-caret { font-size:10px; line-height:1; color:var(--muted); text-align:center; }
+/* The full-size triangles (U+25B6/U+25BC, forced to text with U+FE0E so macOS does not
+    swap in the emoji), not the small ▸/▾: those stay a speck at any font size — at 10px
+    beside a 13px verb the caret read as punctuation, not as the handle that opens the
+    call graph. */
+.cx-caret { font-size:13px; line-height:1; color:var(--muted); text-align:center; }
 details.cx-row > summary .cx-caret { cursor:pointer; }
-details.cx-row > summary .cx-caret::before { content:"▸"; }
-details.cx-row[open] > summary .cx-caret::before { content:"▾"; }
+details.cx-row > summary .cx-caret::before { content:"\\25B6\\FE0E"; }
+details.cx-row[open] > summary .cx-caret::before { content:"\\25BC\\FE0E"; }
 .cx-head::-webkit-details-marker { display:none; }
 summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
 .cx-hint { opacity:.75; }
