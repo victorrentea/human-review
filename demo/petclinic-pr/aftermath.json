@@ -1,0 +1,31 @@
+{
+ "review": "db6b67ece0336532484b6c96e1d080136e0198a0",
+ "review_short": "db6b67ec",
+ "head": "db6b67ece0336532484b6c96e1d080136e0198a0",
+ "generated_globs": [
+  "**/generated/**",
+  "docs/generated/**",
+  "openapi.yaml",
+  "**/*.genseq.*",
+  "**/api-types.ts",
+  "**/*.drawio*"
+ ],
+ "commits": [],
+ "totals": {
+  "commits": 0,
+  "files": 0,
+  "added": 0,
+  "deleted": 0,
+  "code": {
+   "files": 0,
+   "added": 0,
+   "deleted": 0
+  },
+  "generated": {
+   "files": 0,
+   "added": 0,
+   "deleted": 0
+  }
+ },
+ "clean": true
+}

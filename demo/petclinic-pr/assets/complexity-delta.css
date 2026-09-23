@@ -1,0 +1,110 @@
+
+/* Green = complexity this branch ADDED, red = complexity it REMOVED: the colour names the
+    author of the change, it is not a verdict on whether growing is bad. */
+.cx-lede { color:var(--muted); font-size:.92rem; --cx-added:#2e9e5b; --cx-removed:#c62828; }
+.cx-group { --cx-added:#2e9e5b; --cx-removed:#c62828; }
+.cx-group + .cx-group { margin-top:1.1rem; }
+.cx-kind { font:600 11px/1 system-ui,sans-serif; text-transform:uppercase; letter-spacing:.07em;
+            color:var(--muted); margin:0 0 .35rem .15rem; }
+.cx-count { opacity:.65; font-weight:400; }
+.cx-key { font-weight:700; }
+.cx-list { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); }
+/* The grid moved off the row and onto `.cx-head`, because the row now has a second thing
+    in it: the fold, which must run the full width under the columns rather than sit in
+    one of them. A `<details>` cannot be a grid whose first track holds the summary and
+    whose second holds the panel, so the row stays a plain block and the columns live one
+    level in. `list-style:none` + the WebKit marker rule take away the disclosure triangle
+    — the bar is the affordance, and a triangle in the first column would be a second one
+    pointing at nothing. */
+.cx-row { border-bottom:1px solid var(--line); }
+.cx-row:last-child { border-bottom:0; }
+.cx-head { display:grid; grid-template-columns:3.6rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
+          align-items:center; gap:.55rem; padding:.3rem .8rem; font-size:.84rem;
+          cursor:default; list-style:none; }
+.cx-head::-webkit-details-marker { display:none; }
+summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
+.cx-hint { opacity:.75; }
+.cx-same { opacity:.5; }
+/* An untouched row is dimmed because the branch has nothing to say about it — but the
+    moment a reader opens one they are reading it on purpose, and code at half opacity is
+    code nobody reads. Opening restores it, and tints the head so the row and its fold
+    read as one block. */
+.cx-row[open] { opacity:1; }
+.cx-row[open] > .cx-head { background:var(--code-bg); }
+.cx-verb { font:700 10.5px/1 ui-monospace,Menlo,monospace; letter-spacing:.03em; }
+/* Amber is the one hue that never read on white either: #e08a00 is 2.7:1 there, well
+    under the 4.5:1 a 10.5px bold monospace word needs. Darkened until it clears it,
+    and still amber — it is what tells PUT from DELETE at a glance down the column. */
+.cx-get{color:#2e7d32}.cx-post{color:#1565c0}.cx-put{color:#a35f00}.cx-delete{color:#c62828}.cx-any{color:var(--muted)}
+.cx-patch{color:#8e44ad}.cx-mcp{color:#7c4dff}.cx-job{color:#a35f00}
+.cx-kafka,.cx-rabbit,.cx-jms{color:#00838f}
+a.cx-link, .cx-cell { text-decoration:none; display:block; overflow:hidden; }
+a.cx-link:hover .cx-path { text-decoration:underline; }
+/* `display:block` is what makes the ellipsis appear. `text-overflow` only applies to a
+    block container, and <code> is inline — so the rule was there, doing nothing, while the
+    link's own `overflow:hidden` chopped the path mid-token. `POST /api/owners/{ownerId}
+    /pets/{petId}/vis` is a different endpoint from the one the row is about, and nothing
+    on screen said it had been cut. Blockified, the code element takes the grid column's
+    width and can end in a `…`; the full path is on the row's hover either way. */
+.cx-path { display:block; font:12px/1.4 ui-monospace,Menlo,monospace; overflow:hidden;
+           text-overflow:ellipsis; white-space:nowrap; }
+.cx-bar { display:flex; height:9px; border-radius:5px; overflow:hidden; background:transparent; }
+/* The bar opens the breakdown, so it wears a hand. It has to out-specify `tip.js`, which
+    paints every `[data-tip]` outside a link or a summary with `cursor:help` — right for a
+    mark that only explains itself, wrong for one you can click. Two classes beat its
+    `[data-tip]:not(…):not(…)` chain. The grey `?` stays on the rows that open onto
+    nothing: a deleted endpoint's bar really is only a tooltip. */
+details.cx-row .cx-bar, details.cx-row .cx-bar i, details.cx-row .cx-bar u { cursor:pointer; }
+/* A hit target 9px tall is a hit target people miss. The padding is invisible and the
+    bar keeps its height; only the clickable box grows. */
+details.cx-row .cx-bar { padding:7px 0; margin:-7px 0; box-sizing:content-box; }
+.cx-bar i { background:#c9c9d4; border-radius:5px 0 0 5px; }
+.cx-bar u { border-radius:0 5px 5px 0; }
+.cx-up .cx-bar u { background:var(--cx-added); }
+.cx-down .cx-bar u { background:var(--cx-removed); }
+.cx-same .cx-bar i { border-radius:5px; }
+.cx-badge { font:700 11px/1 ui-monospace,Menlo,monospace; text-align:right; color:var(--muted); }
+.cx-up .cx-badge, .cx-up.cx-key { color:var(--cx-added); }
+.cx-down .cx-badge, .cx-down.cx-key { color:var(--cx-removed); }
+.cx-n { font:600 12px/1 ui-monospace,Menlo,monospace; text-align:right; }
+/* ── the breakdown ──────────────────────────────────────────────────────────────────
+    What the bar is made of, one counted construct per line: the source line it was read
+    off, and what it cost, hard right. The number on a row is an assertion about somebody
+    else's code; this is the working, and every line of it opens the file at that line.
+    Indented past the verb column so the fold reads as belonging to the row above it. */
+.cx-why { padding:.35rem .8rem .55rem 4.15rem; background:var(--code-bg);
+          border-top:1px dashed var(--line); }
+.cx-why-m { display:flex; align-items:baseline; gap:.4rem; margin:.35rem 0 .15rem;
+            font:600 10.5px/1.6 ui-monospace,Menlo,monospace; letter-spacing:.02em;
+            color:var(--muted); }
+.cx-why-m:first-child { margin-top:0; }
+.cx-why-mn { font-weight:700; opacity:.8; }
+.cx-why-none { margin:0; font-size:.8rem; color:var(--muted); }
+a.cx-why-line { display:flex; align-items:baseline; gap:.75rem; text-decoration:none;
+                color:inherit; padding:1px 0; }
+a.cx-why-line code { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+                     white-space:nowrap; font:12px/1.55 ui-monospace,Menlo,monospace; }
+a.cx-why-line:hover code { text-decoration:underline; }
+/* `[+1]` is a column, not a suffix: same width on every line, so the eye can add them up
+    without reading them. `tabular-nums` keeps `[+10]` from widening the column by a hair. */
+.cx-why-inc { flex:0 0 2.9rem; text-align:right; font-variant-numeric:tabular-nums;
+              font:700 10.5px/1.55 ui-monospace,Menlo,monospace; color:var(--muted); }
+/* Green is authorship everywhere else on this tab, and it means the same here: this line
+    was not behind this entry point at the merge-base. */
+a.cx-why-new code { color:var(--cx-added); }
+a.cx-why-new .cx-why-inc { color:var(--cx-added); }
+@media (prefers-color-scheme: dark) {
+  .cx-lede, .cx-group { --cx-added:#4ec27f; --cx-removed:#ef6a6a; }
+  .cx-bar i { background:#3d3d4a; }
+  /* The verb is the only coloured *text* on the row, and the light palette was never
+     re-themed for dark: #2e7d32 on --card is 3.3:1 and #1565c0 is 2.9:1, so forty-three
+     chips on this tab read as grey smudges. Same hues, lifted until each clears the 4.5:1
+     text minimum — and lifted onto the tokens the rest of the page already uses in dark
+     (--link's blue, --accent's red, --drift's amber), so the row's verbs belong to the
+     same palette as everything around them instead of being a second green and a second
+     red invented here. */
+  .cx-get{color:#8fd39c}.cx-post{color:#8ab4f8}.cx-put{color:#e0a33c}.cx-delete{color:#f08a8a}
+  .cx-patch{color:#c9a0ff}.cx-mcp{color:#b39dff}.cx-job{color:#e0a33c}
+  .cx-kafka,.cx-rabbit,.cx-jms{color:#4dd0e1}
+}
+

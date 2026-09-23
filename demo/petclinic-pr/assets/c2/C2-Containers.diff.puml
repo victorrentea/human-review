@@ -1,0 +1,18 @@
+@startuml
+' ⚠️  GENERATED — projected from the sequence diagrams by c2-from-sequence.py.
+!include <C4/C4_Container>
+HIDE_STEREOTYPE()
+skinparam hyperlinkUnderline false
+skinparam hyperlinkColor #1A4FA0
+title [[https://c4model.com/diagrams/container{What a container diagram is, on Simon Brown's own site} C2 Containers]]
+System_Boundary(c2_system, "PetClinic") {
+  Container(Backend, "Backend", "Java 21 / Spring Boot 3.5", "")
+  Container(Browser, "Browser", "Angular 16", "")
+  ContainerDb(DB, "DB", "PostgreSQL", "")
+  System_Ext(SMS_gateway, "SMS gateway", "SMS provider (simulated)", "")
+}
+Rel(Backend, DB, "SQL", "")
+Rel(Backend, SMS_gateway, "[[genseq://c2-7bea663a3f{Click for the calls behind this line} calls ⊕]]", "1 ops")
+Rel(Browser, Backend, "[[genseq://c2-75fafaa11f{Click for the calls behind this line} HTTP ⊕]]", "6 ops (was 5)")
+caption projected from sequence diagrams generated from test traces
+@enduml

@@ -1,0 +1,17 @@
+{
+ "base": "32e4e3d3dd814aad92e266c27d47b8535cdcefbb",
+ "head": "HEAD",
+ "points_file": "review-points.md",
+ "commits": 30,
+ "implementation": "92379dcc65309a477dfdee7eaa8f98b6f41e1156",
+ "review": "db6b67ece0336532484b6c96e1d080136e0198a0",
+ "session": null,
+ "fallback": false,
+ "after": [],
+ "after_detail": [],
+ "review_when": "2026-09-21T07:24:26+03:00",
+ "warnings": [
+  "3 commits carry a Review-Points trailer (ce56d912, 92379dcc, db6b67ec); taking the last one. Two rounds of review on one branch is legitimate, but the page reports one.",
+  "no Claude-Session trailer on either commit \u2014 the coding session is only findable through .human-review/.session or by scanning transcripts, and both of those outlive their accuracy"
+ ]
+}
