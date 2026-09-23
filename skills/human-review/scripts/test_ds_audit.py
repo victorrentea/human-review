@@ -645,6 +645,27 @@ def test_the_same_pairing_catches_a_component_a_branch_tore_out():
     assert screen["summary"]["regressions"] == [gap["id"]]
 
 
+def test_the_header_says_what_the_branch_is_charged_with_and_names_it_on_hover():
+    """ "1 regression" read as "1 regression = ?". The count says whose gap it is, and the
+    hover names the control, its screen, and that it was a component on the base."""
+    reg = registry_of([node("h", "div", ds="combo"),
+                       control("h>s", ds_host="combo", ds_host_sig="h", id="vetId")])
+    old = snap(node("h", "div", ds="combo"),
+               control("h>s", ds_host="combo", ds_host_sig="h", id="vetId"))
+    new = snap(control("plain", id="vetId"))
+    sides = {s: {"label": s, "page": {"w": 10, "h": 10}} for s in ("new", "old")}
+    screen = ds.build_screen("Edit visit", old, new, reg, sides_meta=sides,
+                             delta={"dom": {"added": [], "removed": [], "changed": [],
+                                            "moved": {}}, "elements": {}})
+    frag = ds.render(ds.build_result([screen], reg), "")
+    hdr = frag[frag.index('<p class="dsa-hdr">'):]
+    hdr = hdr[:hdr.index("</p>")]
+    assert "regression" not in hdr
+    assert ">1 introduced by this branch</b>" in hdr
+    tip = ds.regression_tip(ds.build_result([screen], reg))
+    assert "Edit visit: &lt;select" in tip and "a DS component on the base" in tip
+
+
 def test_a_gap_the_base_already_had_is_not_charged_to_the_branch():
     reg = registry_of([node("h", "div", ds="combo"),
                        control("h>s", ds_host="combo", ds_host_sig="h")])

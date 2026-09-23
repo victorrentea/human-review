@@ -1265,9 +1265,9 @@ Four tabs need something said about how they are written:
     the buttons first, in the spot the sentence used to hold, with the picture right under
     them; a sentence pasted above the token would sit above that instead of beside it.
 - **UX** — the only tab whose finding is an absence, and the only one no other check in the
-  repository can produce. **Its lede is one sentence**, not a paragraph of method: *Every
-  screen is built and shot on this branch and on the merge-base, and the audit flags native
-  controls — like a bare `<select>` — used where the design system already has a component
-  for them.* The three sentences it used to carry (what the audit reads off the components,
-  why labelling what is right proves nothing, which screens get a viewer) are visible in
-  the fragment itself, one row per screen, so the page does not need them said twice.
+  repository can produce. **Write no lede: the section is `includeHtml` alone, no `body`.**
+  It used to open on a paragraph of method (what the audit reads off the components, why
+  labelling what is right proves nothing, which builds are started, which screens get a
+  viewer), then on one sentence of it; Victor asked for it gone entirely. The fragment's
+  own header line and one row per screen already say all of it, and the tab's tooltip
+  carries the one-line gist.

@@ -1012,12 +1012,13 @@ details.dsa-screen > summary:hover { color: var(--link); }
   border: 3px solid var(--dsa-frame); border-radius: .35rem; }
 .dsa-frame.insert { border: 0; border-top: 3px dashed var(--dsa-frame); border-radius: 0; }
 .dsa:has(.dsa-frameon:not(:checked)) .dsa-frame { display: none; }
-.dsa-frametoggle { margin-left: auto; font-size: .82rem; display: inline-flex; gap: .35rem;
+.dsa-frametoggle { margin-left: .6rem; font-size: .82rem; display: inline-flex; gap: .35rem;
   align-items: center; cursor: pointer; user-select: none; color: var(--fg); }
 .dsa-frametoggle input { accent-color: var(--dsa-frame); margin: 0; }
 details.dsa-screen > summary .dsa-sumtail { font-weight: 400; }
 .dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
 .dsa-hdr .dsa-count { font-weight: 700; }
+.dsa-hdr .dsa-regress { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
 .dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
   padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
 .dsa-unlisted code { color: inherit; }
@@ -1323,6 +1324,31 @@ def _with_frame_toggle(viewer: str, frames: dict) -> str:
     return head + sep + bar + FRAME_TOGGLE + close + tail
 
 
+def regression_tip(result: dict) -> str:
+    """What the header's "introduced by this branch" count is made of, named per control.
+
+    The count alone read as "1 regression = ?": a regression of what, where. It counts the
+    gaps this branch is to blame for — a native control it added bare, or one that was a
+    design-system component on the base — as opposed to a gap already bare on the base.
+    """
+    rows = []
+    for sc in result["screens"]:
+        ids = set(sc["summary"]["regressions"])
+        for f in sc["findings"]:
+            if f["id"] in ids and f["side"] == "new" and f["verdict"] == "bare":
+                el = f["element"]
+                tag = f'<{el["tag"]}' + (f' id="{el["id"]}"' if el.get("id") else "") + ">"
+                where = " or ".join(f.get("expected_ds") or []) or "a DS component"
+                was = f.get("history", "").startswith("was a design-system")
+                rows.append(f'{html.escape(sc["screen"])}: {html.escape(tag)} where '
+                            f'{html.escape(where)} belongs'
+                            + (" (a DS component on the base)" if was else ""))
+    return ('<p class="tipfoot">Gaps this branch is to blame for \u2014 a native control it '
+            'added bare, or a design-system component it replaced with one. Gaps already '
+            'bare on the base are not counted.</p><ul class="tiplist">'
+            + "".join(f"<li>{r}</li>" for r in rows) + "</ul>")
+
+
 def render(result: dict, assets_prefix: str) -> str:
     """The fragment: the registry once, then one three-state viewer per screen.
 
@@ -1337,8 +1363,8 @@ def render(result: dict, assets_prefix: str) -> str:
     verdict_line = (
         f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
         f'{"" if counts["new"]["bare"] == 1 else "s"}'
-        + (f' \u00b7 <b>{len(counts["regressions"])} regression'
-           f'{"" if len(counts["regressions"]) == 1 else "s"}</b>'
+        + (f' \u00b7 <b class="dsa-regress" data-tip-html="{html.escape(regression_tip(result), quote=True)}">'
+           f'{len(counts["regressions"])} introduced by this branch</b>'
            if counts["regressions"] else "")
         + f' \u00b7 {len(touched)} of {n} screens changed \u00b7 {ds_phrase(counts)}'
         + (f' \u00b7 {len(counts["improvements"])} migrated'
