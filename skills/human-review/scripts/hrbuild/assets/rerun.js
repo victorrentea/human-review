@@ -421,13 +421,8 @@
       if (!window.HR.can(btn.getAttribute('data-rerun'))) return;
       btn.hidden = false;
       btn.removeAttribute('aria-disabled');
-      // The free one *is* the served badge, so the word steps aside for it. Only the free
-      // one: `Rerun + AI` is a second thing this page can do, not a second way of saying
-      // what this page is.
-      if (btn.getAttribute('data-rerun') !== '__rerun__') return;
-      if (btn.hasAttribute('data-tab')) return;   // a tab's ↻ is not the served badge
-      var mode = document.getElementById('hr-mode');
-      if (mode) mode.hidden = true;
+      // The `Served` badge stays beside it: Victor wants the badge to say what this copy
+      // is, and the ↺ to be only the press.
     });
     adopt();
   });

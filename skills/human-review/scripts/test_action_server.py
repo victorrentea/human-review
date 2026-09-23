@@ -816,23 +816,17 @@ def test_the_button_says_what_it_will_not_do():
     assert "Not the findings" in tip and "not the film" in tip
 
 
-def test_the_rerun_chip_is_the_served_badge():
-    """They were one fact written twice: a page is served *exactly when* it can rerun
-    itself, so the badge announced the condition and the button beside it was the only
-    thing that condition let you do. The badge is the button now — it wears the run glyph
-    every command on the page wears, it says both halves in its hover, and the word
-    `served` steps aside the moment this one comes up."""
+def test_the_served_badge_replaces_static_and_the_rerun_chip_keeps_a_brief_hover():
+    """Victor: a `Served` badge replaces `Static` and carries what serving means; the ↺
+    beside it says only what the press does."""
     assert build.CMD_RUN in build.RERUN_CHIP
     assert "chip-served" in build.RERUN_CHIP
     tip = re.search(r'data-tip="([^"]*)"', build.RERUN_CHIP).group(1)
-    assert tip.startswith("Served by the review server")
-    assert "rebuild the page" in tip
-    # Only the free one takes the badge's place: `Rerun + AI` is a second thing the page
-    # can do, not a second way of saying what the page is.
-    assert "if (btn.getAttribute('data-rerun') !== '__rerun__') return;" in build.RERUN_JS
-    assert "if (mode) mode.hidden = true;" in build.RERUN_JS
-    # And the word is still there for the served page whose server cannot rebuild it.
-    assert "chip.textContent = 'served';" in build.SERVER_JS
+    assert tip.startswith("Regenerate the report") and "rebuild the page" in tip
+    assert "Served by the review server" not in tip
+    assert "mode.hidden = true" not in build.RERUN_JS, "the badge stays beside the ↺"
+    assert "chip.textContent = 'Served';" in build.SERVER_JS
+    assert "Served by the review server" in build.SERVER_JS
 
 
 def test_a_running_chip_turns_its_glyph_rather_than_growing_a_word():

@@ -1075,7 +1075,7 @@ def main(argv=None) -> int:
         # Two chips, not one. `static` only says what this copy is, so it has no hover;
         # `Serve` is the thing to do about it, and it is the one that explains why.
         mode_html = (
-            '<span class="chip chip-mode" id="hr-mode">static</span>'
+            '<span class="chip chip-mode" id="hr-mode">Static</span>'
             '<button type="button" class="chip chip-serve copycmd" id="hr-serve" '
             f'data-copy="{html.escape(serve_cmd, quote=True)}" '
             # Victor's words, verbatim: what the click does, then why anyone wants it.

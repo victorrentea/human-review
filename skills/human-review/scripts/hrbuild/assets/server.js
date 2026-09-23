@@ -302,10 +302,13 @@ window.HR = (function () {
     if (serveChip) serveChip.hidden = true;
     var chip = document.getElementById('hr-mode');
     if (!chip) return;
-    chip.textContent = 'served';
+    chip.textContent = 'Served';
     chip.classList.add('chip-served');
-    chip.setAttribute('data-tip', 'Served by the review server: commands run from this '
-      + 'page, and recordings play in it.');
+    // The badge replaces `Static` and carries what serving means, so the ↺ beside it can
+    // keep a one-line hover about what *it* does.
+    chip.setAttribute('data-tip', 'Served by the review server (serve-review.py): the '
+      + 'buttons on this page run their action here instead of copying a command, '
+      + 'recordings play in the page, and \u21BA regenerates it.');
     // …and where the rerun chip can really run, *it* is this badge and this one goes: the
     // two were one fact written twice. The word stays for the served page whose server
     // cannot rebuild it — rarer than it sounds, and the only case where `served` has

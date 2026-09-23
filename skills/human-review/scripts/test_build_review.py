@@ -3377,7 +3377,7 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert '"test": "add-visit.spec.ts:52"' in out
     page, _ = _build(tmp_path, BARE)
     row = page[page.index('<div class="titlerow'):page.index("</div>", page.index('<div class="titlerow'))]
-    assert '<span class="chip chip-mode" id="hr-mode">static</span>' in row, \
+    assert '<span class="chip chip-mode" id="hr-mode">Static</span>' in row, \
         "in the title row, against the score, a label with no hover"
     assert '<button type="button" class="chip chip-serve copycmd" id="hr-serve"' in row
     assert "\U0001F4CB Serve</button>" in row
@@ -3389,7 +3389,7 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert line.startswith("cd ") and "serve-review.py" in line and "--page review.html" in line
     assert 'u="$(' in line and 'open "$u"' in line and "7654" not in line
     assert "if (serveChip) serveChip.hidden = true;" in page, "served: nothing left to copy"
-    assert "chip.textContent = 'served'" in page
+    assert "chip.textContent = 'Served'" in page
     # And in the tab strip, where a reader picks between several of these — one per
     # branch, a static copy beside a live one — long before anything in the page is on
     # screen. Play and not a green dot: green here means a check passed, and a tab that

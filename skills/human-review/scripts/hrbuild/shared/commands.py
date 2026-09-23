@@ -70,11 +70,11 @@ CMD_OPEN = "\u2197"         # ↗
 # application.
 RERUN_CHIP = ('<button type="button" class="chip chip-rerun chip-served" id="hr-rerun" '
               'hidden aria-disabled="true" data-rerun="__rerun__" '
-              'aria-label="Served by the review server \u2014 rerun and rebuild this page" '
-              'data-tip="Served by the review server: commands run from this page and '
-              'recordings play in it. Click to re-derive the evidence and rebuild the '
-              'page: diagrams, complexity, the REST contract, the logging scan, the test '
-              f'manifest. Not the findings, and not the film. Free.">'
+              'aria-label="Regenerate this report" '
+              # Brief, since the `Served` badge beside it now carries what serving means:
+              # what the press does, what it leaves alone, and the price.
+              'data-tip="Regenerate the report: re-derive the evidence and rebuild the '
+              f'page. Not the findings, and not the film. Free.">'
               f'<span class="rr-ico">{CMD_RUN}</span></button>')
 
 # The same button with the model's half in front of it, and the only control on this page
