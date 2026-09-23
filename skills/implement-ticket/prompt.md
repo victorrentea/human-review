@@ -47,6 +47,11 @@ Implement the ticket you were given, then record the review of your own work.
    `Co-Authored-By: Claude …` — leave it alone: the parser reads these keys out of the
    whole message body, not only out of git's trailer block, so a paragraph after them
    changes nothing. Do not move them, do not repeat them below it.
+5b. Then prepare the pull-request comments: write .human-review/pr-comments.json, the exact
+   body of GitHub's create-a-review call, one inline comment per item of review-points.md,
+   each on the line of the diff it is about. Format and rules: reference/pr-comments.md.
+   Check it:  push-pr-comments.py --check   — and fix every anchor it had to downgrade.
+   Do not post it; the human presses the button that does.
 6. Stop. Do not push, do not open a PR, do not build a review page.
 
 ---
@@ -55,6 +60,8 @@ The two paths above, resolved:
 
     ${CLAUDE_PLUGIN_ROOT}/skills/human-review/reference/review-points.md    the format
     ${CLAUDE_PLUGIN_ROOT}/skills/human-review/scripts/review-points.py      the parser
+    ${CLAUDE_PLUGIN_ROOT}/skills/human-review/reference/pr-comments.md      the PR comments
+    ${CLAUDE_PLUGIN_ROOT}/skills/human-review/scripts/push-pr-comments.py   their check
 
 `review-points.py --check` prints what it understood and writes nothing; it exits 4 on a
 file it cannot read and 5 on one whose every entry is unanchored. Both of those mean the

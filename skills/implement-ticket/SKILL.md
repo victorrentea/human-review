@@ -65,14 +65,15 @@ git log -1 --format='%(trailers:key=Claude-Session,valueonly)'
 
 ## What the flow downstream depends on
 
-Three things, and nothing else. Each is read by a script, so getting one wrong is a silent
-loss of exactly one row on the page:
+Three things, and a fourth for the pull request. Each is read by a script, so getting one
+wrong is a silent loss of exactly one row on the page:
 
 | what | read by | if it is missing |
 | --- | --- | --- |
 | `review-points.md` at the repo root | `scripts/review-points.py` | the Review tab has no Fixed / Ignored / Assumptions piles, and says so rather than rendering "nothing outstanding" |
 | `Review-Points:` + `Implements:` trailers | `scripts/review-commits.py` | which commit is the implementation and which is the review is guessed from the file's history, or not at all |
 | `Claude-Session:` on both commits | `scripts/session-cost.py` | the phase costs fall back to `.human-review/.session`, which is gitignored and dies with the directory |
+| `.human-review/pr-comments.json` (not committed) | `scripts/push-pr-comments.py`, behind the Review tab's *Push to GitHub PR* button | the button has nothing to send; `--from-review-points` can derive a blunter one from the record |
 
 **The trailers are the last lines the agent writes, and the harness writes after them.**
 Claude Code appends `Co-Authored-By: Claude …` as a paragraph of its own, which puts the

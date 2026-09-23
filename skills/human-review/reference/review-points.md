@@ -193,3 +193,10 @@ review-points.py --root ../petclinic --file docs/review-points.md --out /tmp/rp.
 Exit 3 and exit 5 are distinct on purpose. "Nobody wrote one" and "somebody wrote one with
 nothing checkable in it" are different failures, and the page says different things about
 them; a single "no points" code would let the second hide behind the first.
+
+## The same items, as comments on the pull request
+
+Once this file is committed, the same agent writes `.human-review/pr-comments.json`: every
+item above as an inline PR comment, anchored on a line of the diff and worded for the PR's
+own thread. The Review tab's *Push to GitHub PR* button sends it, unchanged, through
+`push-pr-comments.py`. Format and rules: [`pr-comments.md`](pr-comments.md).
