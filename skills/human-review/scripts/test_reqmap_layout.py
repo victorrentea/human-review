@@ -300,16 +300,18 @@ def test_nothing_of_the_ticket_or_the_test_list_is_lost_in_the_move(tmp_path):
         assert kept in out, kept
 
 
-def test_the_coverage_switch_sits_on_the_title_row_and_starts_checked(tmp_path):
-    """`Semantic Test Coverage`, checked, at the far end of the title row: the reader opens
+def test_the_coverage_switch_sits_on_the_ticket_header_and_starts_checked(tmp_path):
+    """`Semantic Test Coverage`, checked, at the far end of the ticket frame's header
+    strip, beside `opened on …`: the reader opens
     the tab to the matrix saying what it was built to say, and unchecks it to read the
     ticket as its author wrote it. The stylesheet takes the fills off under
     `data-semcov="off"`, which the one listener sets and clears."""
     out = _laid_out(tmp_path)
     head = out[out.index('class="rm-head"'):out.index('class="rm-text"')]
-    assert ('<label class="rm-semcov"><input type="checkbox" checked> '
-            'Semantic Test Coverage</label></p>') in head
-    assert head.index('class="rm-title"') < head.index('class="rm-semcov"')
+    assert "rm-semcov" not in head, "not on the title row any more"
+    assert ('opened on Jun 13, 2026</span><label class="rm-semcov"><input type="checkbox" '
+            'checked> Semantic Test Coverage</label></div>') in out
+    assert out.count('class="rm-semcov"') == 1, "only the ticket's header, not the tests'"
     css = out[out.rindex("<style>"):]
     assert ".reqmap[data-semcov=off] .rm-f[data-cov]{background:none}" in css
     assert ".reqmap[data-semcov=off] .rm-legend{visibility:hidden}" in css

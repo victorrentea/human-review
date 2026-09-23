@@ -529,21 +529,20 @@ SEMCOV_LABEL = "Semantic Test Coverage"
 
 
 def semcov_switch() -> str:
-    """The `Semantic Test Coverage` checkbox, checked. Same markup with or without a
-    resolved ticket: it belongs to the matrix, not to the heading it shares a row with."""
+    """The `Semantic Test Coverage` checkbox, checked. It sits at the far end of the
+    ticket frame's own header strip (`victorrentea opened on …`), on the thing whose
+    colouring it switches, rather than on the title row above the frame."""
     return (f'<label class="rm-semcov"><input type="checkbox" checked> '
             f'{SEMCOV_LABEL}</label>')
 
 
 def ticket_head(ref: dict | None) -> str:
-    """The ticket's title over its frame — the issue's own, never the PR's — and, at the
-    row's other end, the coverage switch.
+    """The ticket's title over its frame — the issue's own, never the PR's.
 
     GitHub's own shape, because that is where the reader has read this title before: the
     title, then the number after it in the muted weight. The whole of it is the link;
     half a title being clickable is a target nobody aims at. With no ticket resolved the
-    row still exists, for the switch: a checkbox that comes and goes with `gh`'s mood
-    would be a control the reader cannot count on."""
+    row is still there, empty, so both columns under it keep starting level."""
     if ref:
         face = (f'{html.escape(ref["title"])} '
                 f'<span class="rm-num">#{ref["number"]}</span>')
@@ -551,7 +550,7 @@ def ticket_head(ref: dict | None) -> str:
                  if ref.get("url") else f'<span class="rm-title">{face}</span>')
     else:
         title = ""
-    return f'<p class="rm-head">{title}{semcov_switch()}</p>'
+    return f'<p class="rm-head">{title}</p>'
 
 
 #: The layout above, as the stylesheet that has to hold it. Emitted with the fragment
@@ -576,8 +575,8 @@ REQMAP_CSS = """
    it to read as its title, with a little air over it so it does not hang off the tab strip. */
 .reqmap .rm-head{grid-column:1;grid-row:1;display:flex;align-items:center;
   justify-content:space-between;gap:12px;margin:10px 2px 8px;min-width:0}
-/* The switch keeps to the row's far end, out of the title's way, and reads in the
-   muted weight of a control rather than the weight of the heading beside it. */
+/* The switch keeps to the far end of the ticket's header strip, and reads in the muted
+   weight of a control rather than the weight of the login beside it. */
 .reqmap .rm-semcov{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;
   gap:6px;font-size:.85em;font-weight:500;color:var(--muted,#6b6b6b);cursor:pointer;
   user-select:none;white-space:nowrap}
@@ -721,6 +720,10 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
     side_col, cats = cut_cats
 
     text_col = _append_inside(text_col, legend)
+    # The switch goes on the ticket frame's header strip, at its far end.
+    text_col = re.sub(r'(<div class="rm-tkhead">.*?)(</div>)',
+                      lambda h: h.group(1) + semcov_switch() + h.group(2),
+                      text_col, count=1, flags=re.S)
     side_col = _append_inside(side_col, cats)
     body = (m.group(0) + ticket_head(ticket_ref(spec, out_dir))
             + text_col + side_col + "</div>")
