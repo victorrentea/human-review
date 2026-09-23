@@ -54,14 +54,15 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
    room with its own right padding and the pair is pulled back over that room. Still a
    sibling in the markup (a button cannot hold a button); only the box moves. How much
    room depends on which of the two the probe raised, so the width is a variable the
-   strip sets from what is actually visible — nothing raised, no room taken. */
+   strip sets from what is actually visible — nothing raised, no room taken. The pull-back
+   includes the strip's .5rem column gap (frame.css), which sits between the two boxes. */
 .tabstrip { --tabre-w:0px; }
 .tabstrip:has(.tab[aria-selected="true"] + .tabre > .tabrerun:not([hidden])) { --tabre-w:1.35rem; }
 .tabstrip:has(.tab[aria-selected="true"] + .tabre > .chip-rerun-ai:not([hidden])) { --tabre-w:5.55rem; }
 .tabstrip .tab[aria-selected="true"]:has(+ .tabre > .tabrerun:not([hidden])) {
             padding-right:calc(var(--tabre-w) + .55rem); }
 .tabstrip .tab[aria-selected="true"] + .tabre:has(> .tabrerun:not([hidden])) {
-            margin-left:calc(-1 * var(--tabre-w) - .5rem); margin-right:.3rem;
+            margin-left:calc(-1 * var(--tabre-w) - .7rem); margin-right:0;
             position:relative; z-index:1; }
 .tabre .tabrerun { padding:0 .3rem; border-radius:999px; border:1px solid;
             font-size:.7rem; line-height:1.35; background:var(--card); }

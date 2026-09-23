@@ -50,7 +50,9 @@
 /* Inside the masthead the strip is no longer its own sticky, full-bleed band: the block
    around it does the bleeding, the pinning and the edge. */
 .masthead .tabstrip { position:static; margin:.1rem 0 0; width:auto;
-            padding:.1rem 0 .15rem; background:transparent; border-bottom:0; }
+            padding:.1rem 0 0; background:transparent; border-bottom:0; }
+/* The tabs stand on the masthead's bottom line, so nothing may sit between them and it. */
+.masthead:has(.tabstrip) { padding-bottom:0; }
 /* The two refs the whole page is a comparison of: the first two chips on the scope bar,
    each one click from its own page on GitHub. Monospaced names, because a git ref is a
    name to be matched character for character against a terminal, and the branch under

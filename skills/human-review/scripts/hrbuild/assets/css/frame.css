@@ -10,9 +10,9 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
    is a fixed height: `--strip-h` is still measured off the rendered box. */
 .tabstrip { position:sticky; top:0; z-index:30; margin:.5rem 0 .85rem;
             margin-left:calc(50% - 50vw); width:100vw;
-            padding:.3rem max(1.25rem, calc(50vw - 540px + 1.25rem));
+            padding:.3rem max(1.25rem, calc(50vw - 540px + 1.25rem)) 0;
             background:var(--bg); border-bottom:1px solid var(--line);
-            display:flex; gap:.2rem .3rem; flex-wrap:wrap; align-items:center; }
+            display:flex; gap:.2rem .5rem; flex-wrap:wrap; align-items:flex-end; }
 /* The right padding is relaxed by ~80px into the full-bleed the strip already has, so
    the pills get a track wider than the text column and stay on one row for one tab
    longer. The left padding is untouched, so the first tab stays aligned with the body
@@ -23,43 +23,68 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); 
 /* Struck through, not hidden: the tab still holds the current state as context, and a
    reviewer who cannot see that it exists cannot tell it was considered. */
 button.tab.quiet { text-decoration:line-through; text-decoration-thickness:1px; opacity:.5; }
-button.tab.quiet:hover, button.tab.quiet[aria-selected="true"] { opacity:.85; }
+button.tab.quiet:hover { opacity:.85; }
+/* Selected, a struck tab is not dimmed: opacity would reach its flares too, and the line
+   they are there to hide would show through them. */
+button.tab.quiet[aria-selected="true"] { opacity:1; }
 /* Every tab wears its own edge, unpressed. They used to be bare words on the page's own
    background, with a fill on the selected one and nothing at all on the other twelve: a
    row of labels, one of which happened to be highlighted, which is what a *caption* looks
    like. A reader cannot tell a label they can click from a label they cannot by reading
-   it, so the affordance is drawn — a card ground and a hairline each, the page's own chip
-   shape, so the strip reads as thirteen controls before anything is hovered. */
-button.tab { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:999px;
+   it, so the affordance is drawn — a card ground and a hairline each, so the strip reads
+   as thirteen controls before anything is hovered.
+   Drawn as tabs, not pills: rounded at the top, square at the bottom, standing on the line
+   that closes the strip. A pill floats; it says "button". A tab stands on the edge of the thing
+   it opens, which is the one fact about these controls a pill could not say. */
+button.tab { border:1px solid var(--line); border-bottom:0; background:var(--card); color:var(--muted);
+             border-radius:.55rem .55rem 0 0; position:relative;
              cursor:pointer; font:600 .87rem/1.8 inherit; padding:0 .85rem; white-space:nowrap;
              display:inline-flex; align-items:center; gap:.42rem;
-             transition:background .18s, border-color .18s, color .18s, box-shadow .18s,
+             transition:background .18s, border-color .18s, color .18s,
                         padding .22s ease; }
 /* Hover now has to be a *different* state from resting, not the arrival of one: the card
    ground is already there, so the pointer buys the accent wash and the link colour on the
    edge — the same pair `a.chip-link` uses, for the same reason. */
 button.tab:hover { color:var(--fg); background:var(--accent-soft); border-color:var(--link); }
-/* Selected keeps the inversion — the strongest signal on the strip, and the one thing
-   thirteen outlined pills must not be able to be confused with — and gains the lift, so
-   the current tab reads as the one standing in front of the others. */
-button.tab[aria-selected="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg);
-             box-shadow:0 1px 3px rgba(0,0,0,.2); }
+/* Selected is the tab the page below belongs to, so it is made *of* the page: the page's
+   own ground, the strip's own hairline running up its sides and over its top, and nothing
+   at its foot — it reaches 1px down over the line under the strip, which breaks there, and the panel reads as the tab's
+   continuation rather than as a separate block under a highlighted word. It used to be the
+   inversion (a --fg fill), which is the loudest mark a pill can wear but says "pressed",
+   not "open onto this". */
+button.tab[aria-selected="true"] { background:var(--bg); color:var(--fg); border-color:var(--line);
+             z-index:1; padding-bottom:1px; margin-bottom:-1px; }
+/* The two concave flares at its foot: the hairline, arriving along the bottom of the strip,
+   curves up into the tab's sides instead of meeting them at a right angle — the shape that
+   makes a tab look like it grows out of the page rather than being set down on it. Each is
+   a quarter circle cut out of a --bg square: inside the circle is the strip, the ring is
+   the hairline, outside is the tab's own ground. `--tf` is the flare radius; the tabs are
+   spaced a little wider than it so a flare never lands on a neighbour. */
+.tabstrip { --tf:7px; }
+button.tab[aria-selected="true"]::before, button.tab[aria-selected="true"]::after {
+  content:""; position:absolute; bottom:0; width:var(--tf); height:var(--tf); pointer-events:none; }
+button.tab[aria-selected="true"]::before { left:calc(-1 * var(--tf));
+  background:radial-gradient(circle at 0 0, transparent calc(var(--tf) - 1px),
+             var(--line) calc(var(--tf) - 1px), var(--line) var(--tf), var(--bg) calc(var(--tf) + .5px)); }
+button.tab[aria-selected="true"]::after { right:calc(-1 * var(--tf));
+  background:radial-gradient(circle at 100% 0, transparent calc(var(--tf) - 1px),
+             var(--line) calc(var(--tf) - 1px), var(--line) var(--tf), var(--bg) calc(var(--tf) + .5px)); }
 button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;
                 font-variant-numeric:tabular-nums; }
 /* A tab the reviewer must not skip — a blocked merge — is red. It used to wear a `!` in
    a red circle beside its name, which is the same fact said as an ornament: a glyph the
    reader has to decode hung off a word that could simply have carried the colour itself.
-   The label *is* the alarm now. Selected, the strip inverts everything, so the red moves
-   to the fill and the word turns white rather than losing the one thing marking it. */
+   The label *is* the alarm now, and it stays the alarm when the tab is open: the tab takes
+   the page's ground like any other, and the word keeps its red. */
 button.tab.alarm { color:#c62828; }
 button.tab.alarm:hover { color:#a41f1f; background:var(--accent-soft); border-color:#c62828; }
-button.tab[aria-selected="true"].alarm { background:#c62828; color:#fff; border-color:#c62828; }
+button.tab[aria-selected="true"].alarm { background:var(--bg); color:#c62828; border-color:var(--line); }
 /* Same alarm, one notch down: a required approval that is not the escalation of last
    resort (an ordinary CODEOWNERS reviewer, not the team guarding the guardrails) reads
    as amber rather than red, so the strip does not cry wolf on a routine sign-off. */
 button.tab.warn { color:#b56b00; }
 button.tab.warn:hover { color:#8f5500; background:var(--accent-soft); border-color:#b56b00; }
-button.tab[aria-selected="true"].warn { background:#b56b00; color:#fff; border-color:#b56b00; }
+button.tab[aria-selected="true"].warn { background:var(--bg); color:#b56b00; border-color:var(--line); }
 /* A verdict the strip can carry without words: green nothing changed, amber changed
    but nothing breaks, red a caller breaks. A number there ("+3") counted changes,
    which is not the question anyone opens that tab with. */
@@ -69,12 +94,10 @@ button.tab .n.dot-green, button.tab .n.dot-amber, button.tab .n.dot-red {
 @media (prefers-color-scheme:dark) {
   button.tab.alarm { color:#ff8a8a; }
   button.tab.alarm:hover { color:#ffb0b0; border-color:#ff8a8a; }
-  button.tab[aria-selected="true"].alarm { background:#ff8a8a; color:#1d1d24;
-                                           border-color:#ff8a8a; }
+  button.tab[aria-selected="true"].alarm { color:#ff8a8a; }
   button.tab.warn { color:#e6c07b; }
   button.tab.warn:hover { color:#f0d39a; border-color:#e6c07b; }
-  button.tab[aria-selected="true"].warn { background:#e6c07b; color:#1d1d24;
-                                          border-color:#e6c07b; }
+  button.tab[aria-selected="true"].warn { color:#e6c07b; }
 }
 button.tab .n.dot-green { background:#2e9e5b; }
 button.tab .n.dot-amber { background:#d98218; }
