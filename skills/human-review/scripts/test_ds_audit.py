@@ -777,14 +777,15 @@ def test_an_element_that_only_moved_does_not_reopen_the_screen():
 
 def test_a_drawn_screen_states_its_gaps_above_the_fold():
     """Folding a screen hides the pictures; hiding the verdict would be hiding a finding.
-    The icon and the short verdict live in the `<summary>` itself, so they read before
-    anything is opened."""
+    The icon and the two counts live in the `<summary>` itself, on the name's own line —
+    they used to be two more lines under it plus a second `pictures and findings` fold."""
     reg, screen = _screen_from_capture()
     frag = ds.render(ds.build_result([screen], reg), "")
     row = frag[frag.index('<details class="dsa-screen"'):]
     summary = row[row.index("<summary>") : row.index("</summary>")]
     assert "⚠" in summary
-    assert "component outside the design system" in summary
+    assert "1 gap</span> \u00b7 2 components" in summary
+    assert "pictures and findings" not in frag
 
 
 def test_the_route_rides_in_the_summary_next_to_the_name():
@@ -1026,3 +1027,72 @@ def test_the_behaviour_is_delegated_off_document_like_the_rest_of_the_page():
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# ── framing the changes ───────────────────────────────────────────────────────────
+
+def _page(tmp_path, name, blocks, h=400, w=600):
+    """A flat grey page with dark rectangles on it: (x, y, w, h) each."""
+    from PIL import Image, ImageDraw
+    im = Image.new("RGB", (w, h), (240, 240, 240))
+    d = ImageDraw.Draw(im)
+    for x, y, bw, bh in blocks:
+        d.rectangle((x, y, x + bw - 1, y + bh - 1), fill=(40, 40, 40))
+    path = tmp_path / name
+    im.save(path)
+    return path
+
+
+def test_an_inserted_row_is_one_frame_and_what_slid_down_is_not_framed(tmp_path):
+    """A field inserted mid-form pushes everything under it down. Rows are aligned the
+    way `diff` aligns lines, so the buttons that only moved match, and the frame wraps
+    the new field alone; on the base its twin is a dashed line where it went in."""
+    old = _page(tmp_path, "o.png", [(50, 50, 300, 20), (50, 120, 80, 30)])
+    new = _page(tmp_path, "n.png", [(50, 50, 300, 20), (50, 100, 400, 24), (50, 160, 80, 30)])
+    fr = ds.change_frames(old, new)
+    assert len(fr["new"]) == len(fr["old"]) == 1
+    n, o = fr["new"][0], fr["old"][0]
+    assert not n["insert"] and o["insert"]
+    assert n["y"] <= 100 and n["y"] + n["h"] >= 124 and n["y"] + n["h"] < 160
+    assert n["x"] <= 50 and n["x"] + n["w"] >= 450
+
+
+def test_two_changes_far_apart_get_two_frames_not_one_around_the_screen(tmp_path):
+    old = _page(tmp_path, "o.png", [(40, 40, 100, 20), (400, 330, 100, 20)])
+    new = _page(tmp_path, "n.png", [(40, 40, 140, 20), (400, 330, 150, 20)])
+    fr = ds.change_frames(old, new)
+    assert len(fr["new"]) == 2
+    top, bottom = sorted(fr["new"], key=lambda f: f["y"])
+    assert top["y"] + top["h"] < 100 and bottom["y"] > 300
+
+
+def test_changes_close_together_share_one_frame(tmp_path):
+    old = _page(tmp_path, "o.png", [])
+    new = _page(tmp_path, "n.png", [(40, 100, 60, 20), (140, 100, 60, 20), (40, 140, 60, 20)])
+    assert len(ds.change_frames(old, new)["new"]) == 1
+
+
+def test_identical_screens_have_no_frames(tmp_path):
+    a = _page(tmp_path, "a.png", [(10, 10, 50, 50)])
+    assert ds.change_frames(a, a) == {"new": [], "old": []}
+
+
+def test_frames_are_drawn_on_every_view_behind_a_checkbox_that_starts_checked():
+    reg, screen = _screen_from_capture()
+    screen = copy.deepcopy(screen)
+    screen["frames"] = {"new": [{"x": 10, "y": 20, "w": 30, "h": 40, "insert": False}],
+                        "old": [{"x": 10, "y": 20, "w": 30, "h": 0, "insert": True}]}
+    frag = ds.render(ds.build_result([screen], reg), "")
+    assert frag.count('class="dsa-frame"') == 2      # the Diff pane and New
+    assert frag.count('class="dsa-frame insert"') == 1
+    bar = frag[frag.index('<div class="dgmbar">'):]
+    bar = bar[:bar.index('<div class="dgmpane"')]
+    assert 'class="dsa-frameon" checked' in bar and "frame the changes" in bar
+    assert ".dsa:has(.dsa-frameon:not(:checked)) .dsa-frame" in ds.CSS
+
+
+def test_a_screen_without_frames_gets_no_checkbox():
+    reg, screen = _screen_from_capture()
+    frag = ds.render(ds.build_result([screen], reg), "")
+    assert "dsa-frameon" not in frag.replace("'.dsa-frameon'", "").replace(
+        "contains('dsa-frameon')", "")

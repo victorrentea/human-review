@@ -713,6 +713,152 @@ def churn(mask, box: dict) -> float:
     return float(region.mean()) if region.size else 0.0
 
 
+# ── framing the changes ───────────────────────────────────────────────────────────
+#
+# Two changes closer than FRAME_VGAP px vertically share a frame; within one band of
+# changed rows, ink is split into separate frames only across a horizontal gap wider than
+# FRAME_HGAP_SHARE of the page — a table header whose labels all moved is one change, a
+# field on the left and a badge on the far right are two. FRAME_PAD is the breathing room.
+FRAME_VGAP = 56
+FRAME_HGAP_SHARE = 0.25
+FRAME_PAD = 8
+FRAME_MIN_INK = 6
+
+
+def _runs(mask, gap: int) -> list[tuple[int, int]]:
+    """[start, end) runs of True in a 1-D mask, bridging holes of at most `gap`."""
+    import numpy as np
+
+    xs = np.flatnonzero(mask)
+    if not xs.size:
+        return []
+    out, start, prev = [], int(xs[0]), int(xs[0])
+    for x in xs[1:]:
+        x = int(x)
+        if x - prev > gap:
+            out.append((start, prev + 1))
+            start = x
+        prev = x
+    out.append((start, prev + 1))
+    return out
+
+
+def change_frames(old_png: Path, new_png: Path, *, vgap: int = FRAME_VGAP,
+                  hgap_share: float = FRAME_HGAP_SHARE, pad: int = FRAME_PAD) -> dict:
+    """Where on the screen the branch changed something: a few rectangles per side.
+
+    No model, no DOM — a text diff over the picture's *rows*. Each pixel row of either
+    screenshot is hashed, and `difflib` aligns the two sequences the way `diff` aligns
+    two files. A field inserted mid-form is then an *insertion* of 40 rows, and the
+    buttons below it, which only slid down, are rows that match — so the layout shift
+    that paints a naive pixel diff magenta down to the footer costs nothing here.
+
+    Each non-matching hunk is reduced to its ink: for rows present on both sides, the
+    columns that differ; for rows only one side has, the columns that differ from both
+    rows bounding the hunk on that side (the background and a card's vertical borders run
+    straight through and drop out). The ink is split into horizontal runs across wide
+    gaps, each run trimmed to the rows it actually touches, then runs are clustered —
+    two whose rectangles come within `vgap` on either side merge, to a fixpoint. One
+    change is one frame; two changes at opposite ends of the screen are two.
+
+    Every frame has a twin on the other side, at the same columns. When one side has no
+    rows for it — a pure insertion or removal — its twin is `insert: True`, a zero-height
+    line at the place the content went in or came out.
+    """
+    import difflib
+
+    import numpy as np
+    from PIL import Image
+
+    a = np.asarray(Image.open(old_png).convert("RGB"))
+    b = np.asarray(Image.open(new_png).convert("RGB"))
+    w = min(a.shape[1], b.shape[1])
+    a, b = a[:, :w], b[:, :w]
+    hgap = int(w * hgap_share)
+    sm = difflib.SequenceMatcher(None, [r.tobytes() for r in a], [r.tobytes() for r in b],
+                                 autojunk=False)
+
+    def ink_alone(block, own, lo, hi):
+        refs = ([own[lo - 1]] if lo > 0 else []) + ([own[hi]] if hi < own.shape[0] else [])
+        m = np.ones(block.shape[:2], dtype=bool)
+        for r in refs:
+            m &= (block != r[None]).any(-1)
+        return m
+
+    items = []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        k = min(i2 - i1, j2 - j1)
+        new_ink = np.zeros((j2 - j1, w), dtype=bool)
+        old_ink = np.zeros((i2 - i1, w), dtype=bool)
+        if k:
+            d = (a[i1:i1 + k] != b[j1:j1 + k]).any(-1)
+            new_ink[:k] |= d
+            old_ink[:k] |= d
+        if j2 - j1 > k:
+            new_ink[k:] = ink_alone(b[j1 + k:j2], b, j1, j2)
+        if i2 - i1 > k:
+            old_ink[k:] = ink_alone(a[i1 + k:i2], a, i1, i2)
+        for x0, x1 in _runs(new_ink.any(0) | old_ink.any(0), hgap):
+            def span(m, base):
+                rows = np.flatnonzero(m[:, x0:x1].any(1))
+                return ((base, base) if not rows.size
+                        else (base + int(rows[0]), base + int(rows[-1]) + 1))
+            ink = int(new_ink[:, x0:x1].sum() + old_ink[:, x0:x1].sum())
+            if ink >= FRAME_MIN_INK:
+                items.append({"x": (x0, x1), "new": span(new_ink, j1),
+                              "old": span(old_ink, i1)})
+
+    def near(p, q):
+        if p["x"][0] > q["x"][1] + hgap or q["x"][0] > p["x"][1] + hgap:
+            return False
+        return any(not (p[s][0] > q[s][1] + vgap or q[s][0] > p[s][1] + vgap)
+                   for s in ("new", "old"))
+
+    merged = True
+    while merged:
+        merged = False
+        for i in range(len(items)):
+            j = next((j for j in range(i + 1, len(items)) if near(items[i], items[j])), None)
+            if j is not None:
+                p, q = items[i], items.pop(j)
+                for key in ("x", "new", "old"):
+                    p[key] = (min(p[key][0], q[key][0]), max(p[key][1], q[key][1]))
+                merged = True
+                break
+
+    def blank(img, y, x0, x1):
+        row = img[y, x0:x1]
+        return bool((row == row[0]).all())
+
+    def seam(img, y, x0, x1):
+        """Where on the side that lacks it the change went in. The row diff pins it to
+        the first row that stopped matching, which is often the last pixel of the field
+        above — so the line is centred in the run of blank rows around that point, the
+        gutter between the two fields, instead of striking through one of them."""
+        lo = hi = min(max(y, 0), img.shape[0] - 1)
+        while lo > 0 and blank(img, lo - 1, x0, x1):
+            lo -= 1
+        while hi < img.shape[0] - 1 and blank(img, hi, x0, x1):
+            hi += 1
+        return (lo + hi) // 2
+
+    out = {"new": [], "old": []}
+    for it in sorted(items, key=lambda it: (it["new"][0], it["x"][0])):
+        for side, img in (("new", b), ("old", a)):
+            (x0, x1), (y0, y1) = it["x"], it[side]
+            X0, X1 = max(x0 - pad, 0), min(x1 + pad, img.shape[1])
+            if y0 == y1:
+                out[side].append({"x": X0, "y": seam(img, y0, x0, x1), "w": X1 - X0,
+                                  "h": 0, "insert": True})
+                continue
+            Y0, Y1 = max(y0 - pad, 0), min(y1 + pad, img.shape[0])
+            out[side].append({"x": X0, "y": Y0, "w": X1 - X0, "h": Y1 - Y0,
+                              "insert": False})
+    return out
+
+
 def registered_churn(old_png, new_png, old_box, new_box, threshold=0.1) -> float:
     """The same element on both sides, each cropped on *its own* box and compared with
     the two crops aligned at their top-left corner.
@@ -859,16 +1005,27 @@ details.dsa-screen > summary:hover { color: var(--link); }
 .dsa-considered { margin: .6rem 0 0; font-size: .84rem; opacity: .85; }
 .dsa-considered summary { cursor: pointer; }
 .dsa-considered ul { margin: .4rem 0 0 .2rem; }
+/* The change frames: one per place the branch changed (see `change_frames`), off with
+   the checkbox on the viewer's bar. `.insert` is the zero-height twin on the side that
+   lacks the change — a dashed line where it went in or came out. */
+.dsa-frame { position: absolute; box-sizing: border-box; pointer-events: none;
+  border: 3px solid var(--dsa-frame); border-radius: .35rem; }
+.dsa-frame.insert { border: 0; border-top: 3px dashed var(--dsa-frame); border-radius: 0; }
+.dsa:has(.dsa-frameon:not(:checked)) .dsa-frame { display: none; }
+.dsa-frametoggle { margin-left: auto; font-size: .82rem; display: inline-flex; gap: .35rem;
+  align-items: center; cursor: pointer; user-select: none; color: var(--fg); }
+.dsa-frametoggle input { accent-color: var(--dsa-frame); margin: 0; }
+details.dsa-screen > summary .dsa-sumtail { font-weight: 400; }
 .dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
 .dsa-hdr .dsa-count { font-weight: 700; }
 .dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
   padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
 .dsa-unlisted code { color: inherit; }
 :root { --dsa-ok: #1f7a45; --dsa-bad: #c1121f; --dsa-new: #1a4fa0; --dsa-hot: #f0a500;
-        --dsa-label-fg: #ffffff; }
+        --dsa-label-fg: #ffffff; --dsa-frame: #a23fd6; }
 @media (prefers-color-scheme: dark) {
   :root { --dsa-ok: #46c07a; --dsa-bad: #ff6b6b; --dsa-new: #7aa9ef; --dsa-hot: #ffc94d;
-          --dsa-label-fg: #15151a; }
+          --dsa-label-fg: #15151a; --dsa-frame: #c77dff; }
   .dsa-shot img { filter: none; }
 }
 """
@@ -888,6 +1045,11 @@ HL_JS = """<script>
     scope.querySelectorAll('.dsa-mark.hot').forEach(function (m) { m.classList.remove('hot'); });
     marks(scope, tr.getAttribute('data-find')).forEach(function (m) { m.classList.add('hot'); });
   });
+  // "frame the changes" is one preference, not one per screen: flipping any flips all.
+  document.addEventListener('change', function (ev) {
+    if (!ev.target.classList || !ev.target.classList.contains('dsa-frameon')) return;
+    document.querySelectorAll('.dsa-frameon').forEach(function (c) { c.checked = ev.target.checked; });
+  });
   document.addEventListener('mouseout', function (ev) {
     var tr = ev.target.closest && ev.target.closest('.dsa-table tr[data-find]');
     if (!tr) return;
@@ -902,11 +1064,20 @@ def _pct(v, total):
     return f"{(v / total * 100):.4f}%" if total else "0%"
 
 
-def shot_html(png_rel: str, page: dict, marks: list[dict]) -> str:
+def shot_html(png_rel: str, page: dict, marks: list[dict],
+              frames: list[dict] | None = None) -> str:
     """A screenshot with boxes over it, positioned in percentages so the picture stays
-    responsive — the report is read on a laptop and on a projector."""
+    responsive — the report is read on a laptop and on a projector. `frames` are the
+    change frames (`change_frames`), drawn under the marks so a badge stays readable."""
     w, h = max(page["w"], 1), max(page["h"], 1)
     out = [f'<div class="dsa-shot"><img src="{html.escape(png_rel)}" alt="" loading="lazy">']
+    for fr in frames or []:
+        style = (f'left:{_pct(fr["x"], w)};top:{_pct(fr["y"], h)};'
+                 f'width:{_pct(fr["w"], w)};height:{_pct(fr["h"], h)}')
+        tip = ("the change goes in here \u2014 the other side has it"
+               if fr.get("insert") else "changed on this branch")
+        out.append(f'<div class="dsa-frame{" insert" if fr.get("insert") else ""}" '
+                   f'style="{style}" data-tip="{tip}"></div>')
     for m in marks:
         b = m["box"]
         style = (f'left:{_pct(b["x"], w)};top:{_pct(b["y"], h)};'
@@ -1038,9 +1209,11 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     pages = {s: screen["sides"][s]["page"] for s in ("new", "old")}
     stem = f'{assets_prefix}ds-audit-{slug(screen["screen"])}'
 
+    frames = screen.get("frames") or {}
+
     def annotated(side):
         return LEGEND + shot_html(f"{stem}-{side}.png", pages[side],
-                                  _marks_for(findings, side))
+                                  _marks_for(findings, side), frames.get(side))
 
     # The delta pane: the pixel mask over the new shot, with the elements the DOM says
     # are new or changed outlined on top of it. Neither half is enough on its own.
@@ -1061,7 +1234,8 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     # Order is the control's, not the reader's: Diff is always the first button. Which
     # one *opens* is a separate question, and here the answer is New — see the call to
     # `dgm_views_html` at the bottom of this function.
-    panes = [("diff", DIFF_LEGEND + shot_html(f"{stem}-delta.png", pages["new"], delta_marks)),
+    panes = [("diff", DIFF_LEGEND + shot_html(f"{stem}-delta.png", pages["new"], delta_marks,
+                                                      frames.get("new"))),
              ("new", annotated("new")), ("old", annotated("old"))]
 
     rows = []
@@ -1087,17 +1261,19 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
             f'<td>{churn_txt}</td></tr>')
 
     counts = screen["summary"]
-    # Binary, on purpose: the fold's own icon is the verdict now, and a reader who wants
-    # the gap count, the component count, or which ones migrated finds them in the table
-    # underneath \u2014 the summary just says whether this screen is the one to open.
-    has_gap = bool(counts["new"]["bare"])
-    icon = "\u26a0\ufe0f" if has_gap else "\u2705"
-    short_verdict = ("component outside the design system" if has_gap
-                     else "all controls from the design system")
+    # One line: the fold's arrow, the verdict icon, the name, the route, and the two
+    # counts that used to sit on lines of their own under it. Opening it is what "pictures
+    # and findings" used to be a second fold for. A screen with nothing for the design
+    # system to judge gets no `0 gaps · 0 components`, which would read as a verdict.
+    gaps = counts["new"]["bare"]
+    icon = "\u26a0\ufe0f" if gaps else "\u2705"
     route = screen.get("route")
     route_html = (f' <span class="dsa-route">({html.escape(route)})</span>' if route else "")
-    summary = (f'{icon} {html.escape(_title_case(screen["screen"]))}{route_html} '
-              f'\u2014 changed \u00b7 {short_verdict}')
+    tail = ("all controls from the design system" if screen_has_nothing_to_judge(screen)
+            else f'<span class="dsa-count">{gaps} gap{"" if gaps == 1 else "s"}</span>'
+                 f' \u00b7 {ds_phrase(counts)}')
+    summary = (f'{icon} {html.escape(_title_case(screen["screen"]))}{route_html}'
+               f' <span class="dsa-sumtail">\u00b7 {tail}</span>')
 
     table = ('<table class="dsa-table"><thead><tr><th></th><th>side</th><th>element</th>'
              '<th>role</th><th>why</th><th>delta</th><th>churn</th></tr></thead><tbody>'
@@ -1127,7 +1303,24 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     return (f'<div class="dsa">'
             f'<details class="dsa-screen" id="dsa-{slug(screen["screen"])}">'
             f'<summary>{summary}</summary>'
-            f'{build.dgm_views_html(panes, initial="new")}{table}{considered}</details></div>')
+            f'{_with_frame_toggle(build.dgm_views_html(panes, initial="new"), frames)}'
+            f'{table}{considered}</details></div>')
+
+
+FRAME_TOGGLE = ('<label class="dsa-frametoggle" data-tip="draw a frame around each place '
+                'this branch changed the screen, on every view">'
+                '<input type="checkbox" class="dsa-frameon" checked> frame the changes</label>')
+
+
+def _with_frame_toggle(viewer: str, frames: dict) -> str:
+    """The checkbox rides on the viewer's own button bar, after Diff and New/Old. The
+    viewer is the report's shared one, so it is appended to its markup here rather than
+    taught a new option; a screen with no frames gets no checkbox that would do nothing."""
+    if not (frames.get("new") or frames.get("old")) or '<div class="dgmbar">' not in viewer:
+        return viewer
+    head, sep, rest = viewer.partition('<div class="dgmbar">')
+    bar, close, tail = rest.partition("</div>")
+    return head + sep + bar + FRAME_TOGGLE + close + tail
 
 
 def render(result: dict, assets_prefix: str) -> str:
@@ -1470,6 +1663,10 @@ def main():
                     help="how the fragment refers to the PNGs from the page")
     ap.add_argument("--from-capture", metavar="DIR",
                     help="skip the browser and re-render an earlier capture")
+    ap.add_argument("--rerender", metavar="JSON",
+                    help="no browser, no snapshots: re-render the fragment from an earlier "
+                         "--json and the PNGs already in --assets, recomputing the change "
+                         "frames; the JSON is rewritten with them")
     ap.add_argument("--keep-capture", metavar="DIR",
                     help="write the raw snapshots there for a later --from-capture")
     ap.add_argument("-o", "--out", default="ds-audit.html")
@@ -1482,6 +1679,9 @@ def main():
         print(CSS)
         return
     args.asset_prefix = asset_prefix(args.asset_prefix)
+    if args.rerender:
+        rerender(Path(args.rerender), Path(args.assets), args.asset_prefix, Path(args.out))
+        return
 
     assets = Path(args.assets)
     assets.mkdir(parents=True, exist_ok=True)
@@ -1594,10 +1794,13 @@ def main():
                     "page": _png_size(pngs["old"], pair["old"]["page"]),
                     "viewport": pair["old"]["viewport"]},
         }
-        screens.append(build_screen(name, pair["old"], pair["new"], registry,
-                                    sides_meta=sides_meta,
-                                    delta={"dom": dom, "elements": elements},
-                                    route=routes.get(name)))
+        screen = build_screen(name, pair["old"], pair["new"], registry,
+                              sides_meta=sides_meta,
+                              delta={"dom": dom, "elements": elements},
+                              route=routes.get(name))
+        if screen_touched(screen):
+            screen["frames"] = change_frames(pngs["old"], pngs["new"])
+        screens.append(screen)
 
     result = build_result(screens, registry)
     result["unlisted"] = [dict(zip(("component", "route", "via"), u.split("=", 2)))
@@ -1611,6 +1814,20 @@ def main():
     print(f'[ds-audit] {args.out} · {len(screens)} screen(s), {s["new"]["bare"]} gap(s), '
           f'{s["new"]["ds"]} component(s), {len(s["regressions"])} regression(s) '
           f'→ {args.json_out}', file=sys.stderr)
+
+
+def rerender(json_path: Path, assets: Path, prefix: str, out: Path) -> None:
+    """A generator change, seen without a second pair of builds: the result JSON already
+    carries every verdict, and the frames only need the two PNGs beside it."""
+    result = json.loads(json_path.read_text(encoding="utf-8"))
+    for sc in result["screens"]:
+        stem = assets / f'ds-audit-{slug(sc["screen"])}'
+        old, new = Path(f"{stem}-old.png"), Path(f"{stem}-new.png")
+        if screen_touched(sc) and old.is_file() and new.is_file():
+            sc["frames"] = change_frames(old, new)
+    json_path.write_text(json.dumps(result, indent=1), encoding="utf-8")
+    out.write_text(render(result, prefix), encoding="utf-8")
+    print(f"[ds-audit] re-rendered {out} from {json_path}", file=sys.stderr)
 
 
 def _name_from_url(url: str, i: int) -> str:
