@@ -3733,17 +3733,18 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert '"test": "add-visit.spec.ts:52"' in out
     page, _ = _build(tmp_path, BARE)
     row = page[page.index('<div class="titlerow'):page.index("</div>", page.index('<div class="titlerow'))]
-    assert '<button type="button" class="chip chip-mode copycmd" id="hr-mode"' in row, \
-        "in the title row, against the score"
-    assert ">static</button>" in row
+    assert '<span class="chip chip-mode" id="hr-mode">static</span>' in row, \
+        "in the title row, against the score, a label with no hover"
+    assert '<button type="button" class="chip chip-serve copycmd" id="hr-serve"' in row
+    assert "\U0001F4CB Serve</button>" in row
     assert "hr-mode" not in page[page.index("<footer>"):page.index("</footer>")]
-    # The badge copies the way out of static: serve this directory, open the page from
+    # Serve copies the way out of static: serve this directory, open the page from
     # the URL the server prints — never a port assumed in advance.
-    m = re.search(r'id="hr-mode" data-copy="([^"]+)"', row)
+    m = re.search(r'id="hr-serve" data-copy="([^"]+)"', row)
     line = html.unescape(m.group(1))
     assert line.startswith("cd ") and "serve-review.py" in line and "--page review.html" in line
     assert 'u="$(' in line and 'open "$u"' in line and "7654" not in line
-    assert "chip.removeAttribute('data-copy')" in page, "served: nothing left to copy"
+    assert "if (serveChip) serveChip.hidden = true;" in page, "served: nothing left to copy"
     assert "chip.textContent = 'served'" in page
     # And in the tab strip, where a reader picks between several of these — one per
     # branch, a static copy beside a live one — long before anything in the page is on

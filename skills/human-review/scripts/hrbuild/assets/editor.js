@@ -96,13 +96,13 @@
       // lives in a fold beside them. The line that gets the reader to served mode is
       // already on the badge in the title row, so this points at it.
       flash('This copy of the report is static, so nothing in it can run. Serve the page '
-        + '\u2014 the "static" badge at the top copies the line that does \u2014 and this '
+        + '\u2014 the "Serve" badge at the top copies the line that does \u2014 and this '
         + 'will re-render the diagram and reload.');
       return;
     }
-    // The static badge copies a different kind of line: not one that changes this page
+    // The Serve badge copies a different kind of line: not one that changes this page
     // and wants a reload, but one that starts the server and opens the page from it.
-    var serve = cmd.id === 'hr-mode';
+    var serve = cmd.id === 'hr-serve';
     copy(cmd.getAttribute('data-copy') || '')
       .then(function () { flash(serve
         ? 'Copied \u2014 run it in a terminal: it starts the review server and opens this page served'

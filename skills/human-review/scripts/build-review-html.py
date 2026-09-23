@@ -1082,13 +1082,18 @@ def main(argv=None) -> int:
                      f'{shlex.quote(str(HERE / "serve-review.py"))} {shlex.quote(str(here))}'
                      f' --page {shlex.quote(out_path.name)})" && (open "$u" 2>/dev/null'
                      ' || xdg-open "$u")')
+        # Two chips, not one. `static` only says what this copy is, so it has no hover;
+        # `Serve` is the thing to do about it, and it is the one that explains why.
         mode_html = (
-            '<button type="button" class="chip chip-mode copycmd" id="hr-mode" '
+            '<span class="chip chip-mode" id="hr-mode">static</span>'
+            '<button type="button" class="chip chip-serve copycmd" id="hr-serve" '
             f'data-copy="{html.escape(serve_cmd, quote=True)}" '
-            'data-tip="A static copy of the page: buttons copy their command instead of '
-            'running it, and recordings open natively, not here. Click to copy the line '
-            'that serves this directory and opens the page from it.">'
-            'static</button>')
+            'data-tip="This page is a static file, so nothing on it can run: every button '
+            'only copies its command, and recordings open outside the page. Served, the '
+            'buttons run their command, recordings play here, and Rerun rebuilds the page. '
+            'Click to copy the line that starts the review server on this checkout and '
+            'opens this page from it.">'
+            f'{CMD_COPY} Serve</button>')
         # And, on the served copy only, the way to make the page catch up with the
         # repository. Both pieces are constants above, so what the page carries is one
         # thing a test can read rather than a string assembled inside a 400-line function.

@@ -291,13 +291,13 @@ window.HR = (function () {
     if (document.title.indexOf('▶') !== 0) {
       document.title = '▶️ ' + document.title;
     }
+    // Nothing left to copy: the Serve line is the one that got the reader here.
+    var serveChip = document.getElementById('hr-serve');
+    if (serveChip) serveChip.hidden = true;
     var chip = document.getElementById('hr-mode');
     if (!chip) return;
     chip.textContent = 'served';
     chip.classList.add('chip-served');
-    // Nothing left to copy: the line it offered is the one that got the reader here.
-    chip.classList.remove('copycmd');
-    chip.removeAttribute('data-copy');
     chip.setAttribute('data-tip', 'Served by the review server: commands run from this '
       + 'page, and recordings play in it.');
     // …and where the rerun chip can really run, *it* is this badge and this one goes: the

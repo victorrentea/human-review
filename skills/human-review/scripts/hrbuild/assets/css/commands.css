@@ -249,13 +249,13 @@ button.chip-rerun-ai:hover:not(:disabled) { border-color:var(--drift);
               transition:opacity .16s, transform .16s; max-width:80vw; overflow:hidden;
               text-overflow:ellipsis; white-space:nowrap; }
 #copy-toast.shown { opacity:1; transform:translateX(-50%) translateY(0); }
-.titlerow .chip-mode, .titlerow .chip-rerun, .titlerow .titlescore {
+.titlerow .chip-mode, .titlerow .chip-serve, .titlerow .chip-rerun, .titlerow .titlescore {
             flex:0 0 auto; align-self:center;
             padding:.15rem .7rem; border-radius:999px; border-width:1px;
             border-style:solid; font-size:.82rem; line-height:1.6; }
 /* `[hidden]` is spelled out because the `display` these carry would otherwise beat the
    attribute. */
-.titlerow .chip-mode[hidden], .titlerow .chip-rerun[hidden] { display:none; }
+.titlerow .chip-mode[hidden], .titlerow .chip-serve[hidden], .titlerow .chip-rerun[hidden] { display:none; }
 @media (prefers-color-scheme:dark) {
   .titlescore.v-good { color:#6fce93; } .titlescore.v-mid { color:#e0a44a; }
   .titlescore.v-bad { color:#f0757f; } }
