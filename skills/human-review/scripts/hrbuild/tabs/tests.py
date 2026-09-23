@@ -622,7 +622,7 @@ REQMAP_CSS = """
 .reqmap .rm-semcov{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;
   gap:6px;font-size:.85em;font-weight:500;color:var(--muted,#6b6b6b);cursor:pointer;
   user-select:none;white-space:nowrap}
-.reqmap .rm-semcov input{margin:0;accent-color:var(--accent,#13783a);cursor:pointer}
+.reqmap .rm-semcov input{margin:0;cursor:pointer}
 .reqmap .rm-semcov:hover{color:var(--fg,#1c1c1c)}
 /* Unchecked: the ticket as its author wrote it. The fills come off every sentence, and
    the legend under the ticket - which explains nothing once nothing is coloured - keeps
