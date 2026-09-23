@@ -492,6 +492,7 @@ TEMPLATE = r"""<!doctype html>
   .dv-chip.off { opacity: .38; }
   .dv-chip .dot { width: 9px; height: 9px; border-radius: 50%; }
   .dv-chip b { font-variant-numeric: tabular-nums; }
+  .dv-unit { opacity: .6; margin-right: 2px; }
   .dot.breaking { background: var(--dv-breaking); }
   .dot.modified { background: var(--dv-modified); }
   .dot.added    { background: var(--dv-added); }
@@ -785,6 +786,12 @@ function md(s) {
 // ---- toolbar chips double as filters ----
 const hidden = new Set();
 const chips = document.getElementById('dv-chips');
+// The chips count endpoints, one per operation; the verdict line under the tab counts
+// the individual changes inside them. Without the unit "4 breaking" up here and
+// "14 breaking" down there read as two answers to the same question.
+if (ORDER.some(state => DATA.counts[state])) {
+  chips.insertAdjacentHTML('beforeend', '<span class="dv-unit">endpoints:</span>');
+}
 ORDER.forEach(state => {
   const n = DATA.counts[state] || 0;
   if (!n) return;

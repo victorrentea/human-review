@@ -519,12 +519,12 @@ def test_the_breaking_panel_names_both_counts():
                      additive=[_op("GET", "/api/owners", 3)])
     text = _panel_text(oac.panel(result, {"breaking": ["a", "b"], "subjects": 2}))
     # verdict · counts · who checked it — the same shape as the green line.
-    assert text.startswith("Breaking changes · 5 changes, 2 breaking · checked by"), text
+    assert text.startswith("Breaking changes · 5 changes, 2 breaking across 1 endpoint · checked by"), text
     assert "oasdiff" in text and "openapi-diff.py" in text
 
     single = _result(oac.INCOMPATIBLE, breaks=[_op("DELETE", "/api/visits/{id}", 1)])
     assert _panel_text(oac.panel(single, {"breaking": ["a"], "subjects": 1})).startswith(
-        "Breaking change · 1 change, 1 breaking ·")
+        "Breaking change · 1 change, 1 breaking across 1 endpoint ·")
 
 
 def test_nothing_moved_says_so_and_gets_out_of_the_way():

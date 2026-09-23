@@ -685,7 +685,12 @@ def panel(result: dict, ours: dict | None,
     elif state == INCOMPATIBLE:
         cls = "red"
         verdict = f"Breaking change{'' if n_break == 1 else 's'}"
-        counts = f"{total} change{s}, {n_break} breaking"
+        # The chips above the spec count *endpoints* ("4 breaking"); this line counts
+        # individual changes ("14 breaking"). Side by side the two numbers read as a
+        # contradiction, so this one says which endpoints its changes fall in.
+        n_ops = len(result.get("breaks") or [])
+        counts = (f"{total} change{s}, {n_break} breaking across "
+                  f"{n_ops} endpoint{'' if n_ops == 1 else 's'}")
     elif state == COMPATIBLE:
         cls, verdict = "green", "Backwards compatible"
         counts = f"{total} change{s}, none breaking"
