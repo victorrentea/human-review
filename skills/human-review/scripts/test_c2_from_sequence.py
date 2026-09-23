@@ -534,11 +534,11 @@ def test_the_title_can_carry_a_link_out_and_the_caption_stays_plain():
     g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
     out = c2.render(**c2.one_side(g),
                     title=f"[[{c2.C4_URL}{{What a container diagram is}} C2 Containers]]",
-                    system="", caption="projected from sequence diagrams generated from "
+                    system="", caption="Diagram synthesized from sequence diagrams of the "
                     "test traces", coloured=False)
     assert c2.C4_URL.startswith("https://c4model.com")
     assert f"title [[{c2.C4_URL}" in out
-    assert "caption projected from sequence diagrams generated from test traces" in out
+    assert "caption Diagram synthesized from sequence diagrams of the test traces" in out
     assert "[[" not in out.split("caption ")[1]
 
 
@@ -677,7 +677,7 @@ def test_end_to_end_writes_a_manifest_the_page_can_read(tmp_path):
     caption_line = next(l for l in puml.splitlines() if l.startswith("caption "))
     assert title_line == f"title [[{c2.C4_URL}{{What a container diagram is, on Simon " \
                           "Brown's own site} C2 Containers]]"
-    assert caption_line == "caption projected from sequence diagrams generated from test traces"
+    assert caption_line == "caption Diagram synthesized from sequence diagrams of the test traces"
 
 
 def test_end_to_end_says_nothing_to_draw_rather_than_drawing_nothing(tmp_path):

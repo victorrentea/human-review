@@ -55,6 +55,11 @@ report, and nothing else. Work in the repository you are started in.
   rewrite finds its footing by; rename one and it gives up, says so on stderr, and ships
   your layout instead. Do not write a heading over the ticket: one is added, from GitHub,
   and a second would be the page saying the ticket's name twice.
+- **A collapsed row names the file, not the line.** Under *Covering tests* each row's
+  location is the file's bare name — `VisitTest.java`, `book-visit-with-vet.feature` — with
+  no `:270` or `:230–247` after it. The line numbers are already on the source bar that
+  opens under the row, and on a closed row they were a column of digits nobody could act
+  on, spent from the room the title needed. The link still lands on the declaration.
 - **Never say a test's state yourself.** Whether a test is new, edited, deleted, commented
   out or sitting under an `@Disabled` is read out of the code by
   `scripts/test-changes.py`, and its manifest is already on the page. Name the test under

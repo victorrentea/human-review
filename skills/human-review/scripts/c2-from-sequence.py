@@ -908,7 +908,7 @@ def main(argv=None) -> int:
     # branch, which is not news this caption is trying to report.
     title = (f"[[{C4_URL}{{What a container diagram is, on Simon Brown's own site}} "
              f"{title}]]")
-    caption = "projected from sequence diagrams generated from test traces"
+    caption = "Diagram synthesized from sequence diagrams of the test traces"
 
     # Two popup indexes, not one, and they are the two the manifest's `new_details` /
     # `old_details` columns name. The page inlines both and merges them work-tree-first,

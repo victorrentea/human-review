@@ -4568,7 +4568,7 @@ def test_the_shot_is_headed_by_what_it_is_for(tmp_path):
     deliberate: the three named axes are the ones the panel inside the shot switches
     between, and they are not all of them."""
     page, _ = _build(tmp_path, _city(tmp_path))
-    assert ('<h2 id="codecity">Code impact of this PR: size, complexity, coupling, …</h2>'
+    assert ('<h2 id="codecity">PR impact on code size, complexity, coupling, …</h2>'
             in page)
     assert build.CITY_HEADING.endswith("…")
     # The anchor is on the heading, so `#codecity` still lands at the top of the picture.

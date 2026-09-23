@@ -414,7 +414,13 @@ def render(model, entries, global_changes, tags, old_label, new_label) -> str:
         default=str,  # YAML happily parses `2026-01-31` into a date object
     ).replace("</", "<\\/")
 
-    return TEMPLATE.replace("__PAYLOAD__", payload)
+    # Every change the page lists, endpoint-level and global — the same sum oasdiff's
+    # "N changes" on the verdict line counts, so the two numbers agree on sight.
+    n_changes = (sum(len(e["changes"]) for e in entries.values()) + len(global_changes))
+    label = (f"expand {n_changes} change{'' if n_changes == 1 else 's'}"
+             if n_changes else "expand impacted")
+    return (TEMPLATE.replace("__EXPAND_LABEL__", label)
+            .replace("__PAYLOAD__", payload))
 
 
 TEMPLATE = r"""<!doctype html>
@@ -754,8 +760,10 @@ TEMPLATE = r"""<!doctype html>
   <!-- No tooltip here on purpose. The report's one tooltip component (TIP_JS, driven by
        data-tip) lives in the host page and cannot reach into this frame, and a native
        title= is the thing the house rule exists to keep out. The checkbox demonstrates
-       itself the moment it is ticked. -->
-  <label class="dv-toggle"><input type="checkbox" id="dv-expand"> expand impacted</label>
+       itself the moment it is ticked. The count is the verdict line's count: that line
+       says "25 changes" right above this frame, and a toggle that opened 11 endpoints
+       with no number on it read as a second, contradicting tally. -->
+  <label class="dv-toggle"><input type="checkbox" id="dv-expand"> __EXPAND_LABEL__</label>
 </div>
 <div id="dv-global"></div>
 <div id="swagger-ui"></div>
