@@ -517,12 +517,19 @@ function triggerY(){
 // pinned row, and that .6rem left it just *under* the trigger. The mark then stayed on
 // the previous chapter after a click on this one, which is the one moment a reader is
 // certain which chapter they asked for.
+//
+// Before any heading has got there -- the page as it opens, scrolled to the top -- the
+// first chapter is the one lit, not none. The reader is about to read it; a row with no
+// mark at all read as broken until the first scroll lit it up.
 function paint(){
-  var t=triggerY(), current=null;
+  var t=triggerY(), current=null, first=null, firstTop=Infinity;
   pairs.forEach(function(p){
     var margin=parseFloat(getComputedStyle(p.el).scrollMarginTop)||0;
-    if(p.el.getBoundingClientRect().top<=Math.max(t,margin)+1)current=p.id;
+    var top=p.el.getBoundingClientRect().top;
+    if(top<firstTop){firstTop=top;first=p.id;}
+    if(top<=Math.max(t,margin)+1)current=p.id;
   });
+  if(!current)current=first;
   ids.forEach(function(id){links[id].classList.toggle('here', id===current);});
 }
 function setup(){

@@ -119,3 +119,7 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
    as emphasised prose. */
 .pilelede a.here { background:var(--accent-soft); color:var(--fg); font-weight:700;
             padding:.1rem .55rem; border-radius:999px; text-decoration:none; }
+/* The first heading under the pinned row starts right under it. `h2`'s 2.8rem top margin
+   is there to part one chapter from the one before, and here there is no chapter before
+   — only the row that names this one, which then floated a blank band away from it. */
+.pilelede + script + h2 { margin-top:.6rem; }
