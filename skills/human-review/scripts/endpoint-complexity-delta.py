@@ -37,7 +37,7 @@ from pathlib import Path
 # Snapshots taken before entry points other than HTTP were extracted carry no 'kind' at all.
 DEFAULT_KIND = "http"
 KIND_TITLES = [
-    ("http", "HTTP / REST APIs"),
+    ("http", "REST APIs"),
     ("mcp", "MCP tools"),
     ("listener", "Message listeners"),
     ("job", "Jobs"),
@@ -121,6 +121,7 @@ def compare(before, after):
                 "entry": (cur.get("flow") or [{}])[0].get("method", ""),
                 "methods": cur.get("methods"),
                 "why": [] if gone else breakdown(cur, old),
+                "graph": [] if gone else graph_nodes(cur, old),
             }
         )
     rows.sort(key=lambda r: (-max(r["now"], r["was"] or 0), r["path"]))
@@ -161,6 +162,133 @@ def breakdown(cur, old):
     return groups
 
 
+def graph_nodes(cur, old):
+    """The flow as call-graph nodes: who calls whom, what each one costs, and how much of
+    that this branch put there.
+
+    `delta` is the method's cognitive score now minus at the merge-base, *within this
+    entry point's flow*: a method the base flow never reached brings its whole score with
+    it. A brand-new entry point marks nothing, for the same reason `breakdown` marks no
+    line of it — the row's badge already says all of it is new. Snapshots taken before
+    the extractor wrote edges carry no `calls`, and draw no graph."""
+    flow = cur.get("flow") or []
+    if not flow or not any("calls" in f for f in flow):
+        return []
+    was = {f.get("method"): f.get("cognitive") or 0 for f in (old or {}).get("flow") or []}
+    return [{"method": f.get("method", ""), "display": f.get("display") or f.get("method", ""),
+             "cognitive": f.get("cognitive") or 0, "cyclomatic": f.get("cyclomatic"),
+             "calls": f.get("calls") or [],
+             "delta": ((f.get("cognitive") or 0) - was.get(f.get("method"), 0)) if old else 0}
+            for f in flow]
+
+
+# How much of the flow the graph draws before it starts folding. The biggest flow in
+# petclinic reaches forty methods, thirty of them getters and setters: drawn whole, the
+# graph is a wall of `getId` nobody reads. So a method that costs nothing and reaches
+# nothing that costs is folded into one chip per class ("Owner ×7"), and a node with more
+# expensive children than this shows the costliest and folds the rest into "+N".
+GRAPH_KIDS = 6
+
+
+def _split(key: str) -> tuple[str, str]:
+    """`pkg.Class#method` -> ("Class", "method")."""
+    owner, _, name = key.partition("#")
+    return owner.rsplit(".", 1)[-1], name
+
+
+def _graph(nodes) -> str:
+    """The flow behind a row, drawn left to right as the tree the extractor walked it in.
+
+    Each method appears once, under whoever reached it first — the same breadth-first
+    order the score is summed in, so the graph and the number can never disagree about
+    what is in the flow. A node is two badges, the class above `.method` below, and the
+    two scores beside them: cognitive (what the bar sums) and cyclomatic (the paths a test
+    would have to walk). Green is what the branch added, as everywhere on this tab."""
+    if not nodes:
+        return ""
+    by = {n["method"]: n for n in nodes}
+    root = nodes[0]["method"]
+    kids: dict[str, list[str]] = {}
+    seen = {root}
+    for n in nodes:  # breadth-first: `nodes` is already in the order the flow was walked
+        for t in n["calls"]:
+            if t in by and t not in seen:
+                seen.add(t)
+                kids.setdefault(n["method"], []).append(t)
+    weight: dict[str, int] = {}
+
+    def w(k):
+        if k not in weight:
+            weight[k] = 0  # a cycle is cut by `seen` above, but stay safe
+            weight[k] = (by[k]["cognitive"] + abs(by[k]["delta"])
+                         + sum(w(c) for c in kids.get(k, [])))
+        return weight[k]
+
+    def tree(k) -> str:
+        children = kids.get(k, [])
+        heavy = [c for c in children if w(c) > 0]
+        light = [c for c in children if w(c) == 0]
+        shown = sorted(heavy, key=lambda c: -w(c))[:GRAPH_KIDS]
+        shown = [c for c in heavy if c in shown]  # keep the call order among those shown
+        rest = [c for c in heavy if c not in shown]
+        parts = [tree(c) for c in shown]
+        if rest:
+            names = "\n".join(by[c]["display"] for c in rest)
+            parts.append(f'<div class="cg-t"><span class="cg-more"'
+                         f'{_tip("Also called, and folded to keep this readable:" + chr(10) + names)}>'
+                         f'+{len(rest)}</span></div>')
+        sub = f'<div class="cg-kids">{"".join(parts)}</div>' if parts else ""
+        return f'<div class="cg-t">{_node(by[k], _also(light, by, kids))}{sub}</div>'
+
+    return (f'<div class="cg" role="img" aria-label="Call graph of this entry point">'
+            f'<p class="cg-key">Call graph, left to right · on each method: <b>cognitive</b> over '
+            f'cyclomatic · <i>+ Class×N</i> = straight-line callees, folded · hover for names</p>'
+            f'{tree(root)}</div>')
+
+
+def _node(n, also: str = "") -> str:
+    cls, name = _split(n["method"])
+    cog, cyc, d = n["cognitive"], n.get("cyclomatic"), n["delta"]
+    mark = " cg-add" if d > 0 else " cg-cut" if d < 0 else ""
+    zero = " cg-zero" if not cog and not d else ""
+    tip = (f'{n["display"]}\ncognitive {cog}'
+           + (f" · cyclomatic {cyc}" if cyc is not None else "")
+           + (f"\n+{d} cognitive added by this branch" if d > 0 else "")
+           + (f"\n−{-d} cognitive removed by this branch" if d < 0 else ""))
+    found = entry_source(n["method"])
+    href = f' href="vscode://file/{found[0]}:{found[1]}:1"' if found else ""
+    tip += "\nOpen in VS Code" if found else ""
+    delta = (f'<b class="cg-d">+{d}</b>' if d > 0 else
+             f'<b class="cg-d">−{-d}</b>' if d < 0 else "")
+    cyc_chip = f'<span class="cg-cyc">{cyc}</span>' if cyc is not None else ""
+    return (f'<a class="cg-n{mark}{zero}"{href}{_tip(tip)}>'
+            f'<span class="cg-c">{html.escape(cls)}</span>'
+            f'<span class="cg-cog">{cog}</span>'
+            f'<span class="cg-m">.{html.escape(name)}</span>{cyc_chip}{delta}{also}</a>')
+
+
+def _also(light: list[str], by, kids) -> str:
+    """The callees that cost nothing and reach nothing that costs, as one line inside the
+    caller — `+ Owner×7, PetDto` — instead of a branch each.
+
+    Thirty of the forty methods behind petclinic's busiest endpoint are getters and
+    setters. Drawn as nodes they made the graph three times as tall and pushed the one
+    method this branch changed off the right edge; folded into their caller they still
+    say what got called, class by class, and the hover lists every one."""
+    if not light:
+        return ""
+    groups: dict[str, list[str]] = {}
+    for c in light:
+        groups.setdefault(_split(c)[0], []).append(c)
+    shown = [f"{cls}×{len(m)}" if len(m) > 1 else cls for cls, m in groups.items()]
+    label = ", ".join(shown[:3]) + (f" +{len(shown) - 3}" if len(shown) > 3 else "")
+    below = sum(len(kids.get(m, [])) for m in light)
+    tip = (f"Also called — {len(light)} straight-line method{'s' if len(light) > 1 else ''}"
+           f" (cognitive 0){f', and the {below} they call' if below else ''}:\n"
+           + "\n".join(by[m]["display"] for m in light))
+    return f'<span class="cg-also"{_tip(tip)}>+ {html.escape(label)}</span>'
+
+
 WHY_EMPTY = ("Nothing counted: every method behind this entry point is straight-line code. "
              "Cognitive complexity charges for branching, loops and boolean runs, and there "
              "are none here.")
@@ -175,9 +303,10 @@ def _why_panel(r) -> str:
     and click; a rendered snippet per increment would be the same list, three times taller
     and with the evidence padded out by the code around it."""
     groups = r.get("why") or []
+    graph = _graph(r.get("graph") or [])
     if not groups:
-        return f'<div class="cx-why"><p class="cx-why-none">{WHY_EMPTY}</p></div>'
-    out = ['<div class="cx-why">']
+        return f'<div class="cx-why">{graph}<p class="cx-why-none">{WHY_EMPTY}</p></div>'
+    out = ['<div class="cx-why">', graph]
     for g in groups:
         total = sum(h["inc"] for h in g["hits"])
         out.append(f'<div class="cx-why-m">{html.escape(g["display"])}'
@@ -256,8 +385,10 @@ def _row(cls, head: str, why: str) -> str:
     Degrading to "the whole row is the handle" is the right way round — the reader still
     gets the breakdown, they just get it from a wider target."""
     if not why:
-        return f'<div class="cx-row {cls}"><div class="cx-head">{head}</div></div>'
-    return (f'<details class="cx-row {cls}"><summary class="cx-head">{head}</summary>'
+        return (f'<div class="cx-row {cls}"><div class="cx-head">'
+                f'<span class="cx-caret"></span>{head}</div></div>')
+    return (f'<details class="cx-row {cls}"><summary class="cx-head">'
+            f'<span class="cx-caret" aria-hidden="true"></span>{head}</summary>'
             f"{why}</details>")
 
 
@@ -352,7 +483,8 @@ def render(rows, base="main") -> str:
         # hover what its colour and its number mean, and a reader counting moved rows is
         # reading the bars, not this line.
         '<p class="cx-lede">Cognitive complexity of the <em>whole flow</em> behind each entry '
-        "point. <span class=\"cx-hint\">Click a bar to see the lines it is made of.</span></p>",
+        "point. <span class=\"cx-hint\">Click ▸ or a bar to see its call graph and the lines "
+        "it is made of.</span></p>",
     ]
     known = {kind for kind, _ in KIND_TITLES}
     groups = KIND_TITLES + [
@@ -389,7 +521,7 @@ TOGGLE_JS = """<script>
   document.addEventListener('click', function (e) {
     var head = e.target.closest && e.target.closest('summary.cx-head');
     if (!head) return;
-    if (e.target.closest('.cx-bar')) return;            /* the handle: let it toggle */
+    if (e.target.closest('.cx-bar, .cx-caret')) return; /* the handles: let them toggle */
     var row = head.parentNode;
     if (e.target.closest('a')) {                        /* a link opens the file, not the fold */
       var was = row.open;
@@ -422,9 +554,17 @@ CSS = """
     pointing at nothing. */
 .cx-row { border-bottom:1px solid var(--line); }
 .cx-row:last-child { border-bottom:0; }
-.cx-head { display:grid; grid-template-columns:3.6rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
-          align-items:center; gap:.55rem; padding:.3rem .8rem; font-size:.84rem;
+/* The verb column is as wide as DELETE and no wider, and the gap after it is the smaller
+    one: at 3.6rem + .55rem a `GET` sat 46px from its own path and read as two columns of
+    unrelated things. The caret column in front is the fold's second handle, next to the
+    word a reader looks at first. */
+.cx-head { display:grid; grid-template-columns:.7rem 2.45rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
+          align-items:center; gap:.4rem; padding:.3rem .8rem .3rem .5rem; font-size:.84rem;
           cursor:default; list-style:none; }
+.cx-caret { font-size:10px; line-height:1; color:var(--muted); text-align:center; }
+details.cx-row > summary .cx-caret { cursor:pointer; }
+details.cx-row > summary .cx-caret::before { content:"▸"; }
+details.cx-row[open] > summary .cx-caret::before { content:"▾"; }
 .cx-head::-webkit-details-marker { display:none; }
 summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
 .cx-hint { opacity:.75; }
@@ -493,6 +633,62 @@ a.cx-why-line:hover code { text-decoration:underline; }
     without reading them. `tabular-nums` keeps `[+10]` from widening the column by a hair. */
 .cx-why-inc { flex:0 0 2.9rem; text-align:right; font-variant-numeric:tabular-nums;
               font:700 10.5px/1.55 ui-monospace,Menlo,monospace; color:var(--muted); }
+/* ── the call graph ─────────────────────────────────────────────────────────────────
+    The flow drawn left to right: a node per method, its callees in a column to its right,
+    joined by elbow lines drawn from borders alone (no SVG, no layout engine). A node is
+    two badges — the class, and `.method` under it — with the cognitive and cyclomatic
+    scores beside the method. It scrolls sideways rather than squeeze a deep chain. */
+.cg { overflow-x:auto; padding:.15rem 0 .45rem; margin:0 0 .35rem -3.3rem;
+      border-bottom:1px dashed var(--line); }
+.cg-key { font:10px/1.4 system-ui,sans-serif; color:var(--muted); margin:0 0 .3rem; }
+.cg-key b { font:700 9.5px/1 ui-monospace,Menlo,monospace; }
+/* Top-aligned, not centred: a centred parent floats to the middle of however tall its
+    subtree is, and one wide branch then opens a screen of empty space above and below
+    every sibling. Aligned to the top, a node sits level with its first callee and the
+    elbows are drawn at a fixed height — half a node — from the top of each row. */
+.cg-t { --cg-mid:15px; display:flex; align-items:flex-start; position:relative; }
+.cg-kids { display:flex; flex-direction:column; gap:3px; margin-left:12px; position:relative; }
+.cg-kids::before { content:""; position:absolute; left:-12px; top:var(--cg-mid); width:12px;
+                   border-top:1px solid var(--cg-line); }
+.cg-kids > .cg-t { padding-left:8px; }
+.cg-kids > .cg-t::before { content:""; position:absolute; left:0; top:-3px; bottom:0;
+                           border-left:1px solid var(--cg-line); }
+.cg-kids > .cg-t:first-child::before { top:var(--cg-mid); }
+.cg-kids > .cg-t:last-child::before { bottom:auto; height:calc(var(--cg-mid) + 3px); }
+.cg-kids > .cg-t:only-child::before { display:none; }
+.cg-kids > .cg-t::after { content:""; position:absolute; left:0; top:var(--cg-mid); width:8px;
+                          border-top:1px solid var(--cg-line); }
+.cg { --cg-line:color-mix(in srgb, var(--muted) 55%, transparent); }
+/* A node: the class badge over the `.method` badge, and the two scores stacked in a narrow
+    column on the right — cognitive over cyclomatic, as the key above the graph says. The
+    names are set in the UI face, not monospace: the graph is as wide as its deepest chain
+    times its widest names, and a proportional face buys back a fifth of that. */
+.cg-n { display:inline-grid; grid-template-columns:auto auto; column-gap:5px; row-gap:1px;
+        align-items:center; padding:2px 4px; border:1px solid var(--line); border-radius:6px;
+        background:var(--card); text-decoration:none; color:inherit; white-space:nowrap;
+        position:relative; z-index:1; }
+a.cg-n[href]:hover { border-color:var(--link); }
+.cg-c, .cg-m { font:600 10.5px/1.3 system-ui,sans-serif; padding:0 4px; border-radius:4px;
+               grid-column:1; justify-self:start; }
+.cg-c { color:var(--muted); border:1px solid var(--line); font-weight:500; }
+.cg-m { background:var(--code-bg); border:1px solid transparent; }
+.cg-cog, .cg-cyc { grid-column:2; font:700 9.5px/1.3 ui-monospace,Menlo,monospace;
+                   text-align:right; font-variant-numeric:tabular-nums; }
+.cg-cog { grid-row:1; }
+.cg-cyc { grid-row:2; color:var(--muted); font-weight:500; }
+.cg-d { font:700 9.5px/1 ui-monospace,Menlo,monospace; position:absolute; top:-6px; right:-6px;
+        padding:1px 3px; border-radius:6px; background:var(--card); }
+.cg-zero { opacity:.55; }
+.cg-also { grid-column:1 / 3; font:10px/1.3 system-ui,sans-serif; color:var(--muted);
+           padding:0 4px; cursor:help; }
+.cg-more { font:700 10px/1 ui-monospace,Menlo,monospace; color:var(--muted); padding:3px 6px;
+           border:1px dashed var(--line); border-radius:6px; cursor:help; }
+/* A method whose score this branch raised wears the added colour on its frame and its
+    number; one it lowered, the removed colour. */
+.cg-add { border-color:var(--cx-added); box-shadow:0 0 0 1px var(--cx-added) inset; }
+.cg-add .cg-d, .cg-add .cg-cog { color:var(--cx-added); }
+.cg-cut { border-color:var(--cx-removed); }
+.cg-cut .cg-d { color:var(--cx-removed); }
 /* Green is authorship everywhere else on this tab, and it means the same here: this line
     was not behind this entry point at the merge-base. */
 a.cx-why-new code { color:var(--cx-added); }

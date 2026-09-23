@@ -202,6 +202,27 @@ def increments(body: str) -> list[tuple[int, int, str]]:
     return hits
 
 
+CYC = re.compile(r"\b(?:if|for|while|case|catch)\b|&&|\|\||\?")
+
+
+def cyclomatic(body: str) -> int:
+    """McCabe's number of an already-blanked method body: 1 + one per decision point.
+
+    Shown beside the cognitive score on the call-graph nodes, because the two answer
+    different questions — how many paths a test suite has to walk, and how hard the
+    method is to read — and a reviewer used to Sonar asks for both. Every `if`, loop,
+    `case`, `catch`, ternary and short-circuit operator is one more path; `else` and
+    nesting are not. A `do … while` is its one `while`. The ternary test is the same one
+    `increments` makes, so `List<?>` is not a decision."""
+    n = 1
+    for m in CYC.finditer(body):
+        if m.group() == "?" and (body[max(0, m.start() - 1)] in "<,"
+                                 or body[m.end():m.end() + 1] in ">,"):
+            continue
+        n += 1
+    return n
+
+
 def block(code: str, open_brace: int) -> int:
     """Offset just past the `}` that closes the `{` at `open_brace`."""
     depth = 0
@@ -253,7 +274,7 @@ class Index:
                      if called not in NOT_A_METHOD}
             method = self.methods.setdefault(
                 key, {"key": key, "display": f"{simple}.{name}({_params(params)})",
-                      "cc": 0, "hits": [], "calls": set(), "types": types})
+                      "cc": 0, "cyc": 0, "hits": [], "calls": set(), "types": types})
             hits = [_hit(path, code, lines, at + off, inc, why)
                     for off, inc, why in increments(body)]
             if any(c == name for _, c in calls):
@@ -263,6 +284,7 @@ class Index:
                 hits.append(_hit(path, code, lines, at + (back.start(2) if back else 0),
                                  1, "recursion"))
             method["cc"] += sum(h["inc"] for h in hits)
+            method["cyc"] += cyclomatic(body)
             method["hits"] += hits
             method["calls"] |= calls
             self.by_name.setdefault(name, []).append(key)
@@ -336,20 +358,31 @@ class Index:
         keys = self.by_name.get(called, [])
         return keys if len(keys) == 1 else []
 
+    def callees(self, key: str) -> list[str]:
+        """What `key` calls, resolved, in the order `flow` discovers them — the edges of the
+        call graph the Complexity tab draws under a row."""
+        method = self.methods.get(key)
+        if not method:
+            return []
+        out: list[str] = []
+        for recv, called in sorted(method["calls"]):
+            for target in self.resolve(method, recv, called):
+                if target != key and target not in out:
+                    out.append(target)
+        return out
+
     def flow(self, key: str) -> list[str]:
         """Every method reachable from `key`, the handler first, each one once."""
         seen, queue, order = {key}, [key], []
         while queue:
             cur = queue.pop(0)
-            method = self.methods.get(cur)
-            if not method:
+            if cur not in self.methods:
                 continue
             order.append(cur)
-            for recv, called in sorted(method["calls"]):
-                for target in self.resolve(method, recv, called):
-                    if target not in seen:
-                        seen.add(target)
-                        queue.append(target)
+            for target in self.callees(cur):
+                if target not in seen:
+                    seen.add(target)
+                    queue.append(target)
         return order
 
 
@@ -411,6 +444,7 @@ def extract(files: dict[str, str]) -> list[dict]:
     out = []
     for e in index.entries:
         flow = index.flow(e["key"])
+        in_flow = set(flow)
         out.append({
             "kind": e["kind"], "httpMethod": e["httpMethod"], "path": e["path"],
             "handler": e["handler"],
@@ -423,6 +457,10 @@ def extract(files: dict[str, str]) -> list[dict]:
             # entry points is described once, identically, under both.
             "flow": [{"method": k, "display": index.methods[k]["display"],
                       "cognitive": index.methods[k]["cc"],
+                      "cyclomatic": index.methods[k]["cyc"],
+                      # The edges, so the tab can draw the flow as a graph and not only
+                      # as a list: every method of the flow this one calls.
+                      "calls": [t for t in index.callees(k) if t in in_flow],
                       "hits": index.methods[k]["hits"]} for k in flow],
         })
     out.sort(key=lambda e: (-e["flowCc"], e["path"]))

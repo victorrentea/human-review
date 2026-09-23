@@ -357,3 +357,65 @@ if __name__ == "__main__":
                 failures += 1
                 print(f"FAIL {name}: {e}")
     sys.exit(1 if failures else 0)
+
+
+# --------------------------------------------------------------------------- #
+# the call graph under a row, and the header that opens it
+# --------------------------------------------------------------------------- #
+
+def test_cyclomatic_counts_decision_points_not_nesting():
+    def cyc(body):
+        return ec.cyclomatic(ec.strip("{" + body + "}"))
+    assert cyc("a(); b();") == 1
+    # if + for + if + && = 4 decisions; `else` and nesting add paths to read, not to walk.
+    assert cyc("if (a) { for (X x : xs) { if (b && c) { d(); } } } else { e(); }") == 5
+    assert cyc("switch (k) { case 1: a(); break; case 2: b(); }") == 3
+    assert cyc("List<?> l = x ? y : z;") == 2, "a wildcard is not a ternary"
+    assert cyc("do { a(); } while (b);") == 2
+
+
+def test_every_flow_node_carries_its_edges_and_both_scores():
+    flow = {f["method"]: f for f in entries()["GET /api/owners"]["flow"]}
+    assert flow["app.rest.OwnerRestController#listOwners"]["calls"] == [
+        "app.repo.OwnerRepository#search"]
+    assert set(flow["app.repo.OwnerRepository#search"]["calls"]) >= {
+        "app.repo.OwnerRepository#all", "app.repo.OwnerRepository#hit"}
+    for f in flow.values():
+        assert f["cyclomatic"] >= 1
+        assert set(f["calls"]) <= set(flow), "an edge never leaves the flow"
+
+
+def _gnode(key, cog=0, calls=(), delta=0, cyc=1):
+    return {"method": key, "display": key.split(".")[-1].replace("#", ".") + "()",
+            "cognitive": cog, "cyclomatic": cyc, "calls": list(calls), "delta": delta}
+
+
+def test_the_graph_draws_what_costs_and_folds_the_getters_into_their_caller():
+    nodes = [_gnode("a.Ctl#go", calls=["a.Map#toDto", "a.Owner#getId", "a.Owner#getName"]),
+             _gnode("a.Map#toDto", cog=3, cyc=4, delta=1),
+             _gnode("a.Owner#getId"), _gnode("a.Owner#getName")]
+    out = delta._graph(nodes)
+    assert out.index("Ctl") < out.index("Map"), "left to right, the handler first"
+    assert '<span class="cg-c">Map</span>' in out and '<span class="cg-m">.toDto</span>' in out
+    assert '<span class="cg-cog">3</span>' in out and '<span class="cg-cyc">4</span>' in out
+    assert "cg-add" in out and "+1" in out, "the method the branch made heavier is marked"
+    assert "cg-m\">.getId" not in out, "a getter is not a node of its own"
+    assert "+ Owner×2" in out and "Owner.getName()" in out, "…but it is still named"
+    assert delta._graph([]) == ""
+
+
+def test_a_graph_needs_edges_and_a_new_entry_point_marks_nothing():
+    old_snapshot = {"flow": [{"method": "a.X#go", "cognitive": 1}]}
+    assert delta.graph_nodes(old_snapshot, None) == [], "no `calls`: an old snapshot"
+    cur = {"flow": [{"method": "a.X#go", "cognitive": 3, "calls": []}]}
+    assert delta.graph_nodes(cur, None)[0]["delta"] == 0
+    assert delta.graph_nodes(cur, old_snapshot)[0]["delta"] == 2
+
+
+def test_the_row_offers_a_caret_and_the_group_is_not_titled_http_slash():
+    row = delta.render_row(_row(why=[], graph=[]), 12, "main")
+    assert '<summary class="cx-head"><span class="cx-caret"' in row
+    assert re.search(r"details\.cx-row\[open\][^{]*\.cx-caret::before\s*\{\s*content:\"▾\"", delta.CSS)
+    assert "HTTP /" not in delta.render([_row(why=[])], "main")
+    cols = re.search(r"\.cx-head \{[^}]*grid-template-columns:([^;]*);", delta.CSS)[1].split()
+    assert cols[1] == "2.45rem", "the verb column is as wide as DELETE and no wider"
