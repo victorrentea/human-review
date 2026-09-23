@@ -1,6 +1,6 @@
 # Backlog — Victor's review-page requests (23–24 Sep 2026)
 
-Status: ✅ done · ✅ in progress · ⏸ blocked / needs a decision · 💬 discussion only
+Status: ✅ done · 🔄 in progress · ⏸ blocked / needs a decision · 💬 discussion only
 
 ## Code City (repo `code-city`)
 - ✅ Change DNA colour: axes of change as a bar on the near edge of each package; top level first, children on zoom (`17e33d0`)
@@ -40,7 +40,7 @@ Status: ✅ done · ✅ in progress · ⏸ blocked / needs a decision · 💬 di
 
 ## API / Structure / City wording
 - ✅ "PR impact on code size, complexity, coupling, …" · C2 "Diagram synthesized from sequence diagrams of the test traces" · "expand 25 impacted" (`27219fd`, `30ba748`)
-- ✅ "All boxes and lines are ArchUnit-tested vs code" is on petclinic main (`19e93bcc`), not yet merged into test-pr
+- ✅ "All boxes and lines are ArchUnit-tested vs code" (`19e93bcc`), on main and test-pr
 - ⏸ `openapi-visual-diff.py` has to be copied to the public `OpenAPI-Visual-Diff` repo (drift test fails until then)
 
 ## Data tab — conceptual model
