@@ -254,6 +254,22 @@ def test_an_unresolvable_session_reports_every_tab_as_not_measured():
     assert "not measured" in report["tabs"]["a"]["tip"]
 
 
+def _ledger_start(when: str, tab: str, uid: str | None = None) -> list[dict]:
+    """This conversation issuing `steps-ledger.py start <tab>` — the call that says it is
+    the one doing the step — and the answer 0.4s later. Unpriced, so the arithmetic of the
+    test around it stays about the turns it names."""
+    uid = uid or f"ls{when}"
+    answered = (dt.datetime.fromisoformat(when.replace("Z", "+00:00"))
+                + dt.timedelta(seconds=0.4)).isoformat()
+    return [{"type": "assistant", "timestamp": when,
+             "message": {"id": uid, "content": [
+                 {"type": "tool_use", "id": uid, "name": "Bash",
+                  "input": {"command": f"STEP=$(steps-ledger.py start {tab} --label x)"}}]}},
+            {"type": "user", "timestamp": answered,
+             "message": {"content": [{"type": "tool_result", "tool_use_id": uid,
+                                      "content": "0"}]}}]
+
+
 def _fake_transcript(tmp_path, lines) -> Path:
     p = tmp_path / "session.jsonl"
     p.write_text("\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
@@ -280,6 +296,7 @@ def test_a_missing_ledger_is_named_as_the_reason_but_the_run_is_still_available(
 
 def test_an_end_to_end_report_measures_the_tab_and_the_residual(tmp_path, monkeypatch):
     fake = _fake_transcript(tmp_path, [
+        *_ledger_start("2026-09-02T09:59:59.700Z", "data"),
         {"type": "assistant", "timestamp": "2026-09-02T10:05:00Z",
          "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
                      "usage": {"input_tokens": 100, "output_tokens": 10}}},
@@ -415,6 +432,7 @@ def test_the_parts_always_add_back_up_to_the_residual():
 
 def test_the_report_carries_the_parts_through_to_the_page(tmp_path, monkeypatch):
     fake = _fake_transcript(tmp_path, [
+        *_ledger_start("2026-09-02T10:59:59.700Z", "guide"),
         {"type": "assistant", "timestamp": "2026-09-02T11:05:00Z",
          "message": {"id": "m1", "model": "claude-sonnet-5-20260101",
                      "usage": {"input_tokens": 100, "output_tokens": 10}}},
@@ -828,13 +846,15 @@ def test_no_transcript_at_all_is_one_reason_on_every_coding_row(tmp_path, monkey
 
 def test_the_page_building_rows_come_from_the_step_ledger_of_that_run(tmp_path,
                                                                      monkeypatch):
-    """The video and the images are not the coding session at all — they are steps of the
+    """The video and the UX audit are not the coding session at all — they are steps of the
     run that built the page, and the point of the row is to put both halves of the bill in
-    one table."""
+    one table. Each is charged only for the turns of the conversation that ran it: the
+    video step was worked by hand, the audit was stamped by a script and cost no turn."""
     build = tmp_path / "build.jsonl"
     build.write_text("\n".join(json.dumps(r) for r in [
+        *_ledger_start("2026-09-03T09:59:59.700Z", "video"),
         _assistant("v1", "2026-09-03T10:05:00Z"),     # inside the video step
-        _assistant("d1", "2026-09-03T11:05:00Z"),     # inside the dsaudit step
+        _assistant("d1", "2026-09-03T11:05:00Z"),     # inside the audit, but not the audit
         _bash("2026-09-03T12:05:00Z", "python3 refresh-report.py --steps all", mid="g1"),
         _result("2026-09-03T12:05:30Z", "g1"),        # the regeneration being billed
         _assistant("x1", "2026-09-03T13:05:00Z"),     # no step at all
@@ -860,11 +880,14 @@ def test_the_page_building_rows_come_from_the_step_ledger_of_that_run(tmp_path,
     images = next(r for r in doc["rows"] if r["key"] == "images")
     page = next(r for r in doc["rows"] if r["key"] == "page_build")
     assert video["measured"] and video["messages"] == 1
-    assert images["measured"] and images["messages"] == 1
+    assert images["label"] == "UX audit (script)"
+    assert images["measured"] and images["messages"] == 0 and images["cost"] == 0.0
+    assert "no model turns" in images["detail"]
     assert page["measured"] and page["messages"] == 1, (
         "the regeneration only -- the stray turn ran nothing and is somebody else's work")
     rest = next(r for r in doc["rows"] if r["key"] == "not_this_report")
-    assert rest["measured"] and rest["excluded"] and rest["messages"] == 1
+    assert rest["measured"] and rest["excluded"] and rest["messages"] == 2, (
+        "d1 ran while the audit did, and did something else: it is not the audit's")
 
 
 def test_a_narrow_tab_list_must_not_report_the_other_tabs_as_drift(tmp_path, monkeypatch,
@@ -1442,3 +1465,116 @@ def test_a_model_step_inside_the_regeneration_is_part_of_it(tmp_path, monkeypatc
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+# --------------------------------------------------------------------------- #
+# A step is charged to the conversation that ran it, not to the clock
+# --------------------------------------------------------------------------- #
+
+def test_a_parallel_agents_turns_are_not_charged_to_a_step_it_did_not_run(tmp_path,
+                                                                        monkeypatch):
+    """PR #49's "view images" row was $7.29 for a script that calls no model: every turn
+    of every agent of the run that fell inside the audit's three minutes. The step's own
+    conversation is the one that issued `steps-ledger.py start`; an agent that was already
+    busy with something else keeps its turns."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-bbbbbbbbbbbb", {"agentType": "general-purpose"},
+                 [_assistant("p1", "2026-09-02T09:50:00Z", side=True),
+                  _assistant("p2", "2026-09-02T10:05:00Z", side=True)])],
+        rows=[*_ledger_start("2026-09-02T09:59:59.700Z", "data"),
+              _assistant("m1", "2026-09-02T10:05:00Z")])
+    monkeypatch.setattr(rc, "transcript", lambda s: session)
+    steps = tmp_path / ".steps.json"
+    steps.write_text(json.dumps([
+        {"tabs": ["data"], "label": "d", "start": "2026-09-02T10:00:00+00:00",
+         "end": "2026-09-02T10:10:00+00:00"}]), encoding="utf-8")
+    report = rc.tab_cost_report("abc", None, steps, ["data"])
+    assert report["tabs"]["data"]["messages"] == 1, "m1 only, never the parallel p2"
+    assert report["residual_parts"]["subagent"]["messages"] == 2
+
+
+def test_an_agent_the_step_launched_is_part_of_the_step(tmp_path, monkeypatch):
+    """Delegating is still doing it: an agent the owning conversation named inside the
+    window (its launch result carries the agentId) is charged with the step."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-cccccccccccc", {"agentType": "general-purpose"},
+                 [_assistant("c1", "2026-09-02T10:03:00Z", side=True)])],
+        rows=[*_ledger_start("2026-09-02T09:59:59.700Z", "data"),
+              {"type": "user", "timestamp": "2026-09-02T10:02:00Z",
+               "message": {"content": [{"type": "tool_result", "tool_use_id": "x",
+                                        "content": "agentId: cccccccccccc"}]}}])
+    monkeypatch.setattr(rc, "transcript", lambda s: session)
+    steps = tmp_path / ".steps.json"
+    steps.write_text(json.dumps([
+        {"tabs": ["data"], "label": "d", "start": "2026-09-02T10:00:00+00:00",
+         "end": "2026-09-02T10:10:00+00:00"}]), encoding="utf-8")
+    report = rc.tab_cost_report("abc", None, steps, ["data"])
+    assert report["tabs"]["data"]["messages"] == 1
+
+
+def test_a_step_a_script_stamped_costs_no_turns_and_says_so(tmp_path, monkeypatch):
+    session = _session_tree(tmp_path, rows=[
+        _bash("2026-09-02T09:59:58Z", "python3 run-steps.py --only dsaudit", mid="r1"),
+        _result("2026-09-02T10:05:00Z", "r1"),
+        _assistant("m1", "2026-09-02T10:05:02Z")])
+    monkeypatch.setattr(rc, "transcript", lambda s: session)
+    steps = tmp_path / ".steps.json"
+    steps.write_text(json.dumps([
+        {"tabs": ["dsaudit"], "label": "audit", "start": "2026-09-02T10:00:00+00:00",
+         "end": "2026-09-02T10:04:59+00:00"}]), encoding="utf-8")
+    report = rc.tab_cost_report("abc", None, steps, ["dsaudit"])
+    row = report["tabs"]["dsaudit"]
+    assert row["measured"] and row["messages"] == 0
+    assert "no model turns" in row["tip"] and "not measured" not in row["tip"]
+
+
+def test_a_phase_is_not_charged_for_an_agent_already_running_when_it_opened(tmp_path):
+    """The same flaw in the coding session's phases: an agent launched before the fixes
+    began and still running during them was billed to the fixes by the clock."""
+    session = _session_tree(
+        tmp_path,
+        agents=[("agent-dddddddddddd", {}, [_assistant("e1", "2026-09-02T09:00:00Z", side=True),
+                                            _assistant("e2", "2026-09-02T10:45:00Z", side=True)]),
+                ("agent-eeeeeeeeeeee", {}, [_assistant("f1", "2026-09-02T10:42:00Z", side=True)])],
+        rows=[_assistant("m1", "2026-09-02T10:40:00Z")])
+    got = rc._window(session, _ts("2026-09-02T10:30:00+00:00"),
+                     _ts("2026-09-02T11:00:00+00:00"))
+    assert got["messages"] == 2, "m1 and the agent started inside (f1), never e2"
+
+
+def test_the_lookups_for_the_write_up_belong_to_the_write_up(tmp_path):
+    """The greps that gather line numbers for review-points.md, and the check of an anchor
+    right after writing it, are writing it. The last edit or test before them is the fixes,
+    and the commit after them is the commit."""
+    session = _session_tree(tmp_path, rows=[
+        _tool_use("2026-09-02T10:40:00Z", "Edit", {"file_path": "/repo/Vet.java"}),
+        _tool_use("2026-09-02T10:41:00Z", "Bash", {"command": "mvn -o test | tail -5"}),
+        _tool_use("2026-09-02T10:42:00Z", "Bash",
+                  {"command": 'grep -n "vetId\\|setVet" src/Visit.java'}),
+        _tool_use("2026-09-02T10:43:00Z", "Read", {"file_path": "/repo/Owner.java"}),
+        _tool_use("2026-09-02T10:44:00Z", "Write", {"file_path": "/repo/review-points.md"}),
+        _tool_use("2026-09-02T10:45:00Z", "Bash", {"command": "sed -n 55,62p x.puml"}),
+        _tool_use("2026-09-02T10:46:00Z", "Bash", {"command": "git commit -F msg.txt"}),
+    ])
+    lo, hi = rc.points_window(session, "review-points.md")
+    assert lo == _ts("2026-09-02T10:42:00+00:00"), "from the first grep after the test run"
+    assert hi == _ts("2026-09-02T10:45:00+00:00"), "to the anchor check, not the commit"
+    lo, _hi = rc.points_window(session, "review-points.md",
+                               floor=_ts("2026-09-02T10:43:00+00:00"))
+    assert lo == _ts("2026-09-02T10:43:00+00:00"), "never before the phase opened"
+
+
+@pytest.mark.parametrize("command,lookup", [
+    ('grep -n "a\\|b" x.java', True),
+    ('grep -n "List<Vet>" x.java', True),
+    ("cd /repo && sed -n 1,20p x.java", True),
+    ("git log --oneline -3", True),
+    ("sed -i '' s/a/b/ x.java", False),
+    ("grep -n x a.java > /tmp/out", False),
+    ("mvn -o test 2>&1 | grep ERROR", False),
+    ("git commit -m x", False),
+])
+def test_a_lookup_is_a_command_that_only_reads(command, lookup):
+    assert rc._is_lookup({"name": "Bash", "input": {"command": command}}) is lookup

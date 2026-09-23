@@ -281,13 +281,19 @@ TOTAL_FORMULA = ("implementation + code-review + post-review fixes + review-poin
 def _when(raw: str | None) -> str:
     """`2026-09-02T15:41:21.4Z` as `2 Sep 15:41`. The date is there because the writing
     happened on a different day from the review and that is half the point of the row;
-    the seconds are not, because nothing here is timed to the second."""
+    the seconds are not, because nothing here is timed to the second.
+
+    Both ends in this machine's zone. The boundaries arrive in whatever zone produced them
+    — a transcript stamps UTC, `git %cI` the committer's offset — and printed as given the
+    post-review fixes read `18:34 → 21:39`, three hours of fixing that were five minutes."""
     if not raw:
         return ""
     try:
         t = dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
     except ValueError:
         return ""
+    if t.tzinfo is not None:
+        t = t.astimezone()
     return f"{t.day} {t.strftime('%b')} {t:%H:%M}"
 
 

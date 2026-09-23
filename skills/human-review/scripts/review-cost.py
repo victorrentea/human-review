@@ -358,18 +358,29 @@ def _scan(path: Path, since: dt.datetime | None, force_side: bool, best: dict,
 
 
 def gather_turns(path: Path, since: dt.datetime | None, include_subagents: bool = True,
-                 until: dt.datetime | None = None):
+                 until: dt.datetime | None = None, origin: dict | None = None):
     """The deduped, priced turns `collect()` and `tab_costs()` both work from.
 
     One scan, shared, so the two never drift on what counts as a turn — the same
     dedupe-by-`message.id` and subagent-transcript discovery either would reimplement
-    otherwise."""
+    otherwise.
+
+    `origin`, when given, is filled with `id(turn) -> transcript path`: which conversation
+    spent each turn, which is what lets a step be charged only for its own."""
     best: dict[str, tuple] = {}
-    _scan(path, since, False, best, until)
+    where: dict[str, str] = {}
     agents = subagent_transcripts(path) if include_subagents else []
-    for extra in agents:
-        _scan(extra, since, True, best, until)
-    return list(best.values()), len(agents)
+    for extra, side in [(path, False), *[(a, True) for a in agents]]:
+        before = dict(best)
+        _scan(extra, since, side, best, until)
+        for mid, turn in best.items():
+            if before.get(mid) is not turn:
+                where[mid] = str(extra)
+    turns = list(best.values())
+    if origin is not None:
+        for mid, turn in best.items():
+            origin[id(turn)] = where.get(mid, str(path))
+    return turns, len(agents)
 
 
 def collect(path: Path, since: dt.datetime | None, include_subagents: bool = True,
@@ -482,7 +493,108 @@ def load_steps(path: Path) -> tuple[list[dict], bool]:
     return out, True
 
 
-def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
+#: The program a step is bracketed with by hand. A transcript that ran `steps-ledger.py
+#: start` at the moment a step opened is the conversation doing that step.
+LEDGER_PROGRAM = "steps-ledger.py"
+
+#: The ledger stamps to the second and a transcript to the millisecond, so a stamp can read
+#: up to a second earlier than the call that wrote it.
+STAMP_SLACK = dt.timedelta(seconds=1)
+
+
+def _ledger_starts(path: Path) -> list[tuple]:
+    """`(issued, answered)` for every `steps-ledger.py start` this transcript ran."""
+    calls: dict[str, dt.datetime] = {}
+    ends: dict[str, dt.datetime] = {}
+    first: dict[str, dt.datetime] = {}
+    for rec in _rows(path):
+        when = _parse_iso(rec.get("timestamp"))
+        if when is None:
+            continue
+        mid = str((rec.get("message") or {}).get("id") or rec.get("uuid") or "")
+        if mid and (mid not in first or when < first[mid]):
+            first[mid] = when
+        for b in _blocks(rec):
+            if b.get("type") == "tool_use" and b.get("name") == "Bash":
+                cmd = str((b.get("input") or {}).get("command") or "")
+                if any(args[:1] == ["start"]
+                       for _p, args in builder_calls(cmd, (LEDGER_PROGRAM,))):
+                    calls[str(b.get("id"))] = min(first.get(mid, when), when)
+            elif b.get("type") == "tool_result":
+                ends.setdefault(str(b.get("tool_use_id")), when)
+    return [(start, ends.get(tid) or start) for tid, start in calls.items()]
+
+
+def _agent_launches(path: Path) -> list[tuple]:
+    """`(when, agent id)` for every subagent this transcript names, at the time it did."""
+    out = []
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return out
+    for line in text.splitlines():
+        ids = AGENT_ID_RE.findall(line)
+        if not ids:
+            continue
+        try:
+            when = _parse_iso(json.loads(line).get("timestamp"))
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        if when is not None:
+            out += [(when, i) for i in ids]
+    return out
+
+
+def attribute_steps(session_file: Path, steps: list[dict]) -> list[dict]:
+    """Each step, with the transcripts that actually did it under `owners`.
+
+    A step used to be charged every turn whose clock fell inside its window — every turn of
+    every conversation of the run. A run forks, and the pinned session that builds a page is
+    usually also running a handful of subagents on something else: on PR #49 the design-
+    system audit, a script that calls no model at all, came out at $7.29, all of it other
+    agents' git pulls, test runs and CSS greps that happened to be running in the same
+    three minutes.
+
+    So a step belongs to the conversation that ran it, and to nobody else:
+
+    * **bracketed by hand** — the transcript that issued `steps-ledger.py start` at the
+      moment the step opened. Its turns until the step closed are the step, plus those of
+      any subagent it launched inside the window (delegating is still doing it).
+    * **stamped from inside a script** — `run-steps.py` stamps its producers itself, from a
+      subprocess. No transcript issued the start, and none of them worked during it: the
+      model was waiting on one tool call. `owners` is empty, and the step costs no turns —
+      which is the truth about a step that is a script.
+    """
+    files = run_files(session_file)
+    starts = {str(p): _ledger_starts(p) for p, _side in files}
+    home = subagent_dir(Path(session_file))
+    out = []
+    for s in steps:
+        owners: set[str] = set()
+        end = s.get("end")
+        for p, _side in files:
+            if any(a - STAMP_SLACK <= s["start"] <= b + STAMP_SLACK for a, b in starts[str(p)]):
+                owners.add(str(p))
+                if end is None:
+                    continue
+                for when, agent in _agent_launches(p):
+                    if s["start"] - STAMP_SLACK <= when <= end + STAMP_SLACK:
+                        hit = home / f"agent-{agent}.jsonl"
+                        if hit.is_file():
+                            owners.add(str(hit))
+        out.append({**s, "owners": frozenset(owners)})
+    return out
+
+
+def _step_takes(step: dict, turn, origin: dict | None) -> bool:
+    """Is this turn one the step may be charged? By clock alone when nothing says who ran
+    the step (a caller with no transcripts); by clock *and* conversation when it does."""
+    if origin is None or "owners" not in step:
+        return True
+    return origin.get(id(turn)) in step["owners"]
+
+
+def tab_costs(turns, steps: list[dict], wanted: list[str], origin: dict | None = None) -> dict:
     """Attribute each turn's cost to the tab(s) whose step window it falls in.
 
     A turn inside more than one matching tab's window — one step feeding two tabs at
@@ -505,8 +617,12 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
     number for it silently becomes "not measured", which reads as "we forgot to instrument
     it" rather than "these two files disagree". Naming the orphaned ids is what lets the
     caller say which of the two it is.
+
+    `origin` maps `id(turn)` to the transcript it came from (`gather_turns(origin=…)`), and
+    with it a step carrying `owners` (`attribute_steps`) takes only its own conversation's
+    turns — a parallel subagent's turn in the same minutes goes to the residual instead.
     """
-    per_tab = {t: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {},
+    per_tab ={t: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {},
                     "has_closed": False, "has_unclosed": False}
                for t in [*wanted, GUIDE_TAB]}
     unknown: set[str] = set()
@@ -528,13 +644,14 @@ def tab_costs(turns, steps: list[dict], wanted: list[str]) -> dict:
     # reading, deciding, recovering — which never belonged to a step in the first place.
     parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {}}
              for k in ("subagent", "conversation")}
-    for _, model, u, side, when in turns:
+    for turn in turns:
+        _, model, u, side, when = turn
         c = price(family(model), u)
         tok = turn_tokens(u)
         hit = set()
         if when is not None:
             for s in closed:
-                if s["start"] <= when <= s["end"]:
+                if s["start"] <= when <= s["end"] and _step_takes(s, turn, origin):
                     hit |= {t for t in s["tabs"] if t in per_tab}
         if not hit:
             bucket = parts["subagent" if side else "conversation"]
@@ -1047,7 +1164,7 @@ def build_windows(session_file: Path, programs=BUILD_PROGRAMS) -> list[tuple]:
     return _merge(spans)
 
 
-def _claimed(steps: list[dict], tabs, own_rows=OWN_ROW_TABS) -> list[dict]:
+def _claimed(steps: list[dict], tabs, own_rows=OWN_ROW_TABS, path=None) -> list[dict]:
     """The closed steps whose cost is already printed on a row of its own.
 
     Only those. Every *other* step — the diagrams, the audit, the guide — is page building
@@ -1058,13 +1175,17 @@ def _claimed(steps: list[dict], tabs, own_rows=OWN_ROW_TABS) -> list[dict]:
     """
     known = set(tabs)
     owned = set(own_rows)
+    # And only in the conversation that ran it (`attribute_steps`): a parallel agent's turn
+    # in the same minutes was not charged to that row, so it must not be skipped here
+    # either, or it would fall out of every row at once.
     return [s for s in steps
             if s["end"] is not None and s["end"] >= s["start"]
-            and any(t in known and t in owned for t in s["tabs"])]
+            and any(t in known and t in owned for t in s["tabs"])
+            and (path is None or "owners" not in s or str(path) in s["owners"])]
 
 
 def split_residual(turns, steps: list[dict], windows, tabs, own_rows=OWN_ROW_TABS,
-                   earlier=()) -> dict:
+                   earlier=(), path=None) -> dict:
     """These turns, split into the regeneration the page bills for and everything else.
 
     `ours` is the last full regeneration of this report and nothing else. `theirs` is the
@@ -1075,7 +1196,7 @@ def split_residual(turns, steps: list[dict], windows, tabs, own_rows=OWN_ROW_TAB
     """
     parts = {k: {"cost": 0.0, "tokens": 0.0, "messages": 0, "models": {}}
              for k in ("ours", "theirs", "rebuilds")}
-    closed = _claimed(steps, tabs, own_rows)
+    closed = _claimed(steps, tabs, own_rows, path)
     for _key, model, u, _side, when in turns:
         if when is not None and any(s["start"] <= when <= s["end"] for s in closed):
             continue
@@ -1127,7 +1248,7 @@ def run_residual(session_file: Path, steps: list[dict], tabs,
         before = set(best)
         _scan(path, None, side, best, None)
         fresh = [best[mid] for mid in best.keys() - before]
-        part = split_residual(fresh, steps, windows, tabs, earlier=earlier)
+        part = split_residual(fresh, steps, windows, tabs, earlier=earlier, path=path)
         for half, row in part.items():
             for field in ("cost", "tokens", "messages"):
                 total[half][field] += row[field]
@@ -1169,10 +1290,10 @@ def other_work(session_file: Path, steps: list[dict], tabs, limit: int = 4,
     running tests, driving a browser. A guess about *which project* would be a guess; a
     count of what the turns did is a measurement.
     """
-    closed = _claimed(steps, tabs)
     counts: dict[str, int] = {}
     files: set[str] = set()
     for path, _side in run_files(session_file):
+        closed = _claimed(steps, tabs, path=path)
         # The same window the row is costed over, or the old every-builder rule when no
         # regeneration was picked. A summary drawn over a different set of turns from the
         # number beside it is a caption for a different photograph.
@@ -1216,13 +1337,19 @@ def tab_cost_tip(row: dict) -> str:
         return f"cost: not measured for this tab —{why}."
     caveat = (" One of its steps started but never recorded finishing, so this is a "
               "lower bound." if row["has_unclosed"] else "")
+    if not row.get("messages") and not row["cost"] and not row["has_unclosed"]:
+        # Measured, and nothing: the step ran as a script inside one tool call, and no
+        # conversation spent a turn on it. Said in words, because "$0.00" alone reads like
+        # a tab that got its work for free out of somebody else's row.
+        return ("no model turns for this tab — its step ran as a script inside one tool "
+                "call, and the turn that started it is billed with the page build.")
     return (f"{money(row['cost'])} · {human(round(row['tokens']))} tok measured for "
             f"this tab (list-price).{caveat}")
 
 
 def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path: Path,
                     tabs: list[str], include_subagents: bool = True,
-                    turns=None) -> dict:
+                    turns=None, origin: dict | None = None) -> dict:
     """Everything a page builder needs to put an honest cost tooltip on every tab.
 
     Always returns an entry for every tab in `tabs` — never an empty dict a caller has to
@@ -1254,9 +1381,13 @@ def tab_cost_report(session: str | None, since: "dt.datetime | None", steps_path
     # `turns` lets `ledger()` hand over the scan it already paid for. A transcript this
     # size is read in seconds and the ledger needs the same turns twice -- once priced per
     # tab, once totalled -- so scanning it again is the whole of that second wait.
-    if turns is None:
-        turns, _ = gather_turns(path, since, include_subagents)
-    result = tab_costs(turns, steps, tabs)
+    #
+    # `origin` travels with it: without knowing which conversation spent a turn, a step can
+    # only be charged by the clock, and the clock bills a step for every parallel agent.
+    if turns is None or origin is None:
+        origin = {}
+        turns, _ = gather_turns(path, since, include_subagents, origin=origin)
+    result = tab_costs(turns, attribute_steps(path, steps), tabs, origin=origin)
     tabs_out = {
         t: {"measured": row["has_closed"], "cost": row["cost"],
             "tokens": round(row["tokens"]), "messages": row["messages"],
@@ -1474,7 +1605,10 @@ PHASE_LABELS = {
     "post_review_fixes": "post-review fixes",
     "review_points": "review-points",
     "video": "demo video",
-    "images": "view images",
+    # The UX tab's screenshots and audit: `ds-audit.py`, a script driving a browser. It
+    # calls no model, so the row is what the conversation spent running it, usually nothing
+    # — "view images" read as if a model had been paid to look at pictures.
+    "images": "UX audit (script)",
     "page_build": "page build",
     "not_this_report": "not this report — other work in the pinned session",
 }
@@ -1582,11 +1716,13 @@ def _price_turns(turns) -> dict:
 
 
 def _window(path: Path, since, until, skip=()) -> dict:
-    """The parent's turns in a window, plus its own agents' — but never the reviewers'.
+    """The parent's turns in a window, plus the agents it started in it — never the reviewers'.
 
     A reviewer's transcript is priced exactly, as its own row, so counting it here as well
-    would bill the review twice. Everything else the session forked belongs to whichever
-    phase it ran in, and is charged there.
+    would bill the review twice. An agent the session forked *during* the phase is part of
+    the phase. One that was already running when the phase opened is not: it is a parallel
+    errand launched for something else, and charging its turns here would bill the phase by
+    the clock rather than by what its turns did.
     """
     best: dict[str, tuple] = {}
     _scan(path, since, False, best, until)
@@ -1594,8 +1730,112 @@ def _window(path: Path, since, until, skip=()) -> dict:
     for extra in subagent_transcripts(path):
         if str(extra) in skip:
             continue
+        first, _last = agent_span([extra])
+        if first is None or (since is not None and first < since) \
+                or (until is not None and first > until):
+            continue
         _scan(extra, since, True, best, until)
     return _price_turns(list(best.values()))
+
+
+#: Tool calls that only look things up. A turn made of nothing else, right before the first
+#: write of the review-points file or right after the last, is gathering what the file
+#: says — the line numbers, the anchors — and belongs to writing it, not to the fixes.
+LOOKUP_TOOLS = {"Read", "Grep", "Glob", "LS"}
+_LOOKUP_SHELL = re.compile(r"^(?:grep|rg|egrep|cat|head|tail|ls|find|wc|awk|nl|stat|"
+                           r"sed\s+-n|git\s+(?:log|show|diff|grep|status|blame))\b")
+
+
+def _is_lookup(block: dict) -> bool:
+    name = str(block.get("name") or "")
+    if name in LOOKUP_TOOLS:
+        return True
+    if name != "Bash":
+        return False
+    cmd = str((block.get("input") or {}).get("command") or "")
+    # Quoted text is a pattern or a message, not shell: a grep for `a\|b` has a pipe in it
+    # and `grep "List<Vet>"` a redirect, and neither is one.
+    cmd = re.sub(r"'[^']*'|\"(?:\\.|[^\"\\])*\"", "''", cmd)
+    if re.search(r"(?<![2&])>(?!&)|\bsed\s+-i|\btee\b|<<", cmd.replace("2>&1", "")
+                 .replace("2>/dev/null", "").replace(">/dev/null", "")):
+        return False
+    for seg in re.split(r"&&|\|\||[;|\n]", cmd):
+        seg = _CD_PREFIX.sub("", seg.strip())
+        if not seg or seg.startswith("cd "):
+            continue
+        if not _LOOKUP_SHELL.match(seg):
+            return False
+    return True
+
+
+def _writes_file(block: dict, rel: str) -> bool:
+    """Does this one tool call write `rel`? `write_window`'s evidence, for a single block."""
+    auth = _authoring_module()
+    name, inp = block.get("name", ""), block.get("input") or {}
+    base = Path(rel).name
+    if name in auth.WRITE_TOOLS:
+        paths = [inp.get("file_path") or inp.get("path") or inp.get("notebook_path")]
+        paths += [e.get("file_path") for e in (inp.get("edits") or []) if isinstance(e, dict)]
+        return any(p and (str(p).endswith(rel) or Path(str(p)).name == base) for p in paths)
+    if name == "Bash":
+        cmd = str(inp.get("command") or "")
+        return rel in cmd and auth.shell_writes(cmd, rel)
+    return False
+
+
+def points_window(path: Path, rel: str, floor=None, ceiling=None) -> tuple:
+    """The stretch of the parent that went into `rel`: its writes, plus the lookups for it.
+
+    `write_window` alone found the one turn that wrote review-points.md and billed the
+    turns that *gathered* what it says — five greps for line numbers, one check of a
+    diagram anchor — to the fixes. On PR #49 that made the row $0.28 of a $1.49 errand.
+    So the window is widened over the turns that touch it on either side and do nothing
+    but look things up; the first turn that edits, tests or commits ends it, because that
+    is the fixing (before) or the commit (after). A turn with no tool call is taken only
+    between two lookups, never at the edge. `floor`/`ceiling` keep it inside the phase.
+    """
+    first, last = write_window(path, rel)
+    if first is None:
+        return None, None
+    msgs: dict[str, dict] = {}
+    for rec in _rows(path):
+        if rec.get("type") != "assistant" or rec.get("isSidechain"):
+            continue
+        when = _parse_iso(rec.get("timestamp"))
+        mid = str((rec.get("message") or {}).get("id") or rec.get("uuid") or "")
+        if when is None or not mid:
+            continue
+        m = msgs.setdefault(mid, {"when": when, "tools": []})
+        m["when"] = min(m["when"], when)
+        m["tools"] += [b for b in _blocks(rec) if b.get("type") == "tool_use"]
+    # The turn that does the first write started streaming before it wrote — it is the
+    # write, not a turn in front of it, and must not read as "work" that ends the walk.
+    order = [m for m in sorted(msgs.values(), key=lambda m: m["when"])
+             if not any(_writes_file(b, rel) for b in m["tools"])]
+
+    def kind(m):
+        if not m["tools"]:
+            return "none"
+        return "lookup" if all(_is_lookup(b) for b in m["tools"]) else "work"
+
+    def widen(seq, bound, past):
+        # Only a lookup moves the edge, so a tool-less turn is inside the window when a
+        # lookup lies beyond it and outside when it is the last thing before the work.
+        edge = None
+        for m in seq:
+            if bound is not None and past(m["when"], bound):
+                break
+            k = kind(m)
+            if k == "work":
+                break
+            if k == "lookup":
+                edge = m["when"]
+        return edge
+
+    lo = widen(reversed([m for m in order if m["when"] < first]), floor,
+               lambda w, b: w < b)
+    hi = widen([m for m in order if m["when"] > last], ceiling, lambda w, b: w > b)
+    return (lo or first), (hi or last)
 
 
 def _row(key: str, measured: bool, data: dict | None = None, reason: str | None = None,
@@ -1648,10 +1888,12 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
       3. **post-review fixes** — the parent's turns between the last reviewer turn and
          commit #2, less row 4.
       4. **review-points** — the turns that wrote `review-points.md`, found by the same
-         evidence `authoring-sessions.py` uses. A sub-window of row 3, subtracted so the
-         rows still add up to the total.
-      5/6. **demo video / view images** — not the coding session at all: the `video` and
-         `dsaudit` steps of the run that built the page, priced by `tab_costs`.
+         evidence `authoring-sessions.py` uses, widened over the lookups right around them
+         (`points_window`). A sub-window of row 3, subtracted so the rows still add up.
+      5/6. **demo video / UX audit** — not the coding session at all: the `video` and
+         `dsaudit` steps of the run that built the page, priced by `tab_costs` over the
+         turns of the conversation that ran each step (`attribute_steps`), never over
+         whatever else the run's agents were doing in the same minutes.
       7. **page build** — that run's `guide` pseudo-tab and residual.
 
     **Every window is a bound, not a fence** — the caveat `authoring_cost` already carries.
@@ -1703,7 +1945,7 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
                 "the conversation that invoked it, and its turns cannot be separated from "
                 "the turns around them")))
 
-        points_from, points_to = write_window(path, points_file)
+        points_from, points_to = points_window(path, points_file, floor=t3, ceiling=t4)
         points = None
         if points_from and points_to:
             points = _window(path, points_from, points_to, skip=reviewer_files)
@@ -1714,7 +1956,7 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
             if points:
                 for k in ("cost", "tokens", "messages"):
                     fixes[k] = max(fixes[k] - points[k], 0)
-                detail += f", less the {points['messages']} turn(s) that wrote {points_file}"
+                detail += f", less the {points['messages']} turn(s) spent on {points_file}"
             rows.append(_row("post_review_fixes", True, fixes, window=(t3, t4),
                              detail=detail))
         else:
@@ -1725,7 +1967,8 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
         if points:
             rows.append(_row("review_points", True, points,
                              window=(points_from, points_to),
-                             detail=f"first → last write of {points_file}"))
+                             detail=f"writing {points_file}, with the lookups for it "
+                                    "just before and after"))
         else:
             rows.append(_row("review_points", False, reason=(
                 f"no turn in this session wrote {points_file} — it was written somewhere "
@@ -1747,16 +1990,28 @@ def phase_costs(session: str | None, t0, t1, t2, t3, t4, reviewer_files=(),
         # Scanned once and handed to everything below: the tab report, the build-window
         # split and the row that names the rest all price the SAME turns, and a second scan
         # is both the slowest thing here and the way two of them come to disagree.
-        run_turns = gather_turns(run_path, None)[0] if run_path is not None else None
+        origin: dict = {}
+        run_turns = (gather_turns(run_path, None, origin=origin)[0]
+                     if run_path is not None else None)
         report = tab_cost_report(run_session, None, Path(steps_path), wanted,
-                                 turns=run_turns)
+                                 turns=run_turns, origin=origin)
+        # Charged by who ran each step, not by the clock — see `attribute_steps`. The same
+        # attribution is handed to the residual split below, so a turn a step did not take
+        # is not skipped there either.
+        if run_path is not None:
+            steps = attribute_steps(run_path, steps)
         for key, tab in (("video", "video"), ("images", "dsaudit")):
             row = report["tabs"].get(tab) or {}
             if row.get("measured"):
+                detail = (f"the '{tab}' step of the page-building run — only the turns of "
+                          "the conversation that ran it")
+                if not row.get("messages"):
+                    detail = (f"the '{tab}' step ran as a script inside one tool call: no "
+                              "model turns")
                 rows.append(_row(key, True, {"cost": row["cost"], "tokens": row["tokens"],
                                              "messages": row["messages"],
                                              "models": row.get("models") or {}},
-                                 detail=f"the '{tab}' step of the page-building run"))
+                                 detail=detail))
             else:
                 rows.append(_row(key, False, reason=(row.get("tip")
                                                      or report.get("reason")
@@ -1900,9 +2155,10 @@ def ledger(session: str | None, since: "dt.datetime | None", steps_path: Path,
     run = {"measured": False, "cost": 0.0, "tokens": 0, "messages": 0, "models": []}
     passes = {"measured": False, "groups": {}, "inline": 0}
     turns = n_agents = None
+    origin: dict = {}
     path = transcript(session) if session else None
     if path is not None:
-        turns, n_agents = gather_turns(path, since, include_subagents)
+        turns, n_agents = gather_turns(path, since, include_subagents, origin=origin)
         c = collect(path, since, include_subagents=include_subagents,
                     turns=turns, n_agents=n_agents)
         run = {"measured": True, "cost": c["cost"], "tokens": c["tokens"],
@@ -1910,7 +2166,8 @@ def ledger(session: str | None, since: "dt.datetime | None", steps_path: Path,
                "subagents": c["subagents"], "models": list(c["models"])}
         passes = pass_costs(session, since)
     tabs_report = tab_cost_report(session, since, steps_path, tabs,
-                                  include_subagents=include_subagents, turns=turns)
+                                  include_subagents=include_subagents, turns=turns,
+                                  origin=origin if turns is not None else None)
     writing = authoring_cost(base, root, exclude=session)
     # Only the part of the passes that predates the run is added; the rest is already
     # inside `run`. See `pass_costs` for why that distinction is kept rather than assumed.
@@ -2028,7 +2285,8 @@ def main(argv=None) -> int:
 
     since = _resolve_since(args.since_file, args.since)
 
-    turns, n_agents = gather_turns(path, since, not args.no_subagents)
+    origin: dict = {}
+    turns, n_agents = gather_turns(path, since, not args.no_subagents, origin=origin)
     r = collect(path, since, include_subagents=not args.no_subagents,
                turns=turns, n_agents=n_agents)
     r["session"] = args.session
@@ -2057,7 +2315,8 @@ def main(argv=None) -> int:
         steps, ledger_found = load_steps(Path(args.steps_file))
         if ledger_found:
             wanted = sorted({t for s in steps for t in s["tabs"]})
-            residual = tab_costs(turns, steps, wanted)["residual"]
+            residual = tab_costs(turns, attribute_steps(path, steps), wanted,
+                                 origin=origin)["residual"]
             if residual["messages"]:
                 tip += (f" {money(residual['cost'])} of that is not attributed to any "
                        "single tab — assembling the guide itself, plus any step whose "

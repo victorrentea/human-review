@@ -23,6 +23,7 @@ Run with:  python3 -m pytest test_cost_breakdown.py
 """
 from __future__ import annotations
 
+import datetime as dt
 import html
 import importlib.util
 import json
@@ -40,6 +41,24 @@ HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location("build_review", HERE / "build-review-html.py")
 build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
+
+
+@pytest.fixture(autouse=True)
+def _utc(monkeypatch):
+    """The table prints every window in this machine's zone, so the tests pin the zone:
+    the stamps below are written in UTC and read back as written."""
+    monkeypatch.setenv("TZ", "UTC")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
+
+
+def test_a_window_is_printed_in_one_zone_whatever_zone_each_end_came_in():
+    """A transcript stamps UTC and `git %cI` the committer's offset. Printed as given, a
+    five-minute fix phase read `18:34 → 21:39`."""
+    assert build._when("2026-09-17T18:34:27Z") == "17 Sep 18:34"
+    assert build._when("2026-09-17T21:39:52+03:00") == "17 Sep 18:39"
 
 
 def _tab(tid, label):
@@ -338,6 +357,20 @@ def _turn(uid: str, when: str, inp: int, out: int) -> str:
     })
 
 
+def _ledger_start(uid: str, when: str, tab: str) -> list[str]:
+    """`steps-ledger.py start <tab>` issued by this conversation, and its answer 0.4s later."""
+    answered = (dt.datetime.fromisoformat(when) + dt.timedelta(seconds=0.4)).isoformat()
+    return [json.dumps({"type": "assistant", "uuid": uid, "timestamp": when,
+                        "message": {"id": uid, "model": "claude-opus-5-20260101",
+                                    "content": [{"type": "tool_use", "id": uid,
+                                                 "name": "Bash",
+                                                 "input": {"command": "STEP=$(steps-ledger"
+                                                           f".py start {tab})"}}]}}),
+            json.dumps({"type": "user", "timestamp": answered,
+                        "message": {"content": [{"type": "tool_result",
+                                                 "tool_use_id": uid, "content": "0"}]}})]
+
+
 @pytest.fixture
 def built_page(tmp_path):
     """`{"auto": "cost"}` is still in the scope, because content files in the wild still
@@ -362,8 +395,13 @@ def _build_page(tmp_path, scope):
     proj = home / ".claude" / "projects" / "-tmp-repo"
     proj.mkdir(parents=True)
     # Opus list price is $5/1M in, $25/1M out.
+    # A step is charged only to the conversation that ran it, so the two steps worked by
+    # hand open with the `steps-ledger.py start` call that stamped them (unpriced here, to
+    # keep the arithmetic below readable). `packages` has none: a script stamped it.
     (proj / f"{SESSION}.jsonl").write_text("\n".join([
+        *_ledger_start("s1", "2026-09-02T09:59:59.600000+00:00", "review"),
         _turn("m1", "2026-09-02T10:05:00+00:00", 100_000, 10_000),   # $0.75, 110k tok
+        *_ledger_start("s2", "2026-09-02T10:19:59.600000+00:00", "data"),
         _turn("m2", "2026-09-02T10:25:00+00:00", 20_000, 2_000),     # $0.15,  22k tok
         _turn("m3", "2026-09-02T11:00:00+00:00", 4_000, 400),        # $0.03,   4k tok
     ]) + "\n", encoding="utf-8")
