@@ -417,8 +417,7 @@ def render(model, entries, global_changes, tags, old_label, new_label) -> str:
     # Every change the page lists, endpoint-level and global — the same sum oasdiff's
     # "N changes" on the verdict line counts, so the two numbers agree on sight.
     n_changes = (sum(len(e["changes"]) for e in entries.values()) + len(global_changes))
-    label = (f"expand {n_changes} change{'' if n_changes == 1 else 's'}"
-             if n_changes else "expand impacted")
+    label = f"expand {n_changes} impacted" if n_changes else "expand impacted"
     return (TEMPLATE.replace("__EXPAND_LABEL__", label)
             .replace("__PAYLOAD__", payload))
 
