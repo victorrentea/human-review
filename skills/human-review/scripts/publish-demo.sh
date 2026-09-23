@@ -135,6 +135,19 @@ else
   fi
 fi
 
+# The link handed out and the card both point at demo/<slug>/, and a run writes review.html,
+# not index.html — so GitHub Pages answered that URL with a 404 while review.html sat next to it.
+if [ ! -e "$dest/index.html" ]; then
+  cat > "$dest/index.html" <<'HTML'
+<!doctype html>
+<meta charset="utf-8">
+<title>human-review</title>
+<meta http-equiv="refresh" content="0; url=review.html">
+<script>location.replace("review.html" + location.search + location.hash)</script>
+<a href="review.html">review.html</a>
+HTML
+fi
+
 # ------------------------------------------------------------------ the landing page card
 # Hand-editing demo/index.html once per snapshot is how that file rots — the card that
 # stood there before this was written claimed ±33 files against a review.html that said
