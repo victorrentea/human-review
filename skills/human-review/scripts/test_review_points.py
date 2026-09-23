@@ -715,6 +715,38 @@ def test_two_review_commits_take_the_last_and_name_them_both(tmp_path):
     assert any(first[:8] in w and "2 commits carry" in w for w in found["warnings"])
 
 
+def test_auto_fix_commits_are_listed_and_a_later_one_is_marked(tmp_path):
+    """`[auto-fix]` on the subject is how the agent's own fixes are found again later —
+    the review commit, and a second round after it, which is not a human's hand edit."""
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    impl = _commit(repo, "a.py", "one\n", "feature")
+    (repo / "review-points.md").write_text(FULL)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "[auto-fix] take the review's findings\n\n"
+                                f"Review-Points: review-points.md\nImplements: {impl}\n")
+    review = _git(repo, "rev-parse", "HEAD")
+    again = _commit(repo, "a.py", "two\n", "[auto-fix] second round")
+    human = _commit(repo, "a.py", "three\n", "hand edit")
+    found = rc.detect(repo, base)
+    assert found["review"] == review
+    assert [c["sha"] for c in found["auto_fixes"]] == [review, again]
+    assert [(c["sha"], c["auto_fix"]) for c in found["after_detail"]] == [
+        (again, True), (human, False)]
+
+
+def test_with_no_trailer_the_last_auto_fix_commit_is_the_review_commit(tmp_path):
+    repo = _repo(tmp_path)
+    base = _git(repo, "rev-parse", "HEAD")
+    _commit(repo, "a.py", "one\n", "feature")
+    _commit(repo, "review-points.md", FULL, "[auto-fix] apply the review")
+    tagged = _git(repo, "rev-parse", "HEAD")
+    _commit(repo, "review-points.md", FULL + "\n", "touch the record again")
+    found = rc.detect(repo, base)
+    assert found["review"] == tagged, "two commits touch the file; the tag decides"
+    assert any("[auto-fix]" in w for w in found["warnings"])
+
+
 def test_an_unresolvable_implements_is_reported_not_passed_through(tmp_path):
     repo = _repo(tmp_path)
     base = _git(repo, "rev-parse", "HEAD")
@@ -822,6 +854,24 @@ def test_the_prompt_still_refuses_fix():
     """`--fix` applies the findings to the working tree, which destroys the accept/decline
     record this whole flow exists to capture."""
     assert "Do NOT pass --fix" in _prompt()
+
+
+def test_the_prompt_tags_the_auto_fix_commit():
+    """`[auto-fix]` on the subject is how the agent's review-driven changes are found again
+    later, and `review-commits.py` lists them by it — the two have to agree on the tag."""
+    prompt = _prompt()
+    assert rc.AUTO_FIX_TAG in prompt
+    assert "git log --grep" in prompt
+
+
+def test_the_prompt_keeps_review_points_terse():
+    """The reader skims the file and jumps into the code: a title and its fields, capped,
+    and no prose unless asked."""
+    prompt = _prompt()
+    assert "15 words at most" in prompt
+    assert "No prose under an item" in prompt
+    doc = (HERE.parent / "reference" / "review-points.md").read_text(encoding="utf-8")
+    assert "Terse by design" in doc
 
 
 def test_the_three_pile_names_are_the_ones_the_parser_accepts():

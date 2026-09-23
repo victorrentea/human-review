@@ -85,7 +85,10 @@ reason. `review-commits.py` therefore reads the keys off any line of `%B`, with
 line: a paragraph landing after them is expected and harmless.
 
 **Two commits, not one and not three.** The first is the feature alone; the second is the
-accepted fixes plus `review-points.md`. That split is what makes "what did reviewing cost,
+accepted fixes plus `review-points.md`, and its subject starts with **`[auto-fix]`** — as
+does any later commit applying a reviewer's finding — so `git log --grep='\[auto-fix\]'`
+finds everything the agent changed on the review's say-so, and `review-commits.py` lists
+those commits (and falls back to the last one when a squash lost the trailers). That split is what makes "what did reviewing cost,
 against writing it" a measurement instead of an estimate — the two commits are the only
 timestamps in the whole flow that a rebase cannot move without also moving the work.
 

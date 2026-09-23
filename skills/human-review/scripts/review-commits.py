@@ -28,9 +28,17 @@ matched line by line anywhere in the message. That is the normal case, not a deg
 and it warns about nothing: a key on its own line IS the record, wherever the harness
 ended up putting it.
 
-**The fallback is a guess and says so.** With no trailer anywhere, the single commit in
-the range that touches the points file is taken as the review commit, with a warning. Two
-such commits, or none, is not guessed at all: an ambiguous answer here silently mis-bases
+**`[auto-fix]` in the subject marks what the agent fixed on its own.** `/implement-ticket`
+puts it on every commit that applies a reviewer's findings, so `git log --grep='\[auto-fix\]'`
+finds that work later — including a second round after the review commit, or a branch
+whose trailers a squash lost. Every such commit is listed under `auto_fixes`, a commit
+after the review carries `auto_fix: true`, and with no trailer the last `[auto-fix]`
+commit is the review commit (a tagged commit is the agent saying so, which beats guessing
+from the file).
+
+**The fallback is a guess and says so.** With no trailer and no `[auto-fix]` tag, the single
+commit in the range that touches the points file is taken as the review commit, with a
+warning. Two such commits, or none, is not guessed at all: an ambiguous answer here silently mis-bases
 every fix diff on the page, and "I could not tell" is a thing the page can render.
 
 Exit codes:  0 found · 2 not a git repository / no range · 3 no review commit and no
@@ -68,6 +76,14 @@ BODY_KEYS = {"Review-Points": "points", "Implements": "implements",
              "Claude-Session": "session"}
 BODY_RE = re.compile(r"^(Review-Points|Implements|Claude-Session):[ \t]*(\S.*?)[ \t]*$",
                      re.MULTILINE)
+
+
+#: The subject tag the coding agent puts on a commit of fixes it applied from a review.
+AUTO_FIX_TAG = "[auto-fix]"
+
+
+def is_auto_fix(commit: dict) -> bool:
+    return AUTO_FIX_TAG in (commit.get("subject") or "").lower()
 
 
 def git(root: Path, *args: str) -> tuple[int, str]:
@@ -155,9 +171,16 @@ def detect(root: Path, base: str, head: str = "HEAD", rel: str | None = None) ->
     warnings: list[str] = []
 
     marked = [c for c in commits if c["points"]]
+    tagged = [c for c in commits if is_auto_fix(c)]
     fallback = False
     review = None
-    if marked:
+    if not marked and tagged:
+        review = tagged[-1]
+        warnings.append(
+            f"no Review-Points trailer in {base}..{head} — taking {review['sha'][:8]}, the "
+            f"last commit tagged {AUTO_FIX_TAG}, as the review commit. Add the trailer and "
+            "the Implements: link comes with it.")
+    elif marked:
         # The last, not the first: a second round of review fixes is a real thing, and the
         # newest record is the one describing the file as it now stands.
         review = marked[-1]
@@ -217,7 +240,9 @@ def detect(root: Path, base: str, head: str = "HEAD", rel: str | None = None) ->
         seen = False
         for c in commits:
             if seen:
-                after.append({"sha": c["sha"], "when": c["when"], "subject": c["subject"]})
+                after.append({"sha": c["sha"], "when": c["when"], "subject": c["subject"],
+                              # The agent's own second round, not a human's hand edit.
+                              "auto_fix": is_auto_fix(c)})
             seen = seen or c["sha"] == review["sha"]
 
     return {
@@ -230,6 +255,8 @@ def detect(root: Path, base: str, head: str = "HEAD", rel: str | None = None) ->
         "after": [c["sha"] for c in after],
         "after_detail": after,
         "review_when": review["when"] if review else None,
+        "auto_fixes": [{"sha": c["sha"], "when": c["when"], "subject": c["subject"]}
+                       for c in tagged],
         "warnings": warnings,
     }
 
@@ -269,6 +296,10 @@ def main(argv=None) -> int:
               + ("   (fallback: the only commit touching the points file)"
                  if found["fallback"] else ""))
         print(f"  session         {found['session'] or '— not recorded'}")
+        if found["auto_fixes"]:
+            print(f"  {AUTO_FIX_TAG}      {len(found['auto_fixes'])} commit(s):")
+            for c in found["auto_fixes"]:
+                print(f"      {c['sha'][:8]}  {c['when'][:16]}  {c['subject'][:60]}")
         if found["after_detail"]:
             print(f"  after the review  {len(found['after_detail'])} commit(s):")
             for c in found["after_detail"]:

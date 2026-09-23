@@ -9,16 +9,24 @@ Implement the ticket you were given, then record the review of your own work.
 3. Then run  /code-review high  over that commit. Do NOT pass --fix: you decide what to
    accept, one finding at a time, and that decision is the artifact this flow exists for.
 4. Write review-points.md at the repo root. Format: see reference/review-points.md.
-     Fixed       — what you repaired because the review was right. file:line, and which
-                   reviewer raised it.
-     Ignored     — what you read and declined, with the reason. An empty Ignored section
-                   after a five-agent review is not credible; if you accepted everything,
-                   say so in one line.
-     Assumptions — what you decided that the ticket did not. Not defects: the readings
-                   you chose, each with the reading you did not take under `alternative:`
-                   and a `confidence:` for how sure you are that yours is the right one.
-                   This is the only section nobody else can write, because it is not in
-                   the diff.
+   **Terse.** The reader skims it and jumps into the code; every extra sentence is one
+   they have to wade through. One item per finding, and only its fields:
+
+       ### <what it is, 15 words at most>
+       - file: path:line
+       - severity: high|medium|low         (Fixed and Ignored; never on an assumption)
+       - why: <15 words at most>           (Ignored: why declined. Assumptions: why this reading)
+       - alternative: <the reading not taken, 15 words at most>    (Assumptions only)
+       - confidence: 0.xx                                         (Assumptions only)
+
+   No prose under an item, no preamble, no closing summary, no restating the diff or the
+   ticket. More detail only if the human asks for it.
+     Fixed       — what you repaired because the review was right.
+     Ignored     — what you read and declined. An empty Ignored section after a
+                   five-agent review is not credible; if you accepted everything, say so
+                   in one line.
+     Assumptions — what you decided that the ticket did not: the only section nobody
+                   else can write, because it is not in the diff.
    Every entry names a file:line. An unanchored entry is dropped by the build.
    Check it parses before you commit:  review-points.py --check
 
@@ -37,7 +45,10 @@ Implement the ticket you were given, then record the review of your own work.
    and let the reviewer go and look. Being told where to look is the entire point of
    the section; a flat 0.9 tells them nothing and costs you nothing, which is exactly
    what makes it worthless.
-5. Commit the fixes and review-points.md together.
+5. Commit the fixes and review-points.md together. The subject line starts with
+   `[auto-fix]` — e.g. `[auto-fix] apply 3 review findings on visit/vet` — and so does
+   every later commit that applies a reviewer's finding, so `git log --grep='\[auto-fix\]'`
+   finds everything you changed on the review's say-so.
    The last lines you write in the message are:
        Review-Points: review-points.md
        Implements: <sha from step 2>

@@ -21,6 +21,12 @@ position to fix it, rather than silently rendering as an empty pile.
 
 ## The format
 
+**Terse by design.** The reader skims this file and jumps into the code, so an item is a
+title of at most 15 words plus its fields, and nothing else: no preamble, no summary, no
+prose under an item unless the human asks for more. `why:` and `alternative:` are 15
+words at most too. The body described under *Items* below exists for the rare item that
+cannot be understood from its anchor; it is not the default.
+
 ````markdown
 ---
 ticket: victorrentea/petclinic#37
@@ -32,30 +38,27 @@ session: 16a1e790-2c96-4f1b-8a4f-2ddcf2d10a8e
 
 ## Fixed
 
-### The seed hard-coded the number of vets in its round-robin
+### Seed round-robin hard-coded the vet count
 - file: petclinic-backend/src/main/resources/db/seed/R__seed.sql:143
-- source: /code-review agent 2 (shallow bug scan)
+- source: /code-review agent 2
+- severity: medium
 - fixed-in: HEAD
-Both bounds now come from the vets table, so adding a seventh vet cannot
-leave it unassigned.
 
 ## Ignored
 
 ### Collapse the two divergent booking implementations
 - file: petclinic-backend/src/main/java/victor/training/VisitRestController.java:66
-- source: /code-review agent 1 (AGENTS.md adherence)
+- source: /code-review agent 1
 - severity: medium
-- why: out of scope for #37, and deleting the flat endpoint is an API break.
+- why: out of scope for #37; deleting the flat endpoint breaks the API
 
 ## Assumptions
 
-### @Transactional went on the public endpoints, not on bookVisit
+### @Transactional on the public endpoints, not on bookVisit
 - file: petclinic-backend/src/main/java/victor/training/VisitRestController.java:62-68
 - alternative: annotate `bookVisit` as the ticket asked — a silent no-op
 - confidence: 0.85
-- why: Spring AOP ignores self-invoked private methods.
-The ticket named the inner method; the annotation only does anything on the
-two callers, so that is where it went.
+- why: Spring AOP ignores self-invoked private methods
 ````
 
 ### Frontmatter
