@@ -4397,7 +4397,9 @@ def test_the_grade_reasons_are_short_and_come_from_the_content():
                      "No build proved this commit",
                      "One commit landed after the agent finished"]
     out = build.grade_reasons_html(spec)
-    assert 'id="grade-why"' in out and "Why graded <b>6</b>/10" in out
+    assert 'id="grade-why"' in out and '<span class="gradewhy-n"><b>6</b>/10</span>' in out
+    # The grade sits beside the bullets, not in a heading above them.
+    assert "gradewhy-t" not in out and out.index("<ul>") < out.index("gradewhy-score")
     spec["verdict"]["why"] = ["CI never ran"]
     assert [s for s, _ in build.grade_reasons(spec)] == ["CI never ran"]
     assert build.grade_reasons_html({}) == ""

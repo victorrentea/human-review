@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from ..shared.actions import ACTIONS, declare_action, RERUN_ACTION
-from ..shared.bands import _lede_above
+from ..shared.bands import _lede_above, _flush_top_bands
 from ..shared.commands import command_html
 
 SEVERITIES = {
@@ -615,8 +615,14 @@ def grade_reasons(spec) -> list[tuple[str, str]]:
 
 
 def grade_reasons_html(spec) -> str:
-    """The small panel above the three piles that the score in the masthead links to:
-    `Why 6/10`, then a bullet per reason. Empty when there is no verdict."""
+    """The panel above the three piles that the score in the masthead links to: a bullet
+    per reason on the left, and the grade itself, large, in the right-hand space the short
+    bullets leave empty. Empty when there is no verdict.
+
+    The grade was a small `Why graded 6/10` heading over the bullets, which made the
+    number the least visible thing in a panel that exists to explain it, and left half the
+    panel blank beside a column of five-word lines. Now the bullets start at the top and
+    the number sits beside them, where the eye lands after reading them."""
     v = spec.get("verdict")
     if not v or "score" not in v:
         return ""
@@ -629,9 +635,11 @@ def grade_reasons_html(spec) -> str:
         f'<li data-tip="{html.escape(full, quote=True)}">{html.escape(short)}</li>'
         if full and full != short else f"<li>{html.escape(short)}</li>"
         for short, full in reasons)
-    return (f'<aside class="gradewhy {band}" id="grade-why">'
-            f'<p class="gradewhy-t">Why graded <b>{n}</b>/10</p>'
-            f'<ul>{items}</ul></aside>')
+    return (f'<aside class="gradewhy {band}" id="grade-why" aria-label="Why graded {n}/10">'
+            f'<ul>{items}</ul>'
+            f'<p class="gradewhy-score" title="Why graded {n}/10: the reasons beside it">'
+            f'<span class="gradewhy-l">graded</span>'
+            f'<span class="gradewhy-n"><b>{n}</b>/10</span></p></aside>')
 
 
 def opening_lede(spec) -> str:
@@ -754,7 +762,11 @@ def opening_lede(spec) -> str:
     # The grade's reasons go above the counts line, not under it: the line is sticky and
     # has to stay the topmost thing in the tab once the reader scrolls, and the panel is
     # read once, on arrival from the score, and then left behind.
-    return (grade_reasons_html(spec)
+    # The takeover row ("32 commits made after the reviewed version") goes between the
+    # two: under the grade, which is read first on arrival from the masthead, and directly
+    # above the counts line it qualifies — every number on that line was counted at the
+    # reviewed commit, not at the branch's head.
+    return (grade_reasons_html(spec) + _flush_top_bands()
             + '<p class="sub counts pilelede">' + " &middot; ".join(parts)
             + push_pr_button(spec) + "</p>" + push_pr_dialog(spec) + PILELEDE_SPY_JS)
 

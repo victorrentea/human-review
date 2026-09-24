@@ -124,17 +124,36 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
    — only the row that names this one, which then floated a blank band away from it. */
 .pilelede + script + h2 { margin-top:.6rem; }
 /* Why the score is what it is: the panel the masthead's `grade 6/10` lands on, above the
-   three piles. Small and bordered in the grade's own colour, a few words a bullet — it is
-   read once on arrival and then left behind for the piles it summarises. */
+   three piles. Bordered in the grade's own colour; the reasons on the left, a few words a
+   bullet, and the grade itself large on the right, in the space short bullets leave
+   empty — the number the panel explains is the first thing seen in it, not a caption
+   over it. It is read once on arrival and then left behind for the piles it summarises.
+   Narrow, the grade drops under the bullets rather than squeezing them. */
 .gradewhy { border:1px solid var(--line); border-left:3px solid currentColor;
-            border-radius:8px; padding:.45rem .8rem .5rem; margin:.4rem 0 .7rem;
-            background:var(--card); font-size:.88rem; max-width:44rem; }
+            border-radius:8px; padding:.5rem .8rem .55rem; margin:.4rem 0 .7rem;
+            background:var(--card); font-size:.88rem; max-width:44rem;
+            display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center;
+            column-gap:1.2rem; }
 .gradewhy.v-good { color:#1f7a45; } .gradewhy.v-mid { color:#9a5b06; }
 .gradewhy.v-bad { color:#d7263d; }
-.gradewhy-t { margin:0 0 .2rem; font-weight:650; font-size:.85rem; }
 .gradewhy ul { margin:0; padding-left:1.1rem; color:var(--fg); }
 .gradewhy li { margin:.08rem 0; line-height:1.45; }
 .gradewhy li[data-tip] { cursor:help; }
+.gradewhy-score { margin:0; padding:.1rem .4rem .1rem 1.2rem; text-align:center;
+                  border-left:1px solid var(--line); align-self:stretch;
+                  display:flex; flex-direction:column; justify-content:center;
+                  line-height:1; cursor:help; }
+.gradewhy-l { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
+              font-weight:650; opacity:.8; margin-bottom:.3rem; }
+.gradewhy-n { font-size:1.35rem; font-weight:600; opacity:.85; white-space:nowrap; }
+.gradewhy-n b { font-size:3.2rem; font-weight:750; letter-spacing:-.02em; opacity:1; }
+@media (max-width:560px) {
+  .gradewhy { grid-template-columns:1fr; }
+  .gradewhy-score { border-left:0; border-top:1px solid var(--line); margin-top:.45rem;
+                    padding:.45rem 0 0; flex-direction:row; align-items:baseline;
+                    justify-content:flex-start; gap:.5rem; }
+  .gradewhy-l { margin-bottom:0; }
+  .gradewhy-n b { font-size:2rem; } }
 @media (prefers-color-scheme:dark) {
   .gradewhy.v-good { color:#6fce93; } .gradewhy.v-mid { color:#e0a44a; }
   .gradewhy.v-bad { color:#f0757f; } }
