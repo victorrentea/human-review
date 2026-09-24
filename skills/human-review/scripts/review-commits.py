@@ -81,6 +81,13 @@ BODY_RE = re.compile(r"^(Review-Points|Implements|Claude-Session):[ \t]*(\S.*?)[
 #: The subject tag the coding agent puts on a commit of fixes it applied from a review.
 AUTO_FIX_TAG = "[auto-fix]"
 
+#: How a takeover announces itself in the points file: `## Taken over without a new pass —
+#: 21 Sep 2026`. The same opening words `review-points.py` reads the note by
+#: (`NOTE_HEADINGS` there — `test_review_commits_takeover.py` holds the two equal).
+NOTE_HEADINGS = ("taken over", "carried over", "not re-reviewed")
+NOTE_RE = re.compile(r"^##\s+((?:" + "|".join(map(re.escape, NOTE_HEADINGS)) + r")\b.*?)\s*$",
+                     re.IGNORECASE | re.MULTILINE)
+
 
 def is_auto_fix(commit: dict) -> bool:
     return AUTO_FIX_TAG in (commit.get("subject") or "").lower()
@@ -153,6 +160,25 @@ def resolve(root: Path, rev: str) -> str | None:
     return out.strip() or None if code == 0 else None
 
 
+def takeover_heading(root: Path, sha: str, rel: str) -> str | None:
+    """The takeover note's heading, when the points file *at this commit* carries one.
+
+    A takeover is a `Review-Points:` commit that moves the point forward without anybody
+    re-reading the code: Victor decides the commits since the review are accepted as they
+    are, and a note in the points file says so. It needs the trailer — without it the
+    aftermath band keeps counting from the old point — but it is not a review, and read as
+    one it did two kinds of damage: it became "the review commit", so the `Implements:` it
+    carries (the previous takeover, or the last feature commit) was reported as the
+    implementation, and the commits it took over dropped out of the scripted list and
+    survived only as a list an agent typed into the note by hand. Read at the commit and
+    not at the head, so a later real pass that drops the note is a review again."""
+    code, out = git(root, "show", f"{sha}:{rel}")
+    if code != 0:
+        return None
+    m = NOTE_RE.search(out)
+    return m.group(1).strip() if m else None
+
+
 def touching(root: Path, base: str, head: str, rel: str) -> list[str]:
     code, out = git(root, "log", "--reverse", "--format=%H",
                     f"{base}..{head}" if base else head, "--", rel)
@@ -171,6 +197,24 @@ def detect(root: Path, base: str, head: str = "HEAD", rel: str | None = None) ->
     warnings: list[str] = []
 
     marked = [c for c in commits if c["points"]]
+    # Takeovers out of the running for "the review commit" (see `takeover_heading`). The
+    # newest of them is kept: it is where the reader's sign-off now sits, and the band
+    # splits what came after the review into what it took over and what came after it.
+    takeover = None
+    reviews = []
+    for c in marked:
+        heading = takeover_heading(root, c["sha"], rel)
+        if heading:
+            takeover = {"sha": c["sha"], "when": c["when"], "subject": c["subject"],
+                        "heading": heading}
+        else:
+            reviews.append(c)
+            takeover = None          # a real pass after a takeover supersedes it
+    takeover_shas = {c["sha"] for c in marked} - {c["sha"] for c in reviews}
+    if reviews:
+        marked = reviews
+    else:
+        takeover = None              # nothing earlier to take over from: read as before
     tagged = [c for c in commits if is_auto_fix(c)]
     fallback = False
     review = None
@@ -238,11 +282,22 @@ def detect(root: Path, base: str, head: str = "HEAD", rel: str | None = None) ->
     after: list[dict] = []
     if review is not None:
         seen = False
+        # Up to and including the takeover commit, a commit was accepted without a pass;
+        # after it, nobody has signed it off at all.
+        taken = takeover is not None
         for c in commits:
             if seen:
-                after.append({"sha": c["sha"], "when": c["when"], "subject": c["subject"],
-                              # The agent's own second round, not a human's hand edit.
-                              "auto_fix": is_auto_fix(c)})
+                row = {"sha": c["sha"], "when": c["when"], "subject": c["subject"],
+                       # The agent's own second round, not a human's hand edit.
+                       "auto_fix": is_auto_fix(c)}
+                if takeover is not None:
+                    row["taken_over"] = taken
+                    # The bookkeeping commits themselves: they touch the points file and
+                    # nothing else, so the band leaves them off its list.
+                    row["takeover"] = c["sha"] in takeover_shas
+                after.append(row)
+                if takeover is not None and c["sha"] == takeover["sha"]:
+                    taken = False
             seen = seen or c["sha"] == review["sha"]
 
     return {
@@ -255,6 +310,7 @@ def detect(root: Path, base: str, head: str = "HEAD", rel: str | None = None) ->
         "after": [c["sha"] for c in after],
         "after_detail": after,
         "review_when": review["when"] if review else None,
+        "takeover": takeover if review is not None else None,
         "auto_fixes": [{"sha": c["sha"], "when": c["when"], "subject": c["subject"]}
                        for c in tagged],
         "warnings": warnings,
@@ -296,6 +352,9 @@ def main(argv=None) -> int:
               + ("   (fallback: the only commit touching the points file)"
                  if found["fallback"] else ""))
         print(f"  session         {found['session'] or '— not recorded'}")
+        if found["takeover"]:
+            t = found["takeover"]
+            print(f"  taken over at   {t['sha']}  ({t['heading']})")
         if found["auto_fixes"]:
             print(f"  {AUTO_FIX_TAG}      {len(found['auto_fixes'])} commit(s):")
             for c in found["auto_fixes"]:

@@ -2489,9 +2489,9 @@ def test_an_assumptions_confidence_reads_verbatim_with_its_tooltip(tmp_path):
     # `_confidence_chip` writes a native `title=`; the assembled page's own
     # `one_tooltip_only` postprocess turns every native title into `data-tip`, the same
     # rewrite PlantUML's own hints go through — one tooltip mechanism, page-wide.
-    # The tooltip is `CONFIDENCE_TIP`, fixed — Victor's own words, verbatim — not a
-    # sentence composed around this item's own number.
-    assert '<span class="f-confidence" data-tip="Confidence ∈ [0.1 .. 0.9]">0.85</span>' \
+    # The tooltip is `CONFIDENCE_TIP`, fixed — not a sentence composed around this item's
+    # own number — and the face is a percentage, not a rate.
+    assert '<span class="f-confidence" data-tip="Confidence ∈ [10% .. 90%]">85%</span>' \
         in item
     assert "sev-med" not in item, "0.85 is not a low confidence"
 
@@ -2505,7 +2505,7 @@ def test_a_low_confidence_assumption_wears_the_page_own_worth_a_look_amber(tmp_p
                "blocks": [{"type": "assumptions", "mode": "A"}]}]))
     item = re.search(r'<li class="n-assumed">.*?</li>', page, re.S).group(0)
     assert 'class="f-confidence sev-med"' in item
-    assert ">0.3</span>" in item
+    assert ">30%</span>" in item
 
 
 def test_assumptions_are_ordered_least_sure_first(tmp_path):

@@ -363,6 +363,10 @@ def _aftermath(ctx: Ctx):
             # would be the wrong reading of it. No files means unmeasured, not harmless.
             "generated_only": bool(files) and not code,
             "measured": bool(files),
+            # Accepted by a takeover without a new pass, and the takeover's own
+            # bookkeeping commit (see review-commits.py's `takeover_heading`).
+            "taken_over": bool(c.get("taken_over")),
+            "takeover": bool(c.get("takeover")),
         })
 
     def tally(picked):
@@ -372,6 +376,7 @@ def _aftermath(ctx: Ctx):
 
     out = {
         "review": review, "review_short": review[:8], "head": head,
+        "takeover": doc.get("takeover"),
         "generated_globs": globs,
         "commits": commits,
         "totals": {"commits": len(commits), "files": len(rows),

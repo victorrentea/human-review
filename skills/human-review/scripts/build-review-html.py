@@ -123,7 +123,8 @@ from hrbuild.shared.validate import (
     REQUIRED, validate
 )
 from hrbuild.tabs.review import (
-    AFTERMATH_FILES, aftermath_html, AFTERMATH_JSON, CONFIDENCE_TIP, opening_lede, PASS_DOCS,
+    AFTERMATH_FILES, aftermath_html, aftermath_reads_takeover, AFTERMATH_JSON, CONFIDENCE_TIP,
+    opening_lede, PASS_DOCS,
     PILE_BLOCKS, pile_numbers, PILELEDE_SPY_JS, points_empty_html, POINTS_MISSING_BAND, points_note_band,
     POINTS_PILES, render_assumptions, render_autofixes, render_findings, render_pile_block,
     review_tab_badge,
@@ -136,7 +137,7 @@ from hrbuild.tabs.review import (
     gh_comment_link, prepare_pr_push, pr_comment_slug, PR_COMMENTS_JSON, PR_PILE_LETTER,
     PR_POSTED_JSON, PR_PUSH_JS, push_pr_button, push_pr_dialog, PUSH_PR_ACTION,
     PUSH_PR_DRY_ACTION, _PR_SLUG_MAX,
-    _tooling_fold_html
+    _taken_fold_html, _tooling_fold_html
 )
 from hrbuild.tabs.sequence import (
     CODE_BADGE, FILE_PAGE, FILE_PENCIL, FILE_PLUS, render_testpairs, SEQ_ARROW, SEQ_DECL,
@@ -710,11 +711,13 @@ def main(argv=None) -> int:
     # it should be read. The missing-record band is second, directly above the piles it
     # explains.
     # The takeover note goes above the counts line itself: it says at which commit every
-    # number on that line was counted.
+    # number on that line was counted — unless the aftermath band already lists the commits
+    # it took over, read off git, which is the list the note was a frozen copy of.
     set_bands([aftermath_html(out_dir, root, base_ref=base_st["ref"] if base_st else None),
                POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
                else ""],
-              top=[points_note_band(spec.get("_reviewPoints"), github_blob_base(root))])
+              top=[] if aftermath_reads_takeover(out_dir)
+              else [points_note_band(spec.get("_reviewPoints"), github_blob_base(root))])
 
     def render_block(block):
         """One block of a tab, as (html, weight, changes).

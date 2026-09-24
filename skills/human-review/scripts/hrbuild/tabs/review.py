@@ -138,6 +138,20 @@ def points_note_band(points: dict | None, repo: str | None = None) -> str:
             f'version ({sha(reviewed.group(1))})</summary><ul>{rows}</ul></details></div>')
 
 
+def aftermath_reads_takeover(out_dir: Path) -> bool:
+    """Whether the aftermath band already carries the takeover, read off `git`.
+
+    When it does, `points_note_band` stands down: its list is the one an agent typed into
+    the note, counted from the same commit, and two lists of the same commits a screen
+    apart — one frozen, one live — was exactly the confusion. The note band stays the
+    fallback for a page with no aftermath measurement."""
+    try:
+        doc = json.loads((out_dir / AFTERMATH_JSON).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(doc, dict) and isinstance(doc.get("takeover"), dict)
+
+
 def _fold_note_lists(body: str) -> str:
     """Each list in the note folded to one row: the sentence is what the reader needs,
     the thirty commit subjects are there to check, not to read before the piles."""
@@ -800,9 +814,9 @@ def render_findings(findings) -> str:
 
 
 #: The confidence chip's tooltip, fixed rather than composed per item — Victor's own
-#: words, verbatim. It names the scale, not the one number already on the chip's own
-#: face; the number does not need saying twice.
-CONFIDENCE_TIP = "Confidence ∈ [0.1 .. 0.9]"
+#: words, with the scale in the unit the chip now shows. It names the scale, not the one
+#: number already on the chip's own face; the number does not need saying twice.
+CONFIDENCE_TIP = "Confidence ∈ [10% .. 90%]"
 
 
 def _confidence_chip(f) -> str:
@@ -812,11 +826,14 @@ def _confidence_chip(f) -> str:
     declares none, because a scale a model was never asked to fill in is not the same fact
     as a model that filled it in at the middle. `.sev-med`'s amber marks anything under
     0.5, the same hue the rest of the page already spends on "worth a second look" — a
-    confidence low enough to flag is exactly that, not a new colour to learn."""
+    confidence low enough to flag is exactly that, not a new colour to learn. Shown as a
+    percentage (`0.45` → `45%`), the stored value stays a rate."""
     c = f.get("confidence")
     if c is None:
         return ""
-    shown = f"{c:.2f}".rstrip("0").rstrip(".") or "0"
+    # A percentage, not a rate: `45%` is read at a glance, `0.45` is read as arithmetic.
+    # The lede already says "3 under 70% sure"; the chips now speak the same unit.
+    shown = f"{round(c * 100)}%"
     cls = "f-confidence sev-med" if c < 0.5 else "f-confidence"
     return (f'<span class="{cls}" title="{html.escape(CONFIDENCE_TIP, quote=True)}">'
             f'{shown}</span>')
@@ -1169,6 +1186,26 @@ def _tooling_fold_html(commits: list[dict], base_label: str) -> str:
             f'</span></summary><ul>{items}</ul></details>')
 
 
+def _taken_fold_html(commits: list[dict], takeover: dict | None, review_short: str,
+                     root: Path) -> str:
+    """The branch's own commits a takeover accepted without a pass, folded to one row.
+
+    They used to be a second list, above this band, typed by the agent that wrote the
+    takeover note: the same kind of statement as the band, counted from a different commit,
+    and frozen at the moment the note was written. Here they are read off `git` with the
+    rest of the band, split from tooling the same way, and the note's heading rides in the
+    hover. Revert stays on every row: they are this branch's work, accepted, not reviewed."""
+    n = len(commits)
+    when = html.escape(((takeover or {}).get("when") or "")[:10])
+    tip = html.escape((takeover or {}).get("heading") or "", quote=True)
+    items = "".join(_aftermath_commit(c, root) for c in commits)
+    return (f'<details class="toolcommits takenover" title="{tip}"><summary>'
+            f'<span class="foldlbl">{n} commit{"" if n == 1 else "s"} after '
+            f'<code>{html.escape(review_short)}</code> taken over without a new pass'
+            + (f' on {when}' if when else '')
+            + f'</span></summary><ul>{items}</ul></details>')
+
+
 def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> str:
     """What landed on the branch after the agent stopped, at the top of the Review tab.
 
@@ -1199,7 +1236,9 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
         # the status table (no review commit, most often), and inventing a reassuring
         # band here would be the page asserting the one thing it does not know.
         return ""
-    commits = doc.get("commits") or []
+    # A takeover's own commit is bookkeeping — it touches the points file and nothing else,
+    # and the band already says, in words, where it sits.
+    commits = [c for c in doc.get("commits") or [] if not c.get("takeover")]
     if not commits:
         return ""
     # The seams first: a merge that brought the base in is not a commit this band has
@@ -1213,7 +1252,19 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
     tooling_shas = _tooling_commit_shas(
         root, base_ref, [c["sha"] for c in commits if c.get("sha")])
     tooling = [c for c in commits if c.get("sha") in tooling_shas]
-    branch_only = [c for c in commits if c.get("sha") not in tooling_shas]
+    branch_all = [c for c in commits if c.get("sha") not in tooling_shas]
+    # What a takeover accepted without a pass, and what nobody has signed off at all. The
+    # headline, the colour and the counts are about the second: the first was a decision,
+    # and it is on the band as one fold, not as news.
+    taken = [c for c in branch_all if c.get("taken_over")]
+    branch_only = [c for c in branch_all if not c.get("taken_over")]
+    takeover = doc.get("takeover") if isinstance(doc.get("takeover"), dict) else None
+    since = "the review was taken over" if takeover else "the agent finished"
+    reviewed = 'Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>'
+    if takeover:
+        reviewed += ('; taken over at <code>' + html.escape(takeover.get("sha", "")[:8])
+                     + '</code> on ' + html.escape((takeover.get("when") or "")[:10])
+                     + ' without a new pass')
     base_label = (base_ref or "the base").split("/", 1)[-1]
     code = _code_totals(branch_only)
     n = len(branch_only)
@@ -1230,11 +1281,11 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
         # carrying `Review-Points:` — moves the point it is counted from. Said here, once,
         # so the button under the list is not mistaken for the thing that clears it.
         head = (f'<p><b>{n} commit{plural}, {lines} line'
-                f'{"" if lines == 1 else "s"} changed since the agent finished.</b> '
+                f'{"" if lines == 1 else "s"} changed since {since}.</b> '
                 'The findings, the assumptions and the requirements matrix were written '
                 'before them and have not seen them; every measured tab is rebuilt from '
                 'the branch as it is now.</p>')
-        sub = ('Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>. '
+        sub = (reviewed + '. '
                + (f'{code["genFiles"]} generated file'
                   + ("" if code["genFiles"] == 1 else "s")
                   + ' moved as well and are not counted here. '
@@ -1245,25 +1296,36 @@ def aftermath_html(out_dir: Path, root: Path, base_ref: str | None = None) -> st
         cls = "rband-alert"
         role = "alert"
     elif n:
-        head = (f'<p>{n} commit{plural} since the agent finished, and every file '
+        head = (f'<p>{n} commit{plural} since {since}, and every file '
                 'in them is generated.</p>')
-        sub = ('Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>. '
+        sub = (reviewed + '. '
                'Regenerated output, not somebody editing the change under review — which '
                'is why this band is grey.')
+        cls = "rband-warn"
+        role = "status"
+    elif taken:
+        # Everything the branch did since the review was taken over, and nothing since:
+        # the piles still describe the reviewed commit, and that is the one thing to say.
+        head = (f'<p>{len(taken)} commit{"" if len(taken) == 1 else "s"} taken over '
+                'without a new pass. The findings, the assumptions and the requirements '
+                'matrix describe the branch as it was reviewed.</p>')
+        sub = reviewed + '.'
         cls = "rband-warn"
         role = "status"
     else:
         # Every commit since the review folded away as tooling: nothing here is news
         # about the review, only about what `main` shipped in the meantime.
-        head = (f'<p>Only tooling from {html.escape(base_label)} since the agent '
-                'finished — nothing about this review changed.</p>')
-        sub = 'Reviewed at <code>' + html.escape(doc.get("review_short", "")) + '</code>.'
+        head = (f'<p>Only tooling from {html.escape(base_label)} since {since} '
+                '— nothing about this review changed.</p>')
+        sub = reviewed + '.'
         cls = "rband-warn"
         role = "status"
     return (f'<div class="rband {cls}" role="{role}">' + head
             + f'<p class="rb-sub">{sub}</p>'
             + ('<ul>' + "".join(_aftermath_commit(c, root) for c in branch_only) + '</ul>'
                if branch_only else '')
+            + (_taken_fold_html(taken, takeover, doc.get("review_short", ""), root)
+               if taken else '')
             + (_tooling_fold_html(tooling, base_label) if tooling else '')
             # After the list, not inside it: the commits are what happened, and this is the
             # one thing to do about all of them.
