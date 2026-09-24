@@ -209,6 +209,28 @@ def ripple_legend(rungs=RIPPLE) -> str:
     return " + ".join(words)
 
 
+def _footer(line: str, source_caption: str) -> str:
+    """The source's footer, with each file named by its name alone and the source's own
+    caption said after it.
+
+    The caption slot is the legend's, so the source's `caption` — on DomainModel.puml,
+    "Diagram generated from code using Java reflection" — used to be dropped outright, and
+    how the picture was produced went with it. It rides in the footer now, beside the
+    provenance line it belongs with. The footer's paths lose their directories: a reader
+    recognises `DomainModel.puml`; `petclinic-backend/docs/generated/` in front of it is
+    a line of grey they read past. A glob keeps its directory — `domain/*.java` without
+    `domain/` names nothing."""
+    m = re.match(r"^(\s*footer\s+)(.*)$", line, re.I)
+    if not m:
+        return line
+    text = " ".join(t.rsplit("/", 1)[-1] if "/" in t and "*" not in t
+                    and "." in t.rsplit("/", 1)[-1] else t
+                    for t in m.group(2).split(" "))
+    if source_caption:
+        text += f" — {source_caption}"
+    return m.group(1) + text
+
+
 def _mark_title(line: str) -> str:
     """Say in the title that the picture is a delta, not a snapshot.
 
@@ -632,7 +654,13 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     # render still produces a perfectly valid .svg, so nothing downstream noticed.
     # PlantUML does not care where a top-level directive sits.
     out = ["@startuml", caption, ""]
-    out += [_mark_title(ln) for ln in new.preamble if not ln.strip().startswith("caption")]
+    source_caption = next((ln.strip()[len("caption"):].strip() for ln in new.preamble
+                           if ln.strip().lower().startswith("caption")), "")
+    has_footer = any(ln.strip().lower().startswith("footer") for ln in new.preamble)
+    out += [_footer(_mark_title(ln), source_caption) for ln in new.preamble
+            if not ln.strip().lower().startswith("caption")]
+    if source_caption and not has_footer:
+        out.append(f"footer {source_caption}")
 
     # ── Elements present in NEW (red header if the whole element is new) ──────
     for name, el in new.elements.items():

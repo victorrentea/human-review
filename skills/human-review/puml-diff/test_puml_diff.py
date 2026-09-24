@@ -658,6 +658,18 @@ def test_every_directive_reaches_the_delta():
         assert directive in out
 
 
+def test_the_footer_names_files_by_name_and_says_how_the_picture_was_made():
+    src = DIRECTIVES.replace(
+        "title Domain Model\n",
+        "title Domain Model\ncaption Diagram generated from code using Java reflection\n")
+    out = m.diff(m.parse(src), m.parse(src))
+    assert ("footer domain/*.java -> DomainModel.puml — Diagram generated from code "
+            "using Java reflection") in out
+    assert "docs/generated/" not in out
+    # The legend keeps the caption slot: one caption, and it is the legend's.
+    assert out.count("\ncaption ") == 1
+
+
 def test_a_legend_survives_body_and_all():
     out = m.diff(m.parse(DIRECTIVES), m.parse(DIRECTIVES))
     assert "legend bottom" in out
