@@ -128,10 +128,11 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
    bullet, and the grade itself large on the right, in the space short bullets leave
    empty — the number the panel explains is the first thing seen in it, not a caption
    over it. It is read once on arrival and then left behind for the piles it summarises.
+   The panel spans the full width, so the grade sits at the right edge of the tab.
    Narrow, the grade drops under the bullets rather than squeezing them. */
 .gradewhy { border:1px solid var(--line); border-left:3px solid currentColor;
             border-radius:8px; padding:.5rem .8rem .55rem; margin:.4rem 0 .7rem;
-            background:var(--card); font-size:.88rem; max-width:44rem;
+            background:var(--card); font-size:.88rem;
             display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center;
             column-gap:1.2rem; }
 .gradewhy.v-good { color:#1f7a45; } .gradewhy.v-mid { color:#9a5b06; }
