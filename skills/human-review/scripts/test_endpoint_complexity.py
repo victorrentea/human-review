@@ -418,8 +418,12 @@ def test_a_node_folds_open_onto_its_own_lines_and_only_the_arrow_navigates():
     assert "if (x) {" in node and 'class="cg-lines"' in node, "the line lives in its box"
     assert 'role="button"' in node and not node.startswith("<a"), "the box is a toggle"
     assert "cx-why-m" not in out, "no second list of the same methods under the graph"
-    assert "sonarsource.com/resources/cognitive-complexity" in out
-    assert "Click ▸" not in delta.render([row], "main")
+    # The meaning of the score is linked once, from the tab's lede — not under every row.
+    assert "Call graph, left to right" not in out and "cg-key" not in out
+    page = delta.render([row], "main")
+    assert re.search(r'class="cx-lede"><a href="[^"]*sonarsource\.com/resources/'
+                     r'cognitive-complexity[^"]*"[^>]*>Cognitive complexity</a>', page)
+    assert "Click ▸" not in page
     assert re.search(r"\.cg-open > \.cg-lines \{[^}]*display:block", delta.CSS)
     assert "border-left:6px solid var(--cg-arrow)" in delta.CSS, "edges end in arrowheads"
 

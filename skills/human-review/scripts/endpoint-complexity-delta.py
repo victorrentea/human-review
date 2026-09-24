@@ -257,9 +257,9 @@ def _graph(nodes, groups=()) -> tuple[str, set[str]]:
 
     body = tree(root)
     return (f'<div class="cg" role="group" aria-label="Call graph of this entry point">'
-            f'<p class="cg-key">Call graph, left to right · the number on each method is its '
-            f'<a href="{SONAR_COGNITIVE}" target="_blank" rel="noopener">cognitive complexity</a>'
-            f' · click a method for the lines it is charged for, ↗ opens it</p>'
+            # No key line over the graph: repeated under every open row it was the same
+            # sentence N times, and what it explained the boxes show on hover. Its one
+            # link — what "cognitive complexity" means — moved to the tab's lede.
             f'{body}</div>'), drawn
 
 
@@ -510,8 +510,8 @@ def render(rows, base="main") -> str:
         # close this sentence; the groups below are titled by kind, every bar says on
         # hover what its colour and its number mean, and a reader counting moved rows is
         # reading the bars, not this line.
-        '<p class="cx-lede">Cognitive complexity of the <em>whole flow</em> behind each entry '
-        "point.</p>",
+        f'<p class="cx-lede"><a href="{SONAR_COGNITIVE}" target="_blank" rel="noopener">'
+        'Cognitive complexity</a> of the <em>whole flow</em> behind each entry point.</p>',
     ]
     known = {kind for kind, _ in KIND_TITLES}
     groups = KIND_TITLES + [
@@ -599,6 +599,7 @@ TOGGLE_JS = """<script>
 CSS = """
 /* Green = complexity this branch ADDED, red = complexity it REMOVED: the colour names the
     author of the change, it is not a verdict on whether growing is bad. */
+.cx-lede a { color:var(--link); }
 .cx-lede { color:var(--muted); font-size:.92rem; --cx-added:#2e9e5b; --cx-removed:#c62828; }
 .cx-group { --cx-added:#2e9e5b; --cx-removed:#c62828; }
 .cx-group + .cx-group { margin-top:1.1rem; }
@@ -721,8 +722,6 @@ a.cx-why-line:hover code { text-decoration:underline; }
     box rather than squeeze a deep chain or push the page wider than the window. The top
     padding leaves room for the `+N` badge that rides above a node's corner. */
 .cg { overflow-x:auto; padding:.55rem 0 .45rem; margin:0 0 .35rem -3.3rem; }
-.cg-key { font:10px/1.4 system-ui,sans-serif; color:var(--muted); margin:0 0 .45rem; }
-.cg-key a { color:var(--link); }
 /* Top-aligned, not centred: a centred parent floats to the middle of however tall its
     subtree is, and one wide branch then opens a screen of empty space above and below
     every sibling. Aligned to the top, a node sits level with its first callee and the
