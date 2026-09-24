@@ -746,8 +746,8 @@ a.cx-why-line:hover code { text-decoration:underline; }
     border:4px solid transparent; border-left:6px solid var(--cg-arrow); border-right:0; }
 .cg-more { position:relative; }
 .cg { --cg-line:color-mix(in srgb, var(--muted) 55%, transparent); --cg-arrow:var(--muted); }
-/* A node: the class badge over the `method()` badge, the score to the right of the class,
-    the ↗ to the right of the method. The names are set in the UI face, not monospace: the
+/* A node: the class badge over the `method()` badge, the ↗ to the right of the class and
+    the score to the right of the method — the score is the method's, so it sits on its row. The names are set in the UI face, not monospace: the
     graph is as wide as its deepest chain times its widest names, and a proportional face
     buys back a fifth of that. */
 .cg-n { display:inline-grid; grid-template-columns:auto auto; column-gap:5px; row-gap:1px;
@@ -764,9 +764,9 @@ a.cx-why-line:hover code { text-decoration:underline; }
                grid-column:1; justify-self:start; }
 .cg-c { color:var(--muted); border:1px solid var(--line); font-weight:500; }
 .cg-m { background:var(--code-bg); border:1px solid transparent; }
-.cg-cog { grid-column:2; grid-row:1; font:700 9.5px/1.3 ui-monospace,Menlo,monospace;
+.cg-cog { grid-column:2; grid-row:2; font:700 9.5px/1.3 ui-monospace,Menlo,monospace;
           text-align:right; font-variant-numeric:tabular-nums; }
-.cg-tools { grid-column:2; grid-row:2; justify-self:end; }
+.cg-tools { grid-column:2; grid-row:1; justify-self:end; }
 /* ↗ is the only way into the editor from the graph, so it is a real target, not a glyph:
     a small square that fills blue under the pointer. */
 a.cg-go { display:inline-block; min-width:14px; text-align:center; border-radius:3px;
