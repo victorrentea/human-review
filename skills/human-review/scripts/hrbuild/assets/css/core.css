@@ -103,6 +103,13 @@
           --on-fill:#15151a; }
 }
 * { box-sizing:border-box; }
+/* The masthead and the tab strip bleed edge to edge with `width:100vw`, and `vw` counts
+   the vertical scrollbar: wherever scrollbars take room (a mouse plugged in, "always
+   show"), both bands ran 15px under it and the window grew a horizontal scrollbar on
+   every long tab. Nothing else on the page is meant to be wider than the window — wide
+   content scrolls in a box of its own — so the viewport clips sideways. `clip`, not
+   `hidden`: it opens no scroll container, and the sticky masthead keeps sticking. */
+html { overflow-x:clip; }
 body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
 /* The masthead used to spend 276px before a word of the review: a 2.5rem gutter, a
    1.9rem headline, then three separated rows (subtitle, chips, strip) each holding a
