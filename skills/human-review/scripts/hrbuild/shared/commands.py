@@ -158,11 +158,14 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
     tid = html.escape(tab_id, quote=True)
     name = html.escape(label, quote=True)
     steps = html.escape(",".join(info.get("steps") or []), quote=True)
+    tip = html.escape(info.get("tip") or f"Re-derive the {label} tab "
+                      f"({','.join(info.get('steps') or [])}) and rebuild the page. Free.",
+                      quote=True)
     out = ('<span class="tabre">'
            '<button type="button" class="chip chip-rerun chip-served tabrerun" hidden '
            f'aria-disabled="true" data-rerun="__rerun__" data-tab="{tid}" '
            f'data-steps="{steps}" aria-label="Rerun the {name} tab" '
-           f'data-tip="Re-derive the {name} tab ({steps}) and rebuild the page. Free.">'
+           f'data-tip="{tip}">'
            f'<span class="rr-ico">{CMD_RUN}</span></button>')
     # A tab's own further presses (the Tests tab's ↺⏳, which runs the suites first), drawn
     # by the tab that owns them and placed here, inside the span: the strip shows `.tabre`

@@ -222,6 +222,17 @@ TAB_AI = {
 }
 
 
+#: What a tab's free ↺ does, where "re-derive the tab" would promise more than it does.
+#: The Review tab's producers read git — the review commit and what landed after it — and
+#: nothing else: the findings and the assumptions are a model's, and only a new review pass
+#: moves them. Said on the button, so a reader does not press it hoping for a new review.
+TAB_TIPS = {
+    "review": "Rebuilds the list of commits made since the review, from git, and rebuilds "
+              "the page. Free. It does not re-run the review: the findings and the "
+              "assumptions stay as they were written.",
+}
+
+
 def declare_tab_reruns(root: Path, out_dir: Path, skill_dir: Path,
                        tab_ids) -> dict[str, dict]:
     """One free rerun per tab that has a producer, and a paid one where a tab has a model
@@ -255,7 +266,7 @@ def declare_tab_reruns(root: Path, out_dir: Path, skill_dir: Path,
                         " --no-serve")
         declare_action(tab_rerun_id(RERUN_ACTION, tab), f"cd {here} && {refresh_line}",
                        reload=True, label=f"Re-derive the {tab} tab and rebuild this page")
-        info = {"steps": steps, "ai": False, "aiTip": ""}
+        info = {"steps": steps, "ai": False, "aiTip": "", "tip": TAB_TIPS.get(tab, "")}
         how = TAB_AI.get(tab)
         if how and (how[0] != "model" or model.is_file()):
             paid = f"{refresh_line} --allow-model"

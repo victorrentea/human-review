@@ -1469,6 +1469,15 @@ def test_the_tab_rerun_markup_is_hidden_and_names_its_tab():
                                 {"steps": ["tests"], "ai": True, "aiTip": "x", "priced": True})
     assert both.count("<button") == 2 and 'data-rerun="__rerun_ai__"' in both
     assert build.tab_rerun_html("cost", "Cost", None) == ""
+    assert 'Re-derive the Data tab (diagrams) and rebuild the page. Free.' in free_only
+
+
+def test_the_review_tab_rerun_says_it_rebuilds_the_commit_list_not_the_review(tmp_path):
+    (tmp_path / "out").mkdir()
+    got = build.declare_tab_reruns(tmp_path, tmp_path / "out", HERE, ["review"])
+    face = build.tab_rerun_html("review", "Review", got["review"])
+    assert "list of commits made since the review, from git" in face
+    assert "does not re-run the review" in face
 
 
 def test_the_rerun_endpoint_takes_a_tab_and_only_a_declared_one(tmp_path):
