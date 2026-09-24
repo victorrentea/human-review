@@ -583,13 +583,15 @@ def rerun_html(rerun: dict | None, rebuild: str, name: str = "",
     """
     edit = drawio_open_html(app_url, web_url)
     # With a guardrail named (`tested_against`), the sentence leads with it — "This diagram
-    # unit-tested against Java Domain Model. Update it in draw.io App ↗ or Web ↗." — so the
-    # reader learns the drawing is checked before being told how to change it. Without
-    # one, the plain offer.
+    # is unit-tested against the Java Domain Model. Relayout it in draw.io App ↗ or Web ↗."
+    # — so the reader learns the drawing is checked before being told what is left to
+    # them. *Relayout*, not *update*: with a test holding the boxes and lines to the code,
+    # what a reader does in draw.io is move them around; what they mean is the test's.
+    # Without one, the plain offer.
     if tested_against:
         it = reveal_html(reveal, name, capital=True)
-        lead = f'{it} unit-tested against {html.escape(tested_against)}.'
-        sentence = (f'{lead} Update it in {edit}.' if edit else lead)
+        lead = f'{it} is unit-tested against the {html.escape(tested_against)}.'
+        sentence = (f'{lead} Relayout it in {edit}.' if edit else lead)
     else:
         it = reveal_html(reveal, name)
         sentence = (f'Update {it} in {edit}.' if edit

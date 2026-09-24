@@ -1016,10 +1016,11 @@ def test_a_named_guardrail_leads_the_sentence(tmp_path):
                        tested_against="Java Domain Model")
     line = re.search(r'<p class="dgm-open">(.*?)</p>', out, re.S).group(1)
     assert '>This diagram</button>' in line
-    assert "unit-tested against Java Domain Model. Update it in draw.io" in line
+    assert " is unit-tested against the Java Domain Model. Relayout it in draw.io" in line
     plain = _widget_with(tmp_path, rerun=RERUN, drawio_url="drawio:///repo/docs/C.drawio.png",
                          tested_against="Java Domain Model")
-    assert "This diagram unit-tested against Java Domain Model. Update it in draw.io" in plain
+    assert ("This diagram is unit-tested against the Java Domain Model. Relayout it in "
+            "draw.io" in plain)
 
 
 def test_the_web_link_is_dropped_when_the_verdict_has_none(tmp_path):

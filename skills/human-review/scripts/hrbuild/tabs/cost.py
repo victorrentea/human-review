@@ -12,18 +12,52 @@ from pathlib import Path
 
 from ..shared.util import HERE
 
-def cost_chip(root: Path) -> dict | None:
+def cost_session(out_dir: Path | None) -> str:
+    """Whose transcripts the bill is read from: the pinned `.session` first, then the env.
+
+    The same order `refresh-report.py` uses, and for the same reason: `.session` is the
+    conversation that did the work, and `$CLAUDE_CODE_SESSION_ID` is merely whoever
+    happens to be running this build. They differ whenever the build is started by
+    anything but a refresh — above all by a button on the served page, whose command line
+    calls this build directly and inherits the environment of the conversation that
+    started `serve-review.py`. That conversation is usually still talking, so its
+    transcript grows between two presses, the ledger's fingerprint never matched the one
+    on disk, and every *Update the report* under a diagram re-read two days of transcripts
+    — thirty seconds of a thirty-six-second press — to print a bill for the wrong
+    conversation.
+    """
+    if out_dir is not None:
+        try:
+            pinned = (out_dir / ".session").read_text(encoding="utf-8").strip()
+        except OSError:
+            pinned = ""
+        if pinned:
+            return pinned
+    return os.environ.get("CLAUDE_CODE_SESSION_ID") or ""
+
+
+def _cost_env(out_dir: Path | None) -> dict:
+    """The environment `review-cost.py` is asked in, with `cost_session`'s answer in it."""
+    env = dict(os.environ)
+    sid = cost_session(out_dir)
+    if sid:
+        env["CLAUDE_CODE_SESSION_ID"] = sid
+    return env
+
+
+def cost_chip(root: Path, out_dir: Path | None = None) -> dict | None:
     """What this review run consumed, asked of the run itself.
 
     Returns None — dropping the chip rather than showing a wrong one — whenever the answer
-    cannot be trusted: no session id in the environment (the page was built outside a
-    Claude Code session), or no transcript for it.
+    cannot be trusted: no session id pinned or in the environment (the page was built
+    outside a Claude Code session), or no transcript for it.
     """
     script = HERE / "review-cost.py"
     if not script.is_file():
         return None
     proc = subprocess.run([sys.executable, str(script), "--chip"],
-                          cwd=root, capture_output=True, text=True)
+                          cwd=root, capture_output=True, text=True,
+                          env=_cost_env(out_dir or root / ".human-review"))
     if proc.returncode != 0 or not proc.stdout.strip():
         for line in proc.stderr.strip().splitlines()[-1:]:
             print(f"[review] no cost chip: {line}", file=sys.stderr)
@@ -93,12 +127,7 @@ def _cost_inputs(root: Path, out_dir: Path, tab_ids: list[str], base: str) -> st
             h.update(f"{f.name}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
         except OSError:
             h.update(b"\0gone\0")
-    sid = os.environ.get("CLAUDE_CODE_SESSION_ID") or ""
-    if not sid:
-        try:
-            sid = (out_dir / ".session").read_text(encoding="utf-8").strip()
-        except OSError:
-            sid = ""
+    sid = cost_session(out_dir)
     h.update(f"{sid}\0".encode())
     if sid:
         projects = Path(os.path.expanduser("~/.claude/projects"))
@@ -151,7 +180,7 @@ def cost_ledger_report(root: Path, tab_ids: list[str], base: str,
     proc = subprocess.run(
         [sys.executable, str(script), "--ledger", "--base", base,
          "--tabs", ",".join(tab_ids)],
-        cwd=root, capture_output=True, text=True,
+        cwd=root, capture_output=True, text=True, env=_cost_env(out_dir),
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         for line in proc.stderr.strip().splitlines()[-1:]:

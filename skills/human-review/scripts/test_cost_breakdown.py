@@ -949,3 +949,26 @@ def test_the_tab_pill_says_what_the_table_says():
     src = (HERE / "build-review-html.py").read_text(encoding="utf-8")
     i = src.index("cost_label = f'$")
     assert "phase_total" in src[i - 400:i + 200]
+
+
+def test_the_ledger_is_read_for_the_pinned_session_not_the_one_running_the_build(
+        tmp_path, monkeypatch):
+    """A button on the served page calls the build directly, in the environment of the
+    conversation that started the server — a live transcript that grows between two
+    presses. Keyed on that, the ledger's cache never hit, and every *Update the report*
+    under a diagram re-read two days of transcripts to bill the wrong conversation.
+    `.session` is who did the work, the same answer `refresh-report.py` pins."""
+    out = tmp_path / ".human-review"
+    out.mkdir()
+    (out / ".session").write_text("the-author\n", encoding="utf-8")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "whoever-started-the-server")
+    from hrbuild.tabs import cost
+    assert cost.cost_session(out) == "the-author"
+    assert cost._cost_env(out)["CLAUDE_CODE_SESSION_ID"] == "the-author"
+    pinned = build._cost_inputs(tmp_path, out, ["a"], "origin/main")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "another-live-conversation")
+    assert build._cost_inputs(tmp_path, out, ["a"], "origin/main") == pinned, \
+        "the fingerprint must not move with whoever runs the build"
+    # With nothing pinned, the environment is still the answer.
+    (out / ".session").unlink()
+    assert cost.cost_session(out) == "another-live-conversation"
