@@ -511,7 +511,8 @@ def render(rows, base="main") -> str:
         # hover what its colour and its number mean, and a reader counting moved rows is
         # reading the bars, not this line.
         f'<p class="cx-lede"><a href="{SONAR_COGNITIVE}" target="_blank" rel="noopener">'
-        'Cognitive complexity</a> of the <em>whole flow</em> behind each entry point.</p>',
+        'Cognitive complexity</a> of the <em>whole flow</em> behind each entry point, '
+        'computed by traversing the syntax of the Java source.</p>',
     ]
     known = {kind for kind, _ in KIND_TITLES}
     groups = KIND_TITLES + [
