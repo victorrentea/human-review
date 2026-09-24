@@ -185,8 +185,8 @@ def graph_nodes(cur, old):
 # How much of the flow the graph draws before it starts folding. The biggest flow in
 # petclinic reaches forty methods, thirty of them getters and setters: drawn whole, the
 # graph is a wall of `getId` nobody reads. So a method that costs nothing and reaches
-# nothing that costs is folded into one chip per class ("Owner ×7"), and a node with more
-# expensive children than this shows the costliest and folds the rest into "+N".
+# nothing that costs is not drawn at all, and a node with more expensive children than
+# this shows the costliest and folds the rest into "+N".
 GRAPH_KIDS = 6
 
 
@@ -242,7 +242,6 @@ def _graph(nodes, groups=()) -> tuple[str, set[str]]:
         drawn.add(k)
         children = kids.get(k, [])
         heavy = [c for c in children if w(c) > 0]
-        light = [c for c in children if w(c) == 0]
         shown = sorted(heavy, key=lambda c: -w(c))[:GRAPH_KIDS]
         shown = [c for c in heavy if c in shown]  # keep the call order among those shown
         rest = [c for c in heavy if c not in shown]
@@ -253,15 +252,14 @@ def _graph(nodes, groups=()) -> tuple[str, set[str]]:
                          f'{_tip("Also called, and folded to keep this readable:" + chr(10) + names)}>'
                          f'+{len(rest)}</span></div>')
         sub = f'<div class="cg-kids">{"".join(parts)}</div>' if parts else ""
-        node = _node(by[k], _also(light, by, kids), lines_of.get(k))
+        node = _node(by[k], lines_of.get(k))
         return f'<div class="cg-t">{node}{sub}</div>'
 
     body = tree(root)
     return (f'<div class="cg" role="group" aria-label="Call graph of this entry point">'
             f'<p class="cg-key">Call graph, left to right · the number on each method is its '
             f'<a href="{SONAR_COGNITIVE}" target="_blank" rel="noopener">cognitive complexity</a>'
-            f' · click a method for the lines it is charged for, ↗ opens it · '
-            f'<i>+ Class×N</i> = straight-line callees, folded</p>'
+            f' · click a method for the lines it is charged for, ↗ opens it</p>'
             f'{body}</div>'), drawn
 
 
@@ -283,7 +281,7 @@ def _lines(hits) -> str:
     return "".join(out)
 
 
-def _node(n, also: str = "", group=None) -> str:
+def _node(n, group=None) -> str:
     """A method as a box. The box itself is a toggle, not a link: a click selects it and,
     when the method was charged for anything, folds its lines open inside it. Navigation
     is the ↗ alone — a box that sometimes opened the editor and sometimes did nothing was
@@ -312,29 +310,7 @@ def _node(n, also: str = "", group=None) -> str:
             f'<span class="cg-c">{html.escape(cls)}</span>'
             f'<span class="cg-cog">{cog}</span>'
             f'<span class="cg-m">{tog}{html.escape(name)}()</span>'
-            f'<span class="cg-tools">{go}</span>{delta}{also}{lines}</div>')
-
-
-def _also(light: list[str], by, kids) -> str:
-    """The callees that cost nothing and reach nothing that costs, as one line inside the
-    caller — `+ Owner×7, PetDto` — instead of a branch each.
-
-    Thirty of the forty methods behind petclinic's busiest endpoint are getters and
-    setters. Drawn as nodes they made the graph three times as tall and pushed the one
-    method this branch changed off the right edge; folded into their caller they still
-    say what got called, class by class, and the hover lists every one."""
-    if not light:
-        return ""
-    groups: dict[str, list[str]] = {}
-    for c in light:
-        groups.setdefault(_split(c)[0], []).append(c)
-    shown = [f"{cls}×{len(m)}" if len(m) > 1 else cls for cls, m in groups.items()]
-    label = ", ".join(shown[:3]) + (f" +{len(shown) - 3}" if len(shown) > 3 else "")
-    below = sum(len(kids.get(m, [])) for m in light)
-    tip = (f"Also called — {len(light)} straight-line method{'s' if len(light) > 1 else ''}"
-           f" (cognitive 0){f', and the {below} they call' if below else ''}:\n"
-           + "\n".join(by[m]["display"] for m in light))
-    return f'<span class="cg-also"{_tip(tip)}>+ {html.escape(label)}</span>'
+            f'<span class="cg-tools">{go}</span>{delta}{lines}</div>')
 
 
 WHY_EMPTY = ("Nothing counted: every method behind this entry point is straight-line code. "
@@ -373,8 +349,14 @@ def _why_panel(r) -> str:
 
 
 def _path_cell(r) -> str:
-    """The label, linked to the method the flow starts at, so a reviewer lands on the
-    controller / tool / listener that owns it instead of going hunting.
+    """The label, and beside it a ↗ into the method the flow starts at, so a reviewer
+    lands on the controller / tool / listener that owns it instead of going hunting.
+
+    The label itself is not a link. It is the word a reader clicks to see what is behind
+    the row, and a path that sometimes opened the editor and sometimes the fold was a
+    label nobody dared click — the same bargain the boxes of the call graph strike, with
+    the same ↗, so there is one way into the editor on this tab and it looks the same
+    everywhere.
 
     The path leads the hover, on its own line, because this column is the one that runs
     out of room: the longest route in a REST tree is usually the one a branch is about
@@ -385,17 +367,16 @@ def _path_cell(r) -> str:
     a reader learns to stop hovering.
     """
     label = f'<code class="cx-path">{html.escape(r["path"])}</code>'
-    found = entry_source(r.get("entry", ""))
-    if not found:
-        return f'<span class="cx-cell"{_tip(r["path"])}>{label}</span>'
-    path, line = found
     handler = (r.get("handler") or "").strip()
-    tip = r["path"] + (f"\n{handler} — open in VS Code" if handler
-                       else "\nOpen in VS Code")
-    return (
-        f'<a class="cx-link" href="vscode://file/{path}:{line}:1"'
-        f'{_tip(tip)}>{label}</a>'
-    )
+    found = entry_source(r.get("entry", ""))
+    go = ""
+    if found:
+        path, line = found
+        go = (f'<a class="cg-go" href="vscode://file/{path}:{line}:1"'
+              f'{_tip("Open " + (handler or r["path"]) + " in VS Code")}'
+              f' aria-label="Open in VS Code">↗</a>')
+    tip = r["path"] + (f"\n{handler}" if handler else "")
+    return f'<span class="cx-cell"{_tip(tip)}>{label}{go}</span>'
 
 
 # The bar is three facts drawn as two rectangles, and none of them is labelled: how big the
@@ -422,17 +403,18 @@ def _tip(attr: str) -> str:
     return f' data-tip="{html.escape(attr)}"'
 
 
-def _row(cls, head: str, why: str) -> str:
+def _row(cls, head: str, why: str, key: str = "") -> str:
     """A row, and — for every row that has a branch to explain — the fold under it.
 
-    The fold is a real `<details>`: with the script below it opens on a click on the bar
-    and nowhere else, and without the script it opens on a click anywhere on the row.
-    Degrading to "the whole row is the handle" is the right way round — the reader still
-    gets the breakdown, they just get it from a wider target."""
+    The fold is a real `<details>`, opened by a click anywhere on its head but the ↗.
+    `key` is the row's name in the address bar (`GET /api/owners`): the script below
+    lists every open row there, so a reload — or a colleague handed the link — opens the
+    same rows again."""
     if not why:
         return (f'<div class="cx-row {cls}"><div class="cx-head">'
                 f'<span class="cx-caret"></span>{head}</div></div>')
-    return (f'<details class="cx-row {cls}"><summary class="cx-head">'
+    named = f' data-cx="{html.escape(key)}"' if key else ""
+    return (f'<details class="cx-row {cls}"{named}><summary class="cx-head">'
             f'<span class="cx-caret" aria-hidden="true"></span>{head}</summary>'
             f"{why}</details>")
 
@@ -500,6 +482,7 @@ def render_row(r, peak, base) -> str:
         f'<span class="cx-badge">{badge}</span>'
         f'<span class="cx-n">{r["now"]}</span>',
         _why_panel(r),
+        f'{r["method"]} {r["path"]}',
     )
 
 
@@ -550,29 +533,45 @@ def render(rows, base="main") -> str:
     return "\n".join(out)
 
 
-# The bar is the handle, not the row. A `<summary>` is activated by a click anywhere in
-# it, so without this the verb, the path link and the two numbers would all open the fold
-# — and the path link would open it *instead of* opening the file in some browsers and *as
-# well as* in others. Three lines of delegation settle it: the bar toggles, a link
-# navigates and puts the fold back the way it found it, everything else does nothing.
+# The whole head is the handle: verb, path, bar and numbers all open the fold. The one
+# link on it — the ↗ beside the path — opens the file and puts the fold back the way it
+# found it: a `<summary>` is activated by a click anywhere in it, and a link inside one
+# would open the fold *instead of* the file in some browsers and *as well as* in others.
+#
+# Which rows are open is in the address bar, as `?cx=GET+/api/owners&cx=…` — one `cx` per
+# open row. A query parameter, not the hash: the hash is the tab strip's (`#complexity`),
+# and every tab click rewrites it whole, so anything riding in it would be wiped the moment
+# the reader looked at another tab and back. `replaceState`, like every other script on
+# the page that writes the address, because assigning it scrolls the page or reloads it.
 #
 # Inline in the fragment on purpose. The page pastes this HTML into a tab whole; a tab
 # that needed a file from `hrbuild/assets` would be a tab that only works inside one
-# builder. And with the script absent the `<details>` is still a `<details>`: the whole
-# row becomes the handle and the breakdown still opens.
+# builder. And with the script absent the `<details>` is still a `<details>`: the row
+# still opens, it just forgets it was open.
 TOGGLE_JS = """<script>
 (function () {
   document.addEventListener('click', function (e) {
     var head = e.target.closest && e.target.closest('summary.cx-head');
-    if (!head) return;
-    if (e.target.closest('.cx-bar, .cx-caret')) return; /* the handles: let them toggle */
-    var row = head.parentNode;
-    if (e.target.closest('a')) {                        /* a link opens the file, not the fold */
-      var was = row.open;
-      setTimeout(function () { row.open = was; }, 0);
-      return;
-    }
-    e.preventDefault();                                 /* verb, badge, number: dead */
+    if (!head || !e.target.closest('a')) return;        /* anywhere else: let it toggle */
+    var row = head.parentNode, was = row.open;          /* the ↗ opens the file, not the fold */
+    setTimeout(function () { row.open = was; }, 0);
+  });
+  var P = 'cx';
+  var rows = document.querySelectorAll('details.cx-row[data-cx]');
+  function remember() {
+    if (!history.replaceState || !window.URLSearchParams) return;
+    var q = new URLSearchParams(location.search);
+    q.delete(P);
+    Array.prototype.forEach.call(rows, function (r) {
+      if (r.open) q.append(P, r.getAttribute('data-cx'));
+    });
+    var s = q.toString().replace(/%2F/gi, '/');         /* a path reads as a path */
+    history.replaceState(history.state, '', location.pathname + (s ? '?' + s : '') + location.hash);
+  }
+  var wanted = window.URLSearchParams ? new URLSearchParams(location.search).getAll(P) : [];
+  Array.prototype.forEach.call(rows, function (r) {
+    if (wanted.indexOf(r.getAttribute('data-cx')) >= 0) r.open = true;
+    r.addEventListener('toggle', remember);
   });
   /* A box in the call graph is a toggle: it lights up and folds its own lines open. The
      ↗ and every source line inside it are links and keep doing what links do. */
@@ -659,8 +658,12 @@ details.cx-row.cx-same:hover { opacity:.9; }
 .cx-get{color:#2e7d32}.cx-post{color:#1565c0}.cx-put{color:#a35f00}.cx-delete{color:#c62828}.cx-any{color:var(--muted)}
 .cx-patch{color:#8e44ad}.cx-mcp{color:#7c4dff}.cx-job{color:#a35f00}
 .cx-kafka,.cx-rabbit,.cx-jms{color:#00838f}
-a.cx-link, .cx-cell { text-decoration:none; display:block; overflow:hidden; }
-a.cx-link:hover .cx-path { text-decoration:underline; }
+/* The path, then its ↗ right after it — not at the column's far edge, where it would
+    belong to the bar as much as to the path. The path gives way first: it shrinks to its
+    ellipsis and the ↗ stays whole. */
+.cx-cell { display:flex; align-items:center; gap:3px; min-width:0; overflow:hidden; }
+.cx-cell .cx-path { flex:0 1 auto; min-width:0; }
+.cx-cell a.cg-go { flex:none; }
 /* `display:block` is what makes the ellipsis appear. `text-overflow` only applies to a
     block container, and <code> is inline — so the rule was there, doing nothing, while the
     link's own `overflow:hidden` chopped the path mid-token. `POST /api/owners/{ownerId}
@@ -781,8 +784,6 @@ a.cg-go:hover { background:var(--link); color:var(--card); }
 .cg-d { font:700 9.5px/1 ui-monospace,Menlo,monospace; position:absolute; top:-6px; right:-6px;
         padding:1px 3px; border-radius:6px; background:var(--card); }
 .cg-zero { opacity:.55; }
-.cg-also { grid-column:1 / 3; font:10px/1.3 system-ui,sans-serif; color:var(--muted);
-           padding:0 4px; cursor:help; }
 .cg-more { font:700 10px/1 ui-monospace,Menlo,monospace; color:var(--muted); padding:3px 6px;
            border:1px dashed var(--line); border-radius:6px; cursor:help; }
 /* A method whose score this branch raised wears the added colour on its frame and its

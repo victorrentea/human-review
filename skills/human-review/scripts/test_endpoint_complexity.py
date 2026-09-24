@@ -390,7 +390,7 @@ def _gnode(key, cog=0, calls=(), delta=0, cyc=1):
             "cognitive": cog, "cyclomatic": cyc, "calls": list(calls), "delta": delta}
 
 
-def test_the_graph_draws_what_costs_and_folds_the_getters_into_their_caller():
+def test_the_graph_draws_what_costs_and_leaves_the_getters_out():
     nodes = [_gnode("a.Ctl#go", calls=["a.Map#toDto", "a.Owner#getId", "a.Owner#getName"]),
              _gnode("a.Map#toDto", cog=3, cyc=4, delta=1),
              _gnode("a.Owner#getId"), _gnode("a.Owner#getName")]
@@ -401,7 +401,6 @@ def test_the_graph_draws_what_costs_and_folds_the_getters_into_their_caller():
     assert "cyclomatic" not in out and "cg-cyc" not in out, "one score, the one the bar sums"
     assert "cg-add" in out and "+1" in out, "the method the branch made heavier is marked"
     assert "getId()</span>" not in out, "a getter is not a node of its own"
-    assert "+ Owner×2" in out and "Owner.getName()" in out, "…but it is still named"
     assert drawn == {"a.Ctl#go", "a.Map#toDto"}
     assert delta._graph([]) == ("", set())
 
@@ -444,3 +443,61 @@ def test_the_row_offers_a_caret_and_the_group_is_not_titled_http_slash():
     assert "HTTP /" not in delta.render([_row(why=[])], "main")
     cols = re.search(r"\.cx-head \{[^}]*grid-template-columns:([^;]*);", delta.CSS)[1].split()
     assert cols[1] == "2.45rem", "the verb column is as wide as DELETE and no wider"
+
+
+def test_the_straight_line_callees_are_not_listed_under_their_caller():
+    """`+ VisitDto×8, Owner×2, Vet×3 +1` at the foot of a box was read by nobody: the
+    getters it named are exactly what the graph leaves out to stay readable. Neither the
+    line nor the legend that explained it is drawn any more — and which callees are left
+    out, and the score, are untouched."""
+    nodes = [_gnode("a.Ctl#go", calls=["a.Map#toDto", "a.Owner#getId", "a.Owner#getName"]),
+             _gnode("a.Map#toDto", cog=3), _gnode("a.Owner#getId"), _gnode("a.Owner#getName")]
+    out, drawn = delta._graph(nodes)
+    assert "cg-also" not in out and "Owner×2" not in out and "getName" not in out
+    assert "straight-line callees" not in out and "Class×N" not in out, "nor in the legend"
+    assert drawn == {"a.Ctl#go", "a.Map#toDto"}, "the same methods are drawn as before"
+    assert ".cg-also" not in delta.CSS, "no rule left for a class nothing emits"
+
+
+def test_the_path_toggles_the_row_and_only_the_arrow_opens_the_editor():
+    """The path was a link into the editor, and the word a reader clicks to see what is
+    behind a row. Now it is a label — the click opens the fold — and the way into the
+    editor is a ↗ right after it, the same `cg-go` the boxes of the call graph wear."""
+    found = ("/repo/a/src/main/java/app/VisitRestController.java", 42)
+    orig = delta.entry_source
+    delta.entry_source = lambda key: found
+    try:
+        row = delta.render_row(_row(entry="app.VisitRestController#addVisit",
+                                    why=[], graph=[]), 12, "main")
+    finally:
+        delta.entry_source = orig
+    head = re.search(r"<summary.*?</summary>", row, re.S)[0]
+    links = re.findall(r"<a\b[^>]*>.*?</a>", head, re.S)
+    assert len(links) == 1, f"one link on the head, the arrow: {links}"
+    [a] = links
+    assert 'class="cg-go"' in a and a.endswith(">↗</a>"), a
+    assert f'href="vscode://file/{found[0]}:{found[1]}:1"' in a
+    assert "cx-link" not in row, "the path itself is not a link any more"
+    cell = re.search(r'<span class="cx-cell".*?</span>(?=<span class="cx-bar")', head, re.S)[0]
+    assert cell.index("cx-path") < cell.index("cg-go"), "the arrow comes after the path"
+    # The script no longer swallows clicks on the head: only a link keeps the fold still.
+    assert "preventDefault(); " not in delta.TOGGLE_JS.split("cg-n")[0]
+    assert "closest('a')" in delta.TOGGLE_JS
+    # An entry point this checkout cannot place has no arrow, and still no link.
+    assert "<a " not in delta._path_cell(_row(entry="nothing::at::all"))
+
+
+def test_the_open_rows_are_named_in_the_address_bar():
+    """Open two rows, reload, and both are open again: every open row is one `cx` in the
+    query string, beside the tab strip's `#complexity` rather than inside it — the tab
+    strip rewrites the hash on every click, and would wipe anything riding in it."""
+    row = delta.render_row(_row(path="/api/owners", method="GET", why=[]), 12, "main")
+    assert row.startswith('<details class="cx-row cx-up" data-cx="GET /api/owners">'), row[:90]
+    js = delta.render([_row(why=[])], "main")
+    assert "history.replaceState" in js, "the page's one way of writing the address"
+    assert "location.hash" in js and "location.search" in js, "the hash is left as it was"
+    assert "getAll(P)" in js and "q.append(P" in js and "var P = 'cx'" in js
+    assert "addEventListener('toggle', remember)" in js, "closing one takes it out again"
+    # A deleted entry point opens onto nothing, so it has nothing to remember.
+    assert "data-cx" not in delta.render_row(_row(gone=True, why=[]), 12, "main")
+
