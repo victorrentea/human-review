@@ -394,14 +394,35 @@ def test_the_graph_draws_what_costs_and_folds_the_getters_into_their_caller():
     nodes = [_gnode("a.Ctl#go", calls=["a.Map#toDto", "a.Owner#getId", "a.Owner#getName"]),
              _gnode("a.Map#toDto", cog=3, cyc=4, delta=1),
              _gnode("a.Owner#getId"), _gnode("a.Owner#getName")]
-    out = delta._graph(nodes)
+    out, drawn = delta._graph(nodes)
     assert out.index("Ctl") < out.index("Map"), "left to right, the handler first"
-    assert '<span class="cg-c">Map</span>' in out and '<span class="cg-m">.toDto</span>' in out
-    assert '<span class="cg-cog">3</span>' in out and '<span class="cg-cyc">4</span>' in out
+    assert '<span class="cg-c">Map</span>' in out and '<span class="cg-m">toDto()</span>' in out
+    assert '<span class="cg-cog">3</span>' in out
+    assert "cyclomatic" not in out and "cg-cyc" not in out, "one score, the one the bar sums"
     assert "cg-add" in out and "+1" in out, "the method the branch made heavier is marked"
-    assert "cg-m\">.getId" not in out, "a getter is not a node of its own"
+    assert "getId()</span>" not in out, "a getter is not a node of its own"
     assert "+ Owner×2" in out and "Owner.getName()" in out, "…but it is still named"
-    assert delta._graph([]) == ""
+    assert drawn == {"a.Ctl#go", "a.Map#toDto"}
+    assert delta._graph([]) == ("", set())
+
+
+def test_a_node_folds_open_onto_its_own_lines_and_only_the_arrow_navigates():
+    """The list under the graph repeated the boxes above it in another order. Each box now
+    holds its own lines, opened by a click on the box; ↗ is the one link to the editor."""
+    nodes = [_gnode("a.Ctl#go", calls=["a.Map#toDto"]), _gnode("a.Map#toDto", cog=1)]
+    hit = {"file": "a/src/main/java/a/Map.java", "line": 3, "code": "if (x) {",
+           "inc": 1, "why": "if", "new": False}
+    row = _row(graph=nodes, why=[{"method": "a.Map#toDto", "display": "Map.toDto()",
+                                  "cognitive": 1, "hits": [hit]}])
+    out = delta.render_row(row, 12, "main")
+    node = re.search(r'<div class="cg-n[^"]*cg-has".*?</div></div>', out, re.S)[0]
+    assert "if (x) {" in node and 'class="cg-lines"' in node, "the line lives in its box"
+    assert 'role="button"' in node and not node.startswith("<a"), "the box is a toggle"
+    assert "cx-why-m" not in out, "no second list of the same methods under the graph"
+    assert "sonarsource.com/resources/cognitive-complexity" in out
+    assert "Click ▸" not in delta.render([row], "main")
+    assert re.search(r"\.cg-open > \.cg-lines \{[^}]*display:block", delta.CSS)
+    assert "border-left:6px solid var(--cg-arrow)" in delta.CSS, "edges end in arrowheads"
 
 
 def test_a_graph_needs_edges_and_a_new_entry_point_marks_nothing():

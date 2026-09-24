@@ -176,7 +176,7 @@ def graph_nodes(cur, old):
         return []
     was = {f.get("method"): f.get("cognitive") or 0 for f in (old or {}).get("flow") or []}
     return [{"method": f.get("method", ""), "display": f.get("display") or f.get("method", ""),
-             "cognitive": f.get("cognitive") or 0, "cyclomatic": f.get("cyclomatic"),
+             "cognitive": f.get("cognitive") or 0,
              "calls": f.get("calls") or [],
              "delta": ((f.get("cognitive") or 0) - was.get(f.get("method"), 0)) if old else 0}
             for f in flow]
@@ -196,16 +196,29 @@ def _split(key: str) -> tuple[str, str]:
     return owner.rsplit(".", 1)[-1], name
 
 
-def _graph(nodes) -> str:
-    """The flow behind a row, drawn left to right as the tree the extractor walked it in.
+SONAR_COGNITIVE = "https://www.sonarsource.com/resources/cognitive-complexity/"
+
+
+def _graph(nodes, groups=()) -> tuple[str, set[str]]:
+    """The flow behind a row, drawn left to right as the tree the extractor walked it in,
+    and every method that is drawn carries the lines it was charged for.
 
     Each method appears once, under whoever reached it first — the same breadth-first
     order the score is summed in, so the graph and the number can never disagree about
-    what is in the flow. A node is two badges, the class above `.method` below, and the
-    two scores beside them: cognitive (what the bar sums) and cyclomatic (the paths a test
-    would have to walk). Green is what the branch added, as everywhere on this tab."""
+    what is in the flow. A node is the class above `method()` below, its cognitive score
+    beside them, and two handles: ↗ opens the method in the editor, a click anywhere else
+    on the box folds open the lines that make up its score. That used to be a second list
+    under the graph, the same methods again in another order — the reader had to match a
+    heading down there to a box up here. Now the detail is where the box is.
+
+    One score, not two. Cyclomatic sat under the cognitive number and the reader could not
+    tell which one the bar summed; only cognitive is summed, so only cognitive is shown.
+
+    Returns the HTML and the methods it drew, so the caller can still offer the lines of
+    the ones folded into a `+N` chip."""
     if not nodes:
-        return ""
+        return "", set()
+    lines_of = {g["method"]: g for g in groups}
     by = {n["method"]: n for n in nodes}
     root = nodes[0]["method"]
     kids: dict[str, list[str]] = {}
@@ -216,6 +229,7 @@ def _graph(nodes) -> str:
                 seen.add(t)
                 kids.setdefault(n["method"], []).append(t)
     weight: dict[str, int] = {}
+    drawn: set[str] = set()
 
     def w(k):
         if k not in weight:
@@ -225,6 +239,7 @@ def _graph(nodes) -> str:
         return weight[k]
 
     def tree(k) -> str:
+        drawn.add(k)
         children = kids.get(k, [])
         heavy = [c for c in children if w(c) > 0]
         light = [c for c in children if w(c) == 0]
@@ -238,33 +253,66 @@ def _graph(nodes) -> str:
                          f'{_tip("Also called, and folded to keep this readable:" + chr(10) + names)}>'
                          f'+{len(rest)}</span></div>')
         sub = f'<div class="cg-kids">{"".join(parts)}</div>' if parts else ""
-        return f'<div class="cg-t">{_node(by[k], _also(light, by, kids))}{sub}</div>'
+        node = _node(by[k], _also(light, by, kids), lines_of.get(k))
+        return f'<div class="cg-t">{node}{sub}</div>'
 
-    return (f'<div class="cg" role="img" aria-label="Call graph of this entry point">'
-            f'<p class="cg-key">Call graph, left to right · on each method: <b>cognitive</b> over '
-            f'cyclomatic · <i>+ Class×N</i> = straight-line callees, folded · hover for names</p>'
-            f'{tree(root)}</div>')
+    body = tree(root)
+    return (f'<div class="cg" role="group" aria-label="Call graph of this entry point">'
+            f'<p class="cg-key">Call graph, left to right · the number on each method is its '
+            f'<a href="{SONAR_COGNITIVE}" target="_blank" rel="noopener">cognitive complexity</a>'
+            f' · click a method for the lines it is charged for, ↗ opens it · '
+            f'<i>+ Class×N</i> = straight-line callees, folded</p>'
+            f'{body}</div>'), drawn
 
 
-def _node(n, also: str = "") -> str:
+def _lines(hits) -> str:
+    """One line of real source per increment, `[+N]` hard right, each a link to that line."""
+    out = []
+    for h in hits:
+        target = (repo_root() / h["file"]).resolve()
+        deep = f' (1 + {h["inc"] - 1} nesting)' if h["inc"] > 1 else ""
+        tip = WHY_TIP.format(why=h["why"], inc=h["inc"], deep=deep,
+                             file=h["file"], line=h["line"])
+        if h.get("new"):
+            tip += "\nNew on this branch."
+        out.append(
+            f'<a class="cx-why-line{" cx-why-new" if h.get("new") else ""}"'
+            f' href="vscode://file/{target}:{h["line"]}:1"{_tip(tip)}>'
+            f'<code>{html.escape(h["code"])}</code>'
+            f'<span class="cx-why-inc">[+{h["inc"]}]</span></a>')
+    return "".join(out)
+
+
+def _node(n, also: str = "", group=None) -> str:
+    """A method as a box. The box itself is a toggle, not a link: a click selects it and,
+    when the method was charged for anything, folds its lines open inside it. Navigation
+    is the ↗ alone — a box that sometimes opened the editor and sometimes did nothing was
+    a box nobody dared click."""
     cls, name = _split(n["method"])
-    cog, cyc, d = n["cognitive"], n.get("cyclomatic"), n["delta"]
+    cog, d = n["cognitive"], n["delta"]
     mark = " cg-add" if d > 0 else " cg-cut" if d < 0 else ""
     zero = " cg-zero" if not cog and not d else ""
-    tip = (f'{n["display"]}\ncognitive {cog}'
-           + (f" · cyclomatic {cyc}" if cyc is not None else "")
-           + (f"\n+{d} cognitive added by this branch" if d > 0 else "")
-           + (f"\n−{-d} cognitive removed by this branch" if d < 0 else ""))
+    hits = (group or {}).get("hits") or []
+    tip = (f'{n["display"]}\ncognitive complexity {cog}'
+           + (f"\n+{d} added by this branch" if d > 0 else "")
+           + (f"\n−{-d} removed by this branch" if d < 0 else ""))
+    tip += (f"\nClick for the {len(hits)} line{'s' if len(hits) > 1 else ''} it is charged for"
+            if hits else "")
     found = entry_source(n["method"])
-    href = f' href="vscode://file/{found[0]}:{found[1]}:1"' if found else ""
-    tip += "\nOpen in VS Code" if found else ""
+    go = (f'<a class="cg-go" href="vscode://file/{found[0]}:{found[1]}:1"'
+          f'{_tip("Open " + n["display"] + " in VS Code")} aria-label="Open in VS Code">↗</a>'
+          if found else "")
+    tog = '<span class="cg-tog" aria-hidden="true"></span>' if hits else ""
     delta = (f'<b class="cg-d">+{d}</b>' if d > 0 else
              f'<b class="cg-d">−{-d}</b>' if d < 0 else "")
-    cyc_chip = f'<span class="cg-cyc">{cyc}</span>' if cyc is not None else ""
-    return (f'<a class="cg-n{mark}{zero}"{href}{_tip(tip)}>'
+    lines = f'<div class="cg-lines">{_lines(hits)}</div>' if hits else ""
+    has = " cg-has" if hits else ""
+    return (f'<div class="cg-n{mark}{zero}{has}" tabindex="0" role="button"'
+            f' aria-expanded="false"{_tip(tip)}>'
             f'<span class="cg-c">{html.escape(cls)}</span>'
             f'<span class="cg-cog">{cog}</span>'
-            f'<span class="cg-m">.{html.escape(name)}</span>{cyc_chip}{delta}{also}</a>')
+            f'<span class="cg-m">{tog}{html.escape(name)}()</span>'
+            f'<span class="cg-tools">{go}</span>{delta}{also}{lines}</div>')
 
 
 def _also(light: list[str], by, kids) -> str:
@@ -296,33 +344,30 @@ WHY_TIP = "{why} — +{inc}{deep}. {file}:{line} — open in VS Code"
 
 
 def _why_panel(r) -> str:
-    """The fold under a row: one line of real source per increment, `[+N]` on the right.
+    """The fold under a row: the call graph, whose boxes open onto their own lines.
 
     Not a highlighted snippet with a margin. The question the fold answers is "which
     lines did this number come from", and the answer is a list you can run your eye down
-    and click; a rendered snippet per increment would be the same list, three times taller
-    and with the evidence padded out by the code around it."""
+    and click — kept inside the box of the method it belongs to. Only lines no drawn box
+    can hold (a method folded into `+N`) are listed under the graph; a snapshot with no
+    edges draws no graph, and then the whole list is all there is."""
     groups = r.get("why") or []
-    graph = _graph(r.get("graph") or [])
+    graph, drawn = _graph(r.get("graph") or [], groups)
     if not groups:
         return f'<div class="cx-why">{graph}<p class="cx-why-none">{WHY_EMPTY}</p></div>'
+    rest = [g for g in groups if g["method"] not in drawn]
     out = ['<div class="cx-why">', graph]
-    for g in groups:
+    if graph and rest:
+        n = sum(len(g["hits"]) for g in rest)
+        out.append(f'<details class="cx-why-rest"><summary>{n} more line'
+                   f'{"s" if n > 1 else ""} in the methods folded into <b>+N</b></summary>')
+    for g in rest:
         total = sum(h["inc"] for h in g["hits"])
         out.append(f'<div class="cx-why-m">{html.escape(g["display"])}'
                    f'<span class="cx-why-mn">{total}</span></div>')
-        for h in g["hits"]:
-            target = (repo_root() / h["file"]).resolve()
-            deep = f' (1 + {h["inc"] - 1} nesting)' if h["inc"] > 1 else ""
-            tip = WHY_TIP.format(why=h["why"], inc=h["inc"], deep=deep,
-                                 file=h["file"], line=h["line"])
-            if h.get("new"):
-                tip += "\nNew on this branch."
-            out.append(
-                f'<a class="cx-why-line{" cx-why-new" if h.get("new") else ""}"'
-                f' href="vscode://file/{target}:{h["line"]}:1"{_tip(tip)}>'
-                f'<code>{html.escape(h["code"])}</code>'
-                f'<span class="cx-why-inc">[+{h["inc"]}]</span></a>')
+        out.append(_lines(g["hits"]))
+    if graph and rest:
+        out.append("</details>")
     out.append("</div>")
     return "".join(out)
 
@@ -483,8 +528,7 @@ def render(rows, base="main") -> str:
         # hover what its colour and its number mean, and a reader counting moved rows is
         # reading the bars, not this line.
         '<p class="cx-lede">Cognitive complexity of the <em>whole flow</em> behind each entry '
-        "point. <span class=\"cx-hint\">Click ▸ or a bar to see its call graph and the lines "
-        "it is made of.</span></p>",
+        "point.</p>",
     ]
     known = {kind for kind, _ in KIND_TITLES}
     groups = KIND_TITLES + [
@@ -530,6 +574,25 @@ TOGGLE_JS = """<script>
     }
     e.preventDefault();                                 /* verb, badge, number: dead */
   });
+  /* A box in the call graph is a toggle: it lights up and folds its own lines open. The
+     ↗ and every source line inside it are links and keep doing what links do. */
+  function flip(n) {
+    var on = !n.classList.contains('cg-open');
+    n.classList.toggle('cg-open', on);
+    n.setAttribute('aria-expanded', on ? 'true' : 'false');
+  }
+  document.addEventListener('click', function (e) {
+    var n = e.target.closest && e.target.closest('.cg-n');
+    if (!n || e.target.closest('a') || e.target.closest('.cg-lines')) return;
+    flip(n);
+  });
+  document.addEventListener('keydown', function (e) {
+    var n = e.target;
+    if (!n.classList || !n.classList.contains('cg-n')) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    flip(n);
+  });
 })();
 </script>"""
 
@@ -571,7 +634,6 @@ details.cx-row > summary .cx-caret::before { content:"\\25B6\\FE0E"; }
 details.cx-row[open] > summary .cx-caret::before { content:"\\25BC\\FE0E"; }
 .cx-head::-webkit-details-marker { display:none; }
 summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
-.cx-hint { opacity:.75; }
 .cx-same { opacity:.5; }
 /* An untouched row is dimmed because the branch has nothing to say about it — but the
     moment a reader opens one they are reading it on purpose, and code at half opacity is
@@ -579,6 +641,17 @@ summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2
     read as one block. */
 .cx-row[open] { opacity:1; }
 .cx-row[open] > .cx-head { background:var(--code-bg); }
+/* A row you can open has to look like one before you try: under the pointer its head
+    lights up, a bar in the link colour marks its left edge, the caret takes the same
+    colour and nudges, and a dimmed row comes back to full strength — together they say
+    "click me", where a faint tint alone read as nothing at all. */
+details.cx-row > summary.cx-head { cursor:pointer; transition:background .12s, box-shadow .12s; }
+details.cx-row > summary.cx-head:hover { background:var(--code-bg);
+    box-shadow:inset 3px 0 0 var(--link); }
+details.cx-row > summary.cx-head:hover .cx-caret { color:var(--link); }
+details.cx-row:not([open]) > summary.cx-head:hover .cx-caret::before { display:inline-block;
+    transform:translateX(2px); }
+details.cx-row.cx-same:hover { opacity:.9; }
 .cx-verb { font:700 10.5px/1 ui-monospace,Menlo,monospace; letter-spacing:.03em; }
 /* Amber is the one hue that never read on white either: #e08a00 is 2.7:1 there, well
     under the 4.5:1 a 10.5px bold monospace word needs. Darkened until it clears it,
@@ -639,13 +712,14 @@ a.cx-why-line:hover code { text-decoration:underline; }
               font:700 10.5px/1.55 ui-monospace,Menlo,monospace; color:var(--muted); }
 /* ── the call graph ─────────────────────────────────────────────────────────────────
     The flow drawn left to right: a node per method, its callees in a column to its right,
-    joined by elbow lines drawn from borders alone (no SVG, no layout engine). A node is
-    two badges — the class, and `.method` under it — with the cognitive and cyclomatic
-    scores beside the method. It scrolls sideways rather than squeeze a deep chain. */
-.cg { overflow-x:auto; padding:.15rem 0 .45rem; margin:0 0 .35rem -3.3rem;
-      border-bottom:1px dashed var(--line); }
-.cg-key { font:10px/1.4 system-ui,sans-serif; color:var(--muted); margin:0 0 .3rem; }
-.cg-key b { font:700 9.5px/1 ui-monospace,Menlo,monospace; }
+    joined by elbow lines drawn from borders alone (no SVG, no layout engine), each ending
+    in an arrowhead on the callee. A node is two badges — the class, and `method()` under
+    it — with its cognitive score beside them. The graph scrolls sideways inside its own
+    box rather than squeeze a deep chain or push the page wider than the window. The top
+    padding leaves room for the `+N` badge that rides above a node's corner. */
+.cg { overflow-x:auto; padding:.55rem 0 .45rem; margin:0 0 .35rem -3.3rem; }
+.cg-key { font:10px/1.4 system-ui,sans-serif; color:var(--muted); margin:0 0 .45rem; }
+.cg-key a { color:var(--link); }
 /* Top-aligned, not centred: a centred parent floats to the middle of however tall its
     subtree is, and one wide branch then opens a screen of empty space above and below
     every sibling. Aligned to the top, a node sits level with its first callee and the
@@ -654,7 +728,7 @@ a.cx-why-line:hover code { text-decoration:underline; }
 .cg-kids { display:flex; flex-direction:column; gap:3px; margin-left:12px; position:relative; }
 .cg-kids::before { content:""; position:absolute; left:-12px; top:var(--cg-mid); width:12px;
                    border-top:1px solid var(--cg-line); }
-.cg-kids > .cg-t { padding-left:8px; }
+.cg-kids > .cg-t { padding-left:13px; }
 .cg-kids > .cg-t::before { content:""; position:absolute; left:0; top:-3px; bottom:0;
                            border-left:1px solid var(--cg-line); }
 .cg-kids > .cg-t:first-child::before { top:var(--cg-mid); }
@@ -662,24 +736,48 @@ a.cx-why-line:hover code { text-decoration:underline; }
 .cg-kids > .cg-t:only-child::before { display:none; }
 .cg-kids > .cg-t::after { content:""; position:absolute; left:0; top:var(--cg-mid); width:8px;
                           border-top:1px solid var(--cg-line); }
-.cg { --cg-line:color-mix(in srgb, var(--muted) 55%, transparent); }
-/* A node: the class badge over the `.method` badge, and the two scores stacked in a narrow
-    column on the right — cognitive over cyclomatic, as the key above the graph says. The
-    names are set in the UI face, not monospace: the graph is as wide as its deepest chain
-    times its widest names, and a proportional face buys back a fifth of that. */
+/* The arrowhead: a border triangle hung off the callee's left edge, tip on its frame, so
+    every edge reads caller → callee without an SVG. */
+.cg-kids > .cg-t > .cg-n::before, .cg-kids > .cg-t > .cg-more::before {
+    content:""; position:absolute; left:-7px; top:calc(var(--cg-mid) - 5px);
+    border:4px solid transparent; border-left:6px solid var(--cg-arrow); border-right:0; }
+.cg-more { position:relative; }
+.cg { --cg-line:color-mix(in srgb, var(--muted) 55%, transparent); --cg-arrow:var(--muted); }
+/* A node: the class badge over the `method()` badge, the score to the right of the class,
+    the ↗ to the right of the method. The names are set in the UI face, not monospace: the
+    graph is as wide as its deepest chain times its widest names, and a proportional face
+    buys back a fifth of that. */
 .cg-n { display:inline-grid; grid-template-columns:auto auto; column-gap:5px; row-gap:1px;
         align-items:center; padding:2px 4px; border:1px solid var(--line); border-radius:6px;
-        background:var(--card); text-decoration:none; color:inherit; white-space:nowrap;
-        position:relative; z-index:1; }
-a.cg-n[href]:hover { border-color:var(--link); }
+        background:var(--card); color:inherit; white-space:nowrap; cursor:pointer;
+        position:relative; z-index:1; transition:border-color .12s, background .12s; }
+.cg-n:hover { border-color:var(--link); }
+.cg-n:focus-visible { outline:2px solid var(--link); outline-offset:1px; }
+/* Clicked: the box takes the link blue — frame, ring and a tint — so the one being read
+    stands out of the graph around it. */
+.cg-n.cg-open { border-color:var(--link); box-shadow:0 0 0 1px var(--link) inset;
+                background:color-mix(in srgb, var(--link) 12%, var(--card)); opacity:1; }
 .cg-c, .cg-m { font:600 10.5px/1.3 system-ui,sans-serif; padding:0 4px; border-radius:4px;
                grid-column:1; justify-self:start; }
 .cg-c { color:var(--muted); border:1px solid var(--line); font-weight:500; }
 .cg-m { background:var(--code-bg); border:1px solid transparent; }
-.cg-cog, .cg-cyc { grid-column:2; font:700 9.5px/1.3 ui-monospace,Menlo,monospace;
-                   text-align:right; font-variant-numeric:tabular-nums; }
-.cg-cog { grid-row:1; }
-.cg-cyc { grid-row:2; color:var(--muted); font-weight:500; }
+.cg-cog { grid-column:2; grid-row:1; font:700 9.5px/1.3 ui-monospace,Menlo,monospace;
+          text-align:right; font-variant-numeric:tabular-nums; }
+.cg-tools { grid-column:2; grid-row:2; justify-self:end; }
+/* ↗ is the only way into the editor from the graph, so it is a real target, not a glyph:
+    a small square that fills blue under the pointer. */
+a.cg-go { display:inline-block; min-width:14px; text-align:center; border-radius:3px;
+          font:700 11px/14px system-ui,sans-serif; color:var(--link); text-decoration:none; }
+a.cg-go:hover { background:var(--link); color:var(--card); }
+/* The fold's caret sits in front of the method name, the word a reader clicks on. */
+.cg-tog::before { content:"\\25B8"; display:inline-block; width:.8em; color:var(--muted);
+                  transition:transform .12s; }
+.cg-n:hover .cg-tog::before { color:var(--link); }
+.cg-open .cg-tog::before { transform:rotate(90deg); color:var(--link); }
+.cg-lines { display:none; grid-column:1 / 3; margin:3px 0 1px; padding:3px 2px 0;
+            border-top:1px dashed var(--line); cursor:auto; }
+.cg-open > .cg-lines { display:block; }
+.cg-lines a.cx-why-line code { font-size:11px; }
 .cg-d { font:700 9.5px/1 ui-monospace,Menlo,monospace; position:absolute; top:-6px; right:-6px;
         padding:1px 3px; border-radius:6px; background:var(--card); }
 .cg-zero { opacity:.55; }
@@ -693,6 +791,8 @@ a.cg-n[href]:hover { border-color:var(--link); }
 .cg-add .cg-d, .cg-add .cg-cog { color:var(--cx-added); }
 .cg-cut { border-color:var(--cx-removed); }
 .cg-cut .cg-d { color:var(--cx-removed); }
+/* Lines of methods folded into `+N`: one closed fold under the graph, never lost. */
+.cx-why-rest > summary { cursor:pointer; font-size:.78rem; color:var(--muted); margin:.1rem 0 .3rem; }
 /* Green is authorship everywhere else on this tab, and it means the same here: this line
     was not behind this entry point at the merge-base. */
 a.cx-why-new code { color:var(--cx-added); }
