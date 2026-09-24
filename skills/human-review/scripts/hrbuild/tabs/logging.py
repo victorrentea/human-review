@@ -326,10 +326,10 @@ def logging_fragment(block, root: Path):
         payload = json.loads(report.read_text(encoding="utf-8"))
 
     added = payload.get("changed", payload["all"])["logging"]
-    # No heading: the tab is called Logging and the panel opens with it — a `<h2>Logging
-    # added/updated` under a selected `Logging` pill is the tab's own label, said twice.
-    # The anchor it used to carry rides on the lede instead, so `#logging-added` still
-    # lands where it always did.
+    # No authored heading: the tab is called Logging and the panel opens with it — a
+    # `<h2>Logging added/updated` under a selected `Logging` pill is the tab's own label,
+    # said twice. The anchor rides on the computed heading below, so `#logging-added`
+    # still lands where it always did.
     #
     # No authored lede either. What stood here was three sentences of methodology (grep
     # vs. ast-grep, `Math.log(x)`, walking the syntax tree) that a reader can see for
@@ -339,11 +339,16 @@ def logging_fragment(block, root: Path):
     # page. It is computed, never typed: `logging_libraries` reads the packages back out
     # of the very rule `logextract.py` runs, so the hover cannot claim a library the scan
     # does not actually search for.
-    head = (f'<p class="lede" id="{html.escape(block.get("id", "logging-added"))}">'
+    #
+    # And it is the tab's heading, not a boxed lede: the same bare `<h2>` the Code City tab
+    # opens on ("PR impact on code size, …"). A lede card reads as a finding; this line is
+    # not one, it names what the snippets below are — which is what a heading is for. It is
+    # not the tab's label repeated either: the pill says "Logging", this says *which* uses.
+    head = (f'<h2 id="{html.escape(block.get("id", "logging-added"))}">'
             f'Uses of '
             f'<span class="dfn" data-tip-side="right"'
             f' data-tip-html="{html.escape(logging_libraries_tip(), quote=True)}">'
-            f'common Java logging libraries</span>.</p>')
+            f'common Java logging libraries</span></h2>')
     body = ""
     # No header bar and no surrounding card any more: no heading repeating "logging", no
     # count pill, no `path, base…HEAD` provenance line — the tab's own title already says

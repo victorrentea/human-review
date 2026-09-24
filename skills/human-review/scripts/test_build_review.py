@@ -633,24 +633,26 @@ def test_logging_fragment_keeps_its_weight_with_no_header_or_card(tmp_path, monk
     assert 'data-type="int"' in frag  # the logged value's declared type, as a hint
 
 
-def test_the_logging_tab_opens_on_one_computed_line_and_no_heading(tmp_path, monkeypatch):
+def test_the_logging_tab_opens_on_one_computed_heading(tmp_path, monkeypatch):
     """Two things the content file used to write and no longer can: a `<h2>` repeating the
-    tab's own label, and three sentences of methodology under it. What is left is one line
-    naming what the scan looked for, with the package list on hover — and the list is read
-    out of `logextract.py`'s own rule, so a library added there turns up here with nobody
-    remembering the page. The anchor the heading carried moves onto the line."""
+    tab's own label, and three sentences of methodology under it. What is left is one
+    heading naming what the scan looked for — an `<h2>` like Code City's, not a boxed lede —
+    with the package list on hover, read out of `logextract.py`'s own rule, so a library
+    added there turns up here with nobody remembering the page."""
     repo, src = _tiny_java_repo(tmp_path, FOO_BASE)
     src.write_text(FOO_WITH_WARN, encoding="utf-8")
     frag, _, _ = build.logging_fragment(
         {"paths": ["."], "base": "base", "id": "logging-added",
          "title": "Logging added/updated", "body": "<p>Found structurally with ast-grep…</p>"},
         repo)
-    assert "<h2" not in frag, "the tab is called Logging; a heading says it twice"
+    # The one heading is the computed line itself, formatted as Code City's is — never
+    # the authored "Logging added/updated", which is the tab's label said twice.
+    assert frag.count("<h2") == 1 and '<h2 id="logging-added">Uses of <span' in frag
     assert "Logging added/updated" not in frag and "not by grepping" not in frag, \
         "title and body on the logging block are the renderer's now, not the author's"
     assert 'id="logging-added"' in frag, "the deep link the heading carried still lands"
     assert "Uses of <span" in frag
-    assert ">common Java logging libraries</span>." in frag
+    assert ">common Java logging libraries</span></h2>" in frag
     # The hover, and the fact that it is read rather than typed.
     assert "org.slf4j" in frag and "ch.qos.logback" in frag
     assert r"org\.slf4j" in build._logextract().RULES["log-import"]  # escaped there
