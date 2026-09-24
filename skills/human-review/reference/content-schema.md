@@ -1236,6 +1236,9 @@ Four tabs need something said about how they are written:
     on it rather than opening on it, which is also the order it gets presented in.
   - **Head it the way the file names itself** — `Conceptual Model`, both words capital.
     It is the name of an artefact the team maintains, not a description of one.
+    **That head is the only one: the section's `"title"` is `""`.** A section title
+    above it — *The concepts, as the team drew them* — was a second, literary name for a
+    card that already names itself one line lower, and Victor asked for it gone.
   - **Write `{{drawio:conceptual}}` for the picture — never paste the SVG in.** The token
     expands at build time from the `<name>-{diff,new,original}.svg` and `<name>-diff.json`
     that `drawio-diff.py` wrote, and it is the one diagram on the page whose whole point
