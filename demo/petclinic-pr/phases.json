@@ -41,14 +41,14 @@
    "label": "post-review fixes",
    "measured": true,
    "excluded": false,
-   "cost": 7.44807,
-   "tokens": 12740544,
-   "messages": 40,
+   "cost": 6.2390495,
+   "tokens": 10718654,
+   "messages": 34,
    "models": {
     "Opus 5": 13082394
    },
    "reason": null,
-   "detail": "last reviewer turn \u2192 commit #2, less the 1 turn(s) that wrote review-points.md",
+   "detail": "last reviewer turn \u2192 commit #2, less the 7 turn(s) spent on review-points.md",
    "window": [
     "2026-09-17T18:34:27.452000+00:00",
     "2026-09-17T21:39:52+03:00"
@@ -59,17 +59,17 @@
    "label": "review-points",
    "measured": true,
    "excluded": false,
-   "cost": 0.2786945,
-   "tokens": 341850,
-   "messages": 1,
+   "cost": 1.4877150000000001,
+   "tokens": 2363740,
+   "messages": 7,
    "models": {
-    "Opus 5": 341850
+    "Opus 5": 2363740
    },
    "reason": null,
-   "detail": "first \u2192 last write of review-points.md",
+   "detail": "writing review-points.md, with the lookups for it just before and after",
    "window": [
-    "2026-09-17T18:39:42.700000+00:00",
-    "2026-09-17T18:39:42.700000+00:00"
+    "2026-09-17T18:39:13.015000+00:00",
+    "2026-09-17T18:39:44.500000+00:00"
    ]
   },
   {
@@ -90,18 +90,15 @@
   },
   {
    "key": "images",
-   "label": "view images",
+   "label": "UX audit (script)",
    "measured": true,
    "excluded": false,
-   "cost": 7.286735050000005,
-   "tokens": 12178108,
-   "messages": 93,
-   "models": {
-    "Opus 5": 10758446,
-    "Sonnet 5": 1419662
-   },
+   "cost": 0.0,
+   "tokens": 0,
+   "messages": 0,
+   "models": {},
    "reason": null,
-   "detail": "the 'dsaudit' step of the page-building run",
+   "detail": "the 'dsaudit' step ran as a script inside one tool call: no model turns",
    "window": [
     null,
     null
@@ -131,16 +128,16 @@
    "label": "not this report \u2014 other work in the pinned session",
    "measured": true,
    "excluded": true,
-   "cost": 688.28761675,
-   "tokens": 1172415796,
-   "messages": 5710,
+   "cost": 713.4124400500002,
+   "tokens": 1204237879,
+   "messages": 5911,
    "models": {
-    "Opus 5": 869321813,
-    "Sonnet 5": 220387753,
-    "Fable 5": 82706230
+    "Opus 5": 886128817,
+    "Sonnet 5": 231613853,
+    "Fable 5": 86495209
    },
    "reason": null,
-   "detail": "git (805), editing files from the shell (500), running tests (439), editing files (352); 69 file(s) written; including 75 earlier rebuilds of this page ($39.24)",
+   "detail": "git (834), editing files from the shell (509), running tests (451), browser checks (365); 71 file(s) written; including 75 earlier rebuilds of this page ($41.58)",
    "window": [
     null,
     null
@@ -154,9 +151,9 @@
  "excluded": [
   "not_this_report"
  ],
- "cost": 44.76655205000001,
- "tokens": 69659378,
- "messages": 393,
+ "cost": 37.479817,
+ "tokens": 57481270,
+ "messages": 300,
  "session": "47d2ba31-61ef-4ef6-ac2f-7d969121ce34",
  "run_session": "b49e84fb-d137-4dd3-a646-a99dc08fd045",
  "points_file": "review-points.md",

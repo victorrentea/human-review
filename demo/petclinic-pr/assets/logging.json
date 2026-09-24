@@ -2,33 +2,43 @@
   "all": {
     "logging": [
       {
-        "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java",
-        "line": 57,
-        "column": 9,
-        "end_line": 57,
-        "level": "INFO",
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-pr/petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
+        "line": 37,
+        "column": 13,
+        "end_line": 37,
+        "level": "WARN",
         "receiver": "log",
         "flavour": "SLF4J",
         "evidence": "declared `Logger log`",
         "confidence": "declared",
-        "method": "info",
-        "format": "\"SMS to {}: {}\"",
+        "method": "warn",
+        "format": "\"Owner not notified of the visit booked for {}: {}\"",
         "args": [
-          "phone",
-          "text"
+          "petName",
+          "e.getMessage()"
         ],
-        "raw_line": "        log.info(\"SMS to {}: {}\", phone, text);",
-        "text": "log.info(\"SMS to {}: {}\", phone, text)",
-        "method_start": 54,
-        "method_end": 58,
+        "raw_line": "            log.warn(\"Owner not notified of the visit booked for {}: {}\", petName, e.getMessage());",
+        "text": "log.warn(\"Owner not notified of the visit booked for {}: {}\", petName, e.getMessage())",
+        "method_start": 28,
+        "method_end": 39,
         "origins": [
           {
-            "line": 55,
-            "name": "phone",
+            "line": 29,
+            "name": "petName",
+            "kind": "param",
+            "text": ""
+          },
+          {
+            "line": 36,
+            "name": "e",
             "kind": "param",
             "text": ""
           }
+        ],
+        "arg_types": [
+          "String",
+          "String"
         ]
       },
       {
@@ -65,6 +75,10 @@
             "kind": "param",
             "text": ""
           }
+        ],
+        "arg_types": [
+          "Integer",
+          "int"
         ]
       },
       {
@@ -94,6 +108,9 @@
             "kind": "local",
             "text": "attendingVet(visitFieldsDto.getVetId())"
           }
+        ],
+        "arg_types": [
+          "String"
         ]
       },
       {
@@ -124,6 +141,10 @@
             "kind": "param",
             "text": ""
           }
+        ],
+        "arg_types": [
+          "Integer",
+          "String"
         ]
       },
       {
@@ -153,6 +174,9 @@
             "kind": "local",
             "text": "ValidationErrorExtractor.extract(ex)"
           }
+        ],
+        "arg_types": [
+          "List<String>"
         ]
       },
       {
@@ -182,6 +206,9 @@
             "kind": "local",
             "text": "ValidationErrorFieldExtractor.extract(bindingResult)"
           }
+        ],
+        "arg_types": [
+          "List<String>"
         ]
       },
       {
@@ -212,6 +239,10 @@
             "kind": "param",
             "text": ""
           }
+        ],
+        "arg_types": [
+          "String",
+          "Exception"
         ]
       },
       {
@@ -232,7 +263,8 @@
         "text": "log.error(\"Not found!\")",
         "method_start": 84,
         "method_end": 89,
-        "origins": []
+        "origins": [],
+        "arg_types": []
       }
     ],
     "antipattern": [
@@ -286,13 +318,13 @@
   "stats": {
     "files_with_loggers": 4,
     "symbols": {
-      "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java": [
+      "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java": [
         {
           "name": "log",
           "flavour": "SLF4J",
           "evidence": "declared `Logger log`",
           "confidence": "declared",
-          "line": 33
+          "line": 17
         }
       ],
       "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java": [
@@ -614,30 +646,18 @@
           "text": "private final VisitRepository visitRepository;"
         }
       ],
-      "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java": [
+      "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java": [
         {
-          "line": 33,
+          "line": 17,
           "name": "log",
           "type": "Logger",
-          "text": "private static final Logger log = LoggerFactory.getLogger(FakeSmsNotificationSender.class);"
+          "text": "private static final Logger log = LoggerFactory.getLogger(NotificationServiceClient.class);"
         },
         {
-          "line": 36,
-          "name": "PARTICIPANT",
-          "type": "AttributeKey<String>",
-          "text": "private static final AttributeKey<String> PARTICIPANT = AttributeKey.stringKey(\"genseq.participant\");"
-        },
-        {
-          "line": 38,
-          "name": "MODULE",
-          "type": "String",
-          "text": "private static final String MODULE = \"Notification module\";"
-        },
-        {
-          "line": 41,
-          "name": "SMS_GATEWAY",
-          "type": "String",
-          "text": "private static final String SMS_GATEWAY = \"SMS gateway\";"
+          "line": 19,
+          "name": "restClient",
+          "type": "RestClient",
+          "text": "private final RestClient restClient;"
         }
       ],
       "petclinic-backend/src/main/java/victor/training/petclinic/rest/ApiExamples.java": [
@@ -1552,7 +1572,13 @@
       ],
       "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/OpenApiExtractorTest.java": [
         {
-          "line": 25,
+          "line": 24,
+          "name": "HEADER",
+          "type": "String",
+          "text": "private static final String HEADER = \"\"\"\n            # GENERATED from the Java code by OpenApiExtractorTest \u2014 DO NOT EDIT BY HAND.\n            # Change the controllers/DTOs instead, then re-run that test to regenerate this file.\n            \"\"\";"
+        },
+        {
+          "line": 29,
           "name": "mockMvc",
           "type": "MockMvc",
           "text": "@Autowired\n    MockMvc mockMvc;"
@@ -2324,6 +2350,10 @@
             "kind": "param",
             "text": ""
           }
+        ],
+        "arg_types": [
+          "Integer",
+          "int"
         ]
       },
       {
@@ -2353,6 +2383,9 @@
             "kind": "local",
             "text": "attendingVet(visitFieldsDto.getVetId())"
           }
+        ],
+        "arg_types": [
+          "String"
         ]
       }
     ],

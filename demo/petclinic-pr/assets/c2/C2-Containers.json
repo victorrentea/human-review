@@ -29,6 +29,13 @@
         "inferredBy": "config",
         "decl": "participant"
       },
+      "NotificationService": {
+        "kind": "container",
+        "tech": "Java 21 / Spring Boot 3.5",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant"
+      },
       "SMS gateway": {
         "kind": "external",
         "tech": "SMS provider (simulated)",
@@ -45,7 +52,7 @@
         "protocol": "SQL",
         "operations": 9,
         "operationsDelta": 0,
-        "calls": 238,
+        "calls": 235,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -80,37 +87,37 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 13
+            "calls": 12
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 99
+            "calls": 98
           },
           {
             "name": "select visits",
             "path": "",
-            "calls": 107
+            "calls": 106
           }
         ],
         "toKind": "db"
       },
       {
         "from": "Backend",
-        "to": "SMS gateway",
+        "to": "NotificationService",
         "status": "same",
-        "protocol": "calls",
+        "protocol": "HTTP",
         "operations": 1,
         "operationsDelta": 0,
         "calls": 4,
         "detail": [
           {
-            "name": "send-sms",
-            "path": "",
+            "name": "",
+            "path": "POST /api/notifications/visit-booked",
             "calls": 4
           }
         ],
-        "toKind": "external"
+        "toKind": "container"
       },
       {
         "from": "Browser",
@@ -119,7 +126,7 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 0,
-        "calls": 16,
+        "calls": 15,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -129,7 +136,7 @@
           {
             "name": "Get an owner by ID",
             "path": "GET /api/owners/{ownerId}",
-            "calls": 7
+            "calls": 6
           },
           {
             "name": "List owners",
@@ -153,6 +160,23 @@
           }
         ],
         "toKind": "container"
+      },
+      {
+        "from": "NotificationService",
+        "to": "SMS gateway",
+        "status": "same",
+        "protocol": "calls",
+        "operations": 1,
+        "operationsDelta": 0,
+        "calls": 4,
+        "detail": [
+          {
+            "name": "send-sms",
+            "path": "",
+            "calls": 4
+          }
+        ],
+        "toKind": "external"
       }
     ]
   },
@@ -181,6 +205,13 @@
       "DB": {
         "kind": "db",
         "tech": "PostgreSQL",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant"
+      },
+      "NotificationService": {
+        "kind": "container",
+        "tech": "Java 21 / Spring Boot 3.5",
         "descr": "",
         "inferredBy": "config",
         "decl": "participant"
@@ -248,20 +279,20 @@
       },
       {
         "from": "Backend",
-        "to": "SMS gateway",
+        "to": "NotificationService",
         "status": "same",
-        "protocol": "calls",
+        "protocol": "HTTP",
         "operations": 1,
         "operationsDelta": 0,
         "calls": 2,
         "detail": [
           {
-            "name": "send-sms",
-            "path": "",
+            "name": "",
+            "path": "POST /api/notifications/visit-booked",
             "calls": 2
           }
         ],
-        "toKind": "external"
+        "toKind": "container"
       },
       {
         "from": "Browser",
@@ -299,6 +330,23 @@
           }
         ],
         "toKind": "container"
+      },
+      {
+        "from": "NotificationService",
+        "to": "SMS gateway",
+        "status": "same",
+        "protocol": "calls",
+        "operations": 1,
+        "operationsDelta": 0,
+        "calls": 2,
+        "detail": [
+          {
+            "name": "send-sms",
+            "path": "",
+            "calls": 2
+          }
+        ],
+        "toKind": "external"
       }
     ]
   },
@@ -328,6 +376,14 @@
         "decl": "participant",
         "status": "same"
       },
+      "NotificationService": {
+        "kind": "container",
+        "tech": "Java 21 / Spring Boot 3.5",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant",
+        "status": "same"
+      },
       "SMS gateway": {
         "kind": "external",
         "tech": "SMS provider (simulated)",
@@ -345,7 +401,7 @@
         "protocol": "SQL",
         "operations": 9,
         "operationsDelta": 1,
-        "calls": 238,
+        "calls": 235,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -380,37 +436,37 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 13
+            "calls": 12
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 99
+            "calls": 98
           },
           {
             "name": "select visits",
             "path": "",
-            "calls": 107
+            "calls": 106
           }
         ],
         "toKind": "db"
       },
       {
         "from": "Backend",
-        "to": "SMS gateway",
+        "to": "NotificationService",
         "status": "same",
-        "protocol": "calls",
+        "protocol": "HTTP",
         "operations": 1,
         "operationsDelta": 0,
         "calls": 4,
         "detail": [
           {
-            "name": "send-sms",
-            "path": "",
+            "name": "",
+            "path": "POST /api/notifications/visit-booked",
             "calls": 4
           }
         ],
-        "toKind": "external"
+        "toKind": "container"
       },
       {
         "from": "Browser",
@@ -419,7 +475,7 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 1,
-        "calls": 16,
+        "calls": 15,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -429,7 +485,7 @@
           {
             "name": "Get an owner by ID",
             "path": "GET /api/owners/{ownerId}",
-            "calls": 7
+            "calls": 6
           },
           {
             "name": "List owners",
@@ -453,8 +509,25 @@
           }
         ],
         "toKind": "container"
+      },
+      {
+        "from": "NotificationService",
+        "to": "SMS gateway",
+        "status": "same",
+        "protocol": "calls",
+        "operations": 1,
+        "operationsDelta": 0,
+        "calls": 4,
+        "detail": [
+          {
+            "name": "send-sms",
+            "path": "",
+            "calls": 4
+          }
+        ],
+        "toKind": "external"
       }
     ]
   },
-  "base": "32e4e3d3dd814aad92e266c27d47b8535cdcefbb"
+  "base": "c558f1052c847d4d40309edb9e234e7f98cc9714"
 }

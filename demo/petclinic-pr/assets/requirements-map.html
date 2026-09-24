@@ -672,7 +672,7 @@
          // file left in this checkout, and a dead vscode:// URL is the one thing this page
          // never emits, so it keeps the location and loses the link.
          var href=t.href||(t.parts&&t.parts[0]&&t.parts[0].href),
-             face=kind(esc(t.where||where(id)));
+             face=kind(esc((t.where||where(id)).replace(/:\d+(?:[-\u2013]\d+)?$/,'')));
          return href?'<a class="rm-tw srcref" href="'+href+'" data-tip="Open in VS Code" target="_blank" rel="noopener">'
                      +face+'</a>'
                    :'<span class="rm-tw srcref tgone" data-tip="the file is gone">'

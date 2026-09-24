@@ -1,7 +1,7 @@
 {
   "base": "origin/main",
   "totals": {
-    "added": 16,
+    "added": 17,
     "modified": 6,
     "deleted": 0,
     "unchanged": 21,
@@ -9,8 +9,8 @@
     "disabled": 0,
     "reenabled": 0,
     "runningBefore": 27,
-    "runningAfter": 43,
-    "gained": 16,
+    "runningAfter": 44,
+    "gained": 17,
     "lost": 0
   },
   "tests": [
@@ -271,6 +271,12 @@
       "path": "petclinic-test/src/book-visit-with-vet.feature",
       "status": "added",
       "line": 23
+    },
+    {
+      "name": "csrfDisableBecomesALambda",
+      "path": "refactoring-legacy/src/test/java/victor/training/petclinic/rewrite/CsrfDisableLambdaDslTest.java",
+      "status": "added",
+      "line": 21
     }
   ]
 }

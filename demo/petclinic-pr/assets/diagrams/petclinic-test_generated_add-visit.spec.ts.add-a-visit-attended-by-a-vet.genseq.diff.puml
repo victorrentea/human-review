@@ -8,7 +8,7 @@ footer @generate_sequence in src/add-visit.spec.ts — generated from real trace
 participant Browser
 participant Backend
 participant DB
-participant "<color:#2E7D32>Notification module</color>" as Notification_module #EAF6EC
+participant "<color:#2E7D32>NotificationService</color>" as NotificationService #EAF6EC
 participant "<color:#2E7D32>SMS gateway</color>" as SMS_gateway #EAF6EC
 Browser -> Backend: Get an owner by ID\nGET /api/owners/{ownerId}
 activate Backend
@@ -55,7 +55,7 @@ Backend -[#2E7D32]> DB: [[genseq://18567ho{Click for the statement behind this c
 Backend -[#2E7D32]> DB: [[genseq://1eq1h2q{Click for the statement behind this call} select visits ⊕]]
 Backend -[#2E7D32]-> Browser: [[genseq://0tvg3tn{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
-Browser -[#2E7D32]> Backend: [[genseq://07judo6{Click for this call’s JSON body} Add a visit for an owner's pet\nPOST /api/owners/{ownerId}/pets/{petId}/visits ⊕]]
+Browser -[#2E7D32]> Backend: [[genseq://0q7ntxd{Click for this call’s JSON body} Add a visit for an owner's pet\nPOST /api/owners/{ownerId}/pets/{petId}/visits ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:191{Click to open OwnerRestController.bookVisit} book-visit ↗]]
 Backend -[#C62828]> Backend: <color:#C62828><s>VetRepository.getByIdOrNull ↗</s></color>
@@ -67,7 +67,7 @@ deactivate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:14{Click to open VisitRepository.save} VisitRepository.save ↗]]
 activate Backend
 group tx
-Backend -[#2E7D32]> DB: [[genseq://0hn35o0{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
+Backend -[#2E7D32]> DB: [[genseq://10jvngd{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
 end
 deactivate Backend
 Backend -[#2E7D32]> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:14{Click to open OwnerRepository.findById} OwnerRepository.findById ↗]]
@@ -77,10 +77,11 @@ Backend -[#2E7D32]> DB: [[genseq://0x8aana{Click for the statement behind this c
 end
 deactivate Backend
 Backend -[#2E7D32]> DB: [[genseq://18567ho{Click for the statement behind this call} select pets ⊕]]
-Backend -[#2E7D32]> Notification_module: [[src://petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java:45{Click to open FakeSmsNotificationSender.visitBooked} notify-visit-booked ↗]]
-activate Notification_module
-Notification_module -[#2E7D32]> SMS_gateway: [[src://petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java:47{Click to open FakeSmsNotificationSender.sendSms} send-sms ↗]]
-deactivate Notification_module
+Backend -[#2E7D32]> NotificationService: [[genseq://1cfd0z0{Click for this call’s JSON body} POST /api/notifications/visit-booked ⊕]]
+activate NotificationService
+NotificationService -[#2E7D32]> SMS_gateway: [[src://notification-service/src/main/java/victor/training/notification/SmsGateway.java:23{Click to open SmsGateway.send} send-sms ↗]]
+NotificationService -[#2E7D32]-> Backend: <color:#2E7D32>202</color>
+deactivate NotificationService
 deactivate Backend
 Backend --> Browser: 201
 deactivate Backend
@@ -94,6 +95,6 @@ end
 deactivate Backend
 Backend -[#2E7D32]> DB: [[genseq://18567ho{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1eq1h2q{Click for the statement behind this call} select visits ⊕]]
-Backend -[#2E7D32]-> Browser: [[genseq://0k9x4kf{Click for this call’s JSON body} 200 ⊕]]
+Backend -[#2E7D32]-> Browser: [[genseq://02yixe9{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 @enduml

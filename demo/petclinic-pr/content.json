@@ -120,7 +120,6 @@
     {
       "id": "ds-audit",
       "title": "",
-      "body": "The audit is built around an <b>absence</b>: it reads which <i>roles</i> the design system covers off the components themselves, then looks for native controls filling one of those roles <i>outside</i> any DS host. Labelling what is already right proves nothing — the defect is the bare <code>&lt;select&gt;</code> somebody copied from an older template. Both builds are started by the run itself, this branch against the merge-base, and every screen in the catalogue is shot; only the ones whose DOM differs get a viewer.",
       "includeHtml": "assets/ds-audit.html"
     }
   ],

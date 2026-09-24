@@ -1,15 +1,123 @@
 {
- "base": "32e4e3d3dd814aad92e266c27d47b8535cdcefbb",
+ "base": "c558f1052c847d4d40309edb9e234e7f98cc9714",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 30,
+ "commits": 45,
  "implementation": "92379dcc65309a477dfdee7eaa8f98b6f41e1156",
  "review": "db6b67ece0336532484b6c96e1d080136e0198a0",
  "session": null,
  "fallback": false,
- "after": [],
- "after_detail": [],
+ "after": [
+  "b4b17a9d973f1a909a5ee61473f80f35e39741d4",
+  "f8d1a3f781e0f4ada805845402dbf1cc5e8753aa",
+  "29684b99777b3bd69cbcb0262d63ce5da70d24c4",
+  "a23ccb76dab881618c7e07032a18acabc6ad68c7",
+  "9037413e769b26b9560972f2ec678fdda0c2a53b",
+  "e85612fbc8c5926183eb22ca12d9fcbb7aa05af7",
+  "c0b9503abb960521ed27d89f268529ea65a3bc76",
+  "866e1d6484d5d280b87a43cee006ae4a3a8cd39b",
+  "7f5189e6cc3ea9d8c445eb3708541fa1c6a6628d",
+  "0b13a8029ace380d1f654d4ad56585e884933e6d",
+  "32c943ad607bcaa54a179d604c8a129662a7a5be",
+  "c8ec6a9ae2a01f53d948f4af9e2b0ca2fba22be3",
+  "a2b28a977d2a1c3bad3c336256c4a4d86529f568",
+  "1daa4cbaf420164b052f76819664c289b150ea04",
+  "683fbe863682f2bd4f2401b7458261d445f7c81b"
+ ],
+ "after_detail": [
+  {
+   "sha": "b4b17a9d973f1a909a5ee61473f80f35e39741d4",
+   "when": "2026-09-23T11:29:10+03:00",
+   "subject": "Merge main into test-pr (generated-file header on openapi.yaml)",
+   "auto_fix": false
+  },
+  {
+   "sha": "f8d1a3f781e0f4ada805845402dbf1cc5e8753aa",
+   "when": "2026-09-23T19:01:10+03:00",
+   "subject": "Redraw the PR's city with the change DNA colour",
+   "auto_fix": false
+  },
+  {
+   "sha": "29684b99777b3bd69cbcb0262d63ce5da70d24c4",
+   "when": "2026-09-23T19:37:04+03:00",
+   "subject": "OpenRewrite: Spring Security 7 csrf().disable() -> lambda DSL recipe",
+   "auto_fix": false
+  },
+  {
+   "sha": "a23ccb76dab881618c7e07032a18acabc6ad68c7",
+   "when": "2026-09-23T22:13:27+02:00",
+   "subject": "Redraw the PR's city: change DNA as a near-edge bar, breadcrumb bottom centre",
+   "auto_fix": false
+  },
+  {
+   "sha": "9037413e769b26b9560972f2ec678fdda0c2a53b",
+   "when": "2026-09-23T23:08:08+02:00",
+   "subject": "Put the vet line back on the PR's conceptual map",
+   "auto_fix": false
+  },
+  {
+   "sha": "e85612fbc8c5926183eb22ca12d9fcbb7aa05af7",
+   "when": "2026-09-23T23:39:56+02:00",
+   "subject": "human-review.json: name the guardrail the conceptual diagram is unit-tested against",
+   "auto_fix": false
+  },
+  {
+   "sha": "c0b9503abb960521ed27d89f268529ea65a3bc76",
+   "when": "2026-09-24T00:05:47+02:00",
+   "subject": "Merge origin/main: notification-service split into its own Spring Boot service",
+   "auto_fix": false
+  },
+  {
+   "sha": "866e1d6484d5d280b87a43cee006ae4a3a8cd39b",
+   "when": "2026-09-24T00:08:00+02:00",
+   "subject": "skills: jira/confluence CLIs in stdlib Python, so they run on Windows without WSL",
+   "auto_fix": false
+  },
+  {
+   "sha": "7f5189e6cc3ea9d8c445eb3708541fa1c6a6628d",
+   "when": "2026-09-24T00:08:00+02:00",
+   "subject": "skills: harden the jira/confluence CLIs after an adversarial review",
+   "auto_fix": false
+  },
+  {
+   "sha": "0b13a8029ace380d1f654d4ad56585e884933e6d",
+   "when": "2026-09-24T00:08:00+02:00",
+   "subject": "Merge main: skill CLIs portable to Windows, already cherry-picked here",
+   "auto_fix": false
+  },
+  {
+   "sha": "32c943ad607bcaa54a179d604c8a129662a7a5be",
+   "when": "2026-09-24T00:13:51+02:00",
+   "subject": "Re-record every sequence diagram against the notification-service split",
+   "auto_fix": false
+  },
+  {
+   "sha": "c8ec6a9ae2a01f53d948f4af9e2b0ca2fba22be3",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "e2e: run the review's suites on HEAD's own containers, not on shared ports",
+   "auto_fix": false
+  },
+  {
+   "sha": "a2b28a977d2a1c3bad3c336256c4a4d86529f568",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "Owner search: a late initial load no longer overwrites the result",
+   "auto_fix": false
+  },
+  {
+   "sha": "1daa4cbaf420164b052f76819664c289b150ea04",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "add-owner.spec: edit the owner only once the form has loaded them",
+   "auto_fix": false
+  },
+  {
+   "sha": "683fbe863682f2bd4f2401b7458261d445f7c81b",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "Merge main: e2e on HEAD's own stack + owner-search race fix, already cherry-picked here",
+   "auto_fix": false
+  }
+ ],
  "review_when": "2026-09-21T07:24:26+03:00",
+ "auto_fixes": [],
  "warnings": [
   "3 commits carry a Review-Points trailer (ce56d912, 92379dcc, db6b67ec); taking the last one. Two rounds of review on one branch is legitimate, but the page reports one.",
   "no Claude-Session trailer on either commit \u2014 the coding session is only findable through .human-review/.session or by scanning transcripts, and both of those outlive their accuracy"

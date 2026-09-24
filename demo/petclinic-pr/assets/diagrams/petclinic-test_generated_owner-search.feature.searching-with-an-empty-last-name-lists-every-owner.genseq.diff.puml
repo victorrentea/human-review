@@ -77,7 +77,7 @@ Backend -> DB: [[genseq://1m8kh81{Click for the statement behind this call} sele
 Backend -> DB: [[genseq://1obsoh2{Click for the statement behind this call} select visits ⊕]]
 Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
 Backend -[#C62828]> DB: <color:#C62828><s>select visits</s></color>
-Backend -[#2E7D32]-> Browser: [[genseq://0e9oqx0{Click for this call’s JSON body} 200 ⊕]]
+Backend -[#2E7D32]-> Browser: [[genseq://1n6eywt{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 Browser -> Backend: List owners\nGET /api/owners
 activate Backend
@@ -149,6 +149,6 @@ Backend -> DB: [[genseq://1m8kh81{Click for the statement behind this call} sele
 Backend -> DB: [[genseq://1obsoh2{Click for the statement behind this call} select visits ⊕]]
 Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
 Backend -[#C62828]> DB: <color:#C62828><s>select visits</s></color>
-Backend -[#2E7D32]-> Browser: [[genseq://13q8vu6{Click for this call’s JSON body} 200 ⊕]]
+Backend -[#2E7D32]-> Browser: [[genseq://0zy7m3v{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 @enduml

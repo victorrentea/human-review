@@ -45,29 +45,51 @@
 .dsa-v.bad { color: var(--dsa-bad); }
 .dsa-v.ok  { color: var(--dsa-ok); }
 .dsa-table tr.ok td:first-child { border-left: 4px solid var(--dsa-ok); }
-.dsa-reg { font-size: .82rem; margin: .6rem 0; }
-.dsa-reg code { font-size: .95em; }
 .dsa-prov { opacity: .7; font-style: italic; }
 .dsa-sel { font-size: .78rem; opacity: .72; word-break: break-all; }
-.dsa-none { opacity: .7; font-style: italic; }
-.dsa-screen > summary { cursor: pointer; font-size: .82rem; opacity: .8;
-  margin: .1rem 0 .5rem; }
-.dsa-screen[open] > summary { margin-bottom: .3rem; }
+/* One collapsible row per screen, closed by default — the same furniture the Sequence
+   tab's `details.testpair` wears for the same reason: a run audits the whole catalogue,
+   and most of it did not change in a way worth a picture. The triangle and the
+   inline-flex summary are copied from `hrbuild/assets/css/sequence.css` rather than
+   shared with it, because a fragment meant to render standalone (`report_page.py`,
+   `--css`) cannot depend on a stylesheet that ships with the page around it; the two are
+   free to drift apart the day one of them needs to. */
+details.dsa-screen { background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: .4rem .95rem; margin: .55rem 0; }
+details.dsa-screen[open] { padding-bottom: .8rem; }
+details.dsa-screen > summary { cursor: pointer; list-style: none; display: flex; gap: .4rem;
+  align-items: baseline; color: var(--fg); font-size: .95rem; font-weight: 600;
+  padding: .25rem 0; }
+details.dsa-screen > summary::-webkit-details-marker { display: none; }
+details.dsa-screen > summary::before { content: "▾"; font-size: .75rem; }
+details.dsa-screen:not([open]) > summary::before { content: "▸"; }
+details.dsa-screen > summary:hover { color: var(--link); }
+.dsa-route { opacity: .7; font-weight: 400; }
 .dsa-considered { margin: .6rem 0 0; font-size: .84rem; opacity: .85; }
 .dsa-considered summary { cursor: pointer; }
 .dsa-considered ul { margin: .4rem 0 0 .2rem; }
+/* The change frames: one per place the branch changed (see `change_frames`), off with
+   the checkbox on the viewer's bar. `.insert` is the zero-height twin on the side that
+   lacks the change — a dashed line where it went in or came out. */
+.dsa-frame { position: absolute; box-sizing: border-box; pointer-events: none;
+  border: 3px solid var(--dsa-frame); border-radius: .35rem; }
+.dsa-frame.insert { border: 0; border-top: 3px dashed var(--dsa-frame); border-radius: 0; }
+.dsa:has(.dsa-frameon:not(:checked)) .dsa-frame { display: none; }
+.dsa-frametoggle { margin-left: .6rem; font-size: .82rem; display: inline-flex; gap: .35rem;
+  align-items: center; cursor: pointer; user-select: none; color: var(--fg); }
+.dsa-frametoggle input { accent-color: var(--dsa-frame); margin: 0; }
+details.dsa-screen > summary .dsa-sumtail { font-weight: 400; }
 .dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
 .dsa-hdr .dsa-count { font-weight: 700; }
-.dsa-untouched { font-size: .82rem; opacity: .8; margin: .2rem 0 .4rem; }
-.dsa-untouched > summary, .dsa-reg > summary { cursor: pointer; }
+.dsa-hdr .dsa-regress { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
 .dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
   padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
 .dsa-unlisted code { color: inherit; }
 :root { --dsa-ok: #1f7a45; --dsa-bad: #c1121f; --dsa-new: #1a4fa0; --dsa-hot: #f0a500;
-        --dsa-label-fg: #ffffff; }
+        --dsa-label-fg: #ffffff; --dsa-frame: #a23fd6; }
 @media (prefers-color-scheme: dark) {
   :root { --dsa-ok: #46c07a; --dsa-bad: #ff6b6b; --dsa-new: #7aa9ef; --dsa-hot: #ffc94d;
-          --dsa-label-fg: #15151a; }
+          --dsa-label-fg: #15151a; --dsa-frame: #c77dff; }
   .dsa-shot img { filter: none; }
 }
 

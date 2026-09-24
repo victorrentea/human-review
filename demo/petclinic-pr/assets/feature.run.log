@@ -1,8 +1,8 @@
-[video] the app cannot say which commit it is; this run started it itself, from 753f724cc814a9d39db6e427270023c0da582086
-[video] title card: "Demo" / "Link Visit with Vet (#37), reimplemented unguided by Opus", 3.41s
-[video] feature-script.js: 4/4 changed screens filmed | not filmable: /pets — PetListComponent is driven by @Input(pet), which no URL can supply — it is only ever a child of another screen, 6 cues (6 with a box) -> /Users/victorrentea/workspace/petclinic-pr/.human-review/assets/feature.raw.webm
+[video] the app cannot say which commit it is; this run started it itself, from 683fbe863682f2bd4f2401b7458261d445f7c81b
+[video] title card: "Demo" / "Link Visit with Vet", 3.44s
+[video] feature-script.js: 5/5 changed screens filmed | not filmable: /pets — PetListComponent is driven by @Input(pet), which no URL can supply — it is only ever a child of another screen, 7 cues (7 with a box) -> /Users/victorrentea/workspace/petclinic-pr/.human-review/assets/feature.raw.webm
 [video] viewport 1280x800 @ dpr 1
-[video] narration: 6/6 cues, 19.5s of speech, voice "Samantha"
+[video] narration: 7/7 cues, 19.4s of speech, voice "Samantha"
 [annotate] 124 caption states from 124 frames
-[annotate] 6 captions, 6 spotlights, 6 spoken -> /Users/victorrentea/workspace/petclinic-pr/.human-review/assets/feature.webm
-[video] 33.640000s, 2.3M
+[annotate] 7 captions, 7 spotlights, 7 spoken -> /Users/victorrentea/workspace/petclinic-pr/.human-review/assets/feature.webm
+[video] 36.280000s, 2.3M

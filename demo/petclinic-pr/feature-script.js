@@ -130,10 +130,11 @@ module.exports = async ({page, say, pause, get, app, apiUrl}) => {
 
     "visits/:id/edit": async (screen) => {
       await page.goto(`${app}/${fill(screen.route)}`);
-      const combo = page.locator("app-combo").first();
-      await combo.waitFor();
-      await say("And on the edit form the vet picker is the design-system combo — "
-                + "picking “none” is what unassigns a vet.", combo);
+      // A bare <select id="vet"> here, not the design-system combo: the branch plants that
+      // gap on purpose for the UX tab, so the film must not call it the combo.
+      const vetSelect = page.locator("select#vet");
+      await vetSelect.waitFor();
+      await say("And on the edit form, picking “none” is what unassigns a vet.", vetSelect);
       await pause(2100);
     },
   };

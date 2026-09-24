@@ -1,12 +1,12 @@
 [
  {
-  "t": 5.031,
+  "t": 5.412,
   "text": "Every pet’s visit list now carries a Vet column.",
   "box": {
-   "x": 320,
+   "x": 418,
    "y": 358,
-   "width": 900,
-   "height": 248
+   "width": 802,
+   "height": 104
   },
   "audio": "feature.narration/cue00.wav",
   "speech": 2.632108843537415,
@@ -50,7 +50,7 @@
   ]
  },
  {
-  "t": 10.213,
+  "t": 10.704,
   "text": "The booking form asks who will attend — and lets you say nobody yet.",
   "box": {
    "x": 248,
@@ -120,7 +120,7 @@
   ]
  },
  {
-  "t": 15.537,
+  "t": 16.185,
   "text": "We book this one with Rafael Ortega.",
   "box": {
    "x": 248,
@@ -137,11 +137,11 @@
    },
    {
     "w": "book",
-    "t": 0.13
+    "t": 0.118
    },
    {
     "w": "this",
-    "t": 0.351
+    "t": 0.362
    },
    {
     "w": "one",
@@ -153,7 +153,7 @@
    },
    {
     "w": "Rafael",
-    "t": 0.954
+    "t": 0.943
    },
    {
     "w": "Ortega.",
@@ -162,13 +162,13 @@
   ]
  },
  {
-  "t": 19.171,
+  "t": 19.92,
   "text": "Back on the owner, the new visit names the vet that will attend it.",
   "box": {
-   "x": 319,
-   "y": 389,
-   "width": 901,
-   "height": 73
+   "x": 408,
+   "y": 462,
+   "width": 812,
+   "height": 36
   },
   "audio": "feature.narration/cue03.wav",
   "speech": 3.359546485260771,
@@ -187,11 +187,11 @@
    },
    {
     "w": "owner,",
-    "t": 0.527
+    "t": 0.538
    },
    {
     "w": "the",
-    "t": 1.154
+    "t": 1.142
    },
    {
     "w": "new",
@@ -232,7 +232,7 @@
   ]
  },
  {
-  "t": 24.108,
+  "t": 25.013,
   "text": "The all-visits page carries the same column.",
   "box": {
    "x": 1104,
@@ -257,7 +257,7 @@
    },
    {
     "w": "carries",
-    "t": 1.043
+    "t": 1.032
    },
    {
     "w": "the",
@@ -265,7 +265,7 @@
    },
    {
     "w": "same",
-    "t": 1.531
+    "t": 1.543
    },
    {
     "w": "column.",
@@ -274,8 +274,8 @@
   ]
  },
  {
-  "t": 28.063,
-  "text": "And on the edit form the vet picker is the design-system combo — picking “none” is what unassigns a vet.",
+  "t": 29.153,
+  "text": "And on the edit form, picking “none” is what unassigns a vet.",
   "box": {
    "x": 248,
    "y": 358,
@@ -283,87 +283,97 @@
    "height": 34
   },
   "audio": "feature.narration/cue05.wav",
-  "speech": 5.325396825396825,
+  "speech": 3.187845804988662,
   "words": [
    {
     "w": "And",
-    "t": 0.008
+    "t": 0.007
    },
    {
     "w": "on",
-    "t": 0.147
+    "t": 0.146
    },
    {
     "w": "the",
-    "t": 0.31
+    "t": 0.309
    },
    {
     "w": "edit",
-    "t": 0.461
+    "t": 0.448
    },
    {
-    "w": "form",
-    "t": 0.705
-   },
-   {
-    "w": "the",
-    "t": 1.041
-   },
-   {
-    "w": "vet",
-    "t": 1.111
-   },
-   {
-    "w": "picker",
-    "t": 1.343
-   },
-   {
-    "w": "is",
-    "t": 1.691
-   },
-   {
-    "w": "the",
-    "t": 1.842
-   },
-   {
-    "w": "design-system",
-    "t": 1.947
-   },
-   {
-    "w": "combo",
-    "t": 2.771
-   },
-   {
-    "w": "—",
-    "t": 3.526
+    "w": "form,",
+    "t": 0.703
    },
    {
     "w": "picking",
-    "t": 3.634
+    "t": 1.388
    },
    {
     "w": "“none”",
-    "t": 3.886
+    "t": 1.748
    },
    {
     "w": "is",
-    "t": 4.048
+    "t": 1.911
    },
    {
     "w": "what",
-    "t": 4.188
+    "t": 2.05
    },
    {
     "w": "unassigns",
-    "t": 4.373
+    "t": 2.224
    },
    {
     "w": "a",
-    "t": 4.907
+    "t": 2.77
    },
    {
     "w": "vet.",
-    "t": 4.954
+    "t": 2.816
+   }
+  ]
+ },
+ {
+  "t": 34.026,
+  "text": "This screen changed on this branch too.",
+  "box": {
+   "x": 60,
+   "y": 114,
+   "width": 1160,
+   "height": 24
+  },
+  "audio": "feature.narration/cue06.wav",
+  "speech": 2.0185034013605443,
+  "words": [
+   {
+    "w": "This",
+    "t": 0.01
+   },
+   {
+    "w": "screen",
+    "t": 0.196
+   },
+   {
+    "w": "changed",
+    "t": 0.521
+   },
+   {
+    "w": "on",
+    "t": 0.939
+   },
+   {
+    "w": "this",
+    "t": 1.101
+   },
+   {
+    "w": "branch",
+    "t": 1.264
+   },
+   {
+    "w": "too.",
+    "t": 1.647
    }
   ]
  }

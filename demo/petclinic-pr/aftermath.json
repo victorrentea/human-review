@@ -1,7 +1,7 @@
 {
  "review": "db6b67ece0336532484b6c96e1d080136e0198a0",
  "review_short": "db6b67ec",
- "head": "db6b67ece0336532484b6c96e1d080136e0198a0",
+ "head": "683fbe863682f2bd4f2401b7458261d445f7c81b",
  "generated_globs": [
   "**/generated/**",
   "docs/generated/**",
@@ -10,22 +10,1048 @@
   "**/api-types.ts",
   "**/*.drawio*"
  ],
- "commits": [],
- "totals": {
-  "commits": 0,
-  "files": 0,
-  "added": 0,
-  "deleted": 0,
-  "code": {
-   "files": 0,
+ "commits": [
+  {
+   "sha": "b4b17a9d973f1a909a5ee61473f80f35e39741d4",
+   "short": "b4b17a9d",
+   "when": "2026-09-23T11:29:10+03:00",
+   "subject": "Merge main into test-pr (generated-file header on openapi.yaml)",
+   "files": [
+    {
+     "path": "openapi.yaml",
+     "added": 2,
+     "deleted": 0,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/OpenApiExtractorTest.java",
+     "added": 5,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 7,
+   "deleted": 1,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "f8d1a3f781e0f4ada805845402dbf1cc5e8753aa",
+   "short": "f8d1a3f7",
+   "when": "2026-09-23T19:01:10+03:00",
+   "subject": "Redraw the PR's city with the change DNA colour",
+   "files": [
+    {
+     "path": "petclinic-backend/docs/generated/codecity/codecity.html",
+     "added": 225,
+     "deleted": 14,
+     "binary": false,
+     "generated": true
+    }
+   ],
+   "added": 225,
+   "deleted": 14,
+   "generated_only": true,
+   "measured": true
+  },
+  {
+   "sha": "29684b99777b3bd69cbcb0262d63ce5da70d24c4",
+   "short": "29684b99",
+   "when": "2026-09-23T19:37:04+03:00",
+   "subject": "OpenRewrite: Spring Security 7 csrf().disable() -> lambda DSL recipe",
+   "files": [
+    {
+     "path": "refactoring-legacy/README.md",
+     "added": 2,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "refactoring-legacy/pom.xml",
+     "added": 15,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "refactoring-legacy/src/main/java/victor/training/petclinic/rewrite/CsrfDisableLambdaDsl.java",
+     "added": 29,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "refactoring-legacy/src/test/java/victor/training/petclinic/rewrite/CsrfDisableLambdaDslTest.java",
+     "added": 44,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 90,
+   "deleted": 1,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "a23ccb76dab881618c7e07032a18acabc6ad68c7",
+   "short": "a23ccb76",
+   "when": "2026-09-23T22:13:27+02:00",
+   "subject": "Redraw the PR's city: change DNA as a near-edge bar, breadcrumb bottom centre",
+   "files": [
+    {
+     "path": "petclinic-backend/docs/generated/codecity/codecity.html",
+     "added": 101,
+     "deleted": 229,
+     "binary": false,
+     "generated": true
+    }
+   ],
+   "added": 101,
+   "deleted": 229,
+   "generated_only": true,
+   "measured": true
+  },
+  {
+   "sha": "9037413e769b26b9560972f2ec678fdda0c2a53b",
+   "short": "9037413e",
+   "when": "2026-09-23T23:08:08+02:00",
+   "subject": "Put the vet line back on the PR's conceptual map",
+   "files": [
+    {
+     "path": "petclinic-backend/docs/ConceptualModel.drawio.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    }
+   ],
    "added": 0,
-   "deleted": 0
+   "deleted": 0,
+   "generated_only": true,
+   "measured": true
+  },
+  {
+   "sha": "e85612fbc8c5926183eb22ca12d9fcbb7aa05af7",
+   "short": "e85612fb",
+   "when": "2026-09-23T23:39:56+02:00",
+   "subject": "human-review.json: name the guardrail the conceptual diagram is unit-tested against",
+   "files": [
+    {
+     "path": "human-review.json",
+     "added": 3,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 3,
+   "deleted": 1,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "c0b9503abb960521ed27d89f268529ea65a3bc76",
+   "short": "c0b9503a",
+   "when": "2026-09-24T00:05:47+02:00",
+   "subject": "Merge origin/main: notification-service split into its own Spring Boot service",
+   "files": [
+    {
+     "path": ".claude/agents/reviewer-efficiency.md",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".githooks/pre-push",
+     "added": 22,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".github/workflows/ci.yml",
+     "added": 24,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "AGENTS.md",
+     "added": 33,
+     "deleted": 15,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "GUARDRAILS.md",
+     "added": 1,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docker/docker-compose.yml",
+     "added": 14,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "human-review.json",
+     "added": 3,
+     "deleted": 7,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/.dockerignore",
+     "added": 3,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/Dockerfile",
+     "added": 31,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/pom.xml",
+     "added": 61,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/src/main/java/victor/training/notification/NotificationController.java",
+     "added": 25,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/src/main/java/victor/training/notification/NotificationServiceApplication.java",
+     "added": 19,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/src/main/java/victor/training/notification/RequestBodySpanFilter.java",
+     "added": 43,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/src/main/java/victor/training/notification/SmsGateway.java",
+     "added": 27,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/src/main/resources/application.properties",
+     "added": 2,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/src/test/java/victor/training/notification/NotificationControllerTest.java",
+     "added": 32,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/Dockerfile",
+     "added": 5,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/docs/Deployment.drawio.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "petclinic-backend/docs/c4model.c3.dsl",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/docs/generated/MavenModules.puml",
+     "added": 5,
+     "deleted": 0,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-backend/docs/generated/c4views/C3-Components-All.puml",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-backend/docs/packages.puml",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/pom-libs.txt",
+     "added": 6,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/pom.xml",
+     "added": 7,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/java/victor/training/petclinic/notification/FakeSmsNotificationSender.java",
+     "added": 0,
+     "deleted": 59,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationSender.java",
+     "added": 4,
+     "deleted": 9,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
+     "added": 40,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/resources/application.properties",
+     "added": 3,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-commons/pom.xml",
+     "added": 18,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-commons/src/main/java/victor/training/commons/VisitBookedNotification.java",
+     "added": 14,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/AGENTS.md",
+     "added": 4,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+     "added": 52,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.ts",
+     "added": 6,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/start-apps.ts",
+     "added": 34,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "scripts/check-line-length.py",
+     "added": 112,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "start-backend.sh",
+     "added": 15,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 671,
+   "deleted": 103,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "866e1d6484d5d280b87a43cee006ae4a3a8cd39b",
+   "short": "866e1d64",
+   "when": "2026-09-24T00:08:00+02:00",
+   "subject": "skills: jira/confluence CLIs in stdlib Python, so they run on Windows without WSL",
+   "files": [
+    {
+     "path": ".claude/skills/confluence-cli/SKILL.md",
+     "added": 24,
+     "deleted": 14,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/confluence.env.example",
+     "added": 5,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/confluence.py",
+     "added": 1007,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/confluence.sh",
+     "added": 0,
+     "deleted": 720,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/TESTING.md",
+     "added": 11,
+     "deleted": 10,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/e2e-fake.sh",
+     "added": 0,
+     "deleted": 134,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/e2e-live.sh",
+     "added": 0,
+     "deleted": 70,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/e2e_fake.py",
+     "added": 170,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/e2e_live.py",
+     "added": 81,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/harness.py",
+     "added": 134,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/lib.sh",
+     "added": 0,
+     "deleted": 78,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/run-tests.sh",
+     "added": 0,
+     "deleted": 39,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/run_tests.py",
+     "added": 41,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/scenario.py",
+     "added": 221,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/scenario.sh",
+     "added": 0,
+     "deleted": 220,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jenkins-cli/SKILL.md",
+     "added": 8,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jenkins-cli/jenkins.py",
+     "added": 16,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jenkins-cli/test/e2e_fake.py",
+     "added": 10,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jenkins-cli/test/fake_jenkins.py",
+     "added": 3,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/SKILL.md",
+     "added": 22,
+     "deleted": 13,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/jira.env.example",
+     "added": 5,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/jira.py",
+     "added": 827,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/jira.sh",
+     "added": 0,
+     "deleted": 535,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/TESTING.md",
+     "added": 13,
+     "deleted": 11,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/e2e-fake.sh",
+     "added": 0,
+     "deleted": 97,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/e2e-live.sh",
+     "added": 0,
+     "deleted": 69,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/e2e_fake.py",
+     "added": 131,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/e2e_live.py",
+     "added": 79,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/harness.py",
+     "added": 134,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/lib.sh",
+     "added": 0,
+     "deleted": 78,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/run-tests.sh",
+     "added": 0,
+     "deleted": 39,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/run_tests.py",
+     "added": 41,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/scenario.py",
+     "added": 212,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/scenario.sh",
+     "added": 0,
+     "deleted": 202,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".github/workflows/skills-cli.yml",
+     "added": 73,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".gitignore",
+     "added": 3,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 3271,
+   "deleted": 2343,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "7f5189e6cc3ea9d8c445eb3708541fa1c6a6628d",
+   "short": "7f5189e6",
+   "when": "2026-09-24T00:08:00+02:00",
+   "subject": "skills: harden the jira/confluence CLIs after an adversarial review",
+   "files": [
+    {
+     "path": ".claude/skills/confluence-cli/SKILL.md",
+     "added": 7,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/confluence.py",
+     "added": 93,
+     "deleted": 25,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/TESTING.md",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/e2e_fake.py",
+     "added": 78,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/fake_confluence.py",
+     "added": 233,
+     "deleted": 94,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/confluence-cli/test/harness.py",
+     "added": 35,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jenkins-cli/SKILL.md",
+     "added": 8,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jenkins-cli/jenkins.py",
+     "added": 39,
+     "deleted": 15,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jenkins-cli/test/e2e_fake.py",
+     "added": 21,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/SKILL.md",
+     "added": 7,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/jira.py",
+     "added": 94,
+     "deleted": 26,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/TESTING.md",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/docker/docker-compose.yml",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/docker/start-jira.sh",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/e2e_fake.py",
+     "added": 72,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/fake_jira.py",
+     "added": 3,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/jira-cli/test/harness.py",
+     "added": 35,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".github/workflows/skills-cli.yml",
+     "added": 7,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 737,
+   "deleted": 176,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "0b13a8029ace380d1f654d4ad56585e884933e6d",
+   "short": "0b13a802",
+   "when": "2026-09-24T00:08:00+02:00",
+   "subject": "Merge main: skill CLIs portable to Windows, already cherry-picked here",
+   "files": [],
+   "added": 0,
+   "deleted": 0,
+   "generated_only": false,
+   "measured": false
+  },
+  {
+   "sha": "32c943ad607bcaa54a179d604c8a129662a7a5be",
+   "short": "32c943ad",
+   "when": "2026-09-24T00:13:51+02:00",
+   "subject": "Re-record every sequence diagram against the notification-service split",
+   "files": [
+    {
+     "path": "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.json",
+     "added": 15,
+     "deleted": 6,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
+     "added": 9,
+     "deleted": 8,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/add-visit.spec.ts.add-a-visit-attended-by-a-vet.genseq.json",
+     "added": 15,
+     "deleted": 6,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/add-visit.spec.ts.add-a-visit-attended-by-a-vet.genseq.puml",
+     "added": 9,
+     "deleted": 8,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.json",
+     "added": 15,
+     "deleted": 6,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
+     "added": 9,
+     "deleted": 8,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/book-visit-with-vet.feature.the-vet-chosen-while-booking-is-named-everywhere-the-visit-is-listed.genseq.json",
+     "added": 20,
+     "deleted": 33,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/book-visit-with-vet.feature.the-vet-chosen-while-booking-is-named-everywhere-the-visit-is-listed.genseq.puml",
+     "added": 7,
+     "deleted": 18,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.json",
+     "added": 4,
+     "deleted": 4,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": true
+    }
+   ],
+   "added": 105,
+   "deleted": 99,
+   "generated_only": true,
+   "measured": true
+  },
+  {
+   "sha": "c8ec6a9ae2a01f53d948f4af9e2b0ca2fba22be3",
+   "short": "c8ec6a9a",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "e2e: run the review's suites on HEAD's own containers, not on shared ports",
+   "files": [
+    {
+     "path": "docker/docker-compose.yml",
+     "added": 6,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "human-review.json",
+     "added": 8,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/AGENTS.md",
+     "added": 3,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/cucumber.js",
+     "added": 3,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/visit-date-range.feature",
+     "added": 1,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/test-on-own-stack.sh",
+     "added": 42,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 63,
+   "deleted": 3,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "a2b28a977d2a1c3bad3c336256c4a4d86529f568",
+   "short": "a2b28a97",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "Owner search: a late initial load no longer overwrites the result",
+   "files": [
+    {
+     "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+     "added": 14,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts",
+     "added": 11,
+     "deleted": 31,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/pages/VisitsPage.ts",
+     "added": 2,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 27,
+   "deleted": 32,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "1daa4cbaf420164b052f76819664c289b150ea04",
+   "short": "1daa4cba",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "add-owner.spec: edit the owner only once the form has loaded them",
+   "files": [
+    {
+     "path": "petclinic-test/src/add-owner.spec.ts",
+     "added": 3,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 3,
+   "deleted": 0,
+   "generated_only": false,
+   "measured": true
+  },
+  {
+   "sha": "683fbe863682f2bd4f2401b7458261d445f7c81b",
+   "short": "683fbe86",
+   "when": "2026-09-24T07:13:34+02:00",
+   "subject": "Merge main: e2e on HEAD's own stack + owner-search race fix, already cherry-picked here",
+   "files": [],
+   "added": 0,
+   "deleted": 0,
+   "generated_only": false,
+   "measured": false
+  }
+ ],
+ "totals": {
+  "commits": 15,
+  "files": 102,
+  "added": 5215,
+  "deleted": 2914,
+  "code": {
+   "files": 86,
+   "added": 4805,
+   "deleted": 2600
   },
   "generated": {
-   "files": 0,
-   "added": 0,
-   "deleted": 0
+   "files": 16,
+   "added": 410,
+   "deleted": 314
   }
  },
- "clean": true
+ "clean": false
 }

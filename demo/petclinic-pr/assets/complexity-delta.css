@@ -18,9 +18,21 @@
     pointing at nothing. */
 .cx-row { border-bottom:1px solid var(--line); }
 .cx-row:last-child { border-bottom:0; }
-.cx-head { display:grid; grid-template-columns:3.6rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
-          align-items:center; gap:.55rem; padding:.3rem .8rem; font-size:.84rem;
+/* The verb column is as wide as DELETE and no wider, and the gap after it is the smaller
+    one: at 3.6rem + .55rem a `GET` sat 46px from its own path and read as two columns of
+    unrelated things. The caret column in front is the fold's second handle, next to the
+    word a reader looks at first. */
+.cx-head { display:grid; grid-template-columns:1.1rem 2.45rem minmax(9rem,17rem) 1fr 2.6rem 2.2rem;
+          align-items:center; gap:.4rem; padding:.3rem .8rem .3rem .5rem; font-size:.84rem;
           cursor:default; list-style:none; }
+/* The full-size triangles (U+25B6/U+25BC, forced to text with U+FE0E so macOS does not
+    swap in the emoji), not the small ▸/▾: those stay a speck at any font size — at 10px
+    beside a 13px verb the caret read as punctuation, not as the handle that opens the
+    call graph. */
+.cx-caret { font-size:13px; line-height:1; color:var(--muted); text-align:center; }
+details.cx-row > summary .cx-caret { cursor:pointer; }
+details.cx-row > summary .cx-caret::before { content:"\25B6\FE0E"; }
+details.cx-row[open] > summary .cx-caret::before { content:"\25BC\FE0E"; }
 .cx-head::-webkit-details-marker { display:none; }
 summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
 .cx-hint { opacity:.75; }
@@ -31,6 +43,17 @@ summary.cx-head:focus-visible { outline:2px solid var(--link); outline-offset:-2
     read as one block. */
 .cx-row[open] { opacity:1; }
 .cx-row[open] > .cx-head { background:var(--code-bg); }
+/* A row you can open has to look like one before you try: under the pointer its head
+    lights up, a bar in the link colour marks its left edge, the caret takes the same
+    colour and nudges, and a dimmed row comes back to full strength — together they say
+    "click me", where a faint tint alone read as nothing at all. */
+details.cx-row > summary.cx-head { cursor:pointer; transition:background .12s, box-shadow .12s; }
+details.cx-row > summary.cx-head:hover { background:var(--code-bg);
+    box-shadow:inset 3px 0 0 var(--link); }
+details.cx-row > summary.cx-head:hover .cx-caret { color:var(--link); }
+details.cx-row:not([open]) > summary.cx-head:hover .cx-caret::before { display:inline-block;
+    transform:translateX(2px); }
+details.cx-row.cx-same:hover { opacity:.9; }
 .cx-verb { font:700 10.5px/1 ui-monospace,Menlo,monospace; letter-spacing:.03em; }
 /* Amber is the one hue that never read on white either: #e08a00 is 2.7:1 there, well
     under the 4.5:1 a 10.5px bold monospace word needs. Darkened until it clears it,
@@ -89,6 +112,62 @@ a.cx-why-line:hover code { text-decoration:underline; }
     without reading them. `tabular-nums` keeps `[+10]` from widening the column by a hair. */
 .cx-why-inc { flex:0 0 2.9rem; text-align:right; font-variant-numeric:tabular-nums;
               font:700 10.5px/1.55 ui-monospace,Menlo,monospace; color:var(--muted); }
+/* ── the call graph ─────────────────────────────────────────────────────────────────
+    The flow drawn left to right: a node per method, its callees in a column to its right,
+    joined by elbow lines drawn from borders alone (no SVG, no layout engine). A node is
+    two badges — the class, and `.method` under it — with the cognitive and cyclomatic
+    scores beside the method. It scrolls sideways rather than squeeze a deep chain. */
+.cg { overflow-x:auto; padding:.15rem 0 .45rem; margin:0 0 .35rem -3.3rem;
+      border-bottom:1px dashed var(--line); }
+.cg-key { font:10px/1.4 system-ui,sans-serif; color:var(--muted); margin:0 0 .3rem; }
+.cg-key b { font:700 9.5px/1 ui-monospace,Menlo,monospace; }
+/* Top-aligned, not centred: a centred parent floats to the middle of however tall its
+    subtree is, and one wide branch then opens a screen of empty space above and below
+    every sibling. Aligned to the top, a node sits level with its first callee and the
+    elbows are drawn at a fixed height — half a node — from the top of each row. */
+.cg-t { --cg-mid:15px; display:flex; align-items:flex-start; position:relative; }
+.cg-kids { display:flex; flex-direction:column; gap:3px; margin-left:12px; position:relative; }
+.cg-kids::before { content:""; position:absolute; left:-12px; top:var(--cg-mid); width:12px;
+                   border-top:1px solid var(--cg-line); }
+.cg-kids > .cg-t { padding-left:8px; }
+.cg-kids > .cg-t::before { content:""; position:absolute; left:0; top:-3px; bottom:0;
+                           border-left:1px solid var(--cg-line); }
+.cg-kids > .cg-t:first-child::before { top:var(--cg-mid); }
+.cg-kids > .cg-t:last-child::before { bottom:auto; height:calc(var(--cg-mid) + 3px); }
+.cg-kids > .cg-t:only-child::before { display:none; }
+.cg-kids > .cg-t::after { content:""; position:absolute; left:0; top:var(--cg-mid); width:8px;
+                          border-top:1px solid var(--cg-line); }
+.cg { --cg-line:color-mix(in srgb, var(--muted) 55%, transparent); }
+/* A node: the class badge over the `.method` badge, and the two scores stacked in a narrow
+    column on the right — cognitive over cyclomatic, as the key above the graph says. The
+    names are set in the UI face, not monospace: the graph is as wide as its deepest chain
+    times its widest names, and a proportional face buys back a fifth of that. */
+.cg-n { display:inline-grid; grid-template-columns:auto auto; column-gap:5px; row-gap:1px;
+        align-items:center; padding:2px 4px; border:1px solid var(--line); border-radius:6px;
+        background:var(--card); text-decoration:none; color:inherit; white-space:nowrap;
+        position:relative; z-index:1; }
+a.cg-n[href]:hover { border-color:var(--link); }
+.cg-c, .cg-m { font:600 10.5px/1.3 system-ui,sans-serif; padding:0 4px; border-radius:4px;
+               grid-column:1; justify-self:start; }
+.cg-c { color:var(--muted); border:1px solid var(--line); font-weight:500; }
+.cg-m { background:var(--code-bg); border:1px solid transparent; }
+.cg-cog, .cg-cyc { grid-column:2; font:700 9.5px/1.3 ui-monospace,Menlo,monospace;
+                   text-align:right; font-variant-numeric:tabular-nums; }
+.cg-cog { grid-row:1; }
+.cg-cyc { grid-row:2; color:var(--muted); font-weight:500; }
+.cg-d { font:700 9.5px/1 ui-monospace,Menlo,monospace; position:absolute; top:-6px; right:-6px;
+        padding:1px 3px; border-radius:6px; background:var(--card); }
+.cg-zero { opacity:.55; }
+.cg-also { grid-column:1 / 3; font:10px/1.3 system-ui,sans-serif; color:var(--muted);
+           padding:0 4px; cursor:help; }
+.cg-more { font:700 10px/1 ui-monospace,Menlo,monospace; color:var(--muted); padding:3px 6px;
+           border:1px dashed var(--line); border-radius:6px; cursor:help; }
+/* A method whose score this branch raised wears the added colour on its frame and its
+    number; one it lowered, the removed colour. */
+.cg-add { border-color:var(--cx-added); box-shadow:0 0 0 1px var(--cx-added) inset; }
+.cg-add .cg-d, .cg-add .cg-cog { color:var(--cx-added); }
+.cg-cut { border-color:var(--cx-removed); }
+.cg-cut .cg-d { color:var(--cx-removed); }
 /* Green is authorship everywhere else on this tab, and it means the same here: this line
     was not behind this entry point at the merge-base. */
 a.cx-why-new code { color:var(--cx-added); }
