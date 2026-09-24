@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ..shared.commands import RUN_TESTS_FACE
 from ..shared.util import PENCIL, TESTCHANGES
 
 # What happened to a test, and what the page calls it. The colour classes are the page's
@@ -836,7 +837,7 @@ def declare_run_tests_rerun(root: Path, out_dir: Path, skill_dir: Path) -> dict 
 
 def run_tests_button(info: dict | None) -> str:
     """The third button, in the free ↻'s own markup so the page's rerun machine drives it:
-    `⏳`, hidden until the server's probe says it can run it. Empty without `info`."""
+    `↺⏳`, hidden until the server's probe says it can run it. Empty without `info`."""
     if not info:
         return ""
     steps = html.escape(",".join(info["steps"]), quote=True)
@@ -845,7 +846,6 @@ def run_tests_button(info: dict | None) -> str:
             f'data-tab="{LEDGER_TAB}" data-steps="{steps}" '
             'aria-label="Re-run the tests, then re-derive the Tests tab" '
             f'data-tip="{html.escape(info["tip"], quote=True)}">'
-            # The paid one's shape — the arrow, then the one mark saying what this press
-            # adds to it — and its `rr-bot` slot, so the strip sizes the two alike.
-            '<span class="rr-ico">\u23F3</span>'
-            '</button>')
+            # ↺⏳ in one button, the masthead's own face for the same press: regenerate,
+            # and wait for the suites.
+            + RUN_TESTS_FACE + '</button>')

@@ -34,9 +34,9 @@ button.chip-rerun.running .rr-ico { animation:hrspin .7s linear infinite reverse
 /* The paid one, beside the free one. Amber and not red: red on this page means a failure
    or a regression, and a control that is merely expensive is not either of those — it is
    the page's one "are you sure", and amber is what every other "look before you press"
-   mark here already uses. Dashed, so the pair reads as one control with two prices rather
-   than as two unrelated chips: the dash is the only thing that survives being glanced at. */
-button.chip-rerun-ai { border-style:dashed; border-color:var(--drift); color:var(--drift); }
+   mark here already uses. A solid edge like its neighbours: it used to be dashed, and
+   Victor read the dash as noise — the amber alone is what sets it apart. */
+button.chip-rerun-ai { border-color:var(--drift); color:var(--drift); }
 /* Hover fills the chip with its own colour and turns the glyph to the ground's: a 10%
    wash over whatever sits under the chip read as nothing on a light tab and as mud on a
    dark one, and the arrow — the one mark on the face — was what disappeared. */
@@ -78,7 +78,7 @@ button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
             --tabre-w:calc(var(--tabre-w1) + var(--tabre-w2) + var(--tabre-w3)); }
 .tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun__"]:not([hidden])) { --tabre-w1:1.45rem; }
 .tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_ai__"]:not([hidden])) { --tabre-w2:calc(1.45rem + .2rem); }
-.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_tests__"]:not([hidden])) { --tabre-w3:calc(1.45rem + .2rem); }
+.tabstrip:has(.tab[aria-selected="true"] + .tabre > [data-rerun="__rerun_tests__"]:not([hidden])) { --tabre-w3:calc(2.2rem + .2rem); }
 .tabstrip .tab[aria-selected="true"]:has(+ .tabre > .tabrerun:not([hidden])) {
             padding-right:calc(var(--tabre-w) + .55rem); }
 .tabstrip .tab[aria-selected="true"] + .tabre:has(> .tabrerun:not([hidden])) {
@@ -93,12 +93,16 @@ button.chip-served.chip-rerun:hover:not(:disabled) { border-color:#2e7d32;
 .tabre .tabrerun { padding:0; border-radius:999px; border:1px solid;
             font-size:.72rem; line-height:1.3; background:var(--card);
             display:inline-flex; align-items:center; justify-content:center;
-            width:1.45rem; box-sizing:border-box; }
-/* 🤖 and ⏳ are colour emoji, already heavier than the one-stroke ↺: set at the type's
-   own size rather than the arrow's 1.3em, or they overflow the round chip. */
-button.chip-rerun-ai .rr-ico, button[data-rerun="__rerun_tests__"] .rr-ico {
-            font-size:1em; vertical-align:-.05em; }
-.tabre .tabrerun.chip-rerun-ai { border-style:dashed; }
+            width:1.45rem; box-sizing:border-box;
+            /* A fixed height, not one taken from the glyph: the ↺ at 1.3em and an emoji at
+               1em gave line boxes 3–4px apart, and the three chips stood at three heights. */
+            height:1.1rem; }
+/* ↺⏳ is two marks: wider, the same height. */
+.tabre .tabrerun-tests { width:2.2rem; }
+/* 🤖 is a colour emoji, already heavier than the one-stroke ↺: set at the type's own size
+   rather than the arrow's 1.3em, or it overflows the round chip. (The ⏳ of ↺⏳ is
+   `.rr-add`, sized on its own; its ↺ stays the arrow's size.) */
+button.chip-rerun-ai .rr-ico { font-size:1em; vertical-align:-.05em; }
 .tabre .tabrerun[hidden] { display:none; }
 /* The page's own confirmation, over the page. Fixed and full-viewport because the click it
    guards costs money and a panel the reader can scroll away from is a panel they can
@@ -315,9 +319,16 @@ button.chip-rerun-ai .rr-ico, button[data-rerun="__rerun_tests__"] .rr-ico {
 .titlerow .chip-mode, .titlerow .chip-serve, .titlerow .chip-rerun, .titlerow .titlescore {
             flex:0 0 auto; align-self:center;
             padding:.15rem .7rem; border-radius:999px; border-width:1px;
-            border-style:solid; font-size:.82rem; line-height:1.6; }
+            border-style:solid; font-size:.82rem; line-height:1.6;
+            /* Pinned rather than left to the line box: a chip whose face is an emoji takes
+               its height from the emoji font's ascent in a real Chrome, and the row stood
+               at two heights. The glyphs are `line-height:1`, so nothing overflows it. */
+            height:1.75rem; box-sizing:border-box; }
 /* `[hidden]` is spelled out because the `display` these carry would otherwise beat the
    attribute. */
+/* The three presses are glyphs, not words: a narrower side padding than the badge's, so four
+   pills beside the title take no more of its width than they must. */
+.titlerow .chip-rerun { padding-left:.5rem; padding-right:.5rem; }
 .titlerow .chip-mode[hidden], .titlerow .chip-serve[hidden], .titlerow .chip-rerun[hidden] { display:none; }
 @media (prefers-color-scheme:dark) {
   .titlescore.v-good { color:#6fce93; } .titlescore.v-mid { color:#e0a44a; }

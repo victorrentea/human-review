@@ -113,6 +113,65 @@ def declare_rerun_actions(root: Path, out_dir: Path, skill_dir: Path) -> None:
             reload=True, label="Rewrite the matrix with a model, then rebuild this page")
 
 
+#: The masthead's ↺⏳, and the Tests tab's (as `__rerun_tests__:requirements`): run what
+#: takes long, then rebuild. Same id as the tab's, un-narrowed, the way `__rerun__` is the
+#: masthead's and `__rerun__:<tab>` a tab's.
+RERUN_TESTS_ACTION = "__rerun_tests__"
+
+
+def slow_steps(skill_dir: Path) -> list[tuple[str, str]]:
+    """`[(step, what it produces)]` for every producer a click on the masthead ↺ never
+    runs — `run-steps.STEPS` minus `refresh-report.STATIC_STEPS`, in the table's order.
+    The suites (`traces`) and everything else that drives a browser, records a film or
+    needs the stack up. `[]` when either table cannot be read."""
+    try:
+        table = _load(skill_dir / "run-steps.py", "hr_run_steps_table_slow").STEPS
+        static = set(_load(skill_dir / "refresh-report.py", "hr_refresh_table_slow").STATIC_STEPS)
+    except Exception:              # noqa: BLE001 - no table, no button
+        return []
+    return [(row[0], str(row[2] or "")) for row in table if row[0] not in static]
+
+
+def declare_rerun_tests_action(root: Path, out_dir: Path, skill_dir: Path) -> dict | None:
+    """Declare the masthead's ↺⏳ and return `{"id", "steps", "tip"}` for its button, or
+    None where the page cannot offer it.
+
+    `--steps all --force`: every producer, the slow ones included, with the step cache
+    bypassed — the point of the press is that the suites *run*, and `run-steps.py` would
+    otherwise find `traces` unchanged and hand back the old recordings. Then the build, as
+    every rerun ends. Free, like ↺; slow, which is the whole difference and what the tooltip
+    leads with. A slow step whose prerequisite is not up (no stack on :4200, no Chrome) is
+    skipped by `run-steps.py` with its reason, not failed."""
+    refresh = skill_dir / "refresh-report.py"
+    if not refresh.is_file():
+        return None
+    try:
+        rel = str(out_dir.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return None
+    slow = slow_steps(skill_dir)
+    if not slow:
+        return None
+    here = shlex.quote(str(root.resolve()))
+    line = (f"{shlex.quote(sys.executable)} {shlex.quote(str(refresh))}"
+            f" --dir {shlex.quote(rel)} --steps all --force --no-serve")
+    declare_action(RERUN_TESTS_ACTION, f"cd {here} && {line}", reload=True,
+                   label="Re-run the tests and every other slow step, then rebuild this page")
+    # The suites first: they are what the button is for and what the wait is mostly made of.
+    slow = sorted(slow, key=lambda sw: sw[0] != "traces")
+    named = ", ".join(f"{s} ({what})" if what else s for s, what in slow)
+    tip = ("Re-run the tests and every other long-running step — " + named
+           + " — with nothing reused from the last run, then regenerate the report. "
+           "Free, but it takes long (minutes, the test suites most of all), and the suites "
+           "need the application stack up.")
+    try:
+        order = [row[0] for row in
+                 _load(skill_dir / "run-steps.py", "hr_run_steps_table_slow").STEPS]
+    except Exception:              # noqa: BLE001 - the button stands without the bar's list
+        order = [s for s, _ in slow]
+    return {"id": RERUN_TESTS_ACTION, "steps": order, "tip": tip}
+
+
 def tab_rerun_id(base: str, tab: str) -> str:
     """`__rerun__:sequence` — the manifest key of one tab's rerun, for either verb."""
     return f"{base}:{tab}"

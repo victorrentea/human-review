@@ -250,8 +250,11 @@
     btn.classList.add('running');
     remember();
     var tab = btn.getAttribute('data-tab');
+    // The steps this press runs, when the button says: a tab's own, or the masthead ↺⏳'s
+    // whole list (the slow ones included, which the last run's timings may not know).
+    var only = btn.getAttribute('data-steps');
     progress.start(btn.getAttribute('data-rerun') === '__rerun_ai__' ? 'rerun_ai' : 'rerun',
-                   0, tab ? (btn.getAttribute('data-steps') || '').split(',') : null);
+                   0, only ? only.split(',') : null);
     window.HR.run(btn.getAttribute('data-rerun'), tab ? {tab: tab} : {}, function (snap) {
       // One line, in the hover: the button has room for a word and the reader who wants
       // to know which producer it is on is the reader already pointing at it. The band
@@ -418,7 +421,7 @@
     // Per button, from the probe's own answer for that verb. Inferring the paid one from
     // the free one would draw a $5 control over a server that has no model step beside it.
     buttons.forEach(function (btn) {
-      if (!window.HR.can(btn.getAttribute('data-rerun'))) return;
+      if (!window.HR.can(btn.getAttribute('data-rerun'), btn.getAttribute('data-tab'))) return;
       btn.hidden = false;
       btn.removeAttribute('aria-disabled');
       // The `Served` badge stays beside it: Victor wants the badge to say what this copy

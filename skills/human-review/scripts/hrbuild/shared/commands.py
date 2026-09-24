@@ -28,8 +28,9 @@ from .actions import ACTIONS, declare_action
 #: exactly as wide as a private-use codepoint — i.e. it was tofu.
 CMD_COPY = "\U0001F4CB"   # 📋
 #: `↺`, not `↻`, since Victor gave each refresh mode one mark of its own: ↺ regenerates
-#: the report (free), ⏳ re-runs the tests (free, minutes), 🤖 re-evaluates with a model
-#: (paid). One mark per press, so no chip is a sum of glyphs to be read left to right.
+#: the report (free), ↺⏳ re-runs the tests and the other slow steps first (free, minutes),
+#: 🤖 re-evaluates with a model (paid). ↺⏳ is the one two-mark face, at Victor's asking:
+#: the same regenerate, with the wait it costs drawn beside it.
 CMD_RUN = "\u21BA"        # ↺
 
 #: The three marks the Demo row wears instead of `↻`, because none of its verbs is a
@@ -108,14 +109,36 @@ RERUN_AI_CHIP = ('<button type="button" class="chip chip-rerun chip-rerun-ai" '
                  're-derives the evidence and rebuilds the page.">'
                  # One mark: the model. It used to be the free one's arrow plus this,
                  # and before that a `+` and a banknote too; each refresh mode now has one
-                 # mark of its own (↺ regenerate, ⏳ re-run tests, 🤖 re-evaluate). The `+` and the flying banknote that used to sit
+                 # mark of its own (↺ regenerate, ↺⏳ re-run tests, 🤖 re-evaluate). The `+` and the flying banknote that used to sit
                  # between and after them made a four-glyph rebus at .7rem, which Victor
                  # read as noise; the money is said where it can be said in words — first
-                 # in the hover, then again in the dialog — and the amber dashed edge is
-                 # the at-a-glance "this one is different". No words on the face, because
+                 # in the hover, then again in the dialog — and the amber edge is the
+                 # at-a-glance "this one is different" (solid: Victor did not want it dashed). No words on the face, because
                  # a label reading `Rerun + AI` cost the masthead two words to say
                  # `rerun` a second time.
                  '<span class="rr-ico">\U0001F916</span></button>')
+
+#: The face of a run-the-tests press, masthead and Tests tab alike: the regenerate mark and
+#: the hourglass in one button — "regenerate, and wait for what takes long". The arrow is
+#: `.rr-ico`, the part that turns while it runs; the hourglass holds still beside it.
+RUN_TESTS_FACE = (f'<span class="rr-ico">{CMD_RUN}</span>'
+                  '<span class="rr-add">\u23F3</span>')
+
+
+def rerun_tests_chip(info: dict | None) -> str:
+    """The masthead's ↺⏳, beside the ↺: re-run the tests and every other slow producer,
+    forced, then rebuild. Same machine as ↺ (`rerun.js`, `/__rerun__` with `mode:"tests"`,
+    the shared lock and the reload hold), raised by the probe's `rerunTestsAll`. Empty
+    without `info` (`actions.declare_rerun_tests_action`)."""
+    if not info:
+        return ""
+    steps = html.escape(",".join(info.get("steps") or []), quote=True)
+    return ('<button type="button" class="chip chip-rerun chip-served chip-rerun-tests" '
+            'id="hr-rerun-tests" hidden aria-disabled="true" '
+            f'data-rerun="{html.escape(info["id"], quote=True)}" data-steps="{steps}" '
+            'aria-label="Re-run the tests and every other slow step, then regenerate" '
+            f'data-tip="{html.escape(info["tip"], quote=True)}">{RUN_TESTS_FACE}</button>')
+
 
 def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
     """The masthead's ↻, narrowed to one tab, beside that tab's pill on the strip.
@@ -141,6 +164,12 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
            f'data-steps="{steps}" aria-label="Rerun the {name} tab" '
            f'data-tip="Re-derive the {name} tab ({steps}) and rebuild the page. Free.">'
            f'<span class="rr-ico">{CMD_RUN}</span></button>')
+    # A tab's own further presses (the Tests tab's ↺⏳, which runs the suites first), drawn
+    # by the tab that owns them and placed here, inside the span: the strip shows `.tabre`
+    # only as the selected pill's next sibling, so a second span beside it would never show.
+    # Right after the ↺, before the paid one: ↺ then ↺⏳ are the same free verb, the second
+    # one slower, and they read as a pair only when nothing stands between them.
+    out += info.get("extra") or ""
     if info.get("ai"):
         tip = html.escape(info.get("aiTip") or "", quote=True)
         out += ('<button type="button" class="chip chip-rerun chip-rerun-ai tabrerun" hidden '
@@ -153,10 +182,6 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
                    if info.get("priced") else "") +
                 f'data-tip="costs money. {tip}">'
                 '<span class="rr-ico">\U0001F916</span></button>')
-    # A tab's own further presses (the Tests tab's ↻🧪, which runs the suites first), drawn
-    # by the tab that owns them and placed here, inside the span: the strip shows `.tabre`
-    # only as the selected pill's next sibling, so a second span beside it would never show.
-    out += info.get("extra") or ""
     return out + "</span>"
 
 

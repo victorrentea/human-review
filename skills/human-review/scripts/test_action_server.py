@@ -802,7 +802,8 @@ def test_a_page_that_is_not_served_has_no_rerun_button():
     assert 'id="hr-rerun" hidden' in build.RERUN_CHIP
     assert 'aria-disabled="true"' in build.RERUN_CHIP
     # Per button, from the probe's own answer for that verb — not from "is there a server".
-    assert "if (!window.HR.can(btn.getAttribute('data-rerun'))) return;" in build.RERUN_JS
+    assert ("if (!window.HR.can(btn.getAttribute('data-rerun'), btn.getAttribute('data-tab'))) "
+            "return;") in build.RERUN_JS
     assert "btn.hidden = false;" in build.RERUN_JS
     assert "fetch(route, {" in build.SERVER_JS and "'/__rerun__'" in build.SERVER_JS
     # No clipboard consolation prize: there is nothing to paste that would be this button.
@@ -1486,7 +1487,7 @@ def test_the_rerun_endpoint_takes_a_tab_and_only_a_declared_one(tmp_path):
 
 def test_the_tests_tab_run_the_suites_press_has_its_own_door(tmp_path):
     """`__rerun_tests__:requirements` rides `/__rerun__` with `mode: "tests"` — never
-    `/__run__`, and never without a tab."""
+    `/__run__`. Without a tab it is the masthead's ↺⏳, which this build did not declare."""
     _fresh(tmp_path, {"version": 1, "actions": {
         "__rerun__:requirements": {"command": "echo free", "params": {}},
         "__rerun_tests__:requirements": {"command": "echo suites", "params": {}}}})
@@ -1494,8 +1495,54 @@ def test_the_tests_tab_run_the_suites_press_has_its_own_door(tmp_path):
     assert srv.tab_rerun_plan(tmp_path, False, "requirements")[0][-1] == "echo free"
     _, problem, status = srv.start_run("__rerun_tests__:requirements", {}, tmp_path)
     assert status == 400 and "endpoint of its own" in problem
-    _, _, status, _ = srv.start_rerun(tmp_path, mode="tests")
-    assert status == 400
+    _, problem, status, _ = srv.start_rerun(tmp_path, mode="tests")
+    assert status == 404 and "no test run" in problem
+    assert srv.rerun_tests_plan(tmp_path) is None
+
+
+def test_the_masthead_run_the_tests_press_is_declared_served_and_refused_on_run(tmp_path):
+    """The masthead ↺⏳: `__rerun_tests__` un-narrowed, out of the manifest only, through
+    `/__rerun__` with `mode: "tests"` and never through `/__run__`."""
+    _fresh(tmp_path, {"version": 1, "actions": {
+        "__rerun_tests__": {"command": "echo everything", "params": {}}}})
+    assert srv.rerun_tests_plan(tmp_path)[0][-1] == "echo everything"
+    _, problem, status = srv.start_run("__rerun_tests__", {}, tmp_path)
+    assert status == 400 and "endpoint of its own" in problem
+    # The page asks the probe for the un-narrowed one separately, and sends the mode
+    # even without a tab.
+    assert "caps.rerunTestsAll" in build.SERVER_JS
+    assert "mode ? {mode: mode} : {}" in build.SERVER_JS
+
+
+def test_the_masthead_run_the_tests_chip_names_the_slow_steps(tmp_path):
+    skill = Path(build.__file__).resolve().parent
+    build.ACTIONS.clear()
+    info = build.declare_rerun_tests_action(tmp_path, tmp_path / ".human-review", skill)
+    assert info and info["id"] == "__rerun_tests__"
+    cmd = build.ACTIONS["__rerun_tests__"]["command"]
+    assert "--steps all --force --no-serve" in cmd and build.ACTIONS["__rerun_tests__"]["reload"]
+    # Everything `static` leaves out, the suites named first.
+    assert info["tip"].index("traces") < info["tip"].index("sequence")
+    for slow in ("traces", "sequence", "city", "dsaudit"):
+        assert slow in info["tip"]
+    assert "takes long" in info["tip"] and "Free" in info["tip"]
+    chip = build.rerun_tests_chip(info)
+    assert 'id="hr-rerun-tests" hidden' in chip and 'data-rerun="__rerun_tests__"' in chip
+    assert "data-tab" not in chip
+    assert build.RUN_TESTS_FACE in chip and "\u21BA" in chip and "\u23F3" in chip
+    assert build.rerun_tests_chip(None) == ""
+    build.ACTIONS.clear()
+
+
+def test_run_the_tests_sits_right_after_the_free_one_in_one_button():
+    out = build.tab_rerun_html("requirements", "Tests",
+                               {"steps": ["tests"], "ai": True, "aiTip": "x",
+                                "extra": '<button data-rerun="__rerun_tests__">t</button>'})
+    order = [out.index(f'data-rerun="{i}"') for i in ("__rerun__", "__rerun_tests__",
+                                                      "__rerun_ai__")]
+    assert order == sorted(order)
+    assert build.RUN_TESTS_FACE in build.run_tests_button(
+        {"steps": ["tests", "traces"], "tip": "t"})
 
 
 def test_the_tests_tab_carries_its_third_button_inside_the_pair():

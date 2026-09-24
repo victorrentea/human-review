@@ -104,9 +104,10 @@ MODEL_STEP = Path(__file__).resolve().parent / "rerun-model.py"
 # so it can never collide with an action name out of a manifest.
 RERUN_ACTION = "__rerun__"
 RERUN_AI_ACTION = "__rerun_ai__"
-# The Tests tab's third press: run the suites (`--force`), then re-derive the tab. Free, so
-# it rides `/__rerun__` with `mode: "tests"` — the same lock and the same reload hold —
-# and only ever as a tab rerun: there is no page-wide "run every test" button.
+# Run what takes long (`--force`), then rebuild: the Tests tab's ↺⏳ (`__rerun_tests__:
+# requirements`, its suites) and the masthead's (`__rerun_tests__`, every slow producer).
+# Free, so both ride `/__rerun__` with `mode: "tests"` — the same lock and the same reload
+# hold — and neither is reachable through `/__run__`.
 RERUN_TESTS_ACTION = "__rerun_tests__"
 
 # Both reruns, for the one question every guard here asks: "is a rerun already going?" One
@@ -888,6 +889,20 @@ def tab_rerun_plan(served_root, ai: bool, tab: str, mode: str | None = None):
     return (["/bin/sh", "-c", entry["command"]], ROOT)
 
 
+def rerun_tests_plan(served_root):
+    """`(argv, cwd)` for the masthead's ↺⏳, or None when the build declared none.
+
+    Only out of the manifest, like a tab's: which producers are slow is the build's answer
+    (`actions.declare_rerun_tests_action`), and there is no fallback command — a page built
+    before the button existed has no button to press."""
+    if ROOT is None:
+        return None
+    entry = actions(served_root).get(RERUN_TESTS_ACTION)
+    if not entry:
+        return None
+    return (["/bin/sh", "-c", entry["command"]], ROOT)
+
+
 def start_rerun(served_root, ai=False, tab: str | None = None, mode: str | None = None):
     """`(Run, problem, status)` for `POST /__rerun__` and `POST /__rerun_ai__`.
 
@@ -912,7 +927,9 @@ def start_rerun(served_root, ai=False, tab: str | None = None, mode: str | None 
             what = ("paid rerun" if ai else "test run" if mode == "tests" else "rerun")
             return None, f"the {tab} tab has no {what} here", 404, False
     elif mode == "tests":
-        return None, "running the tests is a tab rerun; name the tab", 400, False
+        plan = rerun_tests_plan(served_root)
+        if plan is None:
+            return None, "this page declares no test run", 404, False
     else:
         plan = rerun_ai_plan(served_root) if ai else rerun_plan(served_root)
     if plan is None:
@@ -1179,6 +1196,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              # Whether any tab declared a run-the-suites press.
                              "rerunTests": ROOT is not None and any(
                                  k.startswith(RERUN_TESTS_ACTION + ":") for k in declared),
+                             # And whether the masthead's ↺⏳ (every slow step) has one.
+                             "rerunTestsAll": bool(rerun_tests_plan(Handler.root)),
                              # What the paid button should say it costs, out of what this
                              # page's own paid runs have cost. Answered here rather than
                              # written into the markup, because the markup is built once

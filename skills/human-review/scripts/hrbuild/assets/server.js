@@ -51,11 +51,14 @@ window.HR = (function () {
   // They are spelt like actions anyway so that every control on the page — the play mark
   // beside a printed command included — asks one question and gets one answer, instead of
   // each caller growing its own special case for the two verbs that are not in the list.
-  // `__rerun_tests__` is the Tests tab's third press: run the suites, then re-derive it. It
-  // rides the free rerun's endpoint (same lock, same reload hold) with `mode: "tests"`.
+  // `__rerun_tests__` is ↺⏳: run what takes long, then rebuild — narrowed to the Tests
+  // tab's suites when a tab is named, every slow producer when not (the masthead's). It
+  // rides the free rerun's endpoint (same lock, same reload hold) with `mode: "tests"`,
+  // and the two scopes are two answers of the probe, since a build may declare either.
   var OWN = {'__rerun__': 'rerun', '__rerun_ai__': 'rerunAi', '__rerun_tests__': 'rerunTests'};
 
-  function can(id) {
+  function can(id, tab) {
+    if (id === '__rerun_tests__' && !tab) return !!(caps && caps.rerunTestsAll);
     if (OWN[id]) return !!(caps && caps[OWN[id]]);
     return !!(caps && caps.actions && caps.actions[id]);
   }
@@ -90,7 +93,7 @@ window.HR = (function () {
   // only when the *request* could not be made or the run could not be followed, which is
   // the case where the caller has to fall back to the clipboard.
   function run(id, params, onprogress) {
-    if (!can(id)) return Promise.reject(new Error(id + ' is not available here'));
+    if (!can(id, params && params.tab)) return Promise.reject(new Error(id + ' is not available here'));
     // The two server-owned verbs route to their own endpoints. Here rather than in every
     // caller: `run(id)` is what the whole page reaches for, and a play mark beside the
     // refresh command that had to know it was special would be the one control on the page
@@ -99,7 +102,8 @@ window.HR = (function () {
     if (id === '__rerun__') return rerun(onprogress, params && params.tab);
     if (id === '__rerun_ai__') return rerunAi(onprogress, params && params.tab);
     if (id === '__rerun_tests__') {
-      return ask('/__rerun__', 'rerunTests', onprogress, params && params.tab, 'tests');
+      var tab = params && params.tab;
+      return ask('/__rerun__', tab ? 'rerunTests' : 'rerunTestsAll', onprogress, tab, 'tests');
     }
     return fetch('/__run__', {
       method: 'POST', cache: 'no-store',
@@ -150,7 +154,7 @@ window.HR = (function () {
       method: 'POST', cache: 'no-store',
       headers: {'Content-Type': 'application/json',
                 'X-Human-Review-Token': (caps && caps.token) || ''},
-      body: tab ? JSON.stringify(mode ? {tab: tab, mode: mode} : {tab: tab}) : '{}'
+      body: JSON.stringify(Object.assign(tab ? {tab: tab} : {}, mode ? {mode: mode} : {}))
     }).then(function (r) {
       if (r.ok) return r.json();
       // A refusal may be a sentence or it may be a refusal *with the run it is refusing
