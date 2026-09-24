@@ -938,7 +938,11 @@ def _build_review():
 CSS = """/* ds-audit — the annotated screenshots and the findings table, and nothing else:
    the three-state viewer they sit in belongs to the report, and a fragment that
    restyled it would be a second implementation of it wearing a hat. */
-.dsa { margin: 1rem 0 2rem; }
+/* One per screen, stacked. The gap between two screens' cards is the collapsed margin
+   between them: 1rem, half the 2rem it was — the cards are closed rows of one list, and
+   2rem read as five separate sections. The last one keeps the old 2rem before the footer. */
+.dsa { margin: 1rem 0; }
+.dsa:not(:has(~ .dsa)) { margin-bottom: 2rem; }
 .dsa-shot { position: relative; line-height: 0; }
 .dsa-shot img { width: 100%; height: auto; display: block; border-radius: .3rem; }
 .dsa-mark { position: absolute; box-sizing: border-box; border-radius: .2rem; pointer-events: auto; }
@@ -1016,17 +1020,26 @@ details.dsa-screen > summary:hover { color: var(--link); }
   align-items: center; cursor: pointer; user-select: none; color: var(--fg); }
 .dsa-frametoggle input { accent-color: var(--dsa-frame); margin: 0; }
 details.dsa-screen > summary .dsa-sumtail { font-weight: 400; }
-.dsa-hdr { display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap; }
-.dsa-hdr .dsa-count { font-weight: 700; }
-.dsa-hdr .dsa-regress { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
+/* Plain running text, not a flex row: the parts are joined by " · " text, and a flex
+   gap around every text node set the dots adrift from the words they separate. */
+.dsa-hdr { line-height: 1.8; }
+/* The deltas on a screen's line and in the header. `+N gap` is the one warning among
+   them, so it alone is coloured: a yellow chip, the hue this page gives a caution. The
+   rest are plain words with a hover; a gap the base already had is context, so muted. */
+.dsa-gap { color: var(--dsa-warn); background: color-mix(in srgb, var(--dsa-warn) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsa-warn) 55%, transparent); border-radius: .3rem;
+  padding: 0 .35rem; font-weight: 700; white-space: nowrap; }
+.dsa-fixed { color: var(--dsa-ok); }
+.dsa-pre { opacity: .7; }
+.dsa-gap, .dsa-comp, .dsa-fixed, .dsa-pre { cursor: help; }
 .dsa-unlisted { color: var(--dsa-bad); border: 1px solid var(--dsa-bad); border-radius: 6px;
   padding: .45rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; }
 .dsa-unlisted code { color: inherit; }
 :root { --dsa-ok: #1f7a45; --dsa-bad: #c1121f; --dsa-new: #1a4fa0; --dsa-hot: #f0a500;
-        --dsa-label-fg: #ffffff; --dsa-frame: #a23fd6; }
+        --dsa-label-fg: #ffffff; --dsa-frame: #a23fd6; --dsa-warn: #946200; }
 @media (prefers-color-scheme: dark) {
   :root { --dsa-ok: #46c07a; --dsa-bad: #ff6b6b; --dsa-new: #7aa9ef; --dsa-hot: #ffc94d;
-          --dsa-label-fg: #15151a; --dsa-frame: #c77dff; }
+          --dsa-label-fg: #15151a; --dsa-frame: #c77dff; --dsa-warn: #f2c24a; }
   .dsa-shot img { filter: none; }
 }
 """
@@ -1181,20 +1194,55 @@ def screen_touched(screen: dict) -> bool:
     return bool(counts["regressions"] or counts["improvements"])
 
 
-def ds_phrase(counts: dict) -> str:
-    """`4 design-system components in use, 1 added by this branch`. The plain count used to
-    read "4 in place" and left the reader guessing whether the branch put any of them
-    there; the answer is the difference between the two sides, and it is said out loud.
-    A component the branch *added* is not an "improvement" — that word is kept for a bare
-    control the branch migrated — so without this the added combo on Edit a visit was
-    invisible in every count."""
-    new, old = counts["new"]["ds"], counts["old"]["ds"]
-    txt = f'{new} component{"" if new == 1 else "s"}'
-    if new > old:
-        txt += f' <span class="dsa-prov">(+{new - old} on this branch)</span>'
-    elif old > new:
-        txt += f' <span class="dsa-prov">(\u2212{old - new} on this branch)</span>'
-    return txt
+def _n(k: int, word: str) -> str:
+    return f'{k} {word}{"" if k == 1 else "s"}'
+
+
+def delta_parts(counts: dict, *, long: bool = False, gap_tip: str = "") -> list[str]:
+    """What this branch did to the design-system picture, said only as the non-zero
+    signed deltas: `+1 gap`, `+1 component`, `−1 gap`.
+
+    The totals it replaces — `1 gap · 0 components`, `0 gaps · 1 component (+1 on this
+    branch)`, `all controls from the design system` — were counts of the *screen*, not of
+    the change, and most of them were zero or a restatement: a reviewer reading a
+    branch's page asks what it added, and "0 gaps" answers nothing. A zero is omitted, so
+    a screen the branch changed without touching any control the design system covers
+    simply has no tail.
+
+    `gap` is a native control where a design-system component belongs, and `+N` counts
+    only the ones this branch is to blame for (`regressions`); it is the one warning on
+    the line and wears the warning's yellow. A gap the base already had is still a gap,
+    but not a delta, so it trails, muted. `−N gap` is a bare control the branch migrated.
+    `component` is a design-system component rendered on the screen, as a difference
+    between the two sides — a migration shows as both `−1 gap` and `+1 component`, which
+    is what it is. `long` spells the words out for the tab's header, where the line has
+    no screen around it to explain them."""
+    parts = []
+    reg, fixed = len(counts["regressions"]), len(counts["improvements"])
+    pre = len(counts.get("pre_existing") or [])
+    d = counts["new"]["ds"] - counts["old"]["ds"]
+    if reg:
+        word = (f'{_n(reg, "gap")} — native control{"" if reg == 1 else "s"} where a '
+                f'design-system component belongs') if long else _n(reg, "gap")
+        tip = gap_tip or ("a native control this branch added where a design-system "
+                          "component belongs, or a component it replaced with one")
+        parts.append(f'<span class="dsa-gap" data-tip-html="{html.escape(tip, quote=True)}">'
+                     f'{"\u26a0 " if long else ""}+{word}</span>')
+    if d:
+        sign = "+" if d > 0 else "\u2212"
+        what = "design-system component" if long else "component"
+        tip = (f'design-system components rendered here: {counts["old"]["ds"]} on the base, '
+               f'{counts["new"]["ds"]} on this branch')
+        parts.append(f'<span class="dsa-comp" data-tip="{html.escape(tip, quote=True)}">'
+                     f'{sign}{_n(abs(d), what)}</span>')
+    if fixed:
+        parts.append(f'<span class="dsa-fixed" data-tip="bare on the base, migrated into a '
+                     f'design-system component by this branch">\u2212{_n(fixed, "gap")}</span>')
+    if pre:
+        parts.append(f'<span class="dsa-pre" data-tip="already bare on the base; this branch '
+                     f'did not add it and did not close it">{_n(pre, "gap")} '
+                     f'already on the base</span>')
+    return parts
 
 
 def screen_has_nothing_to_judge(screen: dict) -> bool:
@@ -1264,17 +1312,18 @@ def render_screen(screen: dict, assets_prefix: str, build) -> str:
     counts = screen["summary"]
     # One line: the fold's arrow, the verdict icon, the name, the route, and the two
     # counts that used to sit on lines of their own under it. Opening it is what "pictures
-    # and findings" used to be a second fold for. A screen with nothing for the design
-    # system to judge gets no `0 gaps · 0 components`, which would read as a verdict.
+    # and findings" used to be a second fold for.
     gaps = counts["new"]["bare"]
     icon = "\u26a0\ufe0f" if gaps else "\u2705"
     route = screen.get("route")
     route_html = (f' <span class="dsa-route">({html.escape(route)})</span>' if route else "")
-    tail = ("all controls from the design system" if screen_has_nothing_to_judge(screen)
-            else f'<span class="dsa-count">{gaps} gap{"" if gaps == 1 else "s"}</span>'
-                 f' \u00b7 {ds_phrase(counts)}')
-    summary = (f'{icon} {html.escape(_title_case(screen["screen"]))}{route_html}'
-               f' <span class="dsa-sumtail">\u00b7 {tail}</span>')
+    # Only what the branch changed, as signed deltas (`delta_parts`); a screen with none
+    # gets no tail at all rather than `all controls from the design system`, which read
+    # as a claim and said nothing.
+    parts = delta_parts(counts)
+    tail = (f' <span class="dsa-sumtail">\u00b7 {" \u00b7 ".join(parts)}</span>'
+            if parts else "")
+    summary = (f'{icon} {html.escape(_title_case(screen["screen"]))}{route_html}{tail}')
 
     table = ('<table class="dsa-table"><thead><tr><th></th><th>side</th><th>element</th>'
              '<th>role</th><th>why</th><th>delta</th><th>churn</th></tr></thead><tbody>'
@@ -1360,15 +1409,14 @@ def render(result: dict, assets_prefix: str) -> str:
     counts = result["summary"]
     touched = [sc for sc in result["screens"] if screen_touched(sc)]
     n = len(result["screens"])
-    verdict_line = (
-        f'<span class="dsa-count">{counts["new"]["bare"]}</span> gap'
-        f'{"" if counts["new"]["bare"] == 1 else "s"}'
-        + (f' \u00b7 <b class="dsa-regress" data-tip-html="{html.escape(regression_tip(result), quote=True)}">'
-           f'{len(counts["regressions"])} introduced by this branch</b>'
-           if counts["regressions"] else "")
-        + f' \u00b7 {len(touched)} of {n} screens changed \u00b7 {ds_phrase(counts)}'
-        + (f' \u00b7 {len(counts["improvements"])} migrated'
-           if counts["improvements"] else ""))
+    # The tab's title says what the branch changed and nothing else, in the same signed
+    # deltas each screen's line uses, words spelt out because there is no screen around it
+    # to explain them. It used to open on `1 gap · 1 introduced by this branch`: the same
+    # gap counted twice, then `4 components (+1 on this branch)`, a total over every
+    # screen of the app, changed or not, that left "components" undefined.
+    verdict_line = " \u00b7 ".join(
+        [f'{len(touched)} of {n} screens changed']
+        + delta_parts(counts, long=True, gap_tip=regression_tip(result)))
 
     # The embedded copy drops the per-element table. It is keyed on every signature on
     # every screen — 190KB of it on a seven-screen run, most of the fragment's weight —

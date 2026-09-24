@@ -661,7 +661,10 @@ def test_the_header_says_what_the_branch_is_charged_with_and_names_it_on_hover()
     hdr = frag[frag.index('<p class="dsa-hdr">'):]
     hdr = hdr[:hdr.index("</p>")]
     assert "regression" not in hdr
-    assert ">1 introduced by this branch</b>" in hdr
+    # Said once, as the signed delta it is — not "1 gap · 1 introduced by this branch".
+    assert "introduced by this branch" not in hdr
+    assert '<span class="dsa-gap" data-tip-html=' in hdr
+    assert "\u26a0 +1 gap \u2014 native control where a design-system component belongs" in hdr
     tip = ds.regression_tip(ds.build_result([screen], reg))
     assert "Edit visit: &lt;select" in tip and "a DS component on the base" in tip
 
@@ -726,13 +729,26 @@ def test_a_screen_the_branch_moved_is_the_one_drawn():
     assert "in place" not in frag
 
 
-def test_a_component_the_branch_added_is_said_to_be_added():
-    """"4 in place" left the reader asking whether the branch put any of them there. A
-    component added is not a migration, so the improvements count never showed it."""
-    assert ds.ds_phrase({"new": {"ds": 4}, "old": {"ds": 3}}).startswith("4 components <span")
-    assert "(+1 on this branch)" in ds.ds_phrase({"new": {"ds": 4}, "old": {"ds": 3}})
-    assert ds.ds_phrase({"new": {"ds": 1}, "old": {"ds": 1}}) == "1 component"
-    assert "(\u22122 on this branch)" in ds.ds_phrase({"new": {"ds": 0}, "old": {"ds": 2}})
+def _counts(new_ds, old_ds, reg=0, fixed=0, pre=0):
+    return {"new": {"ds": new_ds}, "old": {"ds": old_ds}, "regressions": ["r"] * reg,
+            "improvements": ["i"] * fixed, "pre_existing": ["p"] * pre}
+
+
+def test_only_what_the_branch_changed_is_said_as_signed_deltas():
+    """"0 gaps · 1 component (+1 on this branch)" was a count of the screen with the
+    delta in brackets after it. The delta is the whole message; a zero is left out."""
+    txt = lambda c, **kw: re.sub(r"<[^>]+>", "", " \u00b7 ".join(ds.delta_parts(c, **kw)))
+    assert txt(_counts(4, 3)) == "+1 component"
+    assert txt(_counts(1, 1)) == ""
+    assert txt(_counts(0, 2)) == "\u22122 components"
+    assert txt(_counts(1, 1, reg=2)) == "+2 gaps"
+    assert txt(_counts(2, 1, fixed=1)) == "+1 component \u00b7 \u22121 gap"
+    assert txt(_counts(1, 1, pre=1)) == "1 gap already on the base"
+    assert txt(_counts(4, 3, reg=1), long=True) == (
+        "\u26a0 +1 gap \u2014 native control where a design-system component belongs"
+        " \u00b7 +1 design-system component")
+    gap, = ds.delta_parts(_counts(1, 1, reg=1))
+    assert gap.startswith('<span class="dsa-gap"'), "the one warning, in the warning's yellow"
 
 
 def test_a_changed_screen_with_nothing_to_judge_says_so_and_folds():
@@ -753,7 +769,8 @@ def test_a_changed_screen_with_nothing_to_judge_says_so_and_folds():
     summary = row[:row.index("</summary>")]
     assert " open>" not in row.split("</summary>", 1)[0]
     assert "✅" in summary and "⚠" not in summary
-    assert "all controls from the design system" in summary
+    assert "all controls from the design system" not in summary, "said nothing; gone"
+    assert "dsa-sumtail" not in summary, "nothing changed for the design system: no tail"
     assert "elements" not in summary and "no control the design system covers" not in summary
     assert "0 gaps" not in summary
 
@@ -798,14 +815,17 @@ def test_an_element_that_only_moved_does_not_reopen_the_screen():
 
 def test_a_drawn_screen_states_its_gaps_above_the_fold():
     """Folding a screen hides the pictures; hiding the verdict would be hiding a finding.
-    The icon and the two counts live in the `<summary>` itself, on the name's own line —
+    The icon and the deltas live in the `<summary>` itself, on the name's own line —
     they used to be two more lines under it plus a second `pictures and findings` fold."""
     reg, screen = _screen_from_capture()
     frag = ds.render(ds.build_result([screen], reg), "")
     row = frag[frag.index('<details class="dsa-screen"'):]
     summary = row[row.index("<summary>") : row.index("</summary>")]
     assert "⚠" in summary
-    assert "1 gap</span> \u00b7 2 components" in summary
+    # The branch added the bare select: a delta, in the warning chip. The two components
+    # it did not touch are no delta, so they are not mentioned.
+    assert '<span class="dsa-gap"' in summary and ">+1 gap</span>" in summary
+    assert "component" not in re.sub(r"<[^>]+>", "", summary)
     assert "pictures and findings" not in frag
 
 
