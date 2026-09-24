@@ -308,6 +308,34 @@ def file_link(root: Path, path: str, status: str, line: int = 1, label: str = No
             f"{label}</a>")
 
 
+def github_file_url(root: Path, rel: str) -> str | None:
+    """`https://github.com/<owner>/<repo>/blob/<ref>/<rel>`, or None off GitHub.
+
+    The repository is read from `origin`, spelt either way, the same way the page builds
+    every other github.com link (`hrbuild/shared/snippets.github_blob_base`); anything that
+    is not github.com is None and the caller keeps the editor link. The ref is the commit
+    under review when a remote branch already holds it — the file as this branch has it,
+    at a URL that does not move — and the branch name otherwise, which is what the PR on
+    GitHub shows once it is pushed."""
+    url = run(["git", "-C", str(root), "remote", "get-url", "origin"])
+    if url.returncode != 0:
+        return None
+    m = re.match(r"(?:https://github\.com/|git@github\.com:)(?P<slug>[^/]+/[^/]+?)(?:\.git)?$",
+                 url.stdout.strip())
+    if not m:
+        return None
+    head = run(["git", "-C", str(root), "rev-parse", "HEAD"])
+    ref = head.stdout.strip() if head.returncode == 0 else ""
+    pushed = run(["git", "-C", str(root), "branch", "-r", "--contains", ref]) if ref else None
+    if not (pushed and pushed.returncode == 0 and pushed.stdout.strip()):
+        branch = run(["git", "-C", str(root), "rev-parse", "--abbrev-ref", "HEAD"])
+        name = branch.stdout.strip() if branch.returncode == 0 else ""
+        ref = name if name and name != "HEAD" else ref
+    if not ref:
+        return None
+    return f"https://github.com/{m['slug']}/blob/{ref}/{rel}"
+
+
 def render(root: Path, data: dict) -> str:
     state = data["state"]
     owned, blocking = data["owned"], [o for o in data["owned"] if o["blocking"]]
@@ -319,15 +347,23 @@ def render(root: Path, data: dict) -> str:
     severity = data["severity"]
     sev_class = f" cow-severity-{severity}" if severity else ""
     parts = [f'<div class="cow cow-{state}{sev_class}">']
-    # The file every row below is read against, named once above them and opened the way
-    # every other path on the page opens: in the editor, at its first line. Without it the
+    # The file every row below is read against, named once above them. Without it the
     # reader met rule links (`claimed by /petclinic-backend/...`) before learning which
-    # file they point into, and had no way into the file as a whole.
+    # file they point into, and had no way into the file as a whole. It opens on GitHub,
+    # where the rule is enforced and where a reviewer forwarding the page can follow it —
+    # an editor link to one machine's checkout is nobody else's link. Off GitHub, the
+    # editor link is the only one there is.
     if data["codeowners"]:
         rel = html.escape(data["codeowners"])
-        parts.append(f'<h3 class="cow-title"><a data-tip="Open in VS Code: {rel}"'
-                     f' href="vscode://file/{(root / data["codeowners"]).resolve()}:1:1">'
-                     f"{rel}</a></h3>")
+        hub = github_file_url(root, data["codeowners"])
+        if hub:
+            parts.append(f'<h3 class="cow-title"><a data-tip="Open on GitHub: {rel}"'
+                         f' href="{html.escape(hub, quote=True)}" target="_blank"'
+                         f' rel="noopener">{rel}</a></h3>')
+        else:
+            parts.append(f'<h3 class="cow-title"><a data-tip="Open in VS Code: {rel}"'
+                         f' href="vscode://file/{(root / data["codeowners"]).resolve()}:1:1">'
+                         f"{rel}</a></h3>")
     # The "APPROVAL REQUIRED" verdict used to be a banner of its own, above every row,
     # saying the same word for every owner even when their severities differ. Now each
     # row carries its own flag and its own "APPROVAL REQUIRED" — true per owner, not
@@ -410,13 +446,13 @@ CSS = """
 .cow-approval_required .cow-verdict { border-left-color:var(--cow-bad); }
 .cow-approval_required.cow-severity-standard .cow-verdict { border-left-color:var(--cow-warn); }
 .cow-no_owners_touched .cow-verdict { border-left-color:var(--cow-ok); }
-.cow-seal { font:800 .7rem/1.9 inherit; letter-spacing:.08em; border-radius:5px;
+.cow-seal { font-weight:800; font-size:.7rem; line-height:1.9; letter-spacing:.08em; border-radius:5px;
             padding:.1rem .55rem; white-space:nowrap; background:#f0f0f4; color:#5d5d6b; }
 .cow-approval_required .cow-seal { background:#fdeaea; color:#8a1c1c; }
 .cow-approval_required.cow-severity-standard .cow-seal { background:#fdf3e2; color:#6b4a0f; }
 .cow-no_owners_touched .cow-seal { background:#eef7ef; color:#245c30; }
 .cow-prov { color:var(--muted); font-size:.8rem; line-height:1.7; margin:.5rem 0 1rem; }
-.cow-kind { font:600 .82rem/1.6 inherit; text-transform:uppercase; letter-spacing:.06em;
+.cow-kind { font-weight:700; font-size:.82rem; line-height:1.6; text-transform:uppercase; letter-spacing:.06em;
             color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:.3rem;
             margin-top:1.2rem; }
 .cow-count { background:var(--code-bg); border-radius:999px; padding:0 .4rem; margin-left:.3rem;
@@ -426,7 +462,10 @@ CSS = """
 .cow-row-standard { border-left-color:var(--cow-warn); }
 .cow-head { display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
 .cow-flag { font-size:.9rem; line-height:1; }
-.cow-approval { font:800 .68rem/1.6 inherit; letter-spacing:.06em; color:var(--cow-bad); }
+/* Weight, size and line height as three properties: the `font:800 .68rem/1.6 inherit`
+   shorthand these labels had is invalid (a shorthand takes a family, never `inherit`),
+   so the whole declaration was dropped and APPROVAL REQUIRED rendered at normal weight. */
+.cow-approval { font-weight:800; font-size:.68rem; line-height:1.6; letter-spacing:.06em; color:var(--cow-bad); }
 .cow-row-standard .cow-approval { color:var(--cow-warn); }
 .cow-owner { font:700 13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg); }
 .cow-files { list-style:none; margin:.45rem 0 0; padding:0; display:grid; gap:.3rem; }

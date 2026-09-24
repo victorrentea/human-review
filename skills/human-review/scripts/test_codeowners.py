@@ -156,7 +156,39 @@ def test_the_tab_opens_on_the_codeowners_file_it_was_read_from(tmp_path):
     frag = co.render(tmp_path, data)
     title = frag[frag.index('<h3 class="cow-title">'):]
     assert title.index("</h3>") < title.index("cow-verdict"), "the file is named above both sections"
+    # Not a GitHub checkout: the editor link is the only one there is.
     assert f'href="vscode://file/{(tmp_path / ".github/CODEOWNERS").resolve()}:1:1"' in title
     assert ">.github/CODEOWNERS</a></h3>" in title
     none = dict(data, state="no_codeowners", codeowners=None)
     assert "cow-title" not in co.render(tmp_path, none)
+
+
+def test_the_codeowners_heading_links_to_the_file_on_github(tmp_path):
+    import subprocess
+    def git(*a):
+        subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)
+    git("init", "-q", "-b", "feature")
+    git("remote", "add", "origin", "git@github.com:acme/shop.git")
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "CODEOWNERS").write_text("* @a\n")
+    git("add", ".")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "c")
+    data = {"state": "no_owners_touched", "severity": None, "codeowners": ".github/CODEOWNERS",
+            "shadowed": [], "owned": [], "problems": []}
+    title = co.render(tmp_path, data).split('<h3 class="cow-title">')[1].split("</h3>")[0]
+    # Never pushed: the branch, which is what the PR shows once it is.
+    assert 'href="https://github.com/acme/shop/blob/feature/.github/CODEOWNERS"' in title
+    assert "vscode://" not in title and 'data-tip="Open on GitHub: .github/CODEOWNERS"' in title
+    # Held by a remote branch: the commit itself.
+    sha = subprocess.run(["git", "-C", str(tmp_path), "rev-parse", "HEAD"],
+                         capture_output=True, text=True).stdout.strip()
+    git("update-ref", "refs/remotes/origin/feature", sha)
+    title = co.render(tmp_path, data).split('<h3 class="cow-title">')[1].split("</h3>")[0]
+    assert f'href="https://github.com/acme/shop/blob/{sha}/.github/CODEOWNERS"' in title
+
+
+def test_the_owner_labels_are_bold():
+    # `font:800 … inherit` is not a valid shorthand, and a dropped declaration is silent.
+    for cls in (".cow-approval", ".cow-seal", ".cow-kind"):
+        rule = co.CSS.split(cls + " {")[1].split("}")[0]
+        assert "font-weight:" in rule and "inherit" not in rule, cls
