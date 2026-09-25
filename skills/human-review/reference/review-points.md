@@ -100,6 +100,12 @@ review, and the note says which commits were folded in since. Prose only — par
 and `- ` bullets for the commit list; a `###` under it is refused, because an item filed
 there is on no pile. The page shows it as an amber band directly above the piles.
 
+The way out of a takeover is a real pass: the Review tab's paid 🤖 runs
+`scripts/rerun-review.py`, a headless `/code-review high` over the whole PR
+(`reference/review-prompt.md`) that rewrites this file **without** the note, commits its
+fixes as `[auto-fix]` commits and the file with the three trailers, and pushes to the
+branch's own name. That commit is a review, so the aftermath band counts from it.
+
 An empty `## Ignored` after a multi-agent review is not credible, and the parser cannot
 know that — so it accepts it and the skill's prompt demands a sentence instead.
 

@@ -215,11 +215,31 @@ def tab_steps(skill_dir: Path) -> dict[str, list[str]]:
 #: adds in front of (or inside) the free one. The Tests tab's matrix and catalogue are
 #: `rerun-model.py`'s. The Logging tab had one too (privacy verdicts under `--allow-model`)
 #: until its scan became deterministic; it keeps only the free ↺.
+#:
+#: The Review tab's is `rerun-review.py`: a new review of the whole PR, which — unlike every
+#: other press on this page — commits and pushes, because a review commit on the branch is
+#: the only thing that clears the aftermath band. The price is in the sentence, since the
+#: probe's figure is the matrix's and says nothing about this run.
 TAB_AI = {
     "requirements": ("model", "Rewrites this tab's requirements↔tests matrix and the "
                               "per-test catalogue with a model, then re-derives the test "
                               "manifest and rebuilds the page."),
+    "review": ("review", "About $15–$40 on Opus. Re-runs a /code-review high review over "
+                         "the whole PR — every commit since the merge base, re-read against "
+                         "the code as it is now — applies the fixes it accepts as [auto-fix] "
+                         "commits, writes a fresh review-points.md and PR comments, then "
+                         "commits review-points.md with its Review-Points, Implements and "
+                         "Claude-Session trailers and pushes all of it to this branch "
+                         "(git push origin HEAD:<branch>). That new review commit is what "
+                         "clears the red band of commits made since the review. It refuses, "
+                         "before spending anything, while anything is staged; the record it "
+                         "replaces is kept in .human-review/.model-prev/."),
 }
+
+#: Which program a paid press runs in front of the tab's refresh, and whether the refresh
+#: then needs `--allow-model`. The matrix's does (it is what the Tests tab's build reads
+#: under that flag); the review's does not — its producers read git, and nothing else.
+AI_STEPS = {"model": ("rerun-model.py", True), "review": ("rerun-review.py", False)}
 
 
 #: What a tab's free ↺ does, where "re-derive the tab" would promise more than it does.
@@ -245,7 +265,6 @@ def declare_tab_reruns(root: Path, out_dir: Path, skill_dir: Path,
     masthead's button must never do on their behalf.
     """
     refresh = skill_dir / "refresh-report.py"
-    model = skill_dir / "rerun-model.py"
     if not refresh.is_file():
         return {}
     try:
@@ -268,12 +287,17 @@ def declare_tab_reruns(root: Path, out_dir: Path, skill_dir: Path,
                        reload=True, label=f"Re-derive the {tab} tab and rebuild this page")
         info = {"steps": steps, "ai": False, "aiTip": "", "tip": TAB_TIPS.get(tab, "")}
         how = TAB_AI.get(tab)
-        if how and (how[0] != "model" or model.is_file()):
-            paid = f"{refresh_line} --allow-model"
-            if how[0] == "model":
-                paid = f"{py} {shlex.quote(str(model))} --dir {at} && {paid}"
+        program, allow = AI_STEPS.get(how[0], (None, True)) if how else (None, True)
+        if how and (program is None or (skill_dir / program).is_file()):
+            paid = f"{refresh_line} --allow-model" if allow else refresh_line
+            if program:
+                paid = (f"{py} {shlex.quote(str(skill_dir / program))} --dir {at}"
+                        f" && {paid}")
             declare_action(tab_rerun_id(RERUN_AI_ACTION, tab), f"cd {here} && {paid}",
-                           reload=True, label=f"Re-derive the {tab} tab with a model")
+                           reload=True,
+                           label=("Re-review the whole PR, commit and push the record, then "
+                                  "rebuild this page") if how[0] == "review"
+                           else f"Re-derive the {tab} tab with a model")
             info.update(ai=True, aiTip=how[1], priced=how[0] == "model")
         out[tab] = info
     return out

@@ -346,6 +346,14 @@
       var own = btn && btn.getAttribute('data-confirm');
       if (own) bodyP.textContent = own; else bodyP.innerHTML = bodyDefault;
     }
+    // "The last one really cost $X" is the matrix's invoice. A paid press that is not the
+    // matrix (the Review tab's re-review wears no `data-tip-fmt`) must not borrow it.
+    var lastP = panel.querySelector('.hrconfirm-last');
+    if (lastP) {
+      var borrowed = !!(btn && btn.getAttribute('data-confirm')
+                        && !btn.getAttribute('data-tip-fmt'));
+      lastP.hidden = borrowed || !lastP.textContent;
+    }
     lastFocus = document.activeElement;
     sayBusy(null);
     panel.hidden = false;

@@ -1453,7 +1453,8 @@ def test_each_tab_reruns_its_own_producers_and_no_others(tmp_path):
     assert "--steps reviewpoints,aftermath --no-serve" in free["command"]
     assert "--allow-model" not in free["command"]
     # Paid only where a tab has a model half, and the Tests one writes the matrix first.
-    assert got["requirements"]["ai"] and not got["logging"]["ai"] and not got["review"]["ai"]
+    # The Review tab's paid press is the re-review (`test_rerun_review.py` pins it).
+    assert got["requirements"]["ai"] and not got["logging"]["ai"] and got["review"]["ai"]
     paid = build.ACTIONS["__rerun_ai__:requirements"]["command"]
     assert paid.index("rerun-model.py") < paid.index("refresh-report.py")
     assert paid.endswith("--steps tests --no-serve --allow-model")

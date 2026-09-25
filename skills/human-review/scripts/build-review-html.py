@@ -58,7 +58,7 @@ from hrbuild.shared.util import (
 from hrbuild.shared.actions import (
     ACTIONS, ACTIONS_FILE, declare_action, declare_rerun_actions, declare_rerun_tests_action,
     declare_tab_reruns, slow_steps, RERUN_TESTS_ACTION,
-    tab_rerun_id, tab_steps, TAB_AI, TAB_TIPS, _load,
+    tab_rerun_id, tab_steps, TAB_AI, TAB_TIPS, AI_STEPS, _load,
     RERUN_ACTION, RERUN_AI_ACTION, write_actions
 )
 from hrbuild.shared.assets import (
