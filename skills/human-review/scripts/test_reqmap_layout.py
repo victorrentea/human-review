@@ -103,7 +103,7 @@ def test_the_ticket_title_is_a_link_over_the_ticket(tmp_path):
     2026` with nothing saying what was opened."""
     out = _laid_out(tmp_path)
     assert ('<a class="rm-title" href="https://github.com/victorrentea/petclinic/issues/37">'
-            'Link Visit with Vet <span class="rm-num">#37</span></a>') in out
+            'Issue: Link Visit with Vet <span class="rm-num">#37</span></a>') in out
     head, ticket = _order(out, 'class="rm-head"', 'class="rm-ticket"')
     assert head < ticket
 
