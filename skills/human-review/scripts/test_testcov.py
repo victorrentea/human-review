@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -275,40 +276,43 @@ def _with_coverage(tmp_path, doc=None):
                            root=tmp_path)
 
 
-def test_the_card_is_titled_as_a_measurement(tmp_path):
+def _data(page):
+    return json.loads(re.search(r'class="rm-data">(.*?)</script>', page, re.S).group(1)
+                      .replace("<\\/", "</"))
+
+
+def test_the_card_keeps_its_shape_and_is_retitled(tmp_path):
     page = _with_coverage(tmp_path)
-    assert T.COVCARD_WHO in page and T.COVCARD_WHEN in page
-    assert "cov-card" in page
-    # The model's card is still there for its script, and hidden.
-    assert '<div class="rm-aicard" hidden>' in page and "rm-list" in page
-    assert page.index("cov-card") < page.index("rm-aicard")
+    assert T.COVCARD_WHO in page and "📏" in page
+    assert "Covering tests" not in page and "as matched by AI" not in page
+    # One list, drawn by the model's own renderer: no second card, no per-row counts.
+    assert "rm-aicard" not in page and "cov-card" not in page and "rm-list" in page
+    assert "runs 3 of 5" not in page and "changed lines run" not in page
 
 
-def test_rows_are_grouped_by_suite_then_aimed_and_passing_through(tmp_path):
-    page = _with_coverage(tmp_path)
-    junit = page.index("<h4>Backend JUnit")
-    karma = page.index("<h4>Frontend Karma")
-    assert junit < karma                          # a backend run before a Karma run
-    assert "3 pass through" in page and "1 aimed · 3 passing through · 1 reach nothing" in page
-    assert "runs 3 of 5 changed lines in" in page
-    assert 'data-id="FTest.java:10"' in page      # trace.js pairs the 📺 by this
-    assert '<span class="tflag added">new</span>' in page
-    assert "cov-red" in page                      # the failed Karma spec says so
+def test_every_test_that_runs_changed_code_joins_the_models_list(tmp_path):
+    # t0 is declared on line 10, as coverage reports it, with its @Test on line 9.
+    (tmp_path / "FTest.java").write_text(
+        "class FTest {\n" + "\n" * 7 + "  @Test\n  void t0() {\n    go();\n  }\n}\n")
+    tests = _data(_with_coverage(tmp_path))["tests"]
+    # The model's rows stay as it wrote them, the one it could not reach included.
+    assert tests["FTest.java:11"] == {"title": "t1"} and "Gone.java:4" in tests
+    # Coverage adds what it measured and the model did not name — never the quiet one.
+    assert {"FTest.java:10", "FTest.java:12", "FTest.java:13", "w/a.spec.ts:7"} <= set(tests)
+    assert "Q.java:3" not in tests
+    assert tests["FTest.java:10"]["status"] == "new"          # test-changes says added
+    assert tests["FTest.java:12"]["status"] == "unchanged"
+    assert tests["w/a.spec.ts:7"]["cat"] == "unit"            # a Karma spec
+    part = tests["FTest.java:10"]["parts"][0]                 # its own body, one excerpt
+    assert part["from"] == 9 and len(part["html"]) == 4 and "@Test" in part["html"][0]
+    assert tests["w/a.spec.ts:7"]["parts"] == []              # no file, no excerpt
 
 
-def test_the_ai_pairing_is_a_chip_and_an_unreached_one_is_flagged(tmp_path):
-    page = _with_coverage(tmp_path)
-    assert 'class="cov-ai" data-sids="s1"' in page
-    assert "The visit names its vet." in page     # the chip's hover quotes the sentence
-    assert "Paired by AI, not reached by the run" in page and "never measured" in page
-
-
-def test_gaps_unmeasurable_and_unmeasured_suites_are_listed(tmp_path):
+def test_gaps_and_unmeasurable_changes_fold_under_the_card(tmp_path):
     page = _with_coverage(tmp_path)
     assert "Changed lines no test runs <b>1</b>" in page
     assert "Not measurable <b>2</b>" in page
-    assert "reached by <b>1</b> test" in page
-    assert "E2E Playwright</b> not measured" in page and "not on HEAD" in page
+    assert page.index("rm-code") < page.index("cov-after")
 
 
 def test_without_a_measurement_the_old_card_says_it_is_not_one(tmp_path):
@@ -316,8 +320,3 @@ def test_without_a_measurement_the_old_card_says_it_is_not_one(tmp_path):
     assert "cov-card" not in page
     assert "Coverage was not measured" in page
     assert T.CARD_WHO in page                     # the AI's card, as today
-
-
-def test_the_trace_registry_script_reads_the_measured_rows_too():
-    js = (HERE / "hrbuild" / "assets" / "trace.js").read_text(encoding="utf-8")
-    assert ".cov-t[data-id]" in js and ".cov-tw" in js

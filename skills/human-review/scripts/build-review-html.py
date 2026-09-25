@@ -155,9 +155,10 @@ from hrbuild.tabs.tests import (
     CARD_WHO, CARD_WHEN, CARD_AI_TIP, card_head,
     RUN_TESTS_ACTION, run_tests_steps, declare_run_tests_rerun, run_tests_button,
     _gh_issue, _issue_url, _ms, _take, _test_changes_module,
-    COVERAGE_JSON, COVCARD_WHO, COVCARD_WHEN, COVCARD_TIP, COV_COMMON_SHARE, COV_COMMON_MIN,
-    COV_NOT_MEASURED, COV_JS, _COV_SOURCE_ORDER, load_coverage, coverage_join, model_pairing,
-    coverage_card, coverage_side, _model_key, _cov_files, _cov_ranges, _cov_row, COV_FILES_SHOWN
+    COVERAGE_JSON, COVCARD_WHO, COVCARD_TIP, COV_COMMON_SHARE, COV_COMMON_MIN,
+    COV_NOT_MEASURED, load_coverage, coverage_join, model_pairing, coverage_side, _model_key,
+    _cov_files, _cov_ranges, _snippet_module, COV_PART_MAX, _GHERKIN_NEXT, _cov_part,
+    _API_MARKERS, _cov_cat, coverage_tests, coverage_gaps, _load_test_changes
 )
 from hrbuild.tabs.demo import (
     embed_html, VERDICT_FACE, video_html, VIDEO_VERDICT, video_verdict_html, _link_captions

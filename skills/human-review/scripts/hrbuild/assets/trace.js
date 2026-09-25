@@ -19,8 +19,7 @@
   var served = !!reg.viewer && location.protocol !== 'file:';
 
   function decorate() {
-    // The model's rows and the measured card's rows (tests.py, coverage_card) alike.
-    var rows = document.querySelectorAll('.rm-t[data-id], .cov-t[data-id]');
+    var rows = document.querySelectorAll('.rm-t[data-id]');
     Array.prototype.forEach.call(rows, function (row) {
       if (row.querySelector('.rm-tv')) return;
       var id = row.getAttribute('data-id') || '';
@@ -28,7 +27,7 @@
       var key = (m[1] || '').split('/').pop() + (m[2] ? ':' + m[2] : '');
       var t = byKey[key];
       if (!t) return;
-      var where = row.querySelector('.rm-tw, .cov-tw');
+      var where = row.querySelector('.rm-tw');
       if (!where) return;
       var tv = document.createElement('a');
       tv.className = 'rm-tv';

@@ -594,10 +594,9 @@ def card_head(side: str) -> str:
 
 #: Where the measurement is read from, relative to the report directory.
 COVERAGE_JSON = "assets/test-coverage.json"
-COVCARD_WHO = "Tests that run this change"
-COVCARD_WHEN = "measured by coverage, per test"
+COVCARD_WHO = "Tests that cover files modified in this PR"
 COVCARD_TIP = ("Every test was run with a per-test coverage probe; a row is a test that "
-               "executed at least one changed line")
+               "executed at least one line this PR changed")
 #: A changed line counts as "passed through" when more than this share of a suite's
 #: reaching tests run it — a getter every GET calls, a component's constructor.
 COV_COMMON_SHARE = 0.5
@@ -607,8 +606,6 @@ COV_COMMON_MIN = 4
 COV_NOT_MEASURED = ("Coverage was not measured on this build, so this list is AI's pairing, "
                     "not a run. Configure <code>steps.testcov</code> in human-review.json "
                     "and re-run the tests to see which tests execute the change.")
-#: The suites a browser drives go first: they are the ones a reviewer can watch.
-_COV_SOURCE_ORDER = {"jacoco+v8": 0, "v8": 0, "jacoco": 1, "karma": 2}
 
 
 def load_coverage(out_dir: Path, spec: dict | None = None) -> dict | None:
@@ -694,8 +691,8 @@ def model_pairing(frag: str) -> dict:
 
 
 def _model_key(row: dict, model: dict) -> str | None:
-    """The model's key for a measured test: same file, and the same declaration line
-    (give or take the annotation above it) or the same name."""
+    """The model's key for a measured test: same file, and the same declaration line or
+    the same name."""
     f, line, title = row.get("file"), row.get("line"), (row.get("title") or "").strip()
     for key, t in model.items():
         if not key:
@@ -703,16 +700,13 @@ def _model_key(row: dict, model: dict) -> str | None:
         path, _, ln = key.rpartition(":")
         if path != f:
             continue
-        if line and ln.isdigit() and abs(int(ln) - int(line)) <= 2:
+        # The same line, or the same name — never "a line or two away": one-line specs sit
+        # on consecutive lines, and a tolerance would fold a neighbour into the model's row.
+        if line and ln.isdigit() and int(ln) == int(line):
             return key
         if title and t.get("title", "").strip() == title:
             return key
     return None
-
-
-#: How many files a row names before it says "and N more": a browser test runs half the
-#: change, and a row that lists fourteen files is a paragraph, not a row.
-COV_FILES_SHOWN = 4
 
 
 def _cov_files(hits: dict, root: Path, cap: int | None = None) -> str:
@@ -747,169 +741,152 @@ def _cov_ranges(lines) -> str:
     return ", ".join(out)
 
 
-def _cov_row(r: dict, total: int, root: Path, states: dict, model: dict,
-             unm: list[dict]) -> str:
-    file, line, title = r.get("file"), r.get("line"), r.get("title") or r.get("id", "")
-    state = states.get((file, title)) or states.get((file, line))
-    flag = ""
-    if state and state.get("status") in ("added", "modified"):
-        cls, label = TEST_STATES[state["status"]]
-        flag = f'<span class="tflag {cls}">{label}</span>'
-    face = html.escape(title)
-    where = f'<span class="tloc">{html.escape(Path(file).name)}{f":{line}" if line else ""}</span>' \
-        if file else ""
-    if file and line:
-        target = (root / file).resolve()
-        name = (f'<a class="cov-tw srcref" href="vscode://file/{target}:{line}:1" '
-                f'data-tip="{html.escape(file, quote=True)}">{face}</a> {where}')
+def _snippet_module():
+    """`extract-snippet.py`, for its highlighter and its brace-matching window."""
+    from ..shared.snippets import _extract_module
+    return _extract_module()
+
+
+#: How long a quoted test body may run before it is cut: a test is a screen, not a file.
+COV_PART_MAX = 60
+_GHERKIN_NEXT = re.compile(r"\s*(Scenario|Rule|Feature|Background|Examples|@)")
+
+
+def _cov_part(root: Path, file: str, line: int) -> dict | None:
+    """The test's own body as one excerpt, in the matrix's `parts` shape — the same
+    `{label, href, from, html}` the model writes, so the card draws it the same way:
+    annotations above the declaration, down to the brace that closes it (a Gherkin
+    scenario down to the next keyword)."""
+    path = root / file
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    if not 1 <= line <= len(lines):
+        return None
+    start = line
+    while start > 1 and lines[start - 2].strip().startswith("@"):
+        start -= 1
+    es = _snippet_module()
+    if path.suffix == ".feature":
+        end = line
+        while end < len(lines) and not _GHERKIN_NEXT.match(lines[end]):
+            end += 1
     else:
-        name = f'<span class="cov-tw">{face}</span> {where}'
-    key = _model_key(r, model)
-    ai = ""
-    if key:
-        sids = model[key]["sids"]
-        texts = model[""]["sentences"]
-        said = "; ".join(f"“{texts.get(s, s)[:90]}”" for s in sids) or "no sentence in particular"
-        ai = (f'<button type="button" class="cov-ai" data-sids="{html.escape(" ".join(sids))}" '
-              f'data-tip="{html.escape("AI pairs this test with the ticket: " + said, quote=True)}">'
-              f'🤖{len(sids) or ""}</button>')
-    bad = ""
-    if (r.get("status") or "").lower() in ("failed", "timedout", "broken", "undefined", "ambiguous"):
-        bad = '<span class="tsilenced cov-red" data-tip="This test failed on the measured run">failed</span>'
-    runs = f"runs {r['n']} of {total} changed line{'s' if total != 1 else ''}" if r["n"] else ""
-    if r["changedHits"]:
-        runs += " in " + _cov_files(r["changedHits"], root, COV_FILES_SHOWN)
-    if r["via"]:
-        what = ", ".join(sorted({Path(unm[i]["file"]).name for i in r["via"]}))
-        runs += ("; " if runs else "") + f"reaches {len(r['via'])} unmeasurable change" \
-            f"{'s' if len(r['via']) != 1 else ''} ({html.escape(what)}) through its proxy"
-    data_id = f"{file}:{line}" if file and line else ""
-    pins = f' data-pins="{html.escape(" ".join(model[key]["sids"]))}"' if key else ""
-    ident = f' data-id="{html.escape(data_id)}"' if data_id else ""
-    return (f'<li class="cov-t"{ident}{pins}>'
-            f'<div class="cov-thead">{flag}{name}{ai}{bad}</div>'
-            f'<div class="cov-runs">{runs}</div></li>')
+        end = es._closing_line(lines, line, line)
+    while end > line and not lines[end - 1].strip():
+        end -= 1
+    end = min(end, start + COV_PART_MAX - 1)
+    body = lines[start - 1:end]
+    indents = [len(x) - len(x.lstrip()) for x in body if x.strip()]
+    shift = min(indents) if indents else 0
+    dedented = [x[shift:] if x.strip() else "" for x in body]
+    lexer = es._lexer_for(path, "\n".join(dedented))
+    if lexer is not None:
+        rendered = es.highlight("\n".join(dedented), lexer,
+                                es.HtmlFormatter(nowrap=True)).rstrip("\n").split("\n")
+        rendered += [""] * (len(dedented) - len(rendered))
+    else:
+        rendered = [html.escape(x) for x in dedented]
+    return {"label": f"{file}:{start}-{end}",
+            "href": f"vscode://file/{path.resolve()}:{line}:1",
+            "from": start, "html": rendered}
 
 
-def coverage_card(doc: dict, frag: str, test_doc: dict | None, root: Path) -> str:
-    """The right-hand column, drawn from the measurement."""
-    j = coverage_join(doc)
+#: Which of the card's three kinds a measured test is. A browser run is UI; Karma is a
+#: component in isolation; a backend test is API when it goes through the HTTP layer.
+_API_MARKERS = re.compile(r"MockMvc|TestRestTemplate|RestAssured|WebTestClient")
+
+
+def _cov_cat(r: dict, root: Path) -> str:
+    src = r.get("source") or ""
+    if "v8" in src:
+        return "e2e"
+    if src == "karma":
+        return "unit"
+    if (r.get("suite") or "").endswith("Cucumber"):
+        return "api"
+    try:
+        text = (root / r.get("file", "")).read_text(encoding="utf-8")
+    except OSError:
+        return "unit"
+    return "api" if _API_MARKERS.search(text) else "unit"
+
+
+def coverage_tests(frag: str, doc: dict, test_doc: dict | None, root: Path) -> str:
+    """The matrix's own test list, grown to every test coverage says runs changed code.
+
+    The card is the model's, and so is its renderer: the UI/API/unit badge, the new/edited
+    stamp, the 📺 replay and the sequence diagram hang off a row by its `file:line` key.
+    A test coverage found and the model did not name is added to `rm-data` in the model's
+    own shape — its body as the one excerpt — so it is drawn by the same code as every other
+    row, not by a second list that looks different and knows none of that."""
+    m = re.search(r'(<script type="application/json" class="rm-data">)(.*?)(</script>)',
+                  frag, re.S)
+    if not m:
+        return frag
+    try:
+        data = json.loads(m.group(2))
+    except ValueError:
+        return frag
+    tests = data.setdefault("tests", {})
     model = model_pairing(frag)
     states = {}
     for t in (test_doc or {}).get("tests") or []:
         states[(t.get("path"), t.get("name"))] = t
         states[(t.get("path"), t.get("line"))] = t
-    suites = {s["name"]: s for s in doc.get("suites") or []}
-    order = sorted({r.get("suite", "") for r in j["rows"]} | set(suites),
-                   key=lambda n: (_COV_SOURCE_ORDER.get((suites.get(n) or {}).get("source", ""), 3), n))
-    reached = sum(1 for r in j["rows"] if r["n"])
-    ran = len({(f, ln) for r in j["rows"] for f, ls in r["changedHits"].items() for ln in ls})
-    unm_lines = sum(len(u["lines"]) for u in j["unmeasurable"])
-    gap_lines = sum(map(len, j["gaps"].values()))
-    head = (f'<div class="rm-tkhead"><span class="cov-av" data-tip="{html.escape(COVCARD_TIP, quote=True)}"'
-            f' aria-hidden="true">📏</span><span class="rm-who">{COVCARD_WHO}</span>'
-            f'<span class="rm-when">{COVCARD_WHEN}</span></div>')
-    summary = (f'<p class="cov-sum"><b>{len(j["rows"])}</b> test{"s" if len(j["rows"]) != 1 else ""} '
-               f'run the change: <b>{ran}</b> of {j["total"]} measurable changed lines run'
-               + (f', <span class="cov-gapn">{gap_lines} run by none</span>' if gap_lines else "")
-               + (f', {unm_lines} more not measurable' if unm_lines else "") + ".</p>")
+    stamp = {"added": "new", "modified": "changed"}
+    for r in coverage_join(doc)["rows"]:
+        file, line = r.get("file"), r.get("line")
+        if not file or not line or _model_key(r, model):
+            continue
+        key = f"{file}:{line}"
+        if key in tests:
+            continue
+        part = _cov_part(root, file, int(line))
+        state = states.get((file, r.get("title"))) or states.get((file, line)) or {}
+        tests[key] = {"title": r.get("title") or key, "cat": _cov_cat(r, root),
+                      "status": stamp.get(state.get("status"), "unchanged"),
+                      "parts": [part] if part else []}
+    body = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    return frag[:m.start(2)] + body + frag[m.end(2):]
+
+
+def coverage_gaps(doc: dict, root: Path) -> str:
+    """What no test reaches, folded under the card: the changed lines no run executed, and
+    the changes no probe can see run at all."""
+    j = coverage_join(doc)
     blocks = []
-    for name in order:
-        rs = [r for r in j["rows"] if r.get("suite", "") == name]
-        meta = suites.get(name) or {}
-        if meta.get("status") in ("stale", "skipped", "failed") and not rs:
-            blocks.append(f'<p class="cov-off"><b>{html.escape(name)}</b> not measured — '
-                          f'{html.escape(meta.get("note") or meta.get("status", ""))}</p>')
-            continue
-        if not rs:
-            continue
-        aimed = sorted((r for r in rs if r["aimed"]), key=lambda r: (-r["n"] - len(r["via"]), r.get("title") or ""))
-        passing = sorted((r for r in rs if not r["aimed"]), key=lambda r: (r.get("title") or ""))
-        quiet = j["quiet"].get(name, 0)
-        body = ('<ul class="cov-list">' + "".join(_cov_row(r, j["total"], root, states, model, j["unmeasurable"])
-                                              for r in aimed) + "</ul>") if aimed else ""
-        if passing:
-            body += (f'<details class="cov-pass"><summary>{len(passing)} pass through — they run only '
-                     "changed lines most of this suite runs</summary><ul class=\"cov-list\">"
-                     + "".join(_cov_row(r, j["total"], root, states, model, j["unmeasurable"])
-                               for r in passing) + "</ul></details>")
-        note = f' <span class="cov-note">{html.escape(meta["note"])}</span>' if meta.get("note") else ""
-        blocks.append(f'<section class="cov-suite"><h4>{html.escape(name)} '
-                      f'<span class="cov-n">{len(aimed)} aimed · {len(passing)} passing through'
-                      f'{f" · {quiet} reach nothing" if quiet else ""}</span>{note}</h4>{body}</section>')
-    # The model's rows no measurement reaches: said, not dropped.
-    matched = {_model_key(r, model) for r in j["rows"]}
-    misses = [(k, t) for k, t in model.items() if k and k not in matched]
-    if misses:
-        items = "".join(
-            f'<li><span class="cov-ai cov-ai-off" aria-hidden="true">🤖</span> '
-            f'{html.escape(t["title"])} <span class="tloc">{html.escape(Path(k.rpartition(":")[0]).name)}:'
-            f'{html.escape(k.rpartition(":")[2])}</span></li>' for k, t in misses)
-        blocks.append('<section class="cov-miss"><h4>Paired by AI, not reached by the run '
-                      f'<b>{len(misses)}</b></h4><p class="sub">AI pairs these with the ticket, but '
-                      "no measured run of them executed a changed line — or they were not in a "
-                      f"measured run at all.</p><ul>{items}</ul></section>")
     if j["gaps"]:
+        n = sum(map(len, j["gaps"].values()))
         items = "".join(
             f'<li>{_cov_files({f: ls}, root)} <span class="tloc">{_cov_ranges(ls)}</span></li>'
             for f, ls in sorted(j["gaps"].items()))
-        blocks.append(f'<section class="cov-gaps"><h4>Changed lines no test runs <b>{gap_lines}</b></h4>'
-                      f"<ul>{items}</ul></section>")
+        blocks.append(f'<details class="cov-gaps"><summary>Changed lines no test runs '
+                      f'<b>{n}</b></summary><ul>{items}</ul></details>')
     if j["unmeasurable"]:
         items = []
         for u in j["unmeasurable"]:
             via = ""
             if u.get("proxy"):
                 where = ", ".join(f"{Path(f).name}:{_cov_ranges(ls)}" for f, ls in u["proxy"].items())
-                via = (f' — through {html.escape(where)}: reached by <b>{u["reached"]}</b> test'
-                       f'{"s" if u["reached"] != 1 else ""}') if u["reached"] else \
-                    f' — through {html.escape(where)}: <span class="cov-gapn">reached by none</span>'
+                via = (f' — through {html.escape(where)}' + ("" if u["reached"] else
+                       ': <span class="cov-gapn">reached by none</span>'))
             items.append(f'<li>{_cov_files({u["file"]: u["lines"]}, root)} '
                          f'<span class="tloc">{_cov_ranges(u["lines"])}</span> '
                          f'<span class="cov-why">{html.escape(u["reason"])}</span>{via}</li>')
-        blocks.append(f'<details class="cov-unm"><summary>Not measurable <b>{unm_lines}</b> changed '
-                      "lines — no probe sees them run</summary><ul>" + "".join(items) + "</ul></details>")
-    return (f'<aside class="rm-code cov-card" aria-label="the tests that execute this change">{head}'
-            f'<div class="cov-body">{summary}{"".join(blocks)}</div></aside>')
-
-
-#: The chip's one behaviour, and the ticket's reply to it. Pressing 🤖 on a row outlines
-#: the sentences AI paired it with; clicking a sentence in the ticket lights the measured
-#: rows AI paired with it. Delegated on `document`, like the switch above.
-COV_JS = """
-<script>(function () {
-  document.addEventListener('click', function (ev) {
-    var chip = ev.target.closest && ev.target.closest('.cov-t .cov-ai');
-    var map = ev.target.closest && ev.target.closest('.reqmap');
-    if (!map) return;
-    if (chip) {
-      var on = chip.getAttribute('aria-pressed') !== 'true';
-      map.querySelectorAll('.cov-ai[aria-pressed=true]').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
-      map.querySelectorAll('.rm-f.cov-pinned').forEach(function (f) { f.classList.remove('cov-pinned'); });
-      if (on) {
-        chip.setAttribute('aria-pressed', 'true');
-        (chip.getAttribute('data-sids') || '').split(' ').forEach(function (sid) {
-          if (!sid) return;
-          var f = map.querySelector('.rm-f[data-s="' + sid + '"]');
-          if (f) f.classList.add('cov-pinned');
-        });
-      }
-      return;
-    }
-    var f = ev.target.closest('.rm-f');
-    if (!f) return;
-    var sid = f.getAttribute('data-s');
-    map.querySelectorAll('.cov-t').forEach(function (row) {
-      var pins = (row.getAttribute('data-pins') || '').split(' ');
-      row.classList.toggle('cov-lit', pins.indexOf(sid) >= 0);
-    });
-  });
-})();</script>"""
+        n = sum(len(u["lines"]) for u in j["unmeasurable"])
+        blocks.append(f'<details class="cov-unm"><summary>Not measurable <b>{n}</b> changed '
+                      "lines — no probe sees them run</summary><ul>" + "".join(items)
+                      + "</ul></details>")
+    return f'<div class="cov-after">{"".join(blocks)}</div>' if blocks else ""
 
 
 def coverage_side(side: str, frag: str, spec: dict, out_dir: Path, root: Path) -> str:
-    """The right-hand column with the measured card in front of the model's — or, with no
-    measurement, the model's card saying it is not one."""
+    """The right-hand column: the model's card, retitled for what it lists once coverage
+    was measured (its rows are then every test that runs changed code — see
+    `coverage_tests`), with what no test reaches folded under it. With no measurement, the
+    model's card as it was, saying it is not one."""
     doc = load_coverage(out_dir, spec)
     if doc is None:
         i = _find(side, "rm-code")
@@ -918,17 +895,24 @@ def coverage_side(side: str, frag: str, spec: dict, out_dir: Path, root: Path) -
         if span is None:
             return side
         return side[:span[1]] + f'<p class="cov-none">{COV_NOT_MEASURED}</p>' + side[span[1]:]
-    test_doc = None
-    if spec.get("testChanges"):
-        try:
-            test_doc = json.loads((out_dir / spec["testChanges"]).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            test_doc = None
-    card = coverage_card(doc, frag, test_doc, root)
-    m = re.match(r'(\s*<div class="rm-side"[^>]*>)(.*)(</div>\s*)$', side, re.S)
-    if not m:
+    head = (f'<div class="rm-tkhead"><span class="rm-av cov-av" '
+            f'data-tip="{html.escape(COVCARD_TIP, quote=True)}" aria-hidden="true">📏</span>'
+            f'<span class="rm-who">{COVCARD_WHO}</span></div>')
+    side = re.sub(r'<div class="rm-tkhead">.*?</div>', lambda _: head, side, count=1, flags=re.S)
+    i = _find(side, "rm-code")
+    span = _element(side, i) if i is not None else None
+    if span is None:
         return side
-    return m.group(1) + card + '<div class="rm-aicard" hidden>' + m.group(2) + "</div>" + m.group(3)
+    return side[:span[1]] + coverage_gaps(doc, root) + side[span[1]:]
+
+
+def _load_test_changes(spec: dict, out_dir: Path) -> dict | None:
+    if not spec.get("testChanges"):
+        return None
+    try:
+        return json.loads((out_dir / spec["testChanges"]).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
 
 
 def ticket_head(ref: dict | None) -> str:
@@ -1125,8 +1109,12 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path, root: Path | None = None
                              root if root is not None else out_dir.resolve().parent)
     body = (m.group(0) + ticket_head(ticket_ref(spec, out_dir))
             + text_col + side_col + "</div>")
-    return (frag[:a] + body + frag[b:] + REQMAP_CSS + REQMAP_TIP_JS + REQMAP_SEMCOV_JS
-            + COV_JS)
+    out = frag[:a] + body + frag[b:]
+    doc = load_coverage(out_dir, spec)
+    if doc is not None:
+        out = coverage_tests(out, doc, _load_test_changes(spec, out_dir),
+                             root if root is not None else out_dir.resolve().parent)
+    return out + REQMAP_CSS + REQMAP_TIP_JS + REQMAP_SEMCOV_JS
 
 
 # --- the third run mode: run the tests, then re-derive ---------------------------------
