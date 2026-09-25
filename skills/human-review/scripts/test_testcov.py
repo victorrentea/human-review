@@ -312,8 +312,8 @@ def test_gaps_and_unmeasurable_changes_fold_under_the_card(tmp_path):
     page = _with_coverage(tmp_path)
     assert "Changed lines no test runs <b>1</b>" in page
     assert "Not measurable <b>2</b>" in page
-    # The card's footer, so the UI/API/unit key stays directly under the card.
-    assert page.index("rm-code") < page.index("cov-after") < page.index("rm-cats")
+    # Under the UI/API/unit key, so the card and its key look as they did before coverage.
+    assert page.index("rm-code") < page.index("rm-cats") < page.index("cov-after")
 
 
 def test_without_a_measurement_the_old_card_says_it_is_not_one(tmp_path):

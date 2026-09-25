@@ -899,13 +899,11 @@ def coverage_side(side: str, frag: str, spec: dict, out_dir: Path, root: Path) -
             f'data-tip="{html.escape(COVCARD_TIP, quote=True)}" aria-hidden="true">📏</span>'
             f'<span class="rm-who">{COVCARD_WHO}</span></div>')
     side = re.sub(r'<div class="rm-tkhead">.*?</div>', lambda _: head, side, count=1, flags=re.S)
-    # Inside the card, as its footer: between the card and the UI/API/unit key under it
-    # the folds pushed the key off the level of the ticket's own legend.
-    i = _find(side, "rm-code")
-    span = _element(side, i) if i is not None else None
-    if span is None:
+    # Last in the column, under the UI/API/unit key: the card and its key keep exactly
+    # the look they had before coverage, and what no test reaches is a footnote to both.
+    close = side.rfind("</div>")
+    if close < 0:
         return side
-    close = side.rfind("</", span[0], span[1])
     return side[:close] + coverage_gaps(doc, root) + side[close:]
 
 
@@ -953,18 +951,6 @@ REQMAP_CSS = """
   align-items:start}
 .reqmap .rm-text{grid-column:1;grid-row:2}
 .reqmap .rm-side{grid-column:2;grid-row:2;max-width:none}
-/* Measured by coverage, the card lists every test that runs the change — fifty rows, not
-   sixteen — and a column that grows with it pushed the UI/API/unit key a screen below the
-   ticket's legend it sits level with. So the column takes the ticket's height and no more
-   (`contain:size`: it adds nothing to the row, then stretches to it), and the list scrolls
-   inside the card. A short ticket still leaves room for a readable list. */
-.reqmap:has(.cov-av) .rm-side{align-self:stretch;contain:size;min-height:26rem;
-  display:flex;flex-direction:column;position:static}
-.reqmap:has(.cov-av) .rm-code{flex:1 1 auto;min-height:0}
-.reqmap:has(.cov-av) .rm-list{flex:1 1 auto;min-height:0;overflow:auto}
-.reqmap:has(.cov-av) .rm-side > .rm-cats{flex:0 0 auto}
-.reqmap .rm-code > .cov-after{flex:0 0 auto;margin:0;padding:6px 12px 8px;
-  border-top:1px solid var(--line)}
 /* A heading's distance from the thing it heads, not a column gutter's: close enough under
    it to read as its title, with a little air over it so it does not hang off the tab strip. */
 .reqmap .rm-head{grid-column:1;grid-row:1;display:flex;align-items:center;
