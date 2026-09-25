@@ -89,7 +89,7 @@ ul.req-tests li { list-style:none; }
    its own frame and rows, with a ruler for an avatar, and what no test reaches is folded
    under it — the changed lines no run executed, then the changes no probe can see. */
 .reqmap .cov-av { font-size:16px; line-height:1; cursor:help; }
-.cov-after { margin:.6rem 2px 0; font-size:.85rem; }
+.cov-after { font-size:.85rem; }
 .cov-gaps, .cov-unm { margin:.35rem 0 0; }
 .cov-gaps > summary, .cov-unm > summary { cursor:pointer; color:var(--muted); }
 .cov-gaps > summary b { color:#c62828; }
