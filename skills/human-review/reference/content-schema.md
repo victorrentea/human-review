@@ -750,7 +750,7 @@ with it, so the measurement now lives in `scripts/endpoint-complexity.py` and th
 the whole tab. A section that embeds a report nothing produces renders as an apology.
 
 **The explanation came back inside the bars.** Each row folds open onto the increments its
-number is made of — one real source line per counted construct, `[+N]` hard right, every
+number is made of — one real source line per counted construct, `+N` hard right, every
 line a `vscode://file/<abs>:<line>:1` link — and the handle is the bar itself, so a reviewer
 who doubts a number clicks the thing they doubt. It is a plain `<details>`, closed by
 default, with its CSS in `--css` and its three-line toggle inline in the fragment: nothing

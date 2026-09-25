@@ -241,7 +241,7 @@ def test_recursion_is_charged_on_the_line_that_calls_back():
 
 
 def test_a_bar_folds_open_onto_its_own_lines():
-    """`[+1]` beside the real source line, each one a link into the editor — and the bar
+    """`+1` beside the real source line, each one a link into the editor — and the bar
     is the handle, so it wears a hand rather than the `?` `tip.js` gives a plain mark."""
     row = _row(why=[{"method": "app.repo.OwnerRepository#search",
                      "display": "OwnerRepository.search(String)", "cognitive": 2,
@@ -254,7 +254,7 @@ def test_a_bar_folds_open_onto_its_own_lines():
     out = delta.render_row(row, 12, "main")
     assert out.startswith("<details"), "closed by default, and a <details> without JS"
     assert "<summary class=\"cx-head\">" in out
-    assert "[+1]" in out and "OwnerRepository.search(String)" in out
+    assert '<span class="cx-why-inc">+1</span>' in out and "[+1]" not in out and "OwnerRepository.search(String)" in out
     href = re.search(r'href="(vscode://file/[^"]*OwnerRepository[^"]*)"', out)[1]
     assert href.endswith(":6:1") and "/a/src/main/java/" in href, href
     assert href.split("vscode://file/")[1].startswith("/"), "absolute, resolved at build time"

@@ -264,7 +264,7 @@ def _graph(nodes, groups=()) -> tuple[str, set[str]]:
 
 
 def _lines(hits) -> str:
-    """One line of real source per increment, `[+N]` hard right, each a link to that line."""
+    """One line of real source per increment, `+N` hard right, each a link to that line."""
     out = []
     for h in hits:
         target = (repo_root() / h["file"]).resolve()
@@ -277,7 +277,7 @@ def _lines(hits) -> str:
             f'<a class="cx-why-line{" cx-why-new" if h.get("new") else ""}"'
             f' href="vscode://file/{target}:{h["line"]}:1"{_tip(tip)}>'
             f'<code>{html.escape(h["code"])}</code>'
-            f'<span class="cx-why-inc">[+{h["inc"]}]</span></a>')
+            f'<span class="cx-why-inc">+{h["inc"]}</span></a>')
     return "".join(out)
 
 
@@ -714,8 +714,9 @@ a.cx-why-line { display:flex; align-items:baseline; gap:.75rem; text-decoration:
 a.cx-why-line code { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
                      white-space:nowrap; font:12px/1.55 ui-monospace,Menlo,monospace; }
 a.cx-why-line:hover code { text-decoration:underline; }
-/* `[+1]` is a column, not a suffix: same width on every line, so the eye can add them up
-    without reading them. `tabular-nums` keeps `[+10]` from widening the column by a hair. */
+/* `+1` is a column, not a suffix: same width on every line, so the eye can add them up
+    without reading them — no brackets since 2026-09-25 (Victor: *"[+1] => +1"*), the
+    `+N` badges on the graph never had them. `tabular-nums` keeps `+10` from widening the column by a hair. */
 .cx-why-inc { flex:0 0 2.9rem; text-align:right; font-variant-numeric:tabular-nums;
               font:700 10.5px/1.55 ui-monospace,Menlo,monospace; color:var(--muted); }
 /* ── the call graph ─────────────────────────────────────────────────────────────────
