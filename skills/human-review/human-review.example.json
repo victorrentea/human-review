@@ -135,6 +135,42 @@
       "projectDir": "petclinic-test",
       "limit": 12
     },
+    "testcov": {
+      "//": "Which tests execute which changed lines, measured per test by scripts/testcov.py —",
+      "//2": "the Tests tab's right-hand column. Without this block the tab keeps the AI's",
+      "//3": "pairing and says coverage was not measured.",
+      "//4": "`sources`/`exclude`: what counts as production code. A changed line elsewhere",
+      "//5": "(a test, a generated file, a doc) is not counted at all.",
+      "//6": "`junit`: each run's `command` gets {junit} = the skill's JUnit Platform listener",
+      "//7": "on the test classpath (-Dmaven.test.additionalClasspath) and its output dir. The",
+      "//8": "project's own JaCoCo agent does the measuring (jacoco:prepare-agent); `classes`",
+      "//9": "are what the agent measured, `include` the class-path prefixes worth reading.",
+      "//10": "Listener and analyzer are compiled on first use into ~/.cache/human-review/testcov.",
+      "//11": "`karma`: {karma} = --karma-config=<the skill's config>, which loads `config` (the",
+      "//12": "project's own) and adds a per-spec Istanbul reporter. --code-coverage is required.",
+      "//13": "`e2e`: nothing is run. The browser suites that already ran for the traces",
+      "//14": "(city.tests, traces.commands) run with COVERAGE_DIR=<dir>, and the project's",
+      "//15": "fixtures leave per-test Chromium coverage + per-test JaCoCo dumps there, a",
+      "//16": "run.json per suite naming the commit, and `jar`: the classes the backend under",
+      "//17": "test ran. A run.json of another commit is refused, and said so on the page.",
+      "sources": ["petclinic-backend/src/main/**", "petclinic-frontend/src/app/**"],
+      "exclude": ["**/*.spec.ts", "**/generated/**"],
+      "junit": [
+        {"label": "Backend", "cwd": "petclinic-backend",
+         "command": "./test-on-own-db.sh mvn -o test -Dmaven.test.failure.ignore=true {junit}",
+         "classes": ["petclinic-backend/target/classes"], "include": ["victor/training/"]}
+      ],
+      "karma": [
+        {"label": "Frontend Karma", "cwd": "petclinic-frontend", "config": "karma.conf.js",
+         "command": "npx ng test --watch=false --code-coverage --browsers=ChromeHeadless {karma}"}
+      ],
+      "e2e": {
+        "dir": ".human-review/coverage", "project": "petclinic-test",
+        "frontend": "petclinic-frontend", "backend": "petclinic-backend",
+        "jar": "backend-app.jar", "include": ["victor/training/"],
+        "suites": {"playwright": "E2E Playwright", "cucumber": "E2E Cucumber"}
+      }
+    },
     "video": {
       "//": "The film of the feature working. `out` is where it lands; `app` is how the",
       "//2": "run gets the application it is filmed against, and it is the important half.",

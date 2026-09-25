@@ -126,8 +126,11 @@ Read the status table it prints. Three things in it are yours:
   `steps.dsaudit.app`, and without that block it skips naming the URL that did not
   answer). Its tab is dropped and named under the strip.
   That is honest; do not work around it. **Unless another step feeds
-  the same tab** — `tests` and `traces` both feed Tests — in which case the tab stays and
-  only that step's half of it is missing: say *that*, not that the tab was dropped.
+  the same tab** — `tests`, `traces` and `testcov` all feed Tests — in which case the tab
+  stays and only that step's part of it is missing: say *that*, not that the tab was
+  dropped. Without `testcov` the Tests tab's right-hand column is the AI's pairing and
+  says coverage was not measured; with it, the column lists the tests that *execute* the
+  change, measured per test, and the pairing is a 🤖 chip on the rows AI named.
 - **`failed`** — say so in the guide. A failed producer is a fact about the run.
 - **`note`** — things only the run knows: an amber `PARTIAL LIST` seal that is *correct*,
   a suite that could not start, and above all **video exit 3 — filmed, and the feature did

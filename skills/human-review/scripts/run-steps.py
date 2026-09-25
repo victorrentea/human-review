@@ -1101,6 +1101,30 @@ def _traces(ctx: Ctx):
         raise RuntimeError(f"playwright-traces.py exit {r.returncode}")
 
 
+def _testcov(ctx: Ctx):
+    """Which tests execute which changed lines — per test, measured, not paired by a model.
+
+    `testcov.py` runs the JUnit and Karma suites itself, each with a per-test hook this
+    skill ships (a JUnit Platform listener that dumps and resets JaCoCo around every test, a
+    Karma reporter that diffs Istanbul's counters around every spec), and harvests what the
+    browser suites left in `steps.testcov.e2e.dir` when `city.tests` / `traces.commands`
+    ran them with COVERAGE_DIR. It never runs the browser suites a second time: they are
+    the longest run on the page, and they have already run, traced, for the recordings.
+
+    Free, never a model: the Tests tab's right-hand column is drawn from what this writes,
+    and the AI's pairing is reduced to a chip on the rows it named.
+    """
+    if not ctx.step_cfg("testcov"):
+        raise LookupError("steps.testcov not configured — the Tests tab keeps the AI's "
+                          "pairing and says coverage was not measured")
+    r = sh(f"{HERE}/testcov.py --base {ctx.base} --out {ART}/test-coverage.json", ctx,
+           check=False)
+    if r.returncode == 3:
+        raise LookupError("steps.testcov not configured")
+    if r.returncode != 0:
+        raise RuntimeError(f"testcov.py exit {r.returncode}")
+
+
 # ─────────────────────────────────────────────────────── what each step reads and writes
 #
 # A refresh re-derives every producer's answer from inputs that, nine times out of ten,
@@ -1173,6 +1197,13 @@ STEP_INPUTS = {
     "tests":        {"paths": ("*",),
                      "tools": ("test-changes.py",),
                      "outputs": ("assets/test-changes.json",)},
+    # The whole repository, like `tests`: a test anywhere can reach a changed line. The
+    # browser run's own record is read too — the step harvests it, and a new run of the
+    # traced suite has to be a miss even when no source moved.
+    "testcov":      {"paths": ("*",),
+                     "reads": ("coverage/playwright/run.json", "coverage/cucumber/run.json"),
+                     "tools": ("testcov.py", "testcov"),
+                     "outputs": ("assets/test-coverage.json",)},
 }
 
 #: Where the per-step hashes live. Beside `.steps.json` and deliberately not inside it: the
@@ -1417,6 +1448,10 @@ STEPS = [
     ("traces",      "requirements",  "Playwright trace recordings",
      lambda c: bool(c.step_cfg("traces").get("report")) or "traces.report not configured",
      _traces),
+    # After `traces`, and never before: the browser suites' per-test coverage is written by
+    # the run `city.tests` / `traces.commands` do, and this is the step that reads it.
+    ("testcov",     "requirements",  "per-test coverage of the change",
+     lambda c: bool(c.step_cfg("testcov")) or "testcov not configured", _testcov),
 ]
 
 
