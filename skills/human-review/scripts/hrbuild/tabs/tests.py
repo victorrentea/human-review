@@ -924,7 +924,9 @@ def ticket_head(ref: dict | None) -> str:
     half a title being clickable is a target nobody aims at. With no ticket resolved the
     row is still there, empty, so both columns under it keep starting level."""
     if ref:
-        face = (f'{html.escape(ref["title"])} '
+        # "Issue:" first, so the heading says what it names before it names it: over the
+        # ticket's own frame, a bare title read as the PR's.
+        face = (f'Issue: {html.escape(ref["title"])} '
                 f'<span class="rm-num">#{ref["number"]}</span>')
         title = (f'<a class="rm-title" href="{html.escape(ref["url"])}">{face}</a>'
                  if ref.get("url") else f'<span class="rm-title">{face}</span>')
