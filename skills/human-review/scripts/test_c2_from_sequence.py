@@ -534,7 +534,7 @@ def test_the_title_can_carry_a_link_out_and_the_caption_stays_plain():
     g = graph("@startuml\nBrowser -> Backend: GET /api/owners\n@enduml")
     out = c2.render(**c2.one_side(g),
                     title=f"[[{c2.C4_URL}{{What a container diagram is}} C2 Containers]]",
-                    system="", caption="Diagram synthesized from sequence diagrams of the "
+                    system="", caption="Diagram generated from sequence diagrams of the "
                     "test traces", coloured=False)
     assert c2.C4_URL.startswith("https://c4model.com")
     assert f"title [[{c2.C4_URL}" in out
