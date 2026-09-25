@@ -421,8 +421,11 @@ def test_a_node_folds_open_onto_its_own_lines_and_only_the_arrow_navigates():
     # The meaning of the score is linked once, from the tab's lede — not under every row.
     assert "Call graph, left to right" not in out and "cg-key" not in out
     page = delta.render([row], "main")
-    assert re.search(r'class="cx-lede"><a href="[^"]*sonarsource\.com/resources/'
-                     r'cognitive-complexity[^"]*"[^>]*>Cognitive complexity</a>', page)
+    assert re.search(r'<h3 class="cx-title">Cumulated Entry-Point <a href="[^"]*sonarsource'
+                     r'\.com/resources/cognitive-complexity[^"]*"[^>]*>Cognitive Complexity</a>'
+                     r'</h3>', page)
+    assert ('<p class="cx-lede">Computed by traversing the syntax of the Java source '
+            'files.</p>') in page
     assert "Click ▸" not in page
     assert re.search(r"\.cg-open > \.cg-lines \{[^}]*display:block", delta.CSS)
     assert "border-left:6px solid var(--cg-arrow)" in delta.CSS, "edges end in arrowheads"

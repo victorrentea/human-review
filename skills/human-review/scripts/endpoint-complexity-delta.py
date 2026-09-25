@@ -510,9 +510,11 @@ def render(rows, base="main") -> str:
         # close this sentence; the groups below are titled by kind, every bar says on
         # hover what its colour and its number mean, and a reader counting moved rows is
         # reading the bars, not this line.
-        f'<p class="cx-lede"><a href="{SONAR_COGNITIVE}" target="_blank" rel="noopener">'
-        'Cognitive complexity</a> of the <em>whole flow</em> behind each entry point, '
-        'computed by traversing the syntax of the Java source.</p>',
+        # A heading naming the measure, then how it is taken — Victor's wording. The
+        # measure's name is the link to what it means.
+        f'<h3 class="cx-title">Cumulated Entry-Point <a href="{SONAR_COGNITIVE}" '
+        'target="_blank" rel="noopener">Cognitive Complexity</a></h3>'
+        '<p class="cx-lede">Computed by traversing the syntax of the Java source files.</p>',
     ]
     known = {kind for kind, _ in KIND_TITLES}
     groups = KIND_TITLES + [
@@ -600,7 +602,8 @@ TOGGLE_JS = """<script>
 CSS = """
 /* Green = complexity this branch ADDED, red = complexity it REMOVED: the colour names the
     author of the change, it is not a verdict on whether growing is bad. */
-.cx-lede a { color:var(--link); }
+.cx-title { margin:0 0 .15rem; font-size:1.15rem; font-weight:600; }
+.cx-title a { color:var(--link); }
 .cx-lede { color:var(--muted); font-size:.92rem; --cx-added:#2e9e5b; --cx-removed:#c62828; }
 .cx-group { --cx-added:#2e9e5b; --cx-removed:#c62828; }
 .cx-group + .cx-group { margin-top:1.1rem; }
