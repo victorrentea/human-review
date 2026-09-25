@@ -165,9 +165,14 @@ a.f-src:hover, a.f-src:focus-visible { color:var(--link); border-color:var(--lin
 .pileround b { color:var(--fg); font-weight:700; }
 
 /* Push to GitHub PR — end of the sticky counts line, and the ↗ beside each pushed item */
+/* Green, like every control the served page raises (`.chip-served`): it only exists when
+   a server can run it, and green is how this page says "you can press this here". */
 .pr-push { margin-left:.6rem; font:600 12px/1.4 inherit; padding:.1rem .55rem; border-radius:999px;
-  border:1px solid var(--line); background:var(--bg); color:var(--fg); cursor:pointer; }
-.pr-push:hover, .pr-push:focus-visible { border-color:var(--link); color:var(--link); }
+  border:1px solid #2e7d32; background:var(--bg); color:#2e7d32; cursor:pointer; }
+.pr-push:hover, .pr-push:focus-visible { background:#2e7d32; color:#fff; }
+@media (prefers-color-scheme:dark) {
+  .pr-push { color:#6bd48a; border-color:#3f7f52; }
+  .pr-push:hover, .pr-push:focus-visible { background:#6bd48a; border-color:#6bd48a; color:#10261a; } }
 .pr-push:disabled { opacity:.6; cursor:progress; }
 .pr-push-dlg { max-width:min(960px, 92vw); border:1px solid var(--line); border-radius:8px;
   background:var(--bg); color:var(--fg); }
