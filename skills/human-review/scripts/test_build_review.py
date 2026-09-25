@@ -647,7 +647,9 @@ def test_the_logging_tab_opens_on_one_computed_heading(tmp_path, monkeypatch):
         repo)
     # The one heading is the computed line itself, formatted as Code City's is — never
     # the authored "Logging added/updated", which is the tab's label said twice.
-    assert frag.count("<h2") == 1 and '<h2 id="logging-added">Uses of <span' in frag
+    assert frag.count("<h2") == 1 and '<h2 class="lg-head" id="logging-added">Uses of <span' in frag
+    # Under it, how the uses were found, and no underline between the two.
+    assert ('</h2><p class="lg-sub">Found by syntax-aware search over Java sources</p>') in frag
     assert "Logging added/updated" not in frag and "not by grepping" not in frag, \
         "title and body on the logging block are the renderer's now, not the author's"
     assert 'id="logging-added"' in frag, "the deep link the heading carried still lands"

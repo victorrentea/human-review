@@ -24,3 +24,6 @@
             font-style:normal; font-weight:400; vertical-align:baseline;
             color:var(--muted); background:color-mix(in srgb, var(--muted) 16%, transparent);
             user-select:none; -webkit-user-select:none; }
+/* The tab's heading and the line saying how its uses were found: one block, no underline. */
+h2.lg-head { border-bottom:0; padding-bottom:0; margin-bottom:.15rem; }
+.lg-sub { margin:0 0 .9rem; color:var(--muted); font-size:.92rem; }
