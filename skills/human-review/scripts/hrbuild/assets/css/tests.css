@@ -85,3 +85,56 @@ ul.req-tests li { list-style:none; }
    the replay in a window of its own; off disk it copies the line that does. */
 .rm-tv { flex:0 0 auto; text-decoration:none; font-size:12px; line-height:1; }
 .rm-tv:hover { filter:brightness(1.2); }
+/* The measured card: the right-hand column of the requirements map when
+   `test-coverage.json` exists (tests.py, coverage_card). Its own frame, not the model's
+   fragment CSS, which is rewritten on every paid run. It scrolls inside itself so the
+   column can stay beside the ticket it answers. */
+.reqmap .cov-card { display:block; border:1px solid var(--line); border-radius:8px;
+        background:var(--card); max-height:calc(100vh - 24px); overflow:auto; }
+.reqmap .cov-card > .rm-tkhead { position:sticky; top:0; z-index:1; display:flex;
+        align-items:center; gap:8px; padding:8px 12px; background:var(--card);
+        border-bottom:1px solid var(--line); font-size:.9rem; }
+.reqmap .cov-av { font-size:16px; line-height:1; cursor:help; }
+.cov-body { padding:6px 12px 12px; font-size:.88rem; }
+.cov-sum { margin:.3rem 0 .6rem; }
+.cov-gapn { color:#c62828; }
+.cov-suite { margin:.8rem 0 0; }
+.cov-suite h4, .cov-gaps h4, .cov-miss h4 { margin:0 0 .25rem; font-size:.9rem;
+        display:flex; flex-wrap:wrap; align-items:baseline; gap:.45rem; }
+.cov-n, .cov-note { color:var(--muted); font-weight:400; font-size:.8rem; }
+ul.cov-list { list-style:none; margin:0; padding:0; }
+.cov-t { padding:.3rem 0; border-bottom:1px solid var(--line); }
+.cov-t:last-child { border-bottom:0; }
+.cov-thead { display:flex; flex-wrap:wrap; align-items:baseline; gap:.35rem; }
+.cov-thead .tflag { min-width:0; margin-right:.1rem; }
+.cov-tw { font-weight:500; overflow-wrap:anywhere; }
+.cov-runs { color:var(--muted); font-size:.8rem; margin-top:.1rem; overflow-wrap:anywhere; }
+/* The AI's pairing, reduced to what it is: a chip naming how many of the ticket's
+   sentences the model paired a test with. Pressed, it outlines them in the ticket. */
+.cov-ai { border:1px solid var(--line); border-radius:9px; background:none; color:var(--muted);
+        font:600 .7rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; padding:0 .35rem;
+        cursor:pointer; }
+.cov-ai[aria-pressed=true] { border-color:var(--link); color:var(--link); }
+.cov-ai-off { cursor:default; border-color:#c62828; }
+.reqmap .rm-f.cov-pinned { outline:2px solid var(--link); outline-offset:1px; border-radius:3px; }
+.cov-t.cov-lit { box-shadow:inset 3px 0 0 var(--link); padding-left:.45rem; }
+.cov-red { margin-left:.1rem; color:#c62828; }
+.cov-pass { margin:.35rem 0 0; }
+.cov-pass > summary, .cov-unm > summary { cursor:pointer; color:var(--muted); font-size:.82rem; }
+.cov-off { margin:.6rem 0 0; color:var(--muted); font-size:.82rem; }
+.cov-miss, .cov-gaps { margin:1rem 0 0; }
+.cov-miss .sub { margin:0 0 .3rem; color:var(--muted); font-size:.8rem; }
+.cov-miss ul, .cov-gaps ul, .cov-unm ul { margin:.2rem 0 0; padding-left:1.05rem;
+        display:grid; gap:.2rem; font-size:.82rem; }
+.cov-miss h4 b, .cov-gaps h4 b { color:#c62828; }
+.cov-unm { margin:1rem 0 0; }
+.cov-why { color:var(--muted); }
+.cov-none { margin:6px 12px; font-size:.82rem; color:var(--drift); }
+@media (prefers-color-scheme: dark) {
+  .cov-gapn, .cov-red, .cov-miss h4 b, .cov-gaps h4 b { color:#f08a8a; }
+  .cov-ai-off { border-color:#f08a8a; }
+}
+/* A test's name reads as a name, not as code: the link keeps `.srcref`'s behaviour (the
+   editor fallback chain) and drops its monospace face. */
+.cov-card .cov-tw.srcref { font-family:inherit; font-size:.88rem; }
+.cov-more { color:var(--muted); cursor:help; border-bottom:1px dotted currentColor; }

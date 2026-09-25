@@ -168,7 +168,7 @@ def test_the_run_tests_press_runs_every_producer_of_the_tab_forced(tmp_path):
         assert "traces" in info["steps"] and "tests" in info["steps"]
         cmd = A.ACTIONS[info["id"]]["command"]
         assert info["id"] == "__rerun_tests__:requirements"
-        assert "--steps tests,traces --force --no-serve" in cmd
+        assert "--steps tests,traces,testcov --force --no-serve" in cmd
         assert A.ACTIONS[info["id"]]["reload"] is True
         btn = T.run_tests_button(info)
         assert 'data-rerun="__rerun_tests__"' in btn and 'data-tab="requirements"' in btn

@@ -579,6 +579,358 @@ def card_head(side: str) -> str:
     return side[:a] + strip + side[b:]
 
 
+# --- the measured column: which tests execute the change ------------------------------
+#
+# The card on the right used to be the model's: the tests it paired with the ticket's
+# sentences, sixteen on the PR it was built for. A pairing says which tests were *meant*
+# for the change; `testcov.py` measures which tests *reach* it, per test, and on the same
+# PR that is fifty-odd. So when `assets/test-coverage.json` exists the card is drawn from
+# it, and the model's pairing shrinks to a chip on the rows it named. The model's own card
+# stays in the DOM, hidden: its inline script still wires the ticket's sentences, and a
+# script that cannot find its list throws before it gets that far.
+#
+# The join with the diff is done here, at build time, from each test's raw covered lines.
+# A rebuild after the branch moves recounts without re-running a single suite.
+
+#: Where the measurement is read from, relative to the report directory.
+COVERAGE_JSON = "assets/test-coverage.json"
+COVCARD_WHO = "Tests that run this change"
+COVCARD_WHEN = "measured by coverage, per test"
+COVCARD_TIP = ("Every test was run with a per-test coverage probe; a row is a test that "
+               "executed at least one changed line")
+#: A changed line counts as "passed through" when more than this share of a suite's
+#: reaching tests run it — a getter every GET calls, a component's constructor.
+COV_COMMON_SHARE = 0.5
+#: …and only in a suite with at least this many reaching tests: with three, "most" is two.
+COV_COMMON_MIN = 4
+#: Said on the card when there is no measurement, over the model's own list.
+COV_NOT_MEASURED = ("Coverage was not measured on this build, so this list is AI's pairing, "
+                    "not a run. Configure <code>steps.testcov</code> in human-review.json "
+                    "and re-run the tests to see which tests execute the change.")
+#: The suites a browser drives go first: they are the ones a reviewer can watch.
+_COV_SOURCE_ORDER = {"jacoco+v8": 0, "v8": 0, "jacoco": 1, "karma": 2}
+
+
+def load_coverage(out_dir: Path, spec: dict | None = None) -> dict | None:
+    """`test-coverage.json`, or None when this build has no measurement."""
+    rel = (spec or {}).get("testCoverage") or COVERAGE_JSON
+    try:
+        doc = json.loads((out_dir / rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return doc if isinstance(doc, dict) and doc.get("tests") is not None else None
+
+
+def coverage_join(doc: dict) -> dict:
+    """Each test against the diff: which measurable changed lines it ran, which
+    unmeasurable changes it reached through their proxy, and whether it is aimed at the
+    change or only passes through it.
+
+    Returns `{"measurable": {file: set}, "total": int, "rows": [...], "gaps": {file: [..]},
+    "unmeasurable": [...with "reached"], "quiet": {suite: n}}`. `rows` holds only tests
+    that reach something; `quiet` counts, per suite, the measured tests that reach nothing."""
+    changed = {f: set(v) for f, v in (doc.get("changed") or {}).items()}
+    exe = {f: set(v) for f, v in (doc.get("executable") or {}).items()}
+    measurable = {f: changed[f] & exe[f] for f in changed if f in exe and changed[f] & exe[f]}
+    unm = [dict(u) for u in doc.get("unmeasurable") or []]
+    rows, quiet = [], {}
+    for t in doc.get("tests") or []:
+        hits = t.get("hits") or {}
+        got = {f: sorted(set(hits.get(f, ())) & lines) for f, lines in measurable.items()}
+        got = {f: v for f, v in got.items() if v}
+        via = [i for i, u in enumerate(unm) if u.get("proxy") and any(
+            set(hits.get(f, ())) & set(ls) for f, ls in u["proxy"].items())]
+        if not got and not via:
+            quiet[t.get("suite", "")] = quiet.get(t.get("suite", ""), 0) + 1
+            continue
+        rows.append({**t, "changedHits": got, "n": sum(map(len, got.values())), "via": via})
+    for i, u in enumerate(unm):
+        u["reached"] = sum(1 for r in rows if i in r["via"])
+    by_suite: dict[str, list[dict]] = {}
+    for r in rows:
+        by_suite.setdefault(r.get("suite", ""), []).append(r)
+    for suite, rs in by_suite.items():
+        counts: dict = {}
+        for r in rs:
+            for f, ls in r["changedHits"].items():
+                for ln in ls:
+                    counts[(f, ln)] = counts.get((f, ln), 0) + 1
+            for i in r["via"]:
+                counts[("via", i)] = counts.get(("via", i), 0) + 1
+        common = ({k for k, c in counts.items() if c > COV_COMMON_SHARE * len(rs)}
+                  if len(rs) >= COV_COMMON_MIN else set())
+        for r in rs:
+            own = [(f, ln) for f, ls in r["changedHits"].items() for ln in ls] \
+                + [("via", i) for i in r["via"]]
+            r["aimed"] = any(k not in common for k in own)
+    run = {f: set() for f in measurable}
+    for r in rows:
+        for f, ls in r["changedHits"].items():
+            run[f].update(ls)
+    gaps = {f: sorted(measurable[f] - run[f]) for f in measurable if measurable[f] - run[f]}
+    return {"measurable": measurable, "total": sum(map(len, measurable.values())),
+            "rows": rows, "gaps": gaps, "unmeasurable": unm, "quiet": quiet}
+
+
+def model_pairing(frag: str) -> dict:
+    """The model's pairing, out of the matrix's own data: `{test key: {"title", "sids"}}`
+    plus the ticket's sentences as `{"sentences": {sid: text}}` under the key `""`."""
+    m = re.search(r'<script type="application/json" class="rm-data">(.*?)</script>', frag, re.S)
+    try:
+        data = json.loads(m.group(1)) if m else {}
+    except ValueError:
+        data = {}
+    out = {k: {"title": t.get("title", ""), "sids": []} for k, t in (data.get("tests") or {}).items()}
+    for sid, s in (data.get("sentences") or {}).items():
+        for g in s.get("groups") or []:
+            for ev in g.get("tests") or []:
+                if ev.get("id") in out and sid not in out[ev["id"]]["sids"]:
+                    out[ev["id"]]["sids"].append(sid)
+    texts = {}
+    for sm in re.finditer(r'<span class="rm-f" data-s="([^"]+)"[^>]*>(.*?)</span>', frag, re.S):
+        texts.setdefault(sm.group(1), re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", sm.group(2))).strip())
+    out[""] = {"sentences": texts}
+    return out
+
+
+def _model_key(row: dict, model: dict) -> str | None:
+    """The model's key for a measured test: same file, and the same declaration line
+    (give or take the annotation above it) or the same name."""
+    f, line, title = row.get("file"), row.get("line"), (row.get("title") or "").strip()
+    for key, t in model.items():
+        if not key:
+            continue
+        path, _, ln = key.rpartition(":")
+        if path != f:
+            continue
+        if line and ln.isdigit() and abs(int(ln) - int(line)) <= 2:
+            return key
+        if title and t.get("title", "").strip() == title:
+            return key
+    return None
+
+
+#: How many files a row names before it says "and N more": a browser test runs half the
+#: change, and a row that lists fourteen files is a paragraph, not a row.
+COV_FILES_SHOWN = 4
+
+
+def _cov_files(hits: dict, root: Path, cap: int | None = None) -> str:
+    """`VisitDto.java, Visit.java` — each a link to its first line run, lines on hover;
+    the busiest first, and past `cap` the rest counted with their names on hover."""
+    parts = []
+    ordered = sorted(hits.items(), key=lambda kv: -len(kv[1]))
+    rest = ordered[cap:] if cap else []
+    for f, ls in ordered[:cap] if cap else ordered:
+        target = (root / f).resolve()
+        tip = f"{f}: line{'s' if len(ls) > 1 else ''} {_cov_ranges(ls)}"
+        parts.append(f'<a class="srcref" href="vscode://file/{target}:{ls[0]}:1" '
+                     f'data-tip="{html.escape(tip, quote=True)}">{html.escape(Path(f).name)}</a>')
+    if rest:
+        names = ", ".join(f"{Path(f).name} ({len(ls)})" for f, ls in rest)
+        parts.append(f'<span class="cov-more" data-tip="{html.escape(names, quote=True)}">'
+                     f"{len(rest)} more file{'s' if len(rest) != 1 else ''}</span>")
+    return ", ".join(parts)
+
+
+def _cov_ranges(lines) -> str:
+    out, run = [], []
+    for n in sorted(set(lines)):
+        if run and n == run[-1] + 1:
+            run.append(n)
+            continue
+        if run:
+            out.append(f"{run[0]}–{run[-1]}" if len(run) > 1 else str(run[0]))
+        run = [n]
+    if run:
+        out.append(f"{run[0]}–{run[-1]}" if len(run) > 1 else str(run[0]))
+    return ", ".join(out)
+
+
+def _cov_row(r: dict, total: int, root: Path, states: dict, model: dict,
+             unm: list[dict]) -> str:
+    file, line, title = r.get("file"), r.get("line"), r.get("title") or r.get("id", "")
+    state = states.get((file, title)) or states.get((file, line))
+    flag = ""
+    if state and state.get("status") in ("added", "modified"):
+        cls, label = TEST_STATES[state["status"]]
+        flag = f'<span class="tflag {cls}">{label}</span>'
+    face = html.escape(title)
+    where = f'<span class="tloc">{html.escape(Path(file).name)}{f":{line}" if line else ""}</span>' \
+        if file else ""
+    if file and line:
+        target = (root / file).resolve()
+        name = (f'<a class="cov-tw srcref" href="vscode://file/{target}:{line}:1" '
+                f'data-tip="{html.escape(file, quote=True)}">{face}</a> {where}')
+    else:
+        name = f'<span class="cov-tw">{face}</span> {where}'
+    key = _model_key(r, model)
+    ai = ""
+    if key:
+        sids = model[key]["sids"]
+        texts = model[""]["sentences"]
+        said = "; ".join(f"“{texts.get(s, s)[:90]}”" for s in sids) or "no sentence in particular"
+        ai = (f'<button type="button" class="cov-ai" data-sids="{html.escape(" ".join(sids))}" '
+              f'data-tip="{html.escape("AI pairs this test with the ticket: " + said, quote=True)}">'
+              f'🤖{len(sids) or ""}</button>')
+    bad = ""
+    if (r.get("status") or "").lower() in ("failed", "timedout", "broken", "undefined", "ambiguous"):
+        bad = '<span class="tsilenced cov-red" data-tip="This test failed on the measured run">failed</span>'
+    runs = f"runs {r['n']} of {total} changed line{'s' if total != 1 else ''}" if r["n"] else ""
+    if r["changedHits"]:
+        runs += " in " + _cov_files(r["changedHits"], root, COV_FILES_SHOWN)
+    if r["via"]:
+        what = ", ".join(sorted({Path(unm[i]["file"]).name for i in r["via"]}))
+        runs += ("; " if runs else "") + f"reaches {len(r['via'])} unmeasurable change" \
+            f"{'s' if len(r['via']) != 1 else ''} ({html.escape(what)}) through its proxy"
+    data_id = f"{file}:{line}" if file and line else ""
+    pins = f' data-pins="{html.escape(" ".join(model[key]["sids"]))}"' if key else ""
+    ident = f' data-id="{html.escape(data_id)}"' if data_id else ""
+    return (f'<li class="cov-t"{ident}{pins}>'
+            f'<div class="cov-thead">{flag}{name}{ai}{bad}</div>'
+            f'<div class="cov-runs">{runs}</div></li>')
+
+
+def coverage_card(doc: dict, frag: str, test_doc: dict | None, root: Path) -> str:
+    """The right-hand column, drawn from the measurement."""
+    j = coverage_join(doc)
+    model = model_pairing(frag)
+    states = {}
+    for t in (test_doc or {}).get("tests") or []:
+        states[(t.get("path"), t.get("name"))] = t
+        states[(t.get("path"), t.get("line"))] = t
+    suites = {s["name"]: s for s in doc.get("suites") or []}
+    order = sorted({r.get("suite", "") for r in j["rows"]} | set(suites),
+                   key=lambda n: (_COV_SOURCE_ORDER.get((suites.get(n) or {}).get("source", ""), 3), n))
+    reached = sum(1 for r in j["rows"] if r["n"])
+    ran = len({(f, ln) for r in j["rows"] for f, ls in r["changedHits"].items() for ln in ls})
+    unm_lines = sum(len(u["lines"]) for u in j["unmeasurable"])
+    gap_lines = sum(map(len, j["gaps"].values()))
+    head = (f'<div class="rm-tkhead"><span class="cov-av" data-tip="{html.escape(COVCARD_TIP, quote=True)}"'
+            f' aria-hidden="true">📏</span><span class="rm-who">{COVCARD_WHO}</span>'
+            f'<span class="rm-when">{COVCARD_WHEN}</span></div>')
+    summary = (f'<p class="cov-sum"><b>{len(j["rows"])}</b> test{"s" if len(j["rows"]) != 1 else ""} '
+               f'run the change: <b>{ran}</b> of {j["total"]} measurable changed lines run'
+               + (f', <span class="cov-gapn">{gap_lines} run by none</span>' if gap_lines else "")
+               + (f', {unm_lines} more not measurable' if unm_lines else "") + ".</p>")
+    blocks = []
+    for name in order:
+        rs = [r for r in j["rows"] if r.get("suite", "") == name]
+        meta = suites.get(name) or {}
+        if meta.get("status") in ("stale", "skipped", "failed") and not rs:
+            blocks.append(f'<p class="cov-off"><b>{html.escape(name)}</b> not measured — '
+                          f'{html.escape(meta.get("note") or meta.get("status", ""))}</p>')
+            continue
+        if not rs:
+            continue
+        aimed = sorted((r for r in rs if r["aimed"]), key=lambda r: (-r["n"] - len(r["via"]), r.get("title") or ""))
+        passing = sorted((r for r in rs if not r["aimed"]), key=lambda r: (r.get("title") or ""))
+        quiet = j["quiet"].get(name, 0)
+        body = ('<ul class="cov-list">' + "".join(_cov_row(r, j["total"], root, states, model, j["unmeasurable"])
+                                              for r in aimed) + "</ul>") if aimed else ""
+        if passing:
+            body += (f'<details class="cov-pass"><summary>{len(passing)} pass through — they run only '
+                     "changed lines most of this suite runs</summary><ul class=\"cov-list\">"
+                     + "".join(_cov_row(r, j["total"], root, states, model, j["unmeasurable"])
+                               for r in passing) + "</ul></details>")
+        note = f' <span class="cov-note">{html.escape(meta["note"])}</span>' if meta.get("note") else ""
+        blocks.append(f'<section class="cov-suite"><h4>{html.escape(name)} '
+                      f'<span class="cov-n">{len(aimed)} aimed · {len(passing)} passing through'
+                      f'{f" · {quiet} reach nothing" if quiet else ""}</span>{note}</h4>{body}</section>')
+    # The model's rows no measurement reaches: said, not dropped.
+    matched = {_model_key(r, model) for r in j["rows"]}
+    misses = [(k, t) for k, t in model.items() if k and k not in matched]
+    if misses:
+        items = "".join(
+            f'<li><span class="cov-ai cov-ai-off" aria-hidden="true">🤖</span> '
+            f'{html.escape(t["title"])} <span class="tloc">{html.escape(Path(k.rpartition(":")[0]).name)}:'
+            f'{html.escape(k.rpartition(":")[2])}</span></li>' for k, t in misses)
+        blocks.append('<section class="cov-miss"><h4>Paired by AI, not reached by the run '
+                      f'<b>{len(misses)}</b></h4><p class="sub">AI pairs these with the ticket, but '
+                      "no measured run of them executed a changed line — or they were not in a "
+                      f"measured run at all.</p><ul>{items}</ul></section>")
+    if j["gaps"]:
+        items = "".join(
+            f'<li>{_cov_files({f: ls}, root)} <span class="tloc">{_cov_ranges(ls)}</span></li>'
+            for f, ls in sorted(j["gaps"].items()))
+        blocks.append(f'<section class="cov-gaps"><h4>Changed lines no test runs <b>{gap_lines}</b></h4>'
+                      f"<ul>{items}</ul></section>")
+    if j["unmeasurable"]:
+        items = []
+        for u in j["unmeasurable"]:
+            via = ""
+            if u.get("proxy"):
+                where = ", ".join(f"{Path(f).name}:{_cov_ranges(ls)}" for f, ls in u["proxy"].items())
+                via = (f' — through {html.escape(where)}: reached by <b>{u["reached"]}</b> test'
+                       f'{"s" if u["reached"] != 1 else ""}') if u["reached"] else \
+                    f' — through {html.escape(where)}: <span class="cov-gapn">reached by none</span>'
+            items.append(f'<li>{_cov_files({u["file"]: u["lines"]}, root)} '
+                         f'<span class="tloc">{_cov_ranges(u["lines"])}</span> '
+                         f'<span class="cov-why">{html.escape(u["reason"])}</span>{via}</li>')
+        blocks.append(f'<details class="cov-unm"><summary>Not measurable <b>{unm_lines}</b> changed '
+                      "lines — no probe sees them run</summary><ul>" + "".join(items) + "</ul></details>")
+    return (f'<aside class="rm-code cov-card" aria-label="the tests that execute this change">{head}'
+            f'<div class="cov-body">{summary}{"".join(blocks)}</div></aside>')
+
+
+#: The chip's one behaviour, and the ticket's reply to it. Pressing 🤖 on a row outlines
+#: the sentences AI paired it with; clicking a sentence in the ticket lights the measured
+#: rows AI paired with it. Delegated on `document`, like the switch above.
+COV_JS = """
+<script>(function () {
+  document.addEventListener('click', function (ev) {
+    var chip = ev.target.closest && ev.target.closest('.cov-t .cov-ai');
+    var map = ev.target.closest && ev.target.closest('.reqmap');
+    if (!map) return;
+    if (chip) {
+      var on = chip.getAttribute('aria-pressed') !== 'true';
+      map.querySelectorAll('.cov-ai[aria-pressed=true]').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+      map.querySelectorAll('.rm-f.cov-pinned').forEach(function (f) { f.classList.remove('cov-pinned'); });
+      if (on) {
+        chip.setAttribute('aria-pressed', 'true');
+        (chip.getAttribute('data-sids') || '').split(' ').forEach(function (sid) {
+          if (!sid) return;
+          var f = map.querySelector('.rm-f[data-s="' + sid + '"]');
+          if (f) f.classList.add('cov-pinned');
+        });
+      }
+      return;
+    }
+    var f = ev.target.closest('.rm-f');
+    if (!f) return;
+    var sid = f.getAttribute('data-s');
+    map.querySelectorAll('.cov-t').forEach(function (row) {
+      var pins = (row.getAttribute('data-pins') || '').split(' ');
+      row.classList.toggle('cov-lit', pins.indexOf(sid) >= 0);
+    });
+  });
+})();</script>"""
+
+
+def coverage_side(side: str, frag: str, spec: dict, out_dir: Path, root: Path) -> str:
+    """The right-hand column with the measured card in front of the model's — or, with no
+    measurement, the model's card saying it is not one."""
+    doc = load_coverage(out_dir, spec)
+    if doc is None:
+        i = _find(side, "rm-code")
+        j = _find(side[i:], "rm-tkhead") if i is not None else None
+        span = _element(side, i + j) if j is not None else None
+        if span is None:
+            return side
+        return side[:span[1]] + f'<p class="cov-none">{COV_NOT_MEASURED}</p>' + side[span[1]:]
+    test_doc = None
+    if spec.get("testChanges"):
+        try:
+            test_doc = json.loads((out_dir / spec["testChanges"]).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            test_doc = None
+    card = coverage_card(doc, frag, test_doc, root)
+    m = re.match(r'(\s*<div class="rm-side"[^>]*>)(.*)(</div>\s*)$', side, re.S)
+    if not m:
+        return side
+    return m.group(1) + card + '<div class="rm-aicard" hidden>' + m.group(2) + "</div>" + m.group(3)
+
+
 def ticket_head(ref: dict | None) -> str:
     """The ticket's title over its frame — the issue's own, never the PR's.
 
@@ -712,7 +1064,7 @@ REQMAP_TIP_JS = """
 })();</script>""" % REQMAP_CUT
 
 
-def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
+def reqmap_layout(frag: str, spec: dict, out_dir: Path, root: Path | None = None) -> str:
     """Re-lay the model's requirements↔tests matrix, or hand it back untouched.
 
     Every include on the page goes through here and only the matrix is recognised, by the
@@ -769,9 +1121,12 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path) -> str:
                       text_col, count=1, flags=re.S)
     side_col = _append_inside(side_col, cats)
     side_col = card_head(side_col)
+    side_col = coverage_side(side_col, frag, spec, out_dir,
+                             root if root is not None else out_dir.resolve().parent)
     body = (m.group(0) + ticket_head(ticket_ref(spec, out_dir))
             + text_col + side_col + "</div>")
-    return frag[:a] + body + frag[b:] + REQMAP_CSS + REQMAP_TIP_JS + REQMAP_SEMCOV_JS
+    return (frag[:a] + body + frag[b:] + REQMAP_CSS + REQMAP_TIP_JS + REQMAP_SEMCOV_JS
+            + COV_JS)
 
 
 # --- the third run mode: run the tests, then re-derive ---------------------------------

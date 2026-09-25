@@ -154,7 +154,10 @@ from hrbuild.tabs.tests import (
     TICKET_CACHE, ticket_head, ticket_ref, tests_chip, _append_inside, _element, _find,
     CARD_WHO, CARD_WHEN, CARD_AI_TIP, card_head,
     RUN_TESTS_ACTION, run_tests_steps, declare_run_tests_rerun, run_tests_button,
-    _gh_issue, _issue_url, _ms, _take, _test_changes_module
+    _gh_issue, _issue_url, _ms, _take, _test_changes_module,
+    COVERAGE_JSON, COVCARD_WHO, COVCARD_WHEN, COVCARD_TIP, COV_COMMON_SHARE, COV_COMMON_MIN,
+    COV_NOT_MEASURED, COV_JS, _COV_SOURCE_ORDER, load_coverage, coverage_join, model_pairing,
+    coverage_card, coverage_side, _model_key, _cov_files, _cov_ranges, _cov_row, COV_FILES_SHOWN
 )
 from hrbuild.tabs.demo import (
     embed_html, VERDICT_FACE, video_html, VIDEO_VERDICT, video_verdict_html, _link_captions
@@ -363,7 +366,7 @@ def main(argv=None) -> int:
             # is put back here on every build. Every other fragment passes through
             # untouched — the function recognises the matrix by its own class and hands
             # anything else straight back.
-            inc = reqmap_layout(inc, spec, out_dir)
+            inc = reqmap_layout(inc, spec, out_dir, root)
         # Usually the include is commentary on the prose, so it follows it. `includeFirst`
         # is for the one shape where it is the other way round: the fragment *is* what the
         # section is about — the Tests tab opens on the ticket the branch answers —
