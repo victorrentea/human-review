@@ -4407,3 +4407,12 @@ def test_the_grade_reasons_are_short_and_come_from_the_content():
     spec["verdict"]["why"] = ["CI never ran"]
     assert [s for s, _ in build.grade_reasons(spec)] == ["CI never ran"]
     assert build.grade_reasons_html({}) == ""
+
+
+def test_the_pr_button_says_publish_whether_or_not_it_was_pushed_before():
+    for posted in (0, 3):
+        face = build.push_pr_button({"_prPush": {
+            "count": 16, "posted": posted, "pushedAt": "2026-09-25T10:00:00",
+            "counts": {"fixed": 3, "ignored": 6, "assumption": 7}}})
+        assert ">Publish comment on GitHub PR</button>" in face
+        assert "Push to GitHub PR" not in face and "Update GitHub PR" not in face

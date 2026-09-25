@@ -1594,7 +1594,7 @@ PR_PUSH_JS = """<script>document.addEventListener('DOMContentLoaded', function()
 
 
 def push_pr_button(spec) -> str:
-    """*Push to GitHub PR (16)*, at the end of the Review tab's sticky counts line.
+    """*Publish comment on GitHub PR*, at the end of the Review tab's sticky counts line.
 
     Hidden until the probe says this server can run it — off disk, in the zip and on
     GitHub Pages there is nothing to post with. A press runs `--dry-run` first and shows
@@ -1606,7 +1606,9 @@ def push_pr_button(spec) -> str:
         return ""
     c = pp["counts"]
     again = pp["posted"] > 0
-    face = f"{'Update' if again else 'Push to'} GitHub PR ({pp['count']})"
+    # One label whether or not it was pushed before — Victor's wording; the tooltip says
+    # when it last went out and that a second press updates rather than duplicates.
+    face = "Publish comment on GitHub PR"
     tip = (f"{c['fixed']} auto-fixed · {c['ignored']} open · {c['assumption']} "
            "assumptions, each as an inline comment on its line of the PR's diff — the "
            "calls the reviewing agent prepared in .human-review/pr-comments.json, sent "
