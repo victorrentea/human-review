@@ -172,7 +172,7 @@
   .dbfx-body { background:color-mix(in srgb, #000 30%, var(--bg)); } }
 .dbfx-body[hidden] { display:none; }
 /* The tables wrap downward, several side by side per line, never a sideways scroll. */
-.dsv-tables { display:flex; flex-wrap:wrap; gap:.6rem; align-items:flex-start; }
+.dsv-tables { display:flex; flex-direction:column; gap:.6rem; align-items:flex-start; }
 .dsv-t { flex:0 1 auto; min-width:0; max-width:100%; border:1px solid var(--line);
   border-radius:4px; background:var(--card); }
 .dsv-t > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline;
