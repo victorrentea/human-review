@@ -189,16 +189,70 @@
     // The Serve badge copies a different kind of line: not one that changes this page
     // and wants a reload, but one that starts the server and opens the page from it.
     var serve = cmd.id === 'hr-serve';
+    if (serve && location.protocol === 'file:') { serveHere(cmd); return; }
+    copyCommand(cmd, serve, runhere);
+  });
+
+  function copyCommand(cmd, serve, runhere, note) {
     copy(cmd.getAttribute('data-copy') || '')
-      .then(function () { flash(cmd.getAttribute('data-say') || (serve
+      .then(function () { flash(note || cmd.getAttribute('data-say') || (serve
         ? 'Copied \u2014 run it in a terminal: it starts the review server and opens this page served'
         : runhere
         ? 'Copied \u2014 this copy of the report cannot run it, so run it in a terminal'
         // The glyph, on a page that may or may not have a server. "…then reload this
         // page" used to ride along here and was only ever true of some of the commands
         // this renders. Where a reload *is* part of the job, the play glyph does it.
-        : 'Copied \u2014 paste it in a terminal')); });
-  });
+        : 'Copied — paste it in a terminal')); });
+  }
+
+  // Serve, pressed on the page read off disk: ask the launcher on this Mac
+  // (`serve-launcher.py`, installed by `install-serve-launcher.sh`) to start the review
+  // server on this page's directory, then become the served page — this tab, not a new
+  // one. Copying the command was the whole feature before, and it is still what happens
+  // where no launcher answers: a refused connection is how "not installed" is spelt.
+  // Asked on the click and never on load, so a reader of the zip on another machine does
+  // not get a red "connection refused" line in the console for merely opening the page.
+  var LAUNCHER = 'http://127.0.0.1:7653';
+  function serveHere(cmd) {
+    if (cmd.classList.contains('starting')) return;
+    cmd.classList.add('starting');
+    flash('Starting the review server…', true);
+    fetch(LAUNCHER + '/serve', {
+      method: 'POST', cache: 'no-store',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({page: decodeURIComponent(location.pathname)})
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok || !j.url) {
+          var e = new Error(j.error || 'the launcher refused');
+          e.said = true;
+          throw e;
+        }
+        flash('Served — reloading this tab from ' + j.url.split('/')[2], true);
+        location.replace(j.url + location.hash);
+      });
+    }).catch(function (e) {
+      cmd.classList.remove('starting');
+      // The launcher answered and the server did not start: say why, and still hand over
+      // the line, which prints the same error in a terminal where it can be read whole.
+      copyCommand(cmd, true, false, e.said
+        ? 'Could not start it (' + e.message + ') — the command is copied, run it in a terminal'
+        : 'Copied — run it in a terminal. To make this button start it itself, run '
+          + 'scripts/install-serve-launcher.sh once');
+    });
+  }
+
+  // The chip's hover says what a click does on *this* copy: off disk, start the server and
+  // reload from it; anywhere else (GitHub Pages, the zip under another server) the build's
+  // own words, since nothing on this Mac can be asked from there.
+  (function () {
+    var chip = document.getElementById('hr-serve');
+    if (!chip || location.protocol !== 'file:') return;
+    chip.classList.add('launches');
+    chip.setAttribute('data-tip', 'Start the review server and reload this tab from it, so '
+      + 'buttons run their action instead of copying a command. Without the launcher '
+      + '(scripts/install-serve-launcher.sh), copies the terminal command instead.');
+  })();
 
   // Where a running command says what it is doing: a line under the control that started
   // it, if the block offering that control put one there.
@@ -395,6 +449,9 @@
   window.HR.onready(function (caps) {
     var chip = document.getElementById('hr-vsc');
     if (!caps || !chip || !STAMP.hrHead) return;
+    function esc(t) {
+      return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
     var last = null;
     function ask() {
       if (document.hidden) return Promise.resolve(last);
@@ -406,6 +463,11 @@
           chip.classList.remove('vsc-on', 'vsc-near', 'vsc-off');
           chip.classList.add('vsc-' + j.state);
           chip.setAttribute('data-tip', j.tip);
+          // Two lines: what the click does, then the state behind the colour, quieter and
+          // set apart (tip.js's `.tipfoot`). Escaped here: paths and branch names are text.
+          var lines = String(j.tip || '').split('\n');
+          chip.setAttribute('data-tip-html', esc(lines[0]) + (lines.length > 1
+            ? '<p class="tipfoot">' + lines.slice(1).map(esc).join('<br>') + '</p>' : ''));
           chip.hidden = false;
           return j;
         })

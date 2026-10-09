@@ -999,8 +999,10 @@ def test_both_editors_are_offered_and_named(tmp_path):
         "drawio_url": "drawio:///repo/C.drawio.png",
         "drawio_web_url": "https://app.diagrams.net/?splash=0&title=C#R%3Cmx%3E"}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
-    assert '<span class="cmd-word">Edit on desktop</span><span class="cmd-ico">\u2197</span></a>' in out
-    assert '<span class="cmd-word">Edit on web</span><span class="cmd-ico">\u2197</span></a>' in out
+    # Pencil and label only: the ↗ after them went (Victor, 9 Oct 2026).
+    assert '<span class="cmd-word">Edit on desktop</span></a>' in out
+    assert '<span class="cmd-word">Edit on web</span></a>' in out
+    assert '\u2197' not in out
     # Each says on hover where it opens (hand-added on the PR #51 page, 7 Oct 2026, and
     # lost by the from-scratch rebuild until the builder wrote it).
     assert 'data-tip="Open in the draw.io desktop app"' in out

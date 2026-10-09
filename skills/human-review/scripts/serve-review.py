@@ -590,11 +590,17 @@ def editor_state(sha, root, branch) -> dict:
              "reviewed": {"branch": branch, "sha": sha}, "prompt": prompt,
              "note": (f"This checkout is on {where}, not the reviewed {wanted}."
                       if prompt else None)}
+    # Two lines, the press first: what a click does is the question a hover is asked, so
+    # it is the first line, in Victor's words, and the state behind the colour is the
+    # second (editor.js sets the first line apart). It was one paragraph — "No VS Code
+    # window has /Users/…/petclinic-pr-owner-grid-paginated open. Open: nothing in a git
+    # checkout. Click: open this checkout in VS Code." — with the click at its far end.
+    folder = Path(root).name if root else "this checkout"
+    open_here = f"Click to open a new VS Code in {folder}"
     if not pings:
         return {"state": "off", "window": None, **facts,
-                "tip": "No VS Code window answers: is the Human Review extension "
-                       "(victorrentea.human-review) installed and a window open? "
-                       "Click: open this checkout in VS Code."}
+                "tip": f"{open_here}\nNo VS Code window answers: is the Human Review "
+                       "extension (victorrentea.human-review) installed?"}
     holder, claim = None, 0
     for _entry, ping in pings:
         c = _claim(ping.get("folders") or [], (root, real))
@@ -603,13 +609,13 @@ def editor_state(sha, root, branch) -> dict:
     name = holder and (holder.get("folder") or Path(root).name)
     if holder and at:
         return {"state": "on", "window": name, **facts,
-                "tip": f"VS Code window {name} has this checkout on the reviewed commit "
-                       f"({on} @ {head[:8]}). Click: bring that window to the front."}
+                "tip": f"Click to bring VS Code window {name} to the front\n"
+                       f"On the reviewed commit ({on} @ {head[:8]})."}
     if holder:
         return {"state": "near", "window": name, **facts,
-                "tip": f"VS Code window {name} has this checkout, but on {where}, not "
-                       f"{wanted}: links open only files unchanged since. Click: bring it "
-                       "to the front and get a prompt that checks out the reviewed commit."}
+                "tip": f"Click to bring VS Code window {name} to the front and get a "
+                       f"prompt to check out {wanted}\nIt is on {where}: links open only "
+                       "files unchanged since."}
     # No window on the checkout. Say what *is* open, and which of it a link still reaches.
     seen, there = [], []
     for _entry, ping in pings:
@@ -625,14 +631,12 @@ def editor_state(sha, root, branch) -> dict:
                 seen.append(label)
             if h and sha and h.startswith(sha):
                 there.append(f.get("name") or Path(top).name)
-    tip = f"No VS Code window has {root or 'this checkout'} open. " \
-          f"Open: {', '.join(seen) if seen else 'nothing in a git checkout'}."
+    state = f"Open now: {', '.join(seen) if seen else 'nothing in a git checkout'}."
     if there:
-        tip += f" Links still open in {', '.join(there)}, on the reviewed commit."
-    tip += " Click: open this checkout in VS Code."
+        state += f" Links still open in {', '.join(there)}, on the reviewed commit."
     if prompt:
-        tip += f" It is on {where}, so the click also offers a prompt to check out {wanted}."
-    return {"state": "off", "window": None, **facts, "tip": tip}
+        state += f"\nCheckout: {where} — the click also offers a prompt to check out {sha[:8]}."
+    return {"state": "off", "window": None, **facts, "tip": f"{open_here}\n{state}"}
 
 
 def focus_window(entry) -> bool:
@@ -911,7 +915,12 @@ def find_server(directory: Path, preferred: int, span: int = PORT_SPAN):
 
 
 def free(port):
+    """Can the server bind it — asked the way the server binds (`allow_reuse_address`).
+    Without SO_REUSEADDR the connections a reloading tab left in TIME_WAIT made a port
+    whose server had just been stopped look taken for half a minute, and a restart walked
+    off to the next port, away from the URL the open tabs poll."""
     with socket.socket() as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind(("127.0.0.1", port))
             return True

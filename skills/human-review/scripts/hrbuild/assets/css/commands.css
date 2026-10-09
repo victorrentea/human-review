@@ -261,7 +261,6 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
 @media (prefers-color-scheme: dark) {
   .rerun-acts a.dgm-edit, .rerun-acts a.dgm-edit:hover { border-color:#e0a458; color:#e0a458; } }
 .cmd-lead { margin-right:.3rem; }
-.rerun-acts a.dgm-edit .cmd-ico { font-size:1.1em; line-height:1; margin-left:.35rem; }
 /* The actions, in the draw.io card's header: right-aligned before the file name, centred
    on the title (Victor, 7 Oct 2026 — "they are action buttons"). Two editors and Revert. */
 .rerun-acts { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; }
@@ -363,6 +362,11 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
    the masthead Victor tuned live on 7 Oct (patches 1350, 1422, masthead-r4). */
 .titlerow .titleside .chip { padding-left:.55rem; padding-right:.55rem; }
 .titlerow .titleside .titlescore { padding-left:.55rem; padding-right:.5rem; }
+/* Serve, off disk on a Mac with the launcher (editor.js `serveHere`): the press starts the
+   server and the tab reloads from it, so it is a pointer and not chips.css's copy cursor,
+   and while the server comes up it says it is working. */
+.titlerow button.chip-serve.launches { cursor:pointer; }
+.titlerow button.chip-serve.starting { cursor:progress; opacity:.6; }
 .titlerow .chip-vsc[hidden], .titlerow .chip-mode[hidden], .titlerow .chip-serve[hidden], .titlerow .chip-rerun[hidden] { display:none; }
 /* Stop: the ⏹️ after the word `Served`, inside its pill. A bare glyph with no ring of its
    own — the pill's border is the only border — at about the text's cap height, and its own

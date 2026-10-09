@@ -403,7 +403,7 @@ def drawio_open_html(app_url: str, web_url: str = "") -> str:
     def btn(href: str, word: str, tip: str, extra: str = "") -> str:
         return (f'<a class="dgm-edit" href="{html.escape(href, quote=True)}" '
                 f'data-tip="{html.escape(tip, quote=True)}"{extra}>'
-                f'<span class="cmd-lead">\u270f\ufe0f</span><span class="cmd-word">{word}</span><span class="cmd-ico">\u2197</span></a>')
+                f'<span class="cmd-lead">\u270f\ufe0f</span><span class="cmd-word">{word}</span></a>')
 
     out = []
     if app_url:

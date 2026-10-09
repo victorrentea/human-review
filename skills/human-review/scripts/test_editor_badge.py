@@ -260,7 +260,11 @@ def test_state_three_no_window_on_the_checkout(repo, tmp_path, monkeypatch):
     finally:
         httpd.shutdown()
     assert got["state"] == "off" and got["window"] is None and got["prompt"] is None
-    assert f"No VS Code window has {r} open" in got["tip"] and "open this checkout" in got["tip"]
+    # The press first, the state on a line of its own (Victor, 9 Oct: the whole paragraph,
+    # path and all, ended with what the click does).
+    press, state = got["tip"].split("\n")[:2]
+    assert press == f"Click to open a new VS Code in {r.name}"
+    assert state.startswith("Open now: ")
 
 
 def test_the_colour_is_about_the_servers_checkout_not_the_one_the_page_names(
