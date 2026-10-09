@@ -139,6 +139,14 @@ button.diskcopy { border:0; background:none; cursor:pointer; padding:0 0 0 .35re
                   font:.8rem/1.5 inherit; opacity:.75; }
 button.diskcopy:hover { opacity:1; }
 .panel[hidden] { display:none; }
+/* Every panel is its own stacking context, so nothing a tab raises can climb over the
+   sticky masthead and strip (z 30/31). A pressed (i) wears z-index 61 to stand on its
+   explainer's folder tab (60), and with the panel flat those numbers were compared with
+   the header's: scrolled, the (i) floated over the tab strip (Victor, 9 Oct 2026, on the
+   Structure tab). Isolated, 60 and 61 still order the two inside the panel and the whole
+   panel paints under the header. Popovers that must cover the header (.tip, .rm-covpop,
+   #genseq-panel, .hrconfirm) live on <body>, outside every panel. */
+.panel { isolation:isolate; }
 /* The moment before the strip runs. Every panel is in the document and *visible* while
    the earlier scripts measure it -- TABS_JS says why: getBBox() inside a display:none
    subtree returns zeros -- so for the first few hundred milliseconds of every load the
