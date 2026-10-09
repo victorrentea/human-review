@@ -247,9 +247,11 @@ def graph_nodes(cur, old):
 # nothing that costs is not drawn at all, and a node with more expensive children than
 # this shows the costliest and folds the rest into "+N".
 GRAPH_KIDS = 6
-# A box wears its class's colour on its frame, so two boxes of one mapper read as a pair
-# and the next mapper over reads as another. The hues are numbered here and painted in CSS;
-# none of them is green, red or the link blue, which already mean added, removed and open.
+# A box's class name is written in its class's colour, so two boxes of one mapper read as a
+# pair and the next mapper over reads as another. Only the name: on the frames as well, six
+# hues around one graph were louder than the scores they frame. The hues are numbered here
+# and painted in CSS; none of them is green, red or the link blue, which already mean added,
+# removed and open — and the frames keep those three to themselves.
 CLASS_HUES = 6
 
 
@@ -957,11 +959,11 @@ a.cx-why-line:hover code { text-decoration:underline; }
     The names are set in the UI face, not monospace: the graph is as wide as its deepest
     chain times its widest names, and a proportional face buys back a fifth of that. */
 .cg-n { display:inline-grid; grid-template-columns:auto auto; column-gap:6px;
-        align-items:center; padding:0; border:1px solid var(--cg-hue, var(--line)); border-radius:6px;
+        align-items:center; padding:0; border:1px solid var(--line); border-radius:6px;
         background:var(--card); color:inherit; white-space:nowrap; cursor:pointer;
         position:relative; z-index:1; transition:border-color .12s, background .12s; }
-.cg-h0 { --cg-hue:#f59e0b; } .cg-h1 { --cg-hue:#ec4899; } .cg-h2 { --cg-hue:#8b5cf6; }
-.cg-h3 { --cg-hue:#06b6d4; } .cg-h4 { --cg-hue:#f97316; } .cg-h5 { --cg-hue:#d946ef; }
+.cg-h0 { --cg-hue:#b45309; } .cg-h1 { --cg-hue:#be185d; } .cg-h2 { --cg-hue:#6d28d9; }
+.cg-h3 { --cg-hue:#0e7490; } .cg-h4 { --cg-hue:#c2410c; } .cg-h5 { --cg-hue:#a21caf; }
 .cg-n:hover { border-color:var(--link); }
 .cg-n:focus-visible { outline:2px solid var(--link); outline-offset:1px; }
 /* Clicked: the box takes the link blue — frame, ring and a tint — so the one being read
@@ -970,8 +972,8 @@ a.cx-why-line:hover code { text-decoration:underline; }
                 background:color-mix(in srgb, var(--link) 12%, var(--card)); opacity:1; }
 .cg-c { grid-column:1 / 3; display:flex; align-items:center; gap:3px; height:18px;
         box-sizing:border-box; padding:0 6px;
-        border-bottom:1px solid color-mix(in srgb, var(--cg-hue, var(--line)) 45%, var(--line));
-        font:500 10.5px/14px system-ui,sans-serif; color:var(--muted); }
+        border-bottom:1px solid var(--line);
+        font:500 10.5px/14px system-ui,sans-serif; color:var(--cg-hue, var(--muted)); }
 .cg-m { grid-column:1; display:flex; align-items:center; height:20px; padding-left:6px;
         font:600 10.5px/14px system-ui,sans-serif; }
 .cg-cog { grid-column:2; grid-row:2; padding-right:6px; font:700 9.5px/1.3 ui-monospace,Menlo,monospace;

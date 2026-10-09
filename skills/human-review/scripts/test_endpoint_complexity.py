@@ -666,6 +666,22 @@ def test_a_node_folds_open_onto_its_own_lines_and_only_the_arrow_navigates():
     assert "border-left:6px solid var(--cg-arrow)" in delta.CSS, "edges end in arrowheads"
 
 
+
+def test_a_class_colour_tints_its_name_and_never_the_frame():
+    """Six frame colours around one graph were louder than the scores they frame (Victor,
+    9 Oct: "too colorful, distracting"). The class's hue stays — on its name only — and
+    the frame is the plain rule again, so green on a frame still means only "raised"."""
+    nodes = [_gnode("a.Ctl#go", calls=["a.Map#all"]), _gnode("a.Map#all", cog=1)]
+    out, _ = delta._graph(nodes)
+    assert re.search(r'class="cg-n cg-h0[ "]', out) and re.search(r'class="cg-n cg-h1[ "]', out)
+    frame = re.search(r"\.cg-n \{([^}]*)\}", delta.CSS).group(1)
+    assert "border:1px solid var(--line);" in frame, "the frame is the plain rule"
+    name = re.search(r"\.cg-c \{([^}]*)\}", delta.CSS).group(1)
+    assert "color:var(--cg-hue, var(--muted))" in name, "the hue is on the class name"
+    assert "border-bottom:1px solid var(--line);" in name, "the rule under it is plain too"
+    assert re.search(r"\.cg-add \{[^}]*border-color:var\(--cx-added\)", delta.CSS), \
+        "a raised method keeps its green frame"
+
 def test_a_call_into_the_same_class_hangs_below_and_only_another_class_moves_right():
     """Width is what makes a reader scroll the graph sideways, and a mapper handing its
     elements to its own overload is not a step anywhere new. So a same-class callee goes
