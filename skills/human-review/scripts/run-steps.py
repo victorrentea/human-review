@@ -907,8 +907,7 @@ def _trace_shot(ctx: Ctx, cfg: dict, app: AppInstance, drawn: list[str],
         ctx.notes.append("no trace shot for the Sequence tab: no Grafana to take it from "
                          "(steps.sequence.trace.grafana, or GRAFANA_URL in app.vars)")
         return
-    py = sh(f"{HERE}/playwright-python.sh", ctx, check=False, capture=True)
-    python = (py.stdout or "").strip().splitlines()[-1:] if py.returncode == 0 else []
+    python = _playwright_python(ctx)
     if not python:
         ctx.notes.append("no trace shot for the Sequence tab: Playwright for Python could "
                          "not be provisioned (playwright-python.sh)")
@@ -1208,6 +1207,13 @@ def _c2(ctx: Ctx):
            f"--out-dir {ART} --name deployment --traces {graph}" + extra, ctx)
 
 
+def _playwright_python(ctx: Ctx) -> list:
+    """`[path]` of an interpreter that can `import playwright`, or `[]` when none could be
+    provisioned. `run-steps` itself may run on a Python without it (python3.14 here)."""
+    py = sh(f"{HERE}/playwright-python.sh", ctx, check=False, capture=True)
+    return (py.stdout or "").strip().splitlines()[-1:] if py.returncode == 0 else []
+
+
 def has_dsl() -> bool:
     """Whether the repository keeps a Structurizr DSL file — the `c4` step's whole input."""
     out = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "--", "*.dsl"],
@@ -1222,8 +1228,10 @@ def _c4(ctx: Ctx):
     throwaway container and asks that viewer for an SVG of every view, light and dark, at
     the work tree and at the merge-base. Soft on a machine without Docker: the step is
     skipped with the reason, and the card on the Structure tab says it in place."""
-    r = sh(f"{HERE}/structurizr-views.py --base {ctx.base} --out-dir {ART}/c4", ctx,
-           check=False)
+    python = _playwright_python(ctx)
+    run = f"{shlex.quote(python[0])} {HERE}/structurizr-views.py" if python \
+        else f"{HERE}/structurizr-views.py"
+    r = sh(f"{run} --base {ctx.base} --out-dir {ART}/c4", ctx, check=False)
     if r.returncode == 3:
         raise LookupError("no Structurizr DSL workspace in this repository")
     if r.returncode == 4:
