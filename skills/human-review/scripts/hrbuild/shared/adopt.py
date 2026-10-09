@@ -52,6 +52,10 @@ PIECES: dict[str, tuple[str, str]] = {
         "captions as a clickable transcript beside the player",
         "reference/film-prompt.md, reference/feature-script.md, "
         "scripts/record-feature-video.sh"),
+    "behaviour.seed": (
+        "named datasets (DB fixtures) the running app can be reset to with one click, each "
+        "one's tables shown in place so two of them can be compared",
+        "scripts/dataset_view.py, scripts/hrbuild/shared/fixtures.py"),
     "api": (
         "the REST contract at the merge-base against the branch, as a visual OpenAPI diff "
         "with a breaking-change verdict", "scripts/openapi-visual-diff.py, "
@@ -148,7 +152,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'behaviour': {
         "li": [
-            'A short film of the feature on the real app, from a script an AI wrote: start here on a PR you never saw.',
+            'A short film of the feature on the real app: start here on a PR you never saw.',
+            'Its script and narration are written by an AI.',
             'Check it does what the ticket asked.',
             'Click a transcript line to jump there.',
             '<b>Running app</b>: this build in Docker, on a known dataset, to try yourself.',
