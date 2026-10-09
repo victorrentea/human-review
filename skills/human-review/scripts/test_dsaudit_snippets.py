@@ -241,7 +241,7 @@ def test_the_source_bar_links_the_template_line_the_way_every_snippet_does(tmp_p
     bar = ds.source_bar(f, root, None)
     target = (root / f["source"]["file"]).resolve()
     assert f'href="vscode://file/{target}:4:1"' in bar
-    assert ">visit-edit.component.html:4</a>" in bar
+    assert ">visit-edit.component.html</a>" in bar, "line 4 is in the href, not the face"
     assert 'class="srcref srcbar-path"' in bar, "the page's own source bar, not a copy"
     assert ">as rendered</span>" in bar
     assert "no template" in ds.source_bar(dict(f, source=None), root, None)

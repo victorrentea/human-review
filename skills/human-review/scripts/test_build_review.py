@@ -558,7 +558,7 @@ def test_a_snippet_header_shows_the_name_and_keeps_the_path_on_hover(tmp_path):
     (deep / "VetRestController.java").write_text("one\ntwo\nthree\n", encoding="utf-8")
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java"
     out = _extract_snippet().render(f"{rel}:1-2", None, tmp_path, exact=True)
-    assert ">VetRestController.java:1-2</a>" in out
+    assert ">VetRestController.java</a>" in out, "the name, no line number on the face"
     assert f'data-tip="Open in VS Code: {rel}"' in out
     assert f">{rel}:1-2<" not in out, "the ceremony is on hover, not in the face"
 
@@ -567,7 +567,7 @@ def test_a_snippet_of_a_file_at_the_repo_root_says_only_that_it_opens(tmp_path):
     """A tooltip repeating the name is a tooltip saying nothing."""
     (tmp_path / "README.md").write_text("one\ntwo\n", encoding="utf-8")
     out = _extract_snippet().render("README.md:1-2", None, tmp_path, exact=True)
-    assert '>README.md:1-2</a>' in out
+    assert '>README.md</a>' in out
     assert 'data-tip="Open in VS Code"' in out
 
 
@@ -637,7 +637,7 @@ def test_each_statement_renders_as_the_page_s_one_snippet_style():
     out = build._logging_listing([INFO_HIT], REPO_ROOT)
     assert out.count('<figure class="snippet">') == 1
     assert out.count('<div class="srcbar">') == 1
-    assert '>Slf4jExplicit.java:8</a>' in out
+    assert '>Slf4jExplicit.java</a>' in out
     assert "Booking visit for owner" in out
     assert "<figcaption" not in out and "<table" not in out
 
@@ -2315,7 +2315,7 @@ def test_a_bare_ref_shows_the_name_and_keeps_the_path_on_hover():
     out `src/main/java/victor/training/petclinic/...`, is a wall nobody reads."""
     rel = "petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java"
     out = build._ref_link({"label": f"{rel}:96-100", "abs": "/tmp/x:96:1"})
-    assert ">VetRestController.java:96-100</a>" in out
+    assert ">VetRestController.java</a>" in out, "lines 96-100 are in the href, not the face"
     assert f'data-tip="{rel}"' in out
 
 
@@ -3742,13 +3742,13 @@ def _repo_whose_change_is_far_from_the_quote(tmp_path):
 
 
 def test_a_snippets_link_opens_where_its_own_face_says(tmp_path, monkeypatch):
-    """A bar reading `A.java:10` opens line 10 — not the first line that differs, which in
+    """A bar quoting line 10 of `A.java` opens line 10 — not the first line that differs, which in
     a real class is an import fifty lines above the finding."""
     r = _repo_whose_change_is_far_from_the_quote(tmp_path)
     monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
     out = build.snippet_html("A.java:10", None, r, exact=True)
     bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
-    assert ">A.java:10</a>" in bar
+    assert ">A.java</a>" in bar, "the face is the file; the line is in the href"
     assert "/A.java:2:1" not in bar, "the decoy import"
     assert bar.count("/A.java:10:1") == 1, "the bar's own link, and nothing in front of it"
 
@@ -3761,7 +3761,7 @@ def test_the_logging_boxs_link_follows_it_to_the_statement(tmp_path, monkeypatch
     monkeypatch.setattr(snippets, "SNIPPET_BASE", "HEAD^")
     out = build.snippet_html("A.java:8-11", None, r, exact=True, link_at=(10, 5))
     bar = out[out.index('<div class="srcbar">'):out.index("</div>", out.index('<div class="srcbar">'))]
-    assert ">A.java:10</a>" in bar
+    assert ">A.java</a>" in bar, "the face is the file; the line is in the href"
     assert "/A.java:8:1" not in bar, "the window's first line is not what the box is about"
     assert "/A.java:10:5" in bar
 
@@ -3776,7 +3776,7 @@ def test_a_snippet_whose_base_is_not_there_still_gets_its_bar(tmp_path, monkeypa
     out = build.snippet_html("README.md:1-2", None, r, exact=True)
     assert '<div class="srcbar">' in out
     assert "<svg" not in out.split("</div>")[0]
-    assert ">README.md:1-2</a>" in out
+    assert ">README.md</a>" in out
 
 
 def test_the_review_tab_label_is_the_word_alone():
@@ -5908,6 +5908,18 @@ def test_a_reason_citing_the_spec_links_the_line_and_quotes_it(tmp_path):
     assert "<code>design.md</code> stays code." in why, "never inside code"
 
 
+def test_a_citation_with_a_line_links_the_line_but_shows_only_the_file(tmp_path):
+    """`design.md:8` in a reason reads `design.md` on the page; the editor link and the
+    GitHub link still land on line 8 (Victor, 9 Oct 2026: no line numbers as labels)."""
+    _spec_repo(tmp_path)
+    item = {"title": "t", "severity": "info", "why": "As design.md:8 decided."}
+    assert build.link_spec_citations({"findings": [item]}, tmp_path, root=tmp_path) == 1
+    why = item["why"]
+    assert re.search(r'<a class="specref" href="[^"]*design\.md:8:1"[^>]*>design\.md</a>', why)
+    assert "design.md#L8" in why
+    assert ">design.md:8<" not in why
+
+
 def test_the_changes_own_spec_commit_is_not_an_unreviewed_commit(tmp_path):
     """Run 10 listed b12c9bdb — the OpenSpec proposal of this very change — among tooling
     commits as "never reviewed", and it capped the grade. It is the spec the change was
@@ -6170,7 +6182,8 @@ def test_a_narrowed_ticket_sentence_is_a_grade_reason_that_links_its_decision(tm
     assert sig["href"].endswith("proposal.md:3:1")       # no github remote: the editor
     assert "Sorting is limited to Name and City" in sig["full"]
     panel = build.grade_reasons_html(spec)
-    assert '— <a href="vscode://file/' in panel and ">proposal.md:3</a></li>" in panel
+    assert '— <a href="vscode://file/' in panel and ">proposal.md</a></li>" in panel, \
+        "the link lands on line 3; its face is the file"
     assert spec["verdict"] == {"score": 8}, "a decided narrowing does not lower the grade"
 
 

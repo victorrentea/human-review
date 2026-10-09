@@ -590,16 +590,21 @@ def _finding_refs(f) -> str:
 
 
 def _ref_link(r) -> str:
-    """`VetRestController.java:96-100`, with the path it came from on hover.
+    """`VetRestController.java`, linked to lines 96-100, with its path on hover.
 
     The same trade a diff header makes: a repo-relative Java path spends five segments on
     module, `src/main/java` and the org package before it reaches the one word that says
     which file this is, and a line of three such references is a wall no reader parses.
     The path is not dropped, it is moved to the tooltip — and a file at the repo root has
-    no path to move, so it gets no tooltip repeating its own name."""
+    no path to move, so it gets no tooltip repeating its own name.
+
+    The face is the name alone: `VetRestController.java`, not `…:96-100`. The href still
+    opens line 96; a number on the label is one nobody acts on (Victor, 9 Oct 2026)."""
     label = r["label"]
     rel, _, lines = label.rpartition(":")
-    name = f"{Path(rel).name}:{lines}" if rel else label
+    if not (rel and re.fullmatch(r"[\d,–-]+", lines)):
+        rel = label
+    name = Path(rel).name
     tip = f' data-tip="{html.escape(rel)}"' if "/" in rel else ""
     return (f'<a class="srcref" href="vscode://file/{r["abs"]}"{tip}>'
             f'{html.escape(name)}</a> ')
@@ -1714,6 +1719,9 @@ def grade_reasons_html(spec) -> str:
         if not at:
             return ""
         href, face = at
+        # The file, not its line: `proposal.md:86` reads `proposal.md` and the link still
+        # lands on line 86 (Victor, 9 Oct 2026: no line numbers as labels on this page).
+        face = re.sub(r":\d+(?:[-–]\d+)?(?:,\d+(?:[-–]\d+)?)*$", "", face)
         return (f' — <a href="{html.escape(href, quote=True)}" target="_blank" '
                 f'rel="noopener">{html.escape(face)}</a>')
     def rest(short: str, full: str) -> str:
@@ -2814,8 +2822,12 @@ def link_spec_citations(spec: dict, out_dir: Path, root: Path | None = None) -> 
         at = f"{rel}:{line}" if line else rel
         tip = html.escape(f"{at} — {quote}" if quote else at, quote=True)
         vs = f"vscode://file/{(Path(root) / rel).resolve()}" + (f":{line}:1" if line else "")
+        # The citation keeps its words and loses its line: `design.md:44` reads `design.md`,
+        # and the link and the hover still land on line 44. A line number on the face is a
+        # number nobody acts on (Victor, 9 Oct 2026) — the link is what it was for.
+        face = re.sub(r":\d+(?:[-–]\d+)?(?:,\d+(?:[-–]\d+)?)*$", "", m.group(0))
         out = (f'<a class="specref" href="{html.escape(vs, quote=True)}" data-tip="{tip}">'
-               f'{m.group(0)}</a>')
+               f'{face}</a>')
         if gh and head:
             web = f"{gh}/blob/{head}/{urllib_quote(rel)}" + (f"#L{line}" if line else "")
             out += (f'<a class="specref-gh" href="{html.escape(web, quote=True)}" '

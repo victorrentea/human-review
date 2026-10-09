@@ -300,9 +300,16 @@ def srcbar_html(href: str, rel: str, lineref: str = "", badge: str = "") -> str:
     path spends five segments on module, `src/main/java` and the org package before it
     reaches the one word that answers "which file is this?", which is the only question
     this row exists to answer. A file at the repo root has no path to move, and a tooltip
-    repeating the name is a tooltip saying nothing."""
+    repeating the name is a tooltip saying nothing.
+
+    The face carries **no line number**, though `lineref` is still accepted: the link
+    itself lands on the line (`href` ends `:86:1`), and that is the only thing a line
+    number is for. Read off the header, `ExceptionControllerAdvice.java:86` asks the
+    reader to parse a number nobody acts on — "no one really cares about this line
+    number" (Victor, 9 Oct 2026) — and the gutter beneath already numbers every line
+    quoted."""
     name = Path(rel).name
-    label = f"{name}:{lineref}" if lineref else name
+    label = name
     # What it does first, what it opens second. A tip that opens with a sixty-character
     # path makes the reader parse the path to find out whether the sentence at the end is
     # worth reading; the four words that never change are cheaper to skip than to hunt for.
