@@ -115,3 +115,24 @@ table.costfour > tfoot > tr > td + td { padding-left:1.6rem; }
 .costtile a { color:var(--link); }
 .costtile:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .costtooling-foot { margin:.45rem 0 0; font-size:.72rem; }
+/* The (i) explainer, as wide as the table under it and no wider (Victor, 9 Oct 2026: run
+   across the whole title row, four short lines sat in a band twice the bill's width). The
+   panel becomes three columns — the bill in the middle one, as wide as the table's own
+   content, and centred like it was — and the box sits in that same column. `contain:
+   inline-size` keeps its text out of the column's sizing: the table alone sets the width,
+   the box fills it. Everything else in the panel spans all three, as before. Only here:
+   the shared `.hrx-box` in adopt.css stays full-width on every other tab. */
+#cost:not([hidden]) { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); }
+#cost > * { grid-column:1 / -1; }
+#cost > table.costfour, #cost > .hrx-box { grid-column:2; }
+#cost > table.costfour { justify-self:center; }
+/* A grid does not collapse margins: the gaps the block flow gave by collapsing are given
+   back by hand, so the table sits exactly where it did. */
+#cost > .adopthead { margin-bottom:0; }
+#cost > .hrx-box { contain:inline-size; margin-bottom:0; }
+/* Under the middle column the box no longer reaches its (i) at the title row's right end,
+   so the folder tab explain.js draws to join them would cross empty space: the box gets a
+   plain border of the same blue instead, a little air under the title row, and no tab. */
+#cost > .hrx-box.hrx-tabbed { margin-top:.6rem !important; background:var(--hrx-bg);
+             border:1.5px solid var(--hrx-bd); padding:.5rem .85rem .55rem; }
+#cost > .hrx-box > .hrx-outline { display:none; }
