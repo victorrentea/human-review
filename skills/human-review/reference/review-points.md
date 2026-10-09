@@ -29,6 +29,10 @@ why this reading, and what holds its confidence where it is; `observation:` — 
 sentences, and it is the one field a Fixed or Ignored card cannot do without. The body described under *Items* below exists for the rare item that
 cannot be understood from its anchor; it is not the default.
 
+**Name files and symbols in prose, never line numbers.** Write `OwnerRestController.getOwner`,
+not `OwnerRestController.java:150` or "line 57": the page shows file names without lines, and
+the `file:` field already carries the line the link lands on.
+
 ````markdown
 ---
 ticket: victorrentea/petclinic#37
