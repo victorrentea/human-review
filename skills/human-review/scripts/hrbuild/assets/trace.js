@@ -31,7 +31,9 @@
       if (!where) return;
       var tv = document.createElement('a');
       tv.className = 'rm-tv';
-      tv.textContent = '🎭';
+      // No text: the link is the Playwright logo, drawn by `.rm-tv` in tests.css. It used to
+      // carry a 🎭 the stylesheet then had to hide — the theatre masks are not Playwright's
+      // mark. The aria-label below is what a screen reader hears; `data-tip` what a mouse sees.
       // Said once, by the branch that is actually taken. The label used to be written
       // before the fork and claimed "open the recording of this test" in both, so off
       // disk a screen reader announced an open over a control that copies — the one
