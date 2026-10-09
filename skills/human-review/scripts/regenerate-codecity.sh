@@ -71,7 +71,11 @@ if [ ! -e "$TOOL_DIR/.git" ]; then      # -e: a git worktree has a .git FILE
   git clone --depth 1 "$TOOL_URL" "$TOOL_DIR"
 elif [ -z "$NO_PULL" ]; then
   echo "updating the Code City generators in $TOOL_DIR ..."
-  git -C "$TOOL_DIR" pull --ff-only --quiet
+  # Offline (on a plane) the pull fails, and under `set -e` that used to take the whole
+  # city step down with it — while the clone already on disk renders a perfectly good
+  # city. An update is a nicety; a city is the point.
+  git -C "$TOOL_DIR" pull --ff-only --quiet \
+    || echo "could not update the Code City generators (offline?) — using the copy on disk" >&2
 fi
 
 # Repo-relative or absolute. A review passes its own `.human-review/assets/codecity`, so the
