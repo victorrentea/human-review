@@ -1347,14 +1347,15 @@ def _main(argv=None) -> int:
         # command on every trace row, and a reader on another machine has the zip's own
         # README for the general recipe. And `exit` last: the server is detached
         # (`start_new_session`), so the terminal it was typed into has nothing left to do
-        # and closes — only on success, so a failure stays on screen to be read.
+        # and closes — only on success, so a failure stays on screen to be read. `--no-open`
+        # because `open "$u"` already opens the page: without it a fresh server opened two tabs.
         try:
             here = out_dir.resolve().relative_to(root.resolve())
         except ValueError:
             here = out_dir.resolve()
         serve_cmd = (f'cd {shlex.quote(str(root.resolve()))} && u="$('
                      f'{shlex.quote(str(HERE / "serve-review.py"))} {shlex.quote(str(here))}'
-                     f' --page {shlex.quote(out_path.name)})" && (open "$u" 2>/dev/null'
+                     f' --page {shlex.quote(out_path.name)} --no-open)" && (open "$u" 2>/dev/null'
                      ' || xdg-open "$u") && exit')
         # Two chips, not one. `static` only says what this copy is, so it has no hover;
         # `Serve` is the thing to do about it, and it is the one that explains why.
