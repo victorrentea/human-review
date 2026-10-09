@@ -578,6 +578,23 @@ def test_the_changes_badge_is_the_tab_of_a_box_around_the_change_lines():
     assert "function hideEmptyDefaults()" in t and ".parameter__default.dv-empty" in t
 
 
+def test_a_bundle_that_never_arrives_is_retried_then_listed_plainly():
+    """Victor, 9 Oct 2026: the API tab showed its bar and chips and then nothing -- the
+    Swagger UI bundle from cdnjs had not run, and the page said nothing about it. A missing
+    bundle is fetched once more from jsdelivr (its stylesheet too, when that never loaded),
+    and if that fails the changed endpoints are listed from DATA with the reason on top."""
+    t = ovd.TEMPLATE
+    boot = t[t.index("function boot() {"):]
+    assert "if (typeof SwaggerUIBundle !== 'function') { retryBundle(); return; }" in boot
+    assert "cdn.jsdelivr.net/npm/swagger-ui-dist@5.29.1/swagger-ui-bundle.js" in t
+    assert "cdn.jsdelivr.net/npm/swagger-ui-dist@5.29.1/swagger-ui.css" in t
+    assert "s.onerror = () => { clearTimeout(timer); plainList(); };" in t
+    assert "setTimeout(plainList, 15000)" in t
+    assert "function plainList()" in t and "Swagger UI could not be loaded" in t
+    # one retry, never a loop: the second miss goes straight to the plain list
+    assert "if (retried) { plainList(); return; }" in t
+
+
 def test_the_skill_copy_and_the_public_repo_copy_have_not_drifted():
     """`openapi-visual-diff.py` lives twice: here, and as its own public repo. A fix in
     one and not the other is a trap for whoever reads the other one."""

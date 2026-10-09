@@ -794,6 +794,13 @@ TEMPLATE = r"""<!doctype html>
   }
   .dv-global h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
                   color: var(--dv-muted); margin: 0 0 8px; }
+  /* Swagger UI never arrived (both CDNs unreachable): the changed endpoints as a plain
+     list in the same box, rather than a bar with nothing under it. */
+  .dv-plain .dv-plain-why { color: var(--dv-muted); margin: 0 0 10px; }
+  .dv-plain .dv-plain-op { margin: 10px 0 0; }
+  .dv-plain .dv-plain-op > b { font: 600 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .dv-plain .dv-plain-op > .dot { display: inline-block; width: 9px; height: 9px;
+                                  border-radius: 50%; margin-right: 6px; }
 
   /* ---------- per-operation annotations ---------- */
   /* --- change list = a box with a folder tab ("N CHANGES") grown from its top-right corner --- */
@@ -2317,7 +2324,19 @@ root.getElementById('dv-expand').onchange = async e => {
 
 // `domNode`, not `dom_id`: Swagger UI looks a `dom_id` up on the document, and embedded
 // our node is in a shadow root the document's lookups never enter.
+//
+// Swagger UI itself comes off cdnjs, and when that one request fails nothing else on the
+// page says so: the bar above renders, the space under it stays empty, and the reader is
+// left asking where the rows went (Victor, 9 Oct 2026 — "I see there are no rows"). So a
+// missing bundle is fetched once more from a second CDN, and if that fails too the
+// changed endpoints are listed plainly from DATA, with the reason on top.
+const FALLBACK = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.29.1/swagger-ui-bundle.js';
+const FALLBACK_CSS = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.29.1/swagger-ui.css';
+let booted = false, retried = false;
 function boot() {
+  if (booted) return;
+  if (typeof SwaggerUIBundle !== 'function') { retryBundle(); return; }
+  booted = true;
   SwaggerUIBundle({
     spec: DATA.spec,   // already fully dereferenced by the generator
     domNode: root.getElementById('swagger-ui'),
@@ -2331,6 +2350,41 @@ function boot() {
     deepLinking: false,
     onComplete: decorate,
   });
+}
+function retryBundle() {
+  if (retried) { plainList(); return; }
+  retried = true;
+  // The stylesheet came off the same CDN; a sheet that never loaded has no `.sheet`.
+  const link = root.querySelector('link[href*="swagger-ui"]');
+  if (!link || !link.sheet) {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = FALLBACK_CSS;
+    (HOST ? root : document.head).appendChild(css);
+  }
+  const s = document.createElement('script');
+  s.src = FALLBACK;
+  const timer = setTimeout(plainList, 15000);
+  s.onload = () => { clearTimeout(timer); boot(); };
+  s.onerror = () => { clearTimeout(timer); plainList(); };
+  document.head.appendChild(s);
+}
+function plainList() {
+  if (booted) return;
+  booted = true;
+  root.getElementById('dv-expand').closest('label').style.display = 'none';
+  const ops = Object.entries(DATA.ops).filter(([, e]) => e.state !== 'untouched')
+    .sort((a, b) => ORDER.indexOf(a[1].state) - ORDER.indexOf(b[1].state));
+  const box = root.getElementById('swagger-ui');
+  box.className = 'dv-global dv-plain';
+  box.innerHTML = '<h2>Changed endpoints</h2>'
+    + '<p class="dv-plain-why">Swagger UI could not be loaded (cdnjs and jsdelivr both '
+    + 'unreachable — offline?), so this is the plain list. Reload to try again.</p>'
+    + ops.map(([key, e]) => `<div class="dv-plain-op"><span class="dot ${e.state}"></span>`
+      + `<b>${md(key)}</b> · ${LABELS[e.state]}`
+      + e.changes.map(c =>
+        `<div class="dv-change l${c.level}"><span class="lvl">${c.level === 3 ? 'breaking' : c.level === 2 ? 'warn' : 'info'}</span><span>${md(c.text)}</span></div>`
+      ).join('') + '</div>').join('');
 }
 // Standalone the bundle's tag above blocks, so it is already here. An embedding page may
 // load it `defer` instead -- a blocking download in the middle of its body would hold up
