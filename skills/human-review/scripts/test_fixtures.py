@@ -120,6 +120,43 @@ def test_unknown_start_gets_no_entry_rather_than_a_guess(tmp_path):
     assert "e2e/src/b.spec.ts:3" not in tests            # "seed" only in a comment
 
 
+def test_a_test_that_leans_on_nothing_is_still_on_the_seed_and_listed_apart(tmp_path):
+    """Nothing resets the DB between E2E tests, so they all run on Default; one that makes
+    its own rows is `free` — a hollow ring — never "no dot", which read as "not Default"."""
+    reg = fx.fixture_registry(repo(tmp_path))
+    assert "e2e/src/own.feature:5" in reg["free"] and "e2e/src/b.spec.ts:3" in reg["free"]
+    assert not set(reg["free"]) & set(reg["tests"])
+    assert fx.fixtures_free(tmp_path) == reg["free"]
+
+
+HOOKS = """package x.functional;
+import io.cucumber.java.Before;
+public class DatabaseHooks {
+    @Before
+    public void reset() {
+        jdbc.execute("TRUNCATE TABLE visits, pets, owners RESTART IDENTITY CASCADE");
+    }
+}
+"""
+
+
+def test_a_jvm_suite_that_truncates_before_each_scenario_starts_them_empty(tmp_path):
+    root = repo(tmp_path)
+    for name, text in {"api/src/test/java/x/functional/DatabaseHooks.java": HOOKS,
+                       "api/src/test/resources/features/a.feature":
+                           "Feature: a\n  Scenario: one\n    Given x\n\n"
+                           "  @fixture:green\n  Scenario: two\n    Given y\n"}.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text(text)
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+    reg = fx.fixture_registry(root)
+    assert reg["empty"] == {"api/src/test/resources/features/a.feature:2":
+                            {"tables": ["visits", "pets", "owners"], "hook": "DatabaseHooks"}}
+    assert "api/src/test/resources/features/a.feature:2" not in reg["free"]
+    # The hook is its module's: the e2e/ suite next to it is not truncated by it.
+    assert not any(k.startswith("e2e/") for k in reg["empty"])
+
+
 def test_registry_block_is_script_safe_and_absent_without_fixtures(tmp_path):
     block = fx.render_fixture_registry(repo(tmp_path))
     assert block.startswith('<script type="application/json" id="hr-fixtures">')
@@ -135,3 +172,5 @@ def test_the_script_words_the_tip_like_the_demo_bar_and_opens_the_dataset():
     assert "'DB Fixture: ' + (name === 'seed' ? 'Default' : name)" in js
     assert "window.hrOpenDataset" in js
     assert "MutationObserver" in js
+    assert "DB Fixture: Default \\u00b7 doesn\\u2019t rely on its rows" in js
+    assert "Starts empty (truncated)" in js

@@ -20,10 +20,19 @@ Per test the answer is read off the test's own code, never guessed from its name
    ``loadFixture('<name>')``, ``resetTo('<name>')``, ``fixture('<name>')``;
 2. otherwise the seed, when the code the test runs leans on seeded rows by name —
    ``seed``/``seeded``/``SEEDED_…``/``R__seed`` outside comments (petclinic's
-   owner-search Background asserts "the DB seeded by Flyway"; add-visit's DSL reads
-   ``SEEDED_OWNER_WITH_PET``);
-3. otherwise nothing: a test that makes its own rows works on any data, and a dot for it
-   would be a guess.
+   owner-search Background asserts "the DB seeded by Flyway");
+3. otherwise still the seed — an E2E test runs against the review environment, and
+   nothing resets it between tests, so Default is what is in the database — but one whose
+   code does not lean on any seeded row: it makes its own. Those are listed apart
+   (``free`` in the registry) and wear a hollow ring instead of the filled dot, so a row
+   without a filled dot never reads as "not on Default" (Victor, 9 Oct 2026).
+
+A Cucumber suite whose JVM glue truncates tables before every scenario (a ``@Before``
+hook running ``TRUNCATE``, petclinic's ``functional/DatabaseHooks.java``) starts each of
+its scenarios with those tables empty; they are listed apart too (``empty``), with the
+tables, unless a scenario names a fixture of its own.
+
+Two fixtures named by one test is the one case left unsaid: not ours to pick.
 
 "The code the test runs" is, for a Cucumber scenario, the feature's tags and the step
 definitions its Background and its own steps match; for a Playwright test, its body, the
@@ -152,6 +161,8 @@ def _fx_explicit(text: str, known: set[str]) -> set[str]:
 
 
 def _fx_verdict(tags: str, code: str, known: set[str]) -> str | None:
+    """A fixture's name, ``"seed"`` when the code leans on seeded rows, ``""`` when it
+    names nothing and leans on nothing (on the seed all the same), None when unsure."""
     hits = _fx_explicit(tags + "\n" + code, known)
     if len(hits) == 1:
         return hits.pop()
@@ -159,7 +170,7 @@ def _fx_verdict(tags: str, code: str, known: set[str]) -> str | None:
         return None                          # two fixtures named: not ours to pick
     if re.search(r"(?<![\w-])@seed(?![\w-])", tags) or _FX_SEEDWORD.search(code):
         return "seed"
-    return None
+    return ""
 
 
 # --- Cucumber ----------------------------------------------------------------------------
@@ -247,7 +258,7 @@ def _fx_feature_tests(rel: str, src: str, defs, known: set[str]) -> dict[str, st
                     code.append(body)
                     break
         v = _fx_verdict(feature_tags + " " + tags, "\n".join(code), known)
-        if v:
+        if v is not None:
             out[f"{rel}:{no}"] = v
     return out
 
@@ -317,17 +328,13 @@ def _fx_spec_tests(root: Path, rel: str, src: str, known: set[str]) -> dict[str,
         body = code[a:b]
         tags = " ".join(re.findall(r"@[\w:=-]+", body))
         v = _fx_verdict(tags, body + "\n" + shared_text, known)
-        if v:
+        if v is not None:
             out[f"{rel}:{line}"] = v
     return out
 
 
-def fixtures_by_test(root: Path, files: list[str] | None = None) -> dict[str, str]:
-    """``{"<repo-relative file>:<line>": fixture}`` — ``"seed"`` or a fixture's name —
-    for every E2E test whose starting data can be read off its code. Absent = unknown."""
-    root = Path(root)
-    files = _fx_ls(root) if files is None else files
-    known = set(fixture_colors(root, files)["colors"])
+def _fx_scan(root: Path, files: list[str], known: set[str]) -> dict[str, str]:
+    """Every E2E test read: ``{id: fixture | "seed" | ""}`` (see `_fx_verdict`)."""
     out: dict[str, str] = {}
     features = [f for f in files if f.endswith(".feature") and "node_modules" not in f]
     defs = _fx_step_defs(root, files) if features else []
@@ -345,10 +352,88 @@ def fixtures_by_test(root: Path, files: list[str] | None = None) -> dict[str, st
     return out
 
 
+def fixtures_by_test(root: Path, files: list[str] | None = None) -> dict[str, str]:
+    """``{"<repo-relative file>:<line>": fixture}`` — ``"seed"`` or a fixture's name —
+    for every E2E test whose starting data its code names or leans on. Absent = it leans
+    on nothing (see `fixtures_free`) or the answer is not ours to give."""
+    root = Path(root)
+    files = _fx_ls(root) if files is None else files
+    known = set(fixture_colors(root, files)["colors"])
+    return {k: v for k, v in _fx_scan(root, files, known).items() if v}
+
+
+def fixtures_free(root: Path, files: list[str] | None = None) -> list[str]:
+    """The E2E tests that run on the seed without leaning on any of its rows."""
+    root = Path(root)
+    files = _fx_ls(root) if files is None else files
+    known = set(fixture_colors(root, files)["colors"])
+    empty = fixtures_emptied(root, files)
+    return sorted(k for k, v in _fx_scan(root, files, known).items()
+                  if v == "" and k not in empty)
+
+
+_FX_HOOK_TRUNCATE = re.compile(r"TRUNCATE\s+(?:TABLE\s+)?([\w.\s,\"]+?)(?:\s+(?:RESTART|CONTINUE|"
+                               r"CASCADE|RESTRICT)\b|[\"';)]|$)", re.I)
+
+
+def fixtures_emptied(root: Path, files: list[str] | None = None) -> dict[str, dict]:
+    """``{scenario id: {"tables": [...], "hook": "<Class>"}}`` for every scenario of a JVM
+    Cucumber suite whose ``@Before`` hook truncates tables — the suite's own module, the
+    part of the path before ``/src/``. A scenario that names a fixture is left out."""
+    root = Path(root)
+    files = _fx_ls(root) if files is None else files
+    hooks: dict[str, tuple[str, list[str]]] = {}
+    for f in files:
+        if not re.search(r"\.(?:java|kt)$", f) or "/src/" not in f:
+            continue
+        try:
+            src = (root / f).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if "io.cucumber" not in src or "@Before" not in src:
+            continue
+        m = _FX_HOOK_TRUNCATE.search(_fx_strip_comments(src).replace('" +', " ").replace('+ "', " "))
+        if not m:
+            continue
+        tables = [t.strip().strip('"').split(".")[-1] for t in m.group(1).split(",") if t.strip()]
+        hooks.setdefault(f.split("/src/")[0], (Path(f).stem, tables))
+    out: dict[str, dict] = {}
+    for f in files:
+        if not f.endswith(".feature") or "/src/" not in f or f.split("/src/")[0] not in hooks:
+            continue
+        hook, tables = hooks[f.split("/src/")[0]]
+        try:
+            lines = (root / f).read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        tags = ""
+        feature_tags = ""
+        for no, line in enumerate(lines, 1):
+            st = line.strip()
+            if st.startswith("@"):
+                tags += " " + st
+                continue
+            m = _FX_BLOCK.match(line)
+            if not m:
+                continue
+            if m.group(1) == "Feature":
+                feature_tags = tags
+            elif (m.group(1).startswith("Scenario") or m.group(1) == "Example") \
+                    and "@fixture" not in feature_tags + tags:
+                out[f"{f}:{no}"] = {"tables": tables, "hook": hook}
+            tags = ""
+    return out
+
+
 def fixture_registry(root: Path) -> dict:
-    files = _fx_ls(Path(root))
-    reg = fixture_colors(Path(root), files)
-    reg["tests"] = fixtures_by_test(Path(root), files)
+    root = Path(root)
+    files = _fx_ls(root)
+    reg = fixture_colors(root, files)
+    scan = _fx_scan(root, files, set(reg["colors"]))
+    empty = fixtures_emptied(root, files)
+    reg["tests"] = {k: v for k, v in scan.items() if v and k not in empty}
+    reg["free"] = sorted(k for k, v in scan.items() if v == "" and k not in empty)
+    reg["empty"] = empty
     return reg
 
 
@@ -356,7 +441,7 @@ def render_fixture_registry(root: Path) -> str:
     """The ``hr-fixtures`` JSON block FIXTURES_JS reads, or "" when the project has no
     fixtures and no test leans on the seed — then neither tab draws a dot."""
     reg = fixture_registry(root)
-    if not reg["colors"] and not reg["tests"]:
+    if not reg["colors"] and not reg["tests"] and not reg["free"] and not reg["empty"]:
         return ""
     return ('<script type="application/json" id="hr-fixtures">'
             + json.dumps(reg).replace("</", "<\\/") + "</script>")

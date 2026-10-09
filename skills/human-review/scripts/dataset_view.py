@@ -1,9 +1,10 @@
-"""The Demo tab's dataset quick view: the rows behind each "DB Fixture" button.
+"""The Demo tab's DB Fixture card: the rows behind each fixture, under its own header.
 
-The buttons in the Running app band say *that* a dataset exists — Default, green — and a
-reviewer had to open R__seed.sql and green.sql and read INSERT … SELECT … JOIN to learn
-*what* is in it (Victor, 7 Oct 2026). This computes the tables, at build time and with no
-app running, so the 👁 next to the buttons can lay them out as small grids.
+The fixtures say *that* a dataset exists — Default, green — and a reviewer had to open
+R__seed.sql and green.sql and read INSERT … SELECT … JOIN to learn *what* is in it
+(Victor, 7 Oct 2026). This computes the tables, at build time and with no app running, so
+each fixture's header can open onto them as small grids (`fixtures_panel_html` draws the
+card, `hrbuild/assets/dataset-view.js` fills it).
 
 The source is the project's own SQL, the same files the environment loads:
 
@@ -26,6 +27,7 @@ the dataset's shape, and the lookup tables it points at are the footnotes.
 """
 from __future__ import annotations
 
+import html
 import json
 import re
 import sqlite3
@@ -290,12 +292,60 @@ def _cap(rows: list) -> list:
             for r in rows[:MAX_ROWS]]
 
 
+def fixtures_panel_html(fixtures: list | None, can_reset: bool, info: str = "") -> str:
+    """The Demo tab's "DB Fixture" panel: its own card under the Running app one (Victor,
+    9 Oct 2026 — the fixtures used to be a second row inside that band), one fixture per
+    line, one under the other, so two seeds can be compared top to bottom.
+
+    Each line is a header — a disclosure caret, the fixture's dot, its name, and its
+    **Seed** — and `dataset-view.js` draws that fixture's tables into the band under it
+    when the caret is opened, from rows computed at build time (`dataset_view.py`). Any
+    number can be open at once. A fixture the data does not know keeps a caret that says
+    so and opens nothing.
+
+    It lives here and not in `hrbuild/shared/fixtures.py` because it is this view's frame:
+    the panel and the script that fills it are one piece.
+
+    The class names are the ones APP_ENV_JS arms the Seed buttons by (`.appenv-fixtures`,
+    `.appenv-fx`, `.appenv-reset`), and the ones `fixtures_row_html` drew before: the Seed
+    contract did not change, only where it sits. `info` is the section's (i), or "".
+
+    `fixtures` is `[(name, colour), …]` with the seed as `""`; None is "the seed only"."""
+    from hrbuild.shared.commands import SEED_OFFLINE_TIP
+    from hrbuild.shared.fixtures import FIXTURE_SEED
+    items = list(fixtures) if fixtures else [("", FIXTURE_SEED)]
+
+    def item(name: str, colour: str) -> str:
+        label = name or "Default"
+        key = html.escape(name)
+        seed = (f'<button type="button" class="appenv-reset" data-fixture="{key}"'
+                f' aria-disabled="true" aria-label="Seed the DB with {html.escape(label)}"'
+                f' data-tip="{SEED_OFFLINE_TIP}">Seed</button>') if can_reset else ""
+        body = f"dbfx-body-{re.sub(r'[^a-z0-9-]', '', name) or 'default'}"
+        return (f'<div class="appenv-fx" data-fixture="{key}"><div class="dbfx-row">'
+                f'<button type="button" class="dbfx-tog" data-fixture="{key}"'
+                f' aria-expanded="false" aria-controls="{body}">'
+                '<span class="disclose" aria-hidden="true"></span>'
+                f'<span class="fx-dot" aria-hidden="true" style="--fx:{html.escape(colour)}">'
+                f'</span><span class="appenv-fx-name">{html.escape(label)}</span></button>'
+                f'{seed}<span class="dbfx-sum"></span></div>'
+                f'<div class="dbfx-body" id="{body}" hidden></div></div>')
+
+    head = ('<div class="dbfx-head adopthead"><span class="dbfx-title appenv-fixtures-to" '
+            'data-tip="The datasets the demo DB can be reset to: the seed, or the seed plus '
+            'a fixture">DB Fixture</span>'
+            + (f'<div class="adoptline adopt-in">{info}</div>' if info else "") + '</div>')
+    return ('<div class="dbfx">' + head
+            + '<div class="appenv-fixtures" role="group" aria-label="DB fixtures">'
+            + "".join(item(n, c) for n, c in items) + '</div></div>')
+
+
 _ASSETS = Path(__file__).resolve().parent / "hrbuild" / "assets"
 
 
 def dataset_html(root: Path | None) -> str:
-    """The blob and the script that draws the 👁 and its panel from it; nothing when the
-    project has no seed. The markup is the script's to write, so the page a live patch
+    """The blob and the script that fills the DB Fixture card's headers from it; nothing
+    when the project has no seed. The markup is the script's to write, so the page a live patch
     produces and the page a build produces are one and the same."""
     if root is None:
         return ""

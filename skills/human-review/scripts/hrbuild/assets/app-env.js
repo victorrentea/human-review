@@ -162,10 +162,11 @@
   // `command_html` emitted, and SERVER_JS owns which of the two is up.
   var acts = {start: bar.querySelector('.appenv-start'),
               stop: bar.querySelector('.appenv-stop')};
-  // The "DB Fixture:" row under this one: a Seed button per fixture, all drawn by the
-  // build from the project's files. The row and its names never move; only the buttons
-  // are armed here, once something answers.
-  var resets = bar.querySelector('.appenv-fixtures');
+  // The DB Fixture card under this one (or, on a page built before it had a card of its
+  // own, a row inside this band): a Seed button per fixture, all drawn by the build from
+  // the project's files. The names never move; only the buttons are armed here, once
+  // something answers.
+  var resets = bar.querySelector('.appenv-fixtures') || document.querySelector('.appenv-fixtures');
   var SEED_OFF = 'Start the app first';
   // One command at a time. `docker compose up` is minutes, the row stays readable
   // throughout, and a second press in the middle of it is a reader who could not tell the

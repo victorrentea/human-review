@@ -7,3 +7,9 @@
 .appenv-fx .fx-dot { cursor:inherit; }
 .rm-t .fx-dot { margin:0 .1rem; align-self:center; cursor:pointer; }
 .rm-t .fx-dot:hover, .rm-t .fx-dot:focus-visible { outline:2px solid var(--fx); outline-offset:1px; }
+/* On the seed without leaning on its rows (`free`): the seed's colour as a ring, not a fill.
+   Its tests still run on Default; they just make their own rows. */
+.fx-dot.fx-free { background:transparent; box-shadow:inset 0 0 0 1.5px var(--fx, #8b929c); }
+/* Tables truncated before each scenario (`empty`): the ring dashed — the seed with holes. */
+.fx-dot.fx-empty { background:transparent; box-shadow:none; border:1.5px dashed var(--fx, #8b929c);
+  box-sizing:border-box; }

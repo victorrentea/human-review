@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""The Demo tab's dataset quick view: the 👁 in each chip of the DB Fixture row.
+"""The Demo tab's DB Fixture card: one header per fixture, its tables under it.
 
 Two halves. `dataset_view.py` executes the project's own schema, seed and fixture SQL in
-an in-memory SQLite and hands the page the rows; `dataset-view.js` draws an eye per fixture
-in the DB Fixture row and, on a press, the tables side by side. The data half is tested on a small
+an in-memory SQLite and hands the page the rows; `dataset-view.js` opens each fixture's
+header onto its tables, wrapped side by side. The data half is tested on a small
 repository written here in Postgres dialect — the constructs a real fixture uses
 (`INSERT … SELECT … FROM (VALUES …) AS p(a, b) JOIN`, `DATE '…'`, `TRUNCATE … CASCADE`,
 an `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY`) — and the drawing half in a browser.
@@ -128,14 +128,26 @@ def test_a_statement_sqlite_cannot_run_is_skipped_and_named(repo):
 
 # ── the drawing half, in a browser ─────────────────────────────────────────────────────
 
+# The card as the build draws it — with one fixture the data does not know.
+CARD = dv.fixtures_panel_html([("", "#8b929c"), ("green", "#2fa84f"), ("unknown", "#3b82f6")],
+                              True, '<button type="button" class="hrx-i"></button>')
 BAR = ('<div class="appenv"><div class="appenv-run"><span class="appenv-title">Running app'
-       '</span></div><div class="appenv-fixtures">'
-       + "".join(f'<span class="appenv-fx" data-fixture="{n}"><span class="fx-dot"></span>'
-                 f'<span class="appenv-fx-name">{n or "Default"}</span>'
-                 f'<button type="button" class="appenv-reset" data-fixture="{n}"'
-                 f' aria-disabled="true">Seed</button></span>'
-                 for n in ("", "green", "unknown"))
-       + '</div></div>')
+       '</span></div></div>' + CARD)
+
+
+def test_the_card_stands_apart_from_the_running_app_band_one_header_per_fixture():
+    """Victor, 9 Oct 2026: its own card, not a row of the Running app band; each fixture a
+    header — caret, dot, name, then Seed right after the name — one under the other."""
+    assert CARD.startswith('<div class="dbfx">') and "appenv-run" not in CARD
+    assert CARD.count('class="appenv-fx"') == 3 and CARD.count(">Seed</button>") == 3
+    head = CARD[CARD.index('data-fixture="green"'):]
+    assert (head.index('class="disclose"') < head.index('class="fx-dot"')
+            < head.index('>green</span>') < head.index('class="appenv-reset"')
+            < head.index('class="dbfx-body"'))
+    assert '<span class="appenv-fx-name">Default</span>' in CARD
+    assert 'class="hrx-i"' in CARD[:CARD.index('class="appenv-fixtures"')], "its (i) in the title row"
+    assert 'class="hrx-i"' not in dv.fixtures_panel_html(None, False)
+    assert "appenv-reset" not in dv.fixtures_panel_html([("", "#888")], False)
 
 
 @pytest.fixture(scope="module")
@@ -154,7 +166,10 @@ def _open(browser, data):
     page = browser.new_page()
     blob = json.dumps(data).replace("</", "<\\/")
     js = (dv._ASSETS / "dataset-view.js").read_text(encoding="utf-8")
-    page.set_content(f'<div id="behaviour">{BAR}<script type="application/json" id="dsv-data">'
+    css = "".join((dv._ASSETS / "css" / f).read_text(encoding="utf-8")
+                  for f in ("core.css", "demo.css"))
+    page.set_content(f'<style>{css}</style><div id="behaviour">{BAR}'
+                     f'<script type="application/json" id="dsv-data">'
                      f'{blob}</script><script>{js}</script><video></video></div>')
     return page
 
@@ -167,48 +182,71 @@ def _big(repo):
     return dv.build(repo)
 
 
-def test_every_fixture_the_data_knows_gets_an_eye_between_its_name_and_its_seed(browser, repo):
-    """In the DB Fixture row, never in the Running app one: offline, the old eye was left
-    hanging alone after Start (8 Oct 2026). A fixture with no data gets none."""
+def test_a_fixture_the_data_does_not_know_has_a_caret_that_opens_nothing(browser, repo):
     page = _open(browser, dv.build(repo))
-    assert page.eval_on_selector_all(".dsv-eye", "es => es.map(e => e.dataset.fixture)") \
-        == ["", "green"]
-    assert page.locator(".appenv-run .dsv-eye").count() == 0
-    order = page.evaluate("""() => [...document.querySelector('.appenv-fx[data-fixture=green]')
-        .children].map(c => c.className)""")
-    assert order == ["fx-dot", "appenv-fx-name", "dsv-eye", "appenv-reset"]
+    off = page.eval_on_selector_all(".dbfx-tog", "ts => ts.map(t => [t.dataset.fixture,"
+                                    " t.getAttribute('aria-disabled') === 'true'])")
+    assert off == [["", False], ["green", False], ["unknown", True]]
+    page.click('.dbfx-tog[data-fixture="unknown"]', force=True)
+    assert page.locator(".dsv-t").count() == 0
+    # What each dataset is, on its header, before anything is opened.
+    sums = page.eval_on_selector_all(".dbfx-sum", "ss => ss.map(s => s.textContent)")
+    assert sums[0] == "the seed · 4 tables · 7 rows"
+    assert sums[1] == "the seed, then green.sql · 4 tables · 10 rows · 2 tables changed"
     page.close()
 
 
-def test_the_eye_opens_and_closes_that_fixtures_tables_and_does_not_reset(browser, repo):
+def test_both_fixtures_open_at_once_one_above_the_other_and_a_caret_never_seeds(browser, repo):
     page = _open(browser, _big(repo))
     page.evaluate("""() => { window.RESETS = 0; document.querySelector('.appenv-fixtures')
         .addEventListener('click', ev => { if (ev.target.closest('.appenv-reset')) RESETS++; }); }""")
-    page.click(".dsv-eye")
-    panel = page.locator("#dsv-panel")
-    assert panel.is_visible()
+    page.click('.dbfx-tog[data-fixture=""]')
+    page.click('.dbfx-tog[data-fixture="green"]')
     assert page.evaluate("RESETS") == 0
-    # The panel sits between the band and the video: it pushes the film down.
-    assert page.evaluate("document.querySelector('.appenv').nextElementSibling.id") == "dsv-panel"
-    seen = page.eval_on_selector_all(".dsv-t", "ds => ds.map(d => [d.querySelector('b')"
-                                     ".textContent, d.open])")
-    assert seen[0] == ["pets", True]
-    # 14 types: more than ten rows, folded to its name and count until clicked.
-    assert ["types", False] in seen
-    types = page.locator(".dsv-t", has=page.locator("b", has_text="types"))
-    assert types.locator("table").count() == 0
-    types.locator("summary").click()
-    types.locator("tbody tr").nth(13).wait_for()   # drawn on the (async) toggle event
-    assert types.locator("tbody tr").count() == 14
-    page.click(".dsv-eye")
-    assert not panel.is_visible()
+    seed, green = page.locator("#dbfx-body-default"), page.locator("#dbfx-body-green")
+    assert seed.is_visible() and green.is_visible()
+    assert seed.bounding_box()["y"] + seed.bounding_box()["height"] \
+        <= green.bounding_box()["y"], "the seed's band above green's"
+    # Every table open in both, in the same order, so the two compare line by line.
+    for b in (seed, green):
+        assert b.locator(".dsv-t:not([open])").count() == 0
+        assert b.locator(".dsv-t b").all_text_contents() == ["pets", "owners", "types", "users"]
+    assert seed.locator(".dsv-t", has=page.locator("b", has_text="types"))\
+        .locator("tbody tr").count() == 14
+    page.click('.dbfx-tog[data-fixture=""]')
+    assert not seed.is_visible() and green.is_visible()
+    page.close()
+
+
+def test_tables_wrap_downward_never_scroll_sideways(browser, repo):
+    page = _open(browser, _big(repo))
+    page.set_viewport_size({"width": 420, "height": 900})
+    page.click('.dbfx-tog[data-fixture="green"]')
+    box = page.locator("#dbfx-body-green .dsv-tables")
+    assert page.evaluate("el => el.scrollWidth <= el.clientWidth", box.element_handle())
+    tops = {round(b["y"]) for b in (t.bounding_box() for t in box.locator(".dsv-t").all())}
+    assert len(tops) > 1, "more than one line of tables"
+    page.close()
+
+
+def test_a_foreign_key_wears_a_key_on_its_header_and_names_its_row(browser, repo):
+    """The "→ owners, types" after the row count is gone: the key glyph is on the column."""
+    page = _open(browser, dv.build(repo))
+    page.click('.dbfx-tog[data-fixture=""]')
+    pets = page.locator(".dsv-t", has=page.locator("b", has_text="pets"))
+    assert "→" not in pets.locator("summary").text_content()
+    fk = pets.locator("th.dsv-fkcol")
+    assert fk.all_text_contents() == ["type_id", "owner_id"]
+    assert fk.first.locator("svg.dsv-key").count() == 1
+    assert pets.locator("td.dsv-fkv").first.get_attribute("data-tip") == "types #1 · cat"
     page.close()
 
 
 def test_a_fixture_opens_the_tables_it_added_to_with_its_rows_highlighted(browser, repo):
     page = _open(browser, _big(repo))
     assert page.evaluate("window.hrOpenDataset('green')") is True
-    assert "green" in page.text_content(".dsv-title")
-    assert page.locator("tr.dsv-new").count() == 3
+    assert page.locator("#dbfx-body-green").is_visible()
+    assert page.locator("#dbfx-body-green tr.dsv-new").count() == 3
     assert page.evaluate("window.hrOpenDataset('nope')") is False
+    assert page.evaluate("window.hrOpenDataset('unknown')") is False
     page.close()

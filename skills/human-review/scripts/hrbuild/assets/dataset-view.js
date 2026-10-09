@@ -1,24 +1,51 @@
-// The Demo tab's dataset quick view: a 👁 in each fixture of the "DB Fixture:" row opens
-// the rows that fixture loads, as small grids under the Running app band — so a reviewer
-// sees what "green" is without reading green.sql (Victor, 7 Oct 2026). The rows were
-// computed at build time from the project's own SQL (`dataset_view.py`) and sit in
-// #dsv-data; nothing here talks to the app, so the view works with the app down too.
+// The Demo tab's dataset view: in the "DB Fixture" card, each fixture is a header — a
+// caret, its dot, its name, its Seed — and opening the caret lays that fixture's tables out
+// in a band under it, so a reviewer sees what "green" is without reading green.sql (Victor,
+// 7 Oct 2026). One under the other, any number open at once, so the seed and a fixture can
+// be compared top to bottom (9 Oct 2026). The rows were computed at build time from the
+// project's own SQL (`dataset_view.py`) and sit in #dsv-data; nothing here talks to the
+// app, so the view works with the app down too.
 (function () {
   var src = document.getElementById('dsv-data');
-  var bar = document.querySelector('.appenv');
-  if (!src || !bar) return;
+  var card = document.querySelector('.dbfx');
+  if (!src || !card) return;
   var data;
   try { data = JSON.parse(src.textContent); } catch (e) { return; }
-  // A table this long starts folded to its name and row count: open, it is a wall.
-  var FOLD = 10;
-  var panel = null, shown = null;
+  // A foreign key, said with a glyph on its column's header rather than a "→ owners, types"
+  // trailing the row count: the key sits on the very column it describes. Drawn, not an
+  // emoji, so it takes the header's colour and size in both themes.
+  var KEY = '<svg class="dsv-key" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">'
+    + '<circle cx="4.6" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/>'
+    + '<path d="M7.6 8H15M12.4 8v3M14.6 8v2.4" fill="none" stroke="currentColor"'
+    + ' stroke-width="1.7" stroke-linecap="round"/></svg>';
 
   function label(name) { return name ? name : 'Default'; }
   function has(name) { return Object.prototype.hasOwnProperty.call(data.sets, name); }
-  function tipFor(name) {
-    return name ? 'Show the rows the “' + name + '” fixture loads: the seed, with '
-                  + 'its own rows highlighted'
-                : 'Show the seed rows every reset starts from';
+  function rowsOf(table, name) {
+    return (data.sets[name] && data.sets[name][table]) || data.sets[''][table] || [];
+  }
+  function countOf(table, name) {
+    return (data.counts[name] && data.counts[name][table] !== undefined)
+      ? data.counts[name][table] : data.counts[''][table];
+  }
+  var byName = {};
+  data.tables.forEach(function (t) { byName[t.name] = t; });
+
+  // The row a foreign key points at, in words: `owners #1 · Kevin McCallister`. A bare 6 in
+  // `type_id` tells nobody it is a hamster. Looked up in the same dataset the cell is in.
+  function target(table, value, name) {
+    var t = byName[table];
+    if (!t || value === null || value === undefined) return '';
+    var pk = t.cols.indexOf('id');
+    if (pk < 0) pk = 0;
+    var hit = rowsOf(table, name).filter(function (r) { return r[pk] === value; })[0];
+    if (!hit) return table + ' ' + value + ' (not in the data)';
+    var words = [];
+    t.cols.forEach(function (c, i) {
+      if (i !== pk && words.length < 2 && typeof hit[i] === 'string' && !/(^|_)id$/.test(c)
+          && hit[i].length < 40) words.push(hit[i]);
+    });
+    return table + ' #' + value + (words.length ? ' · ' + words.join(' ') : '');
   }
 
   function cell(v) {
@@ -34,15 +61,14 @@
   }
 
   function grid(t, name) {
-    var rows = (data.sets[name] && data.sets[name][t.name]) || data.sets[''][t.name] || [];
-    var count = (data.counts[name] && data.counts[name][t.name] !== undefined)
-      ? data.counts[name][t.name] : data.counts[''][t.name];
+    var rows = rowsOf(t.name, name), count = countOf(t.name, name);
     var marked = (data.marks[name] && data.marks[name][t.name]) || [];
     var d = document.createElement('details');
     d.className = 'dsv-t';
-    // …unless the fixture added rows to it: those rows are what its eye was pressed for,
-    // so the table opens scrolled to the first of them.
-    d.open = count <= FOLD || marked.length > 0;
+    d.dataset.table = t.name;
+    // Every table open: each one is capped at a few rows' height and scrolls inside, and
+    // two fixtures open one above the other must fold the same, or they cannot be compared.
+    d.open = true;
     var sum = document.createElement('summary');
     var caret = document.createElement('span');
     caret.className = 'disclose';
@@ -53,19 +79,7 @@
     n.textContent = count + (count === 1 ? ' row' : ' rows')
       + (marked.length ? ' · +' + marked.length : '');
     sum.append(caret, nm, n);
-    var outs = Object.keys(t.fk || {});
-    if (outs.length) {
-      var fk = document.createElement('span');
-      fk.className = 'dsv-fk';
-      var to = [];
-      outs.forEach(function (c) { if (to.indexOf(t.fk[c]) < 0) to.push(t.fk[c]); });
-      fk.textContent = '→ ' + to.join(', ');
-      fk.dataset.tip = 'Foreign keys: ' + outs.map(function (c) {
-        return c + ' → ' + t.fk[c]; }).join(', ');
-      sum.appendChild(fk);
-    }
     d.appendChild(sum);
-    // Drawn on first open: a folded 300-row table costs nothing until someone asks.
     function fill() {
       if (d.dataset.drawn) return;
       d.dataset.drawn = '1';
@@ -73,10 +87,26 @@
       box.className = 'dsv-grid';
       var tb = document.createElement('table');
       var hr = document.createElement('tr');
-      t.cols.forEach(function (c) {
+      t.cols.forEach(function (c, i) {
         var th = document.createElement('th');
-        th.textContent = c;
-        if (t.fk && t.fk[c]) { th.className = 'dsv-fkcol'; th.dataset.tip = c + ' → ' + t.fk[c]; }
+        var vals = rows.map(function (r) { return r[i]; })
+          .filter(function (v) { return v !== null && v !== undefined; });
+        if (vals.length && vals.every(function (v) { return typeof v === 'number'; })) {
+          th.classList.add('dsv-numcol');
+        }
+        if (t.fk && t.fk[c]) {
+          th.classList.add('dsv-fkcol');
+          th.innerHTML = KEY;
+          th.dataset.tip = 'Foreign key to ' + t.fk[c] + ' — hover a value for its row';
+        }
+        // A column no row fills reads as data that is missing; say that it is absent on
+        // purpose instead of leaving a column of "null" to be puzzled over.
+        if (rows.length && !vals.length) {
+          th.classList.add('dsv-allnull');
+          th.dataset.tip = (th.dataset.tip ? th.dataset.tip + '. ' : '')
+            + 'Null in every row of this dataset';
+        }
+        th.appendChild(document.createTextNode(c));
         hr.appendChild(th);
       });
       var head = document.createElement('thead');
@@ -85,7 +115,14 @@
       rows.forEach(function (r, i) {
         var tr = document.createElement('tr');
         if (marked.indexOf(i) >= 0) tr.className = 'dsv-new';
-        r.forEach(function (v) { tr.appendChild(cell(v)); });
+        r.forEach(function (v, k) {
+          var td = cell(v), fk = t.fk && t.fk[t.cols[k]];
+          if (fk && v !== null && v !== undefined) {
+            td.classList.add('dsv-fkv');
+            td.dataset.tip = target(fk, v, name);
+          }
+          tr.appendChild(td);
+        });
         body.appendChild(tr);
       });
       tb.append(head, body);
@@ -110,98 +147,83 @@
     return d;
   }
 
-  function draw(name) {
-    if (!panel) {
-      panel = document.createElement('div');
-      panel.className = 'dsv';
-      panel.id = 'dsv-panel';
-      bar.insertAdjacentElement('afterend', panel);
-    }
-    panel.textContent = '';
-    var head = document.createElement('div');
-    head.className = 'dsv-head';
-    var title = document.createElement('span');
-    title.className = 'dsv-title';
-    title.textContent = 'Data in ' + label(name);
-    var lead = document.createElement('span');
-    lead.className = 'dsv-lead';
-    lead.textContent = name ? 'the seed plus ' + name + '.sql — its rows highlighted'
-                            : 'the seed every reset starts from';
-    var close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'dsv-close';
-    close.textContent = '×';
-    close.dataset.tip = 'Hide the data';
-    close.addEventListener('click', function () { show(null); });
-    head.append(title, lead, close);
-    var row = document.createElement('div');
-    row.className = 'dsv-tables';
-    data.tables.forEach(function (t) { row.appendChild(grid(t, name)); });
-    panel.append(head, row);
-  }
-
-  function sync() {
-    [].forEach.call(bar.querySelectorAll('.dsv-eye'), function (e) {
-      var on = shown !== null && e.dataset.fixture === shown;
-      e.classList.toggle('on', on);
-      e.setAttribute('aria-expanded', on ? 'true' : 'false');
+  // What the header says while folded: what this dataset is and how big, so the seed and
+  // a fixture compare at a glance before either is opened.
+  function summary(name) {
+    var total = 0, changed = 0;
+    data.tables.forEach(function (t) {
+      total += countOf(t.name, name);
+      if (name && data.sets[name] && data.sets[name][t.name]) changed++;
     });
+    return (name ? 'the seed, then ' + name + '.sql' : 'the seed') + ' \u00b7 '
+      + data.tables.length + ' tables \u00b7 ' + total + (total === 1 ? ' row' : ' rows')
+      + (changed ? ' \u00b7 ' + changed + (changed === 1 ? ' table' : ' tables') + ' changed' : '');
   }
 
-  function show(name) {
-    if (name === null || name === undefined || !has(name)) {
-      shown = null;
-      if (panel) panel.hidden = true;
-    } else {
-      shown = name;
-      draw(name);
-      panel.hidden = false;
-    }
-    sync();
-  }
-
-  // One 👁 per fixture in the "DB Fixture:" row, after its name and before its Seed. The
-  // row is the build's and never redraws, so this runs once. Only a fixture the data
-  // knows gets one: an eye that opens nothing is worse than none. (It used to ride each
-  // reset *button*, which the running app drew; down, the buttons went and the seed's eye
-  // was left hanging alone after Start — 8 Oct 2026.)
-  function eyes() {
-    [].forEach.call(bar.querySelectorAll('.appenv-fx[data-fixture]'), function (fx) {
+  function body(fx) {
+    var b = fx.querySelector('.dbfx-body');
+    if (b && !b.dataset.drawn) {
+      b.dataset.drawn = '1';
       var name = fx.dataset.fixture || '';
-      if (!has(name) || fx.querySelector('.dsv-eye')) return;
-      var e = document.createElement('button');
-      e.type = 'button';
-      e.className = 'dsv-eye';
-      e.dataset.fixture = name;
-      e.setAttribute('aria-label', 'Show the data in ' + label(name));
-      e.setAttribute('aria-controls', 'dsv-panel');
-      e.setAttribute('aria-expanded', 'false');
-      e.dataset.tip = tipFor(name);
-      e.textContent = '👁︎';
-      var nm = fx.querySelector('.appenv-fx-name');
-      if (nm) nm.insertAdjacentElement('afterend', e); else fx.appendChild(e);
-    });
-    sync();
+      var row = document.createElement('div');
+      row.className = 'dsv-tables';
+      data.tables.forEach(function (t) { row.appendChild(grid(t, name)); });
+      b.appendChild(row);
+    }
+    return b;
   }
 
-  bar.addEventListener('click', function (ev) {
-    var e = ev.target.closest('.dsv-eye');
-    if (!e) return;
-    ev.stopPropagation();
-    show(shown === e.dataset.fixture ? null : e.dataset.fixture);
+  function fxOf(name) {
+    return [].filter.call(card.querySelectorAll('.appenv-fx[data-fixture]'), function (f) {
+      return (f.dataset.fixture || '') === name;
+    })[0];
+  }
+
+  function toggle(fx, open) {
+    var tog = fx.querySelector('.dbfx-tog'), b = fx.querySelector('.dbfx-body');
+    if (!tog || !b || !has(fx.dataset.fixture || '')) return;
+    if (open === undefined) open = tog.getAttribute('aria-expanded') !== 'true';
+    if (open) body(fx);
+    b.hidden = !open;
+    tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+    fx.classList.toggle('open', open);
+  }
+
+  // Wire each header the build drew. A fixture the data does not know keeps its name and
+  // its Seed, and its caret says there is nothing to show: a caret that opens nothing,
+  // silently, is worse than none.
+  [].forEach.call(card.querySelectorAll('.appenv-fx[data-fixture]'), function (fx) {
+    var name = fx.dataset.fixture || '', tog = fx.querySelector('.dbfx-tog');
+    if (!tog) return;
+    var sum = fx.querySelector('.dbfx-sum');
+    if (!has(name)) {
+      tog.setAttribute('aria-disabled', 'true');
+      tog.dataset.tip = 'No rows computed for ' + label(name) + ' at build time';
+      return;
+    }
+    tog.dataset.tip = name ? 'Show the rows the “' + name + '” fixture loads: '
+                             + 'the seed, with its own rows highlighted'
+                           : 'Show the seed rows';
+    if (sum) sum.textContent = summary(name);
   });
-  eyes();
+
+  card.addEventListener('click', function (ev) {
+    var tog = ev.target.closest('.dbfx-tog');
+    if (!tog || tog.getAttribute('aria-disabled') === 'true') return;
+    toggle(tog.closest('.appenv-fx'));
+  });
 
   // For other parts of the page (the Tests tab's fixture dots): bring up one fixture's
-  // data — the Demo tab, the panel, and the panel scrolled into view.
+  // data — the Demo tab, its header open, scrolled into view.
   window.hrOpenDataset = function (name) {
     name = name || '';
-    if (!has(name)) return false;
+    var fx = fxOf(name);
+    if (!has(name) || !fx) return false;
     var tab = document.querySelector('[role="tab"][aria-controls="behaviour"]');
     if (tab && tab.getAttribute('aria-selected') !== 'true') tab.click();
-    show(name);
+    toggle(fx, true);
     requestAnimationFrame(function () {
-      panel.scrollIntoView({behavior: 'smooth', block: 'start'});
+      fx.scrollIntoView({behavior: 'smooth', block: 'start'});
     });
     return true;
   };

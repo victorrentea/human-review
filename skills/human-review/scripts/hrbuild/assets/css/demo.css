@@ -133,39 +133,66 @@
 .transcript a:hover { border-bottom-style:solid; }
 @media (max-width:820px) { .vidwrap { grid-template-columns:1fr; } }
 
-/* The dataset quick view (`dataset-view.js`): a 👁 in each chip of the DB Fixture row, and
-   under the band the tables that fixture loads, side by side, scrolling sideways. */
-.appenv .dsv-eye { cursor:pointer; padding:0 .3rem; border-color:transparent;
-  background:transparent; color:var(--muted); line-height:1.5; }
-.appenv .dsv-eye:hover, .appenv .dsv-eye.on { color:var(--link); background:var(--accent-soft); }
-.dsv { margin:.5rem 0 .7rem; border:1px solid var(--line); border-radius:var(--r, 6px);
-  background:var(--card); padding:.45rem .6rem .55rem; }
-.dsv[hidden] { display:none; }
-.dsv-head { display:flex; align-items:baseline; gap:.6rem; margin-bottom:.35rem; }
-.dsv-title { font-weight:600; }
-.dsv-lead { color:var(--muted); font-size:.88em; }
-.dsv-close { margin-left:auto; cursor:pointer; font:inherit; font-size:1.1em; line-height:1;
-  background:none; border:0; color:var(--muted); padding:0 .2rem; }
-.dsv-close:hover { color:var(--fg); }
-.dsv-tables { display:flex; gap:.6rem; align-items:flex-start; overflow-x:auto;
-  padding-bottom:.35rem; }
-.dsv-t { flex:none; border:1px solid var(--line); border-radius:4px; background:var(--bg);
-  max-width:34rem; }
+/* The DB Fixture card (`dataset_view.fixtures_panel_html`), a card of its own under the
+   Running app one (Victor, 9 Oct 2026): a title row with its (i), then one header per
+   fixture, one under the other — caret, dot, name, Seed, and what the dataset is — and
+   under an opened header, that fixture's tables (`dataset-view.js`) in a darker band. Any
+   number open at once, so the seed and a fixture compare top to bottom. */
+.dbfx { border:1px solid var(--line); border-radius:var(--r, 6px); background:var(--card);
+  padding:.5rem .7rem .55rem; margin:0 0 .7rem; font-size:12.5px; }
+.dbfx-head { margin:0 0 .3rem; }
+.dbfx-title { font-weight:600; cursor:help; }
+.dbfx .appenv-fixtures { display:flex; flex-direction:column; gap:.3rem; }
+.dbfx .appenv-fx { display:block; border:1px solid var(--line); border-radius:6px;
+  background:var(--bg); min-width:0; }
+.dbfx-row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  padding:.15rem .5rem .15rem .2rem; line-height:1.5; }
+.dbfx-tog { display:inline-flex; align-items:center; gap:.35rem; font:inherit; color:var(--fg);
+  background:none; border:0; padding:.1rem .3rem .1rem 0; cursor:pointer; border-radius:4px; }
+.dbfx-tog:hover .disclose, .dbfx-tog:focus-visible .disclose { color:var(--link); }
+.dbfx-tog .disclose::before { content:"\25B6\FE0E"; }
+.dbfx-tog[aria-expanded="true"] .disclose::before { content:"\25BC\FE0E"; }
+.dbfx-tog[aria-disabled="true"] { cursor:default; }
+.dbfx-tog[aria-disabled="true"] .disclose { visibility:hidden; }
+.dbfx .fx-dot { cursor:inherit; }
+.dbfx .appenv-fx-name { white-space:nowrap; font-weight:600; }
+/* Seed: next to the name, wide enough for its in-flight marks (`Seed…`, `Seed ✓`) so a
+   press never shoves what follows. Greyed while nothing answers; still hoverable, because
+   its tip is the reason. */
+.dbfx .appenv-reset { font:inherit; cursor:pointer; border:1px solid var(--line);
+  border-radius:4px; background:var(--card); color:var(--fg); padding:0 .4rem;
+  min-width:5.2em; text-align:center; line-height:1.5; white-space:nowrap; }
+.dbfx .appenv-reset:hover { background:var(--accent-soft); }
+.dbfx .appenv-reset[aria-disabled="true"], .dbfx .appenv-reset:disabled {
+  color:var(--muted); cursor:not-allowed; background:transparent; opacity:.6; }
+.dbfx-sum { color:var(--muted); min-width:0; }
+.dbfx-body { border-top:1px solid var(--line); padding:.5rem;
+  background:color-mix(in srgb, var(--fg) 5%, var(--bg)); border-radius:0 0 6px 6px; }
+@media (prefers-color-scheme: dark) {
+  .dbfx-body { background:color-mix(in srgb, #000 30%, var(--bg)); } }
+.dbfx-body[hidden] { display:none; }
+/* The tables wrap downward, several side by side per line, never a sideways scroll. */
+.dsv-tables { display:flex; flex-wrap:wrap; gap:.6rem; align-items:flex-start; }
+.dsv-t { flex:0 1 auto; min-width:0; max-width:100%; border:1px solid var(--line);
+  border-radius:4px; background:var(--card); }
 .dsv-t > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline;
   gap:.35rem; padding:.2rem .45rem .2rem .2rem; white-space:nowrap; font-size:.9em; }
 .dsv-t > summary::-webkit-details-marker { display:none; }
 /* the caret is the shared `.disclose` (core.css) */
 .dsv-t > summary:hover { background:var(--accent-soft); }
-.dsv-n, .dsv-fk { color:var(--muted); font-size:.9em; }
-.dsv-fk { cursor:help; }
+.dsv-n { color:var(--muted); font-size:.9em; }
 .dsv-grid { max-height:15rem; overflow:auto; border-top:1px solid var(--line); }
 .dsv-grid table { border-collapse:collapse; font:11.5px/1.45 ui-monospace,Menlo,monospace; }
 .dsv-grid th { position:sticky; top:0; background:var(--card); text-align:left; font-weight:600;
   padding:.1rem .45rem; border-bottom:1px solid var(--line); white-space:nowrap; }
-.dsv-grid th.dsv-fkcol { color:var(--link); cursor:help; }
+.dsv-grid th.dsv-numcol { text-align:right; }
+.dsv-grid th.dsv-fkcol, .dsv-grid th.dsv-allnull { cursor:help; }
+.dsv-grid th .dsv-key { color:var(--link); margin-right:.25rem; vertical-align:-1px; }
+.dsv-grid th.dsv-allnull { color:var(--muted); font-weight:400; font-style:italic; }
 .dsv-grid td { padding:.05rem .45rem; white-space:nowrap; max-width:16rem; overflow:hidden;
   text-overflow:ellipsis; border-top:1px solid color-mix(in srgb, var(--line) 50%, transparent); }
 .dsv-grid td.dsv-num { text-align:right; }
+.dsv-grid td.dsv-fkv { cursor:help; }
 .dsv-grid td.dsv-null { color:var(--muted); font-style:italic; }
 .dsv-grid tr.dsv-new td { background:var(--diff-add-bg, rgba(46,160,67,.16)); }
 .dsv-more { margin:.2rem .45rem; color:var(--muted); font-size:.85em; }
