@@ -103,8 +103,14 @@
     // tail. Clicking "Review" and landing in the middle of "already fixed for you" reads
     // as if those were the open findings. Deep links (keepScroll) still scroll to their
     // target, which is the whole point of a deep link.
+    // The target is where the masthead sits *unstuck*. Read off its live rect, a pinned
+    // masthead reports top 0 wherever the page is, so every click landed 8px above the
+    // current offset and the page crept up one click at a time (Victor, 9 Oct 2026).
     if (!keepScroll) {
+      var was = sticky.style.position;
+      sticky.style.position = 'static';
       var top = sticky.getBoundingClientRect().top + window.pageYOffset - 8;
+      sticky.style.position = was;
       window.scrollTo(0, Math.max(0, top));
     }
     if (remember && history.replaceState) {
@@ -120,7 +126,11 @@
   }
 
   tabs.forEach(function (t, i) {
-    t.addEventListener('click', function () { select(i, true); });
+    // Clicking the tab already open is not a request to go anywhere: the reader is in
+    // the middle of that panel, and the page stays where it is.
+    t.addEventListener('click', function () {
+      select(i, true, i === active && !document.body.classList.contains('showall'));
+    });
   });
 
   strip.addEventListener('keydown', function (ev) {
