@@ -559,6 +559,58 @@ def test_a_drop_is_read_after_a_rename_so_one_entry_covers_both_names():
     assert set(g.nodes) == {"Browser", "Backend"}
 
 
+#: What petclinic's generator writes for petclinic-commons: a jar linked into both JVMs,
+#: on a two-line label, called by Backend, calling back into it.
+LIBRARY_SEQUENCE = r"""
+    @startuml
+    participant Browser
+    participant Backend
+    participant "«module»\nCommons" as Commons
+    participant DB
+    Browser -> Backend: GET /api/owners
+    Backend -> Commons: PhoneNumbers.normalize
+    activate Commons
+    Commons -> Backend: NotificationServiceClient.homeDialCode
+    Commons -> DB: select countries
+    Commons --> Backend: +40…
+    deactivate Commons
+    Backend -> DB: select owners
+    @enduml
+"""
+
+
+def test_a_drop_matches_the_alias_a_message_uses_not_only_the_label():
+    """The project writes `"Commons": {"drop": true}` — the name every message line uses —
+    while the declaration's label is `«module»\\nCommons`. Matched against the label alone,
+    the entry never fired and Commons was drawn anyway."""
+    g = graph(LIBRARY_SEQUENCE.replace("«module»", "«component»"),
+              containers={"Commons": {"drop": True}})
+    assert set(g.nodes) == {"Browser", "Backend", "DB"}
+    assert edges(g) == {("Browser", "Backend"), ("Backend", "DB")}
+    assert not any("Commons" in n for n in g.nodes)
+
+
+def test_a_module_or_library_lifeline_is_never_a_container():
+    """A «module» is code linked into a container, not a container: no box, a call into it
+    is a call inside one container, and its own calls are made by whoever called into it —
+    the rule DeploymentDiagramTest's `LIBRARIES` applies to the hand-drawn picture."""
+    for stereo in ("«module»", "«library»"):
+        g = graph(LIBRARY_SEQUENCE.replace("«module»", stereo))
+        assert set(g.nodes) == {"Browser", "Backend", "DB"}, stereo
+        assert edges(g) == {("Browser", "Backend"), ("Backend", "DB")}, stereo
+        # `Commons -> DB` folded into Backend's line, one more operation on it.
+        assert len(g.edges[("Backend", "DB")]["ops"]) == 2, stereo
+    # The PlantUML stereotype syntax says the same thing.
+    g = graph("""
+        @startuml
+        participant Backend
+        participant Commons <<library>>
+        Backend -> Commons: normalize
+        @enduml
+    """)
+    assert set(g.nodes) == {"Backend"} and not g.edges
+
+
 def test_the_title_can_carry_a_link_out_and_the_caption_stays_plain():
     """"C2" is jargon, and the title is the label a reader meets first — so that is where
     the link to c4model.com belongs, not buried at the end of the caption. `render` itself

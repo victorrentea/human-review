@@ -171,8 +171,17 @@ DECL_KINDS = {
 DECL = re.compile(
     r'^(?P<kw>participant|actor|database|queue|collections|boundary|control|entity)\s+'
     r'(?P<first>"[^"]*"|[^\s"]+)'
-    r'(?:\s+as\s+(?P<second>"[^"]*"|[^\s"]+))?\s*(?:#\S+)?\s*$'
+    r'(?:\s+as\s+(?P<second>"[^"]*"|[^\s"]+))?\s*(?P<stereo><<[^>]*>>)?\s*(?:#\S+)?\s*$'
 )
+
+#: A lifeline stereotyped as a library is code linked INTO a container, never a container
+#: of its own: `participant "«module»\nCommons" as Commons` is a jar both JVMs carry, drawn
+#: by the tracing so the Sequence tab can show the call cross a module boundary. On a C2 it
+#: has no box — nobody deploys it, nobody can point at it — and its calls fold into the
+#: container that called into it. The same rule as petclinic's DeploymentDiagramTest
+#: (`LIBRARIES`, `insideOneContainer`), which checks the hand-drawn picture against the
+#: same traces and must agree with this projection about what a container is.
+LIBRARY_STEREOTYPE = re.compile(r"(?:«|<<)\s*(?:module|library)\s*(?:»|>>)", re.I)
 
 # A message. Two shapes, because both are legal and generated PlantUML uses the first:
 # `A -> B: label` and the space-less `A->B: label`. The arrow itself is validated by
@@ -354,8 +363,12 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
     if source:
         graph.sources.append(source)
     rename = rename or {}
-    drop = drop or set()
+    drop = set(drop or ())
     aliases: dict[str, str] = {}
+    # Library lifelines, by the name a message resolves to, and the container each one is
+    # currently running inside: the last non-library lifeline that called into it.
+    libraries: set[str] = set()
+    host: dict[str, str] = {}
     skipping = False
     for raw in text.splitlines():
         line = raw.strip()
@@ -387,9 +400,19 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
             else:
                 label = alias = first
             aliases[alias] = label
-            if rename.get(label, label) in drop:
+            name = rename.get(label, label)
+            # `drop` is checked against the alias as well as the label: the generator
+            # writes `participant "«module»\nCommons" as Commons`, and the name a project
+            # writes in `human-review.json` is the one it reads in every message line —
+            # `Commons`, not the two-line label. Checking the label alone meant
+            # `"Commons": {"drop": true}` never matched anything.
+            if {alias, rename.get(alias, alias), label, name} & drop:
+                drop.add(name)
                 continue
-            node = graph.node(rename.get(label, label))
+            if LIBRARY_STEREOTYPE.search(label) or LIBRARY_STEREOTYPE.search(m["stereo"] or ""):
+                libraries.add(name)
+                continue
+            node = graph.node(name)
             node["decl"] = m["kw"]
             continue
 
@@ -401,6 +424,8 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
         if not mm or not _is_message_arrow(mm["arrow"]):
             continue
         a, b, arrow = _unquote(mm["a"]), _unquote(mm["b"]), mm["arrow"]
+        if {a, b, rename.get(a, a), rename.get(b, b)} & drop:
+            continue                          # dropped by the name the message uses
         a, b = aliases.get(a, a), aliases.get(b, b)
         a, b = rename.get(a, a), rename.get(b, b)
         # A lifeline the project declared `"drop": true` never enters the graph, and
@@ -418,6 +443,18 @@ def parse_sequence(text: str, graph: Graph, source: str = "",
         # The dashed reply is the answer to a call already in the graph. Drawing it would
         # give every synchronous edge a twin pointing the wrong way.
         if _looks_like_reply(arrow):
+            continue
+        # A library runs inside whichever container called into it, so a call INTO one is
+        # a call inside one container — dropped, like a self-call — and a call OUT of one
+        # is made by that container. `Commons -> Backend: homeDialCode` (a callback the
+        # jar makes into the JVM that linked it) folds to `Backend -> Backend` and goes.
+        # A library nothing has called into yet has no container to stand for: dropped.
+        if a in libraries:
+            if a not in host:
+                continue
+            a = host[a]
+        if b in libraries:
+            host[b] = a
             continue
         if a == b:
             continue                          # a container calling itself is C3's business
