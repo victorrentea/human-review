@@ -226,13 +226,16 @@ def diff_uri_handler() -> str | None:
     override = os.environ.get("HUMAN_REVIEW_DIFF_URI_HANDLER")
     if override is not None:
         return override.strip() or None
-    for store in (Path.home() / ".vscode" / "extensions",
-                  Path.home() / ".vscode-insiders" / "extensions"):
-        try:
-            if any(d.name.startswith("victorrentea.victor-vsc-") for d in store.iterdir()):
-                return "victorrentea.victor-vsc"
-        except OSError:
-            continue
+    # The Human Review extension (vscode-extension/ in this repo) first; victor-vsc, where its
+    # URI handler was born and which still carries one, after it.
+    for ext in ("victorrentea.human-review", "victorrentea.victor-vsc"):
+        for store in (Path.home() / ".vscode" / "extensions",
+                      Path.home() / ".vscode-insiders" / "extensions"):
+            try:
+                if any(d.name.startswith(ext + "-") for d in store.iterdir()):
+                    return ext
+            except OSError:
+                continue
     return None
 
 

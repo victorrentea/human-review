@@ -1,0 +1,83 @@
+name: vscode extension
+
+# The VS Code end of the review page lives in vscode-extension/, and its packaged .vsix is
+# committed beside it (dist/human-review.vsix) so whoever has this repository — a clone, or
+# the Claude Code plugin's copy — can install it with no Marketplace and no build step.
+#
+# Three things, in order:
+#  1. its tests, in plain node;
+#  2. the committed .vsix is the source as it stands — rebuilt here and compared file by file,
+#     so a change to the source that forgot `npm run package` fails instead of shipping the
+#     old bridge to everyone installing from the repo;
+#  3. on main, the version in package.json is published to the VS Code Marketplace and to
+#     Open VSX when that version is not there yet — so publishing is "bump the version, push".
+#     Each registry is skipped, with a notice, while its token secret (VSCE_PAT, OVSX_PAT) is
+#     not set.
+on:
+  push:
+    paths:
+      - "vscode-extension/**"
+      - ".github/workflows/vscode-extension.yml"
+  pull_request:
+    paths:
+      - "vscode-extension/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Tests
+        run: npm test
+      - name: The committed .vsix is this source
+        run: |
+          set -e
+          npx --yes @vscode/vsce package --no-dependencies -o /tmp/built.vsix
+          mkdir -p /tmp/built /tmp/committed
+          unzip -q /tmp/built.vsix -d /tmp/built
+          unzip -q dist/human-review.vsix -d /tmp/committed
+          if ! diff -r /tmp/built/extension /tmp/committed/extension; then
+            echo "::error::dist/human-review.vsix is stale: run 'npm run package' in vscode-extension/ and commit it"
+            exit 1
+          fi
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-extension
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: VS Code Marketplace
+        run: |
+          set -e
+          if [ -z "$VSCE_PAT" ]; then echo "::notice::VSCE_PAT not set: Marketplace publish skipped"; exit 0; fi
+          want=$(node -p "require('./package.json').version")
+          have=$(npx --yes @vscode/vsce show victorrentea.human-review --json 2>/dev/null \
+                 | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{console.log(JSON.parse(s).versions[0].version)}catch{console.log('')}})")
+          if [ "$want" = "$have" ]; then echo "Marketplace already has $want"; exit 0; fi
+          npx --yes @vscode/vsce publish --packagePath dist/human-review.vsix -p "$VSCE_PAT"
+      - name: Open VSX
+        run: |
+          set -e
+          if [ -z "$OVSX_PAT" ]; then echo "::notice::OVSX_PAT not set: Open VSX publish skipped"; exit 0; fi
+          want=$(node -p "require('./package.json').version")
+          have=$(curl -fsS https://open-vsx.org/api/victorrentea/human-review 2>/dev/null \
+                 | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{console.log(JSON.parse(s).version)}catch{console.log('')}})")
+          if [ "$want" = "$have" ]; then echo "Open VSX already has $want"; exit 0; fi
+          npx --yes ovsx publish dist/human-review.vsix -p "$OVSX_PAT"

@@ -307,10 +307,27 @@ def git_root(start):
         return None
 
 
+#: Where VS Code windows publish their bridge (`vscode-<pid>.json`: port and token): the
+#: Human Review extension's own registry (vscode-extension/ in this repo) first, then
+#: victor-vsc's, where the bridge was born and which still carries it.
+BRIDGE_REGISTRIES = (Path(".human-review") / "ide", Path(".walkie-talkie") / "ide")
+
+
+def bridge_files():
+    """Every bridge registry entry, the extension's own first. One file name is one extension
+    host, so a window running both extensions is asked once, through the extension's entry."""
+    seen = set()
+    for rel in BRIDGE_REGISTRIES:
+        for f in sorted((Path.home() / rel).glob("vscode-*.json")):
+            if f.name not in seen:
+                seen.add(f.name)
+                yield f
+
+
 def owning_windows(target: Path):
     """The VS Code windows whose workspace folders contain `target`, best claim first.
 
-    Each window's extension host publishes {port, token} under ~/.walkie-talkie/ide/ and
+    Each window's extension host publishes {port, token} (`bridge_files`) and
     answers /ping with the absolute paths of its workspace folders. We pick by longest
     matching prefix, so a window opened on the checkout beats one opened on the directory
     above it — the deeper folder is the more specific claim on the path.
@@ -328,7 +345,7 @@ def owning_windows(target: Path):
     gone; a timeout proves nothing and deletes nothing, because unplugging a live window
     from the bridge would cost it until its next activation."""
     ranked = []
-    for f in sorted((Path.home() / ".walkie-talkie" / "ide").glob("vscode-*.json")):
+    for f in bridge_files():
         try:
             entry = json.loads(f.read_text())
             ping = urllib.request.Request(
@@ -467,7 +484,7 @@ def review_open(path, line, sha, root, branch, end_line=None, comment=False, com
                           "branch": branch,
                           **({"endLine": end_line} if end_line else {}),
                           **_comment_fields(comment, comment_line)}).encode()
-    for f in sorted((Path.home() / ".walkie-talkie" / "ide").glob("vscode-*.json")):
+    for f in bridge_files():
         try:
             entry = json.loads(f.read_text())
             req = urllib.request.Request(
@@ -497,7 +514,7 @@ def _git(cwd, *args) -> str:
 def _pings(timeout=1.5):
     """(registry entry, /ping answer) for every VS Code window whose bridge answers."""
     out = []
-    for f in sorted((Path.home() / ".walkie-talkie" / "ide").glob("vscode-*.json")):
+    for f in bridge_files():
         try:
             entry = json.loads(f.read_text())
             req = urllib.request.Request(f"http://127.0.0.1:{entry['port']}/ping",
@@ -575,8 +592,9 @@ def editor_state(sha, root, branch) -> dict:
                       if prompt else None)}
     if not pings:
         return {"state": "off", "window": None, **facts,
-                "tip": "No VS Code window answers: is the victor-vsc extension installed "
-                       "and a window open? Click: open this checkout in VS Code."}
+                "tip": "No VS Code window answers: is the Human Review extension "
+                       "(victorrentea.human-review) installed and a window open? "
+                       "Click: open this checkout in VS Code."}
     holder, claim = None, 0
     for _entry, ping in pings:
         c = _claim(ping.get("folders") or [], (root, real))
@@ -2418,18 +2436,38 @@ def main():
     else:
         sys.exit(f"[serve-review] the server did not come up on :{port}")
     if args.open:
-        open_page(url)
+        open_page(url, directory)
     print(url)
     return 0
 
 
-#: victor-vsc's bridge: shows a URL in the embedded browser of the VS Code window whose
-#: workspace folder is this git root — beside the code, not on another desktop.
+#: victor-vsc's script for the same thing `open_in_vscode` does, for a machine where only
+#: victor-vsc carries the bridge and its windows predate the registry this server reads first.
 VSC_OPENER = Path(os.environ.get("HUMAN_REVIEW_VSC_OPENER",
                                  "~/workspace/victor-vsc/open-in-browser.py")).expanduser()
 
 
-def open_page(url: str) -> None:
+def open_in_vscode(url: str, root) -> bool:
+    """Show `url` in the embedded browser of the VS Code window that has `root` open — beside
+    the code, not on another desktop — through that window's bridge (`/open-url`). `root` is
+    any path inside the checkout (the served `.human-review` will do): windows are ranked by
+    the folder that contains it. False when no window owning it takes it."""
+    if not root:
+        return False
+    for entry, _info in owning_windows(Path(root)):
+        try:
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{entry['port']}/open-url", method="POST",
+                data=json.dumps({"url": url}).encode(),
+                headers={"x-relay-token": entry["token"], "Content-Type": "application/json"})
+            if json.loads(urllib.request.urlopen(req, timeout=5).read() or b"{}").get("ok"):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def open_page(url: str, root=None) -> None:
     """Show the page the first time it is served, and only then.
 
     Only on a *new* server: a rebuild reaches a tab that is already open by itself (the
@@ -2438,6 +2476,8 @@ def open_page(url: str) -> None:
     browser, beside the code; anywhere else, into the default browser. It is an http URL
     either way — never `open review.html`, which hands a file to whatever owns `.html`."""
     in_vscode = os.environ.get("TERM_PROGRAM") == "vscode" or "VSCODE_IPC_HOOK_CLI" in os.environ
+    if in_vscode and open_in_vscode(url, root):
+        return
     if in_vscode and VSC_OPENER.is_file():
         r = subprocess.run([sys.executable, str(VSC_OPENER), url], capture_output=True)
         if r.returncode == 0:

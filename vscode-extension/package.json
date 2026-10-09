@@ -1,0 +1,62 @@
+{
+  "name": "human-review",
+  "publisher": "victorrentea",
+  "displayName": "Human Review",
+  "description": "The VS Code end of a /human-review page: every code reference in the review opens in the window that has the reviewed checkout — as a highlighted range, a before/after diff, or the PR comment thread on it.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/victorrentea/human-review.git",
+    "directory": "vscode-extension"
+  },
+  "homepage": "https://github.com/victorrentea/human-review/tree/main/vscode-extension#readme",
+  "bugs": {
+    "url": "https://github.com/victorrentea/human-review/issues"
+  },
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "code review",
+    "pull request",
+    "claude code",
+    "review"
+  ],
+  "main": "./extension.js",
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onUri"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "humanReview.status",
+        "title": "Open This Checkout's Review",
+        "category": "Human Review"
+      }
+    ],
+    "configuration": {
+      "title": "Human Review",
+      "properties": {
+        "humanReview.serveScript": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to `serve-review.py`, used when the status-bar item starts a review server. Empty: the copy installed with the `human-review` Claude Code plugin, else `~/workspace/human-review`."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "package": "npx --yes @vscode/vsce package --no-dependencies -o dist/human-review.vsix"
+  }
+}

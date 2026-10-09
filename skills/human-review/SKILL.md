@@ -368,8 +368,8 @@ trailer if the claim was never true.
 
 **The page opens itself.** The first time `refresh-report.py` starts the server it shows
 the page — in the VS Code window's own browser, beside the code, when the run is in a VS
-Code terminal and [victor-vsc](https://github.com/victorrentea/victor-vsc)'s bridge is
-installed; in the default browser otherwise. Later rebuilds open nothing: the tab already
+Code terminal and the Human Review VS Code extension (`vscode-extension/` in this repository,
+`victorrentea.human-review`) is installed; in the default browser otherwise. Later rebuilds open nothing: the tab already
 open reloads itself. Do not open it again by hand, and never `open review.html`.
 
 **Print `$URL` as the last line of the run.** Then make sure the app runs from *this*

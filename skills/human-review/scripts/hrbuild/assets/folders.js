@@ -39,7 +39,7 @@
           return r.json().then(function (j) {
             flash(j.how === 'revealed'
               ? 'Showing ' + name + ' in VS Code' + (j.window ? ' (' + j.window + ')' : '')
-              : 'VS Code is in front, but its victor-vsc is too old to reveal a folder: '
+              : 'VS Code is in front, but its Human Review extension is too old to reveal a folder: '
                 + 'update it and Reload Window');
           });
         }).catch(function () { flash('the review server is no longer running'); });

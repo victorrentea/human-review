@@ -109,7 +109,7 @@ def test_a_window_on_a_folder_above_the_checkout_counts(repo, tmp_path, monkeypa
 def test_red_when_no_window_answers(tmp_path, monkeypatch):
     monkeypatch.setattr(srv.Path, "home", classmethod(lambda cls: tmp_path))
     got = srv.editor_state("a" * 40, str(tmp_path), "feature")
-    assert got["state"] == "off" and "victor-vsc" in got["tip"]
+    assert got["state"] == "off" and "victorrentea.human-review" in got["tip"]
 
 
 def test_the_endpoint_answers_the_page_and_is_not_use(server, monkeypatch):

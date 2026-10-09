@@ -17,6 +17,7 @@ def _calls(monkeypatch, tmp_path, env):
     opener = tmp_path / "open-in-browser.py"
     opener.write_text("")
     monkeypatch.setattr(sr, "VSC_OPENER", opener)
+    monkeypatch.setattr(sr.Path, "home", classmethod(lambda cls: tmp_path))
     for k in ("TERM_PROGRAM", "VSCODE_IPC_HOOK_CLI"):
         monkeypatch.delenv(k, raising=False)
     for k, v in env.items():
@@ -40,10 +41,77 @@ def test_anywhere_else_the_default_browser(monkeypatch, tmp_path):
         ("browser", "http://127.0.0.1:7654/review.html")]
 
 
+def _bridge(tmp_path, registry: str, name: str, folder: Path):
+    """One fake VS Code window owning `folder`, registered under `~/<registry>/<name>`.
+    Returns the server and the URLs it was asked to show."""
+    import http.server, threading
+    shown = []
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def _send(self, body):
+            data = json.dumps(body).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            assert self.path == "/ping" and self.headers["x-relay-token"] == "t"
+            self._send({"ok": True, "app": "vscode", "folders": [
+                {"name": folder.name, "path": str(folder), "realPath": str(folder.resolve())}]})
+
+        def do_POST(self):
+            assert self.path == "/open-url" and self.headers["x-relay-token"] == "t"
+            shown.append(json.loads(self.rfile.read(int(self.headers["Content-Length"])))["url"])
+            self._send({"ok": True})
+
+        def log_message(self, *a):
+            pass
+
+    httpd = http.server.HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    d = tmp_path / registry / "ide"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / name).write_text(json.dumps({"port": httpd.server_address[1], "token": "t"}))
+    return httpd, shown
+
+
+def test_inside_vscode_the_extension_shows_the_page_in_the_window_on_the_checkout(
+        monkeypatch, tmp_path):
+    """The Human Review extension's bridge, found in its own registry, takes the page; no
+    script from another repository and no default browser is involved."""
+    checkout = tmp_path / "shop"
+    checkout.mkdir()
+    httpd, shown = _bridge(tmp_path, ".human-review", "vscode-1.json", checkout)
+    monkeypatch.setattr(sr.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setenv("TERM_PROGRAM", "vscode")
+    monkeypatch.setattr(sr, "VSC_OPENER", tmp_path / "absent.py")
+    import webbrowser
+    monkeypatch.setattr(webbrowser, "open", lambda url: shown.append(("browser", url)))
+    try:
+        sr.open_page("http://127.0.0.1:7654/review.html", checkout)
+    finally:
+        httpd.shutdown()
+    assert shown == ["http://127.0.0.1:7654/review.html"]
+
+
+def test_one_extension_host_is_asked_once_through_the_extensions_own_entry(
+        monkeypatch, tmp_path):
+    """victor-vsc and the Human Review extension in one window share a pid, so they publish
+    the same file name in their two registries: that window is one bridge, not two."""
+    for registry in (".walkie-talkie", ".human-review"):
+        (tmp_path / registry / "ide").mkdir(parents=True)
+        (tmp_path / registry / "ide" / "vscode-7.json").write_text("{}")
+    (tmp_path / ".walkie-talkie" / "ide" / "vscode-8.json").write_text("{}")
+    monkeypatch.setattr(sr.Path, "home", classmethod(lambda cls: tmp_path))
+    got = [f.relative_to(tmp_path).as_posix() for f in sr.bridge_files()]
+    assert got == [".human-review/ide/vscode-7.json", ".walkie-talkie/ide/vscode-8.json"]
+
+
 def test_a_server_already_running_opens_nothing(monkeypatch, tmp_path, capsys):
     """A rebuild reaches the open tab by itself; opening again piles up one tab per run."""
     opened = []
-    monkeypatch.setattr(sr, "open_page", opened.append)
+    monkeypatch.setattr(sr, "open_page", lambda url, root=None: opened.append(url))
     monkeypatch.setattr(sr, "probe", lambda port: {sr.MARKER_KEY: 1, "pid": 1,
                                                     "served": str(tmp_path.resolve())})
     monkeypatch.setattr(sys, "argv", ["serve-review.py", str(tmp_path)])
@@ -62,7 +130,7 @@ def _world(monkeypatch, tmp_path, ports: dict, argv=()):
     seen = {"spawned": [], "opened": [], "killed": []}
     monkeypatch.setattr(sr, "probe", lambda port: ports.get(port))
     monkeypatch.setattr(sr, "free", lambda port: port not in ports)
-    monkeypatch.setattr(sr, "open_page", seen["opened"].append)
+    monkeypatch.setattr(sr, "open_page", lambda url, root=None: seen["opened"].append(url))
     monkeypatch.setattr(sr.subprocess, "Popen", lambda cmd, **kw: seen["spawned"].append(cmd))
     monkeypatch.setattr(sr.os, "kill", lambda pid, sig: seen["killed"].append(pid))
     monkeypatch.setattr(sys, "argv", ["serve-review.py", str(tmp_path), "--port", "17654",

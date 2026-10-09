@@ -148,6 +148,28 @@ gh repo sync <your-github-user>/human-review --source victorrentea/human-review
 /plugin marketplace update human-review
 ```
 
+### The VS Code extension
+
+Every code reference on the page is a click into your editor. Without help, that click goes
+to whichever VS Code window was active last — with two checkouts of one project open, often
+the wrong one, showing the right path with the wrong content. The **Human Review** extension
+in [`vscode-extension/`](vscode-extension/) is the editor's end of the page: the click lands
+in the window that has the reviewed checkout, only when its file is the reviewed version, as
+a highlighted range, a before/after diff, or the PR comment thread on it. It also puts a
+`human-review` item in the status bar that serves and opens the checkout's review.
+
+The packaged extension is committed next to its source, so the repository is all you need:
+
+```sh
+code --install-extension vscode-extension/dist/human-review.vsix
+```
+
+Installed as a Claude Code plugin, the same file is in the plugin's own copy of this
+repository (`~/.claude/plugins/cache/human-review/…/vscode-extension/dist/`), or download
+it from
+<https://github.com/victorrentea/human-review/raw/main/vscode-extension/dist/human-review.vsix>.
+Once published, it is also on the Marketplace as `victorrentea.human-review`.
+
 There are two commands, and they are the two ends of one flow. Implement the change however
 you like — then, **in the same conversation** that wrote it (Claude Code, or Copilot Chat in
 VS Code):
