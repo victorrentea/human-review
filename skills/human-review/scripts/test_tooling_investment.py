@@ -18,9 +18,10 @@ _spec.loader.exec_module(build)
 
 def test_the_note_is_not_a_row_of_the_bill():
     note = build.tooling_investment_html()
-    assert note.startswith('<p class="costtooling">')
+    assert note.startswith('<div class="costtooling">')
     assert "<tr" not in note and "<table" not in note
-    assert "not this change" in note and "not updated automatically" in note
+    # A baseline, and dated as one: the foot names the sessions and the span it measured.
+    assert "not this change" in note and '<p class="costtooling-foot">' in note
 
 
 def test_the_breakdown_sums_to_the_headline():
