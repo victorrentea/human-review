@@ -12,6 +12,15 @@
 .diagram .head > .badge { margin-left:0 !important; }
 .diagram .head > *:has(+ .badge) { margin-right:0 !important; }
 .diagram .head > .badge + * { margin-left:auto !important; }
+/* A draw.io card's presses (Edit on desktop, Edit on web, Revert changes) follow the title
+   and its redraw ring at the header's ordinary gap; the file name after them takes the push
+   to the right edge. Both neighbours asked for the free space before — the ring's
+   `margin-right:auto` and the presses' `margin-left:auto` (commands.css) — so the buttons
+   floated in the middle of the header, half its width away from the title they act on
+   (Victor, 9 Oct 2026). */
+.diagram > .head > .tabre:has(+ .rerun-acts) { margin-right:0; }
+.diagram > .head > .rerun-acts { margin-left:0; }
+.diagram > .head > .rerun-acts + * { margin-left:auto; }
 .prov { margin:.5rem 0 0; display:flex; gap:.9rem; flex-wrap:wrap; }
 .prov .srcref { margin-bottom:0; }
 .diagram .head span { color:var(--muted); font-size:.82rem; font-family:ui-monospace,Menlo,monospace; }

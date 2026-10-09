@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -155,3 +156,69 @@ def test_a_problem_is_said_above_the_views_that_were_drawn(tmp_path):
     out, _, _ = render_c4({}, tmp_path, tmp_path)
     assert out.index("could not parse b.dsl") < out.index('class="diagram')
     assert 'class="c4-only"' in out, "a single mode shows in both schemes"
+
+
+# --------------------------------------------------------------------------- #
+# the card's header: what it is, who checks it, and the file opened at the view
+# --------------------------------------------------------------------------- #
+
+def _workspace(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "w.dsl").write_text(
+        'workspace {\n  model {\n    !include parts/c3.dsl\n  }\n  views {\n'
+        '    component backend "C3-Repository" "Repository Layer — nearest neighbours" {\n'
+        '      include *\n    }\n  }\n}\n', encoding="utf-8")
+    (docs / "parts").mkdir()
+    (docs / "parts" / "c3.dsl").write_text(
+        'repo = component "Repository Layer"\n\n'
+        'systemLandscape Landscape {\n}\n', encoding="utf-8")
+    return docs
+
+
+def test_a_view_is_found_at_its_definition_line_through_includes(tmp_path):
+    from hrbuild.shared.c4 import _view_definition
+    _workspace(tmp_path)
+    assert _view_definition(tmp_path, "docs/w.dsl", "C3-Repository") == ("docs/w.dsl", 6)
+    assert _view_definition(tmp_path, "docs/w.dsl", "Landscape") == ("docs/parts/c3.dsl", 3)
+    assert _view_definition(tmp_path, "docs/w.dsl", "Repository Layer") is None, \
+        "an element named like a key is not a view"
+
+
+def test_the_header_names_a_view_and_its_archunit_test_and_opens_the_dsl_at_it(tmp_path):
+    import subprocess
+    _workspace(tmp_path)
+    test = tmp_path / "src" / "test" / "C3ArchTest.java"
+    test.parent.mkdir(parents=True)
+    test.write_text("import com.tngtech.archunit.core.domain.JavaClass;\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    assets = tmp_path / "assets" / "c4"
+    assets.mkdir(parents=True)
+    _svg(assets, "C3.new.light.svg", "#fff")
+    note = sv.tested_note("Component", [{"path": "src/test/C3ArchTest.java",
+                                         "levels": ["Component"], "arrows": True}])
+    _manifest(assets, [{"name": "C3-Repository", "type": "Component", "status": "unchanged",
+                        "description": "Repository Layer — nearest neighbours",
+                        "source": "docs/w.dsl", "new_light": "C3.new.light.svg",
+                        "note": note}])
+    out, _, _ = render_c4({}, tmp_path, tmp_path)
+    head = out.split('<div class="head">')[1].split("</div>")[0]
+    assert "<b>C3-Repository</b>" in head and ">Structurizr view</span>" in head
+    assert "nearest neighbours</span>" not in head, "the description is a tooltip now"
+    assert "ArchUnit-checked by <a " in head and ">C3ArchTest</a>" in head
+    assert f'w.dsl:6:1"' in head, "the file link opens the DSL at the view's line"
+    assert ">w.dsl</a>" in head and ":6" not in re.sub(r'"[^"]*"', '""', head), \
+        "the line is in the link, never on the page"
+    assert "checked against the code" not in out.split("</div>", 1)[1].split('class="svgbox')[0]
+    assert 'class="sub dgm-stale"' not in out, "the checked sentence left the card's foot"
+
+
+def test_a_hand_maintained_note_stays_under_the_card(tmp_path):
+    from hrbuild.shared.c4 import _checked_label
+    label, rest = _checked_label("Hand-maintained: no test reads this workspace.", tmp_path)
+    assert (label, rest) == ("", "Hand-maintained: no test reads this workspace.")
+    label, rest = _checked_label(sv.tested_note("Component", [
+        {"path": "T.java", "levels": ["Component"], "arrows": False}]) + " Not compared.",
+        tmp_path)
+    assert "Checked by T" in label and rest == "Not compared."

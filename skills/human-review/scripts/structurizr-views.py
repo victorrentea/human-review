@@ -346,7 +346,10 @@ LEVEL_WORDS = {"Component": "components", "Container": "containers"}
 
 
 def tested_note(vtype: str, tests: list[dict]) -> str:
-    """One line under the card: are these boxes compared with the code, or drawn by hand?"""
+    """One line under the card: are these boxes compared with the code, or drawn by hand?
+
+    The *checked* sentence is parsed back by `hrbuild/shared/c4.py:_CHECKED_NOTE`, which
+    moves it into the card's header as *ArchUnit-checked by <test>*: reword it there too."""
     if not tests:
         return "Hand-maintained: no test reads this workspace."
     checking = [t for t in tests if vtype in t["levels"]]

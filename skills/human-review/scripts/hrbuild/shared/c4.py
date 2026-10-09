@@ -19,10 +19,13 @@ from __future__ import annotations
 import base64
 import html
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
 
-from .diagrams import UNCHANGED, UNCHANGED_BADGE, _source_link, dgm_views_html, read_manifest
+from .diagrams import (UNCHANGED, UNCHANGED_BADGE, _source_link, dgm_views_html,
+                       read_manifest, shorten_dgm_src)
 
 #: Where `structurizr-views.py` writes, relative to the review directory.
 C4_DIR = "assets/c4"
@@ -92,6 +95,103 @@ def _c4_badge(status: str) -> str:
     return f'<span class="badge sev-low">{html.escape(status)}</span>'
 
 
+#: The DSL keywords that open a view (`views { component backend "C3" { … } }`).
+_VIEW_KEYWORDS = ("systemLandscape", "systemContext", "container", "component", "dynamic",
+                 "deployment", "filtered", "custom", "image")
+
+#: `!include other.dsl` — the closure a view may be defined anywhere in.
+_DSL_INCLUDE = re.compile(r'^[ \t]*!include[ \t]+(?:"([^"\n]+)"|(\S+))', re.M)
+
+
+def _view_definition(root: Path, source: str, key: str) -> tuple[str, int] | None:
+    """`(file, line)` of the DSL line that defines view `key`, following `!include`s.
+
+    The header's file link opens the DSL *at the view*, not at line 1 of a workspace whose
+    views sit sixty lines down, possibly in another file. The line goes into the link only:
+    a line number printed on the page is noise (Victor). None for a key Structurizr made up
+    (a view with no key in the DSL) — the link then opens the workspace file."""
+    rx = re.compile(r'^[ \t]*(?:' + "|".join(_VIEW_KEYWORDS) + r')\b'
+                    r'(?:[ \t]+(?:"[^"\n]*"|[^\s"{]+)){0,2}?[ \t]+'
+                    r'(?:"' + re.escape(key) + r'"|' + re.escape(key) + r')(?=[\s{]|$)', re.M)
+    seen, todo = set(), [Path(source)]
+    while todo:
+        rel = todo.pop(0)
+        if rel in seen:
+            continue
+        seen.add(rel)
+        try:
+            text = (root / rel).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        m = rx.search(text)
+        if m:
+            return rel.as_posix(), text.count("\n", 0, m.start()) + 1
+        for inc in _DSL_INCLUDE.finditer(text):
+            target = inc[1] or inc[2]
+            if "://" not in target:
+                todo.append(Path(os.path.normpath(rel.parent / target)))
+    return None
+
+
+def _dsl_link(root: Path, source: str, key: str) -> str:
+    """The file on the right of the header, opening VS Code at the view's definition."""
+    where = _view_definition(root, source, key)
+    if not where:
+        return _source_link(source, root)
+    rel, line = where
+    href = html.escape(f"vscode://file/{(root / rel).resolve()}:{line}:1", quote=True)
+    tip = html.escape(f"Open in VS Code where view {key} is defined: {rel}", quote=True)
+    return shorten_dgm_src(f'<a class="dgm-src" href="{href}" data-tip="{tip}">'
+                           f'{html.escape(rel)}</a>')
+
+
+#: `structurizr-views.py:tested_note`'s sentence for a view a test checks. Parsed back
+#: here, so its wording is pinned by `test_structurizr_views.py`.
+_CHECKED_NOTE = re.compile(r"^Its (?:components|containers)(?: and their arrows)? are checked "
+                          r"against the code by (?P<names>.+?)(?:; its arrows are not)?\.(?=\s|$)"
+                          r"(?P<rest>.*)$", re.S)
+
+
+def _test_file(root: Path, name: str) -> Path | None:
+    try:
+        out = subprocess.run(["git", "-C", str(root), "ls-files", "--", name, f"*/{name}"],
+                             capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    hits = [p for p in out.splitlines() if p]
+    return root / hits[0] if hits else None
+
+
+def _checked_label(note: str, root: Path) -> tuple[str, str]:
+    """`(header label, what stays under the card)` for one view's test note.
+
+    *Its components and their arrows are checked against the code by C3ArchTest.java.* was a
+    sentence under the picture, read after the picture; the fact is the card's credential,
+    so it goes in the header as *ArchUnit-checked by C3ArchTest* (Victor, 9 Oct 2026), the
+    whole sentence on hover and the test's name the way into it. A note that is not that
+    sentence (hand-maintained, uncompared) stays under the card, where it was."""
+    m = _CHECKED_NOTE.match(note or "")
+    if not m:
+        return "", note
+    links, archunit = [], True
+    for name in (n.strip() for n in m["names"].split(",")):
+        path = _test_file(root, name)
+        text = ""
+        if path:
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                pass
+        archunit &= "com.tngtech.archunit" in text
+        face = html.escape(Path(name).stem)
+        links.append(f'<a href="{html.escape(f"vscode://file/{path.resolve()}:1:1", quote=True)}">'
+                     f'{face}</a>' if path else face)
+    first = note[:len(note) - len(m["rest"])].strip()
+    label = (f'<span class="c4-check" data-tip="{html.escape(first, quote=True)}">'
+             f'{"ArchUnit-checked" if archunit else "Checked"} by {", ".join(links)}</span>')
+    return label, m["rest"].strip()
+
+
 def render_c4(block: dict, root: Path, out_dir: Path) -> tuple[str, int, int]:
     """The `c4` block: (html, weight, changes), as `render_block` wants them."""
     assets = out_dir / (block.get("dir") or C4_DIR)
@@ -122,18 +222,21 @@ def render_c4(block: dict, root: Path, out_dir: Path) -> tuple[str, int, int]:
         changed += status != UNCHANGED
         body, toggles = _c4_body(r, assets)
         desc = r.get("description") or r.get("title") or ""
-        note = (r.get("note") or "").strip()
+        check, note = _checked_label((r.get("note") or "").strip(), root)
+        # What the card is: one of the workspace's views, the DSL's description on hover.
+        # The description used to be printed in the header (*Repository Layer — nearest
+        # neighbours*) and said nothing the picture below does not (Victor, 9 Oct 2026).
+        kind = (f'<span class="c4-view" data-tip="'
+                + html.escape(f"A view of the Structurizr workspace{': ' + desc if desc else ''}",
+                              quote=True) + '">Structurizr view</span>')
         parts.append(
             f'<div class="diagram dgm-c4{" dgm-toggles" if toggles else ""}" '
             f'id="c4-{html.escape(re.sub(r"[^A-Za-z0-9_-]+", "-", Path(r["source"]).stem + "-" + r["name"]), quote=True)}">'
-            # "(Structurizr)" in the title: the projected card above is called C2-Containers
-            # too, and the two may well disagree — they are two different claims.
-            f'<div class="head"><b>{html.escape(r["name"])} (Structurizr)</b>'
-            # Whose picture this is, before what it shows: the same view names (C2,
-            # Containers) are on the projected card above, drawn by another program.
-            + (f'<span class="c4-desc">{html.escape(desc)}</span>' if desc else "")
+            # "Structurizr view" right after the title: the projected card above is called
+            # C2-Containers too, and the two may well disagree — they are two claims.
+            f'<div class="head"><b>{html.escape(r["name"])}</b>' + kind + check
             + _c4_badge(status)
-            + _source_link(r["source"], root) + '</div>'
+            + _dsl_link(root, r["source"], r["name"]) + '</div>'
             + body
             + (f'<p class="sub dgm-stale">{html.escape(note)}</p>' if note else "")
             + '</div>')

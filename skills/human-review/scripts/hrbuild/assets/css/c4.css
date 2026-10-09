@@ -3,7 +3,6 @@
    and its dark render, the page's colour scheme showing one. Its canvas is its own colour
    (white, or Structurizr's near-black), so the box around it adds no padding and no tint
    of the page's: a frame of --dgm-bg around a canvas of another grey is two backgrounds. */
-.diagram.dgm-c4 .head .c4-desc { margin-right:auto; font-family:inherit; font-size:.85rem; }
 .diagram .c4box { padding:0; background:none; }
 .diagram .c4box img { display:block; margin:0 auto; max-width:100%; height:auto;
                       border-radius:6px; border:1px solid var(--line); }
@@ -12,3 +11,14 @@
   .diagram .c4box .c4-light { display:none; }
   .diagram .c4box .c4-dark { display:block; }
 }
+/* The header reads title, what it is, who checks it, the badge, then the file on the
+   right: left-packed, the file taking the push (`space-between` spread four items evenly). */
+.diagram.dgm-c4 > .head { justify-content:flex-start; column-gap:.6rem; align-items:center; }
+.diagram.dgm-c4 > .head > .dgm-src { margin-left:auto; }
+.diagram.dgm-c4 .head span.c4-view, .diagram.dgm-c4 .head span.c4-check {
+              font-family:inherit; font-size:.78rem; line-height:1.3; white-space:nowrap; }
+.diagram.dgm-c4 .head span.c4-view { color:var(--muted); border:1px solid var(--line);
+              border-radius:999px; padding:.05rem .5rem; }
+.diagram.dgm-c4 .head span.c4-check { color:var(--muted); }
+.diagram.dgm-c4 .head span.c4-check a { color:inherit; font-weight:600; text-decoration:none; }
+.diagram.dgm-c4 .head span.c4-check a:hover { text-decoration:underline; text-underline-offset:2px; }

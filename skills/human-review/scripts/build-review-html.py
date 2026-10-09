@@ -147,7 +147,8 @@ from hrbuild.shared.diagrams import (
     _unchanged_body, _why_not_drawn, trace_legend
 )
 from hrbuild.shared.c4 import C4_DIR, C4_MIN_SCALE, C4_SCALE, C4_VIEWBOX, render_c4, _c4_badge, _c4_body, \
-    _c4_img, _c4_picture
+    _c4_img, _c4_picture, _CHECKED_NOTE, _DSL_INCLUDE, _VIEW_KEYWORDS, _checked_label, _dsl_link, \
+    _test_file, _view_definition
 from hrbuild.shared.bands import (
     set_bands, _BANDS, _TOP_BANDS, _flush_bands, _flush_top_bands, _lede_above
 )
