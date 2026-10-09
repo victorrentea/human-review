@@ -148,10 +148,19 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'behaviour': {
         "li": [
-            'A short film of the feature on the real app: start here on a PR you never saw.',
+            'A short film of the feature on the real app, from a script an AI wrote: start here on a PR you never saw.',
             'Check it does what the ticket asked.',
             'Click a transcript line to jump there.',
             '<b>Running app</b>: this build in Docker, on a known dataset, to try yourself.',
+        ],
+    },
+    'behaviour.seed': {
+        "li": [
+            'The rows put in the demo database before you try the app.',
+            '<b>Default</b> is the seed: the app inserts it into the database when it first boots.',
+            'Any other fixture is the seed plus its own SQL, inserted only when you press its <b>Seed</b>.',
+            'Each <b>Seed</b> empties every table and reloads that dataset, wiping what you typed.',
+            'Open a fixture to see its tables; its own rows are highlighted.',
         ],
     },
     'api': {
