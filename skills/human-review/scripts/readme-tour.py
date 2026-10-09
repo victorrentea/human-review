@@ -10,8 +10,8 @@ made so that it cannot go stale: every time the featured snapshot is published,
      headless Chromium, clicks through every tab and takes one viewport-sized JPEG of each
      — `demo/<slug>/tour/<panel>.jpg`, beside the snapshot it shows, so a republish that
      wipes the snapshot wipes its pictures with it;
-  2. rewrites the README's two managed regions — the "try it" paragraph with the hero shot,
-     and the tour (one full-width picture, one caption and one page per tab);
+  2. rewrites the README's two managed regions — the hero shot under the intro (the links to
+     the demos are the hand-written bullets at the top), and the tour (one full-width picture, one caption and one page per tab);
   3. rewrites the screenshot at the top of each tab's page under `docs/tabs/`;
   4. rewrites the featured block at the top of `demo/index.html`, the Pages landing page,
      so the site's root leads straight into the demo.
@@ -115,17 +115,15 @@ def read_tab_page(path: Path) -> dict | None:
 
 
 def render_featured(slug: str, base: str, title: str, hero: str | None) -> str:
+    """The hero shot under the README's hand-written intro. The links to every demo sit in
+    the bullets at the very top of the README; this only shows what one of them looks like."""
     live = f"{base}/{slug}/review.html"
-    lines = [
-        f"<!-- {GENERATED} -->",
-        "**Try it in the browser first** — nothing to install, clone or download. A page built on a",
-        "real pull request is published on GitHub Pages, every tab clickable:",
-        f"<{live}> — listed with any other snapshot at",
-        f"<{base}/>.",
-    ]
+    lines = [f"<!-- {GENERATED} -->"]
     if hero:
-        lines += ["", f'<a href="{live}"><img src="{hero}" alt="{html.escape(title)} — '
-                      f'the Review tab of the demo page" width="100%"></a>']
+        lines += [f'<a href="{live}"><img src="{hero}" alt="{html.escape(title)} — '
+                  f'the Review tab of the demo page" width="100%"></a>', ""]
+    lines.append(f"<sub>**{html.escape(title)}**, Review tab — click to open it live. "
+                 f"Every published snapshot: <{base}/></sub>")
     return "\n".join(lines)
 
 
@@ -151,8 +149,8 @@ def render_tour(slug: str, base: str, shots: list[dict], pages: dict[str, dict])
         ]
     return "\n".join([
         f"<!-- {GENERATED} -->",
-        "Every tab of the demo page, as it looks right now. Click a picture for that tab's own",
-        "page — what it shows, what it needs, and where the machinery behind it is described.",
+        "One screenshot per tab of the demo, retaken on every publish.",
+        "**Click a picture** for that tab's own page: what it shows, what it needs, how it works.",
         "",
         *blocks[:-1],
     ])

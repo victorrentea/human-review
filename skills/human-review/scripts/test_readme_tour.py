@@ -121,7 +121,7 @@ def test_one_run_rewrites_readme_tab_pages_and_landing_and_nothing_else(repo):
     readme = (repo / "README.md").read_text(encoding="utf-8")
     live = "https://somefork.github.io/human-review/demo/review.html"
     assert "stale" not in readme
-    assert f"<{live}>" in readme
+    assert f'href="{live}"' in readme
     assert 'src="demo/demo/tour/review.jpg"' in readme
     # A tab with a page links to it and carries its summary; one without is still shown.
     assert "### [API](docs/tabs/api.md)" in readme
