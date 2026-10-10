@@ -311,13 +311,13 @@
   function resetButtons() {
     return resets ? [].slice.call(resets.querySelectorAll('.appenv-reset')) : [];
   }
-  // What each Seed puts back, in words. A fixture is a named set of extra demo rows the
-  // environment loads on top of the seed; when the environment describes it (`about`),
-  // the description joins the tip.
+  // What each Seed puts back, in words. A fixture is a dataset of its own the environment
+  // loads into an emptied DB, not extras on the seed; when the environment describes it
+  // (`about`), the description joins the tip.
   function resetTip(el) {
     var name = el && el.dataset.fixture, about = el && el.dataset.about;
     if (!name) return 'Reset the DB to the seed, the starting data';
-    return 'Reset the DB to the seed, then load the \u201c' + name + '\u201d fixture on top'
+    return 'Empty the DB, then load the \u201c' + name + '\u201d fixture'
            + (about ? ': ' + about : '');
   }
   // A fixture as the environment lists it: a bare name, or `{name, about}` — and a

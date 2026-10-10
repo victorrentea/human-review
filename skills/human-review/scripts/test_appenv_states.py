@@ -191,7 +191,7 @@ def test_live_shows_the_address_as_a_link_into_a_new_tab(row):
     # Every Seed is armed, and says what it puts back.
     assert [x[1] for x in seen["seeds"]] == [True, True, True]
     assert seen["seeds"][0][2] == "Reset the DB to the seed, the starting data"
-    assert "\u201cgreen\u201d fixture on top" in seen["seeds"][1][2]
+    assert "Empty the DB, then load the \u201cgreen\u201d fixture" in seen["seeds"][1][2]
 
 
 def test_the_fixtures_are_the_builds_not_the_running_apps(row):

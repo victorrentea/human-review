@@ -2,7 +2,8 @@
 // caret, its dot, its name, its Seed — and opening the caret lays that fixture's tables out
 // in a band under it, so a reviewer sees what "green" is without reading green.sql (Victor,
 // 7 Oct 2026). One under the other, any number open at once, so the seed and a fixture can
-// be compared top to bottom (9 Oct 2026). The rows were computed at build time from the
+// be compared top to bottom (9 Oct 2026). A fixture is a dataset of its own, loaded on an
+// empty DB, never the seed with extras (10 Oct 2026). The rows were computed at build time from the
 // project's own SQL (`dataset_view.py`) and sit in #dsv-data; nothing here talks to the
 // app, so the view works with the app down too.
 (function () {
@@ -22,11 +23,10 @@
   function label(name) { return name ? name : 'Default'; }
   function has(name) { return Object.prototype.hasOwnProperty.call(data.sets, name); }
   function rowsOf(table, name) {
-    return (data.sets[name] && data.sets[name][table]) || data.sets[''][table] || [];
+    return (data.sets[name] && data.sets[name][table]) || [];
   }
   function countOf(table, name) {
-    return (data.counts[name] && data.counts[name][table] !== undefined)
-      ? data.counts[name][table] : data.counts[''][table];
+    return (data.counts[name] && data.counts[name][table]) || 0;
   }
   var byName = {};
   data.tables.forEach(function (t) { byName[t.name] = t; });
@@ -62,7 +62,6 @@
 
   function grid(t, name) {
     var rows = rowsOf(t.name, name), count = countOf(t.name, name);
-    var marked = (data.marks[name] && data.marks[name][t.name]) || [];
     var d = document.createElement('details');
     d.className = 'dsv-t';
     d.dataset.table = t.name;
@@ -76,8 +75,7 @@
     nm.textContent = t.name;
     var n = document.createElement('span');
     n.className = 'dsv-n';
-    n.textContent = count + (count === 1 ? ' row' : ' rows')
-      + (marked.length ? ' · +' + marked.length : '');
+    n.textContent = count + (count === 1 ? ' row' : ' rows');
     sum.append(caret, nm, n);
     d.appendChild(sum);
     function fill() {
@@ -112,9 +110,8 @@
       var head = document.createElement('thead');
       head.appendChild(hr);
       var body = document.createElement('tbody');
-      rows.forEach(function (r, i) {
+      rows.forEach(function (r) {
         var tr = document.createElement('tr');
-        if (marked.indexOf(i) >= 0) tr.className = 'dsv-new';
         r.forEach(function (v, k) {
           var td = cell(v), fk = t.fk && t.fk[t.cols[k]];
           if (fk && v !== null && v !== undefined) {
@@ -134,30 +131,24 @@
         box.appendChild(more);
       }
       d.appendChild(box);
-      // Three seed rows of context above the first new one, on a row boundary: anything
-      // else leaves a sliver of half a row peeking out under the sticky header.
-      var first = body.querySelector('.dsv-new'), at = first;
-      for (var k = 0; at && k < 3 && at.previousElementSibling; k++) at = at.previousElementSibling;
-      if (at) requestAnimationFrame(function () {
-        box.scrollTop = Math.max(0, at.offsetTop - head.offsetHeight);
-      });
     }
     if (d.open) fill();
     d.addEventListener('toggle', function () { if (d.open) fill(); });
     return d;
   }
 
-  // What the header says while folded: what this dataset is and how big, so the seed and
-  // a fixture compare at a glance before either is opened.
+  // What the header says while folded: how big the dataset is, so the seed and a fixture
+  // compare at a glance before either is opened. "111 rows in 9 tables": the tables that
+  // hold a row, not the schema's count, which is the same on every line.
   function summary(name) {
-    var total = 0, changed = 0;
+    var total = 0, filled = 0;
     data.tables.forEach(function (t) {
-      total += countOf(t.name, name);
-      if (name && data.sets[name] && data.sets[name][t.name]) changed++;
+      var n = countOf(t.name, name);
+      total += n;
+      if (n) filled++;
     });
-    return (name ? 'the seed, then ' + name + '.sql' : 'the seed') + ' \u00b7 '
-      + data.tables.length + ' tables \u00b7 ' + total + (total === 1 ? ' row' : ' rows')
-      + (changed ? ' \u00b7 ' + changed + (changed === 1 ? ' table' : ' tables') + ' changed' : '');
+    return total + (total === 1 ? ' row' : ' rows') + ' in '
+      + filled + (filled === 1 ? ' table' : ' tables');
   }
 
   function body(fx) {
@@ -201,8 +192,7 @@
       tog.dataset.tip = 'No rows computed for ' + label(name) + ' at build time';
       return;
     }
-    tog.dataset.tip = name ? 'Show the rows the “' + name + '” fixture loads: '
-                             + 'the seed, with its own rows highlighted'
+    tog.dataset.tip = name ? 'Show the rows the “' + name + '” fixture loads into an empty DB'
                            : 'Show the seed rows';
     if (sum) sum.textContent = summary(name);
   });

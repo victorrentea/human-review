@@ -45,6 +45,7 @@ INSERT INTO pets (name, born, type_id, owner_id) VALUES
 INSERT INTO users (username, enabled) VALUES ('admin', TRUE);
 """
 GREEN = """
+INSERT INTO types (name) VALUES ('cat'), ('dog');
 INSERT INTO owners (last_name) VALUES ('Weasley');
 INSERT INTO pets (name, born, type_id, owner_id)
 SELECT p.name, p.born, t.id, o.id
@@ -90,15 +91,16 @@ def test_seed_rows_come_from_executing_the_seed(repo):
     assert data["sets"][""]["users"] == [["admin", True]]
 
 
-def test_a_fixture_is_the_seed_plus_its_rows_and_its_rows_are_marked(repo):
+def test_a_fixture_is_its_own_rows_on_an_empty_db_never_the_seed(repo):
+    """Victor, 10 Oct 2026: a fixture starts from the empty database and builds it."""
     data = dv.build(repo)
     green = data["sets"]["green"]
-    # The INSERT … SELECT … JOIN computed its rows: two pets, both owned by the new owner.
-    assert [r[1] for r in green["pets"]] == ["Milton", "Toby", "Scabbers", "Errol"]
-    assert {r[4] for r in green["pets"][2:]} == {3}
-    assert data["marks"]["green"] == {"pets": [2, 3], "owners": [2]}
-    # A table the fixture did not touch is not repeated: the page falls back to the seed's.
-    assert "types" not in green
+    # The INSERT … SELECT … JOIN computed its rows: two pets, both owned by the one owner.
+    assert green["pets"] == [[1, "Scabbers", "2014-07-31", 1, 1], [2, "Errol", "2012-03-01", 2, 1]]
+    assert green["owners"] == [[1, "Weasley"]]
+    # A table the fixture does not write is empty, not the seed's: the seed's admin is gone.
+    assert green["users"] == [] and data["counts"]["green"]["users"] == 0
+    assert "marks" not in data
 
 
 def test_tables_are_ordered_by_outgoing_foreign_keys_first(repo):
@@ -191,8 +193,8 @@ def test_a_fixture_the_data_does_not_know_has_a_caret_that_opens_nothing(browser
     assert page.locator(".dsv-t").count() == 0
     # What each dataset is, on its header, before anything is opened.
     sums = page.eval_on_selector_all(".dbfx-sum", "ss => ss.map(s => s.textContent)")
-    assert sums[0] == "the seed · 4 tables · 7 rows"
-    assert sums[1] == "the seed, then green.sql · 4 tables · 10 rows · 2 tables changed"
+    assert sums[0] == "7 rows in 4 tables"
+    assert sums[1] == "5 rows in 3 tables"
     page.close()
 
 
@@ -242,11 +244,15 @@ def test_a_foreign_key_wears_a_key_on_its_header_and_names_its_row(browser, repo
     page.close()
 
 
-def test_a_fixture_opens_the_tables_it_added_to_with_its_rows_highlighted(browser, repo):
+def test_a_fixture_opens_onto_its_own_rows_only(browser, repo):
     page = _open(browser, _big(repo))
     assert page.evaluate("window.hrOpenDataset('green')") is True
-    assert page.locator("#dbfx-body-green").is_visible()
-    assert page.locator("#dbfx-body-green tr.dsv-new").count() == 3
+    green = page.locator("#dbfx-body-green")
+    assert green.is_visible()
+    # Its 2 types, not the seed's 14; its users table empty, not the seed's admin.
+    count = lambda t: green.locator(".dsv-t", has=page.locator("b", has_text=t)).locator(".dsv-n")
+    assert count("types").text_content() == "2 rows"
+    assert count("users").text_content() == "0 rows"
     assert page.evaluate("window.hrOpenDataset('nope')") is False
     assert page.evaluate("window.hrOpenDataset('unknown')") is False
     page.close()

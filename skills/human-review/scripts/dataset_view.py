@@ -10,8 +10,8 @@ The source is the project's own SQL, the same files the environment loads:
 
   * the schema — Flyway's versioned migrations (`db/migration/V*.sql`), in version order;
   * the seed — Flyway's repeatable scripts (`R__*.sql`), which run after every version;
-  * the fixtures — `db/fixtures/<name>.sql`, each a delta run on top of the seed, exactly
-    as the reset sidecar does it.
+  * the fixtures — `db/fixtures/<name>.sql`, each a dataset of its own, run on the empty
+    schema without the seed, exactly as the reset sidecar does it.
 
 They are *executed*, not parsed: a fixture that writes `INSERT … SELECT … FROM (VALUES …)
 JOIN owners …` has no rows in it to read, only rows it computes. The executor is an
@@ -200,14 +200,12 @@ def sources(root: Path) -> dict:
 
 
 def _load(src: dict, fixture: Path | None, root: Path, fks: dict, skipped: list):
+    """The schema, then the seed — or, for a fixture, the fixture alone on the empty tables."""
     db = sqlite3.connect(":memory:")
-    for group in ("schema", "seed"):
-        for p in src[group]:
-            _run(db, p.read_text(encoding="utf-8", errors="replace"),
-                 str(p.relative_to(root)), fks, skipped)
-    if fixture is not None:
-        _run(db, fixture.read_text(encoding="utf-8", errors="replace"),
-             str(fixture.relative_to(root)), fks, skipped)
+    data = src["seed"] if fixture is None else [fixture]
+    for p in src["schema"] + data:
+        _run(db, p.read_text(encoding="utf-8", errors="replace"),
+             str(p.relative_to(root)), fks, skipped)
     return db
 
 
@@ -254,34 +252,18 @@ def build(root: Path) -> dict | None:
     order = sorted(seed, key=lambda t: (-out_n[t], -incoming[t], t))
     sets = {"": {t: _cap(seed[t]["rows"]) for t in seed}}
     counts = {"": {t: len(seed[t]["rows"]) for t in seed}}
-    marks: dict = {}
+    # Every table of a fixture, the empty ones too: it starts from nothing, so a table it
+    # does not write is empty, never the seed's.
     for f in src["fixtures"]:
         db = _load(src, f, root, {}, skipped)
         snap = _snapshot(db)
         db.close()
-        name = f.stem
-        sets[name], counts[name], marks[name] = {}, {}, {}
-        for t in order:
-            rows = snap.get(t, {"rows": []})["rows"]
-            base = [json.dumps(r, default=str) for r in seed[t]["rows"]]
-            if [json.dumps(r, default=str) for r in rows] == base:
-                continue
-            pool: dict = {}
-            for b in base:
-                pool[b] = pool.get(b, 0) + 1
-            new = []
-            for i, r in enumerate(rows):
-                k = json.dumps(r, default=str)
-                if pool.get(k):
-                    pool[k] -= 1
-                else:
-                    new.append(i)
-            sets[name][t] = _cap(rows)
-            counts[name][t] = len(rows)
-            marks[name][t] = [i for i in new if i < MAX_ROWS]
+        rows = {t: snap.get(t, {"rows": []})["rows"] for t in order}
+        sets[f.stem] = {t: _cap(rows[t]) for t in order}
+        counts[f.stem] = {t: len(rows[t]) for t in order}
     tables = [{"name": t, "cols": seed[t]["cols"], "fk": fks.get(t, {}),
                "in": incoming[t]} for t in order]
-    return {"tables": tables, "sets": sets, "counts": counts, "marks": marks,
+    return {"tables": tables, "sets": sets, "counts": counts,
             "sources": [str(p.relative_to(root)) for g in ("schema", "seed", "fixtures")
                         for p in src[g]],
             "skipped": skipped}

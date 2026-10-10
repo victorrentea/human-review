@@ -194,5 +194,4 @@
 .dsv-grid td.dsv-num { text-align:right; }
 .dsv-grid td.dsv-fkv { cursor:help; }
 .dsv-grid td.dsv-null { color:var(--muted); font-style:italic; }
-.dsv-grid tr.dsv-new td { background:var(--diff-add-bg, rgba(46,160,67,.16)); }
 .dsv-more { margin:.2rem .45rem; color:var(--muted); font-size:.85em; }
