@@ -2043,7 +2043,7 @@ function addChangeMarks(file, geo) {
   // colour metric has no snapshot at all (a change metric is already the before/after,
   // and has no "before" of its own), and skipped when it comes out the same
   // colour — a skin in the identical shade is a seam and no information.
-  const wasColor = beforeValue(before, geo.colorMetric);
+  const wasColor = DELTA_METRICS.has(geo.colorMetric) ? 0 : beforeValue(before, geo.colorMetric);
   let skin = wasColor === null ? null : colorFor(wasColor, geo.maxColor);
   if (skin && skin.getHex() === colorFor(geo.colorValue, geo.maxColor).getHex()) skin = null;
 
