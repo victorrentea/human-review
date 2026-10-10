@@ -42,13 +42,6 @@
         "descr": "",
         "inferredBy": "config",
         "decl": "participant"
-      },
-      "\u00abmodule\u00bb\\nCommons": {
-        "kind": "container",
-        "tech": "",
-        "descr": "",
-        "inferredBy": "default",
-        "decl": "participant"
       }
     },
     "edges": [
@@ -142,23 +135,6 @@
         "toKind": "container"
       },
       {
-        "from": "Backend",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
         "from": "Browser",
         "to": "Backend",
         "status": "same",
@@ -211,40 +187,6 @@
           }
         ],
         "toKind": "external"
-      },
-      {
-        "from": "NotificationService",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "\u00abmodule\u00bb\\nCommons",
-        "to": "Backend",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "NotificationServiceClient.homeDialCode",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
       }
     ]
   },
@@ -288,13 +230,6 @@
         "tech": "SMS provider (simulated)",
         "descr": "",
         "inferredBy": "config",
-        "decl": "participant"
-      },
-      "\u00abmodule\u00bb\\nCommons": {
-        "kind": "container",
-        "tech": "",
-        "descr": "",
-        "inferredBy": "default",
         "decl": "participant"
       }
     },
@@ -354,23 +289,6 @@
         "toKind": "container"
       },
       {
-        "from": "Backend",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
         "from": "Browser",
         "to": "Backend",
         "status": "same",
@@ -418,40 +336,6 @@
           }
         ],
         "toKind": "external"
-      },
-      {
-        "from": "NotificationService",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "\u00abmodule\u00bb\\nCommons",
-        "to": "Backend",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "NotificationServiceClient.homeDialCode",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
       }
     ]
   },
@@ -494,14 +378,6 @@
         "tech": "SMS provider (simulated)",
         "descr": "",
         "inferredBy": "config",
-        "decl": "participant",
-        "status": "same"
-      },
-      "\u00abmodule\u00bb\\nCommons": {
-        "kind": "container",
-        "tech": "",
-        "descr": "",
-        "inferredBy": "default",
         "decl": "participant",
         "status": "same"
       }
@@ -597,23 +473,6 @@
         "toKind": "container"
       },
       {
-        "from": "Backend",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
         "from": "Browser",
         "to": "Backend",
         "status": "same",
@@ -666,40 +525,6 @@
           }
         ],
         "toKind": "external"
-      },
-      {
-        "from": "NotificationService",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "\u00abmodule\u00bb\\nCommons",
-        "to": "Backend",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "NotificationServiceClient.homeDialCode",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
       }
     ],
     "compared": {
@@ -715,5 +540,5 @@
       "onlyOld": []
     }
   },
-  "base": "b6b53c658bce43a871a327f4feffb94cedd79723"
+  "base": "d99781fb43c2b1c3dcae26840bad119c373e6c09"
 }

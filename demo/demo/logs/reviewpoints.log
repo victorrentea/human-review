@@ -24,7 +24,7 @@ review-points.md: 19 item(s) in 4 fixed, 9 ignored, 6 assumptions
       · Seed gives a vet to some demo visits only   [1 ref, 1 snippet, confidence 0.65]
       · MCP create_visit takes no vet; list_visits shows it   [1 ref, 1 snippet, confidence 0.7]
   fixed in     HEAD
-  base: 2f17c04983ba84ecf38cf0b1515de0bf3af88b7a · implementation: 1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1 · reviewers: 4 read-only Sonnet subagents (correctness, security, ticket-fit, tests briefs) · session: 82329d0a-55d2-448f-aff5-0363cf80b32f
+  base: 316a806555f5aeae48582fd50d07944298833436 · implementation: 1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1 · reviewers: 4 read-only Sonnet subagents (correctness, security, ticket-fit, tests briefs) · session: 82329d0a-55d2-448f-aff5-0363cf80b32f
   wrote  .human-review/review-points.json
-    $ git merge-base origin/main HEAD
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-commits.py --base b6b53c658bce43a871a327f4feffb94cedd79723 --json
+    $ git merge-base 316a806555f5aeae48582fd50d07944298833436 HEAD
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-commits.py --base 316a806555f5aeae48582fd50d07944298833436 --json

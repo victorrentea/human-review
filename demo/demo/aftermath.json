@@ -1,7 +1,7 @@
 {
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "review_short": "be762955",
- "head": "10d7ced178746ad377c81e79184b580338c39bee",
+ "head": "5448526f5f3f9e48ebc9d0e8d92764d2eed095da",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -578,17 +578,122 @@
    "measured": false,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "4384ff57451e55405d4ed83f49a1f55598d5fde7",
+   "short": "4384ff57",
+   "when": "2026-10-10T01:49:49+03:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "files": [
+    {
+     "path": ".claude/rules/pom-rule.md",
+     "added": 2,
+     "deleted": 61,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "AGENTS.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "ARCHITECTURE.md",
+     "added": 8,
+     "deleted": 44,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "README.md",
+     "added": 49,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/docs/packages.puml",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/resources/db/fixtures/green.sql",
+     "added": 31,
+     "deleted": 28,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "plugin-marketplace-demo/.claude-plugin/marketplace.json",
+     "added": 16,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "plugin-marketplace-demo/README.md",
+     "added": 17,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "plugin-marketplace-demo/plugins/petclinic-tools/.claude-plugin/plugin.json",
+     "added": 5,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{.claude => plugin-marketplace-demo/plugins/petclinic-tools}/skills/grill-me/SKILL.md",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 132,
+   "deleted": 139,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "5448526f5f3f9e48ebc9d0e8d92764d2eed095da",
+   "short": "5448526f",
+   "when": "2026-10-10T01:50:04+03:00",
+   "subject": "review-points: base moves to 316a8065 after merging main",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 16,
-  "files": 41,
-  "added": 663,
-  "deleted": 181,
+  "commits": 18,
+  "files": 50,
+  "added": 795,
+  "deleted": 320,
   "code": {
-   "files": 31,
-   "added": 529,
-   "deleted": 52
+   "files": 40,
+   "added": 661,
+   "deleted": 191
   },
   "generated": {
    "files": 10,

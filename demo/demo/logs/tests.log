@@ -1,3 +1,3 @@
   * tests -> requirements
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/test-changes.py --base origin/main --out .human-review/assets/test-changes.json
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/test-changes.py --base 316a806555f5aeae48582fd50d07944298833436 --out .human-review/assets/test-changes.json
 [test-changes] 44 test cases in changed test files -> .human-review/assets/test-changes.json (20 added); the run goes from 24 to 44 (+20 / -0)

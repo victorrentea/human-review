@@ -1,6 +1,6 @@
   * logging -> logging
-    $ git merge-base origin/main HEAD
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/logextract.py petclinic-backend --repo . --since b6b53c658bce43a871a327f4feffb94cedd79723 --json .human-review/assets/logging.json
+    $ git merge-base 316a806555f5aeae48582fd50d07944298833436 HEAD
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/logextract.py petclinic-backend --repo . --since 316a806555f5aeae48582fd50d07944298833436 --json .human-review/assets/logging.json
 2 logging statement(s) on added/modified lines
   petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:201:9  [INFO ] log.info  (SLF4J, declared)  added
         log.info("Booked visit {} for pet {}", visit.getId(), petId);

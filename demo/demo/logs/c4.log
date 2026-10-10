@@ -1,4 +1,4 @@
   * c4 -> packages
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/structurizr-views.py --base origin/main --out-dir .human-review/assets/c4
-structurizr-views: not drawn — Docker is not running
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/structurizr-views.py --base 316a806555f5aeae48582fd50d07944298833436 --out-dir .human-review/assets/c4
+structurizr-views: not drawn — Python Playwright is not installed (pip install playwright && playwright install chromium)
     skipped: Docker (or Playwright) is not available — the Structure tab says the C4 views were not drawn

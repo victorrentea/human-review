@@ -464,7 +464,7 @@
   }
  ],
  "stale": {
-  "why": "test-mapping.json (07 Oct 13:38) is older than test-coverage.json (07 Oct 22:27)",
+  "why": "test-mapping.json (07 Oct 15:38) is older than test-coverage.json (08 Oct 00:27)",
   "command": "rerun-model.py"
  }
 }

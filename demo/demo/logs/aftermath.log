@@ -17,3 +17,5 @@
     $ git show --numstat --format= 24af8d668bdf9fb606baa62f5e5cadc0f2b662d3
     $ git show --numstat --format= 37aa569cc272355e72c4eed73d92c1e81d4bc474
     $ git show --numstat --format= 10d7ced178746ad377c81e79184b580338c39bee
+    $ git show --numstat --format= 4384ff57451e55405d4ed83f49a1f55598d5fde7
+    $ git show --numstat --format= 5448526f5f3f9e48ebc9d0e8d92764d2eed095da

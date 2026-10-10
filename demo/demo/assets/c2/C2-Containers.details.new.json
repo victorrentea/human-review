@@ -10,15 +10,6 @@
     }
    ]
   },
-  "c2-103d57f8db": {
-   "title": "Backend → «module»\\nCommons",
-   "steps": [
-    {
-     "label": "1 operation",
-     "text": "• PhoneNumbers.normalize"
-    }
-   ]
-  },
   "c2-fb35163739": {
    "title": "Browser → Backend",
    "steps": [
@@ -34,24 +25,6 @@
     {
      "label": "1 operation",
      "text": "• send-sms"
-    }
-   ]
-  },
-  "c2-e128eb6ba0": {
-   "title": "NotificationService → «module»\\nCommons",
-   "steps": [
-    {
-     "label": "1 operation",
-     "text": "• PhoneNumbers.normalize"
-    }
-   ]
-  },
-  "c2-cd32149db2": {
-   "title": "«module»\\nCommons → Backend",
-   "steps": [
-    {
-     "label": "1 operation",
-     "text": "• NotificationServiceClient.homeDialCode"
     }
    ]
   }

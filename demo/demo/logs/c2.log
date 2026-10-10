@@ -1,6 +1,6 @@
   * c2 -> packages
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/c2-from-sequence.py --base origin/main --out-dir .human-review/assets/c2
-[c2] 6 container(s), 7 call(s), projected from 5 sequence diagram(s) -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/c2
-[c2] against b6b53c658bce: no change of shape
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base origin/main --diagram petclinic-backend/docs/Deployment.drawio.png --out-dir .human-review/assets --name deployment --traces .human-review/assets/c2/C2-Containers.json --tested-against 'traced sequence diagrams'
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/c2-from-sequence.py --base d99781fb43c2b1c3dcae26840bad119c373e6c09 --out-dir .human-review/assets/c2
+[c2] 5 container(s), 4 call(s), projected from 5 sequence diagram(s) -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/c2
+[c2] against d99781fb43c2: no change of shape
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base d99781fb43c2b1c3dcae26840bad119c373e6c09 --diagram petclinic-backend/docs/Deployment.drawio.png --out-dir .human-review/assets --name deployment --traces .human-review/assets/c2/C2-Containers.json --tested-against 'traced sequence diagrams'
 .human-review/assets/deployment-{original,new,diff}.svg  (added 0 boxes, 0 lines · removed 0 boxes, 0 lines · 0 changed · 0 moved, rendered by drawio)

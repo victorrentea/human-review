@@ -3,8 +3,8 @@
  "mode": "points",
  "source": "review-points.md",
  "provenance": {
-  "base": "2f17c04983ba84ecf38cf0b1515de0bf3af88b7a",
-  "auditedBase": "2f17c04983ba84ecf38cf0b1515de0bf3af88b7a",
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+  "auditedBase": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
   "auditedHead": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "head": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
@@ -334,14 +334,14 @@
   }
  ],
  "meta": {
-  "base": "2f17c04983ba84ecf38cf0b1515de0bf3af88b7a",
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
   "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "reviewers": "4 read-only Sonnet subagents (correctness, security, ticket-fit, tests briefs)",
   "session": "82329d0a-55d2-448f-aff5-0363cf80b32f"
  },
  "frontmatter": {
-  "base": "2f17c04983ba84ecf38cf0b1515de0bf3af88b7a",
-  "audited-base": "2f17c04983ba84ecf38cf0b1515de0bf3af88b7a",
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+  "audited-base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
   "audited-head": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "head": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",

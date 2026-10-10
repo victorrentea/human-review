@@ -1,8 +1,18 @@
 {
- "state": "unavailable",
- "reason": "Docker is not running",
+ "state": "drawn",
+ "reason": "",
  "fingerprint": "79cb98df8e7e78acbd1f",
  "workspaces": [
   "petclinic-backend/docs/c4model.c1+c2.dsl"
- ]
+ ],
+ "image": "structurizr/structurizr",
+ "base": "316a806555f5aeae48582fd50d07944298833436",
+ "views": {
+  "C2-Containers": "unchanged",
+  "C2-BackendOutbound": "unchanged",
+  "C3-Components-All": "unchanged",
+  "C3-Repository": "unchanged",
+  "C3-Mapper": "unchanged",
+  "C1-Context": "unchanged"
+ }
 }

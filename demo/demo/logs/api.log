@@ -1,9 +1,9 @@
   * api -> api
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base origin/main --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
 [openapi-compat] wrote .human-review/assets/openapi-compat-report.html — standalone
 [openapi-compat] wrote .human-review/assets/openapi-compat.html — compatible
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --css  >  .human-review/assets/openapi-compat.css
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base origin/main --spec openapi.yaml --panel --out .human-review/assets/openapi-verdict.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf --spec openapi.yaml --panel --out .human-review/assets/openapi-verdict.html
 [openapi-compat] wrote .human-review/assets/openapi-verdict.html — compatible
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-visual-diff.py --base origin/main --spec openapi.yaml --out .human-review/assets/openapi-visual-diff.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-visual-diff.py --base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf --spec openapi.yaml --out .human-review/assets/openapi-visual-diff.html
 .human-review/assets/openapi-visual-diff.html  (0 breaking  11 modified  0 added  0 removed  32 untouched)

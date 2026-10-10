@@ -2,9 +2,9 @@
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/city-coverage.py --in .human-review/assets/test-coverage.json --out .human-review/assets/codecity-coverage.json
 [city-coverage] 127 file(s): line coverage 68.3%, acceptance 49.7% -> .human-review/assets/codecity-coverage.json
     $ git rev-parse HEAD
-    $ git merge-base origin/main HEAD
+    $ git merge-base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf HEAD
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/regenerate-codecity.sh --out ".human-review/assets/codecity" --title "Code City" --coverage ".human-review/assets/codecity-coverage.json"
-updating the Code City generators in /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/.tools/codecity ...
+updating the Code City generators in /Users/victorrentea/workspace/code-city ...
 repo:  /Users/victorrentea/workspace/petclinic-pr-visit-has-vet
 out:   /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity
 coverage: /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity-coverage.json
@@ -65,8 +65,8 @@ top fan_in:
 loaded 0 bug/regression issue numbers
 flagging bug commits via subject regex (default heuristic): '^(fix|fixed|fixes|bugfix)\\b'
 discovered 6 Maven/Gradle module dir(s)
-walked 1041 commits, 59 flagged as bug-linked
-touched 2460 distinct file paths (across all history)
+walked 1058 commits, 60 flagged as bug-linked
+touched 2468 distinct file paths (across all history)
 found 98 current non-test java files
 loaded complexity for 98 files
 loaded fan-in/out for 98 files
@@ -87,7 +87,7 @@ coupling the change set moved (class: fan-out, fan-in):
   VisitMapper.java: out +1, in +0
   PetClinicMcp.java: out +1, in +0
   VisitRestController.java: out +1, in +0
-wrote /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codecity.html (368.6 KB)
+wrote /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codecity.html (1324.8 KB)
 [7/7] render combined side-by-side (2D codemap <-> 3D city)...
 wrote /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/combined.html (3.1 KB)
 done -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codemap.html

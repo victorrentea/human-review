@@ -1,8 +1,8 @@
 {
- "base": "b6b53c658bce43a871a327f4feffb94cedd79723",
+ "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 82,
+ "commits": 84,
  "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
@@ -23,7 +23,9 @@
   "db57f1b45fa37949f9e14a04f930178b6f898877",
   "24af8d668bdf9fb606baa62f5e5cadc0f2b662d3",
   "37aa569cc272355e72c4eed73d92c1e81d4bc474",
-  "10d7ced178746ad377c81e79184b580338c39bee"
+  "10d7ced178746ad377c81e79184b580338c39bee",
+  "4384ff57451e55405d4ed83f49a1f55598d5fde7",
+  "5448526f5f3f9e48ebc9d0e8d92764d2eed095da"
  ],
  "after_detail": [
   {
@@ -120,6 +122,18 @@
    "sha": "10d7ced178746ad377c81e79184b580338c39bee",
    "when": "2026-10-08T06:42:39+01:00",
    "subject": "Merge origin/main into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "4384ff57451e55405d4ed83f49a1f55598d5fde7",
+   "when": "2026-10-10T01:49:49+03:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "5448526f5f3f9e48ebc9d0e8d92764d2eed095da",
+   "when": "2026-10-10T01:50:04+03:00",
+   "subject": "review-points: base moves to 316a8065 after merging main",
    "auto_fix": false
   }
  ],

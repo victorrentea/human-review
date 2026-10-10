@@ -1,5 +1,5 @@
   * diagrams -> data,packages
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh origin/main .human-review/assets/diagrams
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh 316a806555f5aeae48582fd50d07944298833436 .human-review/assets/diagrams
 [puml-diff] petclinic-backend/docs/generated/DB.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-backend_docs_generated_DB.diff.puml
 [puml-diff] petclinic-backend/docs/generated/DomainModel.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-backend_docs_generated_DomainModel.diff.puml
 [puml-diff] petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.diff.puml
@@ -8,7 +8,7 @@
 [puml-diff] petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.diff.puml
 [puml-diff] petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.diff.puml
 [puml-diff] 7 diagram(s) -> .human-review/assets/diagrams (see MANIFEST.tsv)
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base origin/main --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base 316a806555f5aeae48582fd50d07944298833436 --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
 .human-review/assets/conceptual-{original,new,diff}.svg  (added 0 boxes, 1 line · removed 0 boxes, 0 lines · 0 changed · 5 moved, rendered by drawio)
   + edge Vet-Visit — green (new)
   8 concept(s) linked to their class
