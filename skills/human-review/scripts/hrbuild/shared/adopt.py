@@ -11,6 +11,14 @@ Minimal on purpose (5 Oct 2026, Victor): the agent on the other end is a smart m
 the repository at hand. It needs to know which piece, where it starts, and that it should
 take that piece and nothing else — not a tutorial on how the piece works.
 
+Still minimal, but no longer silent on what a stranger cannot know (10 Oct 2026): one agent
+per piece was handed only its prompt in a clone of an unrelated Python/vanilla-JS repo, and
+its debrief named what it had to guess. Nearly all of them tripped on the same few things,
+now in the shared frame — the start files import siblings, they were written for petclinic's
+stack, the trunk is not always `main`, a branch may not touch the piece at all, and whether
+to commit. The start lists gained the siblings the agents had to go and find (`puml_diff.py`
+behind `puml-diff.sh` cost eight of them the same detour).
+
 Placed after rendering, by anchor, rather than emitted by each renderer: five of these
 cards come out of producer scripts (`includeHtml` fragments cached under `.human-review/`),
 and a button that needed a producer change would also need every cached fragment
@@ -38,69 +46,80 @@ PIECES: dict[str, tuple[str, str]] = {
         "the coder's assumptions listed for a human reviewer — every place the ticket did "
         "not decide, the reading the coding agent chose, how sure it was, and the "
         "alternative it did not take",
-        "reference/review-points.md, scripts/authoring-sessions.py, scripts/review-points.py"),
+        "reference/review-points.md, scripts/authoring-sessions.py, scripts/review-points.py, "
+        "scripts/hrbuild/tabs/review.py"),
     "review.open": (
         "an AI code review of the branch that leaves its open issues for a human, each "
         "with its severity, the reviewer that raised it and the code it is about",
-        "reference/review-prompt.md, reference/review-points.md, scripts/review-points.py"),
+        "reference/review-prompt.md, reference/review-points.md, scripts/review-points.py, "
+        "scripts/review_points_schema.py"),
     "review.fixed": (
         "an auto-fix round after that review: the issues it accepted, fixed in one commit "
         "and shown with their diffs",
-        "reference/review-prompt.md, scripts/rerun-review.py, scripts/review-points.py"),
+        "reference/review-prompt.md, scripts/rerun-review.py, scripts/review-points.py, "
+        "scripts/review_points_schema.py"),
     "behaviour": (
         "a narrated film of the feature working, recorded by a Playwright script, with its "
         "captions as a clickable transcript beside the player",
         "reference/film-prompt.md, reference/feature-script.md, "
-        "scripts/record-feature-video.sh"),
+        "scripts/record-feature-video.sh, scripts/hrbuild/tabs/demo.py, "
+        "scripts/hrbuild/assets/caption.js"),
     "behaviour.seed": (
         "named datasets (DB fixtures) the running app can be reset to with one click, each "
         "one's tables shown in place so two of them can be compared",
-        "scripts/dataset_view.py, scripts/hrbuild/shared/fixtures.py"),
+        "scripts/dataset_view.py, scripts/hrbuild/assets/dataset-view.js, "
+        "scripts/hrbuild/shared/fixtures.py"),
     "api": (
         "the REST contract at the merge-base against the branch, as a visual OpenAPI diff "
         "with a breaking-change verdict", "scripts/openapi-visual-diff.py, "
-        "scripts/openapi-compat.py"),
+        "scripts/openapi-compat.py, scripts/schema_tree.py"),
     "diagram.domain": (
         "the domain-model class diagram generated from your domain classes by Java "
         "reflection, committed as PlantUML and diffed base against branch",
         PETCLINIC + "src/test/java/victor/training/petclinic/guardrail/"
-        "DomainModelExtractorTest.java, scripts/puml-diff.sh"),
+        "DomainModelExtractorTest.java, " + PETCLINIC + "src/test/java/victor/training/"
+        "petclinic/guardrail/DomainModelExtractor.java, scripts/puml-diff.sh, "
+        "puml-diff/puml_diff.py"),
     "diagram.db": (
         "the ERD generated from your DB migration scripts, committed as PlantUML and "
         "diffed base against branch, with the schema changes it cannot draw listed under it",
-        PETCLINIC + "docs/scripts/db/db_schema_to_puml.py, scripts/puml-diff.sh"),
+        PETCLINIC + "docs/scripts/db/db_schema_to_puml.py, scripts/puml-diff.sh, "
+        "puml-diff/puml_diff.py, scripts/hrbuild/shared/diagrams.py"),
     "diagram.drawio": (
         "the hand-drawn draw.io {title} diagram, checked against the code by a test and "
         "diffed base against branch",
         PETCLINIC + "src/test/java/victor/training/petclinic/guardrail/"
         "ConceptualModelDiagramTest.java, " + PETCLINIC + "src/test/java/victor/training/"
-        "petclinic/guardrail/DeploymentDiagramTest.java, scripts/drawio-diff.py"),
+        "petclinic/guardrail/DeploymentDiagramTest.java, " + PETCLINIC + "src/test/java/"
+        "victor/training/petclinic/guardrail/DrawioDiagram.java, scripts/drawio-diff.py"),
     "diagram.packages": (
         "the package diagram, kept as PlantUML, enforced on the code by ArchUnit and "
         "diffed base against branch", PETCLINIC + "src/test/java/victor/training/petclinic/"
-        "guardrail/PackagesArchTest.java, scripts/puml-diff.sh"),
+        "guardrail/PackagesArchTest.java, scripts/puml-diff.sh, puml-diff/puml_diff.py"),
     "diagram.modules": (
         "the module graph generated from your build files, committed as PlantUML and "
         "diffed base against branch",
-        PETCLINIC + "docs/scripts/mavenmodules/maven_modules_to_puml.py, scripts/puml-diff.sh"),
+        PETCLINIC + "docs/scripts/mavenmodules/maven_modules_to_puml.py, scripts/puml-diff.sh, "
+        "puml-diff/puml_diff.py"),
     "diagram.c2": (
         "the C4 container (C2) diagram projected from traced test runs — every arrow an "
         "observed call — diffed base against branch",
-        "scripts/c2-from-sequence.py, scripts/puml-diff.sh"),
+        "scripts/c2-from-sequence.py, scripts/puml-diff.sh, puml-diff/puml_diff.py"),
     "diagram.c4": (
         "the C4 views of your Structurizr DSL workspace, rendered by Structurizr itself "
         "(light and dark) and compared base against branch",
         "scripts/structurizr-views.py, scripts/hrbuild/shared/c4.py"),
     "diagram": (
         "the {title} diagram, kept in the repository as PlantUML and diffed base against "
-        "branch", "scripts/puml-diff.sh"),
+        "branch", "scripts/puml-diff.sh, puml-diff/puml_diff.py, puml-diff/seq_puml_diff.py"),
     "requirements": (
         "the ticket's requirements mapped to the tests that prove each one, side by side, "
         "with every test that runs the changed lines",
-        "reference/matrix-prompt.md, scripts/rerun-model.py, scripts/testcov.py"),
+        "reference/matrix-prompt.md, scripts/rerun-model.py, scripts/semcov.py, "
+        "scripts/testcov.py"),
     "sequence": (
         "sequence diagrams drawn from traced test runs, each beside the test that drew it",
-        "scripts/hrbuild/shared/genseq.py, scripts/puml-diff.sh"),
+        "scripts/hrbuild/shared/genseq.py, scripts/puml-diff.sh, puml-diff/seq_puml_diff.py"),
     "city": ("a 3D Code City of the classes, coloured by what the branch changed",
              "scripts/regenerate-codecity.sh, https://github.com/victorrentea/code-city"),
     "dsaudit": ("every UI screen at the base against the branch, audited for controls from "
@@ -112,7 +131,7 @@ PIECES: dict[str, tuple[str, str]] = {
     "owners": ("a check that CODEOWNERS still covers every file the branch touched, and "
                "who must approve it", "scripts/codeowners-check.py"),
     "cost": ("what writing and reviewing the change cost in model tokens",
-             "scripts/review-cost.py, scripts/harness_cost.py"),
+             "scripts/review-cost.py, scripts/harness_cost.py, scripts/authoring-sessions.py"),
 }
 
 
@@ -163,9 +182,9 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'The rows put in the demo database before you try the app.',
             '<b>Default</b> is the seed: the app inserts it into the database when it first boots.',
-            'Any other fixture is the seed plus its own SQL, inserted only when you press its <b>Seed</b>.',
+            'Any other fixture is a dataset of its own, built on an empty DB when you press its <b>Seed</b>.',
             'Each <b>Seed</b> empties every table and reloads that dataset, wiping what you typed.',
-            'Open a fixture to see its tables; its own rows are highlighted.',
+            'Open a fixture to see its tables.',
         ],
     },
     'api': {
@@ -418,9 +437,12 @@ def adopt_prompt(piece: str, title: str = "") -> str | None:
     starts = ", ".join(s if s.startswith("http") else f"skills/human-review/{s}"
                        for s in start.split(", "))
     return (f"Get {what} into this repository — one piece of the review page of "
-            f"{HOME_URL}. Start from {starts}. Take only that piece, adapt it to this "
-            "project's stack, run it on the current branch against its merge-base and "
-            "show me the result.")
+            f"{HOME_URL} (branch main). Start from {starts}, and what they import. "
+            "They were written for a Java/Spring + Angular project: port the idea and "
+            "rewrite what only fits that stack. Take only that piece. Run it on the "
+            "current branch against its merge-base with this repository's trunk, and "
+            "show me the result — if the branch does not touch what this piece shows, say "
+            "so and show it on a recent commit that does. Leave the changes uncommitted.")
 
 
 def adopt_html(piece: str, title: str = "", how: str = "in", page: bool = False,
