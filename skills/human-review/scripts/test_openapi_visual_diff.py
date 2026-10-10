@@ -578,6 +578,15 @@ def test_the_changes_badge_is_the_tab_of_a_box_around_the_change_lines():
     assert "function hideEmptyDefaults()" in t and ".parameter__default.dv-empty" in t
 
 
+def test_the_tab_keeps_the_box_tint_and_its_words_carry_the_colour():
+    """Victor, 10 Oct 2026: pale words on a solid orange tab were barely readable. The tab's
+    rule must outrank `.dv-badge.modified`, which would otherwise fill it on order alone."""
+    t = ovd.TEMPLATE
+    tab = t[t.index("  .dv-note > .dv-rail > .dv-badge {"):]
+    tab = tab[:tab.index("}")]
+    assert "background: var(--tint); color: var(--c);" in tab
+
+
 def test_a_bundle_that_never_arrives_is_retried_then_listed_plainly():
     """Victor, 9 Oct 2026: the API tab showed its bar and chips and then nothing -- the
     Swagger UI bundle from cdnjs had not run, and the page said nothing about it. A missing

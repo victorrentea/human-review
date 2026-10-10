@@ -831,9 +831,12 @@ TEMPLATE = r"""<!doctype html>
       radial-gradient(circle at 100% 100%, var(--tint) calc(var(--R) - 1px), var(--bd) calc(var(--R) - 1px), var(--bd) var(--R), transparent var(--R)) var(--R) 0 / var(--R) var(--R) no-repeat,
       linear-gradient(var(--tint), var(--tint)) calc(var(--R) + 1px) var(--R) / calc(var(--R) - 1px) calc(2 * var(--R)) no-repeat;
   }
-  .dv-rail > .dv-badge {
+  /* Three classes deep, or `.dv-badge.modified` further down wins on order alone and paints
+     the tab solid orange under its pale text (Victor, 10 Oct 2026: barely readable). The
+     tab is the box's own tint; the words carry the colour. */
+  .dv-note > .dv-rail > .dv-badge {
     margin: 0; height: var(--T); min-width: 0; box-sizing: border-box; padding: 0 12px 4px 6px;
-    display: flex; align-items: center; background: var(--tint); color: color-mix(in srgb, var(--c) 62%, var(--dv-fg));
+    display: flex; align-items: center; background: var(--tint); color: var(--c);
     border: 1px solid var(--bd); border-left: 0; border-bottom: 0; border-radius: 0 var(--R) 0 0;
     font-size: 10px; font-weight: 700; letter-spacing: .06em; white-space: nowrap;
   }
