@@ -1,0 +1,136 @@
+{
+  "version": 2,
+  "details": {
+    "114roce": {
+      "title": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by …",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date desc, v1_0.id\nFETCH FIRST ? rows only",
+          "alternate": {
+            "label": "",
+            "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date desc, v1_0.id\nFETCH FIRST 10 rows only"
+          }
+        }
+      ]
+    },
+    "070fg5f": {
+      "title": "VisitRepository.findAllWithPetAndOwner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=?",
+          "alternate": {
+            "label": "",
+            "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=2"
+          }
+        }
+      ]
+    },
+    "0xm9qzg": {
+      "title": "VisitRepository.findAllWithPetAndOwner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=?",
+          "alternate": {
+            "label": "",
+            "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=1"
+          }
+        }
+      ]
+    },
+    "1heb9yw": {
+      "title": "VisitRepository.findAllWithPetAndOwner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=?",
+          "alternate": {
+            "label": "",
+            "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=5"
+          }
+        }
+      ]
+    },
+    "094wceq": {
+      "title": "VisitRepository.findAllWithPetAndOwner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=?",
+          "alternate": {
+            "label": "",
+            "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=7"
+          }
+        }
+      ]
+    },
+    "0cvbten": {
+      "title": "VisitRepository.findAllWithPetAndOwner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=?",
+          "alternate": {
+            "label": "",
+            "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=6"
+          }
+        }
+      ]
+    },
+    "0gohwr7": {
+      "title": "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT count(v1_0.id)\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id"
+        }
+      ]
+    },
+    "1gl89nl": {
+      "title": "Backend → Browser: 200",
+      "steps": [
+        {
+          "label": "response body",
+          "text": "{\n  \"content\": [\n    {\n      \"date\": \"2026-05-03\",\n      \"description\": \"surgical suture removal\",\n      \"id\": 25,\n      \"petId\": 20,\n      \"petName\": \"Gromit\",\n      \"ownerId\": 16,\n      \"ownerFirstName\": \"Wallace\",\n      \"ownerLastName\": \"Wensleydale\"\n    },\n    {\n      \"date\": \"2026-05-03\",\n      \"description\": \"annual general checkup\",\n      \"id\": 26,\n      \"petId\": 3,\n      \"petName\": \"Milton\",\n      \"ownerId\": 3,\n      \"ownerFirstName\": \"Erwin\",\n      \"ownerLastName\": \"Schroedinger\"\n    },\n    {\n      \"date\": \"2026-05-02\",\n      \"description\": \"wound on front paw\",\n      \"id\": 23,\n      \"petId\": 32,\n      \"petName\": \"Toby of Lambeth\",\n      \"ownerId\": 26,\n      \"ownerFirstName\": \"Sherlock\",\n      \"ownerLastName\": \"Holmes\"\n    },\n    {\n      \"date\": \"2026-05-02\",\n      \"description\": \"post-vaccine follow-up\",\n      \"id\": 24,\n      \"petId\": 15,\n      \"petName\": \"Lassie\",\n      \"ownerId\": 12,\n      \"ownerFirstName\": \"Sam\",\n      \"ownerLastName\": \"Carraclough\"\n    },\n    {\n      \"date\": \"2026-05-01\",\n      \"description\": \"plumage check\",\n      \"id\": 22,\n      \"petId\": 31,\n      \"petName\": \"Grip\",\n      \"ownerId\": 25,\n      \"ownerFirstName\": \"Charles\",\n      \"ownerLastName\": \"Dickens\"\n    },\n    {\n      \"date\": \"2026-04-28\",\n      \"description\": \"horseshoeing\",\n      \"id\": 21,\n      \"petId\": 30,\n      \"petName\": \"Rocinante\",\n      \"ownerId\": 24,\n      \"ownerFirstName\": \"Alonso\",\n      \"ownerLastName\": \"Quixano\"\n    },\n    {\n      \"date\": \"2026-04-25\",\n      \"description\": \"rabies vaccine\",\n      \"id\": 20,\n      \"petId\": 29,\n      \"petName\": \"Figaro\",\n      \"ownerId\": 23,\n      \"ownerFirstName\": \"Mister\",\n      \"ownerLastName\": \"Geppetto\"\n    },\n    {\n      \"date\": \"2026-04-20\",\n      \"description\": \"dental exam\",\n      \"id\": 19,\n      \"petId\": 28,\n      \"petName\": \"Jaq\",\n      \"ownerId\": 22,\n      \"ownerFirstName\": \"Lady\",\n      \"ownerLastName\": \"Tremaine\"\n    },\n    {\n      \"date\": \"2026-04-15\",\n      \"description\": \"checkup\",\n      \"id\": 18,\n      \"petId\": 27,\n      \"petName\": \"Lucifer\",\n      \"ownerId\": 22,\n      \"ownerFirstName\": \"Lady\",\n      \"ownerLastName\": \"Tremaine\"\n    },\n    {\n      \"date\": \"2026-04-10\",\n      \"description\": \"spay/neuter\",\n      \"id\": 13,\n      \"petId\": 22,\n      \"petName\": \"Toby\",\n      \"ownerId\": 17,\n      \"ownerFirstName\": \"Wendy\",\n      \"ownerLastName\": \"Darling\"\n    }\n  ],\n  \"totalElements\": 28,\n  \"totalPages\": 3,\n  \"number\": 0,\n  \"size\": 10\n}"
+        }
+      ]
+    },
+    "19w8crk": {
+      "title": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by …",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY p1_0.name, v1_0.visit_date desc, v1_0.id\nFETCH FIRST ? rows only",
+          "alternate": {
+            "label": "",
+            "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY p1_0.name, v1_0.visit_date desc, v1_0.id\nFETCH FIRST 10 rows only"
+          }
+        }
+      ]
+    },
+    "0i1m34t": {
+      "title": "VisitRepository.findAllWithPetAndOwner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=?",
+          "alternate": {
+            "label": "",
+            "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0\nWHERE pt1_0.id=4"
+          }
+        }
+      ]
+    },
+    "0i7raod": {
+      "title": "Backend → Browser: 200",
+      "steps": [
+        {
+          "label": "response body",
+          "text": "{\n  \"content\": [\n    {\n      \"date\": \"2025-12-27\",\n      \"description\": \"ate the Christmas tinsel; kept under observation\",\n      \"id\": 1,\n      \"petId\": 1,\n      \"petName\": \"Axel\",\n      \"ownerId\": 1,\n      \"ownerFirstName\": \"Kevin\",\n      \"ownerLastName\": \"McCallister\"\n    },\n    {\n      \"date\": \"2026-02-14\",\n      \"description\": \"habitat check\",\n      \"id\": 16,\n      \"petId\": 25,\n      \"petName\": \"Basilisk\",\n      \"ownerId\": 4,\n      \"ownerFirstName\": \"Ștefan\",\n      \"ownerLastName\": \"Mureșan\"\n    },\n    {\n      \"date\": \"2026-02-20\",\n      \"description\": \"beak and nail trim\",\n      \"id\": 9,\n      \"petId\": 18,\n      \"petName\": \"Captain Flint\",\n      \"ownerId\": 14,\n      \"ownerFirstName\": \"Long\",\n      \"ownerLastName\": \"Silver\"\n    },\n    {\n      \"date\": \"2024-03-04\",\n      \"description\": \"rabies shot\",\n      \"id\": 3,\n      \"petId\": 10,\n      \"petName\": \"Cheshire\",\n      \"ownerId\": 8,\n      \"ownerFirstName\": \"Alice\",\n      \"ownerLastName\": \"Liddell\"\n    },\n    {\n      \"date\": \"2023-06-04\",\n      \"description\": \"neutered\",\n      \"id\": 4,\n      \"petId\": 10,\n      \"petName\": \"Cheshire\",\n      \"ownerId\": 8,\n      \"ownerFirstName\": \"Alice\",\n      \"ownerLastName\": \"Liddell\"\n    },\n    {\n      \"date\": \"2025-11-30\",\n      \"description\": \"trivalent vaccine\",\n      \"id\": 15,\n      \"petId\": 24,\n      \"petName\": \"Crookshanks\",\n      \"ownerId\": 19,\n      \"ownerFirstName\": \"Hermione\",\n      \"ownerLastName\": \"Granger\"\n    },\n    {\n      \"date\": \"2024-03-04\",\n      \"description\": \"rabies shot\",\n      \"id\": 2,\n      \"petId\": 9,\n      \"petName\": \"Dinah\",\n      \"ownerId\": 8,\n      \"ownerFirstName\": \"Alice\",\n      \"ownerLastName\": \"Liddell\"\n    },\n    {\n      \"date\": \"2022-09-04\",\n      \"description\": \"spayed\",\n      \"id\": 5,\n      \"petId\": 9,\n      \"petName\": \"Dinah\",\n      \"ownerId\": 8,\n      \"ownerFirstName\": \"Alice\",\n      \"ownerLastName\": \"Liddell\"\n    },\n    {\n      \"date\": \"2026-04-25\",\n      \"description\": \"rabies vaccine\",\n      \"id\": 20,\n      \"petId\": 29,\n      \"petName\": \"Figaro\",\n      \"ownerId\": 23,\n      \"ownerFirstName\": \"Mister\",\n      \"ownerLastName\": \"Geppetto\"\n    },\n    {\n      \"date\": \"2026-05-01\",\n      \"description\": \"plumage check\",\n      \"id\": 22,\n      \"petId\": 31,\n      \"petName\": \"Grip\",\n      \"ownerId\": 25,\n      \"ownerFirstName\": \"Charles\",\n      \"ownerLastName\": \"Dickens\"\n    }\n  ],\n  \"totalElements\": 28,\n  \"totalPages\": 3,\n  \"number\": 0,\n  \"size\": 10\n}"
+        }
+      ]
+    }
+  }
+}

@@ -1,196 +1,160 @@
 [
  {
-  "t": 4.039,
-  "text": "The owners grid is now paged on the server: ten rows, and a total.",
+  "t": 4.617,
+  "text": "The visits grid shows the newest ten visits, sorted by date.",
   "box": {
-   "x": 920,
-   "y": 685,
-   "width": 68,
-   "height": 20
+   "x": 60,
+   "y": 148,
+   "width": 1160,
+   "height": 464
   },
   "audio": "feature.narration/cue00.wav",
-  "speech": 4.00390022675737,
+  "speech": 3.553106575963719,
   "words": [
    {
     "w": "The",
-    "t": 0.01
+    "t": 0
    },
    {
-    "w": "owners",
-    "t": 0.161
+    "w": "visits",
+    "t": 0.093
    },
    {
     "w": "grid",
-    "t": 0.533
+    "t": 0.476
    },
    {
-    "w": "is",
-    "t": 0.741
-   },
-   {
-    "w": "now",
-    "t": 0.881
-   },
-   {
-    "w": "paged",
-    "t": 1.113
-   },
-   {
-    "w": "on",
-    "t": 1.508
+    "w": "shows",
+    "t": 0.732
    },
    {
     "w": "the",
-    "t": 1.67
+    "t": 1.069
    },
    {
-    "w": "server:",
-    "t": 1.752
+    "w": "newest",
+    "t": 1.15
    },
    {
     "w": "ten",
-    "t": 2.413
+    "t": 1.568
    },
    {
-    "w": "rows,",
-    "t": 2.704
+    "w": "visits,",
+    "t": 1.812
    },
    {
-    "w": "and",
-    "t": 3.307
+    "w": "sorted",
+    "t": 2.566
    },
    {
-    "w": "a",
-    "t": 3.447
+    "w": "by",
+    "t": 2.973
    },
    {
-    "w": "total.",
-    "t": 3.505
+    "w": "date.",
+    "t": 3.135
    }
   ],
   "alts": {
    "trump": {
     "audio": "feature.narration/fish/trump/cue00.wav",
-    "speech": 6.13,
+    "speech": 4.876,
     "words": [
      {
       "w": "The",
-      "t": 0.01
+      "t": 0.07
      },
      {
-      "w": "owners",
-      "t": 0.32
+      "w": "visits",
+      "t": 0.344
      },
      {
       "w": "grid",
-      "t": 0.862
+      "t": 0.824
      },
      {
-      "w": "is",
-      "t": 1.249
-     },
-     {
-      "w": "now",
-      "t": 1.482
-     },
-     {
-      "w": "paged",
-      "t": 1.792
-     },
-     {
-      "w": "on",
-      "t": 2.257
+      "w": "shows",
+      "t": 1.166
      },
      {
       "w": "the",
-      "t": 2.489
+      "t": 1.577
      },
      {
-      "w": "server:",
-      "t": 2.799
+      "w": "newest",
+      "t": 1.851
      },
      {
       "w": "ten",
-      "t": 3.573
+      "t": 2.331
      },
      {
-      "w": "rows,",
-      "t": 3.883
+      "w": "visits,",
+      "t": 2.605
      },
      {
-      "w": "and",
-      "t": 4.503
+      "w": "sorted",
+      "t": 3.29
      },
      {
-      "w": "a",
-      "t": 4.813
+      "w": "by",
+      "t": 3.769
      },
      {
-      "w": "total.",
-      "t": 4.968
+      "w": "date.",
+      "t": 3.975
      }
     ],
     "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
    },
    "discovery": {
     "audio": "feature.narration/fish/discovery/cue00.wav",
-    "speech": 6.177,
+    "speech": 5.48,
     "words": [
      {
       "w": "The",
-      "t": 0.02
+      "t": 0.01
      },
      {
-      "w": "owners",
-      "t": 0.339
+      "w": "visits",
+      "t": 0.326
      },
      {
       "w": "grid",
-      "t": 0.897
+      "t": 0.879
      },
      {
-      "w": "is",
-      "t": 1.296
-     },
-     {
-      "w": "now",
-      "t": 1.535
-     },
-     {
-      "w": "paged",
-      "t": 1.854
-     },
-     {
-      "w": "on",
-      "t": 2.332
+      "w": "shows",
+      "t": 1.273
      },
      {
       "w": "the",
-      "t": 2.571
+      "t": 1.747
      },
      {
-      "w": "server:",
-      "t": 2.89
+      "w": "newest",
+      "t": 2.063
      },
      {
       "w": "ten",
-      "t": 3.688
+      "t": 2.616
      },
      {
-      "w": "rows,",
-      "t": 4.007
+      "w": "visits,",
+      "t": 2.931
      },
      {
-      "w": "and",
-      "t": 4.645
+      "w": "sorted",
+      "t": 3.721
      },
      {
-      "w": "a",
-      "t": 4.963
+      "w": "by",
+      "t": 4.274
      },
      {
-      "w": "total.",
-      "t": 5.123
+      "w": "date.",
+      "t": 4.51
      }
     ],
     "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
@@ -198,461 +162,389 @@
   }
  },
  {
-  "t": 9.883,
-  "text": "Five rows per page, and the choice is kept in the URL.",
+  "t": 9.753,
+  "text": "Click Pet to sort by pet. The sort is in the URL.",
   "box": {
-   "x": 163,
-   "y": 462,
-   "width": 1057,
-   "height": 56
+   "x": 698,
+   "y": 148,
+   "width": 232,
+   "height": 37
   },
   "audio": "feature.narration/cue01.wav",
-  "speech": 3.345124716553288,
-  "words": [
-   {
-    "w": "Five",
-    "t": 0.001
-   },
-   {
-    "w": "rows",
-    "t": 0.361
-   },
-   {
-    "w": "per",
-    "t": 0.605
-   },
-   {
-    "w": "page,",
-    "t": 0.779
-   },
-   {
-    "w": "and",
-    "t": 1.511
-   },
-   {
-    "w": "the",
-    "t": 1.615
-   },
-   {
-    "w": "choice",
-    "t": 1.708
-   },
-   {
-    "w": "is",
-    "t": 2.103
-   },
-   {
-    "w": "kept",
-    "t": 2.242
-   },
-   {
-    "w": "in",
-    "t": 2.532
-   },
-   {
-    "w": "the",
-    "t": 2.649
-   },
-   {
-    "w": "URL.",
-    "t": 2.707
-   }
-  ],
-  "alts": {
-   "trump": {
-    "audio": "feature.narration/fish/trump/cue01.wav",
-    "speech": 4.412,
-    "words": [
-     {
-      "w": "Five",
-      "t": 0.03
-     },
-     {
-      "w": "rows",
-      "t": 0.368
-     },
-     {
-      "w": "per",
-      "t": 0.705
-     },
-     {
-      "w": "page,",
-      "t": 0.976
-     },
-     {
-      "w": "and",
-      "t": 1.516
-     },
-     {
-      "w": "the",
-      "t": 1.786
-     },
-     {
-      "w": "choice",
-      "t": 2.056
-     },
-     {
-      "w": "is",
-      "t": 2.529
-     },
-     {
-      "w": "kept",
-      "t": 2.732
-     },
-     {
-      "w": "in",
-      "t": 3.069
-     },
-     {
-      "w": "the",
-      "t": 3.272
-     },
-     {
-      "w": "URL.",
-      "t": 3.542
-     }
-    ],
-    "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
-   },
-   "discovery": {
-    "audio": "feature.narration/fish/discovery/cue01.wav",
-    "speech": 4.923,
-    "words": [
-     {
-      "w": "Five",
-      "t": 0.02
-     },
-     {
-      "w": "rows",
-      "t": 0.407
-     },
-     {
-      "w": "per",
-      "t": 0.794
-     },
-     {
-      "w": "page,",
-      "t": 1.103
-     },
-     {
-      "w": "and",
-      "t": 1.722
-     },
-     {
-      "w": "the",
-      "t": 2.032
-     },
-     {
-      "w": "choice",
-      "t": 2.341
-     },
-     {
-      "w": "is",
-      "t": 2.883
-     },
-     {
-      "w": "kept",
-      "t": 3.115
-     },
-     {
-      "w": "in",
-      "t": 3.502
-     },
-     {
-      "w": "the",
-      "t": 3.734
-     },
-     {
-      "w": "URL.",
-      "t": 4.044
-     }
-    ],
-    "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
-   }
-  }
- },
- {
-  "t": 14.665,
-  "text": "Name and City are sortable; click City to sort ascending.",
-  "box": {
-   "x": 625,
-   "y": 207,
-   "width": 42,
-   "height": 20
-  },
-  "audio": "feature.narration/cue02.wav",
-  "speech": 3.18562358276644,
-  "words": [
-   {
-    "w": "Name",
-    "t": 0.004
-   },
-   {
-    "w": "and",
-    "t": 0.248
-   },
-   {
-    "w": "City",
-    "t": 0.388
-   },
-   {
-    "w": "are",
-    "t": 0.701
-   },
-   {
-    "w": "sortable;",
-    "t": 0.829
-   },
-   {
-    "w": "click",
-    "t": 1.595
-   },
-   {
-    "w": "City",
-    "t": 1.885
-   },
-   {
-    "w": "to",
-    "t": 2.152
-   },
-   {
-    "w": "sort",
-    "t": 2.292
-   },
-   {
-    "w": "ascending.",
-    "t": 2.605
-   }
-  ],
-  "alts": {
-   "trump": {
-    "audio": "feature.narration/fish/trump/cue02.wav",
-    "speech": 5.294,
-    "words": [
-     {
-      "w": "Name",
-      "t": 0.01
-     },
-     {
-      "w": "and",
-      "t": 0.397
-     },
-     {
-      "w": "City",
-      "t": 0.706
-     },
-     {
-      "w": "are",
-      "t": 1.093
-     },
-     {
-      "w": "sortable;",
-      "t": 1.402
-     },
-     {
-      "w": "click",
-      "t": 2.33
-     },
-     {
-      "w": "City",
-      "t": 2.794
-     },
-     {
-      "w": "to",
-      "t": 3.181
-     },
-     {
-      "w": "sort",
-      "t": 3.413
-     },
-     {
-      "w": "ascending.",
-      "t": 3.8
-     }
-    ],
-    "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
-   },
-   "discovery": {
-    "audio": "feature.narration/fish/discovery/cue02.wav",
-    "speech": 5.666,
-    "words": [
-     {
-      "w": "Name",
-      "t": 0.01
-     },
-     {
-      "w": "and",
-      "t": 0.433
-     },
-     {
-      "w": "City",
-      "t": 0.772
-     },
-     {
-      "w": "are",
-      "t": 1.196
-     },
-     {
-      "w": "sortable;",
-      "t": 1.534
-     },
-     {
-      "w": "click",
-      "t": 2.551
-     },
-     {
-      "w": "City",
-      "t": 3.059
-     },
-     {
-      "w": "to",
-      "t": 3.482
-     },
-     {
-      "w": "sort",
-      "t": 3.736
-     },
-     {
-      "w": "ascending.",
-      "t": 4.16
-     }
-    ],
-    "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
-   }
-  }
- },
- {
-  "t": 19.288,
-  "text": "Click again for descending; the arrowhead shows the direction.",
-  "box": {
-   "x": 625,
-   "y": 207,
-   "width": 42,
-   "height": 20
-  },
-  "audio": "feature.narration/cue03.wav",
-  "speech": 3.272063492063492,
+  "speech": 3.0514739229024945,
   "words": [
    {
     "w": "Click",
     "t": 0.01
    },
    {
-    "w": "again",
+    "w": "Pet",
     "t": 0.265
    },
    {
-    "w": "for",
-    "t": 0.544
+    "w": "to",
+    "t": 0.486
    },
    {
-    "w": "descending;",
-    "t": 0.695
+    "w": "sort",
+    "t": 0.59
+   },
+   {
+    "w": "by",
+    "t": 0.904
+   },
+   {
+    "w": "pet.",
+    "t": 1.066
+   },
+   {
+    "w": "The",
+    "t": 1.693
+   },
+   {
+    "w": "sort",
+    "t": 1.809
+   },
+   {
+    "w": "is",
+    "t": 2.111
+   },
+   {
+    "w": "in",
+    "t": 2.25
    },
    {
     "w": "the",
-    "t": 1.577
+    "t": 2.355
    },
    {
-    "w": "arrowhead",
-    "t": 1.74
-   },
-   {
-    "w": "shows",
-    "t": 2.181
-   },
-   {
-    "w": "the",
-    "t": 2.529
-   },
-   {
-    "w": "direction.",
-    "t": 2.622
+    "w": "URL.",
+    "t": 2.425
    }
   ],
   "alts": {
    "trump": {
-    "audio": "feature.narration/fish/trump/cue03.wav",
-    "speech": 4.69,
+    "audio": "feature.narration/fish/trump/cue01.wav",
+    "speech": 4.876,
     "words": [
      {
       "w": "Click",
       "t": 0
      },
      {
-      "w": "again",
-      "t": 0.382
+      "w": "Pet",
+      "t": 0.473
      },
      {
-      "w": "for",
-      "t": 0.763
+      "w": "to",
+      "t": 0.788
      },
      {
-      "w": "descending;",
-      "t": 1.018
+      "w": "sort",
+      "t": 1.024
+     },
+     {
+      "w": "by",
+      "t": 1.418
+     },
+     {
+      "w": "pet.",
+      "t": 1.655
+     },
+     {
+      "w": "The",
+      "t": 2.364
+     },
+     {
+      "w": "sort",
+      "t": 2.679
+     },
+     {
+      "w": "is",
+      "t": 3.073
+     },
+     {
+      "w": "in",
+      "t": 3.309
      },
      {
       "w": "the",
-      "t": 1.909
+      "t": 3.546
      },
      {
-      "w": "arrowhead",
-      "t": 2.163
+      "w": "URL.",
+      "t": 3.861
+     }
+    ],
+    "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
+   },
+   "discovery": {
+    "audio": "feature.narration/fish/discovery/cue01.wav",
+    "speech": 5.619,
+    "words": [
+     {
+      "w": "Click",
+      "t": 0
      },
      {
-      "w": "shows",
-      "t": 2.799
+      "w": "Pet",
+      "t": 0.561
+     },
+     {
+      "w": "to",
+      "t": 0.934
+     },
+     {
+      "w": "sort",
+      "t": 1.215
+     },
+     {
+      "w": "by",
+      "t": 1.682
+     },
+     {
+      "w": "pet.",
+      "t": 1.962
+     },
+     {
+      "w": "The",
+      "t": 2.803
+     },
+     {
+      "w": "sort",
+      "t": 3.177
+     },
+     {
+      "w": "is",
+      "t": 3.644
+     },
+     {
+      "w": "in",
+      "t": 3.925
      },
      {
       "w": "the",
-      "t": 3.181
+      "t": 4.205
      },
      {
-      "w": "direction.",
-      "t": 3.436
+      "w": "URL.",
+      "t": 4.579
+     }
+    ],
+    "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
+   }
+  }
+ },
+ {
+  "t": 14.918,
+  "text": "Owner sorts ascending, then descending, on the server.",
+  "box": {
+   "x": 930,
+   "y": 148,
+   "width": 290,
+   "height": 37
+  },
+  "audio": "feature.narration/cue02.wav",
+  "speech": 3.185986394557823,
+  "words": [
+   {
+    "w": "Owner",
+    "t": 0.005
+   },
+   {
+    "w": "sorts",
+    "t": 0.283
+   },
+   {
+    "w": "ascending,",
+    "t": 0.643
+   },
+   {
+    "w": "then",
+    "t": 1.421
+   },
+   {
+    "w": "descending,",
+    "t": 1.619
+   },
+   {
+    "w": "on",
+    "t": 2.466
+   },
+   {
+    "w": "the",
+    "t": 2.617
+   },
+   {
+    "w": "server.",
+    "t": 2.71
+   }
+  ],
+  "alts": {
+   "trump": {
+    "audio": "feature.narration/fish/trump/cue02.wav",
+    "speech": 4.551,
+    "words": [
+     {
+      "w": "Owner",
+      "t": 0
+     },
+     {
+      "w": "sorts",
+      "t": 0.41
+     },
+     {
+      "w": "ascending,",
+      "t": 0.821
+     },
+     {
+      "w": "then",
+      "t": 1.71
+     },
+     {
+      "w": "descending,",
+      "t": 2.052
+     },
+     {
+      "w": "on",
+      "t": 3.01
+     },
+     {
+      "w": "the",
+      "t": 3.215
+     },
+     {
+      "w": "server.",
+      "t": 3.489
+     }
+    ],
+    "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
+   },
+   "discovery": {
+    "audio": "feature.narration/fish/discovery/cue02.wav",
+    "speech": 4.319,
+    "words": [
+     {
+      "w": "Owner",
+      "t": 0.02
+     },
+     {
+      "w": "sorts",
+      "t": 0.414
+     },
+     {
+      "w": "ascending,",
+      "t": 0.809
+     },
+     {
+      "w": "then",
+      "t": 1.663
+     },
+     {
+      "w": "descending,",
+      "t": 1.991
+     },
+     {
+      "w": "on",
+      "t": 2.911
+     },
+     {
+      "w": "the",
+      "t": 3.109
+     },
+     {
+      "w": "server.",
+      "t": 3.371
+     }
+    ],
+    "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
+   }
+  }
+ },
+ {
+  "t": 20.062,
+  "text": "Choose five items per page.",
+  "box": {
+   "x": 60,
+   "y": 370,
+   "width": 1160,
+   "height": 57
+  },
+  "audio": "feature.narration/cue03.wav",
+  "speech": 1.6814965986394559,
+  "words": [
+   {
+    "w": "Choose",
+    "t": 0.01
+   },
+   {
+    "w": "five",
+    "t": 0.288
+   },
+   {
+    "w": "items",
+    "t": 0.579
+   },
+   {
+    "w": "per",
+    "t": 0.95
+   },
+   {
+    "w": "page.",
+    "t": 1.136
+   }
+  ],
+  "alts": {
+   "trump": {
+    "audio": "feature.narration/fish/trump/cue03.wav",
+    "speech": 2.229,
+    "words": [
+     {
+      "w": "Choose",
+      "t": 0.02
+     },
+     {
+      "w": "five",
+      "t": 0.436
+     },
+     {
+      "w": "items",
+      "t": 0.732
+     },
+     {
+      "w": "per",
+      "t": 1.089
+     },
+     {
+      "w": "page.",
+      "t": 1.326
      }
     ],
     "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
    },
    "discovery": {
     "audio": "feature.narration/fish/discovery/cue03.wav",
-    "speech": 4.69,
+    "speech": 2.694,
     "words": [
      {
-      "w": "Click",
+      "w": "Choose",
       "t": 0
      },
      {
-      "w": "again",
-      "t": 0.385
+      "w": "five",
+      "t": 0.547
      },
      {
-      "w": "for",
-      "t": 0.77
+      "w": "items",
+      "t": 0.938
      },
      {
-      "w": "descending;",
-      "t": 1.027
+      "w": "per",
+      "t": 1.406
      },
      {
-      "w": "the",
-      "t": 1.926
-     },
-     {
-      "w": "arrowhead",
-      "t": 2.183
-     },
-     {
-      "w": "shows",
-      "t": 2.825
-     },
-     {
-      "w": "the",
-      "t": 3.21
-     },
-     {
-      "w": "direction.",
-      "t": 3.467
+      "w": "page.",
+      "t": 1.719
      }
     ],
     "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
@@ -660,101 +552,137 @@
   }
  },
  {
-  "t": 23.998,
-  "text": "Next page, still sorted by city.",
+  "t": 23.372,
+  "text": "Next page: page two, also kept in the URL.",
   "box": {
-   "x": 1116,
-   "y": 486,
-   "width": 48,
-   "height": 48
+   "x": 60,
+   "y": 370,
+   "width": 1160,
+   "height": 57
   },
   "audio": "feature.narration/cue04.wav",
-  "speech": 2.3513832199546485,
+  "speech": 3.454331065759637,
   "words": [
    {
     "w": "Next",
     "t": 0.006
    },
    {
-    "w": "page,",
+    "w": "page:",
     "t": 0.343
    },
    {
-    "w": "still",
+    "w": "page",
     "t": 1.074
    },
    {
-    "w": "sorted",
-    "t": 1.388
+    "w": "two,",
+    "t": 1.376
    },
    {
-    "w": "by",
-    "t": 1.759
+    "w": "also",
+    "t": 1.945
    },
    {
-    "w": "city.",
-    "t": 1.933
+    "w": "kept",
+    "t": 2.328
+   },
+   {
+    "w": "in",
+    "t": 2.665
+   },
+   {
+    "w": "the",
+    "t": 2.769
+   },
+   {
+    "w": "URL.",
+    "t": 2.816
    }
   ],
   "alts": {
    "trump": {
     "audio": "feature.narration/fish/trump/cue04.wav",
-    "speech": 3.065,
+    "speech": 4.69,
     "words": [
      {
       "w": "Next",
-      "t": 0.01
+      "t": 0.03
      },
      {
-      "w": "page,",
-      "t": 0.356
+      "w": "page:",
+      "t": 0.458
      },
      {
-      "w": "still",
-      "t": 0.91
+      "w": "page",
+      "t": 1.144
      },
      {
-      "w": "sorted",
-      "t": 1.325
+      "w": "two,",
+      "t": 1.572
      },
      {
-      "w": "by",
-      "t": 1.81
+      "w": "also",
+      "t": 2.172
      },
      {
-      "w": "city.",
-      "t": 2.018
+      "w": "kept",
+      "t": 2.601
+     },
+     {
+      "w": "in",
+      "t": 3.029
+     },
+     {
+      "w": "the",
+      "t": 3.286
+     },
+     {
+      "w": "URL.",
+      "t": 3.629
      }
     ],
     "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
    },
    "discovery": {
     "audio": "feature.narration/fish/discovery/cue04.wav",
-    "speech": 2.972,
+    "speech": 4.458,
     "words": [
      {
       "w": "Next",
-      "t": 0.01
+      "t": 0.07
      },
      {
-      "w": "page,",
-      "t": 0.365
+      "w": "page:",
+      "t": 0.481
      },
      {
-      "w": "still",
-      "t": 0.933
+      "w": "page",
+      "t": 1.138
      },
      {
-      "w": "sorted",
-      "t": 1.359
+      "w": "two,",
+      "t": 1.549
      },
      {
-      "w": "by",
-      "t": 1.857
+      "w": "also",
+      "t": 2.124
      },
      {
-      "w": "city.",
-      "t": 2.07
+      "w": "kept",
+      "t": 2.535
+     },
+     {
+      "w": "in",
+      "t": 2.945
+     },
+     {
+      "w": "the",
+      "t": 3.192
+     },
+     {
+      "w": "URL.",
+      "t": 3.521
      }
     ],
     "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
@@ -762,425 +690,89 @@
   }
  },
  {
-  "t": 28.745,
-  "text": "Back from an owner returns to the same page and sort.",
+  "t": 28.19,
+  "text": "Back restores the previous view.",
   "box": {
    "x": 60,
-   "y": 236,
-   "width": 255,
-   "height": 38
+   "y": 370,
+   "width": 1160,
+   "height": 57
   },
   "audio": "feature.narration/cue05.wav",
-  "speech": 2.790657596371882,
+  "speech": 1.7225396825396826,
   "words": [
    {
     "w": "Back",
     "t": 0.004
    },
    {
-    "w": "from",
-    "t": 0.236
-   },
-   {
-    "w": "an",
-    "t": 0.399
-   },
-   {
-    "w": "owner",
-    "t": 0.515
-   },
-   {
-    "w": "returns",
-    "t": 0.794
-   },
-   {
-    "w": "to",
-    "t": 1.281
+    "w": "restores",
+    "t": 0.26
    },
    {
     "w": "the",
-    "t": 1.397
+    "t": 0.701
    },
    {
-    "w": "same",
-    "t": 1.514
+    "w": "previous",
+    "t": 0.805
    },
    {
-    "w": "page",
-    "t": 1.839
-   },
-   {
-    "w": "and",
-    "t": 2.164
-   },
-   {
-    "w": "sort.",
-    "t": 2.291
+    "w": "view.",
+    "t": 1.339
    }
   ],
   "alts": {
    "trump": {
     "audio": "feature.narration/fish/trump/cue05.wav",
-    "speech": 4.551,
+    "speech": 2.694,
     "words": [
      {
       "w": "Back",
-      "t": 0.03
+      "t": 0.12
      },
      {
-      "w": "from",
-      "t": 0.389
-     },
-     {
-      "w": "an",
-      "t": 0.747
-     },
-     {
-      "w": "owner",
-      "t": 0.962
-     },
-     {
-      "w": "returns",
-      "t": 1.393
-     },
-     {
-      "w": "to",
-      "t": 1.967
+      "w": "restores",
+      "t": 0.419
      },
      {
       "w": "the",
-      "t": 2.182
+      "t": 0.956
      },
      {
-      "w": "same",
-      "t": 2.469
+      "w": "previous",
+      "t": 1.195
      },
      {
-      "w": "page",
-      "t": 2.827
-     },
-     {
-      "w": "and",
-      "t": 3.186
-     },
-     {
-      "w": "sort.",
-      "t": 3.473
+      "w": "view.",
+      "t": 1.733
      }
     ],
     "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
    },
    "discovery": {
     "audio": "feature.narration/fish/discovery/cue05.wav",
-    "speech": 4.551,
+    "speech": 2.508,
     "words": [
      {
       "w": "Back",
-      "t": 0.02
-     },
-     {
-      "w": "from",
-      "t": 0.397
-     },
-     {
-      "w": "an",
-      "t": 0.773
-     },
-     {
-      "w": "owner",
-      "t": 0.999
-     },
-     {
-      "w": "returns",
-      "t": 1.452
-     },
-     {
-      "w": "to",
-      "t": 2.054
-     },
-     {
-      "w": "the",
-      "t": 2.28
-     },
-     {
-      "w": "same",
-      "t": 2.582
-     },
-     {
-      "w": "page",
-      "t": 2.958
-     },
-     {
-      "w": "and",
-      "t": 3.335
-     },
-     {
-      "w": "sort.",
-      "t": 3.637
-     }
-    ],
-    "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
-   }
-  }
- },
- {
-  "t": 33.432,
-  "text": "Searching starts again from page one.",
-  "box": {
-   "x": 144,
-   "y": 149,
-   "width": 956,
-   "height": 34
-  },
-  "audio": "feature.narration/cue06.wav",
-  "speech": 2.115873015873016,
-  "words": [
-   {
-    "w": "Searching",
-    "t": 0.003
-   },
-   {
-    "w": "starts",
-    "t": 0.479
-   },
-   {
-    "w": "again",
-    "t": 0.897
-   },
-   {
-    "w": "from",
-    "t": 1.175
-   },
-   {
-    "w": "page",
-    "t": 1.373
-   },
-   {
-    "w": "one.",
-    "t": 1.698
-   }
-  ],
-  "alts": {
-   "trump": {
-    "audio": "feature.narration/fish/trump/cue06.wav",
-    "speech": 3.576,
-    "words": [
-     {
-      "w": "Searching",
       "t": 0.03
      },
      {
-      "w": "starts",
-      "t": 0.787
+      "w": "restores",
+      "t": 0.342
      },
      {
-      "w": "again",
-      "t": 1.317
+      "w": "the",
+      "t": 0.904
      },
      {
-      "w": "from",
-      "t": 1.771
+      "w": "previous",
+      "t": 1.154
      },
      {
-      "w": "page",
-      "t": 2.15
-     },
-     {
-      "w": "one.",
-      "t": 2.529
-     }
-    ],
-    "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
-   },
-   "discovery": {
-    "audio": "feature.narration/fish/discovery/cue06.wav",
-    "speech": 3.251,
-    "words": [
-     {
-      "w": "Searching",
-      "t": 0
-     },
-     {
-      "w": "starts",
-      "t": 0.724
-     },
-     {
-      "w": "again",
-      "t": 1.23
-     },
-     {
-      "w": "from",
-      "t": 1.665
-     },
-     {
-      "w": "page",
-      "t": 2.027
-     },
-     {
-      "w": "one.",
-      "t": 2.389
-     }
-    ],
-    "voice": "fish:5860c08729ef4623a05addbf5fa543ec"
-   }
-  }
- },
- {
-  "t": 37.347,
-  "text": "When nobody matches, a message and its own Add Owner button.",
-  "box": {
-   "x": 60,
-   "y": 199,
-   "width": 1160,
-   "height": 20
-  },
-  "audio": "feature.narration/cue07.wav",
-  "speech": 3.36875283446712,
-  "words": [
-   {
-    "w": "When",
-    "t": 0.002
-   },
-   {
-    "w": "nobody",
-    "t": 0.199
-   },
-   {
-    "w": "matches,",
-    "t": 0.606
-   },
-   {
-    "w": "a",
-    "t": 1.395
-   },
-   {
-    "w": "message",
-    "t": 1.465
-   },
-   {
-    "w": "and",
-    "t": 1.883
-   },
-   {
-    "w": "its",
-    "t": 2.034
-   },
-   {
-    "w": "own",
-    "t": 2.231
-   },
-   {
-    "w": "Add",
-    "t": 2.428
-   },
-   {
-    "w": "Owner",
-    "t": 2.591
-   },
-   {
-    "w": "button.",
-    "t": 2.87
-   }
-  ],
-  "alts": {
-   "trump": {
-    "audio": "feature.narration/fish/trump/cue07.wav",
-    "speech": 4.69,
-    "words": [
-     {
-      "w": "When",
-      "t": 0.01
-     },
-     {
-      "w": "nobody",
-      "t": 0.332
-     },
-     {
-      "w": "matches,",
-      "t": 0.784
-     },
-     {
-      "w": "a",
-      "t": 1.493
-     },
-     {
-      "w": "message",
-      "t": 1.622
-     },
-     {
-      "w": "and",
-      "t": 2.138
-     },
-     {
-      "w": "its",
-      "t": 2.396
-     },
-     {
-      "w": "own",
-      "t": 2.654
-     },
-     {
-      "w": "Add",
-      "t": 2.911
-     },
-     {
-      "w": "Owner",
-      "t": 3.169
-     },
-     {
-      "w": "button.",
-      "t": 3.556
-     }
-    ],
-    "voice": "fish:e58b0d7efca34eb38d5c4985e378abcb"
-   },
-   "discovery": {
-    "audio": "feature.narration/fish/discovery/cue07.wav",
-    "speech": 4.644,
-    "words": [
-     {
-      "w": "When",
-      "t": 0.01
-     },
-     {
-      "w": "nobody",
-      "t": 0.339
-     },
-     {
-      "w": "matches,",
-      "t": 0.8
-     },
-     {
-      "w": "a",
-      "t": 1.524
-     },
-     {
-      "w": "message",
-      "t": 1.656
-     },
-     {
-      "w": "and",
-      "t": 2.182
-     },
-     {
-      "w": "its",
-      "t": 2.445
-     },
-     {
-      "w": "own",
-      "t": 2.709
-     },
-     {
-      "w": "Add",
-      "t": 2.972
-     },
-     {
-      "w": "Owner",
-      "t": 3.235
-     },
-     {
-      "w": "button.",
-      "t": 3.63
+      "w": "view.",
+      "t": 1.716
      }
     ],
     "voice": "fish:5860c08729ef4623a05addbf5fa543ec"

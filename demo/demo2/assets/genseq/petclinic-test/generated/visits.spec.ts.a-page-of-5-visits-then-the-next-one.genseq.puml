@@ -1,0 +1,50 @@
+@startuml
+' ⚠️  GENERATED FILE — DO NOT EDIT. Every edit is lost on the next run.
+hide footbox
+skinparam hyperlinkUnderline false
+skinparam hyperlinkColor #1A4FA0
+title [[src://petclinic-test/src/visits.spec.ts:55{Click to open the test} a page of 5 visits, then the next one]]
+footer traced because this branch wrote it in src/visits.spec.ts — generated from real traces of end-to-end test runs, do not edit ❗
+participant Browser
+participant Backend
+participant DB
+Browser -> Backend: listVisits\nGET /api/visits
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
+activate Backend
+Backend -> DB: [[genseq://114roce{Click for the statement behind this call} SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by … ⊕]]
+Backend -> DB: [[genseq://070fg5f{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0xm9qzg{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://1heb9yw{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://094wceq{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0cvbten{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner ⊕]]
+deactivate Backend
+Backend --> Browser: [[genseq://1gl89nl{Click for this call’s JSON body} 200 ⊕]]
+deactivate Backend
+Browser -> Backend: listVisits\nGET /api/visits
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
+activate Backend
+Backend -> DB: [[genseq://02yhodo{Click for the statement behind this call} SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by … ⊕]]
+Backend -> DB: [[genseq://070fg5f{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0xm9qzg{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://1heb9yw{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner ⊕]]
+deactivate Backend
+Backend --> Browser: 200
+deactivate Backend
+Browser -> Backend: listVisits\nGET /api/visits
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
+activate Backend
+Backend -> DB: [[genseq://126qy94{Click for the statement behind this call} SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by … ⊕]]
+Backend -> DB: [[genseq://094wceq{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0xm9qzg{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0cvbten{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://070fg5f{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
+Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner ⊕]]
+deactivate Backend
+Backend --> Browser: [[genseq://1su7rdl{Click for this call’s JSON body} 200 ⊕]]
+deactivate Backend
+@enduml

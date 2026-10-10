@@ -1,438 +1,225 @@
 {
   "version": 1,
-  "commit_id": "d01c37761baf50f2afb1b397c2fe078af3a42138",
+  "commit_id": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
   "event": "COMMENT",
-  "body": "**Review record** from `review-points.md` (/code-review xhigh (user-launched, background) + /simplify 4 lenses (reuse, simplification, efficiency, altitude) + CI/SonarCloud): 25 auto-fixed · 14 declined and still open · 4 assumptions. Each is on the line it is about, or quoted below with its lines when that line is not in the diff.",
+  "body": "**Review record** from `review-points.md` (4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit): 4 auto-fixed · 11 declined and still open · 6 assumptions. Each is on the line it is about, or quoted below with its lines when that line is not in the diff.",
   "comments": [
     {
-      "hr_id": "F:add-owner-vanished-when-a-search-matched-nobody",
+      "hr_id": "F:sort-parameter-line-over-119-chars-blocked-the",
       "pile": "fixed",
-      "title": "Add Owner vanished when a search matched nobody",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html",
-      "line": 16,
+      "title": "Sort parameter line over 119 chars blocked the push",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 39,
       "side": "RIGHT",
-      "anchor": "<div *ngIf=\"page?.totalElements === 0 || errorMessage\" class=\"owners-empty-actions\">",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Add Owner vanished when a search matched nobody\n\n<sub>raised by /code-review xhigh</sub>"
+      "start_line": 38,
+      "anchor": "private static final String SORTS_HINT = \"must be date, description, pet or owner, optionally with ,asc or ,desc\";",
+      "body": "🛠 **Auto-fixed** in 4321c5bc — Sort parameter line over 119 chars blocked the push\n\n<sub>raised by pre-push hook</sub>"
     },
     {
-      "hr_id": "F:bad-page-input-answered-500-instead-of-400",
+      "hr_id": "F:cucumber-visit-count-step-read-only-the-first",
       "pile": "fixed",
-      "title": "Bad page input answered 500 instead of 400",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
-      "line": 73,
-      "side": "RIGHT",
-      "anchor": "String type = ex.getRequiredType() == null ? \"value\" : ex.getRequiredType().getSimpleName();",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Bad page input answered 500 instead of 400\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "F:find-owner-with-an-unchanged-name-did-not",
-      "pile": "fixed",
-      "title": "Find Owner with an unchanged name did not search again",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts",
-      "line": 60,
-      "side": "RIGHT",
-      "anchor": "if (JSON.stringify(toUrl(searched)) === JSON.stringify(toUrl(this.query))) {",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Find Owner with an unchanged name did not search again\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "F:hibernate-statistics-left-switched-on-for-the",
-      "pile": "fixed",
-      "title": "Hibernate statistics left switched on for the cached context",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "line": 224,
-      "side": "RIGHT",
-      "anchor": "statistics.setStatisticsEnabled(false); // the SessionFactory outlives this test",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Hibernate statistics left switched on for the cached context\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "F:visit-date-scenario-still-read-the-owner-list",
-      "pile": "fixed",
-      "title": "Visit-date scenario still read the owner list as an array",
-      "path": "petclinic-test/src/visit-date-range.feature.glue.ts",
-      "line": 20,
-      "side": "RIGHT",
-      "anchor": "const {headers: created} = await axios.post(`${API_BASE}/owners`, {",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Visit-date scenario still read the owner list as an array\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "F:addvisitapitest-sequence-diagram-showed-the-old",
-      "pile": "fixed",
-      "title": "AddVisitApiTest sequence diagram showed the old list call",
-      "path": "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
-      "line": 16,
-      "side": "RIGHT",
-      "anchor": "Test -> Backend: List one page of owners\\nGET /api/owners",
-      "body": "🛠 **Auto-fixed** in d01c3776 — AddVisitApiTest sequence diagram showed the old list call\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "F:validation-responses-built-from-the-same",
-      "pile": "fixed",
-      "title": "Validation responses built from the same literals four times",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
-      "line": 79,
-      "side": "RIGHT",
-      "anchor": "log.warn(\"Validation failed: {}\", errors);",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Validation responses built from the same literals four times\n\n<sub>raised by CI (SonarCloud java:S1192)</sub>"
-    },
-    {
-      "hr_id": "F:dead-stylesheet-rules-from-an-earlier-pager",
-      "pile": "fixed",
-      "title": "Dead stylesheet rules from an earlier pager layout",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css",
-      "line": 2,
-      "side": "RIGHT",
-      "anchor": ".owner-search-row {",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Dead stylesheet rules from an earlier pager layout\n\n<sub>raised by /simplify simplification</sub>"
-    },
-    {
-      "hr_id": "F:label-rules-only-undid-form-horizontal",
-      "pile": "fixed",
-      "title": "Label rules only undid form-horizontal",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html",
-      "line": 5,
-      "side": "RIGHT",
-      "anchor": "<form id=\"search-owner-form\" (ngSubmit)=\"search()\">",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Label rules only undid form-horizontal\n\n<sub>raised by /simplify simplification</sub>"
-    },
-    {
-      "hr_id": "F:sort-arrows-overrode-material-s-private-dom",
-      "pile": "fixed",
-      "title": "Sort arrows overrode Material's private DOM with !important",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html",
-      "line": 23,
-      "side": "RIGHT",
-      "anchor": "<th class=\"col-name sortable\" [attr.aria-sort]=\"ariaSort('name')\">",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Sort arrows overrode Material's private DOM with !important\n\n<sub>raised by /simplify altitude</sub>"
-    },
-    {
-      "hr_id": "F:column-widths-tied-to-column-order",
-      "pile": "fixed",
-      "title": "Column widths tied to column order",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css",
-      "line": 24,
-      "side": "RIGHT",
-      "anchor": ".col-name { width: 22%; }",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Column widths tied to column order\n\n<sub>raised by /simplify altitude</sub>"
-    },
-    {
-      "hr_id": "F:shell-padding-zeroed-to-undo-its-own-container",
-      "pile": "fixed",
-      "title": "Shell padding zeroed to undo its own container-fluid",
-      "path": "petclinic-frontend/src/app/app.component.html",
-      "line": 1,
-      "side": "RIGHT",
-      "anchor": "<div class=\"main-wrapper\">",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Shell padding zeroed to undo its own container-fluid\n\n<sub>raised by /simplify altitude</sub>"
-    },
-    {
-      "hr_id": "F:query-types-written-by-hand-beside-the",
-      "pile": "fixed",
-      "title": "Query types written by hand beside the generated one",
-      "path": "petclinic-frontend/src/app/owners/owner.service.ts",
-      "line": 11,
-      "side": "RIGHT",
-      "anchor": "export type OwnerQuery = NonNullable<operations['listOwners']['parameters']['query']>;",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Query types written by hand beside the generated one\n\n<sub>raised by /simplify reuse</sub>"
-    },
-    {
-      "hr_id": "F:error-fallback-that-is-never-returned",
-      "pile": "fixed",
-      "title": "Error fallback that is never returned",
-      "path": "petclinic-frontend/src/app/owners/owner.service.ts",
-      "line": 36,
-      "side": "RIGHT",
-      "anchor": ".pipe(catchError(this.handlerError<OwnerPage>('getOwnersPage')));",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Error fallback that is never returned\n\n<sub>raised by /simplify simplification</sub>"
-    },
-    {
-      "hr_id": "F:batch-fetching-added-one-association-at-a-time",
-      "pile": "fixed",
-      "title": "Batch fetching added one association at a time",
-      "path": "petclinic-backend/src/main/resources/application.properties",
-      "line": 15,
-      "side": "RIGHT",
-      "anchor": "spring.jpa.properties.hibernate.default_batch_fetch_size=100",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Batch fetching added one association at a time\n\n<sub>raised by /simplify altitude</sub>"
-    },
-    {
-      "hr_id": "F:page-to-dto-conversion-inlined-in-the-controller",
-      "pile": "fixed",
-      "title": "Page-to-DTO conversion inlined in the controller",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/OwnerMapper.java",
-      "line": 32,
-      "side": "RIGHT",
-      "anchor": "public OwnerPageDto toOwnerPageDto(Page<Owner> owners) {",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Page-to-DTO conversion inlined in the controller\n\n<sub>raised by /simplify reuse</sub>"
-    },
-    {
-      "hr_id": "F:private-route-stub-duplicating",
-      "pile": "fixed",
-      "title": "Private route stub duplicating ActivatedRouteStub",
-      "path": "petclinic-frontend/src/app/testing/router-stubs.ts",
-      "line": 56,
-      "side": "RIGHT",
-      "anchor": "setQueryParams(params: Params) {",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Private route stub duplicating ActivatedRouteStub\n\n<sub>raised by /simplify reuse</sub>"
-    },
-    {
-      "hr_id": "F:add-visit-glue-walked-owner-pages-to-find-a-pet",
-      "pile": "fixed",
-      "title": "Add-visit glue walked owner pages to find a pet",
-      "path": "petclinic-test/src/add-visit.dsl.ts",
-      "line": 17,
-      "side": "RIGHT",
-      "anchor": "const owner = await new ApiClient().fetchOwner(SEEDED_OWNER_WITH_PET);",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Add-visit glue walked owner pages to find a pet\n\n<sub>raised by /simplify efficiency</sub>"
-    },
-    {
-      "hr_id": "F:owner-search-glue-repeated-steps-locators-and",
-      "pile": "fixed",
-      "title": "Owner-search glue repeated steps, locators and calls",
-      "path": "petclinic-test/src/owner-search.feature.glue.ts",
-      "line": 77,
-      "side": "RIGHT",
-      "anchor": "Then('the first 10 owners by {word} are listed', async function (this: PlaywrightWorld, sortKey: string) {",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Owner-search glue repeated steps, locators and calls\n\n<sub>raised by /simplify simplification</sub>"
-    },
-    {
-      "hr_id": "F:new-owner-creation-line-over-the-119-character",
-      "pile": "fixed",
-      "title": "New owner-creation line over the 119-character limit",
-      "path": "petclinic-test/src/visit-date-range.feature.glue.ts",
-      "line": 20,
-      "side": "RIGHT",
-      "anchor": "const {headers: created} = await axios.post(`${API_BASE}/owners`, {",
-      "body": "🛠 **Auto-fixed** in d01c3776 — New owner-creation line over the 119-character limit\n\n<sub>raised by pre-push hook</sub>"
-    },
-    {
-      "hr_id": "F:dropped-responsestatus-erased-the-400-from-the",
-      "pile": "fixed",
-      "title": "Dropped @ResponseStatus erased the 400 from the API contract",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
-      "line": 50,
-      "side": "RIGHT",
-      "anchor": "@ResponseStatus(HttpStatus.BAD_REQUEST) // springdoc documents the 400 on every operation from this",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Dropped @ResponseStatus erased the 400 from the API contract\n\n<sub>raised by pre-push hook</sub>"
-    },
-    {
-      "hr_id": "F:accented-names-sorted-after-z-under-ci-s-c",
-      "pile": "fixed",
-      "title": "Accented names sorted after Z under CI's C collation",
-      "path": "petclinic-backend/src/test/resources/config/application.properties",
-      "line": 4,
-      "side": "RIGHT",
-      "anchor": "zonky.test.database.postgres.initdb.properties.locale-provider=icu",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Accented names sorted after Z under CI's C collation\n\n<sub>raised by /code-review xhigh, CI</sub>"
-    },
-    {
-      "hr_id": "F:sort-headers-reachable-only-with-a-mouse",
-      "pile": "fixed",
-      "title": "Sort headers reachable only with a mouse",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html",
-      "line": 24,
-      "side": "RIGHT",
-      "anchor": "<button type=\"button\" class=\"sort-button\" (click)=\"sortBy('name')\">",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Sort headers reachable only with a mouse\n\n<sub>raised by CI (SonarCloud Web:MouseEventWithoutKeyboardEquivalentCheck)</sub>"
-    },
-    {
-      "hr_id": "F:navigation-promise-left-unhandled",
-      "pile": "fixed",
-      "title": "Navigation promise left unhandled",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts",
-      "line": 111,
-      "side": "RIGHT",
-      "anchor": ".catch((error) => this.errorMessage = String(error));",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Navigation promise left unhandled\n\n<sub>raised by CI (SonarCloud typescript:S9383)</sub>"
-    },
-    {
-      "hr_id": "F:injected-and-internal-members-not-readonly",
-      "pile": "fixed",
-      "title": "Injected and internal members not readonly",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts",
-      "line": 34,
-      "side": "RIGHT",
-      "anchor": "constructor(private readonly router: Router, private readonly route: ActivatedRoute,",
-      "body": "🛠 **Auto-fixed** in d01c3776 — Injected and internal members not readonly\n\n<sub>raised by CI (SonarCloud typescript:S2933)</sub>"
-    },
-    {
-      "hr_id": "I:listgetfirsttest-input-snippet-has-unbalanced",
-      "pile": "ignored",
-      "title": "ListGetFirstTest input snippet has unbalanced braces",
-      "path": "refactoring-tools/src/test/java/victor/training/petclinic/rewrite/ListGetFirstTest.java",
-      "line": 49,
-      "side": "RIGHT",
-      "anchor": "return owner.getPets().get(0);",
-      "body": "🔴 **Open issue** · medium · declined by the author — ListGetFirstTest input snippet has unbalanced braces\n\n**Why declined:** the human's own live-coding edit, committed as found at their request.\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "I:booking-does-not-check-the-pet-belongs-to-the",
-      "pile": "ignored",
-      "title": "Booking does not check the pet belongs to the owner",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-      "line": 213,
-      "side": "RIGHT",
-      "anchor": "Pet pet = petRepository.findById(petId).orElseThrow();",
-      "body": "🔴 **Open issue** · high · declined by the author — Booking does not check the pet belongs to the owner\n\n**Why declined:** predates the audited range (visit-date commit b23c6d3a); worth its own ticket.\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "I:visit-date-rule-skipped-by-the-mcp-tool-and",
-      "pile": "ignored",
-      "title": "Visit-date rule skipped by the MCP tool and birth-date edits",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
-      "line": 69,
-      "side": "RIGHT",
-      "anchor": "requireFutureDate(visitDate);",
-      "body": "🔴 **Open issue** · medium · declined by the author — Visit-date rule skipped by the MCP tool and birth-date edits\n\n**Why declined:** the visit-date rule is b23c6d3a's, outside this change set.\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "I:an-undated-visit-skips-the-visit-date-rule",
-      "pile": "ignored",
-      "title": "An undated visit skips the visit-date rule",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 90,
-      "side": "RIGHT",
-      "anchor": "if (visitDate == null) {",
-      "body": "🔴 **Open issue** · medium · declined by the author — An undated visit skips the visit-date rule\n\n**Why declined:** the visit-date rule is b23c6d3a's, outside this change set.\n\n<sub>raised by /code-review xhigh</sub>"
-    },
-    {
-      "hr_id": "I:domain-rule-handled-as-the-broad",
-      "pile": "ignored",
-      "title": "Domain rule handled as the broad ValidationException",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+      "title": "Cucumber visit-count step read only the first page of all visits",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java",
       "line": 59,
       "side": "RIGHT",
-      "anchor": "return badRequest(List.of(ex.getMessage()), ex.getMessage(), request);",
-      "body": "🔴 **Open issue** · low · declined by the author — Domain rule handled as the broad ValidationException\n\n**Why declined:** the handler came with b23c6d3a, outside this change set.\n\n<sub>raised by /code-review xhigh</sub>"
+      "start_line": 57,
+      "anchor": "var matching = response.jsonPath().getList(\"visits.findAll { it.description == '\" + description + \"' }\");",
+      "body": "🛠 **Auto-fixed** in 4321c5bc — Cucumber visit-count step read only the first page of all visits\n\n<sub>raised by tests reviewer</sub>"
     },
     {
-      "hr_id": "I:visit-form-and-server-read-today-from-different",
-      "pile": "ignored",
-      "title": "Visit form and server read \"today\" from different clocks",
-      "path": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts",
-      "line": 26,
+      "hr_id": "F:navigation-promise-left-unhandled-a-failed",
+      "pile": "fixed",
+      "title": "Navigation promise left unhandled; a failed navigation vanished silently",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
+      "line": 87,
       "side": "RIGHT",
-      "anchor": "readonly maxVisitDate = moment().add(1, 'year').format('YYYY-MM-DD');",
-      "body": "🔴 **Open issue** · low · declined by the author — Visit form and server read \"today\" from different clocks\n\n**Why declined:** b23c6d3a's visit form, outside this change set.\n\n<sub>raised by /code-review xhigh</sub>"
+      "start_line": 86,
+      "anchor": ".catch(error => this.errorMessage = String(error));",
+      "body": "🛠 **Auto-fixed** in 4321c5bc — Navigation promise left unhandled; a failed navigation vanished silently\n\n<sub>raised by CI</sub>"
     },
     {
-      "hr_id": "I:visit-booking-saves-the-stub-pet-not-the-loaded",
+      "hr_id": "F:injected-dependencies-were-not-readonly",
+      "pile": "fixed",
+      "title": "Injected dependencies were not readonly",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
+      "line": 36,
+      "side": "RIGHT",
+      "start_line": 35,
+      "anchor": "private readonly visitService: VisitService) {}",
+      "body": "🛠 **Auto-fixed** in 4321c5bc — Injected dependencies were not readonly\n\n<sub>raised by CI</sub>"
+    },
+    {
+      "hr_id": "I:service-fallback-would-hide-errors-and-crash",
       "pile": "ignored",
-      "title": "Visit booking saves the stub Pet, not the loaded one",
+      "title": "Service fallback `{}` would hide errors and crash `show()`",
+      "path": "petclinic-frontend/src/app/visits/visit.service.ts",
+      "line": 37,
+      "side": "RIGHT",
+      "anchor": "catchError(this.handlerError('getVisitsPage', {} as VisitPage))",
+      "body": "🔴 **Open issue** · info · declined by the author — Service fallback `{}` would hide errors and crash `show()`\n\n**Why declined:** refuted — `HttpErrorHandler.handleError` rethrows (`return throwError(message)`, error.service.ts:43); the fallback is never emitted.\n\n<sub>raised by correctness, security and ticket-fit reviewers</sub>"
+    },
+    {
+      "hr_id": "I:page-index-has-no-upper-bound",
+      "pile": "ignored",
+      "title": "Page index has no upper bound",
       "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 76,
+      "line": 55,
       "side": "RIGHT",
-      "anchor": ".requireValidVisitDate(visitDto.getDate(), LocalDate.now());",
-      "body": "🔴 **Open issue** · low · declined by the author — Visit booking saves the stub Pet, not the loaded one\n\n**Why declined:** b23c6d3a's booking path, outside this change set.\n\n<sub>raised by /code-review xhigh</sub>"
+      "anchor": "@RequestParam(defaultValue = \"0\") @Min(0) int page,",
+      "body": "🔴 **Open issue** · low · declined by the author — Page index has no upper bound\n\n**Why declined:** endpoint is admin-only; OFFSET past the end stops at table size. Same as owners paging.\n\n<sub>raised by security reviewer</sub>"
     },
     {
-      "hr_id": "I:descending-sorts-mix-directions-the-indexes",
+      "hr_id": "I:owner-sort-by-first-name-may-not-match-the",
       "pile": "ignored",
-      "title": "Descending sorts mix directions the indexes cannot walk",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-      "line": 118,
+      "title": "Owner sort by first name may not match the displayed order",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 73,
       "side": "RIGHT",
-      "anchor": "return Sort.by(direction, \"city\").and(Sort.by(\"firstName\", \"lastName\", \"id\"));",
-      "body": "🔴 **Open issue** · info · declined by the author — Descending sorts mix directions the indexes cannot walk\n\n**Why declined:** measured at 0.27 ms on 100k rows, openspec/changes/paginate-owners-grid/design.md:134\n\n<sub>raised by /code-review xhigh</sub>"
+      "anchor": "default -> Sort.by(direction, \"pet.owner.firstName\", \"pet.owner.lastName\").and(latestFirst);",
+      "body": "🔴 **Open issue** · info · declined by the author — Owner sort by first name may not match the displayed order\n\n**Why declined:** refuted — the cell shows \"First Last\" (visits-page.component.html:31), the same order as the sort.\n\n<sub>raised by ticket-fit reviewer</sub>"
     },
     {
-      "hr_id": "I:list-payload-still-carries-every-pet-s-visits",
+      "hr_id": "I:api-accepts-sizes-1-100-not-only-5-10-20",
       "pile": "ignored",
-      "title": "List payload still carries every pet's visits",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/PetMapper.java",
-      "line": 28,
+      "title": "API accepts sizes 1..100, not only 5/10/20",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 56,
       "side": "RIGHT",
-      "anchor": ".setVisits(visitMapper.toVisitsDto(pet.getVisitsSortedByDate()))",
-      "body": "🔴 **Open issue** · low · declined by the author — List payload still carries every pet's visits\n\n**Why declined:** a slim row is a contract change, a non-goal: openspec/changes/paginate-owners-grid/design.md:72\n\n<sub>raised by /simplify efficiency, /simplify altitude</sub>"
+      "anchor": "@RequestParam(defaultValue = \"10\") @Min(1) @Max(MAX_PAGE_SIZE) int size,",
+      "body": "🔴 **Open issue** · low · declined by the author — API accepts sizes 1..100, not only 5/10/20\n\n**Why declined:** the ticket constrains the grid; the API serves other clients. Recorded under Assumptions.\n\n<sub>raised by ticket-fit reviewer</sub>"
     },
     {
-      "hr_id": "I:count-query-repeated-on-every-page-turn",
+      "hr_id": "I:past-the-end-redirect-could-loop-or-show-stale",
       "pile": "ignored",
-      "title": "Count query repeated on every page turn",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-      "line": 107,
+      "title": "Past-the-end redirect could loop or show stale rows",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
+      "line": 78,
       "side": "RIGHT",
-      "anchor": "Page<Owner> owners = ownerRepository.findByLastNameStartingWith(lastName,",
-      "body": "🔴 **Open issue** · low · declined by the author — Count query repeated on every page turn\n\n**Why declined:** accepted at 10 ms for 100k rows: openspec/changes/paginate-owners-grid/design.md:146\n\n<sub>raised by /simplify efficiency</sub>"
+      "start_line": 76,
+      "anchor": "this.navigate({page: page.totalPages}, true);",
+      "body": "🔴 **Open issue** · low · declined by the author — Past-the-end redirect could loop or show stale rows\n\n**Why declined:** each redirect needs a fresh empty answer; it converges as soon as deletes stop.\n\n<sub>raised by correctness reviewer</sub>"
     },
     {
-      "hr_id": "I:last-page-is-a-100k-row-offset",
+      "hr_id": "I:text-sort-order-depends-on-database-collation",
       "pile": "ignored",
-      "title": "Last page is a 100k-row offset",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html",
-      "line": 50,
+      "title": "Text sort order depends on database collation",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 73,
       "side": "RIGHT",
-      "anchor": "</table>",
-      "body": "🔴 **Open issue** · low · declined by the author — Last page is a 100k-row offset\n\n**Why declined:** keyset paging is a non-goal, 24 ms measured: openspec/changes/paginate-owners-grid/design.md:71\n\n<sub>raised by /simplify efficiency</sub>"
+      "start_line": 70,
+      "anchor": "default -> Sort.by(direction, \"pet.owner.firstName\", \"pet.owner.lastName\").and(latestFirst);",
+      "body": "🔴 **Open issue** · info · declined by the author — Text sort order depends on database collation\n\n**Why declined:** Postgres is the only database here (dev and tests); there is no H2 in the project.\n\n<sub>raised by correctness reviewer</sub>"
     },
     {
-      "hr_id": "I:hand-rolled-paging-params-instead-of-spring-s",
+      "hr_id": "I:pet-and-owner-sort-direction-and-tie-breaks-not",
       "pile": "ignored",
-      "title": "Hand-rolled paging params instead of Spring's Pageable",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-      "line": 105,
+      "title": "Pet and owner sort direction and tie-breaks not pinned",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "line": 150,
       "side": "RIGHT",
-      "anchor": "@RequestParam(defaultValue = \"name,asc\") @Pattern(regexp = \"(name|city)(,(asc|desc))?\",",
-      "body": "🔴 **Open issue** · info · declined by the author — Hand-rolled paging params instead of Spring's Pageable\n\n**Why declined:** rejected for the sort whitelist and 400-not-clamp: openspec/changes/paginate-owners-grid/design.md:88\n\n<sub>raised by /simplify reuse</sub>"
+      "anchor": "void sortByPet_thenLatestFirst() throws Exception {",
+      "body": "🔴 **Open issue** · low · declined by the author — Pet and owner sort direction and tie-breaks not pinned\n\n**Why declined:** one shared `direction` variable; asc and desc both pinned for description, owner tie-break pinned.\n\n<sub>raised by tests reviewer</sub>"
     },
     {
-      "hr_id": "I:overlapping-ownerlisttest-cases-could-be-merged",
+      "hr_id": "I:query-count-bound-of-3-is-loose",
       "pile": "ignored",
-      "title": "Overlapping OwnerListTest cases could be merged",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "line": 138,
+      "title": "Query-count bound of 3 is loose",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "line": 236,
       "side": "RIGHT",
-      "anchor": "void sortByName_putsFirstNamesFirst() throws Exception {",
-      "body": "🔴 **Open issue** · info · declined by the author — Overlapping OwnerListTest cases could be merged\n\n**Why declined:** each test pins one spec scenario: openspec/changes/paginate-owners-grid/specs/owner-list/spec.md:50\n\n<sub>raised by /simplify simplification</sub>"
+      "anchor": "assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);",
+      "body": "🔴 **Open issue** · low · declined by the author — Query-count bound of 3 is loose\n\n**Why declined:** an N+1 regression over 20 rows needs 20+ statements; the bound catches that.\n\n<sub>raised by tests reviewer</sub>"
     },
     {
-      "hr_id": "I:shared-apage-fixture-builder-for-the-specs",
+      "hr_id": "I:uppercase-or-malformed-sort-values-untested",
       "pile": "ignored",
-      "title": "Shared aPage fixture builder for the specs",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "line": 46,
+      "title": "Uppercase or malformed sort values untested",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "line": 218,
       "side": "RIGHT",
-      "anchor": "{provide: ActivatedRoute, useClass: ActivatedRouteStub}",
-      "body": "🔴 **Open issue** · info · declined by the author — Shared aPage fixture builder for the specs\n\n**Why declined:** two uses; the reviewer itself said not worth it until a third.\n\n<sub>raised by /simplify reuse</sub>"
+      "anchor": "void unsupportedSortKey_isRejected() throws Exception {",
+      "body": "🔴 **Open issue** · info · declined by the author — Uppercase or malformed sort values untested\n\n**Why declined:** the 400 on anything off-pattern is intended and pinned by unsupportedSortKey_isRejected.\n\n<sub>raised by tests reviewer</sub>"
     },
     {
-      "hr_id": "A:tie-breakers-stay-ascending-whichever-way-the",
+      "hr_id": "I:frontend-specs-stub-the-router-so-the-url-round",
+      "pile": "ignored",
+      "title": "Frontend specs stub the router, so the URL round trip is unproven",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "line": 67,
+      "side": "RIGHT",
+      "anchor": "const navigatedTo = () => navigate.calls.mostRecent().args[1].queryParams;",
+      "body": "🔴 **Open issue** · low · declined by the author — Frontend specs stub the router, so the URL round trip is unproven\n\n**Why declined:** Playwright drives the real round trip: header click and next page (visits.spec.ts:49, 61).\n\n<sub>raised by tests reviewer</sub>"
+    },
+    {
+      "hr_id": "I:removed-getall-tests-thin-seed-data-and-role",
+      "pile": "ignored",
+      "title": "Removed getAll tests thin seed-data and role coverage",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "line": 103,
+      "side": "RIGHT",
+      "anchor": "@Test",
+      "body": "🔴 **Open issue** · low · declined by the author — Removed getAll tests thin seed-data and role coverage\n\n**Why declined:** class-level `@PreAuthorize` is unchanged; Playwright compares the grid to the seeded API page.\n\n<sub>raised by tests reviewer</sub>"
+    },
+    {
+      "hr_id": "A:paging-runs-on-the-server-not-in-the-browser",
       "pile": "assumption",
-      "title": "Tie-breakers stay ascending whichever way the column sorts",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-      "line": 118,
+      "title": "Paging runs on the server, not in the browser",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java",
+      "line": 22,
       "side": "RIGHT",
-      "anchor": "return Sort.by(direction, \"city\").and(Sort.by(\"firstName\", \"lastName\", \"id\"));",
-      "body": "💭 **Assumption** · confidence 0.60 — Tie-breakers stay ascending whichever way the column sorts\n\n**Not taken:** tie-breakers follow the clicked direction, one backward index walk\n\n**Why:** the spec says owners within a city are ordered by name, read as A→Z (openspec/changes/paginate-owners-grid/specs/owner-list/spec.md:56). Nobody asked how a descending city should order its own names; a reviewer reading \"descending\" as the whole row reversed would be equally right."
+      "start_line": 20,
+      "anchor": "Page<Visit> findAllWithPetAndOwner(Pageable pageable);",
+      "body": "💭 **Assumption** · confidence 0.70 — Paging runs on the server, not in the browser\n\n**Not taken:** keep the bare list; page and sort client-side with MatTableDataSource\n\n**Why:** The owners grid (#25) paged on the server, and visits grow without bound. The ticket says only \"paginated\", and the browser-side version needed no API break, which pulls this down."
     },
     {
-      "hr_id": "A:seed-owner-1-is-the-add-visit-scenario-s-owner",
+      "hr_id": "A:default-view-is-the-10-latest-visits",
       "pile": "assumption",
-      "title": "Seed owner 1 is the add-visit scenario's owner with a pet",
-      "path": "petclinic-test/src/add-visit.dsl.ts",
+      "title": "Default view is the 10 latest visits",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
       "line": 17,
       "side": "RIGHT",
-      "anchor": "const owner = await new ApiClient().fetchOwner(SEEDED_OWNER_WITH_PET);",
-      "body": "💭 **Assumption** · confidence 0.75 — Seed owner 1 is the add-visit scenario's owner with a pet\n\n**Not taken:** take the first pet from GET /api/pets\n\n**Why:** AGENTS.md promises owner 1 = Kevin McCallister to tests, and the DSL fails loudly if he loses his pet. It now books on Kevin every run rather than on whichever owner listed first."
+      "anchor": "const DEFAULTS: VisitsPageQuery = {page: 1, size: 10, sort: 'date,desc'};",
+      "body": "💭 **Assumption** · confidence 0.90 — Default view is the 10 latest visits\n\n**Not taken:** the first page in id or ascending-date order\n\n**Why:** The grid already sorted newest first before paging, so this keeps what users saw. Ten is the middle of the three sizes the ticket names."
     },
     {
-      "hr_id": "A:the-visit-date-scenario-leaves-its-own-owner",
+      "hr_id": "A:api-caps-the-page-size-at-100-not-at-the-three",
       "pile": "assumption",
-      "title": "The visit-date scenario leaves its own owner behind",
-      "path": "petclinic-test/src/visit-date-range.feature.glue.ts",
+      "title": "API caps the page size at 100, not at the three UI sizes",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 56,
+      "side": "RIGHT",
+      "anchor": "@RequestParam(defaultValue = \"10\") @Min(1) @Max(MAX_PAGE_SIZE) int size,",
+      "body": "💭 **Assumption** · confidence 0.65 — API caps the page size at 100, not at the three UI sizes\n\n**Not taken:** reject any size other than 5, 10 or 20 in the API too\n\n**Why:** It copies the owners endpoint (MAX_PAGE_SIZE = 100), and the ticket describes the grid, not the API. A stricter reading of \"5, 10, or 20\" would hold the API to it too."
+    },
+    {
+      "hr_id": "A:owner-column-sorts-by-first-name-then-last-name",
+      "pile": "assumption",
+      "title": "Owner column sorts by first name, then last name",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 73,
+      "side": "RIGHT",
+      "anchor": "default -> Sort.by(direction, \"pet.owner.firstName\", \"pet.owner.lastName\").and(latestFirst);",
+      "body": "💭 **Assumption** · confidence 0.75 — Owner column sorts by first name, then last name\n\n**Not taken:** sort by last name, as a clinic register usually does\n\n**Why:** The cell reads \"First Last\", so this sort matches what is shown, and owners' Name sort does the same. A clinic looking people up by surname would want last name first."
+    },
+    {
+      "hr_id": "A:ties-within-a-sorted-column-fall-back-to-latest",
+      "pile": "assumption",
+      "title": "Ties within a sorted column fall back to latest first, then id",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 68,
+      "side": "RIGHT",
+      "anchor": "Sort latestFirst = Sort.by(Direction.DESC, \"date\").and(Sort.by(\"id\"));",
+      "body": "💭 **Assumption** · confidence 0.60 — Ties within a sorted column fall back to latest first, then id\n\n**Not taken:** tie-break by id only, as the owners grid does\n\n**Why:** When one pet has several visits, showing them chronologically is the useful order, and the id still makes paging stable. Nobody asked for it, so a plain id tie-break is equally defensible."
+    },
+    {
+      "hr_id": "A:no-index-added-for-the-date-sort",
+      "pile": "assumption",
+      "title": "No index added for the date sort",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java",
       "line": 20,
       "side": "RIGHT",
-      "anchor": "const {headers: created} = await axios.post(`${API_BASE}/owners`, {",
-      "body": "💭 **Assumption** · confidence 0.65 — The visit-date scenario leaves its own owner behind\n\n**Not taken:** delete the owner in the After hook with the pet\n\n**Why:** matches add-owner.spec.ts, which leaves its owners on purpose; the After hook already deletes the pet. Pulls down: each run adds one more pet-less owner to the dev database."
-    },
-    {
-      "hr_id": "A:add-owner-appears-twice-in-the-template-not",
-      "pile": "assumption",
-      "title": "Add Owner appears twice in the template, not once outside the table",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html",
-      "line": 16,
-      "side": "RIGHT",
-      "anchor": "<div *ngIf=\"page?.totalElements === 0 || errorMessage\" class=\"owners-empty-actions\">",
-      "body": "💭 **Assumption** · confidence 0.70 — Add Owner appears twice in the template, not once outside the table\n\n**Not taken:** one footer row outside #ownersTable, paginator shown conditionally inside it\n\n**Why:** the acceptance tests select `#ownersTable mat-paginator`, so the paginator must stay inside the table block; a second button in the empty state keeps that."
+      "anchor": "@Query(value = \"SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner\",",
+      "body": "💭 **Assumption** · confidence 0.50 — No index added for the date sort\n\n**Not taken:** a Flyway migration indexing visits(visit_date, id)\n\n**Why:** The seed has 28 visits and the ticket does not mention scale. If volume grows, sorting the whole table per page will show up, so this is a coin flip on when."
     }
   ],
   "generated_by": "push-pr-comments.py --from-review-points"

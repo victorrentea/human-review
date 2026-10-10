@@ -3,787 +3,361 @@
  "mode": "points",
  "source": "review-points.md",
  "provenance": {
-  "base": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-  "auditedBase": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-  "auditedHead": "5190fd3cd9e23d8a1107cf15baa6ca87937b27e9",
-  "implementation": "0b99e29cd8bb8f6895c4af13c1c20ac361546a60",
-  "head": "5190fd3cd9e23d8a1107cf15baa6ca87937b27e9",
-  "reviewers": "/code-review xhigh (user-launched, background) + /simplify 4 lenses (reuse, simplification, efficiency, altitude) + CI/SonarCloud",
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+  "auditedBase": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+  "auditedHead": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+  "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+  "head": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+  "reviewers": "4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit",
   "harness": "claude-code",
-  "session": "8782fda6-f385-4d47-8079-96d9f3c08509",
-  "reviewCommit": "d01c37761baf50f2afb1b397c2fe078af3a42138"
+  "session": "498ee103-9160-4f7a-be05-c641ebd16920",
+  "reviewCommit": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd"
  },
  "fixed_in": "HEAD",
  "findings": [
   {
-   "title": "ListGetFirstTest input snippet has unbalanced braces",
-   "source": "/code-review xhigh",
-   "severity": "medium",
-   "observation": "5190fd3c deleted the <code>firstPet</code> method line from the rewrite input, so the test&#x27;s Java no longer parses.",
-   "why": "the human&#x27;s own live-coding edit, committed as found at their request.",
-   "refs": [
-    "refactoring-tools/src/test/java/victor/training/petclinic/rewrite/ListGetFirstTest.java:49"
-   ],
-   "snippets": [
-    {
-     "ref": "refactoring-tools/src/test/java/victor/training/petclinic/rewrite/ListGetFirstTest.java:49"
-    }
-   ]
-  },
-  {
-   "title": "Booking does not check the pet belongs to the owner",
-   "source": "/code-review xhigh",
-   "severity": "high",
-   "observation": "POST /api/owners/1/pets/{another owner&#x27;s pet}/visits books it and texts owner 1; the MCP path checks ownership.",
-   "why": "predates the audited range (visit-date commit b23c6d3a); worth its own ticket.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:213"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:213"
-    }
-   ]
-  },
-  {
-   "title": "Visit-date rule skipped by the MCP tool and birth-date edits",
-   "source": "/code-review xhigh",
-   "severity": "medium",
-   "observation": "create_visit only requires a future date, and moving a pet&#x27;s birthDate past its visits is never checked.",
-   "why": "the visit-date rule is b23c6d3a&#x27;s, outside this change set.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:69"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:69"
-    }
-   ]
-  },
-  {
-   "title": "An undated visit skips the visit-date rule",
-   "source": "/code-review xhigh",
-   "severity": "medium",
-   "observation": "requireValidVisitDate returns on a null date, and VisitMapper overwrites the entity&#x27;s default with null.",
-   "why": "the visit-date rule is b23c6d3a&#x27;s, outside this change set.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:90"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:90"
-    }
-   ]
-  },
-  {
-   "title": "Domain rule handled as the broad ValidationException",
-   "source": "/code-review xhigh",
-   "severity": "low",
-   "observation": "Hibernate Validator&#x27;s own failures (HV000030) now answer 400 at WARN instead of 500 at ERROR.",
-   "why": "the handler came with b23c6d3a, outside this change set.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:59"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:59"
-    }
-   ]
-  },
-  {
-   "title": "Visit form and server read &quot;today&quot; from different clocks",
-   "source": "/code-review xhigh",
-   "severity": "low",
-   "observation": "the form&#x27;s max date uses the browser&#x27;s timezone, the server&#x27;s LocalDate.now() the JVM&#x27;s; they disagree near midnight.",
-   "why": "b23c6d3a&#x27;s visit form, outside this change set.",
-   "refs": [
-    "petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:26"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:26"
-    }
-   ]
-  },
-  {
-   "title": "Visit booking saves the stub Pet, not the loaded one",
-   "source": "/code-review xhigh",
-   "severity": "low",
-   "observation": "bookVisit loads the Pet only to validate it, then saves the Visit with the mapper&#x27;s id-only stub.",
-   "why": "b23c6d3a&#x27;s booking path, outside this change set.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:76"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:76"
-    }
-   ]
-  },
-  {
-   "title": "Descending sorts mix directions the indexes cannot walk",
-   "source": "/code-review xhigh",
+   "title": "Service fallback <code>{}</code> would hide errors and crash <code>show()</code>",
+   "source": "correctness, security and ticket-fit reviewers",
    "severity": "info",
-   "observation": "city DESC with names ASC needs an incremental sort over each city&#x27;s group.",
-   "why": "measured at 0.27 ms on 100k rows, openspec/changes/paginate-owners-grid/design.md:134",
+   "observation": "<code>catchError(handlerError(..., {} as VisitPage))</code> would emit <code>{}</code>, so <code>page.content.length</code> throws and the error banner never shows.",
+   "why": "refuted \u2014 <code>HttpErrorHandler.handleError</code> rethrows (<code>return throwError(message)</code>, error.service.ts:43); the fallback is never emitted.",
    "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:118"
+    "petclinic-frontend/src/app/visits/visit.service.ts:37"
    ],
    "snippets": [
     {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:118"
+     "ref": "petclinic-frontend/src/app/visits/visit.service.ts:37"
     }
    ]
   },
   {
-   "title": "List payload still carries every pet&#x27;s visits",
-   "source": "/simplify efficiency, /simplify altitude",
+   "title": "Page index has no upper bound",
+   "source": "security reviewer",
    "severity": "low",
-   "observation": "the grid shows pet names, yet each page loads and serializes all visits \u2014 one extra batch query and payload.",
-   "why": "a slim row is a contract change, a non-goal: openspec/changes/paginate-owners-grid/design.md:72",
+   "observation": "<code>page=2000000000&amp;size=100</code> makes the database run a huge OFFSET plus a count on every call.",
+   "why": "endpoint is admin-only; OFFSET past the end stops at table size. Same as owners paging.",
    "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/mapper/PetMapper.java:28"
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:55"
    ],
    "snippets": [
     {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/PetMapper.java:28"
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:55"
     }
    ]
   },
   {
-   "title": "Count query repeated on every page turn",
-   "source": "/simplify efficiency",
+   "title": "Owner sort by first name may not match the displayed order",
+   "source": "ticket-fit reviewer",
+   "severity": "info",
+   "observation": "sorting by owner orders on first name, then last name, which looks wrong if the cell shows last name first.",
+   "why": "refuted \u2014 the cell shows &quot;First Last&quot; (visits-page.component.html:31), the same order as the sort.",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:73"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:73"
+    }
+   ]
+  },
+  {
+   "title": "API accepts sizes 1..100, not only 5/10/20",
+   "source": "ticket-fit reviewer",
    "severity": "low",
-   "observation": "Page re-runs count(*) on each click although the total did not change.",
-   "why": "accepted at 10 ms for 100k rows: openspec/changes/paginate-owners-grid/design.md:146",
+   "observation": "the ticket names 5, 10 and 20 rows, yet <code>?size=7</code> or <code>?size=100</code> is served. The UI quietly resets an unsupported URL size to 10.",
+   "why": "the ticket constrains the grid; the API serves other clients. Recorded under Assumptions.",
    "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:107"
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:56"
    ],
    "snippets": [
     {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:107"
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:56"
     }
    ]
   },
   {
-   "title": "Last page is a 100k-row offset",
-   "source": "/simplify efficiency",
+   "title": "Past-the-end redirect could loop or show stale rows",
+   "source": "correctness reviewer",
    "severity": "low",
-   "observation": "showFirstLastButtons jumps to OFFSET 99990, which walks the whole index.",
-   "why": "keyset paging is a non-goal, 24 ms measured: openspec/changes/paginate-owners-grid/design.md:71",
+   "observation": "when the last page empties after deletes, <code>show()</code> navigates to <code>totalPages</code>. If the data shifts again it re-navigates while the old rows stay on screen.",
+   "why": "each redirect needs a fresh empty answer; it converges as soon as deletes stop.",
    "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:50"
+    "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:76-78"
    ],
    "snippets": [
     {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:50"
+     "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:76-78"
     }
    ]
   },
   {
-   "title": "Hand-rolled paging params instead of Spring&#x27;s Pageable",
-   "source": "/simplify reuse",
+   "title": "Text sort order depends on database collation",
+   "source": "correctness reviewer",
    "severity": "info",
-   "observation": "Pageable, @PageableDefault and max-page-size exist for this.",
-   "why": "rejected for the sort whitelist and 400-not-clamp: openspec/changes/paginate-owners-grid/design.md:88",
+   "observation": "mixed-case descriptions or pet names (&quot;abc&quot;, &quot;Zed&quot;) may sort differently on H2 and on Postgres.",
+   "why": "Postgres is the only database here (dev and tests); there is no H2 in the project.",
    "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:105"
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:70-73"
    ],
    "snippets": [
     {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:105"
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:70-73"
     }
    ]
   },
   {
-   "title": "Overlapping OwnerListTest cases could be merged",
-   "source": "/simplify simplification",
-   "severity": "info",
-   "observation": "the default-page test already proves first-name order, so the Beatrix/Harry test adds nothing.",
-   "why": "each test pins one spec scenario: openspec/changes/paginate-owners-grid/specs/owner-list/spec.md:50",
+   "title": "Pet and owner sort direction and tie-breaks not pinned",
+   "source": "tests reviewer",
+   "severity": "low",
+   "observation": "the pet sort is tested ascending only and the owner sort descending only, so flipping direction there would stay green.",
+   "why": "one shared <code>direction</code> variable; asc and desc both pinned for description, owner tie-break pinned.",
    "refs": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:138"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java:150"
    ],
    "snippets": [
     {
-     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:138"
+     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java:150"
     }
    ]
   },
   {
-   "title": "Shared aPage fixture builder for the specs",
-   "source": "/simplify reuse",
-   "severity": "info",
-   "observation": "two specs each build their own OwnerPage fixture.",
-   "why": "two uses; the reviewer itself said not worth it until a third.",
+   "title": "Query-count bound of 3 is loose",
+   "source": "tests reviewer",
+   "severity": "low",
+   "observation": "<code>isLessThanOrEqualTo(3)</code> would still pass with one extra lazy load if the count query were skipped.",
+   "why": "an N+1 regression over 20 rows needs 20+ statements; the bound catches that.",
    "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:46"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java:236"
    ],
    "snippets": [
     {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:46"
+     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java:236"
+    }
+   ]
+  },
+  {
+   "title": "Uppercase or malformed sort values untested",
+   "source": "tests reviewer",
+   "severity": "info",
+   "observation": "<code>sort=date,ASC</code>, <code>sort=date,asc,extra</code> and <code>page=abc</code> are never tested, and the uppercase form is rejected.",
+   "why": "the 400 on anything off-pattern is intended and pinned by unsupportedSortKey_isRejected.",
+   "refs": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java:218"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java:218"
+    }
+   ]
+  },
+  {
+   "title": "Frontend specs stub the router, so the URL round trip is unproven",
+   "source": "tests reviewer",
+   "severity": "low",
+   "observation": "<code>Router.navigate</code> is stubbed and <code>ActivatedRoute</code> faked, so a real routing bug would pass every unit test.",
+   "why": "Playwright drives the real round trip: header click and next page (visits.spec.ts:49, 61).",
+   "refs": [
+    "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:67"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:67"
+    }
+   ]
+  },
+  {
+   "title": "Removed getAll tests thin seed-data and role coverage",
+   "source": "tests reviewer",
+   "severity": "low",
+   "observation": "no test checks that the list still returns seeded rows, or that a non-admin gets a 403.",
+   "why": "class-level <code>@PreAuthorize</code> is unchanged; Playwright compares the grid to the seeded API page.",
+   "refs": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:103"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:103"
     }
    ]
   }
  ],
  "autofixes": [
   {
-   "title": "Add Owner vanished when a search matched nobody",
-   "source": "/code-review xhigh",
-   "severity": "medium",
-   "observation": "the button moved inside #ownersTable, rendered only when totalElements &gt; 0; on no match, an error or an empty clinic there was no way to /owners/add.",
-   "fix": "the empty and error states show their own Add Owner under the message.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:16",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:163"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:16"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:163"
-    }
-   ]
-  },
-  {
-   "title": "Bad page input answered 500 instead of 400",
-   "source": "/code-review xhigh",
-   "severity": "medium",
-   "observation": "?page=abc hit the catch-all handler as a type mismatch; ?page=30000000&amp;size=100 overflowed Spring Data&#x27;s int offset. Both logged at ERROR as 500.",
-   "fix": "type mismatches map to 400 for every endpoint; page is capped at Integer.MAX_VALUE / MAX_PAGE_SIZE.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:73",
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:61",
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:103",
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:124",
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:131"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:73"
-    },
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:61"
-    },
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:103"
-    },
-    {
-     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:124"
-    },
-    {
-     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:131"
-    }
-   ]
-  },
-  {
-   "title": "Find Owner with an unchanged name did not search again",
-   "source": "/code-review xhigh",
-   "severity": "low",
-   "observation": "search() only navigates; an identical URL emits nothing, so a repeated search showed stale results where the old grid re-fetched.",
-   "fix": "an unchanged query is pushed through a reload subject merged into the URL stream.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:60",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:32",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:171"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:60"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:32"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:171"
-    }
-   ]
-  },
-  {
-   "title": "Hibernate statistics left switched on for the cached context",
-   "source": "/code-review xhigh",
-   "severity": "low",
-   "observation": "the batch-fetch test enabled statistics on the shared SessionFactory and never disabled them, so later tests reusing the context paid for and inherited them.",
-   "fix": "try/finally switches them off.",
-   "refs": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:224"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java:224"
-    }
-   ]
-  },
-  {
-   "title": "Visit-date scenario still read the owner list as an array",
-   "source": "/code-review xhigh",
-   "severity": "high",
-   "observation": "<code>owners.reduce is not a function</code> failed both visit-date-range scenarios in their Background once the list became a page.",
-   "fix": "the scenario creates its own owner and puts the pet on it.",
-   "refs": [
-    "petclinic-test/src/visit-date-range.feature.glue.ts:20"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-test/src/visit-date-range.feature.glue.ts:20"
-    }
-   ]
-  },
-  {
-   "title": "AddVisitApiTest sequence diagram showed the old list call",
-   "source": "/code-review xhigh",
-   "severity": "low",
-   "observation": "the committed diagram still drew &quot;List owners&quot; with an array payload; only the browser suites&#x27; diagrams had been re-traced.",
-   "fix": "re-traced with petclinic-backend/run-tests-with-tracing.sh.",
-   "refs": [
-    "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml:16"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml:16"
-    }
-   ]
-  },
-  {
-   "title": "Validation responses built from the same literals four times",
-   "source": "CI (SonarCloud java:S1192)",
-   "severity": "low",
-   "observation": "&quot;Validation failed: {}&quot;, &quot;Validation Error&quot; and &quot;errors&quot; were duplicated across the 400 handlers; the new type-mismatch handler made it a fourth copy.",
-   "fix": "one badRequest helper builds every validation 400.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:79"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:79"
-    }
-   ]
-  },
-  {
-   "title": "Dead stylesheet rules from an earlier pager layout",
-   "source": "/simplify simplification",
-   "severity": "low",
-   "observation": "about 80 lines (#nameGroup, .owners-pagination, .owner-search-label, \u2026) matched nothing in the template, beside the live rules.",
-   "fix": "deleted; the two #ownersTable table rules merged into one.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:2"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:2"
-    }
-   ]
-  },
-  {
-   "title": "Label rules only undid form-horizontal",
-   "source": "/simplify simplification",
-   "severity": "low",
-   "observation": "the form kept form-horizontal only for its control-label styling, which the search-row rules then reset property by property.",
-   "fix": "dropped the class; only margin and nowrap remain.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:5",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:11"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:5"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:11"
-    }
-   ]
-  },
-  {
-   "title": "Sort arrows overrode Material&#x27;s private DOM with !important",
-   "source": "/simplify altitude",
-   "severity": "medium",
-   "observation": "::ng-deep rules hid .mat-sort-header-arrow&#x27;s children and cancelled its animation styles; a Material upgrade breaks them silently.",
-   "fix": "the headers draw \u25b2/\u25bc from the component&#x27;s own sort state; MatSort is gone, along with the dead <code>|| &#x27;asc&#x27;</code>.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:23",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:72",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:65"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:23"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:72"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:65"
-    }
-   ]
-  },
-  {
-   "title": "Column widths tied to column order",
-   "source": "/simplify altitude",
-   "severity": "low",
-   "observation": "th:nth-child(1..5) widths go wrong silently when a column is added or moved.",
-   "fix": "one class per column.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:24",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:26"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.css:24"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:26"
-    }
-   ]
-  },
-  {
-   "title": "Shell padding zeroed to undo its own container-fluid",
-   "source": "/simplify altitude",
-   "severity": "low",
-   "observation": ".main-wrapper padding was set to 0 to cancel the gutter of the container-fluid class on the same div.",
-   "fix": "removed the class instead.",
-   "refs": [
-    "petclinic-frontend/src/app/app.component.html:1",
-    "petclinic-frontend/src/app/app.component.css:9"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/app.component.html:1"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/app.component.css:9"
-    }
-   ]
-  },
-  {
-   "title": "Query types written by hand beside the generated one",
-   "source": "/simplify reuse",
-   "severity": "medium",
-   "observation": "OwnerQuery and OwnerListQuery restated listOwners&#x27; parameters, so a backend parameter change would not break the frontend build.",
-   "fix": "OwnerQuery comes from api-types.ts; the component uses Required&lt;OwnerQuery&gt;.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner.service.ts:11",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:10",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:44"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner.service.ts:11"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:10"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:44"
-    }
-   ]
-  },
-  {
-   "title": "Error fallback that is never returned",
-   "source": "/simplify simplification",
-   "severity": "low",
-   "observation": "handlerError always rethrows, so <code>{} as OwnerPage</code> suggested failures became an empty page.",
-   "fix": "only the type argument is kept.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner.service.ts:36"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner.service.ts:36"
-    }
-   ]
-  },
-  {
-   "title": "Batch fetching added one association at a time",
-   "source": "/simplify altitude",
-   "severity": "medium",
-   "observation": "@BatchSize fixed the N+1 only on the two collections the grid walks; Vet.specialties kept its own.",
-   "fix": "hibernate.default_batch_fetch_size=100 replaces both annotations.",
-   "refs": [
-    "petclinic-backend/src/main/resources/application.properties:15",
-    "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java:56",
-    "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:51"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/resources/application.properties:15"
-    },
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java:56"
-    },
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:51"
-    }
-   ]
-  },
-  {
-   "title": "Page-to-DTO conversion inlined in the controller",
-   "source": "/simplify reuse",
-   "severity": "low",
-   "observation": "every other entity\u2194DTO conversion lives in a mapper; this one was five accessor calls in listOwners.",
-   "fix": "OwnerMapper.toOwnerPageDto.",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/mapper/OwnerMapper.java:32",
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:109"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/OwnerMapper.java:32"
-    },
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:109"
-    }
-   ]
-  },
-  {
-   "title": "Private route stub duplicating ActivatedRouteStub",
-   "source": "/simplify reuse",
-   "severity": "low",
-   "observation": "the spec carried its own BehaviorSubject stub beside the shared one 15 specs use.",
-   "fix": "the shared stub gained queryParamMap and setQueryParams.",
-   "refs": [
-    "petclinic-frontend/src/app/testing/router-stubs.ts:56",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:36"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/testing/router-stubs.ts:56"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts:36"
-    }
-   ]
-  },
-  {
-   "title": "Add-visit glue walked owner pages to find a pet",
-   "source": "/simplify efficiency",
-   "severity": "low",
-   "observation": "the loop paged through owners because leftover pet-less &quot;Ada Acceptance&quot; owners sort first, one more round trip per hundred leftovers.",
-   "fix": "one GET of seed owner 1, through ApiClient.",
-   "refs": [
-    "petclinic-test/src/add-visit.dsl.ts:17",
-    "petclinic-test/src/support/api-client.ts:48"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-test/src/add-visit.dsl.ts:17"
-    },
-    {
-     "ref": "petclinic-test/src/support/api-client.ts:48"
-    }
-   ]
-  },
-  {
-   "title": "Owner-search glue repeated steps, locators and calls",
-   "source": "/simplify simplification",
-   "severity": "low",
-   "observation": "two steps differed by one word, the cell locator and poll lived in three places, and the Background asked for the Potters twice, sequentially, on localhost.",
-   "fix": "one {word} step, a listedNames helper, deduped lookups in Promise.all through ApiClient.",
-   "refs": [
-    "petclinic-test/src/owner-search.feature.glue.ts:77",
-    "petclinic-test/src/owner-search.feature.glue.ts:19",
-    "petclinic-test/src/owner-search.feature.glue.ts:45",
-    "petclinic-test/src/support/api-client.ts:43"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-test/src/owner-search.feature.glue.ts:77"
-    },
-    {
-     "ref": "petclinic-test/src/owner-search.feature.glue.ts:19"
-    },
-    {
-     "ref": "petclinic-test/src/owner-search.feature.glue.ts:45"
-    },
-    {
-     "ref": "petclinic-test/src/support/api-client.ts:43"
-    }
-   ]
-  },
-  {
-   "title": "New owner-creation line over the 119-character limit",
-   "source": "pre-push hook",
-   "severity": "low",
-   "observation": "scripts/check-line-length.py blocked the push on a 122-character axios.post line.",
-   "fix": "the request body is wrapped one field group per line.",
-   "refs": [
-    "petclinic-test/src/visit-date-range.feature.glue.ts:20"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-test/src/visit-date-range.feature.glue.ts:20"
-    }
-   ]
-  },
-  {
-   "title": "Dropped @ResponseStatus erased the 400 from the API contract",
+   "title": "Sort parameter line over 119 chars blocked the push",
    "source": "pre-push hook",
    "severity": "medium",
-   "observation": "the badRequest extraction removed @ResponseStatus(BAD_REQUEST); springdoc then dropped the 400 response from every operation in openapi.yaml.",
-   "fix": "restored on the two validation handlers; openapi.yaml back to its committed state.",
+   "observation": "Spotless joined the <code>@Pattern</code> message onto the <code>sort</code> parameter, making a 125-char added line; the line-length gate refused the push.",
+   "fix": "the regex and the 400 hint move into <code>SORTS</code> and <code>SORTS_HINT</code> constants, with the hint shortened to fit.",
    "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:50"
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:38-39",
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:57"
    ],
    "snippets": [
     {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java:50"
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:38-39"
+    },
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:57"
     }
    ]
   },
   {
-   "title": "Accented names sorted after Z under CI&#x27;s C collation",
-   "source": "/code-review xhigh, CI",
+   "title": "Cucumber visit-count step read only the first page of all visits",
+   "source": "tests reviewer",
    "severity": "medium",
-   "observation": "zonky inherits the runner&#x27;s locale; under C.UTF-8 &#x27;\u0141ukasz&#x27; sorts after &#x27;Mister&#x27; and accentedNames_sortAlphabetically failed CI.",
-   "fix": "Postgres 16 binaries on every platform and an ICU English default collation for the test database.",
+   "observation": "the step filtered <code>content</code> of <code>GET /api/visits</code>, which is the 10 latest visits only. A visit beyond that page counts as absent, so a &quot;0 visits&quot; check passes vacuously.",
+   "fix": "read the pet&#x27;s own visits from <code>GET /api/pets/{id}</code> instead of a page of everyone&#x27;s.",
    "refs": [
-    "petclinic-backend/src/test/resources/config/application.properties:4",
-    "petclinic-backend/pom.xml:39"
+    "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java:57-59"
    ],
    "snippets": [
     {
-     "ref": "petclinic-backend/src/test/resources/config/application.properties:4"
-    },
-    {
-     "ref": "petclinic-backend/pom.xml:39"
+     "ref": "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java:57-59"
     }
    ]
   },
   {
-   "title": "Sort headers reachable only with a mouse",
-   "source": "CI (SonarCloud Web:MouseEventWithoutKeyboardEquivalentCheck)",
+   "title": "Navigation promise left unhandled; a failed navigation vanished silently",
+   "source": "CI",
    "severity": "medium",
-   "observation": "(click) on a &lt;th&gt; has no keyboard equivalent, so keyboard users could not sort; it failed the quality gate.",
-   "fix": "each sortable header holds a plain-styled &lt;button&gt;, focusable and Enter/Space-activated natively.",
+   "observation": "<code>router.navigate</code> returns a promise nobody awaited or caught (Sonar BUG typescript:S9383). A rejected navigation was swallowed, and the grid stayed on the old query with no error.",
+   "fix": "catch the rejection into <code>errorMessage</code>, pinned by a spec that rejects the navigation.",
    "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:24",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:30",
-    "petclinic-test/src/owner-search.feature.glue.ts:70"
+    "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:86-87",
+    "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:164-172"
    ],
    "snippets": [
     {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:24"
+     "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:86-87"
     },
     {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:30"
-    },
-    {
-     "ref": "petclinic-test/src/owner-search.feature.glue.ts:70"
+     "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:164-172"
     }
    ]
   },
   {
-   "title": "Navigation promise left unhandled",
-   "source": "CI (SonarCloud typescript:S9383)",
+   "title": "Injected dependencies were not readonly",
+   "source": "CI",
    "severity": "low",
-   "observation": "router.navigate returns a promise nobody handled; a failed navigation was swallowed silently.",
-   "fix": "a rejection now shows as the grid&#x27;s error message.",
+   "observation": "<code>router</code>, <code>route</code> and <code>visitService</code> are never reassigned but were not marked <code>readonly</code> (Sonar code smell typescript:S2933).",
+   "fix": "declare the three constructor parameters <code>private readonly</code>.",
    "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:111"
+    "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:35-36"
    ],
    "snippets": [
     {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:111"
-    }
-   ]
-  },
-  {
-   "title": "Injected and internal members not readonly",
-   "source": "CI (SonarCloud typescript:S2933)",
-   "severity": "info",
-   "observation": "the router, route, service and reload subject are never reassigned.",
-   "fix": "marked readonly.",
-   "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:34",
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:32"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:34"
-    },
-    {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:32"
+     "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:35-36"
     }
    ]
   }
  ],
  "assumptions": [
   {
-   "title": "Tie-breakers stay ascending whichever way the column sorts",
-   "alternative": "tie-breakers follow the clicked direction, one backward index walk",
-   "confidence": 0.6,
-   "why": "the spec says owners within a city are ordered by name, read as A\u2192Z (openspec/changes/paginate-owners-grid/specs/owner-list/spec.md:56). Nobody asked how a descending city should order its own names; a reviewer reading &quot;descending&quot; as the whole row reversed would be equally right.",
-   "decidedBy": "agent",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:118"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:118"
-    }
-   ]
-  },
-  {
-   "title": "Seed owner 1 is the add-visit scenario&#x27;s owner with a pet",
-   "alternative": "take the first pet from GET /api/pets",
-   "confidence": 0.75,
-   "why": "AGENTS.md promises owner 1 = Kevin McCallister to tests, and the DSL fails loudly if he loses his pet. It now books on Kevin every run rather than on whichever owner listed first.",
-   "decidedBy": "agent",
-   "refs": [
-    "petclinic-test/src/add-visit.dsl.ts:17"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-test/src/add-visit.dsl.ts:17"
-    }
-   ]
-  },
-  {
-   "title": "The visit-date scenario leaves its own owner behind",
-   "alternative": "delete the owner in the After hook with the pet",
-   "confidence": 0.65,
-   "why": "matches add-owner.spec.ts, which leaves its owners on purpose; the After hook already deletes the pet. Pulls down: each run adds one more pet-less owner to the dev database.",
-   "decidedBy": "agent",
-   "refs": [
-    "petclinic-test/src/visit-date-range.feature.glue.ts:20"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-test/src/visit-date-range.feature.glue.ts:20"
-    }
-   ]
-  },
-  {
-   "title": "Add Owner appears twice in the template, not once outside the table",
-   "alternative": "one footer row outside #ownersTable, paginator shown conditionally inside it",
+   "title": "Paging runs on the server, not in the browser",
+   "alternative": "keep the bare list; page and sort client-side with MatTableDataSource",
    "confidence": 0.7,
-   "why": "the acceptance tests select <code>#ownersTable mat-paginator</code>, so the paginator must stay inside the table block; a second button in the empty state keeps that.",
+   "why": "The owners grid (#25) paged on the server, and visits grow without bound. The ticket says only &quot;paginated&quot;, and the browser-side version needed no API break, which pulls this down.",
    "decidedBy": "agent",
    "refs": [
-    "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:16"
+    "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:20-22"
    ],
    "snippets": [
     {
-     "ref": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.html:16"
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:20-22"
+    }
+   ]
+  },
+  {
+   "title": "Default view is the 10 latest visits",
+   "alternative": "the first page in id or ascending-date order",
+   "confidence": 0.9,
+   "why": "The grid already sorted newest first before paging, so this keeps what users saw. Ten is the middle of the three sizes the ticket names.",
+   "decidedBy": "agent",
+   "refs": [
+    "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:17"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:17"
+    }
+   ]
+  },
+  {
+   "title": "API caps the page size at 100, not at the three UI sizes",
+   "alternative": "reject any size other than 5, 10 or 20 in the API too",
+   "confidence": 0.65,
+   "why": "It copies the owners endpoint (MAX_PAGE_SIZE = 100), and the ticket describes the grid, not the API. A stricter reading of &quot;5, 10, or 20&quot; would hold the API to it too.",
+   "decidedBy": "agent",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:56"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:56"
+    }
+   ]
+  },
+  {
+   "title": "Owner column sorts by first name, then last name",
+   "alternative": "sort by last name, as a clinic register usually does",
+   "confidence": 0.75,
+   "why": "The cell reads &quot;First Last&quot;, so this sort matches what is shown, and owners&#x27; Name sort does the same. A clinic looking people up by surname would want last name first.",
+   "decidedBy": "agent",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:73"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:73"
+    }
+   ]
+  },
+  {
+   "title": "Ties within a sorted column fall back to latest first, then id",
+   "alternative": "tie-break by id only, as the owners grid does",
+   "confidence": 0.6,
+   "why": "When one pet has several visits, showing them chronologically is the useful order, and the id still makes paging stable. Nobody asked for it, so a plain id tie-break is equally defensible.",
+   "decidedBy": "agent",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:68"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:68"
+    }
+   ]
+  },
+  {
+   "title": "No index added for the date sort",
+   "alternative": "a Flyway migration indexing visits(visit_date, id)",
+   "confidence": 0.5,
+   "why": "The seed has 28 visits and the ticket does not mention scale. If volume grows, sorting the whole table per page will show up, so this is a coin flip on when.",
+   "decidedBy": "agent",
+   "refs": [
+    "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:20"
+   ],
+   "snippets": [
+    {
+     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:20"
     }
    ]
   }
  ],
  "meta": {
-  "base": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-  "implementation": "0b99e29cd8bb8f6895c4af13c1c20ac361546a60",
-  "reviewers": "/code-review xhigh (user-launched, background) + /simplify 4 lenses (reuse, simplification, efficiency, altitude) + CI/SonarCloud",
-  "session": "8782fda6-f385-4d47-8079-96d9f3c08509"
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+  "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+  "reviewers": "4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit",
+  "session": "498ee103-9160-4f7a-be05-c641ebd16920"
  },
  "frontmatter": {
-  "base": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-  "audited-base": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-  "audited-head": "5190fd3cd9e23d8a1107cf15baa6ca87937b27e9",
-  "implementation": "0b99e29cd8bb8f6895c4af13c1c20ac361546a60",
-  "head": "5190fd3cd9e23d8a1107cf15baa6ca87937b27e9",
-  "reviewers": "/code-review xhigh (user-launched, background) + /simplify 4 lenses (reuse, simplification, efficiency, altitude) + CI/SonarCloud",
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+  "audited-base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+  "audited-head": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+  "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+  "head": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+  "reviewers": "4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit",
   "harness": "claude-code",
-  "session": "8782fda6-f385-4d47-8079-96d9f3c08509",
+  "session": "498ee103-9160-4f7a-be05-c641ebd16920",
   "fixed-in": "HEAD",
   "anchors": "review-commit"
  },
@@ -793,7 +367,7 @@
   "Assumptions": "Assumptions"
  },
  "note": null,
- "items": 43,
+ "items": 21,
  "dropped": 0,
  "warnings": [],
  "empty": false

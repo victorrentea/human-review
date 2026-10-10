@@ -1,10 +1,10 @@
   * complexity -> complexity
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity.py --base 390f0e0efee30a2aeeaa07895560d97eafaab479 --out .human-review/assets/complexity-before.json
-[complexity-engine] 99 files, 488 methods, 53 entry points, 0 calls not followed
+    $ /Users/victorrentea/.claude/plugins/cache/human-review/human-review/0071f98803ee/skills/human-review/scripts/endpoint-complexity.py --base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf --out .human-review/assets/complexity-before.json
+[complexity-engine] 99 files, 486 methods, 53 entry points, 0 calls not followed
 [complexity] 53 entry points (javaparser) -> .human-review/assets/complexity-before.json
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity.py --out .human-review/assets/complexity-after.json
-[complexity-engine] 100 files, 492 methods, 53 entry points, 0 calls not followed
+    $ /Users/victorrentea/.claude/plugins/cache/human-review/human-review/0071f98803ee/skills/human-review/scripts/endpoint-complexity.py --out .human-review/assets/complexity-after.json
+[complexity-engine] 100 files, 487 methods, 53 entry points, 0 calls not followed
 [complexity] 53 entry points (javaparser) -> .human-review/assets/complexity-after.json
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity-delta.py .human-review/assets/complexity-before.json .human-review/assets/complexity-after.json --base 390f0e0efee30a2aeeaa07895560d97eafaab479 --out .human-review/assets/complexity-delta.html
+    $ /Users/victorrentea/.claude/plugins/cache/human-review/human-review/0071f98803ee/skills/human-review/scripts/endpoint-complexity-delta.py .human-review/assets/complexity-before.json .human-review/assets/complexity-after.json --base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf --out .human-review/assets/complexity-delta.html
 [complexity-delta] wrote .human-review/assets/complexity-delta.html
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity-delta.py --css > .human-review/assets/complexity-delta.css
+    $ /Users/victorrentea/.claude/plugins/cache/human-review/human-review/0071f98803ee/skills/human-review/scripts/endpoint-complexity-delta.py --css > .human-review/assets/complexity-delta.css

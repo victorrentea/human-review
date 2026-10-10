@@ -1,591 +1,403 @@
 {
-  "base": "390f0e0efee30a2aeeaa07895560d97eafaab479",
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
   "totals": {
-    "added": 42,
-    "modified": 5,
-    "deleted": 12,
-    "unchanged": 29,
+    "added": 36,
+    "modified": 1,
+    "deleted": 8,
+    "unchanged": 15,
     "commented": 0,
     "disabled": 0,
     "reenabled": 0,
-    "runningBefore": 46,
-    "runningAfter": 76,
-    "gained": 42,
-    "lost": 12,
-    "viaHelper": 1
+    "runningBefore": 24,
+    "runningAfter": 52,
+    "gained": 36,
+    "lost": 8,
+    "viaHelper": 0
   },
   "tests": [
     {
-      "name": "ownerSearchThroughProxy",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/perf/OwnerSearchThroughLatencyProxyTest.java",
-      "status": "modified",
-      "line": 54
-    },
-    {
-      "name": "addsAVisitToAnExistingPet",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java",
-      "status": "modified",
-      "line": 75,
-      "viaHelper": [
-        {
-          "name": "anOwnerWithAPet",
-          "line": 104,
-          "added": 1,
-          "removed": 1
-        }
-      ]
-    },
-    {
-      "name": "addOwner_created",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java",
-      "status": "modified",
-      "line": 90
-    },
-    {
-      "name": "addOwner_invalid_isBadRequest",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java",
-      "status": "unchanged",
-      "line": 108
-    },
-    {
-      "name": "addPetToOwner_created",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java",
-      "status": "unchanged",
-      "line": 123
-    },
-    {
-      "name": "addVisitToOwner_created",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java",
-      "status": "unchanged",
-      "line": 140
-    },
-    {
-      "name": "defaultPage_isTheFirstTenByName",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
+      "name": "defaultPage_isTheTenLatestVisits",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 53
+      "line": 73
     },
     {
-      "name": "unfilteredTotal_countsEveryOwner",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 69
-    },
-    {
-      "name": "lastPartialPage",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 77
-    },
-    {
-      "name": "pagePastTheEnd_isEmptyWithTotals",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 87
-    },
-    {
-      "name": "sizeAtTheCap_isAccepted",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 98
-    },
-    {
-      "name": "sizeAboveTheCap_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 103
-    },
-    {
-      "name": "sizeZero_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 110
-    },
-    {
-      "name": "negativePage_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 117
-    },
-    {
-      "name": "pageThatIsNotANumber_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 124
-    },
-    {
-      "name": "pageWhoseOffsetWouldOverflow_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 131
-    },
-    {
-      "name": "sortByName_putsFirstNamesFirst",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 138
-    },
-    {
-      "name": "sortByCityDescending_thenByName",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 148
-    },
-    {
-      "name": "accentedNames_sortAlphabetically",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 161
-    },
-    {
-      "name": "unsupportedSortKey_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 172
-    },
-    {
-      "name": "identicalOwners_onAPageBoundary_appearExactlyOnce",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 179
-    },
-    {
-      "name": "lastNameFilter_appliesBeforePaging",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 190
-    },
-    {
-      "name": "lastNameFilter_isCaseSensitive",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 202
-    },
-    {
-      "name": "aPageLoadsPetsAndVisitsInBatches_notOneQueryPerOwner",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerListTest.java",
-      "status": "added",
-      "line": 212
-    },
-    {
-      "name": "getByIdOk",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 103
-    },
-    {
-      "name": "getById_notFound",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 112
-    },
-    {
-      "name": "count_returnsOwnerCount",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 118
-    },
-    {
-      "name": "update_ok",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 127
-    },
-    {
-      "name": "update_okNoBodyId",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 142
-    },
-    {
-      "name": "update_invalid",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 158
-    },
-    {
-      "name": "delete_ok",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 169
-    },
-    {
-      "name": "delete_notFound",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 178
-    },
-    {
-      "name": "createPet_invalid",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 184
-    },
-    {
-      "name": "getOwnerPet_ok",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 200
-    },
-    {
-      "name": "getOwnerPet_ownerNotFound",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 209
-    },
-    {
-      "name": "getOwnerPet_petNotFound",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 215
-    },
-    {
-      "name": "updateOwnerPet_ok",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 221
-    },
-    {
-      "name": "updateOwnerPet_ownerNotFound",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 238
-    },
-    {
-      "name": "updateOwnerPet_petNotFound",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "unchanged",
-      "line": 254
-    },
-    {
-      "name": "getAll",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "deleted",
-      "line": 125,
-      "baseLine": 130,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java#L130"
-    },
-    {
-      "name": "getAllWithAddressFilter",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "deleted",
-      "line": 125,
-      "baseLine": 139,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java#L139"
-    },
-    {
-      "name": "getAllWithNameFilter_notFound",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java",
-      "status": "deleted",
-      "line": 125,
-      "baseLine": 164,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerTest.java#L164"
-    },
-    {
-      "name": "Register a new owner",
-      "path": "petclinic-backend/src/test/resources/features/functional/owners.feature",
-      "status": "unchanged",
-      "line": 3
-    },
-    {
-      "name": "Search owners by last name",
-      "path": "petclinic-backend/src/test/resources/features/functional/owners.feature",
-      "status": "modified",
-      "line": 8
-    },
-    {
-      "name": "Owner profile includes pets with their type",
-      "path": "petclinic-backend/src/test/resources/features/functional/owners.feature",
-      "status": "unchanged",
-      "line": 19
-    },
-    {
-      "name": "Cannot register an owner without a first name",
-      "path": "petclinic-backend/src/test/resources/features/functional/owners.feature",
-      "status": "unchanged",
-      "line": 26
-    },
-    {
-      "name": "asks for the first page sorted by name when the URL says nothing",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "added",
-      "line": 62
-    },
-    {
-      "name": "asks for what the URL says, with its 1-based page turned 0-based",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "added",
-      "line": 68
-    },
-    {
-      "name": "falls back to the defaults for values the URL gets wrong",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "added",
-      "line": 76
-    },
-    {
-      "name": "shows the full name of every owner on the page",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "added",
-      "line": 83
-    },
-    {
-      "name": "a search goes back to the first page, keeping the sort and size",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "aVisitCarriesItsPetAndOwner",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
       "line": 89
     },
     {
-      "name": "moving to another page keeps the rest of the query",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "lastPartialPage",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 99
+      "line": 105
     },
     {
-      "name": "a new page size goes back to the first page",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "added",
-      "line": 108
-    },
-    {
-      "name": "a new sort goes back to the first page",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "pagePastTheEnd_isEmptyWithTotals",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
       "line": 117
     },
     {
-      "name": "leaves the URL clean when everything is back to its default",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "sortByDateAscending",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 126
+      "line": 129
     },
     {
-      "name": "clicking the sorted column flips its direction",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "sortByDescription",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 135
+      "line": 139
     },
     {
-      "name": "only Name and City can be sorted, and the active one says which way",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "sortByPet_thenLatestFirst",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 144
+      "line": 150
     },
     {
-      "name": "says no owner matched when the search finds none",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "sortByOwnerName_firstNameThenLastName",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 153
+      "line": 162
     },
     {
-      "name": "still offers Add Owner when the search finds none",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "added",
-      "line": 163
-    },
-    {
-      "name": "searching again for the same name asks again, though the URL does not change",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "sortWithoutDirection_isAscending",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
       "line": 171
     },
     {
-      "name": "shows a failure as an error, not as \"no owners\"",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "identicalVisits_onAPageBoundary_appearExactlyOnce",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 183
+      "line": 180
     },
     {
-      "name": "moves to the last page when the URL points past it",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "sizeAtTheCap_isAccepted",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 191
+      "line": 192
     },
     {
-      "name": "only the latest query may answer",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
+      "name": "sizeAboveTheCap_isRejected",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 201
+      "line": 197
     },
     {
-      "name": "should create OwnerListComponent",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "deleted",
-      "line": 68,
-      "baseLine": 89,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts#L89"
-    },
-    {
-      "name": "should call ngOnInit() method",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "deleted",
-      "line": 76,
-      "baseLine": 93,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts#L93"
-    },
-    {
-      "name": " should show full name after getOwners observable (async) ",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "deleted",
-      "line": 89,
-      "baseLine": 99,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts#L99"
-    },
-    {
-      "name": "searchByLastName should call getOwners for empty term",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "deleted",
-      "line": 93,
-      "baseLine": 109,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts#L109"
-    },
-    {
-      "name": "searchByLastName should call searchOwners for non-empty term",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "deleted",
-      "line": 108,
-      "baseLine": 119,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts#L119"
-    },
-    {
-      "name": "a search is not overwritten by the initial load answering late",
-      "path": "petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts",
-      "status": "deleted",
-      "line": 117,
-      "baseLine": 131,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner-list/owner-list.component.spec.ts#L131"
-    },
-    {
-      "name": "asks for the first page with the server defaults when given no query",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "sizeZero_isRejected",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 55
+      "line": 204
     },
     {
-      "name": "sends every query parameter it is given",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "negativePage_isRejected",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 63
+      "line": 211
     },
     {
-      "name": "leaves out an empty last name",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "unsupportedSortKey_isRejected",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 72
+      "line": 218
     },
     {
-      "name": "lets a failure reach the caller instead of an empty page",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "aPageLoadsPetsAndOwnersInTheSameQuery_notOneQueryPerVisit",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
       "status": "added",
-      "line": 80
+      "line": 225
     },
     {
-      "name": "search the owner by id",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "getByIdOk",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
       "line": 89
     },
     {
-      "name": "add owner",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "getById_notFound",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 99
+      "line": 98
     },
     {
-      "name": "updateOwner",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "create_invalid",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 126
+      "line": 104
     },
     {
-      "name": "delete Owner",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "update_invalid",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 153
+      "line": 117
     },
     {
-      "name": "should return expected owners (called once)",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "delete_ok",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 128
+    },
+    {
+      "name": "delete_notFound",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 137
+    },
+    {
+      "name": "create_ok",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 143
+    },
+    {
+      "name": "update_ok",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 159
+    },
+    {
+      "name": "findVisitsByPetId",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "unchanged",
+      "line": 174
+    },
+    {
+      "name": "getAll",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "deleted",
-      "line": 52,
-      "baseLine": 51,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner.service.spec.ts#L51"
+      "line": 102,
+      "baseLine": 106,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L106"
     },
     {
-      "name": "search owners by last name prefix",
-      "path": "petclinic-frontend/src/app/owners/owner.service.spec.ts",
+      "name": "getAll_returnsEnrichedFields",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "deleted",
-      "line": 161,
-      "baseLine": 134,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-frontend/src/app/owners/owner.service.spec.ts#L134"
+      "line": 102,
+      "baseLine": 121,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L121"
     },
     {
-      "name": "Filter owners by a case-sensitive prefix of the last name",
-      "path": "petclinic-test/src/owner-search.feature",
+      "name": "asks for the first page with the server defaults when given no query",
+      "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
+      "status": "added",
+      "line": 35
+    },
+    {
+      "name": "sends every query parameter it is given",
+      "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
+      "status": "added",
+      "line": 42
+    },
+    {
+      "name": "should get visit by id",
+      "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "unchanged",
-      "line": 11
+      "line": 49
     },
     {
-      "name": "Searching with an empty last name shows the first page of every owner",
-      "path": "petclinic-test/src/owner-search.feature",
-      "status": "added",
-      "line": 26
+      "name": "should add visit via owner/pet URL",
+      "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
+      "status": "unchanged",
+      "line": 56
     },
     {
-      "name": "Choosing 5 rows per page",
-      "path": "petclinic-test/src/owner-search.feature",
-      "status": "added",
-      "line": 32
+      "name": "should update visit",
+      "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
+      "status": "unchanged",
+      "line": 64
     },
     {
-      "name": "Sorting by city",
-      "path": "petclinic-test/src/owner-search.feature",
-      "status": "added",
-      "line": 38
+      "name": "should delete visit",
+      "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
+      "status": "unchanged",
+      "line": 72
     },
     {
-      "name": "Searching with an empty last name lists every owner",
-      "path": "petclinic-test/src/owner-search.feature",
+      "name": "should return expected visits",
+      "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "deleted",
-      "line": 26,
-      "baseLine": 26,
-      "baseSha": "390f0e0efee30a2aeeaa07895560d97eafaab479",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/390f0e0efee30a2aeeaa07895560d97eafaab479/petclinic-test/src/owner-search.feature#L26"
+      "line": 32,
+      "baseLine": 31,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-frontend/src/app/visits/visit.service.spec.ts#L31"
     },
     {
-      "name": "rewritesGetZeroToGetFirst",
-      "path": "refactoring-tools/src/test/java/victor/training/petclinic/rewrite/ListGetFirstTest.java",
-      "status": "unchanged",
-      "line": 21
+      "name": "asks for the first page of the latest visits when the URL says nothing",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 69
     },
     {
-      "name": "rewritesGetZeroOnAChainedReceiver",
-      "path": "refactoring-tools/src/test/java/victor/training/petclinic/rewrite/ListGetFirstTest.java",
+      "name": "asks for what the URL says, with its 1-based page turned 0-based",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 75
+    },
+    {
+      "name": "falls back to the defaults for values the URL gets wrong",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 82
+    },
+    {
+      "name": "shows each visit with its pet and a link to its owner",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 89
+    },
+    {
+      "name": "every column can be sorted",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 100
+    },
+    {
+      "name": "offers pages of 5, 10 or 20 visits",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 108
+    },
+    {
+      "name": "moving to another page keeps the sort and size",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 112
+    },
+    {
+      "name": "a new page size goes back to the first page",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 121
+    },
+    {
+      "name": "a new sort goes back to the first page",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 130
+    },
+    {
+      "name": "leaves the URL clean when everything is back to its default",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 139
+    },
+    {
+      "name": "shows \"No visits found.\" when there are none",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 148
+    },
+    {
+      "name": "shows a failure as an error, not as \"no visits\"",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 156
+    },
+    {
+      "name": "shows a failed navigation as an error",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 164
+    },
+    {
+      "name": "moves to the last page when the URL points past it",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 176
+    },
+    {
+      "name": "only the latest query may answer",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 186
+    },
+    {
+      "name": "should create",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "deleted",
+      "line": 66,
+      "baseLine": 53,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L53"
+    },
+    {
+      "name": "loads and sorts visits descending by date",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "deleted",
+      "line": 75,
+      "baseLine": 57,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L57"
+    },
+    {
+      "name": "shows \"No visits found.\" when service returns empty list",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "deleted",
+      "line": 79,
+      "baseLine": 66,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L66"
+    },
+    {
+      "name": "renders owner cell as a link to /owners/{ownerId}",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "deleted",
+      "line": 86,
+      "baseLine": 76,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L76"
+    },
+    {
+      "name": "Visits Page",
+      "path": "petclinic-test/src/visits.spec.ts",
       "status": "modified",
-      "line": 43
+      "line": 7
     },
     {
-      "name": "leavesOtherIndexesAlone",
-      "path": "refactoring-tools/src/test/java/victor/training/petclinic/rewrite/ListGetFirstTest.java",
-      "status": "unchanged",
-      "line": 66
+      "name": "shows the ten latest visits on initial load",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "added",
+      "line": 34
     },
     {
-      "name": "leavesNonListGetAlone",
-      "path": "refactoring-tools/src/test/java/victor/training/petclinic/rewrite/ListGetFirstTest.java",
+      "name": "clicking a column header sorts by it and keeps the sort in the URL",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "added",
+      "line": 44
+    },
+    {
+      "name": "a page of 5 visits, then the next one",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "added",
+      "line": 55
+    },
+    {
+      "name": "rows are sorted descending by date",
+      "path": "petclinic-test/src/visits.spec.ts",
       "status": "unchanged",
-      "line": 80
+      "line": 67
+    },
+    {
+      "name": "owner link navigates to owner detail",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "unchanged",
+      "line": 75
+    },
+    {
+      "name": "shows all visits on initial load",
+      "path": "petclinic-test/src/visits.spec.ts",
+      "status": "deleted",
+      "line": 27,
+      "baseLine": 27,
+      "baseSha": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf/petclinic-test/src/visits.spec.ts#L27"
     }
   ]
 }

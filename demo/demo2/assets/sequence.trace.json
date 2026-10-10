@@ -1,12 +1,13 @@
 {
- "diagram": "petclinic-test/generated/OwnerListTest.java.unfilteredtotal-countseveryowner.genseq.puml",
- "test": "OwnerListTest.java",
- "trace": "295c749fb9d5423c6cc217723f08bc87",
+ "diagram": "petclinic-test/generated/visits.spec.ts.shows-the-ten-latest-visits-on-initial-load.genseq.puml",
+ "test": "visits.spec.ts",
+ "trace": "130c8ce7599c4f92351e1891241900ac",
  "traces": 1,
  "spans": 12,
  "services": [
+  "petclinic-frontend",
   "petclinic-backend"
  ],
- "root": "test: unfilteredTotal_countsEveryOwner()",
- "at": "2026-10-07T21:07:17+00:00"
+ "root": "GET",
+ "at": "2026-10-10T20:52:03+00:00"
 }

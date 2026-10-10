@@ -1,12 +1,12 @@
 {
  "state": "drawn",
  "reason": "",
- "fingerprint": "2a24cdfba0054edb51f8",
+ "fingerprint": "79cb98df8e7e78acbd1f",
  "workspaces": [
   "petclinic-backend/docs/c4model.c1+c2.dsl"
  ],
  "image": "structurizr/structurizr",
- "base": "390f0e0efee30a2aeeaa07895560d97eafaab479",
+ "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
  "views": {
   "C2-Containers": "unchanged",
   "C2-BackendOutbound": "unchanged",

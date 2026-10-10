@@ -169,7 +169,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 84
+    "line": 83
    },
    {
     "method": "victor.training.petclinic.mapper.OwnerMapper#toOwnerDtoCollection",
@@ -570,7 +570,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 53
+    "line": 52
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -580,7 +580,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getBirthDate",
@@ -590,7 +590,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 80
+    "line": 79
    },
    {
     "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
@@ -623,7 +623,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 103
+    "line": 87
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getId",
@@ -633,7 +633,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getOwner",
@@ -643,7 +643,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
@@ -1522,7 +1522,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 102
+    "line": 101
    },
    {
     "method": "victor.training.petclinic.mapper.OwnerMapper#toOwnerDto",
@@ -1896,7 +1896,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 53
+    "line": 52
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -1906,7 +1906,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getBirthDate",
@@ -1916,7 +1916,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 80
+    "line": 79
    },
    {
     "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
@@ -1949,7 +1949,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 103
+    "line": 87
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getId",
@@ -1959,7 +1959,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getOwner",
@@ -1969,7 +1969,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
@@ -2364,7 +2364,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 53
+    "line": 52
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -2374,7 +2374,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getBirthDate",
@@ -2384,7 +2384,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 80
+    "line": 79
    },
    {
     "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
@@ -2417,7 +2417,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 103
+    "line": 87
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getId",
@@ -2427,7 +2427,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getOwner",
@@ -2437,7 +2437,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
@@ -2697,319 +2697,6 @@
  },
  {
   "kind": "http",
-  "httpMethod": "POST",
-  "path": "/api/owners/{ownerId}/pets/{petId}/visits",
-  "handler": "OwnerRestController.addVisitToOwner(int, int, VisitFieldsDto)",
-  "metric": "cognitive",
-  "flowCc": 8,
-  "methods": 21,
-  "flow": [
-   {
-    "method": "victor.training.petclinic.rest.OwnerRestController#addVisitToOwner",
-    "display": "OwnerRestController.addVisitToOwner(int, int, VisitFieldsDto)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.rest.OwnerRestController#bookVisit"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 166
-   },
-   {
-    "method": "victor.training.petclinic.rest.OwnerRestController#bookVisit",
-    "display": "OwnerRestController.bookVisit(int, int, VisitFieldsDto)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.domain.Pet#requireValidVisitDate",
-     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
-     "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitFieldsDto)",
-     "victor.training.petclinic.domain.Visit#setPet",
-     "victor.training.petclinic.rest.OwnerRestController#notifyOwner",
-     "victor.training.petclinic.domain.Visit#getId"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 183
-   },
-   {
-    "method": "victor.training.petclinic.domain.Pet#requireValidVisitDate",
-    "display": "Pet.requireValidVisitDate(LocalDate, LocalDate)",
-    "cognitive": 4,
-    "cyclomatic": 5,
-    "calls": [],
-    "hits": [
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 90,
-      "code": "if (visitDate == null) {",
-      "inc": 1,
-      "why": "if"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 93,
-      "code": "if (birthDate != null && visitDate.isBefore(birthDate)) {",
-      "inc": 1,
-      "why": "if"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 93,
-      "code": "if (birthDate != null && visitDate.isBefore(birthDate)) {",
-      "inc": 1,
-      "why": "&&"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 98,
-      "code": "if (visitDate.isAfter(latest)) {",
-      "inc": 1,
-      "why": "if"
-     }
-    ],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 89
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
-    "display": "VisitFieldsDto.getDate()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
-    "line": 22
-   },
-   {
-    "method": "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitFieldsDto)",
-    "display": "VisitMapper.toVisit(VisitFieldsDto)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.domain.Visit#setDate",
-     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
-     "victor.training.petclinic.domain.Visit#setDescription",
-     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
-    "line": 25
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setPet",
-    "display": "Visit.setPet(Pet)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 66
-   },
-   {
-    "method": "victor.training.petclinic.rest.OwnerRestController#notifyOwner",
-    "display": "OwnerRestController.notifyOwner(int, int, Visit)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.domain.Owner#getPetById",
-     "victor.training.petclinic.domain.Pet#getName",
-     "victor.training.petclinic.notification.NotificationServiceClient#visitBooked",
-     "victor.training.petclinic.domain.Owner#getTelephone",
-     "victor.training.petclinic.domain.Visit#getDate"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 197
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#getId",
-    "display": "Visit.getId()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 30
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setDate",
-    "display": "Visit.setDate(LocalDate)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 42
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setDescription",
-    "display": "Visit.setDescription(String)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 58
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
-    "display": "VisitFieldsDto.getDescription()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
-    "line": 31
-   },
-   {
-    "method": "victor.training.petclinic.domain.Owner#getPetById",
-    "display": "Owner.getPetById(int)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.domain.Pet#getId"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
-    "line": 73
-   },
-   {
-    "method": "victor.training.petclinic.domain.Pet#getName",
-    "display": "Pet.getName()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
-   },
-   {
-    "method": "victor.training.petclinic.notification.NotificationServiceClient#visitBooked",
-    "display": "NotificationServiceClient.visitBooked(String, String, LocalDate)",
-    "cognitive": 1,
-    "cyclomatic": 2,
-    "calls": [
-     "victor.training.commons.PhoneNumbers#normalize(String,HomeCountry)"
-    ],
-    "hits": [
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
-      "line": 38,
-      "code": "} catch (RestClientException e) {",
-      "inc": 1,
-      "why": "catch"
-     }
-    ],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
-    "line": 30
-   },
-   {
-    "method": "victor.training.petclinic.domain.Owner#getTelephone",
-    "display": "Owner.getTelephone()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
-    "line": 132
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#getDate",
-    "display": "Visit.getDate()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 38
-   },
-   {
-    "method": "victor.training.petclinic.domain.Pet#getId",
-    "display": "Pet.getId()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
-   },
-   {
-    "method": "victor.training.commons.PhoneNumbers#normalize(String,HomeCountry)",
-    "display": "PhoneNumbers.normalize(String, HomeCountry)",
-    "cognitive": 2,
-    "cyclomatic": 3,
-    "calls": [
-     "victor.training.commons.PhoneNumbers#normalize(String)",
-     "victor.training.petclinic.notification.NotificationServiceClient#homeDialCode"
-    ],
-    "hits": [
-     {
-      "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
-      "line": 16,
-      "code": "if (normalized.startsWith(\"+\")) {",
-      "inc": 1,
-      "why": "if"
-     },
-     {
-      "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
-      "line": 19,
-      "code": "String withoutTrunkPrefix = normalized.startsWith(\"0\") ? normalized.substring(1) : normalized;",
-      "inc": 1,
-      "why": "?:"
-     }
-    ],
-    "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
-    "line": 14
-   },
-   {
-    "method": "victor.training.commons.PhoneNumbers#normalize(String)",
-    "display": "PhoneNumbers.normalize(String)",
-    "cognitive": 1,
-    "cyclomatic": 2,
-    "calls": [
-     "victor.training.commons.PhoneNumbers#stripFormatting"
-    ],
-    "hits": [
-     {
-      "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
-      "line": 10,
-      "code": "return digits.startsWith(\"00\") ? \"+\" + digits.substring(2) : digits;",
-      "inc": 1,
-      "why": "?:"
-     }
-    ],
-    "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
-    "line": 8
-   },
-   {
-    "method": "victor.training.petclinic.notification.NotificationServiceClient#homeDialCode",
-    "display": "NotificationServiceClient.homeDialCode()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
-    "line": 44
-   },
-   {
-    "method": "victor.training.commons.PhoneNumbers#stripFormatting",
-    "display": "PhoneNumbers.stripFormatting(String)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
-    "line": 23
-   }
-  ],
-  "engine": "javaparser",
-  "unresolvedCount": 0,
-  "unresolved": []
- },
- {
-  "kind": "http",
   "httpMethod": "GET",
   "path": "/api/owners/{ownerId}/pets/{petId}",
   "handler": "OwnerRestController.getOwnersPet(int, int)",
@@ -3028,7 +2715,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 203
+    "line": 202
    },
    {
     "method": "victor.training.petclinic.domain.Owner#getPetById",
@@ -3084,7 +2771,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#setId",
@@ -3171,7 +2858,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 53
+    "line": 52
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -3181,7 +2868,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getBirthDate",
@@ -3191,7 +2878,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 80
+    "line": 79
    },
    {
     "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
@@ -3224,7 +2911,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 103
+    "line": 87
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getOwner",
@@ -3234,7 +2921,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
@@ -3632,7 +3319,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 53
+    "line": 52
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -3642,7 +3329,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getBirthDate",
@@ -3652,7 +3339,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 80
+    "line": 79
    },
    {
     "method": "victor.training.petclinic.mapper.PetMapper#toPetTypeDto",
@@ -3685,7 +3372,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 103
+    "line": 87
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getId",
@@ -3695,7 +3382,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getOwner",
@@ -3705,7 +3392,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#setOwnerId",
@@ -4101,7 +3788,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.domain.Owner#getId",
@@ -4200,7 +3887,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 59
+    "line": 58
    },
    {
     "method": "victor.training.petclinic.domain.Visit#getId",
@@ -4220,7 +3907,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getVisits",
@@ -4230,7 +3917,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 119
+    "line": 103
    },
    {
     "method": "victor.training.petclinic.domain.Visit#getDate",
@@ -4276,7 +3963,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-    "line": 43
+    "line": 39
    },
    {
     "method": "victor.training.petclinic.mapper.VisitMapper#toVisitsDto",
@@ -4374,7 +4061,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
@@ -4464,7 +4151,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -4474,7 +4161,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
@@ -4535,6 +4222,289 @@
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
     "line": 108
+   }
+  ],
+  "engine": "javaparser",
+  "unresolvedCount": 0,
+  "unresolved": []
+ },
+ {
+  "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/owners/{ownerId}/pets/{petId}/visits",
+  "handler": "OwnerRestController.addVisitToOwner(int, int, VisitFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 4,
+  "methods": 21,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#addVisitToOwner",
+    "display": "OwnerRestController.addVisitToOwner(int, int, VisitFieldsDto)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.rest.OwnerRestController#bookVisit"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+    "line": 165
+   },
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#bookVisit",
+    "display": "OwnerRestController.bookVisit(int, int, VisitFieldsDto)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitFieldsDto)",
+     "victor.training.petclinic.domain.Pet#setId",
+     "victor.training.petclinic.domain.Visit#setPet",
+     "victor.training.petclinic.rest.OwnerRestController#notifyOwner",
+     "victor.training.petclinic.domain.Visit#getId"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+    "line": 182
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitFieldsDto)",
+    "display": "VisitMapper.toVisit(VisitFieldsDto)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.domain.Visit#setDate",
+     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+     "victor.training.petclinic.domain.Visit#setDescription",
+     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
+    "line": 25
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setId",
+    "display": "Pet.setId(Integer)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
+    "line": 67
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setPet",
+    "display": "Visit.setPet(Pet)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 66
+   },
+   {
+    "method": "victor.training.petclinic.rest.OwnerRestController#notifyOwner",
+    "display": "OwnerRestController.notifyOwner(int, int, Visit)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.domain.Owner#getPetById",
+     "victor.training.petclinic.domain.Pet#getName",
+     "victor.training.petclinic.notification.NotificationServiceClient#visitBooked",
+     "victor.training.petclinic.domain.Owner#getTelephone",
+     "victor.training.petclinic.domain.Visit#getDate"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+    "line": 196
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "display": "Visit.getId()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 30
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "display": "Visit.setDate(LocalDate)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 42
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+    "display": "VisitFieldsDto.getDate()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
+    "line": 22
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "display": "Visit.setDescription(String)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 58
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
+    "display": "VisitFieldsDto.getDescription()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
+    "line": 31
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getPetById",
+    "display": "Owner.getPetById(int)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.domain.Pet#getId"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
+    "line": 73
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getName",
+    "display": "Pet.getName()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
+    "line": 71
+   },
+   {
+    "method": "victor.training.petclinic.notification.NotificationServiceClient#visitBooked",
+    "display": "NotificationServiceClient.visitBooked(String, String, LocalDate)",
+    "cognitive": 1,
+    "cyclomatic": 2,
+    "calls": [
+     "victor.training.commons.PhoneNumbers#normalize(String,HomeCountry)"
+    ],
+    "hits": [
+     {
+      "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
+      "line": 38,
+      "code": "} catch (RestClientException e) {",
+      "inc": 1,
+      "why": "catch"
+     }
+    ],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
+    "line": 30
+   },
+   {
+    "method": "victor.training.petclinic.domain.Owner#getTelephone",
+    "display": "Owner.getTelephone()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
+    "line": 132
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getDate",
+    "display": "Visit.getDate()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 38
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#getId",
+    "display": "Pet.getId()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
+    "line": 63
+   },
+   {
+    "method": "victor.training.commons.PhoneNumbers#normalize(String,HomeCountry)",
+    "display": "PhoneNumbers.normalize(String, HomeCountry)",
+    "cognitive": 2,
+    "cyclomatic": 3,
+    "calls": [
+     "victor.training.commons.PhoneNumbers#normalize(String)",
+     "victor.training.petclinic.notification.NotificationServiceClient#homeDialCode"
+    ],
+    "hits": [
+     {
+      "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
+      "line": 16,
+      "code": "if (normalized.startsWith(\"+\")) {",
+      "inc": 1,
+      "why": "if"
+     },
+     {
+      "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
+      "line": 19,
+      "code": "String withoutTrunkPrefix = normalized.startsWith(\"0\") ? normalized.substring(1) : normalized;",
+      "inc": 1,
+      "why": "?:"
+     }
+    ],
+    "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
+    "line": 14
+   },
+   {
+    "method": "victor.training.commons.PhoneNumbers#normalize(String)",
+    "display": "PhoneNumbers.normalize(String)",
+    "cognitive": 1,
+    "cyclomatic": 2,
+    "calls": [
+     "victor.training.commons.PhoneNumbers#stripFormatting"
+    ],
+    "hits": [
+     {
+      "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
+      "line": 10,
+      "code": "return digits.startsWith(\"00\") ? \"+\" + digits.substring(2) : digits;",
+      "inc": 1,
+      "why": "?:"
+     }
+    ],
+    "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
+    "line": 8
+   },
+   {
+    "method": "victor.training.petclinic.notification.NotificationServiceClient#homeDialCode",
+    "display": "NotificationServiceClient.homeDialCode()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
+    "line": 44
+   },
+   {
+    "method": "victor.training.commons.PhoneNumbers#stripFormatting",
+    "display": "PhoneNumbers.stripFormatting(String)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java",
+    "line": 23
    }
   ],
   "engine": "javaparser",
@@ -5080,340 +5050,6 @@
  {
   "kind": "http",
   "httpMethod": "POST",
-  "path": "/api/visits",
-  "handler": "VisitRestController.addVisit(VisitDto)",
-  "metric": "cognitive",
-  "flowCc": 4,
-  "methods": 15,
-  "flow": [
-   {
-    "method": "victor.training.petclinic.rest.VisitRestController#addVisit",
-    "display": "VisitRestController.addVisit(VisitDto)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.rest.VisitRestController#bookVisit"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-    "line": 59
-   },
-   {
-    "method": "victor.training.petclinic.rest.VisitRestController#bookVisit",
-    "display": "VisitRestController.bookVisit(VisitDto)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.rest.dto.VisitDto#getPetId",
-     "victor.training.petclinic.rest.dto.VisitDto#getDescription",
-     "victor.training.petclinic.domain.Pet#requireValidVisitDate",
-     "victor.training.petclinic.rest.dto.VisitDto#getDate",
-     "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitDto)",
-     "victor.training.petclinic.domain.Visit#getId"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-    "line": 72
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitDto#getPetId",
-    "display": "VisitDto.getPetId()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
-    "line": 71
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitDto#getDescription",
-    "display": "VisitDto.getDescription()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
-    "line": 53
-   },
-   {
-    "method": "victor.training.petclinic.domain.Pet#requireValidVisitDate",
-    "display": "Pet.requireValidVisitDate(LocalDate, LocalDate)",
-    "cognitive": 4,
-    "cyclomatic": 5,
-    "calls": [],
-    "hits": [
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 90,
-      "code": "if (visitDate == null) {",
-      "inc": 1,
-      "why": "if"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 93,
-      "code": "if (birthDate != null && visitDate.isBefore(birthDate)) {",
-      "inc": 1,
-      "why": "if"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 93,
-      "code": "if (birthDate != null && visitDate.isBefore(birthDate)) {",
-      "inc": 1,
-      "why": "&&"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 98,
-      "code": "if (visitDate.isAfter(latest)) {",
-      "inc": 1,
-      "why": "if"
-     }
-    ],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 89
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitDto#getDate",
-    "display": "VisitDto.getDate()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
-    "line": 44
-   },
-   {
-    "method": "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitDto)",
-    "display": "VisitMapper.toVisit(VisitDto)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.domain.Visit#setPet",
-     "victor.training.petclinic.mapper.VisitMapper#petOfId",
-     "victor.training.petclinic.rest.dto.VisitDto#getPetId",
-     "victor.training.petclinic.domain.Visit#setId",
-     "victor.training.petclinic.rest.dto.VisitDto#getId",
-     "victor.training.petclinic.domain.Visit#setDate",
-     "victor.training.petclinic.rest.dto.VisitDto#getDate",
-     "victor.training.petclinic.domain.Visit#setDescription",
-     "victor.training.petclinic.rest.dto.VisitDto#getDescription"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
-    "line": 16
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#getId",
-    "display": "Visit.getId()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 30
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setPet",
-    "display": "Visit.setPet(Pet)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 66
-   },
-   {
-    "method": "victor.training.petclinic.mapper.VisitMapper#petOfId",
-    "display": "VisitMapper.petOfId(Integer)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.domain.Pet#setId"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
-    "line": 62
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setId",
-    "display": "Visit.setId(Integer)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 34
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitDto#getId",
-    "display": "VisitDto.getId()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
-    "line": 62
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setDate",
-    "display": "Visit.setDate(LocalDate)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 42
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setDescription",
-    "display": "Visit.setDescription(String)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 58
-   },
-   {
-    "method": "victor.training.petclinic.domain.Pet#setId",
-    "display": "Pet.setId(Integer)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 68
-   }
-  ],
-  "engine": "javaparser",
-  "unresolvedCount": 0,
-  "unresolved": []
- },
- {
-  "kind": "http",
-  "httpMethod": "PUT",
-  "path": "/api/visits/{visitId}",
-  "handler": "VisitRestController.updateVisit(int, VisitFieldsDto)",
-  "metric": "cognitive",
-  "flowCc": 4,
-  "methods": 7,
-  "flow": [
-   {
-    "method": "victor.training.petclinic.rest.VisitRestController#updateVisit",
-    "display": "VisitRestController.updateVisit(int, VisitFieldsDto)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [
-     "victor.training.petclinic.domain.Pet#requireValidVisitDate",
-     "victor.training.petclinic.domain.Visit#getPet",
-     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
-     "victor.training.petclinic.domain.Visit#setDate",
-     "victor.training.petclinic.domain.Visit#setDescription",
-     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription"
-    ],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-    "line": 82
-   },
-   {
-    "method": "victor.training.petclinic.domain.Pet#requireValidVisitDate",
-    "display": "Pet.requireValidVisitDate(LocalDate, LocalDate)",
-    "cognitive": 4,
-    "cyclomatic": 5,
-    "calls": [],
-    "hits": [
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 90,
-      "code": "if (visitDate == null) {",
-      "inc": 1,
-      "why": "if"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 93,
-      "code": "if (birthDate != null && visitDate.isBefore(birthDate)) {",
-      "inc": 1,
-      "why": "if"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 93,
-      "code": "if (birthDate != null && visitDate.isBefore(birthDate)) {",
-      "inc": 1,
-      "why": "&&"
-     },
-     {
-      "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-      "line": 98,
-      "code": "if (visitDate.isAfter(latest)) {",
-      "inc": 1,
-      "why": "if"
-     }
-    ],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 89
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#getPet",
-    "display": "Visit.getPet()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 62
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
-    "display": "VisitFieldsDto.getDate()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
-    "line": 22
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setDate",
-    "display": "Visit.setDate(LocalDate)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 42
-   },
-   {
-    "method": "victor.training.petclinic.domain.Visit#setDescription",
-    "display": "Visit.setDescription(String)",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
-    "line": 58
-   },
-   {
-    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
-    "display": "VisitFieldsDto.getDescription()",
-    "cognitive": 0,
-    "cyclomatic": 1,
-    "calls": [],
-    "hits": [],
-    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
-    "line": 31
-   }
-  ],
-  "engine": "javaparser",
-  "unresolvedCount": 0,
-  "unresolved": []
- },
- {
-  "kind": "http",
-  "httpMethod": "POST",
   "path": "/api/vets",
   "handler": "VetRestController.addVet(VetDto)",
   "metric": "cognitive",
@@ -5725,7 +5361,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-    "line": 53
+    "line": 49
    },
    {
     "method": "victor.training.petclinic.mapper.VisitMapper#toVisitDto",
@@ -5796,7 +5432,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 111
+    "line": 95
    },
    {
     "method": "victor.training.petclinic.rest.dto.VisitDto#setId",
@@ -5886,7 +5522,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -5896,7 +5532,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.rest.dto.VisitDto#setOwnerLastName",
@@ -6131,7 +5767,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 53
+    "line": 52
    },
    {
     "method": "victor.training.petclinic.domain.Visit#getId",
@@ -6151,7 +5787,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -6161,7 +5797,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Visit#getDate",
@@ -6836,7 +6472,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 119
+    "line": 103
    },
    {
     "method": "victor.training.petclinic.domain.Visit#getDate",
@@ -6955,7 +6591,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 138
+    "line": 137
    },
    {
     "method": "victor.training.petclinic.mapper.PetMapper#toPet(PetFieldsDto)",
@@ -6993,7 +6629,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 115
+    "line": 99
    },
    {
     "method": "victor.training.petclinic.domain.Pet#setType",
@@ -7003,7 +6639,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 107
+    "line": 91
    },
    {
     "method": "victor.training.petclinic.domain.PetType#getId",
@@ -7023,7 +6659,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 103
+    "line": 87
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getId",
@@ -7033,7 +6669,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#setName",
@@ -7043,7 +6679,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 76
+    "line": 75
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getName",
@@ -7063,7 +6699,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 84
+    "line": 83
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getBirthDate",
@@ -7188,7 +6824,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 84
+    "line": 83
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#getBirthDate",
@@ -7208,7 +6844,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 76
+    "line": 75
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetDto#getName",
@@ -7228,7 +6864,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 107
+    "line": 91
    },
    {
     "method": "victor.training.petclinic.mapper.PetMapper#toPetType",
@@ -7571,7 +7207,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 103
+    "line": 87
    },
    {
     "method": "victor.training.petclinic.domain.PetType#getName",
@@ -7591,7 +7227,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 64
+    "line": 63
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getName",
@@ -7601,7 +7237,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 72
+    "line": 71
    },
    {
     "method": "victor.training.petclinic.domain.Pet#getBirthDate",
@@ -7611,7 +7247,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 80
+    "line": 79
    }
   ],
   "engine": "javaparser",
@@ -7662,7 +7298,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 109
+    "line": 108
    },
    {
     "method": "victor.training.petclinic.mapper.OwnerMapper#toOwner",
@@ -7817,7 +7453,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 95
+    "line": 94
    }
   ],
   "engine": "javaparser",
@@ -7852,7 +7488,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 119
+    "line": 118
    },
    {
     "method": "victor.training.petclinic.domain.Owner#setAddress",
@@ -7976,7 +7612,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 131
+    "line": 130
    }
   ],
   "engine": "javaparser",
@@ -8008,7 +7644,7 @@
     ],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-    "line": 154
+    "line": 153
    },
    {
     "method": "victor.training.petclinic.domain.Pet#setBirthDate",
@@ -8018,7 +7654,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 84
+    "line": 83
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getBirthDate",
@@ -8038,7 +7674,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 76
+    "line": 75
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetFieldsDto#getName",
@@ -8058,7 +7694,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
-    "line": 107
+    "line": 91
    },
    {
     "method": "victor.training.petclinic.rest.dto.PetTypeDto#getId",
@@ -8677,6 +8313,248 @@
  },
  {
   "kind": "http",
+  "httpMethod": "POST",
+  "path": "/api/visits",
+  "handler": "VisitRestController.addVisit(VisitDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 14,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#addVisit",
+    "display": "VisitRestController.addVisit(VisitDto)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.rest.VisitRestController#bookVisit"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+    "line": 55
+   },
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#bookVisit",
+    "display": "VisitRestController.bookVisit(VisitDto)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.rest.dto.VisitDto#getPetId",
+     "victor.training.petclinic.rest.dto.VisitDto#getDescription",
+     "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitDto)",
+     "victor.training.petclinic.domain.Visit#getId"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+    "line": 68
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getPetId",
+    "display": "VisitDto.getPetId()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
+    "line": 71
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDescription",
+    "display": "VisitDto.getDescription()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
+    "line": 53
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#toVisit(VisitDto)",
+    "display": "VisitMapper.toVisit(VisitDto)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.domain.Visit#setPet",
+     "victor.training.petclinic.mapper.VisitMapper#petOfId",
+     "victor.training.petclinic.rest.dto.VisitDto#getPetId",
+     "victor.training.petclinic.domain.Visit#setId",
+     "victor.training.petclinic.rest.dto.VisitDto#getId",
+     "victor.training.petclinic.domain.Visit#setDate",
+     "victor.training.petclinic.rest.dto.VisitDto#getDate",
+     "victor.training.petclinic.domain.Visit#setDescription",
+     "victor.training.petclinic.rest.dto.VisitDto#getDescription"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
+    "line": 16
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#getId",
+    "display": "Visit.getId()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 30
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setPet",
+    "display": "Visit.setPet(Pet)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 66
+   },
+   {
+    "method": "victor.training.petclinic.mapper.VisitMapper#petOfId",
+    "display": "VisitMapper.petOfId(Integer)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.domain.Pet#setId"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
+    "line": 62
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setId",
+    "display": "Visit.setId(Integer)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 34
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getId",
+    "display": "VisitDto.getId()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
+    "line": 62
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "display": "Visit.setDate(LocalDate)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 42
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitDto#getDate",
+    "display": "VisitDto.getDate()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitDto.java",
+    "line": 44
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "display": "Visit.setDescription(String)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 58
+   },
+   {
+    "method": "victor.training.petclinic.domain.Pet#setId",
+    "display": "Pet.setId(Integer)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java",
+    "line": 67
+   }
+  ],
+  "engine": "javaparser",
+  "unresolvedCount": 0,
+  "unresolved": []
+ },
+ {
+  "kind": "http",
+  "httpMethod": "PUT",
+  "path": "/api/visits/{visitId}",
+  "handler": "VisitRestController.updateVisit(int, VisitFieldsDto)",
+  "metric": "cognitive",
+  "flowCc": 0,
+  "methods": 5,
+  "flow": [
+   {
+    "method": "victor.training.petclinic.rest.VisitRestController#updateVisit",
+    "display": "VisitRestController.updateVisit(int, VisitFieldsDto)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [
+     "victor.training.petclinic.domain.Visit#setDate",
+     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+     "victor.training.petclinic.domain.Visit#setDescription",
+     "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription"
+    ],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+    "line": 76
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDate",
+    "display": "Visit.setDate(LocalDate)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 42
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDate",
+    "display": "VisitFieldsDto.getDate()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
+    "line": 22
+   },
+   {
+    "method": "victor.training.petclinic.domain.Visit#setDescription",
+    "display": "Visit.setDescription(String)",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java",
+    "line": 58
+   },
+   {
+    "method": "victor.training.petclinic.rest.dto.VisitFieldsDto#getDescription",
+    "display": "VisitFieldsDto.getDescription()",
+    "cognitive": 0,
+    "cyclomatic": 1,
+    "calls": [],
+    "hits": [],
+    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitFieldsDto.java",
+    "line": 31
+   }
+  ],
+  "engine": "javaparser",
+  "unresolvedCount": 0,
+  "unresolved": []
+ },
+ {
+  "kind": "http",
   "httpMethod": "DELETE",
   "path": "/api/visits/{visitId}",
   "handler": "VisitRestController.deleteVisit(int)",
@@ -8692,7 +8570,7 @@
     "calls": [],
     "hits": [],
     "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-    "line": 91
+    "line": 84
    }
   ],
   "engine": "javaparser",

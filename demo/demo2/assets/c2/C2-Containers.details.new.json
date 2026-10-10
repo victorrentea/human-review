@@ -10,21 +10,12 @@
     }
    ]
   },
-  "c2-103d57f8db": {
-   "title": "Backend → «module»\\nCommons",
-   "steps": [
-    {
-     "label": "1 operation",
-     "text": "• PhoneNumbers.normalize"
-    }
-   ]
-  },
-  "c2-32de166756": {
+  "c2-43d2943456": {
    "title": "Browser → Backend",
    "steps": [
     {
      "label": "4 operations",
-     "text": "• Add a visit for an owner's pet\n    POST /api/owners/{ownerId}/pets/{petId}/visits\n• Get an owner by ID\n    GET /api/owners/{ownerId}\n• List one page of owners\n    GET /api/owners\n• getPet\n    GET /api/pets/{petId}"
+     "text": "• Add a visit for an owner's pet\n    POST /api/owners/{ownerId}/pets/{petId}/visits\n• Get an owner by ID\n    GET /api/owners/{ownerId}\n• List owners\n    GET /api/owners\n• getPet\n    GET /api/pets/{petId}"
     }
    ]
   },
@@ -34,24 +25,6 @@
     {
      "label": "1 operation",
      "text": "• send-sms"
-    }
-   ]
-  },
-  "c2-e128eb6ba0": {
-   "title": "NotificationService → «module»\\nCommons",
-   "steps": [
-    {
-     "label": "1 operation",
-     "text": "• PhoneNumbers.normalize"
-    }
-   ]
-  },
-  "c2-cd32149db2": {
-   "title": "«module»\\nCommons → Backend",
-   "steps": [
-    {
-     "label": "1 operation",
-     "text": "• NotificationServiceClient.homeDialCode"
     }
    ]
   }

@@ -1,18 +1,18 @@
 {
-  "title": "Owners grid: paged and sorted by Name or City",
-  "subtitle": "Devoxx26 — issue #25",
+  "title": "Visits grid: paged, and sortable by every column",
+  "subtitle": "visits-paginated — issue #52",
   "pr": {
-    "title": "Owners grid: paged and sorted by Name or City",
+    "number": 53,
+    "title": "Visits grid: server-side paging, sortable by every column",
+    "url": "https://github.com/victorrentea/petclinic/pull/53",
     "repo": "https://github.com/victorrentea/petclinic",
-    "branch": "Devoxx26",
+    "branch": "visits-paginated",
     "base": "main",
     "ticket": {
-      "number": 25,
-      "title": "Add pagination to Owners grid",
-      "url": "https://github.com/victorrentea/petclinic/issues/25"
-    },
-    "number": 51,
-    "url": "https://github.com/victorrentea/petclinic/pull/51"
+      "number": 52,
+      "title": "Add pagination to Visits grid",
+      "url": "https://github.com/victorrentea/petclinic/issues/52"
+    }
   },
   "scope": [
     {
@@ -30,8 +30,8 @@
   "verdict": {
     "score": 7,
     "bullets": [
-      "Only the test database is pinned to ICU; production's collation is still unknown, so accented owners may sort after Z there (design.md:167).",
-      "The visit-date commit underneath carries six real findings declined here as out of scope — owner/pet mismatch on booking among them; they need their own ticket."
+      "The new e2e test \"a page of 5 visits, then the next one\" is flaky. It reads the expected page from the API before the browser loads it, while parallel suites write visits. It failed on this run's stack and passed locally.",
+      "The traced e2e run was red: add-visit failed with \"fetch failed\", so its re-traced sequence lost NotificationService, Commons and the SMS gateway. The stack missed those calls; this branch does not touch booking."
     ]
   },
   "findings": {
@@ -48,10 +48,8 @@
     "href": "assets/codecity/codecity.html"
   },
   "extraCss": [
-    "assets/openapi-diff.css",
     "assets/openapi-compat.css",
-    "assets/complexity-delta.css",
-    "assets/ds-audit.css"
+    "assets/complexity-delta.css"
   ],
   "testChanges": "assets/test-changes.json",
   "playwrightTraces": "assets/traces.json",
@@ -62,16 +60,13 @@
       "count": true,
       "blocks": [
         {
-          "type": "findings",
-          "title": "Read and declined"
+          "type": "findings"
         },
         {
-          "type": "autofixes",
-          "title": "Fixed after review"
+          "type": "autofixes"
         },
         {
-          "type": "assumptions",
-          "title": "Decided where the ticket did not"
+          "type": "assumptions"
         }
       ]
     },
@@ -223,5 +218,5 @@
     }
   ],
   "sections": [],
-  "footer": "Built by /human-review from Devoxx26 on 7 Oct 2026."
+  "footer": "Built by /human-review from visits-paginated on 10 Oct 2026."
 }

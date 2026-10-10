@@ -11,14 +11,10 @@ System_Boundary(c2_system, "PetClinic") {
   ContainerDb(DB, "DB", "PostgreSQL", "")
   Container(NotificationService, "NotificationService", "Java 21 / Spring Boot 3.5", "")
   System_Ext(SMS_gateway, "SMS gateway", "SMS provider (simulated)", "")
-  Container(_module__nCommons, "«module»\nCommons", "", "")
 }
 Rel(Backend, DB, "SQL", "")
 Rel(Backend, NotificationService, "[[genseq://c2-279a196c9d{Click for the calls behind this line} HTTP ⊕]]", "1 ops")
-Rel(Backend, _module__nCommons, "[[genseq://c2-103d57f8db{Click for the calls behind this line} calls ⊕]]", "1 ops")
 Rel(Browser, Backend, "[[genseq://c2-43d2943456{Click for the calls behind this line} HTTP ⊕]]", "4 ops")
 Rel(NotificationService, SMS_gateway, "[[genseq://c2-cb01a30b7a{Click for the calls behind this line} calls ⊕]]", "1 ops")
-Rel(NotificationService, _module__nCommons, "[[genseq://c2-e128eb6ba0{Click for the calls behind this line} calls ⊕]]", "1 ops")
-Rel(_module__nCommons, Backend, "[[genseq://c2-cd32149db2{Click for the calls behind this line} calls ⊕]]", "1 ops")
 caption Diagram generated from sequence diagrams of the test traces
 @enduml

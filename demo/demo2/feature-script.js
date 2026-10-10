@@ -1,99 +1,73 @@
-// Demo film for the owners paging/sorting/search-in-URL change. Every say() waits for what it claims.
+// Film of the server-side paginated, sortable Visits grid at /visits.
 module.exports = async ({page, say, pause, app}) => {
-  const isOwnersApi = r => new URL(r.url()).pathname.endsWith("/api/owners") && r.request().method() === "GET";
-  // `expect` names what the answer renders: the table, or the no-owners message for an empty search
-  const afterOwnersLoad = async (action, expect = "#ownersTable") => {
-    const [res] = await Promise.all([page.waitForResponse(isOwnersApi), action()]);
-    if (!res.ok()) throw new Error(`/api/owners answered ${res.status()}`);
-    await page.locator(expect).waitFor();
-  };
-  const url = () => decodeURIComponent(page.url());
-  const expectUrl = (re, what) => {
-    if (!re.test(url())) throw new Error(`${what}: URL is ${url()}`);
-  };
-
-  const rangeLabel = page.locator("#ownersTable mat-paginator .mat-mdc-paginator-range-label");
-  const cityHeader = page.locator("#ownersTable th:has-text('City') button");
-  const names = page.locator("#ownersTable td.ownerFullName");
+  const rows = page.locator("#visitsTable tbody tr");
+  const firstCell = (cls) => page.locator(`#visitsTable tbody tr:first-child td.${cls}`);
+  const header = (name) => page.locator("#visitsTable th.mat-sort-header").filter({hasText: new RegExp(`^\\s*${name}\\s*$`)});
+  const paginator = page.locator("mat-paginator");
+  const range = page.locator("mat-paginator .mat-mdc-paginator-range-label, mat-paginator .mat-paginator-range-label");
   const missed = [];
-  const scene = async (name, fn) => {
+  const step = async (name, fn) => {
     try { await fn(); } catch (e) { missed.push(`${name} (${e.message.split("\n")[0]})`); }
   };
+  const urlHas = (re) => page.waitForURL(re, {timeout: 10000});
 
-  await scene("/owners paged", async () => {
-    await afterOwnersLoad(() => page.goto(`${app}/owners`));
-    await rangeLabel.waitFor();
-    if (!/^\s*1\s*[–-]\s*10 of \d+/.test(await rangeLabel.innerText())) throw new Error("no '1 – 10 of N'");
-    await say("The owners grid is now paged on the server: ten rows, and a total.", rangeLabel);
-    await pause(800);
+  await step("/visits first page", async () => {
+    await page.goto(`${app}/visits`);
+    await rows.first().waitFor();
+    await range.filter({hasText: /^\s*1 – 10 of \d+/}).waitFor();
+    await say("The visits grid shows the newest ten visits, sorted by date.", page.locator("#visitsTable"));
+    await pause(1500);
   });
 
-  await scene("page size 5", async () => {
-    await afterOwnersLoad(async () => {
-      await page.locator("#ownersTable mat-paginator mat-select").click();
-      await page.locator("mat-option").filter({hasText: /^\s*5\s*$/}).click();
-    });
-    await page.waitForFunction(() => document.querySelectorAll("#ownersTable td.ownerFullName").length === 5);
-    expectUrl(/size=5/, "size=5");
-    await say("Five rows per page, and the choice is kept in the URL.", page.locator("#ownersTable mat-paginator"));
-    await pause(600);
+  await step("sort by Pet", async () => {
+    const before = await firstCell("visit-pet").innerText();
+    await header("Pet").click();
+    await urlHas(/sort=pet(,|%2C)asc/);
+    await page.waitForFunction((b) =>
+      document.querySelector("#visitsTable tbody tr td.visit-pet")?.textContent.trim() !== b, before.trim());
+    await say("Click Pet to sort by pet. The sort is in the URL.", header("Pet"));
+    await pause(1500);
   });
 
-  await scene("sort city", async () => {
-    await cityHeader.waitFor();
-    await afterOwnersLoad(() => cityHeader.click());
-    expectUrl(/sort=city/, "sort=city");
-    await say("Name and City are sortable; click City to sort ascending.", cityHeader);
-    await pause(600);
-    await afterOwnersLoad(() => cityHeader.click());
-    expectUrl(/sort=city,desc/, "sort=city,desc");
-    await say("Click again for descending; the arrowhead shows the direction.", cityHeader);
-    await pause(600);
+  await step("sort by Owner", async () => {
+    await header("Owner").click();
+    await urlHas(/sort=owner(,|%2C)asc/);
+    await rows.first().waitFor();
+    const asc = (await firstCell("visit-owner").innerText()).trim();
+    await header("Owner").click();
+    await urlHas(/sort=owner(,|%2C)desc/);
+    await page.waitForFunction((b) =>
+      document.querySelector("#visitsTable tbody tr td.visit-owner")?.textContent.trim() !== b, asc);
+    await say("Owner sorts ascending, then descending, on the server.", header("Owner"));
+    await pause(1500);
   });
 
-  await scene("next page", async () => {
-    const next = page.locator("button.mat-mdc-paginator-navigation-next");
-    await afterOwnersLoad(() => next.click());
-    expectUrl(/page=2/, "page=2");
-    await say("Next page, still sorted by city.", next);
-    await pause(500);
+  await step("5 per page", async () => {
+    await paginator.locator("mat-select").click();
+    await page.getByRole("option", {name: "5", exact: true}).click();
+    await range.filter({hasText: /^\s*1 – 5 of \d+/}).waitFor();
+    await say("Choose five items per page.", paginator);
+    await pause(1500);
   });
 
-  await scene("back keeps position", async () => {
-    const before = url();
-    await names.first().locator("a").click();
-    await page.waitForURL(/\/owners\/\d+/);
-    await pause(600);
-    await afterOwnersLoad(() => page.goBack());
-    if (url() !== before) throw new Error(`Back landed on ${url()}, expected ${before}`);
-    await say("Back from an owner returns to the same page and sort.", names.first());
-    await pause(600);
+  await step("next page", async () => {
+    await page.getByRole("button", {name: "Next page"}).click();
+    await urlHas(/page=2/);
+    await range.filter({hasText: /^\s*6 – 10 of \d+/}).waitFor();
+    await say("Next page: page two, also kept in the URL.", paginator);
+    await pause(1500);
   });
 
-  const search = async (text, expect) => {
-    await page.locator("#lastName").fill(text);
-    await afterOwnersLoad(() => page.locator('#search-owner-form button[type="submit"]').click(), expect);
-  };
-
-  await scene("search Pot", async () => {
-    await search("Pot");
-    await names.first().waitFor();
-    expectUrl(/lastName=Pot/, "lastName=Pot");
-    if (/page=/.test(url())) throw new Error("search did not reset to page 1");
-    await say("Searching starts again from page one.", page.locator("#lastName"));
-    await pause(800);
-  });
-
-  await scene("search Zzzz", async () => {
-    await search("Zzzz", "#noOwners");
-    const none = page.locator("#noOwners");
-    await none.waitFor();
-    await say("When nobody matches, a message and its own Add Owner button.", none);
-    await pause(1000);
+  await step("browser back", async () => {
+    await page.goBack();
+    await range.filter({hasText: /^\s*1 – 5 of \d+/}).waitFor();
+    await say("Back restores the previous view.", paginator);
+    await pause(1500);
   });
 
   return {
     ok: missed.length === 0,
-    note: `${8 - missed.length}/8 scenes filmed` + (missed.length ? ` | FAILED to reach: ${missed.join("; ")}` : ""),
+    note: `${6 - missed.length}/6 beats filmed on /visits` +
+      (missed.length ? ` | FAILED to reach: ${missed.join("; ")}` : ""),
   };
 };

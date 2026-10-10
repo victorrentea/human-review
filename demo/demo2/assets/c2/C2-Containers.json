@@ -2,227 +2,6 @@
   "new": {
     "sources": [
       "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
-      "petclinic-test/generated/OwnerListTest.java.defaultpage-isthefirsttenbyname.genseq.puml",
-      "petclinic-test/generated/OwnerListTest.java.unfilteredtotal-countseveryowner.genseq.puml",
-      "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
-      "petclinic-test/generated/owner-search.feature.choosing-5-rows-per-page.genseq.puml",
-      "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-shows-the-first-page-of-every-owner.genseq.puml",
-      "petclinic-test/generated/owner-search.feature.sorting-by-city.genseq.puml"
-    ],
-    "nodes": {
-      "Backend": {
-        "kind": "container",
-        "tech": "Java 21 / Spring Boot 3.5",
-        "descr": "",
-        "inferredBy": "config",
-        "decl": "participant"
-      },
-      "Browser": {
-        "kind": "container",
-        "tech": "Angular 16",
-        "descr": "",
-        "inferredBy": "config",
-        "decl": "participant"
-      },
-      "DB": {
-        "kind": "db",
-        "tech": "PostgreSQL",
-        "descr": "",
-        "inferredBy": "config",
-        "decl": "participant"
-      },
-      "NotificationService": {
-        "kind": "container",
-        "tech": "Java 21 / Spring Boot 3.5",
-        "descr": "",
-        "inferredBy": "config",
-        "decl": "participant"
-      },
-      "SMS gateway": {
-        "kind": "external",
-        "tech": "SMS provider (simulated)",
-        "descr": "",
-        "inferredBy": "config",
-        "decl": "participant"
-      },
-      "\u00abmodule\u00bb\\nCommons": {
-        "kind": "container",
-        "tech": "",
-        "descr": "",
-        "inferredBy": "default",
-        "decl": "participant"
-      }
-    },
-    "edges": [
-      {
-        "from": "Backend",
-        "to": "DB",
-        "status": "same",
-        "protocol": "SQL",
-        "operations": 7,
-        "operationsDelta": 0,
-        "calls": 70,
-        "detail": [
-          {
-            "name": "OwnerRepository.findByLastNameStartingWith",
-            "path": "",
-            "calls": 18
-          },
-          {
-            "name": "insert for victor.training.petclinic.domain.Owner",
-            "path": "",
-            "calls": 12
-          },
-          {
-            "name": "insert for victor.training.petclinic.domain.Visit",
-            "path": "",
-            "calls": 2
-          },
-          {
-            "name": "select count(*) from Owner x",
-            "path": "",
-            "calls": 1
-          },
-          {
-            "name": "select owners",
-            "path": "",
-            "calls": 5
-          },
-          {
-            "name": "select pets",
-            "path": "",
-            "calls": 18
-          },
-          {
-            "name": "select visits",
-            "path": "",
-            "calls": 14
-          }
-        ],
-        "toKind": "db"
-      },
-      {
-        "from": "Backend",
-        "to": "NotificationService",
-        "status": "same",
-        "protocol": "HTTP",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "",
-            "path": "POST /api/notifications/visit-booked",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "Backend",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "Browser",
-        "to": "Backend",
-        "status": "same",
-        "protocol": "HTTP",
-        "operations": 4,
-        "operationsDelta": 0,
-        "calls": 11,
-        "detail": [
-          {
-            "name": "Add a visit for an owner's pet",
-            "path": "POST /api/owners/{ownerId}/pets/{petId}/visits",
-            "calls": 1
-          },
-          {
-            "name": "Get an owner by ID",
-            "path": "GET /api/owners/{ownerId}",
-            "calls": 3
-          },
-          {
-            "name": "List one page of owners",
-            "path": "GET /api/owners",
-            "calls": 6
-          },
-          {
-            "name": "getPet",
-            "path": "GET /api/pets/{petId}",
-            "calls": 1
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "NotificationService",
-        "to": "SMS gateway",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "send-sms",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "external"
-      },
-      {
-        "from": "NotificationService",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "\u00abmodule\u00bb\\nCommons",
-        "to": "Backend",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 1,
-        "detail": [
-          {
-            "name": "NotificationServiceClient.homeDialCode",
-            "path": "",
-            "calls": 1
-          }
-        ],
-        "toKind": "container"
-      }
-    ]
-  },
-  "old": {
-    "sources": [
-      "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
       "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
       "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml"
     ],
@@ -260,13 +39,6 @@
         "tech": "SMS provider (simulated)",
         "descr": "",
         "inferredBy": "config",
-        "decl": "participant"
-      },
-      "\u00abmodule\u00bb\\nCommons": {
-        "kind": "container",
-        "tech": "",
-        "descr": "",
-        "inferredBy": "default",
         "decl": "participant"
       }
     },
@@ -326,8 +98,40 @@
         "toKind": "container"
       },
       {
-        "from": "Backend",
-        "to": "\u00abmodule\u00bb\\nCommons",
+        "from": "Browser",
+        "to": "Backend",
+        "status": "same",
+        "protocol": "HTTP",
+        "operations": 4,
+        "operationsDelta": 0,
+        "calls": 7,
+        "detail": [
+          {
+            "name": "Add a visit for an owner's pet",
+            "path": "POST /api/owners/{ownerId}/pets/{petId}/visits",
+            "calls": 1
+          },
+          {
+            "name": "Get an owner by ID",
+            "path": "GET /api/owners/{ownerId}",
+            "calls": 3
+          },
+          {
+            "name": "List owners",
+            "path": "GET /api/owners",
+            "calls": 2
+          },
+          {
+            "name": "getPet",
+            "path": "GET /api/pets/{petId}",
+            "calls": 1
+          }
+        ],
+        "toKind": "container"
+      },
+      {
+        "from": "NotificationService",
+        "to": "SMS gateway",
         "status": "same",
         "protocol": "calls",
         "operations": 1,
@@ -335,8 +139,108 @@
         "calls": 2,
         "detail": [
           {
-            "name": "PhoneNumbers.normalize",
+            "name": "send-sms",
             "path": "",
+            "calls": 2
+          }
+        ],
+        "toKind": "external"
+      }
+    ]
+  },
+  "old": {
+    "sources": [
+      "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
+      "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
+      "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml"
+    ],
+    "nodes": {
+      "Backend": {
+        "kind": "container",
+        "tech": "Java 21 / Spring Boot 3.5",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant"
+      },
+      "Browser": {
+        "kind": "container",
+        "tech": "Angular 16",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant"
+      },
+      "DB": {
+        "kind": "db",
+        "tech": "PostgreSQL",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant"
+      },
+      "NotificationService": {
+        "kind": "container",
+        "tech": "Java 21 / Spring Boot 3.5",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant"
+      },
+      "SMS gateway": {
+        "kind": "external",
+        "tech": "SMS provider (simulated)",
+        "descr": "",
+        "inferredBy": "config",
+        "decl": "participant"
+      }
+    },
+    "edges": [
+      {
+        "from": "Backend",
+        "to": "DB",
+        "status": "same",
+        "protocol": "SQL",
+        "operations": 5,
+        "operationsDelta": 0,
+        "calls": 214,
+        "detail": [
+          {
+            "name": "OwnerRepository.findByLastNameStartingWith",
+            "path": "",
+            "calls": 3
+          },
+          {
+            "name": "insert for victor.training.petclinic.domain.Visit",
+            "path": "",
+            "calls": 2
+          },
+          {
+            "name": "select owners",
+            "path": "",
+            "calls": 7
+          },
+          {
+            "name": "select pets",
+            "path": "",
+            "calls": 98
+          },
+          {
+            "name": "select visits",
+            "path": "",
+            "calls": 104
+          }
+        ],
+        "toKind": "db"
+      },
+      {
+        "from": "Backend",
+        "to": "NotificationService",
+        "status": "same",
+        "protocol": "HTTP",
+        "operations": 1,
+        "operationsDelta": 0,
+        "calls": 2,
+        "detail": [
+          {
+            "name": "",
+            "path": "POST /api/notifications/visit-booked",
             "calls": 2
           }
         ],
@@ -390,40 +294,6 @@
           }
         ],
         "toKind": "external"
-      },
-      {
-        "from": "NotificationService",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "\u00abmodule\u00bb\\nCommons",
-        "to": "Backend",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "NotificationServiceClient.homeDialCode",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
       }
     ]
   },
@@ -468,14 +338,6 @@
         "inferredBy": "config",
         "decl": "participant",
         "status": "same"
-      },
-      "\u00abmodule\u00bb\\nCommons": {
-        "kind": "container",
-        "tech": "",
-        "descr": "",
-        "inferredBy": "default",
-        "decl": "participant",
-        "status": "same"
       }
     },
     "edges": [
@@ -484,19 +346,14 @@
         "to": "DB",
         "status": "same",
         "protocol": "SQL",
-        "operations": 7,
+        "operations": 5,
         "operationsDelta": 0,
-        "calls": 70,
+        "calls": 214,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
             "path": "",
-            "calls": 18
-          },
-          {
-            "name": "insert for victor.training.petclinic.domain.Owner",
-            "path": "",
-            "calls": 12
+            "calls": 3
           },
           {
             "name": "insert for victor.training.petclinic.domain.Visit",
@@ -504,24 +361,19 @@
             "calls": 2
           },
           {
-            "name": "select count(*) from Owner x",
-            "path": "",
-            "calls": 1
-          },
-          {
             "name": "select owners",
             "path": "",
-            "calls": 5
+            "calls": 7
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 18
+            "calls": 98
           },
           {
             "name": "select visits",
             "path": "",
-            "calls": 14
+            "calls": 104
           }
         ],
         "toKind": "db"
@@ -544,30 +396,13 @@
         "toKind": "container"
       },
       {
-        "from": "Backend",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
         "from": "Browser",
         "to": "Backend",
         "status": "same",
         "protocol": "HTTP",
         "operations": 4,
         "operationsDelta": 0,
-        "calls": 11,
+        "calls": 7,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -580,9 +415,9 @@
             "calls": 3
           },
           {
-            "name": "List one page of owners",
+            "name": "List owners",
             "path": "GET /api/owners",
-            "calls": 6
+            "calls": 2
           },
           {
             "name": "getPet",
@@ -608,58 +443,17 @@
           }
         ],
         "toKind": "external"
-      },
-      {
-        "from": "NotificationService",
-        "to": "\u00abmodule\u00bb\\nCommons",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 2,
-        "detail": [
-          {
-            "name": "PhoneNumbers.normalize",
-            "path": "",
-            "calls": 2
-          }
-        ],
-        "toKind": "container"
-      },
-      {
-        "from": "\u00abmodule\u00bb\\nCommons",
-        "to": "Backend",
-        "status": "same",
-        "protocol": "calls",
-        "operations": 1,
-        "operationsDelta": 0,
-        "calls": 1,
-        "detail": [
-          {
-            "name": "NotificationServiceClient.homeDialCode",
-            "path": "",
-            "calls": 1
-          }
-        ],
-        "toKind": "container"
       }
     ],
     "compared": {
       "both": [
         "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
-        "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml"
-      ],
-      "onlyNew": [
-        "petclinic-test/generated/OwnerListTest.java.defaultpage-isthefirsttenbyname.genseq.puml",
-        "petclinic-test/generated/OwnerListTest.java.unfilteredtotal-countseveryowner.genseq.puml",
-        "petclinic-test/generated/owner-search.feature.choosing-5-rows-per-page.genseq.puml",
-        "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-shows-the-first-page-of-every-owner.genseq.puml",
-        "petclinic-test/generated/owner-search.feature.sorting-by-city.genseq.puml"
-      ],
-      "onlyOld": [
+        "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
         "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml"
-      ]
+      ],
+      "onlyNew": [],
+      "onlyOld": []
     }
   },
-  "base": "390f0e0efee30a2aeeaa07895560d97eafaab479"
+  "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf"
 }

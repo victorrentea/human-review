@@ -1,54 +1,32 @@
   * reviewpoints -> review
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-points.py --root . --out .human-review/review-points.json
-review-points.md: 43 item(s) in 25 fixed, 14 ignored, 4 assumptions
+    $ /Users/victorrentea/.claude/plugins/cache/human-review/human-review/0071f98803ee/skills/human-review/scripts/review-points.py --root . --out .human-review/review-points.json
+review-points.md: 21 item(s) in 4 fixed, 11 ignored, 6 assumptions
   Fixed        (Fixed)
-      · Add Owner vanished when a search matched nobody   [2 ref, 2 snippet, medium, from /code-review xhigh]
-      · Bad page input answered 500 instead of 400   [5 ref, 5 snippet, medium, from /code-review xhigh]
-      · Find Owner with an unchanged name did not search again   [3 ref, 3 snippet, low, from /code-review xhigh]
-      · Hibernate statistics left switched on for the cached context   [1 ref, 1 snippet, low, from /code-review xhigh]
-      · Visit-date scenario still read the owner list as an array   [1 ref, 1 snippet, high, from /code-review xhigh]
-      · AddVisitApiTest sequence diagram showed the old list call   [1 ref, 1 snippet, low, from /code-review xhigh]
-      · Validation responses built from the same literals four times   [1 ref, 1 snippet, low, from CI (SonarCloud java:S1192)]
-      · Dead stylesheet rules from an earlier pager layout   [1 ref, 1 snippet, low, from /simplify simplification]
-      · Label rules only undid form-horizontal   [2 ref, 2 snippet, low, from /simplify simplification]
-      · Sort arrows overrode Material&#x27;s private DOM with !important   [3 ref, 3 snippet, medium, from /simplify altitude]
-      · Column widths tied to column order   [2 ref, 2 snippet, low, from /simplify altitude]
-      · Shell padding zeroed to undo its own container-fluid   [2 ref, 2 snippet, low, from /simplify altitude]
-      · Query types written by hand beside the generated one   [3 ref, 3 snippet, medium, from /simplify reuse]
-      · Error fallback that is never returned   [1 ref, 1 snippet, low, from /simplify simplification]
-      · Batch fetching added one association at a time   [3 ref, 3 snippet, medium, from /simplify altitude]
-      · Page-to-DTO conversion inlined in the controller   [2 ref, 2 snippet, low, from /simplify reuse]
-      · Private route stub duplicating ActivatedRouteStub   [2 ref, 2 snippet, low, from /simplify reuse]
-      · Add-visit glue walked owner pages to find a pet   [2 ref, 2 snippet, low, from /simplify efficiency]
-      · Owner-search glue repeated steps, locators and calls   [4 ref, 4 snippet, low, from /simplify simplification]
-      · New owner-creation line over the 119-character limit   [1 ref, 1 snippet, low, from pre-push hook]
-      · Dropped @ResponseStatus erased the 400 from the API contract   [1 ref, 1 snippet, medium, from pre-push hook]
-      · Accented names sorted after Z under CI&#x27;s C collation   [2 ref, 2 snippet, medium, from /code-review xhigh, CI]
-      · Sort headers reachable only with a mouse   [3 ref, 3 snippet, medium, from CI (SonarCloud Web:MouseEventWithoutKeyboardEquivalentCheck)]
-      · Navigation promise left unhandled   [1 ref, 1 snippet, low, from CI (SonarCloud typescript:S9383)]
-      · Injected and internal members not readonly   [2 ref, 2 snippet, info, from CI (SonarCloud typescript:S2933)]
+      · Sort parameter line over 119 chars blocked the push   [2 ref, 2 snippet, medium, from pre-push hook]
+      · Cucumber visit-count step read only the first page of all visits   [1 ref, 1 snippet, medium, from tests reviewer]
+      · Navigation promise left unhandled; a failed navigation vanished silent   [2 ref, 2 snippet, medium, from CI]
+      · Injected dependencies were not readonly   [1 ref, 1 snippet, low, from CI]
   Ignored      (Ignored)
-      · ListGetFirstTest input snippet has unbalanced braces   [1 ref, 1 snippet, medium, from /code-review xhigh]
-      · Booking does not check the pet belongs to the owner   [1 ref, 1 snippet, high, from /code-review xhigh]
-      · Visit-date rule skipped by the MCP tool and birth-date edits   [1 ref, 1 snippet, medium, from /code-review xhigh]
-      · An undated visit skips the visit-date rule   [1 ref, 1 snippet, medium, from /code-review xhigh]
-      · Domain rule handled as the broad ValidationException   [1 ref, 1 snippet, low, from /code-review xhigh]
-      · Visit form and server read &quot;today&quot; from different clocks   [1 ref, 1 snippet, low, from /code-review xhigh]
-      · Visit booking saves the stub Pet, not the loaded one   [1 ref, 1 snippet, low, from /code-review xhigh]
-      · Descending sorts mix directions the indexes cannot walk   [1 ref, 1 snippet, info, from /code-review xhigh]
-      · List payload still carries every pet&#x27;s visits   [1 ref, 1 snippet, low, from /simplify efficiency, /simplify altitude]
-      · Count query repeated on every page turn   [1 ref, 1 snippet, low, from /simplify efficiency]
-      · Last page is a 100k-row offset   [1 ref, 1 snippet, low, from /simplify efficiency]
-      · Hand-rolled paging params instead of Spring&#x27;s Pageable   [1 ref, 1 snippet, info, from /simplify reuse]
-      · Overlapping OwnerListTest cases could be merged   [1 ref, 1 snippet, info, from /simplify simplification]
-      · Shared aPage fixture builder for the specs   [1 ref, 1 snippet, info, from /simplify reuse]
+      · Service fallback {} would hide errors and crash show()   [1 ref, 1 snippet, info, from correctness, security and ticket-fit reviewers]
+      · Page index has no upper bound   [1 ref, 1 snippet, low, from security reviewer]
+      · Owner sort by first name may not match the displayed order   [1 ref, 1 snippet, info, from ticket-fit reviewer]
+      · API accepts sizes 1..100, not only 5/10/20   [1 ref, 1 snippet, low, from ticket-fit reviewer]
+      · Past-the-end redirect could loop or show stale rows   [1 ref, 1 snippet, low, from correctness reviewer]
+      · Text sort order depends on database collation   [1 ref, 1 snippet, info, from correctness reviewer]
+      · Pet and owner sort direction and tie-breaks not pinned   [1 ref, 1 snippet, low, from tests reviewer]
+      · Query-count bound of 3 is loose   [1 ref, 1 snippet, low, from tests reviewer]
+      · Uppercase or malformed sort values untested   [1 ref, 1 snippet, info, from tests reviewer]
+      · Frontend specs stub the router, so the URL round trip is unproven   [1 ref, 1 snippet, low, from tests reviewer]
+      · Removed getAll tests thin seed-data and role coverage   [1 ref, 1 snippet, low, from tests reviewer]
   Assumptions  (Assumptions)
-      · Tie-breakers stay ascending whichever way the column sorts   [1 ref, 1 snippet, confidence 0.6]
-      · Seed owner 1 is the add-visit scenario&#x27;s owner with a pet   [1 ref, 1 snippet, confidence 0.75]
-      · The visit-date scenario leaves its own owner behind   [1 ref, 1 snippet, confidence 0.65]
-      · Add Owner appears twice in the template, not once outside the table   [1 ref, 1 snippet, confidence 0.7]
+      · Paging runs on the server, not in the browser   [1 ref, 1 snippet, confidence 0.7]
+      · Default view is the 10 latest visits   [1 ref, 1 snippet, confidence 0.9]
+      · API caps the page size at 100, not at the three UI sizes   [1 ref, 1 snippet, confidence 0.65]
+      · Owner column sorts by first name, then last name   [1 ref, 1 snippet, confidence 0.75]
+      · Ties within a sorted column fall back to latest first, then id   [1 ref, 1 snippet, confidence 0.6]
+      · No index added for the date sort   [1 ref, 1 snippet, confidence 0.5]
   fixed in     HEAD
-  base: 390f0e0efee30a2aeeaa07895560d97eafaab479 · implementation: 0b99e29cd8bb8f6895c4af13c1c20ac361546a60 · reviewers: /code-review xhigh (user-launched, background) + /simplify 4 lenses (reuse, simplification, efficiency, altitude) + CI/SonarCloud · session: 8782fda6-f385-4d47-8079-96d9f3c08509
+  base: f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf · implementation: 6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9 · reviewers: 4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit · session: 498ee103-9160-4f7a-be05-c641ebd16920
   wrote  .human-review/review-points.json
-    $ git merge-base 390f0e0efee30a2aeeaa07895560d97eafaab479 HEAD
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-commits.py --base 390f0e0efee30a2aeeaa07895560d97eafaab479 --json
+    $ git merge-base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf HEAD
+    $ /Users/victorrentea/.claude/plugins/cache/human-review/human-review/0071f98803ee/skills/human-review/scripts/review-commits.py --base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf --json

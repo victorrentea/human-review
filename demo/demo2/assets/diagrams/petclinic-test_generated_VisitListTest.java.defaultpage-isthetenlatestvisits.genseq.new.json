@@ -1,0 +1,227 @@
+{
+  "version": 2,
+  "details": {
+    "1ha30s4": {
+      "title": "DELETE FROM Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "DELETE FROM visits v1_0"
+        }
+      ]
+    },
+    "1x3fmx0": {
+      "title": "insert for victor.training.petclinic.domain.Owner",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO owners (address, city, first_name, last_name, telephone)\nVALUES (?, ?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO owners (address, city, first_name, last_name, telephone)\nVALUES ('Baker St 221B', 'London', 'George', 'Franklin', 1234567890)"
+          }
+        }
+      ]
+    },
+    "0ji1js5": {
+      "title": "PetTypeRepository.findAll",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0"
+        }
+      ]
+    },
+    "0a0hnfx": {
+      "title": "insert for victor.training.petclinic.domain.Pet",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO pets (birth_date, name, owner_id, type_id)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO pets (birth_date, name, owner_id, type_id)\nVALUES ('2010-10-10', 'Leo', 28, 1)"
+          }
+        }
+      ]
+    },
+    "05jrj4o": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-01', 'checkup 0', 34, ?)"
+          }
+        }
+      ]
+    },
+    "100qx0k": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-02', 'checkup 1', 34, ?)"
+          }
+        }
+      ]
+    },
+    "1woqjkc": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-03', 'checkup 2', 34, ?)"
+          }
+        }
+      ]
+    },
+    "12b7m6o": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-04', 'checkup 3', 34, ?)"
+          }
+        }
+      ]
+    },
+    "18psurs": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-05', 'checkup 4', 34, ?)"
+          }
+        }
+      ]
+    },
+    "0a1zcak": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-06', 'checkup 5', 34, ?)"
+          }
+        }
+      ]
+    },
+    "0a3ip44": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-07', 'checkup 6', 34, ?)"
+          }
+        }
+      ]
+    },
+    "045t1u8": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-08', 'checkup 7', 34, ?)"
+          }
+        }
+      ]
+    },
+    "0n6ys8o": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-09', 'checkup 8', 34, ?)"
+          }
+        }
+      ]
+    },
+    "1d7tbyl": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-10', 'checkup 9', 34, ?)"
+          }
+        }
+      ]
+    },
+    "1nn5kfk": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-11', 'checkup 10', 34, ?)"
+          }
+        }
+      ]
+    },
+    "0agpkre": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-12', 'checkup 11', 34, ?)"
+          }
+        }
+      ]
+    },
+    "114roce": {
+      "title": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by …",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date desc, v1_0.id\nFETCH FIRST ? rows only",
+          "alternate": {
+            "label": "",
+            "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date desc, v1_0.id\nFETCH FIRST 10 rows only"
+          }
+        }
+      ]
+    },
+    "0gohwr7": {
+      "title": "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT count(v1_0.id)\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id"
+        }
+      ]
+    }
+  }
+}

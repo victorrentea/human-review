@@ -1,0 +1,75 @@
+{
+  "version": 2,
+  "details": {
+    "1ha30s4": {
+      "title": "DELETE FROM Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "DELETE FROM visits v1_0"
+        }
+      ]
+    },
+    "1x3fmx0": {
+      "title": "insert for victor.training.petclinic.domain.Owner",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO owners (address, city, first_name, last_name, telephone)\nVALUES (?, ?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO owners (address, city, first_name, last_name, telephone)\nVALUES ('Baker St 221B', 'London', 'George', 'Franklin', 1234567890)"
+          }
+        }
+      ]
+    },
+    "0ji1js5": {
+      "title": "PetTypeRepository.findAll",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT pt1_0.id, pt1_0.name\nFROM types pt1_0"
+        }
+      ]
+    },
+    "1xyvwcm": {
+      "title": "insert for victor.training.petclinic.domain.Pet",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO pets (birth_date, name, owner_id, type_id)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO pets (birth_date, name, owner_id, type_id)\nVALUES ('2010-10-10', 'Leo', 27, 1)"
+          }
+        }
+      ]
+    },
+    "0ccc7li": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES (?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time)\nVALUES ('2026-01-01', 'rabies shot', 33, ?)"
+          }
+        }
+      ]
+    },
+    "114roce": {
+      "title": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by …",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date desc, v1_0.id\nFETCH FIRST ? rows only",
+          "alternate": {
+            "label": "",
+            "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.birth_date, p1_0.name, o1_0.id, o1_0.address, o1_0.city, o1_0.first_name, o1_0.last_name, o1_0.telephone, p1_0.type_id, v1_0.visit_time\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date desc, v1_0.id\nFETCH FIRST 10 rows only"
+          }
+        }
+      ]
+    }
+  }
+}

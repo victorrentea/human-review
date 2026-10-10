@@ -1,55 +1,55 @@
   * dsaudit -> dsaudit
     $ git rev-parse --abbrev-ref HEAD
-    $ git merge-base 390f0e0efee30a2aeeaa07895560d97eafaab479 HEAD
-    $ git diff --name-only 390f0e0efee30a2aeeaa07895560d97eafaab479 HEAD -- 'petclinic-frontend/src'
+    $ git merge-base f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf HEAD
+    $ git diff --name-only f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf HEAD -- 'petclinic-frontend/src'
     $ git rev-parse HEAD
     $ git rev-parse --short HEAD
-    $ git rev-parse 390f0e0efee30a2aeeaa07895560d97eafaab479
-    $ git rev-parse --short 390f0e0efee30a2aeeaa07895560d97eafaab479
-    $ ./start-docker.sh url petclinic-a5a1f3fa
-    reusing the stack already up at http://localhost:63515
+    $ git rev-parse f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf
+    $ git rev-parse --short f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf
+    $ ./start-docker.sh url petclinic-4321c5bc
+    reusing the stack already up at http://localhost:54520
     seed: reset (/__reset)
-    $ ./start-docker.sh url petclinic-390f0e0e
-    reusing the stack already up at http://localhost:63395
+    $ ./start-docker.sh url petclinic-f7ebe11c
+    reusing the stack already up at http://localhost:54512
     seed: reset (/__reset)
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/ds-audit.py --base-new http://localhost:63515 --base-old http://localhost:63395 --label-new "Devoxx26" --label-old main --screen "Welcome=welcome" --screen "Owners=owners" --screen "Add an owner=owners/add" --screen "Owner details=owners/8" --screen "Edit an owner=owners/8/edit" --screen "Add a pet=owners/8/pets/add" --screen "Pets=pets" --screen "Edit a pet=pets/11/edit" --screen "Book a visit=pets/11/visits/add" --screen "Visits=visits" --screen "Edit a visit=visits/1/edit" --screen "Pet types=pettypes" --screen "Add a pet type=pettypes/add" --screen "Edit a pet type=pettypes/1/edit" --screen "Specialties=specialties" --screen "Edit a specialty=specialties/1/edit" --screen "Vets=vets" --screen "Add a vet=vets/add" --screen "Edit a vet=vets/1/edit" --source petclinic-frontend/src  --assets .human-review/assets --asset-prefix assets --json .human-review/assets/ds-audit.json -o .human-review/assets/ds-audit.html
-[ds-audit] Welcome: capturing http://localhost:63515/welcome
-[ds-audit] Welcome: capturing http://localhost:63395/welcome
-[ds-audit] Owners: capturing http://localhost:63515/owners
-[ds-audit] Owners: capturing http://localhost:63395/owners
-[ds-audit] Add an owner: capturing http://localhost:63515/owners/add
-[ds-audit] Add an owner: capturing http://localhost:63395/owners/add
-[ds-audit] Owner details: capturing http://localhost:63515/owners/8
-[ds-audit] Owner details: capturing http://localhost:63395/owners/8
-[ds-audit] Edit an owner: capturing http://localhost:63515/owners/8/edit
-[ds-audit] Edit an owner: capturing http://localhost:63395/owners/8/edit
-[ds-audit] Add a pet: capturing http://localhost:63515/owners/8/pets/add
-[ds-audit] Add a pet: capturing http://localhost:63395/owners/8/pets/add
-[ds-audit] Pets: capturing http://localhost:63515/pets
-[ds-audit] Pets: capturing http://localhost:63395/pets
-[ds-audit] Edit a pet: capturing http://localhost:63515/pets/11/edit
-[ds-audit] Edit a pet: capturing http://localhost:63395/pets/11/edit
-[ds-audit] Book a visit: capturing http://localhost:63515/pets/11/visits/add
-[ds-audit] Book a visit: capturing http://localhost:63395/pets/11/visits/add
-[ds-audit] Visits: capturing http://localhost:63515/visits
-[ds-audit] Visits: capturing http://localhost:63395/visits
-[ds-audit] Edit a visit: capturing http://localhost:63515/visits/1/edit
-[ds-audit] Edit a visit: capturing http://localhost:63395/visits/1/edit
-[ds-audit] Pet types: capturing http://localhost:63515/pettypes
-[ds-audit] Pet types: capturing http://localhost:63395/pettypes
-[ds-audit] Add a pet type: capturing http://localhost:63515/pettypes/add
-[ds-audit] Add a pet type: capturing http://localhost:63395/pettypes/add
-[ds-audit] Edit a pet type: capturing http://localhost:63515/pettypes/1/edit
-[ds-audit] Edit a pet type: capturing http://localhost:63395/pettypes/1/edit
-[ds-audit] Specialties: capturing http://localhost:63515/specialties
-[ds-audit] Specialties: capturing http://localhost:63395/specialties
-[ds-audit] Edit a specialty: capturing http://localhost:63515/specialties/1/edit
-[ds-audit] Edit a specialty: capturing http://localhost:63395/specialties/1/edit
-[ds-audit] Vets: capturing http://localhost:63515/vets
-[ds-audit] Vets: capturing http://localhost:63395/vets
-[ds-audit] Add a vet: capturing http://localhost:63515/vets/add
-[ds-audit] Add a vet: capturing http://localhost:63395/vets/add
-[ds-audit] Edit a vet: capturing http://localhost:63515/vets/1/edit
-[ds-audit] Edit a vet: capturing http://localhost:63395/vets/1/edit
-[ds-audit] .human-review/assets/ds-audit.html · 19 screen(s), 1 gap(s), 3 component(s), 1 regression(s) → .human-review/assets/ds-audit.json
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/ds-audit.py --base-new http://localhost:54520 --base-old http://localhost:54512 --label-new "visits-paginated" --label-old main --screen "Welcome=welcome" --screen "Owners=owners" --screen "Add an owner=owners/add" --screen "Owner details=owners/8" --screen "Edit an owner=owners/8/edit" --screen "Add a pet=owners/8/pets/add" --screen "Pets=pets" --screen "Edit a pet=pets/11/edit" --screen "Book a visit=pets/11/visits/add" --screen "Visits=visits" --screen "Edit a visit=visits/1/edit" --screen "Pet types=pettypes" --screen "Add a pet type=pettypes/add" --screen "Edit a pet type=pettypes/1/edit" --screen "Specialties=specialties" --screen "Edit a specialty=specialties/1/edit" --screen "Vets=vets" --screen "Add a vet=vets/add" --screen "Edit a vet=vets/1/edit" --source petclinic-frontend/src  --assets .human-review/assets --asset-prefix assets --json .human-review/assets/ds-audit.json -o .human-review/assets/ds-audit.html
+[ds-audit] Welcome: capturing http://localhost:54520/welcome
+[ds-audit] Welcome: capturing http://localhost:54512/welcome
+[ds-audit] Owners: capturing http://localhost:54512/owners
+[ds-audit] Owners: capturing http://localhost:54520/owners
+[ds-audit] Add an owner: capturing http://localhost:54520/owners/add
+[ds-audit] Add an owner: capturing http://localhost:54512/owners/add
+[ds-audit] Owner details: capturing http://localhost:54520/owners/8
+[ds-audit] Owner details: capturing http://localhost:54512/owners/8
+[ds-audit] Edit an owner: capturing http://localhost:54520/owners/8/edit
+[ds-audit] Edit an owner: capturing http://localhost:54512/owners/8/edit
+[ds-audit] Add a pet: capturing http://localhost:54520/owners/8/pets/add
+[ds-audit] Add a pet: capturing http://localhost:54512/owners/8/pets/add
+[ds-audit] Pets: capturing http://localhost:54520/pets
+[ds-audit] Pets: capturing http://localhost:54512/pets
+[ds-audit] Edit a pet: capturing http://localhost:54520/pets/11/edit
+[ds-audit] Edit a pet: capturing http://localhost:54512/pets/11/edit
+[ds-audit] Book a visit: capturing http://localhost:54520/pets/11/visits/add
+[ds-audit] Book a visit: capturing http://localhost:54512/pets/11/visits/add
+[ds-audit] Visits: capturing http://localhost:54520/visits
+[ds-audit] Visits: capturing http://localhost:54512/visits
+[ds-audit] Edit a visit: capturing http://localhost:54520/visits/1/edit
+[ds-audit] Edit a visit: capturing http://localhost:54512/visits/1/edit
+[ds-audit] Pet types: capturing http://localhost:54520/pettypes
+[ds-audit] Pet types: capturing http://localhost:54512/pettypes
+[ds-audit] Add a pet type: capturing http://localhost:54520/pettypes/add
+[ds-audit] Add a pet type: capturing http://localhost:54512/pettypes/add
+[ds-audit] Edit a pet type: capturing http://localhost:54512/pettypes/1/edit
+[ds-audit] Edit a pet type: capturing http://localhost:54520/pettypes/1/edit
+[ds-audit] Specialties: capturing http://localhost:54520/specialties
+[ds-audit] Specialties: capturing http://localhost:54512/specialties
+[ds-audit] Edit a specialty: capturing http://localhost:54520/specialties/1/edit
+[ds-audit] Edit a specialty: capturing http://localhost:54512/specialties/1/edit
+[ds-audit] Vets: capturing http://localhost:54520/vets
+[ds-audit] Vets: capturing http://localhost:54512/vets
+[ds-audit] Add a vet: capturing http://localhost:54520/vets/add
+[ds-audit] Add a vet: capturing http://localhost:54512/vets/add
+[ds-audit] Edit a vet: capturing http://localhost:54520/vets/1/edit
+[ds-audit] Edit a vet: capturing http://localhost:54512/vets/1/edit
+[ds-audit] .human-review/assets/ds-audit.html · 19 screen(s), 2 gap(s), 3 component(s), 2 regression(s) → .human-review/assets/ds-audit.json
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/ds-audit.py --css > .human-review/assets/ds-audit.css

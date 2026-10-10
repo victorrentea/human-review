@@ -1,7 +1,7 @@
 # human-review
 
 - **[Live demo 1: Link Visit with Vet](https://victorrentea.github.io/human-review/demo/review.html)** — PR #49: a visit now records the vet who attended it
-- **[Live demo 2: Owners grid, paged and sorted](https://victorrentea.github.io/human-review/demo2/review.html)** — the owners list, paged and sortable by Name or City
+- **[Live demo 2: Visits grid, paged and sorted](https://victorrentea.github.io/human-review/demo2/review.html)** — PR #53: the visits list, paged in 5/10/20 and sortable by every column, implemented unguided by Opus
 
 Both are real pull requests, reviewed with this skill. Nothing to install — every tab is clickable.
 

@@ -1,7 +1,7 @@
 {
  "schema": "report-cost/1",
- "started": "2026-10-07T08:35:03+00:00",
- "recordedAt": "2026-10-07T08:56:00+00:00",
+ "started": "2026-10-10T20:37:30+00:00",
+ "recordedAt": "2026-10-10T20:59:46+00:00",
  "harness": "claude-code",
  "guide": {
   "key": "guide",
@@ -10,8 +10,8 @@
   "reason": null,
   "source": "recorded",
   "window": [
-   "2026-10-07T08:35:03+00:00",
-   "2026-10-07T08:56:00+00:00"
+   "2026-10-10T20:37:30+00:00",
+   "2026-10-10T20:59:46+00:00"
   ],
   "harnesses": [
    "claude-code"
@@ -19,21 +19,21 @@
   "entries": [
    {
     "harness": "claude-code",
-    "session": "8782fda6-f385-4d47-8079-96d9f3c08509",
+    "session": "498ee103-9160-4f7a-be05-c641ebd16920",
     "what": "the /human-review run",
     "window": [
-     "2026-10-07T08:12:33+00:00",
-     "2026-10-07T08:55:58+00:00"
+     "2026-10-10T20:37:12+00:00",
+     "2026-10-10T20:59:44+00:00"
     ],
-    "tokens": 20964698,
+    "tokens": 8661663,
     "models": {
-     "Opus 5.5": 20668264,
-     "Sonnet 5.5": 296434
+     "Opus 5.5": 8371928,
+     "Sonnet 5.5": 289735
     },
-    "usd": 5.1722,
+    "usd": 2.5835,
     "aic": null,
-    "calls": 39,
-    "modelSeconds": 341.1,
+    "calls": 36,
+    "modelSeconds": 154.8,
     "subagentModels": [
      "Sonnet 5.5"
     ],
@@ -44,51 +44,44 @@
     "session": "claude -p (.model-runs.json)",
     "what": "requirements\u2194tests mapping (rerun-model.py)",
     "window": [
-     "2026-10-07T08:54:14+00:00",
-     "2026-10-07T08:55:45+00:00"
+     "2026-10-10T20:59:07+00:00",
+     "2026-10-10T20:59:26+00:00"
     ],
-    "tokens": 76066,
+    "tokens": 29084,
     "models": {
-     "Sonnet 5.5": 76066
+     "Sonnet 5.5": 29084
     },
-    "usd": 0.3888,
+    "usd": 0.125,
     "aic": null,
     "calls": 1,
-    "modelSeconds": 90.3,
+    "modelSeconds": 18.3,
     "program": "rerun-model.py"
    }
   ],
-  "tokens": 21040764,
-  "usd": 5.561,
+  "tokens": 8690747,
+  "usd": 2.7085,
   "aic": null,
-  "modelSeconds": 431.4
+  "modelSeconds": 173.1
  },
  "wallclock": {
-  "started": "2026-10-07T08:35:03+00:00",
-  "ended": "2026-10-07T08:56:00+00:00",
-  "seconds": 1257,
-  "modelSeconds": 431.4,
+  "started": "2026-10-10T20:37:30+00:00",
+  "ended": "2026-10-10T20:59:46+00:00",
+  "seconds": 1336,
+  "modelSeconds": 173.1,
   "steps": [
    {
-    "label": "sequence diagrams from traces",
+    "label": "review-points.md and the two commits",
     "tabs": [
-     "sequence"
+     "review"
     ],
-    "seconds": 555
+    "seconds": 4
    },
    {
     "label": "test change manifest",
     "tabs": [
      "requirements"
     ],
-    "seconds": 1
-   },
-   {
-    "label": "review-points.md and the two commits",
-    "tabs": [
-     "review"
-    ],
-    "seconds": 1
+    "seconds": 4
    },
    {
     "label": "diagram deltas",
@@ -96,28 +89,35 @@
      "data",
      "packages"
     ],
-    "seconds": 24
+    "seconds": 41
+   },
+   {
+    "label": "C4 views drawn by Structurizr",
+    "tabs": [
+     "packages"
+    ],
+    "seconds": 41
    },
    {
     "label": "what landed after the review commit",
     "tabs": [
      "review"
     ],
-    "seconds": 0
+    "seconds": 1
    },
    {
     "label": "entry-point complexity",
     "tabs": [
      "complexity"
     ],
-    "seconds": 3
+    "seconds": 23
    },
    {
     "label": "REST contract diff",
     "tabs": [
      "api"
     ],
-    "seconds": 3
+    "seconds": 5
    },
    {
     "label": "pb33f report",
@@ -131,106 +131,83 @@
     "tabs": [
      "logging"
     ],
-    "seconds": 1
+    "seconds": 3
    },
    {
     "label": "codeowners check",
     "tabs": [
      "owners"
     ],
-    "seconds": 0
-   },
-   {
-    "label": "container view projected from the sequences",
-    "tabs": [
-     "packages"
-    ],
-    "seconds": 10
-   },
-   {
-    "label": "Playwright trace recordings",
-    "tabs": [
-     "requirements"
-    ],
-    "seconds": 96
-   },
-   {
-    "label": "design-system audit",
-    "tabs": [
-     "dsaudit"
-    ],
-    "seconds": 51
-   },
-   {
-    "label": "per-test coverage of the change",
-    "tabs": [
-     "requirements"
-    ],
-    "seconds": 84
-   },
-   {
-    "label": "Code City capture",
-    "tabs": [
-     "city"
-    ],
-    "seconds": 19
-   },
-   {
-    "label": "feature recording",
-    "tabs": [
-     "behaviour"
-    ],
-    "seconds": 121
+    "seconds": 1
    },
    {
     "label": "assemble content.json and build the page",
     "tabs": [
      "guide"
     ],
-    "seconds": 134
+    "seconds": 1222
+   },
+   {
+    "label": "container view projected from the sequences",
+    "tabs": [
+     "packages"
+    ],
+    "seconds": 41
+   },
+   {
+    "label": "sequence diagrams from traces",
+    "tabs": [
+     "sequence"
+    ],
+    "seconds": 548
+   },
+   {
+    "label": "Playwright trace recordings",
+    "tabs": [
+     "requirements"
+    ],
+    "seconds": 235
+   },
+   {
+    "label": "feature recording",
+    "tabs": [
+     "behaviour"
+    ],
+    "seconds": 415
+   },
+   {
+    "label": "per-test coverage of the change",
+    "tabs": [
+     "requirements"
+    ],
+    "seconds": 208
+   },
+   {
+    "label": "design-system audit",
+    "tabs": [
+     "dsaudit"
+    ],
+    "seconds": 5
+   },
+   {
+    "label": "Code City capture",
+    "tabs": [
+     "city"
+    ],
+    "seconds": 45
    }
   ],
-  "stepSeconds": 1104
+  "stepSeconds": 2843
  },
  "refreshes": [
   {
-   "at": "2026-10-07T08:57:07+00:00",
-   "seconds": 66.0,
+   "at": "2026-10-10T21:02:10+00:00",
+   "seconds": 115.5,
    "steps": "none"
   },
   {
-   "at": "2026-10-07T10:54:37+00:00",
-   "seconds": 71.6,
-   "steps": "api"
-  },
-  {
-   "at": "2026-10-07T21:10:50+00:00",
-   "seconds": 452.4,
-   "steps": "basestack,reviewpoints,aftermath,diagrams,sequence,c2,c4,complexity,api,specchanges,logging,dsaudit,owners,tests,traces,testcov,city"
-  },
-  {
-   "at": "2026-10-07T23:19:10+00:00",
-   "seconds": 99.5,
-   "steps": "static"
-  },
-  {
-   "at": "2026-10-08T00:01:21+00:00",
-   "seconds": 51.8,
-   "steps": "none"
-  },
-  {
-   "at": "2026-10-08T13:13:47+00:00",
-   "seconds": 64.1,
-   "steps": "none"
-  },
-  {
-   "at": "2026-10-08T13:50:36+00:00",
-   "seconds": 68.2,
-   "steps": "none"
-  },
-  {
-   "at": "2026-10-08T14:15:58+00:00",
-   "seconds": 70.8,
+   "at": "2026-10-10T21:09:45+00:00",
+   "seconds": 131.4,
    "steps": "none"
   }
  ]

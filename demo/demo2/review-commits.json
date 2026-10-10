@@ -1,55 +1,33 @@
 {
- "base": "390f0e0efee30a2aeeaa07895560d97eafaab479",
+ "base": "f7ebe11c6a5c2d7652f6a1be2b6c75b3f2f3d9bf",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 13,
- "implementation": "0b99e29cd8bb8f6895c4af13c1c20ac361546a60",
- "review": "d01c37761baf50f2afb1b397c2fe078af3a42138",
- "session": "8782fda6-f385-4d47-8079-96d9f3c08509",
+ "commits": 3,
+ "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
+ "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
+ "session": "498ee103-9160-4f7a-be05-c641ebd16920",
  "fallback": false,
- "after": [
-  "a02544760c34305833f81a6ee2908decd39cf907",
-  "a5a1f3fa4c77d459069b5b12a74e2f125fd6a430"
- ],
- "after_detail": [
-  {
-   "sha": "a02544760c34305833f81a6ee2908decd39cf907",
-   "when": "2026-10-07T21:11:53+02:00",
-   "subject": "Fixture colours for the human-review Demo and Tests tabs",
-   "auto_fix": false
-  },
-  {
-   "sha": "a5a1f3fa4c77d459069b5b12a74e2f125fd6a430",
-   "when": "2026-10-07T21:13:03+02:00",
-   "subject": "Merge origin/main into Devoxx26",
-   "auto_fix": false
-  }
- ],
- "review_when": "2026-10-07T10:24:23+02:00",
+ "after": [],
+ "after_detail": [],
+ "review_when": "2026-10-10T23:30:17+03:00",
  "takeover": null,
  "auto_fixes": [
   {
-   "sha": "3ef702286fc3a24aafd266761eee9de91d2ecf2a",
-   "when": "2026-10-07T10:07:12+02:00",
-   "subject": "[auto-fix] Owners paging review: 400s for bad pages, Add Owner on empty, sort headers without Material internals, glue and stylesheet cleanups"
+   "sha": "e1d375177ab3e6da286947d07d9d97d3d7cfb9a1",
+   "when": "2026-10-10T23:21:05+03:00",
+   "subject": "[auto-fix] Visits paging: sort hint fits the line gate; visit-count step reads the pet's own visits"
   },
   {
-   "sha": "1bdb4c61bc4a7b9b4abf75d83808c59fbe0f3ec4",
-   "when": "2026-10-07T10:14:43+02:00",
-   "subject": "[auto-fix] Pin the test database to ICU collation so accented names sort the same on CI"
-  },
-  {
-   "sha": "d01c37761baf50f2afb1b397c2fe078af3a42138",
-   "when": "2026-10-07T10:24:23+02:00",
-   "subject": "[auto-fix] Sort headers as keyboard buttons, handled navigation promise, readonly members (SonarCloud gate)"
+   "sha": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
+   "when": "2026-10-10T23:30:17+03:00",
+   "subject": "[auto-fix] Visits grid: a failed navigation shows as an error; injected services readonly"
   }
  ],
  "review_commits": [
-  "3ef702286fc3a24aafd266761eee9de91d2ecf2a",
-  "1bdb4c61bc4a7b9b4abf75d83808c59fbe0f3ec4",
-  "d01c37761baf50f2afb1b397c2fe078af3a42138"
+  "e1d375177ab3e6da286947d07d9d97d3d7cfb9a1",
+  "4321c5bc3d67629c04c6eb2555c96b4d917d5efd"
  ],
  "warnings": [
-  "3 commits carry a Review-Points trailer (3ef70228, 1bdb4c61, d01c3776); taking the last one as the review commit. The fixes are read from the implementation to it, so every one of them counts as a fix commit \u2014 one round recorded in 3 commits, or several rounds; record-review's finish now amends its own unpushed commit instead."
+  "2 commits carry a Review-Points trailer (e1d37517, 4321c5bc); taking the last one as the review commit. The fixes are read from the implementation to it, so every one of them counts as a fix commit \u2014 one round recorded in 2 commits, or several rounds; record-review's finish now amends its own unpushed commit instead."
  ]
 }
