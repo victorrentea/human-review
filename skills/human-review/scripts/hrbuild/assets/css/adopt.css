@@ -98,7 +98,10 @@ button.adopt:focus-visible { outline:2px solid var(--adopt); outline-offset:1px;
 .adoptline:has(> .hrx-i){gap:.45rem;align-items:center}
 button.hrx-i{--hrx-i:#1d4ed8;--hrx-i-on:#3b82f6;--hrx-ring:rgba(59,130,246,.35);
   display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none;
-  width:22px;height:22px;padding:0;margin:0;border:0;border-radius:50%;
+  width:22px;height:22px;padding:0;border:0;border-radius:50%;
+  /* Room for the folder tab explain.js draws around it when open, kept when closed too:
+     a margin that only came with [aria-pressed] moved the (i) and its pill left on click. */
+  margin:0 3.75px 0 4px;
   background:var(--hrx-i);color:#fff;cursor:pointer;
   font:700 15px/1 Georgia,"Times New Roman",serif;
   box-shadow:0 1px 2px rgba(0,0,0,.25);transition:background .15s,box-shadow .15s,transform .15s}
@@ -109,7 +112,7 @@ button.hrx-i::before{content:"i";display:block;transform:translateY(.5px)}
 button.hrx-i:hover{background:var(--hrx-i-on)}
 button.hrx-i:focus-visible{outline:2px solid var(--hrx-i-on);outline-offset:2px}
 button.hrx-i[aria-pressed="true"]{background:var(--hrx-i-on);position:relative;z-index:61;
-  margin:0 3.75px 0 4px;box-shadow:none}
+  box-shadow:none}
 /* The explainer itself: full row width, blue like its (i). Open, its (i) sits in a folder
    tab that grows out of the panel's top-right: panel and tab are ONE outline, a single SVG
    path drawn by explain.js (one radius for every corner, the inner one concave). */
