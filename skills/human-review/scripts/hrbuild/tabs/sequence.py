@@ -242,8 +242,10 @@ SEQ_SELECTION = "assets/sequence.selection.json"
 #: which was the whole reason they had none.
 SEQ_WHY = {
     "tagged": ("tagged", "Has the tracing tag"),
-    "added": ("new test", "Decided to trace it because it is new."),
-    "modified": ("edited test", "Decided to trace it because this branch edited it."),
+    # Said as the rule, not as a choice: `select_traced` picks these from the git diff, no
+    # model involved, and "decided to" read as if an agent had judged them worth a picture.
+    "added": ("new test", "Traced because this branch wrote it (picked from the diff)."),
+    "modified": ("edited test", "Traced because this branch edited it (picked from the diff)."),
 }
 
 

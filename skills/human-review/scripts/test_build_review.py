@@ -4736,7 +4736,7 @@ def test_a_picture_says_whether_it_is_there_by_tag_or_because_the_branch_wrote_t
     by_title = {("Sorting" in p): p for p in pairs}
     assert 'data-why="added"' in by_title[True] and '<span class="sw-add">+</span></span>' in by_title[True]
     assert 'data-why="tagged"' in by_title[False] and '<span class="sw-at">@</span></span>' in by_title[False]
-    assert "Decided to trace it because" in by_title[True]
+    assert "Traced because this branch wrote it" in by_title[True]
     # The branch's own scenario is linked from its row at its own line, not left "not
     # excerpted here" — and not quoted: the page no longer renders the test's code.
     sorting = out[out.index(f'id="{build.pair_anchor(picked)}"'):]
