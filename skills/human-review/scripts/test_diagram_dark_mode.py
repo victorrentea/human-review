@@ -66,6 +66,17 @@ def test_lowercase_hex_is_matched_too():
     assert out == '<rect fill="var(--dgm-box)"/>'
 
 
+def test_three_digit_hex_is_matched_too():
+    """PlantUML 1.2026.9 writes its defaults short: `#FFF` activation bars, `#000` text and
+    frame strokes, `#EEE` group headers. Left alone, they were white slabs on a dark page."""
+    svg = ('<rect fill="#FFF" style="stroke:#000;stroke-width:1;"/>'
+           '<path fill="#EEE"/><text fill="#000">tx</text><rect fill="#123"/>')
+    out = build._theme_diagram_colors(svg)
+    assert out == ('<rect fill="var(--dgm-bg)" style="stroke:var(--dgm-fg);stroke-width:1;"/>'
+                   '<path fill="var(--dgm-frame)"/><text fill="var(--dgm-fg)">tx</text>'
+                   '<rect fill="#123"/>')
+
+
 def test_stroke_and_background_are_rewritten_inside_style_but_not_other_props():
     svg = ('<rect style="stroke:#181818;stroke-width:0.5;" fill="#F1F1F1"/>'
            '<svg style="width:10px;height:10px;background:#FFFFFF;">')

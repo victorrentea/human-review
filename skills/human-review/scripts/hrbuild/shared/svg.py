@@ -126,8 +126,11 @@ DIAGRAM_COLOR_VARS = {
     "#ECEFF1": "--dgm-box-accent", "#546E7A": "--dgm-line-accent",
     "#78909C": "--dgm-arrow-accent",
 }
-DIAGRAM_FILL_ATTR = re.compile(r'\b(fill|flood-color)="(#[0-9A-Fa-f]{6})"')
-DIAGRAM_STYLE_COLOR = re.compile(r'\b(stroke|background):(#[0-9A-Fa-f]{6})\b')
+# PlantUML 1.2026.9 shortens its defaults to three digits (`#FFF`, `#000`, `#EEE`), so
+# both spellings are matched and the short one is widened before the lookup. Missing
+# them left every activation bar and `tx` group header a white slab on a dark page.
+DIAGRAM_FILL_ATTR = re.compile(r'\b(fill|flood-color)="(#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3}))"')
+DIAGRAM_STYLE_COLOR = re.compile(r'\b(stroke|background):(#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3}))\b')
 
 # PlantUML measures every label with the font *it* had at render time and writes the
 # result into the SVG as `textLength`, with `lengthAdjust="spacing"` telling the browser
@@ -153,12 +156,15 @@ def _theme_diagram_colors(svg: str) -> str:
     to an unthemed shape in the unlikely event PlantUML's defaults change, rather than
     guessing at what a var name for it should mean."""
 
+    def _hex6(color):
+        return "#" + "".join(c * 2 for c in color[1:]) if len(color) == 4 else color
+
     def fix_fill(m):
-        var = DIAGRAM_COLOR_VARS.get(m[2].upper())
+        var = DIAGRAM_COLOR_VARS.get(_hex6(m[2]).upper())
         return f'{m[1]}="var({var})"' if var else m[0]
 
     def fix_style(m):
-        var = DIAGRAM_COLOR_VARS.get(m[2].upper())
+        var = DIAGRAM_COLOR_VARS.get(_hex6(m[2]).upper())
         return f'{m[1]}:var({var})' if var else m[0]
 
     svg = DIAGRAM_FILL_ATTR.sub(fix_fill, svg)

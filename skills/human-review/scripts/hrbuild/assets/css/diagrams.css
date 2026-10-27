@@ -27,7 +27,10 @@
     its margins — the same colour, or the diagram would sit in a visibly mismatched
     frame in dark mode. */
 .diagram .svgbox { overflow-x:auto; margin-top:.7rem; background:var(--dgm-bg); border-radius:6px; padding:.6rem; }
-.diagram .svgbox svg { max-width:100%; height:auto; display:block; margin:0 auto; }
+/* !important: PlantUML writes `height:…px` into the SVG's own style attribute, which beats
+   a stylesheet's `auto`. Width then shrank to the box and height did not, and with
+   preserveAspectRatio="none" a 1371px diagram came out with every label squeezed to 80%. */
+.diagram .svgbox svg { max-width:100%; height:auto !important; display:block; margin:0 auto; }
 .diagram .svgbox[hidden] { display:none; }
 /* draw.io's own 1px box borders and edges look thin at page scale: thicken only the
    default-width strokes, never one the drawing set on purpose (the traced arrows are 2-3). */
