@@ -119,15 +119,25 @@
   function place(target) {
     var box = target.getBoundingClientRect();
     panel.hidden = false;
-    var width = panel.offsetWidth;
-    var left = Math.min(box.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - width - 12);
-    panel.style.left = Math.max(window.scrollX + 8, left) + 'px';
-    // Below the arrow when it fits, else above it; when neither does, below, and the page
-    // scrolls just enough to show it whole. Opened near the window's foot, it used to hang
-    // off the bottom, its scrollbar and the end of a long statement with it.
-    var height = panel.offsetHeight, view = document.documentElement.clientHeight;
-    var top = box.bottom + 8;
-    if (top + height > view && box.top - 8 - height >= 0) top = box.top - 8 - height;
+    var width = panel.offsetWidth, height = panel.offsetHeight;
+    var viewWidth = document.documentElement.clientWidth, view = document.documentElement.clientHeight;
+    var top;
+    if (box.right + 16 + width <= viewWidth - 12) {
+      // To the right of the label, level with its row: dropped under the label, it covered
+      // the arrows below it — the ones a reader clicks through next (Victor, 27 Oct 2026).
+      // Lifted when the window's foot would cut it, never above the window's top.
+      panel.style.left = (box.right + 16 + window.scrollX) + 'px';
+      top = Math.max(8, Math.min(box.top - 6, view - height - 8));
+    } else {
+      var left = Math.min(box.left + window.scrollX, window.scrollX + viewWidth - width - 12);
+      panel.style.left = Math.max(window.scrollX + 8, left) + 'px';
+      // No room beside it: below the arrow when it fits, else above it; when neither does,
+      // below, and the page scrolls just enough to show it whole. Opened near the window's
+      // foot, it used to hang off the bottom, its scrollbar and the end of a long statement
+      // with it.
+      top = box.bottom + 8;
+      if (top + height > view && box.top - 8 - height >= 0) top = box.top - 8 - height;
+    }
     panel.style.top = (top + window.scrollY) + 'px';
     var over = top + height + 8 - view;
     if (over > 0) window.scrollBy(0, Math.min(over, Math.max(0, box.top - 60)));
