@@ -363,6 +363,19 @@ def claim_changed_diagrams(spec: dict, rows: list[dict], root) -> list[str]:
         for b in tab.get("blocks") or []:
             kind = b.get("type", "section")
             if kind == "diagrams" and not b.get("manifest"):
+                # A block that names its diagram by the card's label (`only: ["Frontend
+                # packages"]`) and points at it through `context` is that diagram's block,
+                # not a stranger to it. PR #49: the row went unclaimed, was appended to the
+                # Java packages block as a delta, and this block drew the same file again
+                # as `unchanged` underneath.
+                ctx = b.get("context") or {}
+                row = by_source.get(ctx.get("src"))
+                if row and row["name"] not in (b.get("only") or []):
+                    only = b.get("only") or []
+                    b["only"] = ([row["name"] if n == ctx.get("name") else n for n in only]
+                                 if ctx.get("name") in only else [*only, row["name"]])
+                    if ctx.get("name"):
+                        b["labels"] = {**(b.get("labels") or {}), row["name"]: ctx["name"]}
                 claimed.update(r["name"] for r in select_rows(rows, b))
             elif kind == "testpairs":
                 claimed.update(r["name"] for r in select_rows(rows, b)

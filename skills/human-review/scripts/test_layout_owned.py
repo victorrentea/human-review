@@ -280,3 +280,24 @@ def test_complexity_stands_right_after_city_whatever_order_the_content_file_wrot
     got = [t["id"] for t in spec["tabs"]]
     assert got[got.index("city") + 1] == "complexity"
     assert got[0] == "review" and got[-1] == "cost"
+
+
+def test_a_diagrams_block_whose_context_changed_shows_its_delta_once(tmp_path):
+    """PR #49: `only: ["Frontend packages"]` names the card, not the manifest row, so the
+    changed frontend-packages.puml went unclaimed, joined the Java packages block as a
+    delta, and its own block drew it again underneath as `unchanged`."""
+    import importlib
+    layout = importlib.import_module("hrbuild.shared.layout")
+    (tmp_path / FRONTEND_ROW["source"]).parent.mkdir(parents=True)
+    (tmp_path / FRONTEND_ROW["source"]).write_text("@startuml\n[app]\n@enduml\n", encoding="utf-8")
+    java = {"type": "diagrams", "only": ["Java packages"],
+            "context": {"src": "docs/packages.puml", "name": "Java packages"}}
+    front = {"type": "diagrams", "only": ["Frontend packages"],
+             "context": {"src": FRONTEND_ROW["source"], "name": "Frontend packages"}}
+    spec = {"tabs": [{"id": "packages", "blocks": [java, front]}]}
+    notes = layout.claim_changed_diagrams(spec, [FRONTEND_ROW], tmp_path)
+    blocks = spec["tabs"][0]["blocks"]
+    assert blocks[0]["only"] == ["Java packages"], "not homed on a stranger's block"
+    assert blocks[1]["only"] == ["frontend-packages"]
+    assert blocks[1]["labels"] == {"frontend-packages": "Frontend packages"}
+    assert not notes
