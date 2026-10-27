@@ -488,6 +488,12 @@ def test_the_data_source_is_upserted_and_the_others_are_kept(tmp_path):
     assert [d.get("name") for d in sources] == ["mine", srv.DB_SOURCE_NAME]
     assert sources[1].findtext("jdbc-url") == "jdbc:postgresql://localhost:2/p?user=u&password=p"
     assert sources[1].findtext("driver-ref") == "postgresql"
+    # URL only, No auth: the login in the URL is used, and IntelliJ does not prompt.
+    assert sources[1].findtext("configured-by-url") == "true"
+    local = ET.parse(tmp_path / ".idea" / "dataSources.local.xml").getroot()
+    [mine] = local.findall("component[@name='dataSourceStorageLocal']/data-source")
+    assert mine.get("uuid") == sources[1].get("uuid")
+    assert mine.findtext("auth-provider") == "no-auth"
 
 
 def test_a_section_with_no_runtime_declares_nothing(tmp_path):

@@ -881,40 +881,58 @@ def last_db_facts() -> dict | None:
     return None
 
 
-def write_data_source(root: Path, url: str) -> Path:
-    """Upsert `DB_SOURCE_NAME` into `<root>/.idea/dataSources.xml`, leaving every other data
-    source as it was. Its uuid is derived from the checkout, so a second press updates it.
-    The login rides in the URL (pgjdbc lets URL parameters win over the driver's
-    properties), so nothing has to go to IntelliJ's password store."""
-    import uuid
+def _upsert_source(path: Path, component: dict, uid: str, name: str, tags) -> None:
+    """Replace the `<data-source uuid=uid>` of one IntelliJ storage file with `tags`
+    (`[(tag, text), …]`), keeping every other data source and attribute as they were."""
     import xml.etree.ElementTree as ET
-    idea = Path(root) / ".idea"
-    idea.mkdir(exist_ok=True)
-    path = idea / "dataSources.xml"
-    uid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"human-review:running-db:{Path(root).resolve()}"))
     try:
         tree = ET.parse(path)
         project = tree.getroot()
     except (OSError, ET.ParseError):
         project = ET.Element("project", version="4")
         tree = ET.ElementTree(project)
-    comp = project.find("component[@name='DataSourceManagerImpl']")
+    comp = project.find(f"component[@name='{component['name']}']")
     if comp is None:
-        comp = ET.SubElement(project, "component", name="DataSourceManagerImpl",
-                             format="xml", **{"multifile-model": "true"})
+        comp = ET.SubElement(project, "component", **component)
     for old in comp.findall(f"data-source[@uuid='{uid}']"):
         comp.remove(old)
-    ds = ET.SubElement(comp, "data-source", source="LOCAL", name=DB_SOURCE_NAME, uuid=uid)
-    driver = url.split(":", 2)[1]
-    ET.SubElement(ds, "driver-ref").text = driver
-    ET.SubElement(ds, "synchronize").text = "true"
-    if driver == "postgresql":
-        ET.SubElement(ds, "jdbc-driver").text = "org.postgresql.Driver"
-    ET.SubElement(ds, "jdbc-url").text = url
-    ET.SubElement(ds, "working-dir").text = "$ProjectFileDir$"
+    attrs = {"source": "LOCAL"} if "format" in component else {}
+    ds = ET.SubElement(comp, "data-source", **attrs, name=name, uuid=uid)
+    for tag, text in tags:
+        ET.SubElement(ds, tag).text = text
     ET.indent(tree, space="  ")
     tree.write(path, encoding="UTF-8", xml_declaration=True)
-    return path
+
+
+def write_data_source(root: Path, url: str) -> Path:
+    """Upsert `DB_SOURCE_NAME` into the checkout's IntelliJ project, as IntelliJ itself
+    stores one: the shared half in `.idea/dataSources.xml`, the per-machine half in
+    `.idea/dataSources.local.xml` (`LocalDataSourceSerialization` splits them that way).
+    Its uuid is derived from the checkout, so a second press updates it.
+
+    Connection type *URL only* (`configured-by-url`) and authentication *No auth*
+    (`auth-provider` `no-auth`): "the JDBC URL that you enter is used as is, including the
+    database credentials" (JetBrains, PostgreSQL data source docs). With the default
+    *User & Password* and its fields empty, IntelliJ prompts for a login on connect
+    instead of letting the driver take the one in the URL (Victor, 27 Oct 2026)."""
+    import uuid
+    idea = Path(root) / ".idea"
+    idea.mkdir(exist_ok=True)
+    uid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"human-review:running-db:{Path(root).resolve()}"))
+    driver = url.split(":", 2)[1]
+    # The local half first: when IntelliJ reloads, the shared file names a data source
+    # whose local settings are already there.
+    _upsert_source(idea / "dataSources.local.xml", {"name": "dataSourceStorageLocal"},
+                   uid, DB_SOURCE_NAME, [("auth-provider", "no-auth")])
+    shared = idea / "dataSources.xml"
+    _upsert_source(shared, {"name": "DataSourceManagerImpl", "format": "xml",
+                            "multifile-model": "true"}, uid, DB_SOURCE_NAME,
+                   [("driver-ref", driver), ("synchronize", "true"),
+                    ("configured-by-url", "true"),
+                    *([("jdbc-driver", "org.postgresql.Driver")] if driver == "postgresql"
+                      else []),
+                    ("jdbc-url", url), ("working-dir", "$ProjectFileDir$")])
+    return shared
 
 
 def open_db_in_idea(root: Path, url: str) -> dict | None:
