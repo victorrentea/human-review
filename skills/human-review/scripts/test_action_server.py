@@ -64,6 +64,9 @@ MANIFEST = {
         "cue-drive": {"command": "printf 'cue %s at %s\\n' {n} {base}",
                       "params": {"n": "int", "base": "url"}, "scrape": "", "reload": False},
         "drawio:conceptual": {"command": "false", "params": {}, "reload": True},
+        "demo-env-db": {"command": "printf 'db is up\\nJDBC_URL=jdbc:postgresql://localhost:50207/"
+                                   "petclinic\\nDB_HOST_PORT=50207\\nDB_PASSWORD=\\n'",
+                        "params": {}, "scrape": "kv", "reload": False},
     },
 }
 
@@ -87,7 +90,7 @@ def _fresh(tmp_path, doc=MANIFEST):
 
 def test_the_declared_actions_are_read_back(tmp_path):
     got = srv.actions(_fresh(tmp_path))
-    assert set(got) == {"demo-env", "cue-drive", "drawio:conceptual"}
+    assert set(got) == {"demo-env", "cue-drive", "drawio:conceptual", "demo-env-db"}
     assert got["cue-drive"]["params"] == {"n": "int", "base": "url"}
 
 
@@ -265,7 +268,7 @@ def test_the_probe_identifies_itself_and_lists_its_verbs(server):
     # The marker is the whole point: GitHub Pages answers this path with an HTML 404 that
     # does not parse, which is how a published page knows it is not being served by us.
     assert body[srv.MARKER_KEY] == 1
-    assert set(body["actions"]) == {"demo-env", "cue-drive", "drawio:conceptual"}
+    assert set(body["actions"]) == {"demo-env", "cue-drive", "drawio:conceptual", "demo-env-db"}
     assert body["actions"]["cue-drive"]["params"] == {"n": "int", "base": "url"}
 
 
@@ -335,6 +338,17 @@ def test_the_url_the_command_printed_comes_back_as_the_base(server):
     assert snap["state"] == "done" and snap["exit"] == 0
     assert snap["result"]["base"] == "http://localhost:49521"
     assert "listening" in snap["output"]
+
+
+def test_a_kv_command_reports_its_key_value_lines_as_the_result(server):
+    """The Running Database row: the host's `db` command prints KEY=value lines, and they
+    come back as the run's result, the JDBC URL among them. Prose lines are not facts."""
+    status, payload = _call(server, "POST", srv.RUN, {"id": "demo-env-db"})
+    assert status == 200
+    snap = _finish(server, json.loads(payload)["run"])
+    assert snap["state"] == "done"
+    assert snap["result"] == {"JDBC_URL": "jdbc:postgresql://localhost:50207/petclinic",
+                              "DB_HOST_PORT": "50207", "DB_PASSWORD": ""}
 
 
 @pytest.mark.parametrize("line, expected", [
@@ -427,6 +441,22 @@ def test_the_url_command_is_declared_only_when_the_content_file_says_so(tmp_path
     rt = dict(RUNTIME, urlCommand="cd ~/repo && ./start-docker.sh url --ref abc")
     build.video_html({"video": "assets/f.webm", "runtime": rt}, tmp_path)
     assert build.ACTIONS["demo-env-url"]["command"].endswith("url --ref abc")
+
+
+def test_the_db_command_is_declared_only_when_the_content_file_says_so(tmp_path):
+    """No `dbCommand`, no Running Database row and nothing for the server to run."""
+    build.ACTIONS.clear()
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "f.cues.json").write_text("[]", encoding="utf-8")
+    page = build.video_html({"video": "assets/f.webm", "runtime": RUNTIME}, tmp_path)
+    assert "demo-env-db" not in build.ACTIONS and "appenv-db" not in page
+    build.ACTIONS.clear()
+    rt = dict(RUNTIME, dbCommand="cd ~/repo && ./start-docker.sh db petclinic-abc")
+    page = build.video_html({"video": "assets/f.webm", "runtime": rt}, tmp_path)
+    assert build.ACTIONS["demo-env-db"]["scrape"] == "kv"
+    assert build.ACTIONS["demo-env-db"]["command"].endswith("db petclinic-abc")
+    # Right under the Running app row, and hidden until the host has answered.
+    assert page.index('class="appenv-run appenv-db" hidden>') > page.index(">Running app<")
 
 
 def test_a_section_with_no_runtime_declares_nothing(tmp_path):

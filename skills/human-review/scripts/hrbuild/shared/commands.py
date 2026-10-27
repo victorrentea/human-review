@@ -849,6 +849,12 @@ def runtime_html(rt, tail: str = "", fixtures: list | None = None) -> str:
     if rt.get("drive"):
         declare_action("cue-drive", rt["drive"], params={"n": "int", "base": "url"},
                        label="Drive the app to one caption of the walkthrough")
+    # Read like `urlCommand`: run by APP_ENV_JS once the app answers, never a button. It
+    # prints `KEY=value` lines (JDBC_URL, DB_HOST_PORT, DB_CONTAINER_PORT, DB_USER,
+    # DB_PASSWORD) that the server folds into the run's result.
+    if rt.get("dbCommand"):
+        declare_action("demo-env-db", rt["dbCommand"], scrape="kv",
+                       label="Ask the host how to reach the running app's database")
 
     # One control per verb, wrapped in a span that carries the verb's name. The wrapper is
     # what APP_ENV_JS hides when the verb does not apply, and it has to be a *wrapper*:
@@ -877,9 +883,29 @@ def runtime_html(rt, tail: str = "", fixtures: list | None = None) -> str:
 
     # The fixtures get a row of their own under this one (`fixtures_row_html`).
     row = fixtures_row_html(fixtures, bool(rt.get("reset")))
+    db = running_db_html() if rt.get("dbCommand") else ""
 
     return (f'<div class="appenv" data-fallback="{html.escape(fallback)}"'
             f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}'
             f'{f' data-drive="{html.escape(rt["drive"])}"' if rt.get("drive") else ""}>'
             '<div class="appenv-run"><span class="appenv-title">Running app</span>'
-            + at + controls + tail + '</div>' + row + '</div>')
+            + at + controls + tail + '</div>' + db + row + '</div>')
+
+
+def running_db_html() -> str:
+    """The "Running Database" row under the Running app one: the JDBC URL a reader pastes
+    into DataGrip or DBeaver, with Copy, then the port mapping and the login.
+
+    Empty in the markup and `hidden`: the host picks the database's port when the stack
+    starts, so nothing here is knowable at build time. APP_ENV_JS fills it from the host's
+    `db` command once the app answers, and only on a served page, the one copy that can
+    ask the host. Off disk and on GitHub Pages it never appears, like the app's address."""
+    return ('<div class="appenv-run appenv-db" hidden>'
+            '<span class="appenv-title">Running Database</span>'
+            '<code class="appenv-jdbc" data-tip="Paste into DataGrip or DBeaver as the URL '
+            'of a new data source"></code>'
+            '<button type="button" class="appenv-jdbc-copy" data-tip="Copy the JDBC URL">'
+            'Copy</button>'
+            '<span class="appenv-dbport" data-tip="The port inside the Docker container, '
+            'and the host port Docker mapped it to"></span>'
+            '<span class="appenv-dblogin"></span></div>')

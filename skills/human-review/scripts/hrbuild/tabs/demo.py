@@ -270,6 +270,10 @@ def derived_runtime(out_dir: Path) -> dict:
         rt["stop"] = line(app["down"])
     if app.get("url"):
         rt["urlCommand"] = line(app["url"])
+    # How to reach the instance's database from the host, as KEY=value lines — the
+    # Running Database row's JDBC URL.
+    if app.get("db"):
+        rt["dbCommand"] = line(app["db"])
     if str(app.get("reset") or "").startswith("/"):
         rt["reset"] = app["reset"]
     return rt
@@ -332,7 +336,8 @@ def video_html(s, out_dir: Path) -> str:
     # what the config cannot know — `base`, `drive`, its own `reset`.
     rt = dict(s.get("runtime") or {})
     for key, value in derived_runtime(out_dir).items():
-        if value and (key in ("command", "stop", "urlCommand") or not rt.get(key)):
+        if value and (key in ("command", "stop", "urlCommand", "dbCommand")
+                      or not rt.get(key)):
             rt[key] = value
     links = s["appLinks"] if "appLinks" in s else derived_app_links(out_dir, cues)
     items, _ = _link_captions(cues, links, bool(rt.get("drive")))

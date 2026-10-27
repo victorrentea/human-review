@@ -174,6 +174,11 @@
   // the project's files. The names never move; only the buttons are armed here, once
   // something answers.
   var resets = bar.querySelector('.appenv-fixtures') || document.querySelector('.appenv-fixtures');
+  // The Running Database row: empty until the host's `db` command says where this
+  // instance's database listens (the port is host-picked at start), and only while the app
+  // answers on a served page — the one copy of the report that can ask the host.
+  var dbRow = bar.querySelector('.appenv-db');
+  var dbFor = '', dbFacts = null;
   var SEED_OFF = 'Start the app first';
   // Seed resets a database on this machine and \u25b8 drives a browser on it: online there
   // is neither, so both are `data-local` — greyed by server.js, pointing at Serve.
@@ -249,6 +254,7 @@
     [].forEach.call(document.querySelectorAll('.cue-drive'), function (el) {
       arm(el, live, live ? 'Drive the app to this point' : why);
     });
+    database(live);
     // The address is shown only while something answers at it. A URL on a page next to a
     // dead port is the one thing here that can waste a reader's afternoon.
     if (addr) {
@@ -257,6 +263,40 @@
       else { addr.removeAttribute('href'); addr.textContent = ''; }
     }
   }
+
+  // Shown with the address and gone with it, for the same reason. Asked once per instance:
+  // a re-probe of the same base shows what was already learned instead of asking again.
+  function database(live) {
+    if (!dbRow) return;
+    if (!live || !served || !window.HR.can('demo-env-db')) { dbRow.hidden = true; return; }
+    var b = base();
+    if (dbFor === b) { if (dbFacts) fillDb(dbFacts); return; }
+    dbFor = b; dbFacts = null;
+    window.HR.run('demo-env-db', {}).then(function (done) {
+      var r = (done && done.result) || {};
+      if (dbFor !== b || done.state !== 'done' || !r.JDBC_URL) return;
+      dbFacts = r;
+      if (state.dataset.state === 'live' && base() === b) fillDb(r);
+    }).catch(function () { if (dbFor === b) dbFor = ''; });
+  }
+  function fillDb(r) {
+    dbRow.querySelector('.appenv-jdbc').textContent = r.JDBC_URL;
+    dbRow.querySelector('.appenv-dbport').textContent = r.DB_HOST_PORT
+      ? 'container port ' + (r.DB_CONTAINER_PORT || '?') + ' \u2192 host ' + r.DB_HOST_PORT : '';
+    var login = dbRow.querySelector('.appenv-dblogin');
+    login.textContent = r.DB_USER ? 'user ' + r.DB_USER
+      + (r.DB_PASSWORD ? ' \u00b7 password ' + r.DB_PASSWORD : '') : '';
+    dbRow.hidden = false;
+  }
+  if (dbRow) dbRow.querySelector('.appenv-jdbc-copy').addEventListener('click', function () {
+    var btn = this, url = dbRow.querySelector('.appenv-jdbc').textContent;
+    if (!url) return;
+    window.HR.copy(url).then(function () {
+      btn.textContent = 'Copied \u2713';
+      btn.classList.add('copied');
+      setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1400);
+    });
+  });
 
   // Live has nothing to say that the address does not say better, so the pill empties and
   // disappears; every other state is a word in its place. `Offline` and not `offline at

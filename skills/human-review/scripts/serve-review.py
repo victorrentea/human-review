@@ -1420,6 +1420,10 @@ def resolve_command(entry: dict, params: dict):
     return ["/bin/sh", "-c", command], None
 
 
+# `KEY=value`, one per line: what a `scrape: kv` command reports (the host's `db` command,
+# for the Running Database row). Upper-case keys only, so a stray log line is not a fact.
+KV_IN_OUTPUT = re.compile(r"^([A-Z][A-Z0-9_]*)=(.*)$")
+
 # The last loopback URL a command printed. `start-docker.sh up` ends by printing the port
 # it got, and that port is the one thing the page could not know at build time — the whole
 # reason there is a box asking the reader to paste it. Scraping it is what turns two
@@ -1501,6 +1505,10 @@ class Run:
                             # `up` prints the URL once at the end, and prints it again to
                             # say it copied it to the clipboard.
                             self.result["base"] = found[-1].rstrip(".,)")
+                    elif self._scrape == "kv":
+                        kv = KV_IN_OUTPUT.match(line.strip())
+                        if kv:
+                            self.result[kv.group(1)] = kv.group(2)
         finally:
             watchdog.cancel()
             code = self._proc.wait()

@@ -134,7 +134,7 @@ from hrbuild.shared.commands import (
     rerun_face, RERUN_MARK_AI, RERUN_MARK_SCRIPT, RERUN_MARK_SLOW, _RERUN_RING,
     rerun_html, rerun_tests_chip, RUN_TESTS_FACE, tab_rerun_html, TAB_RERUN_TIP,
     place_tab_reruns, tab_title_row, TAB_TITLES, CARD_HEADED_TABS, _TABTITLE_OPEN, _CARD_TITLE,
-    reveal_html, runtime_html, fixtures_row_html, SEED_OFFLINE_TIP, STATIC_RUN_TIP,
+    reveal_html, runtime_html, running_db_html, fixtures_row_html, SEED_OFFLINE_TIP, STATIC_RUN_TIP,
     _app_anchor
 )
 from hrbuild.shared.snippets import (

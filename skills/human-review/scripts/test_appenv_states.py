@@ -365,3 +365,63 @@ def test_the_ring_is_invisible_for_its_first_300ms(row):
                                                           " and fades in late"
     page.wait_for_timeout(600)
     assert page.evaluate(SPINNER)["opacity"] == "1", "a wait this long has earned it"
+
+
+# --------------------------------------------------------------------------- #
+# the Running Database row
+# --------------------------------------------------------------------------- #
+
+DB_FACTS = {"JDBC_URL": "jdbc:postgresql://localhost:50207/petclinic",
+            "DB_HOST_PORT": "50207", "DB_CONTAINER_PORT": "5432",
+            "DB_USER": "petclinic", "DB_PASSWORD": "petclinic"}
+
+DB_PROBE = """() => {
+  const row = document.querySelector('.appenv-db');
+  const vis = el => !!el && !el.hidden && getComputedStyle(el).display !== 'none';
+  if (!vis(row)) return null;
+  return [...row.children].filter(vis).map(el => el.textContent);
+}"""
+
+
+def _db_page(served: bool, live: bool) -> str:
+    stub = """<script>
+window.ASKED = []; window.COPIED = [];
+window.HR = {onready: fn => setTimeout(fn, 0), can: () => %s,
+             run: id => (window.ASKED.push(id), Promise.resolve(
+               id === 'demo-env-db' ? {state: 'done', result: %s}
+                                    : {state: 'done', result: {}})),
+             copy: t => (window.COPIED.push(t), Promise.resolve()),
+             tail: () => ''};
+window.fetch = url => %s ? Promise.resolve({ok: true, json: () => Promise.resolve({})})
+                         : Promise.reject(new Error('down'));
+</script>""" % (json.dumps(served), json.dumps(DB_FACTS), json.dumps(live))
+    rt = dict(RUNTIME, dbCommand="./start-docker.sh db petclinic-abc123")
+    return ("<!doctype html><meta charset=utf-8><style>" + build.CSS + "</style>"
+            + stub + build.runtime_html(rt, fixtures=FIXTURES) + build.APP_ENV_JS)
+
+
+def _db_read(row, served, live):
+    row.page.set_content(_db_page(served, live))
+    row.page.wait_for_function("() => document.querySelector('.appenv-state')"
+                               ".dataset.state !== 'unknown'")
+    row.page.wait_for_timeout(120)
+    return row.page.evaluate(DB_PROBE)
+
+
+def test_served_and_live_the_database_row_shows_the_jdbc_url_port_and_login(row):
+    seen = _db_read(row, served=True, live=True)
+    assert seen == ["Running Database", DB_FACTS["JDBC_URL"], "Copy",
+                    "container port 5432 \u2192 host 50207",
+                    "user petclinic \u00b7 password petclinic"]
+    assert row.page.evaluate("window.ASKED").count("demo-env-db") == 1, "asked once"
+    row.page.click(".appenv-jdbc-copy")
+    assert row.page.evaluate("window.COPIED") == [DB_FACTS["JDBC_URL"]]
+    assert row.page.text_content(".appenv-jdbc-copy") == "Copied \u2713"
+
+
+def test_the_database_row_is_hidden_offline_and_off_disk(row):
+    """No port to name while nothing runs, and a page off disk or on GitHub Pages cannot
+    ask the host which one it got."""
+    assert _db_read(row, served=True, live=False) is None
+    assert _db_read(row, served=False, live=True) is None
+    assert "demo-env-db" not in row.page.evaluate("window.ASKED")
