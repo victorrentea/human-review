@@ -17,8 +17,9 @@
 .adopt-end { margin-top:.35rem; }
 /* A pill that rides inside a row the row cannot be wrapped around: the Review tab's counts
    line is sticky, and a wrapper would be the box it sticks in. Pinned to the row's right
-   end, vertically centred, with the row's text kept clear of it. */
-[data-adoptrow] { position:relative; padding-right:13rem; }
+   end, vertically centred, with the row's text kept clear of it: the pill and its (i) are
+   217px wide, the reserve 14.5rem (232px) leaves a gap before them. */
+[data-adoptrow] { position:relative; padding-right:14.5rem; }
 [data-adoptrow] > .adopt-row { position:absolute; right:0; top:50%; margin:0;
                                transform:translateY(-50%); align-items:center; }
 button.adopt { border:1px solid var(--adopt); background:var(--card); color:var(--adopt);

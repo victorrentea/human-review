@@ -192,7 +192,10 @@ button.diskcopy:hover { opacity:1; }
    below the masthead's 31: it slides under the block that owns the top of the page.
    Opaque, because a line of links over a code card is unreadable. */
 .panel .counts.pilelede { position:sticky; top:var(--strip-h, 2.6rem); z-index:20;
-            margin:0; padding:.45rem 0 .4rem; background:var(--bg);
+            /* Top and bottom only: the right padding is the prompt pill's reserve
+               (`[data-adoptrow]`, adopt.css), and a shorthand here zeroed it -- the rings
+               after "Published on GitHub" then ran under the pill (Victor, 27 Oct 2026). */
+            margin:0; padding-top:.45rem; padding-bottom:.4rem; background:var(--bg);
             /* Heading size, not link size: it is the sentence that opens the tab's own
                three chapters, sitting one scroll away from every `h2` it names, so it
                reads at the weight of one rather than at the muted `.sub` size every other
