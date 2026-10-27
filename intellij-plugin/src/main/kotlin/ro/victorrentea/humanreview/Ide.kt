@@ -88,21 +88,25 @@ object Ide {
      * Open `vf` at `line` (1-based; a range with `endLine`) in `project`, and raise that
      * project's window. Opening a file focuses the editor *within* its frame but does not bring
      * the frame (or the IDE) to the front, so a click from a browser in front "did nothing" as
-     * far as the reader could see; `raise()` is the native raise. Null when no text editor
-     * could show it. Off the EDT; waits for it.
+     * far as the reader could see; `raise()` is the native raise. A file no text editor shows
+     * (a `.drawio.png`) opens in whichever editor claims it, with no line to land on. Null when
+     * nothing opened it. Off the EDT; waits for it.
      */
     fun open(project: Project, vf: VirtualFile, line: Int, endLine: Any?, warn: String?, focus: Boolean): Opened? {
         val line0 = maxOf(1, line) - 1
         val ranged = onEdt {
+            val editors = FileEditorManager.getInstance(project)
             // Navigate, then take the text editor it selected: every synchronous FileEditorManager
             // open is deprecated in 2026.3, for a suspend replacement 2024.3 does not have.
-            if (!OpenFileDescriptor(project, vf, line0, 0).navigateInEditor(project, true)) return@onEdt null
-            val editor = (FileEditorManager.getInstance(project).getSelectedEditor(vf) as? TextEditor)?.editor
-                ?: return@onEdt null
+            if (!OpenFileDescriptor(project, vf, line0, 0).navigateInEditor(project, true)) {
+                OpenFileDescriptor(project, vf).navigate(true)
+                if (!editors.isFileOpen(vf)) return@onEdt null
+            }
+            val editor = (editors.getSelectedEditor(vf) as? TextEditor)?.editor
             // A caller that found the file edited since the commit it is quoting says so, on the
             // line the reader lands on rather than in a toast elsewhere.
-            if (!warn.isNullOrEmpty()) EditedMark.mark(editor, line0, warn) else EditedMark.clear()
-            val ranged = RangeFocus.focus(project, editor, line0 + 1, endLine)
+            if (editor != null && !warn.isNullOrEmpty()) EditedMark.mark(editor, line0, warn) else EditedMark.clear()
+            val ranged = editor != null && RangeFocus.focus(project, editor, line0 + 1, endLine)
             if (focus) runCatching { raise(project) }  // the file is open, which is the part that matters
             ranged
         } ?: return null
