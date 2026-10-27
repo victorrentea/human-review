@@ -301,3 +301,62 @@ def test_a_diagrams_block_whose_context_changed_shows_its_delta_once(tmp_path):
     assert blocks[1]["only"] == ["frontend-packages"]
     assert blocks[1]["labels"] == {"frontend-packages": "Frontend packages"}
     assert not notes
+
+
+# ── one changed file, one card: the holes an adversarial review found (27 Oct 2026) ──
+
+def _claim_tabs(tabs, rows, tmp_path):
+    import importlib
+    layout = importlib.import_module("hrbuild.shared.layout")
+    spec = {"tabs": json.loads(json.dumps(tabs))}
+    notes = layout.claim_changed_diagrams(spec, rows, tmp_path)
+    return {t["id"]: t["blocks"] for t in spec["tabs"]}, notes
+
+
+def test_a_context_src_spelled_with_dot_slash_is_the_same_file(tmp_path):
+    front = {"type": "diagrams", "only": ["Frontend packages"],
+             "context": {"src": "./" + FRONTEND_ROW["source"], "name": "Frontend packages"}}
+    java = {"type": "diagrams", "only": ["Java packages"]}
+    tabs, _ = _claim_tabs([{"id": "packages", "blocks": [java, front]}], [FRONTEND_ROW], tmp_path)
+    assert tabs["packages"][0]["only"] == ["Java packages"]
+    assert tabs["packages"][1]["only"] == ["frontend-packages"]
+
+
+def test_only_naming_both_the_row_and_its_context_keeps_one_card(tmp_path):
+    front = {"type": "diagrams", "only": ["frontend-packages", "Frontend packages"],
+             "context": {"src": FRONTEND_ROW["source"], "name": "Frontend packages"}}
+    tabs, _ = _claim_tabs([{"id": "packages", "blocks": [front]}], [FRONTEND_ROW], tmp_path)
+    assert tabs["packages"][0]["only"] == ["frontend-packages"]
+
+
+def test_a_puml_card_for_a_delta_another_tab_draws_is_dropped(tmp_path):
+    row = {"name": "DB", "kind": "structural", "status": "modified", "source": "docs/DB.puml"}
+    tabs, notes = _claim_tabs([
+        {"id": "data", "blocks": [{"type": "diagrams", "only": ["DB"]}]},
+        {"id": "packages", "blocks": [{"type": "puml", "src": "docs/DB.puml", "name": "DB"}]}],
+        [row], tmp_path)
+    assert tabs["data"][0]["only"] == ["DB"]
+    assert tabs["packages"] == [], "not drawn again as `unchanged`"
+    assert any("dropped" in n for n in notes)
+
+
+def test_two_blocks_naming_one_row_draw_it_once(tmp_path):
+    tabs, notes = _claim_tabs([
+        {"id": "data", "blocks": [{"type": "diagrams", "only": ["frontend-packages"]}]},
+        {"id": "packages", "blocks": [
+            {"type": "diagrams", "only": ["Java packages", "frontend-packages"]},
+            {"type": "diagrams", "only": ["Frontend packages"],
+             "context": {"src": FRONTEND_ROW["source"], "name": "Frontend packages"}}]}],
+        [FRONTEND_ROW], tmp_path)
+    assert tabs["data"][0]["only"] == ["frontend-packages"]
+    assert tabs["packages"][0]["only"] == ["Java packages"]
+    assert tabs["packages"][1]["only"] == [] and "context" not in tabs["packages"][1]
+    assert len(notes) == 2
+
+
+def test_a_whole_family_block_is_not_narrowed_to_its_changed_context(tmp_path):
+    fam = {"type": "diagrams", "kind": "sequence",
+           "context": {"src": FRONTEND_ROW["source"], "name": "Frontend packages"}}
+    tabs, _ = _claim_tabs([{"id": "packages", "blocks": [fam]}], [FRONTEND_ROW], tmp_path)
+    assert "only" not in tabs["packages"][0] or tabs["packages"][0]["only"] == []
+    assert "context" not in tabs["packages"][0]

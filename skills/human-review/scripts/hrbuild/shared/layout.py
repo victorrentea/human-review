@@ -28,6 +28,7 @@ not computed does not reach the bar.
 from __future__ import annotations
 
 import copy
+import posixpath
 import re
 
 from .diagrams import select_rows
@@ -347,45 +348,90 @@ def diagram_home(row: dict, root) -> str:
             else "packages")
 
 
+def _norm_src(path) -> str:
+    """A repository path as one spelling: `./web/a.puml` and `web/a.puml` are one file."""
+    return posixpath.normpath(str(path)) if path else ""
+
+
 def claim_changed_diagrams(spec: dict, rows: list[dict], root) -> list[str]:
     """Give every changed diagram of the shared gallery a block on some tab, in place.
 
     A `puml` context card whose source the branch changed becomes the delta card for it,
     where it stood, keeping its name: drawn from source with an `unchanged` badge it would
-    say the opposite of the card the build would otherwise add elsewhere. Any row still
+    say the opposite of the card the build would otherwise add elsewhere; so does a
+    `diagrams` block whose `context` is that file. A file is drawn once: a second block
+    naming it, or a context card for a delta another tab draws, gives it up. Any row still
     unclaimed joins its home tab (`diagram_home`): the tab's own shared `diagrams` block
     when it has one, else a new one after the tab's last diagram. Returns one line per
     diagram homed, for stderr."""
     tabs = spec.get("tabs") or []
-    by_source = {r.get("source"): r for r in rows}
-    claimed: set[str] = set()
-    for tab in tabs:
-        for b in tab.get("blocks") or []:
-            kind = b.get("type", "section")
-            if kind == "diagrams" and not b.get("manifest"):
-                # A block that names its diagram by the card's label (`only: ["Frontend
-                # packages"]`) and points at it through `context` is that diagram's block,
-                # not a stranger to it. PR #49: the row went unclaimed, was appended to the
-                # Java packages block as a delta, and this block drew the same file again
-                # as `unchanged` underneath.
-                ctx = b.get("context") or {}
-                row = by_source.get(ctx.get("src"))
-                if row and row["name"] not in (b.get("only") or []):
-                    only = b.get("only") or []
-                    b["only"] = ([row["name"] if n == ctx.get("name") else n for n in only]
-                                 if ctx.get("name") in only else [*only, row["name"]])
-                    if ctx.get("name"):
-                        b["labels"] = {**(b.get("labels") or {}), row["name"]: ctx["name"]}
-                claimed.update(r["name"] for r in select_rows(rows, b))
-            elif kind == "testpairs":
-                claimed.update(r["name"] for r in select_rows(rows, b)
-                               if r.get("kind") == "sequence")
+    by_source = {_norm_src(r.get("source")): r for r in rows}
+    claimed: dict[str, str] = {}          # row name -> the tab that draws it
     notes: list[str] = []
+    blocks_of = [(tab, b) for tab in tabs for b in tab.get("blocks") or []]
+    # 1. What blocks name outright. A row two blocks name is drawn by the first only —
+    #    the same delta twice is the defect this function exists to prevent.
+    for tab, b in blocks_of:
+        kind = b.get("type", "section")
+        if kind == "diagrams" and not b.get("manifest"):
+            for r in select_rows(rows, b):
+                if r["name"] in claimed and r["name"] in (b.get("only") or []):
+                    b["only"] = [n for n in b["only"] if n != r["name"]]
+                    notes.append(f"{r['name']}: named again on tab {tab.get('id')!r} — "
+                                 f"drawn once, on tab {claimed[r['name']]!r}")
+                else:
+                    claimed.setdefault(r["name"], tab.get("id"))
+        elif kind == "testpairs":
+            for r in select_rows(rows, b):
+                if r.get("kind") == "sequence":
+                    claimed.setdefault(r["name"], tab.get("id"))
+    # 2. A `diagrams` block that names its diagram by the card's label (`only: ["Frontend
+    #    packages"]`) and points at it through `context` is that diagram's block, not a
+    #    stranger to it. PR #49: the row went unclaimed, was appended to the Java packages
+    #    block as a delta, and this block drew the same file again as `unchanged`.
+    for tab, b in blocks_of:
+        if b.get("type") != "diagrams" or b.get("manifest") or not b.get("context"):
+            continue
+        ctx = b["context"]
+        row = by_source.get(_norm_src(ctx.get("src")))
+        if not row:
+            continue
+        only, name = b.get("only") or [], ctx.get("name")
+        mine = row["name"] in {r["name"] for r in select_rows(rows, b)}
+        if mine or (row["name"] not in claimed and only):
+            # The context name stands for the row now: drop it where the row is already
+            # listed, rename it where it is not, append the row when neither is there.
+            if row["name"] in only:
+                b["only"] = [n for n in only if n != name]
+            elif name in only:
+                b["only"] = [row["name"] if n == name else n for n in only]
+            else:
+                b["only"] = [*only, row["name"]]
+            if name:
+                b["labels"] = {**(b.get("labels") or {}), row["name"]: name}
+            claimed.setdefault(row["name"], tab.get("id"))
+        else:
+            # Another block draws the delta, or this one (a whole `kind`, no `only`) cannot
+            # take it without narrowing to it: either way it must not draw the file again
+            # as context.
+            b["only"] = [n for n in only if n != name]
+            b.pop("context")
+            notes.append(f"{row['name']}: changed, so its context card on tab "
+                         f"{tab.get('id')!r} is dropped — the delta is drawn once, elsewhere")
+    # 3. A `puml` context card whose file changed: the delta, where it stood — or, when
+    #    another block already draws that delta, nothing, rather than an `unchanged` card
+    #    contradicting it.
     for tab in tabs:
         blocks = tab.get("blocks") or []
-        for i, b in enumerate(blocks):
-            row = by_source.get(b.get("src")) if b.get("type") == "puml" else None
-            if not row or row["name"] in claimed:
+        for i, b in reversed(list(enumerate(blocks))):
+            row = by_source.get(_norm_src(b.get("src"))) if b.get("type") == "puml" else None
+            if not row:
+                continue
+            if row["name"] in claimed:
+                del blocks[i]
+                notes.append(f"{row['name']}: changed, and drawn on tab "
+                             f"{claimed[row['name']]!r} — its context card on tab "
+                             f"{tab.get('id')!r} dropped")
                 continue
             new = {"type": "diagrams", "only": [row["name"]]}
             if b.get("name"):
@@ -394,7 +440,7 @@ def claim_changed_diagrams(spec: dict, rows: list[dict], root) -> list[str]:
                 if k in b:
                     new[k] = b[k]
             blocks[i] = new
-            claimed.add(row["name"])
+            claimed[row["name"]] = tab.get("id")
             notes.append(f"{row['name']}: changed, so its context card on tab "
                          f"{tab.get('id')!r} shows the delta")
     present = {t.get("id"): t for t in tabs}
@@ -416,7 +462,7 @@ def claim_changed_diagrams(spec: dict, rows: list[dict], root) -> list[str]:
                       if b.get("type") == "puml"
                       or (b.get("type") == "diagrams" and not b.get("manifest"))), default=0)
             blocks.insert(at, {"type": "diagrams", "only": [row["name"]]})
-        claimed.add(row["name"])
+        claimed[row["name"]] = tab.get("id")
         notes.append(f"{row['name']}: changed and named by no block — shown on tab "
                      f"{tab.get('id')!r}")
     return notes

@@ -219,7 +219,7 @@ from hrbuild.shared.validate import (
 from hrbuild.shared.layout import (
     _layout_overridden, _layout_section, _video_step_ran, LAYOUT_ALWAYS, LAYOUT_MODEL_KEYS, LAYOUT_PRODUCER,
     LAYOUT_SECTIONS, LAYOUT_TABS, SHORT_TAB_LABELS, own_layout, LAYOUT_TESTPAIRS, _squash, _own_testpairs,
-    _own_diagram_title, LAYOUT_WHEN_WRITTEN, LAYOUT_BLOCK_WHEN_WRITTEN, claim_changed_diagrams, _deployment_above_containers,
+    _own_diagram_title, LAYOUT_WHEN_WRITTEN, LAYOUT_BLOCK_WHEN_WRITTEN, claim_changed_diagrams, _norm_src, _deployment_above_containers,
     diagram_home, _DATA_DECL, _STRUCT_DECL, _DIAGRAM_FALLBACK
 )
 from hrbuild.tabs.review import (
@@ -1019,7 +1019,11 @@ def _main(argv=None) -> int:
                 if name in have:
                     continue
                 if context and context.get("name") == name:
-                    if rows:
+                    # Not when a row of this block is that very file under its manifest
+                    # name (`only: ["frontend-packages", "Frontend packages"]`): one file,
+                    # one card.
+                    if rows and _norm_src(context.get("src")) not in {
+                            _norm_src(r.get("source")) for r in rows}:
                         rows.append(unchanged_row(name, context["src"]))
                     continue
                 rel = find_diagram_source(name, root)
