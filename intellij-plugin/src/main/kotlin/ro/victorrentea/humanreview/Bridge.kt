@@ -255,6 +255,10 @@ class HumanReviewBridge : Disposable {
         // The Structure tab: a click on a package or a Maven module box shows that folder
         // selected in the owning project's Project view.
         "revealInExplorer",
+        // The Demo tab's Running DB link: serve-review.py has just written the running app's
+        // database into the checkout's `.idea/dataSources.xml` (the uri). Refreshed here so the
+        // Database plugin reloads it, then its tool window is shown in that project.
+        "humanReview.openDatabase",
     )
 
     private fun uriPath(raw: String?): String? = runCatching {
@@ -275,7 +279,7 @@ class HumanReviewBridge : Disposable {
             return send(ex, 400, mapOf("ok" to false, "error" to "not allowed: $id"))
         }
         val project: Project? = when (id) {
-            "revealInExplorer" -> owner
+            "revealInExplorer", "humanReview.openDatabase" -> owner
             else -> owner ?: recentTarget() ?: onEdt(ModalityState.any()) { lastFocusedProject() }
         }
         project ?: return send(ex, 409, mapOf("ok" to false, "error" to "no project is open"))
@@ -293,11 +297,30 @@ class HumanReviewBridge : Disposable {
                 }
                 remember(project)
             }
+            "humanReview.openDatabase" -> {
+                // A storage file changed on disk is reloaded once the VFS has seen the change
+                // and the frame is active; both happen here, the raise first.
+                val vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(path!!))
+                    ?: return send(ex, 404, mapOf("ok" to false, "error" to "no such file: $path"))
+                vf.refresh(false, false)
+                val shown = onEdt {
+                    raise(project)
+                    val tw = ToolWindowManager.getInstance(project).getToolWindow(DATABASE_TOOL_WINDOW)
+                    tw?.activate(null)
+                    tw != null
+                }
+                remember(project)
+                return send(ex, 200, mapOf("ok" to true, "folder" to firstFolder(project),
+                                           "toolWindow" to shown))
+            }
         }
         send(ex, 200, mapOf("ok" to true, "folder" to firstFolder(project)))
     }
 
     private fun recentTarget(): Project? = Ide.recentTarget()
+
+    /** The Database Tools plugin's tool window (IntelliJ Ultimate, DataGrip); absent in IC. */
+    private val DATABASE_TOOL_WINDOW = "Database"
 
     private fun isTrue(body: JsonObject, k: String) =
         body.get(k)?.let { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean && it.asBoolean } == true
