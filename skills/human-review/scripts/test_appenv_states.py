@@ -387,6 +387,7 @@ def _db_page(served: bool, live: bool) -> str:
     stub = """<script>
 window.ASKED = []; window.COPIED = [];
 window.HR = {onready: fn => setTimeout(fn, 0), can: () => %s,
+             caps: () => ({openDb: true, token: 't'}),
              run: id => (window.ASKED.push(id), Promise.resolve(
                id === 'demo-env-db' ? {state: 'done', result: %s}
                                     : {state: 'done', result: {}})),
@@ -408,15 +409,21 @@ def _db_read(row, served, live):
     return row.page.evaluate(DB_PROBE)
 
 
-def test_served_and_live_the_database_row_shows_the_jdbc_url_port_and_login(row):
+def test_served_and_live_the_db_shows_its_jdbc_url_with_the_login_after_stop(row):
     seen = _db_read(row, served=True, live=True)
-    assert seen == ["Running Database", DB_FACTS["JDBC_URL"], "Copy",
-                    "container port 5432 \u2192 host 50207",
-                    "user petclinic \u00b7 password petclinic"]
+    url = DB_FACTS["JDBC_URL"] + "?user=petclinic&password=petclinic"
+    assert seen == ["Running DB", url, "Copy"]
+    # On the Running app line, after Stop.
+    assert row.page.evaluate("""() => { const db = document.querySelector('.appenv-db');
+        return db.parentNode.classList.contains('appenv-run')
+          && !!(db.compareDocumentPosition(document.querySelector('.appenv-stop'))
+                & Node.DOCUMENT_POSITION_PRECEDING); }""")
     assert row.page.evaluate("window.ASKED").count("demo-env-db") == 1, "asked once"
     row.page.click(".appenv-jdbc-copy")
-    assert row.page.evaluate("window.COPIED") == [DB_FACTS["JDBC_URL"]]
+    assert row.page.evaluate("window.COPIED") == [url]
     assert row.page.text_content(".appenv-jdbc-copy") == "Copied \u2713"
+    # Served by a server that can, the URL itself is the way into IntelliJ.
+    assert row.page.get_attribute(".appenv-jdbc", "role") == "button"
 
 
 def test_the_database_row_is_hidden_offline_and_off_disk(row):

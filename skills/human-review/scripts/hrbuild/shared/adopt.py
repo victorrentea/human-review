@@ -216,7 +216,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'Check it does what the ticket asked.',
             'Click a transcript line to jump there.',
             '<b>Running app</b>: this build in Docker, to try yourself; Start says which step it is on.',
-            '<b>Running Database</b>: its JDBC URL and login, to open in DataGrip while it runs.',
+            '<b>Running DB</b>: its JDBC URL, login included; a click opens it in IntelliJ.',
         ],
     },
     'behaviour.seed': {

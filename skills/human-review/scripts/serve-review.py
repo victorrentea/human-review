@@ -86,6 +86,10 @@ REVEAL = "/__reveal__"
 # the Explorer of the VS Code window that has the checkout, and raise it. The page names
 # the folder relative to the checkout; anything not a folder inside ROOT is refused.
 REVEAL_FOLDER = "/__reveal_folder__"
+# The Demo tab's Running DB link: put the running app's database into the checkout's
+# IntelliJ project as a data source and show it in IntelliJ's Database view. What gets
+# written comes from the last `demo-env-db` run this server made, never from the page.
+OPEN_DB = "/__open_db__"
 # The red ■ beside `Served`: shut this server down now instead of waiting out
 # `--idle-minutes`. The page that pressed it stays on screen, and falls back to static.
 STOP = "/__stop__"
@@ -846,6 +850,95 @@ def reveal_folder(spelt: Path, target: Path, app="vscode") -> dict | None:
                 return {"how": "revealed", "window": name}
             if focus_window(entry):
                 return {"how": "focused", "window": name}
+    return None
+
+
+#: The data source the Running DB link writes, one per checkout: re-pressed, it is updated
+#: in place (a new Start means a new port), never duplicated.
+DB_SOURCE_NAME = "Running DB (human-review)"
+
+
+def db_jdbc_url(facts: dict) -> str | None:
+    """The JDBC URL the Running DB row shows: the host's `JDBC_URL`, with the login added as
+    `?user=…&password=…` — the form pgjdbc reads, and one string a reader can paste."""
+    url = (facts or {}).get("JDBC_URL") or ""
+    if not re.fullmatch(r"jdbc:[a-z0-9]+://(localhost|127\.0\.0\.1):[0-9]{1,5}/[\w.-]+"
+                        r"(\?[\w.%=&-]*)?", url):
+        return None
+    extra = [(k, facts[v]) for k, v in (("user", "DB_USER"), ("password", "DB_PASSWORD"))
+             if facts.get(v) and f"{k}=" not in url]
+    if extra:
+        url += ("&" if "?" in url else "?") + urllib.parse.urlencode(extra)
+    return url
+
+
+def last_db_facts() -> dict | None:
+    """What the newest finished `demo-env-db` run printed, or None."""
+    with RUNS_LOCK:
+        for run in reversed(RUNS.values()):
+            if run.action == "demo-env-db" and run.state == "done":
+                return dict(run.result)
+    return None
+
+
+def write_data_source(root: Path, url: str) -> Path:
+    """Upsert `DB_SOURCE_NAME` into `<root>/.idea/dataSources.xml`, leaving every other data
+    source as it was. Its uuid is derived from the checkout, so a second press updates it.
+    The login rides in the URL (pgjdbc lets URL parameters win over the driver's
+    properties), so nothing has to go to IntelliJ's password store."""
+    import uuid
+    import xml.etree.ElementTree as ET
+    idea = Path(root) / ".idea"
+    idea.mkdir(exist_ok=True)
+    path = idea / "dataSources.xml"
+    uid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"human-review:running-db:{Path(root).resolve()}"))
+    try:
+        tree = ET.parse(path)
+        project = tree.getroot()
+    except (OSError, ET.ParseError):
+        project = ET.Element("project", version="4")
+        tree = ET.ElementTree(project)
+    comp = project.find("component[@name='DataSourceManagerImpl']")
+    if comp is None:
+        comp = ET.SubElement(project, "component", name="DataSourceManagerImpl",
+                             format="xml", **{"multifile-model": "true"})
+    for old in comp.findall(f"data-source[@uuid='{uid}']"):
+        comp.remove(old)
+    ds = ET.SubElement(comp, "data-source", source="LOCAL", name=DB_SOURCE_NAME, uuid=uid)
+    driver = url.split(":", 2)[1]
+    ET.SubElement(ds, "driver-ref").text = driver
+    ET.SubElement(ds, "synchronize").text = "true"
+    if driver == "postgresql":
+        ET.SubElement(ds, "jdbc-driver").text = "org.postgresql.Driver"
+    ET.SubElement(ds, "jdbc-url").text = url
+    ET.SubElement(ds, "working-dir").text = "$ProjectFileDir$"
+    ET.indent(tree, space="  ")
+    tree.write(path, encoding="UTF-8", xml_declaration=True)
+    return path
+
+
+def open_db_in_idea(root: Path, url: str) -> dict | None:
+    """Write the data source and ask the IntelliJ window that has `root` to show it
+    (`humanReview.openDatabase`, the plugin's bridge). None when no IntelliJ window has the
+    checkout open; `{"how": "focused"}` from a plugin too old to know the command."""
+    for candidate in dict.fromkeys((Path(root), Path(root).resolve())):
+        for entry, info in windows_of("idea", candidate):
+            target = write_data_source(candidate, url)
+            query = urllib.parse.urlencode({"id": "humanReview.openDatabase",
+                                            "uri": target.as_uri()})
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{entry['port']}/command?{query}", method="POST",
+                    data=b"", headers={"x-relay-token": entry["token"]})
+                ok = json.loads(urllib.request.urlopen(req, timeout=10).read() or b"{}").get("ok")
+            except Exception:
+                ok = False
+            if ok:
+                return {"how": "opened", "window": info.get("folder") or candidate.name,
+                        "dataSources": str(target)}
+            if focus_window(entry):
+                return {"how": "focused", "window": info.get("folder") or candidate.name,
+                        "dataSources": str(target)}
     return None
 
 
@@ -2192,7 +2285,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         Handler.last_seen = time.time()
         route = self.path.split("?")[0]
-        if route not in (RUN, RERUN, RERUN_AI, EDITOR_OPEN, REVEAL, REVEAL_FOLDER, STOP):
+        if route not in (RUN, RERUN, RERUN_AI, EDITOR_OPEN, REVEAL, REVEAL_FOLDER, STOP,
+                         OPEN_DB):
             self.reply_text("no", 404)
             return
         problem = refuse_reason(self.headers)
@@ -2254,6 +2348,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
             reveal_in_finder(target)
             self.reply_json({"revealed": str(target)})
+            return
+        if route == OPEN_DB:
+            url = db_jdbc_url(last_db_facts() or {})
+            if ROOT is None or url is None:
+                self.reply_text("No running database known yet: start the app first", 409)
+                return
+            done = open_db_in_idea(Path(ROOT), url)
+            if done is None:
+                self.reply_text(f"No IntelliJ window has {ROOT} open: open it there (the "
+                                "IntelliJ logo in the header), then click again", 409)
+                return
+            self.reply_json({"url": url, **done})
             return
         if route == REVEAL_FOLDER:
             rel = _field(raw, "path")
@@ -2401,6 +2507,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              # And a Structure box into its folder in VS Code: absent from
                              # an older server, so its boxes keep their github.com links.
                              "revealFolder": ROOT is not None,
+                             # And the Running DB link into IntelliJ's Database view.
+                             "openDb": ROOT is not None,
                              # The baseline the page was served against. Empty when
                              # nothing is watching, which is how the page knows not to
                              # poll — a build that stopped watching takes the reload

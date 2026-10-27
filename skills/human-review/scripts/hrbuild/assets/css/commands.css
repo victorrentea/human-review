@@ -468,14 +468,15 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
 .appenv .appenv-url { font:1em/1.6 ui-monospace,Menlo,monospace; color:var(--link);
     text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .appenv .appenv-url:hover { text-decoration:underline; }
-/* The "Running Database" row, right under Running app and only while it answers: the JDBC
-    URL to paste into DataGrip, its Copy, then the port mapping and the login, muted. */
+/* "Running DB" on the Running app line, after Stop: its JDBC URL, login included, in the
+    same code pill as everywhere else, then Copy. Clickable (into IntelliJ) only served. */
+.appenv .appenv-db { display:inline-flex; flex-wrap:wrap; align-items:center; gap:.4rem .5rem;
+    margin-left:.8rem; min-width:0; }
 .appenv .appenv-db[hidden] { display:none; }
 .appenv .appenv-db .appenv-jdbc { user-select:all; overflow-wrap:anywhere; }
+.appenv .appenv-db .appenv-jdbc[role="button"] { cursor:pointer; }
+.appenv .appenv-db .appenv-jdbc[role="button"]:hover { text-decoration:underline; }
 .appenv .appenv-db .appenv-jdbc-copy { min-width:5.2em; text-align:center; }
-.appenv .appenv-db .appenv-dbport, .appenv .appenv-db .appenv-dblogin { color:var(--muted); }
-.appenv .appenv-db .appenv-dbport:empty, .appenv .appenv-db .appenv-dblogin:empty { display:none; }
-.appenv .appenv-db .appenv-dbport + .appenv-dblogin::before { content:"\00b7"; margin-right:.5rem; }
 /* The "DB Fixture:" row, under the Running app one and always on screen (Victor, 8 Oct
     2026): every fixture the build found, each a chip — its dot, its name, the 👁 on its
     data (dataset-view.js) and Seed. The names never move with the app; only Seed goes

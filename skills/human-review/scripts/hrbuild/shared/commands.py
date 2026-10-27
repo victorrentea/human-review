@@ -889,23 +889,21 @@ def runtime_html(rt, tail: str = "", fixtures: list | None = None) -> str:
             f'{f' data-reset="{html.escape(rt["reset"])}"' if rt.get("reset") else ""}'
             f'{f' data-drive="{html.escape(rt["drive"])}"' if rt.get("drive") else ""}>'
             '<div class="appenv-run"><span class="appenv-title">Running app</span>'
-            + at + controls + tail + '</div>' + db + row + '</div>')
+            + at + controls + db + tail + '</div>' + row + '</div>')
 
 
 def running_db_html() -> str:
-    """The "Running Database" row under the Running app one: the JDBC URL a reader pastes
-    into DataGrip or DBeaver, with Copy, then the port mapping and the login.
+    """"Running DB" and its JDBC URL, on the Running app line right after Stop: the URL,
+    login included (`?user=…&password=…`), is what a reader pastes into DataGrip or DBeaver,
+    hence Copy. Served, a click on the URL itself puts it into the IntelliJ window that has
+    this checkout, as a data source, and shows its Database view (`/__open_db__`).
 
     Empty in the markup and `hidden`: the host picks the database's port when the stack
     starts, so nothing here is knowable at build time. APP_ENV_JS fills it from the host's
     `db` command once the app answers, and only on a served page, the one copy that can
     ask the host. Off disk and on GitHub Pages it never appears, like the app's address."""
-    return ('<div class="appenv-run appenv-db" hidden>'
-            '<span class="appenv-title">Running Database</span>'
-            '<code class="appenv-jdbc" data-tip="Paste into DataGrip or DBeaver as the URL '
-            'of a new data source"></code>'
-            '<button type="button" class="appenv-jdbc-copy" data-tip="Copy the JDBC URL">'
-            'Copy</button>'
-            '<span class="appenv-dbport" data-tip="The port inside the Docker container, '
-            'and the host port Docker mapped it to"></span>'
-            '<span class="appenv-dblogin"></span></div>')
+    return ('<span class="appenv-db" hidden>'
+            '<span class="appenv-title">Running DB</span>'
+            '<code class="appenv-jdbc"></code>'
+            '<button type="button" class="appenv-jdbc-copy" data-tip="Copy the JDBC URL, '
+            'login included">Copy</button></span>')

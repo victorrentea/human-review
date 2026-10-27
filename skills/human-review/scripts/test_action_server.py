@@ -451,12 +451,43 @@ def test_the_db_command_is_declared_only_when_the_content_file_says_so(tmp_path)
     page = build.video_html({"video": "assets/f.webm", "runtime": RUNTIME}, tmp_path)
     assert "demo-env-db" not in build.ACTIONS and "appenv-db" not in page
     build.ACTIONS.clear()
-    rt = dict(RUNTIME, dbCommand="cd ~/repo && ./start-docker.sh db petclinic-abc")
+    rt = dict(RUNTIME, dbCommand="cd ~/repo && ./start-docker.sh db petclinic-abc",
+              stop="cd ~/repo && ./start-docker.sh down petclinic-abc")
     page = build.video_html({"video": "assets/f.webm", "runtime": rt}, tmp_path)
     assert build.ACTIONS["demo-env-db"]["scrape"] == "kv"
     assert build.ACTIONS["demo-env-db"]["command"].endswith("db petclinic-abc")
-    # Right under the Running app row, and hidden until the host has answered.
-    assert page.index('class="appenv-run appenv-db" hidden>') > page.index(">Running app<")
+    # On the Running app line, after Stop, and hidden until the host has answered.
+    run = page.index('<div class="appenv-run">')
+    db = page.index('<span class="appenv-db" hidden>')
+    assert page.index('class="appenv-act appenv-stop"') < db < page.index("</div>", db)
+    assert run < db
+
+
+def test_the_jdbc_url_carries_the_login_as_pgjdbc_parameters():
+    facts = {"JDBC_URL": "jdbc:postgresql://localhost:50207/petclinic",
+             "DB_USER": "petclinic", "DB_PASSWORD": "pet clinic&1"}
+    assert srv.db_jdbc_url(facts) == ("jdbc:postgresql://localhost:50207/petclinic"
+                                      "?user=petclinic&password=pet+clinic%261")
+    # Only a loopback database, and nothing that could smuggle XML or a shell into it.
+    assert srv.db_jdbc_url({"JDBC_URL": "jdbc:postgresql://db.example.com:5432/x"}) is None
+    assert srv.db_jdbc_url({"JDBC_URL": "jdbc:postgresql://localhost:1/x\"><a"}) is None
+
+
+def test_the_data_source_is_upserted_and_the_others_are_kept(tmp_path):
+    (tmp_path / ".idea").mkdir()
+    (tmp_path / ".idea" / "dataSources.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n<project version="4">\n'
+        '  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">\n'
+        '    <data-source source="LOCAL" name="mine" uuid="1"><jdbc-url>jdbc:x</jdbc-url>'
+        '</data-source>\n  </component>\n</project>\n', encoding="utf-8")
+    srv.write_data_source(tmp_path, "jdbc:postgresql://localhost:1/p?user=u&password=p")
+    srv.write_data_source(tmp_path, "jdbc:postgresql://localhost:2/p?user=u&password=p")
+    import xml.etree.ElementTree as ET
+    root = ET.parse(tmp_path / ".idea" / "dataSources.xml").getroot()
+    sources = root.findall("component/data-source")
+    assert [d.get("name") for d in sources] == ["mine", srv.DB_SOURCE_NAME]
+    assert sources[1].findtext("jdbc-url") == "jdbc:postgresql://localhost:2/p?user=u&password=p"
+    assert sources[1].findtext("driver-ref") == "postgresql"
 
 
 def test_a_section_with_no_runtime_declares_nothing(tmp_path):

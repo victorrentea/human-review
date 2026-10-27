@@ -279,24 +279,64 @@
       if (state.dataset.state === 'live' && base() === b) fillDb(r);
     }).catch(function () { if (dbFor === b) dbFor = ''; });
   }
+  // The URL as pgjdbc reads it, login included, so one paste is the whole connection.
+  // The same string the server writes into IntelliJ (`db_jdbc_url`, serve-review.py).
+  function jdbcOf(r) {
+    var url = r.JDBC_URL, extra = [];
+    if (r.DB_USER && url.indexOf('user=') < 0) extra.push('user=' + encodeURIComponent(r.DB_USER));
+    if (r.DB_PASSWORD && url.indexOf('password=') < 0)
+      extra.push('password=' + encodeURIComponent(r.DB_PASSWORD));
+    return extra.length ? url + (url.indexOf('?') < 0 ? '?' : '&') + extra.join('&') : url;
+  }
+  var idea = false;
   function fillDb(r) {
-    dbRow.querySelector('.appenv-jdbc').textContent = r.JDBC_URL;
-    dbRow.querySelector('.appenv-dbport').textContent = r.DB_HOST_PORT
-      ? 'container port ' + (r.DB_CONTAINER_PORT || '?') + ' \u2192 host ' + r.DB_HOST_PORT : '';
-    var login = dbRow.querySelector('.appenv-dblogin');
-    login.textContent = r.DB_USER ? 'user ' + r.DB_USER
-      + (r.DB_PASSWORD ? ' \u00b7 password ' + r.DB_PASSWORD : '') : '';
+    var code = dbRow.querySelector('.appenv-jdbc');
+    code.textContent = jdbcOf(r);
+    if (idea) {
+      code.setAttribute('role', 'button');
+      code.setAttribute('tabindex', '0');
+      code.dataset.tip = 'Open it in IntelliJ’s Database view';
+    } else code.removeAttribute('data-tip');
     dbRow.hidden = false;
   }
-  if (dbRow) dbRow.querySelector('.appenv-jdbc-copy').addEventListener('click', function () {
-    var btn = this, url = dbRow.querySelector('.appenv-jdbc').textContent;
-    if (!url) return;
-    window.HR.copy(url).then(function () {
-      btn.textContent = 'Copied \u2713';
-      btn.classList.add('copied');
-      setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1400);
+  if (dbRow) {
+    dbRow.querySelector('.appenv-jdbc-copy').addEventListener('click', function () {
+      var btn = this, url = dbRow.querySelector('.appenv-jdbc').textContent;
+      if (!url) return;
+      window.HR.copy(url).then(function () {
+        btn.textContent = 'Copied ✓';
+        btn.classList.add('copied');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1400);
+      });
     });
-  });
+    // Into IntelliJ: the server writes the data source into the checkout's project and asks
+    // the window that has it to show its Database view. Nothing travels from the page.
+    var openDb = function (ev) {
+      if (!idea) return;
+      ev.preventDefault();
+      var flash = window.HR.flash || function () {};
+      var caps = window.HR.caps ? window.HR.caps() : null;
+      fetch('/__open_db__', {
+        method: 'POST', cache: 'no-store',
+        headers: {'Content-Type': 'application/json',
+                  'X-Human-Review-Token': (caps && caps.token) || ''},
+        body: '{}'
+      }).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { flash(t || 'the review server refused'); });
+        return r.json().then(function (j) {
+          flash(j.how === 'opened'
+            ? 'In IntelliJ (' + j.window + '): Database view, data source “Running DB”'
+            : 'IntelliJ is in front, but its Human Review plugin is too old to open the '
+              + 'Database view: update it');
+        });
+      }).catch(function () { flash('the review server is no longer running'); });
+    };
+    var code = dbRow.querySelector('.appenv-jdbc');
+    code.addEventListener('click', openDb);
+    code.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') openDb(ev);
+    });
+  }
 
   // Live has nothing to say that the address does not say better, so the pill empties and
   // disappears; every other state is a word in its place. `Offline` and not `offline at
@@ -649,6 +689,8 @@
     // `demo-env` and not merely "is there a server": a build that stopped declaring the
     // start command has to be able to take the verb away from a page that is still open.
     served = window.HR.can('demo-env');
+    var caps = window.HR.caps ? window.HR.caps() : null;
+    idea = !!(caps && caps.openDb);
     if (served) {
       // Which swaps the whole row: the verbs come back and the terminal command steps
       // out, since pressing Start here does the same thing without leaving the page.
