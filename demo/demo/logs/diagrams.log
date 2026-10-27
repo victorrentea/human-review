@@ -1,10 +1,1 @@
-  * diagrams -> data,packages
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh 664c5b3b453fb758230de01e407064c45d07a844 .human-review/assets/diagrams
-[puml-diff] petclinic-backend/docs/generated/DB.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-backend_docs_generated_DB.diff.puml
-[puml-diff] petclinic-backend/docs/generated/DomainModel.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-backend_docs_generated_DomainModel.diff.puml
-[puml-diff] petclinic-frontend/docs/frontend-packages.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-frontend_docs_frontend-packages.diff.puml
-[puml-diff] 3 diagram(s) -> .human-review/assets/diagrams (see MANIFEST.tsv)
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base 664c5b3b453fb758230de01e407064c45d07a844 --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
-.human-review/assets/conceptual-{original,new,diff}.svg  (added 0 boxes, 1 line · removed 0 boxes, 0 lines · 0 changed · 5 moved, rendered by drawio)
-  + edge Vet-Visit — green (new)
-  8 concept(s) linked to their class
+  = diagrams: unchanged, 36.3 s saved

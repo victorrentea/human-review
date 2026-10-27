@@ -1,9 +1,3 @@
   * api -> api
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base 664c5b3b453fb758230de01e407064c45d07a844 --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
-[openapi-compat] wrote .human-review/assets/openapi-compat-report.html — standalone
-[openapi-compat] wrote .human-review/assets/openapi-compat.html — compatible
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --css  >  .human-review/assets/openapi-compat.css
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base 664c5b3b453fb758230de01e407064c45d07a844 --spec openapi.yaml --panel --out .human-review/assets/openapi-verdict.html
-[openapi-compat] wrote .human-review/assets/openapi-verdict.html — compatible
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-visual-diff.py --base 664c5b3b453fb758230de01e407064c45d07a844 --spec openapi.yaml --out .human-review/assets/openapi-visual-diff.html
-.human-review/assets/openapi-visual-diff.html  (0 breaking  11 modified  0 added  0 removed  32 untouched)
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base e27182cbe767ce1f44c6812cda555d5b11cd653a --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
+[openapi-compat] needs PyYAML: python3 -m pip install pyyaml

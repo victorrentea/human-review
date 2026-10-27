@@ -1,10 +1,1 @@
-  * complexity -> complexity
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity.py --base 664c5b3b453fb758230de01e407064c45d07a844 --out .human-review/assets/complexity-before.json
-[complexity-engine] 99 files, 487 methods, 53 entry points, 0 calls not followed
-[complexity] 53 entry points (javaparser) -> .human-review/assets/complexity-before.json
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity.py --out .human-review/assets/complexity-after.json
-[complexity-engine] 99 files, 499 methods, 53 entry points, 0 calls not followed
-[complexity] 53 entry points (javaparser) -> .human-review/assets/complexity-after.json
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity-delta.py .human-review/assets/complexity-before.json .human-review/assets/complexity-after.json --base 664c5b3b453fb758230de01e407064c45d07a844 --out .human-review/assets/complexity-delta.html
-[complexity-delta] wrote .human-review/assets/complexity-delta.html
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/endpoint-complexity-delta.py --css > .human-review/assets/complexity-delta.css
+  = complexity: unchanged, 6.8 s saved

@@ -54,7 +54,7 @@
         "protocol": "SQL",
         "operations": 9,
         "operationsDelta": 0,
-        "calls": 235,
+        "calls": 229,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -64,7 +64,7 @@
           {
             "name": "SELECT DISTINCT v FROM Vet v LEFT JOIN FETCH v.specialties",
             "path": "",
-            "calls": 2
+            "calls": 1
           },
           {
             "name": "SELECT v FROM Vet v LEFT JOIN FETCH v.specialties WHERE v.id = :id",
@@ -89,17 +89,17 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 11
+            "calls": 10
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 91
+            "calls": 89
           },
           {
             "name": "select visits",
             "path": "",
-            "calls": 105
+            "calls": 103
           }
         ],
         "toKind": "db"
@@ -128,7 +128,7 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 0,
-        "calls": 14,
+        "calls": 11,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -138,7 +138,7 @@
           {
             "name": "Get an owner by ID",
             "path": "GET /api/owners/{ownerId}",
-            "calls": 5
+            "calls": 4
           },
           {
             "name": "List owners",
@@ -148,12 +148,12 @@
           {
             "name": "getPet",
             "path": "GET /api/pets/{petId}",
-            "calls": 2
+            "calls": 1
           },
           {
             "name": "listVets",
             "path": "GET /api/vets",
-            "calls": 2
+            "calls": 1
           },
           {
             "name": "listVisits",
@@ -382,7 +382,7 @@
         "protocol": "SQL",
         "operations": 9,
         "operationsDelta": 1,
-        "calls": 235,
+        "calls": 229,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -392,7 +392,7 @@
           {
             "name": "SELECT DISTINCT v FROM Vet v LEFT JOIN FETCH v.specialties",
             "path": "",
-            "calls": 2
+            "calls": 1
           },
           {
             "name": "SELECT v FROM Vet v LEFT JOIN FETCH v.specialties WHERE v.id = :id",
@@ -417,17 +417,17 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 11
+            "calls": 10
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 91
+            "calls": 89
           },
           {
             "name": "select visits",
             "path": "",
-            "calls": 105
+            "calls": 103
           }
         ],
         "toKind": "db"
@@ -456,7 +456,7 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 1,
-        "calls": 14,
+        "calls": 11,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -466,7 +466,7 @@
           {
             "name": "Get an owner by ID",
             "path": "GET /api/owners/{ownerId}",
-            "calls": 5
+            "calls": 4
           },
           {
             "name": "List owners",
@@ -476,12 +476,12 @@
           {
             "name": "getPet",
             "path": "GET /api/pets/{petId}",
-            "calls": 2
+            "calls": 1
           },
           {
             "name": "listVets",
             "path": "GET /api/vets",
-            "calls": 2
+            "calls": 1
           },
           {
             "name": "listVisits",
@@ -524,5 +524,5 @@
       "onlyOld": []
     }
   },
-  "base": "664c5b3b453fb758230de01e407064c45d07a844"
+  "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a"
 }

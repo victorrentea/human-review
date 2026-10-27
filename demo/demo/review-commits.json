@@ -1,8 +1,8 @@
 {
- "base": "664c5b3b453fb758230de01e407064c45d07a844",
+ "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 107,
+ "commits": 110,
  "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
@@ -48,7 +48,10 @@
   "fe3c171fc03f7ce7de49027674ce67564032ab05",
   "ce0e3ce404fcf12a6b154ab8e5c06f1ef7c09166",
   "6d5eb02ffa36b1c8e2d6e69b6f86a56a4c886e33",
-  "ec9fac9037d7ef714362324e24bf5ed57e8f612f"
+  "ec9fac9037d7ef714362324e24bf5ed57e8f612f",
+  "7ac6fd59aa81873b46749629cfcf7fe44abe28d1",
+  "640816dd9a0b500de259348512d4762dfdba02bd",
+  "8373788e5da76160d0124ba621577154df0183dd"
  ],
  "after_detail": [
   {
@@ -295,6 +298,24 @@
    "sha": "ec9fac9037d7ef714362324e24bf5ed57e8f612f",
    "when": "2026-10-23T16:22:47+03:00",
    "subject": "visits.feature: 'Create with vet' moves from VisitTest to Gherkin",
+   "auto_fix": false
+  },
+  {
+   "sha": "7ac6fd59aa81873b46749629cfcf7fe44abe28d1",
+   "when": "2026-10-23T16:47:24+03:00",
+   "subject": "visits.feature: the vet scenario speaks the ticket's words \u2014 book, choosing",
+   "auto_fix": false
+  },
+  {
+   "sha": "640816dd9a0b500de259348512d4762dfdba02bd",
+   "when": "2026-10-27T16:26:10+02:00",
+   "subject": "Merge main: database published to a host port, start-docker.sh db",
+   "auto_fix": false
+  },
+  {
+   "sha": "8373788e5da76160d0124ba621577154df0183dd",
+   "when": "2026-10-27T16:26:20+02:00",
+   "subject": "review-points: base moved past main's e27182cb (merged)",
    "auto_fix": false
   }
  ],

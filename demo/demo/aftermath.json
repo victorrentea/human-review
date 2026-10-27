@@ -1,7 +1,7 @@
 {
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "review_short": "be762955",
- "head": "ec9fac9037d7ef714362324e24bf5ed57e8f612f",
+ "head": "8373788e5da76160d0124ba621577154df0183dd",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -1691,17 +1691,164 @@
    "measured": true,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "7ac6fd59aa81873b46749629cfcf7fe44abe28d1",
+   "short": "7ac6fd59",
+   "when": "2026-10-23T16:47:24+03:00",
+   "subject": "visits.feature: the vet scenario speaks the ticket's words \u2014 book, choosing",
+   "files": [
+    {
+     "path": "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java",
+     "added": 4,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/test/resources/features/functional/visits.feature",
+     "added": 3,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 7,
+   "deleted": 7,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "640816dd9a0b500de259348512d4762dfdba02bd",
+   "short": "640816dd",
+   "when": "2026-10-27T16:26:10+02:00",
+   "subject": "Merge main: database published to a host port, start-docker.sh db",
+   "files": [
+    {
+     "path": ".claude/agents/reviewer-uncle-bob.md",
+     "added": 4,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/hooks/protect-claude-md.sh",
+     "added": 0,
+     "deleted": 90,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/settings.json",
+     "added": 0,
+     "deleted": 14,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".github/hooks/protect-claude-md.json",
+     "added": 0,
+     "deleted": 22,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "AGENTS.md",
+     "added": 2,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docker/docker-compose.yml",
+     "added": 8,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/superpowers/plans/2026-10-26-java-code-style-skill.md",
+     "added": 63,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/superpowers/specs/2026-10-26-java-code-style-skill-design.md",
+     "added": 19,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "human-review.json",
+     "added": 2,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/resources/db/fixtures/minimal.sql",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/resources/db/seed/R__seed.sql",
+     "added": 3,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "start-docker.sh",
+     "added": 27,
+     "deleted": 5,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 130,
+   "deleted": 139,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "8373788e5da76160d0124ba621577154df0183dd",
+   "short": "8373788e",
+   "when": "2026-10-27T16:26:20+02:00",
+   "subject": "review-points: base moved past main's e27182cb (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 41,
-  "files": 110,
-  "added": 2105,
-  "deleted": 586,
+  "commits": 44,
+  "files": 116,
+  "added": 2232,
+  "deleted": 722,
   "code": {
-   "files": 97,
-   "added": 1950,
-   "deleted": 453
+   "files": 103,
+   "added": 2077,
+   "deleted": 589
   },
   "generated": {
    "files": 13,
