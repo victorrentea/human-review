@@ -1,5 +1,5 @@
 {
-  "base": "664c5b3b453fb758230de01e407064c45d07a844",
+  "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
   "totals": {
     "added": 36,
     "modified": 1,
@@ -171,8 +171,8 @@
       "status": "deleted",
       "line": 102,
       "baseLine": 106,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L106"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L106"
     },
     {
       "name": "getAll_returnsEnrichedFields",
@@ -180,8 +180,8 @@
       "status": "deleted",
       "line": 102,
       "baseLine": 121,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L121"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L121"
     },
     {
       "name": "asks for the first page with the server defaults when given no query",
@@ -225,8 +225,8 @@
       "status": "deleted",
       "line": 32,
       "baseLine": 31,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-frontend/src/app/visits/visit.service.spec.ts#L31"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-frontend/src/app/visits/visit.service.spec.ts#L31"
     },
     {
       "name": "asks for the first page of the latest visits when the URL says nothing",
@@ -324,8 +324,8 @@
       "status": "deleted",
       "line": 66,
       "baseLine": 53,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L53"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L53"
     },
     {
       "name": "loads and sorts visits descending by date",
@@ -333,8 +333,8 @@
       "status": "deleted",
       "line": 75,
       "baseLine": 57,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L57"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L57"
     },
     {
       "name": "shows \"No visits found.\" when service returns empty list",
@@ -342,8 +342,8 @@
       "status": "deleted",
       "line": 79,
       "baseLine": 66,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L66"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L66"
     },
     {
       "name": "renders owner cell as a link to /owners/{ownerId}",
@@ -351,8 +351,8 @@
       "status": "deleted",
       "line": 86,
       "baseLine": 76,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L76"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L76"
     },
     {
       "name": "Visits Page",
@@ -396,8 +396,8 @@
       "status": "deleted",
       "line": 30,
       "baseLine": 30,
-      "baseSha": "664c5b3b453fb758230de01e407064c45d07a844",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/664c5b3b453fb758230de01e407064c45d07a844/petclinic-test/src/visits.spec.ts#L30"
+      "baseSha": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/e27182cbe767ce1f44c6812cda555d5b11cd653a/petclinic-test/src/visits.spec.ts#L30"
     }
   ]
 }

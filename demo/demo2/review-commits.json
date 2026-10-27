@@ -1,8 +1,8 @@
 {
- "base": "664c5b3b453fb758230de01e407064c45d07a844",
+ "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 7,
+ "commits": 9,
  "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
  "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
  "session": "498ee103-9160-4f7a-be05-c641ebd16920",
@@ -11,7 +11,9 @@
   "170c2cdb98139d95a9d8b9e33a1df7b063b17ec8",
   "90e8b7ef7f0f4718700107a15485d0c00af1b04a",
   "9823b0c64ffa53d9666e87c9bbe7ef1159a72c98",
-  "12dc99e2f93d11e5fd3c9b2d301053ca90e217b7"
+  "12dc99e2f93d11e5fd3c9b2d301053ca90e217b7",
+  "8c127cbb9656ac3c21f9a52e52b3d451566a16de",
+  "84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d"
  ],
  "after_detail": [
   {
@@ -36,6 +38,18 @@
    "sha": "12dc99e2f93d11e5fd3c9b2d301053ca90e217b7",
    "when": "2026-10-21T09:56:49+03:00",
    "subject": "review-points: base moved past main's 664c5b3b (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "8c127cbb9656ac3c21f9a52e52b3d451566a16de",
+   "when": "2026-10-27T16:26:20+02:00",
+   "subject": "Merge main: database published to a host port, start-docker.sh db",
+   "auto_fix": false
+  },
+  {
+   "sha": "84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d",
+   "when": "2026-10-27T16:26:21+02:00",
+   "subject": "review-points: base moved past main's e27182cb (merged)",
    "auto_fix": false
   }
  ],

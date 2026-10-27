@@ -1,6 +1,1 @@
-  * diagrams -> data,packages
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh 664c5b3b453fb758230de01e407064c45d07a844 .human-review/assets/diagrams
-[puml-diff] no diagram changed vs 664c5b3b453fb758230de01e407064c45d07a844 (merge-base 664c5b3b)
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base 664c5b3b453fb758230de01e407064c45d07a844 --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
-.human-review/assets/conceptual-{original,new,diff}.svg  (added 0 boxes, 0 lines · removed 0 boxes, 0 lines · 0 changed · 0 moved, rendered by drawio)
-  8 concept(s) linked to their class
+  = diagrams: unchanged, 21.3 s saved

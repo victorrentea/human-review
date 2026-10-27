@@ -1,7 +1,7 @@
 {
  "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
  "review_short": "4321c5bc",
- "head": "12dc99e2f93d11e5fd3c9b2d301053ca90e217b7",
+ "head": "84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -567,17 +567,136 @@
    "measured": true,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "8c127cbb9656ac3c21f9a52e52b3d451566a16de",
+   "short": "8c127cbb",
+   "when": "2026-10-27T16:26:20+02:00",
+   "subject": "Merge main: database published to a host port, start-docker.sh db",
+   "files": [
+    {
+     "path": ".claude/agents/reviewer-uncle-bob.md",
+     "added": 4,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/hooks/protect-claude-md.sh",
+     "added": 0,
+     "deleted": 90,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/settings.json",
+     "added": 0,
+     "deleted": 14,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".github/hooks/protect-claude-md.json",
+     "added": 0,
+     "deleted": 22,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "AGENTS.md",
+     "added": 2,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docker/docker-compose.yml",
+     "added": 8,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/superpowers/plans/2026-10-26-java-code-style-skill.md",
+     "added": 63,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/superpowers/specs/2026-10-26-java-code-style-skill-design.md",
+     "added": 19,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "human-review.json",
+     "added": 2,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/resources/db/fixtures/minimal.sql",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/resources/db/seed/R__seed.sql",
+     "added": 3,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "start-docker.sh",
+     "added": 27,
+     "deleted": 5,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 130,
+   "deleted": 139,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d",
+   "short": "84bc4aaf",
+   "when": "2026-10-27T16:26:21+02:00",
+   "subject": "review-points: base moved past main's e27182cb (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 4,
-  "files": 66,
-  "added": 1029,
-  "deleted": 209,
+  "commits": 6,
+  "files": 73,
+  "added": 1158,
+  "deleted": 347,
   "code": {
-   "files": 62,
-   "added": 1026,
-   "deleted": 206
+   "files": 69,
+   "added": 1155,
+   "deleted": 344
   },
   "generated": {
    "files": 4,

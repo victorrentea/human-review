@@ -1,7 +1,1 @@
-  * aftermath -> review
-    $ git rev-parse HEAD
-    $ git diff --numstat 4321c5bc3d67629c04c6eb2555c96b4d917d5efd..HEAD
-    $ git show --numstat --format= 170c2cdb98139d95a9d8b9e33a1df7b063b17ec8
-    $ git show --numstat --format= 90e8b7ef7f0f4718700107a15485d0c00af1b04a
-    $ git show --numstat --format= 9823b0c64ffa53d9666e87c9bbe7ef1159a72c98
-    $ git show --numstat --format= 12dc99e2f93d11e5fd3c9b2d301053ca90e217b7
+  = aftermath: unchanged, 0.2 s saved
