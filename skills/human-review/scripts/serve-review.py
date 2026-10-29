@@ -60,7 +60,7 @@ from pathlib import Path, PurePosixPath
 
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from hrbuild.shared.forge import api_forge, is_comment_url  # noqa: E402
+from hrbuild.shared.forge import api_forge, is_comment_url, pull_root  # noqa: E402
 
 MARKER = "/__human_review__"
 OPEN = "/__open__"
@@ -94,6 +94,10 @@ REVEAL_FOLDER = "/__reveal_folder__"
 # IntelliJ project as a data source and show it in IntelliJ's Database view. What gets
 # written comes from the last `demo-env-db` run this server made, never from the page.
 OPEN_DB = "/__open_db__"
+# The Review tab's *in IntelliJ* on the PR line: that pull request selected in IntelliJ's
+# GitHub "Pull Requests" tool window, in the IntelliJ window that has this checkout. The page
+# names the PR, a github.com pull URL and nothing else; the window comes from ROOT.
+OPEN_PR = "/__open_pr__"
 # The red ■ beside `Served`: shut this server down now instead of waiting out
 # `--idle-minutes`. The page that pressed it stays on screen, and falls back to static.
 STOP = "/__stop__"
@@ -957,6 +961,50 @@ def open_db_in_idea(root: Path, url: str) -> dict | None:
                 return {"how": "focused", "window": info.get("folder") or candidate.name,
                         "dataSources": str(target)}
     return None
+
+
+#: Said for a plugin that answers `/open-pr` as a route it does not know (404, no `error`).
+PR_PLUGIN_TOO_OLD = ("The Human Review plugin in IntelliJ is too old to open PRs — "
+                     "update it to 0.3.5 or later")
+
+
+def open_pr_in_idea(root: Path, url: str) -> tuple[dict | None, str | None]:
+    """Show pull request `url` selected in the GitHub "Pull Requests" tool window of the
+    IntelliJ window that has `root`, and raise it (`/open-pr`, the plugin's bridge). Both
+    spellings of the checkout, as `open_db_in_idea` tries them.
+
+    `(answer, None)` when it did; `(None, sentence)` when the window answered no — its own
+    sentence (GitHub plugin off, project not connected to that repository, no such PR…), or
+    `PR_PLUGIN_TOO_OLD`; `(None, None)` when no IntelliJ window has the checkout open."""
+    silent = None
+    for candidate in dict.fromkeys((Path(root), Path(root).resolve())):
+        for entry, info in windows_of("idea", candidate):
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{entry['port']}/open-pr", method="POST",
+                data=json.dumps({"url": url, "root": str(candidate)}).encode(),
+                headers={"x-relay-token": entry["token"], "Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    status, raw = r.status, r.read()
+            except urllib.error.HTTPError as e:
+                status, raw = e.code, e.read()
+            except Exception:
+                silent = f"IntelliJ ({info.get('folder') or candidate.name}) did not answer"
+                continue
+            try:
+                said = json.loads(raw or b"{}")
+            except ValueError:
+                said = {}
+            said = said if isinstance(said, dict) else {}
+            if 200 <= status < 300 and said.get("ok"):
+                return {"how": "opened", "window": said.get("folder") or info.get("folder")
+                        or candidate.name, "number": said.get("number")}, None
+            if said.get("error"):
+                return None, str(said["error"])
+            if status == 404:
+                return None, PR_PLUGIN_TOO_OLD
+            return None, f"IntelliJ could not open the PR (HTTP {status})"
+    return None, silent
 
 
 #: How long a click that had to open the checkout in IntelliJ waits for that window's
@@ -2331,7 +2379,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         Handler.last_seen = time.time()
         route = self.path.split("?")[0]
         if route not in (RUN, RERUN, RERUN_AI, EDITOR_OPEN, REVEAL, REVEAL_FOLDER, STOP,
-                         OPEN_DB):
+                         OPEN_DB, OPEN_PR):
             self.reply_text("no", 404)
             return
         problem = refuse_reason(self.headers)
@@ -2401,6 +2449,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
             done = open_db_in_idea(Path(ROOT), url) or launch_idea_for_db(Path(ROOT), url)
             self.reply_json({"url": url, **done})
+            return
+        if route == OPEN_PR:
+            # IntelliJ only: VS Code's *in VS Code* is the extension's own URI, which the page
+            # hands the OS after `EDITOR_OPEN` has raised the window. Nothing is launched here.
+            # A pull request's own URL, nothing after its number (the forge's `pull_root`).
+            url = _field(raw, "url")
+            if not isinstance(url, str) or pull_root(url) != url:
+                self.reply_text("that is not a pull request's URL", 400)
+                return
+            if ROOT is None or not Path(ROOT).is_dir():
+                self.reply_text("this page was not served from a checkout", 404)
+                return
+            done, why = open_pr_in_idea(Path(ROOT), url)
+            if done is None:
+                self.reply_text(why or f"No IntelliJ window has {ROOT} open: press the red "
+                                "IntelliJ logo in the header to connect it, then click again", 409)
+                return
+            self.reply_json(done)
             return
         if route == REVEAL_FOLDER:
             rel = _field(raw, "path")
@@ -2550,6 +2616,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              "revealFolder": ROOT is not None,
                              # And the Running DB link into IntelliJ's Database view.
                              "openDb": ROOT is not None,
+                             # And the PR line's *in IntelliJ* into its Pull Requests view.
+                             "openPr": ROOT is not None,
                              # The baseline the page was served against. Empty when
                              # nothing is watching, which is how the page knows not to
                              # poll — a build that stopped watching takes the reload

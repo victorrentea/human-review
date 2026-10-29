@@ -4162,15 +4162,18 @@ def vscode_pr_uri(url: str | None) -> str | None:
 
 
 def vscode_pr_link(url: str | None, cls: str = "f-vsc") -> str:
-    """*in VS Code* — the same PR in the GitHub Pull Requests view. Served, the page first
-    brings forward the VS Code window on this checkout (`PR_PUSH_JS`), so the URI lands
-    there and not in whichever window was used last."""
+    """*in VS Code* or *in IntelliJ* — the same PR in that IDE's GitHub Pull Requests view,
+    the IDE picked in the masthead. Built with VS Code's extension URI as its address;
+    editor.js re-aims it (`aimPr`), words it (`.ide-word`, and the tip through `ideWords`)
+    and takes its click (`openPr`): served, VS Code's window on this checkout comes forward
+    before the URI, and IntelliJ's plugin is asked through the server (`/__open_pr__`)."""
     uri = vscode_pr_uri(url)
     if not uri:
         return ""
     n = pull_root(url).rsplit("/", 1)[1]
     return (f' <a class="{cls}" href="{html.escape(uri, quote=True)}" '
-            f'data-tip="Open PR #{n} in VS Code (GitHub Pull Requests)">{VSC_ICON} in VS Code</a>')
+            f'data-tip="Open PR #{n} in VS Code\'s GitHub Pull Requests view">'
+            f'{VSC_ICON}{IJ_ICON} in <span class="ide-word">VS Code</span></a>')
 
 
 def vscode_file_link(href: str | None, where: str) -> str:
@@ -4228,33 +4231,12 @@ PR_RESULT_TAG = "::hr-push-result::"
 # Written so it can also be dropped into a page built before it (a live patch): it
 # rebuilds the dialog's inside and the message slot when they are the old ones, and swaps
 # the button for a clone, which sheds the old click handler.
-PR_PUSH_JS = """<script data-hr-swap="rerun">(function () {
-  // `data-hr-swap="rerun"`: when a rebuild swaps the Review tab into an open served page
-  // this runs again, over the new button and dialog (below). The document-wide listener
-  // here is the one thing that must not be registered twice.
-  if (window.__hrPrVsc) return;
-  window.__hrPrVsc = true;
-  // *in VS Code*: bring the window on this checkout forward first (served), then hand the
-  // OS the extension's URI — VS Code gives a URI to the window used last. In the capture
-  // phase, ahead of editor.js, which takes every vscode: link for a file reference.
-  var token = null;
-  if (window.HR) HR.onready(function (caps) { token = caps && caps.token; });
-  document.addEventListener('click', function (ev) {
-    var a = ev.target.closest && ev.target.closest('a.pr-vsc');
-    if (!a || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
-    ev.preventDefault(); ev.stopPropagation();
-    var href = a.getAttribute('href');
-    function go() { window.location.href = href; }
-    if (!token) return go();
-    fetch('/__editor_open__', {method: 'POST', cache: 'no-store',
-      headers: {'Content-Type': 'application/json', 'X-Human-Review-Token': token},
-      body: '{}'})
-      .then(function (r) { return r.ok ? r.json() : {}; })
-      .then(function (j) { setTimeout(go, j && j.how === 'focused' ? 250 : 1500); }, go);
-  }, true);
-})();
+PR_PUSH_JS = """<script data-hr-swap="rerun">
+// `data-hr-swap="rerun"`: when a rebuild swaps the Review tab into an open served page this
+// runs again, over the new button and dialog (below). *in VS Code* / *in IntelliJ* (`.pr-vsc`)
+// is only drawn and shown here: editor.js aims it at the picked IDE and takes its click.
 var HR_VSC_PR = '""" + VSCODE_PR_URI + """';
-var HR_VSC_ICON = '""" + VSC_ICON + """';
+var HR_PR_FACE = '""" + (VSC_ICON + IJ_ICON).replace("'", "\\'") + """ in <span class="ide-word">VS Code</span>';
 var HR_IDE_FACE = '""" + IDE_FACE.replace("'", "\\'") + """';
 var HR_GH_ICON = '""" + GH_ICON + """';
 function hrVscPr(url) {
@@ -4366,11 +4348,12 @@ function hrVscPr(url) {
     });
   }
   function vscLink(cls, uri, tip) {
-    // A file opens in either IDE; the PR overview only in VS Code's GitHub extension.
-    var v = el('a', cls); v.innerHTML = cls === 'f-vsc' ? HR_IDE_FACE : HR_VSC_ICON + ' in VS Code';
+    // A file's: the two marks; the PR's: the two marks and the IDE's name (editor.js words
+    // both for the pick, and sends the PR to IntelliJ's Pull Requests view too).
+    var v = el('a', cls); v.innerHTML = cls === 'f-vsc' ? HR_IDE_FACE : HR_PR_FACE;
     if (uri) v.href = uri;
     v.dataset.tip = tip != null ? tip : 'Open PR #' + decodeURIComponent(uri).split('/').pop()
-      + ' in VS Code (GitHub Pull Requests)';
+      + ' in VS Code\\'s GitHub Pull Requests view';
     return v;
   }
   // A record from before pushes said how they ended: complete when every item has its link.
@@ -4393,7 +4376,7 @@ function hrVscPr(url) {
       rep.hidden = !changed;
       var uri = hrVscPr(rec.url || rec.review_url);
       if (uri) { vsc.href = uri; vsc.dataset.tip = 'Open PR #' + (rec.pr || '')
-        + ' in VS Code (GitHub Pull Requests)'; vsc.hidden = false; }
+        + ' in VS Code\\'s GitHub Pull Requests view'; vsc.hidden = false; }
     } else if (st === 'partial') {
       b.textContent = 'Retry'; b.dataset.state = 'retry'; rep.hidden = true;
       say(rec.message, 'err');

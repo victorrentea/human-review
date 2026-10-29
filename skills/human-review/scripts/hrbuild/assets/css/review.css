@@ -282,12 +282,13 @@ a.f-vsc, a.pr-vsc { text-decoration:none; margin-left:.35rem; color:var(--muted)
 a.f-vsc:hover, a.f-vsc:focus-visible, a.pr-vsc:hover, a.pr-vsc:focus-visible { color:var(--link); }
 a.pr-vsc[hidden] { display:none; }
 a.f-vsc .vsc-ico, a.pr-vsc .vsc-ico { vertical-align:-2px; }
-/* Both marks ride in every "in VS Code" that opens a file, and the IDE picked in the
-   masthead shows its own (editor.js puts `ide-idea` on <html>). The PR link opens VS
-   Code's GitHub view, which has no IntelliJ counterpart and no file to fall back to: gone. */
-a.f-vsc .ij-ico { display:none; vertical-align:-2px; }
-html.ide-idea a.f-vsc .ij-ico { display:inline; }
-html.ide-idea a.f-vsc .vsc-ico, html.ide-idea a.pr-vsc { display:none; }
+/* Both marks ride in every "in VS Code", and the IDE picked in the masthead shows its own
+   (editor.js puts `ide-idea` on <html>). The PR link too: IntelliJ opens the PR in its own
+   GitHub Pull Requests tool window, and its word says "in IntelliJ" (`.ide-word`). */
+a.f-vsc .ij-ico, a.pr-vsc .ij-ico { display:none; vertical-align:-2px; }
+html.ide-idea a.f-vsc .ij-ico, html.ide-idea a.pr-vsc .ij-ico { display:inline; }
+a.pr-vsc .ij-ico { outline:1px solid color-mix(in srgb, var(--fg) 25%, transparent); }
+html.ide-idea a.f-vsc .vsc-ico, html.ide-idea a.pr-vsc .vsc-ico { display:none; }
 /* No IDE connected (both masthead logos red), or online: no IDE link, GitHub's only. */
 html.ide-none a.f-vsc, html.ide-none a.pr-vsc, html.hr-online ol.findings > li > a.f-vsc
   { display:none; }

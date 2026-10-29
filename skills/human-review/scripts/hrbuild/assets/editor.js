@@ -24,6 +24,8 @@
   // the same thing it does on a machine with no server at all, and therefore already
   // tested.
   var SERVED = false;
+  // The probe's answer once it is in: the token a POST carries, and which routes exist.
+  var CAPS = {};
 
   // One implementation, on HR, because a `file://` page needs the `execCommand` fallback
   // and two copies of that had already drifted apart once.
@@ -239,14 +241,55 @@
   function aimAll(root) {
     if (root.matches && root.matches(CODE_LINK)) aim(root);
     if (root.querySelectorAll) [].forEach.call(root.querySelectorAll(CODE_LINK), aim);
+    if (root.matches && root.matches(PR_LINK)) aimPr(root);
+    if (root.querySelectorAll) [].forEach.call(root.querySelectorAll(PR_LINK), aimPr);
   }
   if (window.MutationObserver) {
     new MutationObserver(function (records) {
       records.forEach(function (r) {
-        if (r.type === 'attributes') { if (r.target.matches && r.target.matches(CODE_LINK)) aim(r.target); return; }
+        if (r.type === 'attributes') {
+          if (!r.target.matches) return;
+          if (r.target.matches(CODE_LINK)) aim(r.target);
+          else if (r.target.matches(PR_LINK)) aimPr(r.target);
+          return;
+        }
         [].forEach.call(r.addedNodes, function (n) { if (n.nodeType === 1) aimAll(n); });
       });
     }).observe(document.documentElement, {childList: true, subtree: true, attributes: true, attributeFilter: ['href']});
+  }
+
+  // ---- The PR line's link follows the pick too -------------------------------------------
+  // *in VS Code* / *in IntelliJ* on the Review tab's PR line (`a.pr-vsc`, review.py): the
+  // pull request in that IDE's GitHub Pull Requests view. Built with the VS Code extension's
+  // URI, which stays its address in `data-hr-pr`; with IntelliJ the pick and reachable, the
+  // href is the plugin's `open-pr` link instead, and the word on its face says IntelliJ.
+  // Its click is taken below (`openPr`), like a code link's.
+  var PR_LINK = 'a.pr-vsc';
+  function prHref(a) {
+    var h = a.getAttribute('href') || '';
+    return /^vscode:/.test(h) ? h : (a.getAttribute('data-hr-pr') || h);
+  }
+  // The pull request itself, out of the extension URI's `uri=`; null for anything else.
+  function prUrl(a) {
+    var m = /[?&]uri=([^&#]+)/.exec(prHref(a));
+    var url = m ? decodeURIComponent(m[1]) : '';
+    return /^https:\/\/github\.com\/[^\/?#]+\/[^\/?#]+\/pull\/\d+$/.test(url) ? url : null;
+  }
+  // The plugin's own link, for a page with no server: it finds the window from `root`.
+  function prIdeaLink(a) {
+    var url = prUrl(a);
+    return url ? 'jetbrains://idea/human-review/open-pr?url=' + encodeURIComponent(url)
+      + (STAMP.hrRoot ? '&root=' + encodeURIComponent(STAMP.hrRoot) : '') : null;
+  }
+  function aimPr(a) {
+    var h = a.getAttribute('href') || '';
+    if (/^vscode:/.test(h)) a.setAttribute('data-hr-pr', h);
+    else if (h.indexOf('jetbrains://idea/human-review/open-pr') !== 0) return;
+    var want = reachable() && ide() === 'idea' ? (prIdeaLink(a) || prHref(a)) : prHref(a);
+    if (h !== want) a.setAttribute('href', want);
+    // A link drawn after the last paint (PR_PUSH_JS, once the push record is read).
+    var w = a.querySelector('.ide-word'), shown = shownIde();
+    if (w) w.textContent = shown ? IDE_NAME[shown] : 'your IDE';
   }
 
   // Registered only now, below every `var` that `paintIde` reads. Each asset is its own
@@ -254,7 +297,7 @@
   // before this file runs and `onready` calls back *synchronously*: registered at the top,
   // it read `connected` while still undefined, threw, and took every click handler below
   // with it — no copy button on a file:// page copied anything (19 Oct 2026).
-  window.HR.onready(function (caps) { SERVED = !!caps; paintIde(); });
+  window.HR.onready(function (caps) { SERVED = !!caps; CAPS = caps || {}; paintIde(); });
   // A rebuild swapped part of the page in place (`hr:swapped`, panels.js): its "in VS Code"
   // words and tips arrive as the build wrote them, and are painted for the pick again.
   document.addEventListener('hr:swapped', function () { paintIde(); });
@@ -605,13 +648,15 @@
   // href is only the address. A script that opens code without a real click on such a link
   // — a panel that keeps its clicks to itself, a handle whose target it computed — hands it
   // to `HR.openCode` (below) instead of `location.href`, which is how the Sequence tab's
-  // statement panel opened VS Code with IntelliJ picked. test_editor_links.py fails a page,
-  // or a script, that navigates to an editor any other way.
+  // statement panel opened VS Code with IntelliJ picked. The PR line's *in VS Code* /
+  // *in IntelliJ* (`a.pr-vsc`) is not code, and is taken here all the same (`openPr`).
+  // test_editor_links.py fails a page, or a script, that navigates to an editor any other way.
   document.addEventListener('click', function (ev) {
-    var link = ev.target.closest && ev.target.closest('a[href^="vscode:"], a[data-hr-code]');
+    var link = ev.target.closest && ev.target.closest('a[href^="vscode:"], a[data-hr-code], ' + PR_LINK);
     if (!link || ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
     ev.preventDefault();
-    openCode(link);
+    if (link.matches(PR_LINK)) openPr(link);
+    else openCode(link);
   });
   // `link`: the anchor, or a bare `vscode://file/…` href for a target no anchor carries.
   function openCode(link) {
@@ -716,6 +761,43 @@
     copy(ref).then(function () { flash('Copied ' + ref + ' — paste into Quick Open (\u2318P)'); });
   }
   window.HR.openCode = openCode;
+
+  // The PR line's link: the pull request in the picked IDE's GitHub Pull Requests view.
+  // IntelliJ, served: the server asks the plugin in the IntelliJ window that has this
+  // checkout (`/__open_pr__`) and the toast relays its answer; off disk at top level, the
+  // plugin's own `open-pr` link. VS Code: served, the window on this checkout comes forward
+  // first (`/__editor_open__`), because VS Code hands a URI to the window used last; then
+  // the OS gets the extension's URI.
+  function openPr(a) {
+    var url = prUrl(a), href = prHref(a);
+    function go() { window.location.href = href; }
+    if (ide() === 'idea' && reachable() && url) {
+      if (SERVED && CAPS.openPr) {
+        fetch('/__open_pr__', {method: 'POST', cache: 'no-store',
+          headers: {'Content-Type': 'application/json', 'X-Human-Review-Token': CAPS.token || ''},
+          body: JSON.stringify({url: url})})
+          .then(function (r) {
+            if (!r.ok) return r.text().then(function (t) { flash(t || 'IntelliJ could not open the PR'); });
+            return r.json().then(function (j) {
+              flash('Opened PR #' + (j.number || url.split('/').pop()) + ' in IntelliJ'
+                + (j.window ? ' \u2014 ' + j.window : ''));
+            });
+          })
+          .catch(function () { flash('The review server is no longer running'); });
+        return;
+      }
+      // Off disk; or served by a server from before `/__open_pr__`, at top level.
+      if (!EMBEDDED) { window.location.href = prIdeaLink(a); return; }
+      flash('This review server cannot open PRs in IntelliJ \u2014 restart it');
+      return;
+    }
+    if (!SERVED || !CAPS.token) { go(); return; }
+    fetch('/__editor_open__', {method: 'POST', cache: 'no-store',
+      headers: {'Content-Type': 'application/json', 'X-Human-Review-Token': CAPS.token},
+      body: '{}'})
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (j) { setTimeout(go, j && j.how === 'focused' ? 250 : 1500); }, go);
+  }
   // A finding's title opens its first reference in the picked IDE (Victor, 20 Oct 2026):
   // the card's IDE link when it has one, else the first source reference in its body.
   // The click is handed to that link, so it goes wherever a click on the link would —

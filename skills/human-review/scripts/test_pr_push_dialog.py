@@ -42,7 +42,7 @@ TITLES = ["Keep the <code>vet</code>", "Don&#x27;t &quot;guess&quot; the owner",
 PAYLOAD_TEXT = '{"comments": [{"title": "Keep the vet"}]}\n'
 
 
-def page_html(answers: dict) -> str:
+def page_html(answers: dict, editor: bool = False) -> str:
     spec = {"_prPush": {"count": 43, "posted": 0, "pushedAt": None,
                         "counts": {"fixed": 25, "ignored": 14, "assumption": 4}}}
     stub = """<script>
@@ -50,14 +50,16 @@ def page_html(answers: dict) -> str:
       window.alert = function () { __alerts++; };
       window.open = function (u) { __opened.push(u); };
       window.__answers = %s;
-      window.HR = {onready: function (f) { f({token: 't'}); }, can: function () { return true; },
+      window.HR = {onready: function (f) { f({token: 't', openPr: true}); },
+        can: function () { return true; },
         keepPlace: function () {},
         run: function (id) { __runs.push(id); return Promise.resolve(__answers[id]); }};
     </script>""" % json.dumps(answers)
     items = "".join(f'<li><span class="f-title">{t}</span><p>body</p></li>' for t in TITLES)
     return ('<!doctype html><html data-hr-root="/r/petclinic"><head>' + stub + "</head><body>"
             '<p class="sub counts pilelede">3 fixed' + build.push_pr_button(spec) + "</p>"
-            + build.push_pr_dialog(spec) + f"<ol>{items}</ol></body></html>")
+            + build.push_pr_dialog(spec) + f"<ol>{items}</ol>"
+            + (build.EDITOR_JS if editor else "") + "</body></html>")
 
 
 def out(tag: str, obj: dict) -> str:
@@ -94,15 +96,18 @@ def browser():
         b.close()
 
 
-def open_page(browser, answers: dict, files: dict):
+def open_page(browser, answers: dict, files: dict, pick: str | None = None):
     """The page at http://127.0.0.1:9/review.html, its two JSON files served out of `files`
-    (mutable: a test changes what the server holds between two presses)."""
+    (mutable: a test changes what the server holds between two presses). `pick`: the page
+    with editor.js on it too, and that IDE picked in the masthead."""
     page = browser.new_page()
+    if pick:
+        page.add_init_script(f"localStorage.setItem('hr-ide', '{pick}')")
 
     def serve(route):
         name = route.request.url.rsplit("/", 1)[-1]
         if name == "review.html":
-            return route.fulfill(body=page_html(answers), content_type="text/html")
+            return route.fulfill(body=page_html(answers, editor=bool(pick)), content_type="text/html")
         if files.get(name) is None:
             return route.fulfill(status=404, body="")
         body = files[name] if isinstance(files[name], str) else json.dumps(files[name])
@@ -214,23 +219,47 @@ def test_everything_posted_reads_published_as_grey_text_that_does_nothing(browse
     assert page.locator("a.pr-vsc").get_attribute("href").endswith("uri=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Fpull%2F51")
 
 
-def test_in_vs_code_brings_the_checkouts_window_forward_then_opens_the_pr(browser):
-    """Served: POST /__editor_open__ first (the window on this checkout comes forward), then
-    the extension's URI — and editor.js, which takes every vscode: link, never sees it."""
+@pytest.mark.parametrize("pick", ["vscode", "idea"])
+def test_in_the_picked_ide_opens_the_pr_there(browser, pick):
+    """Served, through editor.js — the one script that hands the browser an editor URL.
+    VS Code: POST /__editor_open__ first (the window on this checkout comes forward), then
+    the extension's URI. IntelliJ: the link says so, and POST /__open_pr__ with the PR asks
+    the plugin to show it in IntelliJ's Pull Requests tool window; nothing navigates."""
     page = open_page(browser, {}, {"pr-comments.json": PAYLOAD_TEXT,
-                                   "pr-comments.posted.json": record(sha=_sha(PAYLOAD_TEXT))})
-    page.evaluate("""() => { window.__bubbled = 0; document.addEventListener('click',
-        e => { if (e.target.closest('a.pr-vsc')) __bubbled++; }); }""")
+                                   "pr-comments.posted.json": record(sha=_sha(PAYLOAD_TEXT))},
+                     pick=pick)
+    went = []
+    cdp = page.context.new_cdp_session(page)
+    cdp.on("Page.frameRequestedNavigation",
+           lambda e: went.append(e["url"]) if e["url"].startswith(("vscode:", "jetbrains:")) else None)
+    cdp.send("Page.enable")
     asked = []
-    page.route("http://127.0.0.1:9/__editor_open__", lambda r: (asked.append(r.request.method),
-               r.fulfill(body='{"how": "focused", "window": "petclinic"}',
-                         content_type="application/json")))
+
+    def answer(said):
+        def fulfil(r):
+            asked.append((r.request.url.split("127.0.0.1:9", 1)[1], r.request.post_data))
+            r.fulfill(body=json.dumps(said), content_type="application/json")
+        return fulfil
+    page.route("http://127.0.0.1:9/__editor_open__", answer({"how": "focused", "window": "petclinic"}))
+    page.route("http://127.0.0.1:9/__open_pr__",
+               answer({"how": "opened", "window": "petclinic", "number": 51}))
     page.wait_for_selector("a.pr-vsc:not([hidden])")
-    page.evaluate("""() => { const a = document.querySelector('a.pr-vsc');
-        a.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, button: 0})); }""")
-    page.wait_for_timeout(400)
-    assert asked == ["POST"], "the checkout's window first"
-    assert page.evaluate("__bubbled") == 0, "taken in the capture phase, before editor.js"
+    a = page.locator("a.pr-vsc")
+    assert a.locator(".ide-word").text_content() == ("IntelliJ" if pick == "idea" else "VS Code")
+    assert a.get_attribute("data-hr-pr").endswith("uri=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Fpull%2F51")
+    assert a.get_attribute("href") == (
+        "jetbrains://idea/human-review/open-pr?url=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Fpull%2F51"
+        "&root=%2Fr%2Fpetclinic" if pick == "idea" else a.get_attribute("data-hr-pr"))
+    assert "GitHub Pull Requests view" in a.get_attribute("data-tip")
+    page.click("a.pr-vsc")
+    page.wait_for_timeout(500)
+    if pick == "idea":
+        assert asked == [("/__open_pr__", '{"url":"https://github.com/o/r/pull/51"}')], asked
+        assert went == []
+    else:
+        assert asked == [("/__editor_open__", "{}")], "the checkout's window first"
+        assert went == [a.get_attribute("data-hr-pr")], went
+    page.close()
 
 
 def test_the_build_puts_in_vs_code_beside_every_github_link():

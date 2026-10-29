@@ -25,12 +25,9 @@ ASSETS = HERE / "hrbuild" / "assets"
 #: The mechanism itself: the only script allowed to hand the browser an editor URL.
 MECHANISM = ASSETS / "editor.js"
 
-#: Navigations that are not to code, by the exact line that makes them. *in VS Code* on a
-#: posted review opens the PR in VS Code's GitHub Pull Requests view: a VS Code feature,
-#: labelled as one on its face, with no IntelliJ counterpart to route to.
-NOT_CODE = {"function go() { window.location.href = href; }"}
-
-#: An editor URL in markup that is not a code link, for the same reason.
+#: An editor URL in markup that is not a code link: the PR line's *in VS Code* (`a.pr-vsc`)
+#: is built with the GitHub Pull Requests extension's URI as its address. editor.js re-aims
+#: it at the picked IDE and takes its click (`aimPr`, `openPr`), as it does a code link's.
 NOT_CODE_HREF = ("vscode://github.vscode-pull-request-github/",)
 
 NAVIGATES = re.compile(r"\blocation\.href\s*=(?!=)|\blocation\.(?:assign|replace)\s*\(|\bwindow\.open\s*\(")
@@ -55,7 +52,7 @@ def bypasses_in_script(text: str, allow_mechanism: bool = False) -> list[str]:
         code = line.strip()
         if code.startswith(("//", "#", "*", "/*")):
             continue
-        if NAVIGATES.search(code) and code not in NOT_CODE and not allow_mechanism:
+        if NAVIGATES.search(code) and not allow_mechanism:
             bad.append(code)
         if FOREIGN.search(code) and not allow_mechanism:
             bad.append(code)
@@ -178,6 +175,9 @@ def test_the_rule_catches_what_it_is_for():
                            '<button onclick="location.href=\'vscode://file//x:1:1\'">b</button>'
                            "<script>function f(h) { window.location.href = h; }</script>")
     assert len(bad) == 5, bad
+    # The PR line's link used to navigate itself, in VS Code whatever the pick.
+    assert bypasses_in_script("function go() { window.location.href = href; }")
+    assert bypasses_in_script("location.href = 'jetbrains://idea/human-review/open-pr?url=' + u;")
     ok, code = page_bypasses('<a class="srcref" href="vscode://file//r/A.java:3:1">A.java:3</a>'
                              '<svg><a xlink:href="vscode://file//r/A.java:4:1" href="vscode://file//r/A.java:4:1">'
                              '<text>A</text></a></svg>')
@@ -217,8 +217,17 @@ def _page(build):
             '<g class="message"><a href="genseq://booked"><text font-size="13" x="10" y="60">'
             'POST /api/visits</text></a></g></svg></div>'
             '<script type="application/json" class="genseq-details">' + html.escape(json.dumps(details), quote=False)
-            + '</script></div>' + build.TIP_JS + build.EDITOR_JS + build.GENSEQ_JS + '</body></html>')
+            + '</script></div><p class="pilelede">' + build.vscode_pr_link(PR, "pr-vsc") + '</p>'
+            + build.TIP_JS + build.EDITOR_JS + build.GENSEQ_JS + '</body></html>')
 
+
+PR = "https://github.com/o/r/pull/51"
+#: …and the IntelliJ plugin's link to it, off disk: the PR, and the checkout to find it in.
+IJ_PR = ("jetbrains://idea/human-review/open-pr?url=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Fpull%2F51"
+         "&root=%2Fr")
+#: The PR line's link: its href, and the IDE its face names.
+PR_FACE = """() => { const a = document.querySelector('a.pr-vsc');
+  return [a.getAttribute('href'), a.querySelector('.ide-word').textContent]; }"""
 
 HREFS = """() => {
   const svg = document.getElementById('svgsrc');
@@ -240,18 +249,22 @@ def test_the_hrefs_follow_a_change_of_pick(browser, tmp_path):
     try:
         page.goto(f.as_uri())
         page.click('a[href="genseq://booked"] text')
-        seen = [page.evaluate(HREFS)]
+        seen, pr = [page.evaluate(HREFS)], [page.evaluate(PR_FACE)]
         page.click("#hr-ide-idea")                  # green: disconnect
-        seen.append(page.evaluate(HREFS))
+        seen.append(page.evaluate(HREFS)), pr.append(page.evaluate(PR_FACE))
         page.click("#hr-ide-vscode")                # red: connect VS Code
-        seen.append(page.evaluate(HREFS))
+        seen.append(page.evaluate(HREFS)), pr.append(page.evaluate(PR_FACE))
         page.click("#hr-ide-vscode")                # disconnect
         page.click("#hr-ide-idea")                  # and IntelliJ again
-        seen.append(page.evaluate(HREFS))
+        seen.append(page.evaluate(HREFS)), pr.append(page.evaluate(PR_FACE))
     finally:
         page.close()
     lead = [{h.split(":", 1)[0] for h in s.values()} for s in seen]
     assert lead == [{"jetbrains"}, {"vscode"}, {"vscode"}, {"jetbrains"}], seen
+    # The PR line's link too: IntelliJ's plugin and its name, else the extension's URI.
+    ij = [IJ_PR, "IntelliJ"]
+    vsc = build.vscode_pr_uri(PR)
+    assert pr == [ij, [vsc, "your IDE"], [vsc, "VS Code"], ij], pr
 
 
 @pytest.mark.parametrize("pick", ["idea", "vscode"])
@@ -315,3 +328,68 @@ def test_the_statement_panel_and_the_scenario_header_follow_the_picked_ide(brows
         scheme = "jetbrains://" if pick == "idea" else "vscode://"
         assert len(went) == 2 and all(u.startswith(scheme) for u in went), went
         assert "NotificationController.java" in went[0] and "BookTest.java" in went[1]
+
+
+@pytest.mark.parametrize("pick", ["idea", "vscode"])
+@pytest.mark.parametrize("served", [True, False], ids=["served", "off-disk"])
+def test_the_pr_link_opens_the_pr_in_the_picked_ide(browser, tmp_path, pick, served):
+    """The PR line's *in IntelliJ*: served, the server asks the plugin (`/__open_pr__`, the
+    PR's URL in the body) and nothing navigates; off disk, the plugin's own `open-pr` link.
+    *in VS Code*: served, the checkout's window first (`/__editor_open__`), then the
+    extension's URI — the one way it went before IntelliJ could open a PR."""
+    from test_action_server import build
+    went, sent = [], []
+    ctx = browser.new_context()
+    ctx.route(lambda u: u.startswith(("vscode:", "jetbrains:", "idea:")),
+              lambda r: (went.append(r.request.url), r.abort()))
+    page = ctx.new_page()
+    cdp = ctx.new_cdp_session(page)
+    cdp.on("Page.frameRequestedNavigation",
+           lambda e: went.append(e["url"]) if e["url"].startswith(("vscode:", "jetbrains:", "idea:")) else None)
+    cdp.send("Page.enable")
+    page.add_init_script(f"localStorage.setItem('hr-ide', '{pick}')")
+    body = _page(build)
+    if served:
+        def serve(route):
+            req = route.request
+            url = req.url
+            if url.endswith("/review.html"):
+                return route.fulfill(body=body, content_type="text/html")
+            sent.append((req.method, url.split("127.0.0.1:9", 1)[1], req.post_data,
+                         req.headers.get("x-human-review-token")))
+            if "/__human_review__" in url:
+                return route.fulfill(body='{"humanReview": 1, "token": "t", "openPr": true}',
+                                     content_type="application/json")
+            if "/__open_pr__" in url:
+                return route.fulfill(body='{"how": "opened", "window": "petclinic", "number": 51}',
+                                     content_type="application/json")
+            if "/__editor_open__" in url:
+                return route.fulfill(body='{"how": "focused", "window": "petclinic"}',
+                                     content_type="application/json")
+            return route.fulfill(status=404, body="")
+        page.route("http://127.0.0.1:9/**", serve)
+        page.goto("http://127.0.0.1:9/review.html")
+        page.wait_for_function("!document.documentElement.classList.contains('hr-online')")
+    else:
+        f = tmp_path / "review.html"
+        f.write_text(body, encoding="utf-8")
+        page.goto(f.as_uri())
+    try:
+        page.click("a.pr-vsc")
+        page.wait_for_timeout(500)
+        toast = page.locator("#copy-toast").text_content() if page.locator("#copy-toast").count() else ""
+    finally:
+        ctx.close()
+    posts = [(path, data, token) for method, path, data, token in sent if method == "POST"]
+    went = list(dict.fromkeys(went))
+    if pick == "idea" and served:
+        assert posts == [("/__open_pr__", json.dumps({"url": PR}).replace(" ", ""), "t")], posts
+        assert went == [], f"served, IntelliJ is asked through the server: {went}"
+        assert toast == "Opened PR #51 in IntelliJ \u2014 petclinic", toast
+    elif pick == "idea":
+        assert went == [IJ_PR], went
+    elif served:
+        assert [p for p, _, _ in posts] == ["/__editor_open__"], posts
+        assert went == [build.vscode_pr_uri(PR)], went
+    else:
+        assert went == [build.vscode_pr_uri(PR)], went

@@ -565,6 +565,73 @@ def test_the_badge_press_endpoint_takes_the_pick_from_its_body(server, tmp_path,
     assert opened == [(tmp_path, "idea"), (tmp_path,)]
 
 
+# ---- the PR line's *in IntelliJ*: the PR in IntelliJ's Pull Requests tool window ------------
+# The page names the PR; the server finds the IntelliJ window on its own checkout and asks its
+# plugin (`/open-pr`), relaying the plugin's sentence when it cannot.
+
+PR = "https://github.com/o/r/pull/51"
+
+
+def test_the_pr_goes_to_the_intellij_window_on_the_checkout(
+        server, repo, tmp_path, monkeypatch, stop):
+    r, _, _ = repo
+    vsc, V = _ide(tmp_path, monkeypatch, "vscode", r)
+    ij, I = _ide(tmp_path, monkeypatch, "idea", r, answers={
+        "/open-pr": ({"ok": True, "number": 51, "folder": "petclinic"}, 200)})
+    stop(vsc), stop(ij)
+    monkeypatch.setattr(srv, "ROOT", r)
+    status, payload = _call(server, "POST", srv.OPEN_PR, {"url": PR})
+    assert status == 200 and json.loads(payload) == {"how": "opened", "window": "petclinic",
+                                                     "number": 51}
+    assert I.asked == [("/open-pr", {"url": PR, "root": str(r)})] and V.asked == []
+
+
+@pytest.mark.parametrize("said, status, sentence", [
+    ({"ok": False, "error": "This project is not connected to o/r on GitHub"}, 409,
+     "This project is not connected to o/r on GitHub"),
+    ({"ok": False, "error": "no project is open"}, 404, "no project is open"),
+    ({"ok": False}, 404, "too old to open PRs — update it to 0.3.5 or later"),
+], ids=["refused", "no-project", "older-plugin"])
+def test_intellijs_refusal_reaches_the_page_as_a_sentence(
+        server, repo, tmp_path, monkeypatch, stop, said, status, sentence):
+    r, _, _ = repo
+    ij, I = _ide(tmp_path, monkeypatch, "idea", r, answers={"/open-pr": (said, status)})
+    stop(ij)
+    monkeypatch.setattr(srv, "ROOT", r)
+    got, payload = _call(server, "POST", srv.OPEN_PR, {"url": PR})
+    assert got == 409 and sentence in payload, payload
+    assert [p for p, _ in I.asked] == ["/open-pr"]
+
+
+def test_no_intellij_window_on_the_checkout_says_so_and_launches_nothing(
+        server, repo, tmp_path, monkeypatch, stop):
+    r, _, _ = repo
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    vsc, V = _ide(tmp_path, monkeypatch, "vscode", r)
+    ij, I = _ide(tmp_path, monkeypatch, "idea", elsewhere)
+    stop(vsc), stop(ij)
+    monkeypatch.setattr(srv, "ROOT", r)
+    monkeypatch.setattr(srv, "_launch_in", lambda *a: pytest.fail("IntelliJ was launched"))
+    status, payload = _call(server, "POST", srv.OPEN_PR, {"url": PR})
+    assert status == 409 and payload.startswith(f"No IntelliJ window has {r} open"), payload
+    assert I.asked == [] and V.asked == []
+
+
+def test_only_a_github_pull_url_is_taken_and_only_from_this_page(
+        server, repo, tmp_path, monkeypatch, stop):
+    r, _, _ = repo
+    ij, I = _ide(tmp_path, monkeypatch, "idea", r)
+    stop(ij)
+    monkeypatch.setattr(srv, "ROOT", r)
+    for url in ("https://example.com/o/r/pull/51", f"{PR}#discussion_r1", f"{PR}/files",
+                "http://github.com/o/r/pull/51", "file:///etc/passwd", 51, None):
+        status, _ = _call(server, "POST", srv.OPEN_PR, {"url": url})
+        assert status == 400, url
+    status, _ = _call(server, "POST", srv.OPEN_PR, {"url": PR}, {"X-Human-Review-Token": "guess"})
+    assert status == 403 and I.asked == []
+
+
 # ---- the page: the picker, and what a click sends ------------------------------------------
 
 @pytest.fixture(scope="module")
