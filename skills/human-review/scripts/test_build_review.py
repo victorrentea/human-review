@@ -6765,4 +6765,7 @@ def test_the_api_spec_credit_rides_the_visual_diffs_bar_and_the_version_the_band
     host = host[:host.index("</div>")]
     assert '<span slot="prov" class="apiprov">' in host and "Generated from code" in host
     assert ">openapi.yaml</a>" in host
+    # A diagram card's file link: `.dgm-src`, grey until hovered, the tip tip.js rewords
+    # for the IDE the reader picked (Victor, 29 Oct 2026).
+    assert 'class="dgm-src"' in host and 'data-tip="Open in VS Code: openapi.yaml"' in host
     assert build.spec_version(tmp_path / "openapi.yaml") == "1.0"

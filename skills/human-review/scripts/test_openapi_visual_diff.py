@@ -492,6 +492,9 @@ def test_the_bar_reads_title_endpoints_changes_then_the_embedders_slot():
                                      '<slot name="prov">')]
     assert order == sorted(order)
     assert "if (ver && verEl && !HOST)" in page, "embedded, the review's band says the version"
+    # Embedded, the groups under the bar run to the bar's edges: Swagger UI's own
+    # `.wrapper` gutter is dropped inside the shadow root, kept standalone.
+    assert ":host .swagger-ui .wrapper { padding: 0; max-width: none; }" in page
 
 
 def test_a_node_that_will_not_open_gets_its_tree_redrawn_once():

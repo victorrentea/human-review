@@ -745,6 +745,11 @@ TEMPLATE = r"""<!doctype html>
      same numbers hold standalone (the top of the body) and embedded (wherever the host
      page put us). */
   #dv-app { position: relative; }
+  /* Swagger UI's stylesheet insets its `.wrapper` (padding 0 20px, max-width 1460px), and
+     the bar above sits outside it: embedded, the controller groups started 20px in on
+     both sides of a bar that spans the column (Victor, 29 Oct 2026). Embedded only — the
+     host's column is the margin; standalone the window edge needs that gutter. */
+  :host .swagger-ui .wrapper { padding: 0; max-width: none; }
 
   /* ---------- toolbar ---------- */
   .dv-bar {

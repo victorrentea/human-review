@@ -592,7 +592,9 @@ def api_spec_provenance(band: str, root: Path, out_dir: Path | None = None) -> s
     badge = generated_badge(spec, root, source="code",
                             tip="{test} writes this contract from the Java controllers and "
                                 "DTOs, so it is the code's, never hand-edited")
-    prov = (f'{badge}{_source_link(spec, root, out_dir)}') if badge else ""
+    # The name, the path on the hover: a diagram card's file link, IDE-following tip and all.
+    prov = (f'{badge}{_source_link(spec, root, out_dir, face=Path(spec).name)}'
+            if badge else "")
     host = re.search(r'<div class="oavhost" id="embed-swaggerdiff"[^>]*>(?=</div>)', band)
     if prov and host:
         band = (band[:host.end()] + f'<span slot="prov" class="apiprov">{prov}</span>'
