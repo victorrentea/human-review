@@ -1,1 +1,14 @@
-  = diagrams: unchanged, 21.3 s saved
+  * diagrams -> data,packages
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh e27182cbe767ce1f44c6812cda555d5b11cd653a .human-review/assets/diagrams
+[puml-diff] petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.diff.puml
+[puml-diff] petclinic-test/generated/VisitListTest.java.a-visit-carries-its-pet-and-owner.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_VisitListTest.java.a-visit-carries-its-pet-and-owner.genseq.diff.puml
+[puml-diff] petclinic-test/generated/VisitListTest.java.default-page-is-the-ten-latest-visits.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_VisitListTest.java.default-page-is-the-ten-latest-visits.genseq.diff.puml
+[puml-diff] petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.diff.puml
+[puml-diff] petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.diff.puml
+[puml-diff] petclinic-test/generated/visits.spec.ts.a-page-of-5-visits-then-the-next-one.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_visits.spec.ts.a-page-of-5-visits-then-the-next-one.genseq.diff.puml
+[puml-diff] petclinic-test/generated/visits.spec.ts.clicking-a-column-header-sorts-by-it-and-keeps-the-sort-in-the-url.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_visits.spec.ts.clicking-a-column-header-sorts-by-it-and-keeps-the-sort-in-the-url.genseq.diff.puml
+[puml-diff] petclinic-test/generated/visits.spec.ts.shows-the-ten-latest-visits-on-initial-load.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_visits.spec.ts.shows-the-ten-latest-visits-on-initial-load.genseq.diff.puml
+[puml-diff] 8 diagram(s) -> .human-review/assets/diagrams (see MANIFEST.tsv)
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base e27182cbe767ce1f44c6812cda555d5b11cd653a --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
+.human-review/assets/conceptual-{original,new,diff}.svg  (added 0 boxes, 0 lines · removed 0 boxes, 0 lines · 0 changed · 0 moved, rendered by drawio)
+  8 concept(s) linked to their class
