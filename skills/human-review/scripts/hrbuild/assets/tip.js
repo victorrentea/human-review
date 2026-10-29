@@ -149,7 +149,15 @@
   pop.tabIndex = -1;
   css.textContent +=
     '.tip.tippop{pointer-events:auto;width:max-content;max-width:calc(100vw - 16px);' +
-    'max-height:min(60vh,28rem);overflow:auto;overscroll-behavior:contain;padding:.55rem .8rem .65rem}' +
+    'max-height:min(60vh,28rem);overflow:auto;overscroll-behavior:contain;padding:.55rem .8rem .65rem' +
+    // A scrollbar that stays drawn: the default one on a Mac is an overlay that shows only
+    // while scrolling, so a cut-off list read as complete (Victor, 29 Oct 2026). Styling
+    // `::-webkit-scrollbar` is what makes Chrome draw a classic one there, and only while
+    // `scrollbar-color`/`-width` are unset, which would switch it off again.
+    '}' +
+    '.tip.tippop::-webkit-scrollbar{width:8px}' +
+    '.tip.tippop::-webkit-scrollbar-track{background:transparent}' +
+    '.tip.tippop::-webkit-scrollbar-thumb{background:rgba(255,255,255,.35);border-radius:4px}' +
     '.tip.tippop:not(.visible){visibility:hidden}' +
     '.tip.tippop .tippophead{margin:0 0 .3rem;font-size:13px;opacity:.75}' +
     '.tip.tippop ul.tiplist{padding-left:1.1rem}' +

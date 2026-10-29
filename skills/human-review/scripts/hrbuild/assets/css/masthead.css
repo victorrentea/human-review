@@ -155,8 +155,10 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
    2026: "doar sus un efect mic sugestiv"). The hairline goes, so the tab flows into it.
    On the body's own background, at the masthead's measured foot (`--strip-h`), not on the
    sticky masthead: there it painted over whatever scrolled under it ("să fie pe
-   background"), here everything on the page is drawn above it. */
-.masthead:has(.tabstrip) { border-bottom-color:transparent; }
+   background"), here everything on the page is drawn above it. No border at all, not a
+   transparent one: a transparent border still shows the masthead's own --bg, which drew a
+   1px dark line between the tabs and the wash (Victor, 29 Oct 2026). */
+.masthead:has(.tabstrip) { border-bottom:0; }
 body:has(> .masthead .tabstrip, .masthead .tabstrip) {
   background:linear-gradient(var(--accent-soft), transparent) 0 var(--strip-h, 0) / 100% 14px
              no-repeat, var(--bg); }
