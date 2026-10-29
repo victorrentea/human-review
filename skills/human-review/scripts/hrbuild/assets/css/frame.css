@@ -95,6 +95,13 @@ button.tab .sev { width:6px; height:6px; border-radius:50%; background:var(--acc
    them where a reader's eye lands after the last panel. */
 footer .footrow { text-align:center; margin:0; }
 footer .footrow > span { display:inline; }
+/* The row may be wider than the 1160px column above it: past 1200px it takes the window
+   less the page's 1.25rem gutters, still centred, so the sentence and the ⇄ One page pill
+   share one row at ~1700px even with a larger default font (Victor, 29 Oct 2026). Under
+   1200px the margin is 0 and the row is the column. The pill and its 📋 are one nowrap
+   group, so a narrow window moves the pair to the next line whole. */
+footer .footrow { margin-inline:min(0px, calc(50% - 50vw + 1.25rem)); }
+footer .footrow > .footctl { white-space:nowrap; }
 /* The single-page toggle used to be the last pill on the tab strip, pressed roughly never; then
    a pill on a line of its own under this sentence, then the sentence's last word. It ends
    the second line now, after the page's path — a small pill, no line of its own. */

@@ -536,7 +536,7 @@ window.HR = (function () {
       [].forEach.call(document.querySelectorAll(LOCAL), function (el) {
         el.setAttribute('aria-disabled', 'true');
       });
-      // The footer's "Browse online: demo 1 · demo 2", read on one of those pages: the
+      // The footer's "Browse: demo 1 · demo 2", read on one of those pages: the
       // link to itself becomes its plain name, the other demo stays a link.
       [].forEach.call(document.querySelectorAll('.takeaway-online a[href]'), function (a) {
         var to = new URL(a.href, location.href);

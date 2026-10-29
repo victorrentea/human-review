@@ -93,12 +93,12 @@ TAKEAWAY = (
     '<span class="takeaway">'
     f'Built by <a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a> '
     f'(<a href="{TALK_URL}" target="_blank" rel="noopener" '
-    'data-tip="The talk that walks through this page: recording, summary, wiki">guide</a>). '
+    'data-tip="Walk-through of this guide: my talk at Devoxx Belgium 2026">guide</a>). '
     # Its own span: server.js hides the sentence on the page it links to.
-    f'<span class="takeaway-online">Browse online: <a href="{DEMO_PAGES_URL}" target="_blank" '
+    f'<span class="takeaway-online">Browse: <a href="{DEMO_PAGES_URL}" target="_blank" '
     'rel="noopener">demo 1</a> · '
     f'<a href="{DEMO2_PAGES_URL}" target="_blank" rel="noopener">demo 2</a>. </span>'
-    'Adopt what you like. Bug or idea → '
+    'Adopt what you like. Bug/idea → '
     f'<a href="{ISSUES_URL}" target="_blank" rel="noopener" data-tip="Open an issue">+ issue</a>.'
     '</span>'
 )

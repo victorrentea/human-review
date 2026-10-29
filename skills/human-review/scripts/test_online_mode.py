@@ -32,7 +32,7 @@ BODY = (
     'C.puml</a>'
     '<a id="desk" class="dgm-edit" href="drawio:///r/D.drawio.png">Edit in app</a>'
     '<a id="web" class="dgm-edit" href="https://app.diagrams.net/#R">Edit on web</a>'
-    '<span class="takeaway-online">Browse online: <a id="online" '
+    '<span class="takeaway-online">Browse: <a id="online" '
     'href="https://victorrentea.github.io/human-review/demo/review.html">demo 1</a> · '
     '<a id="online2" href="https://victorrentea.github.io/human-review/demo2/review.html">'
     'demo 2</a>. </span>'

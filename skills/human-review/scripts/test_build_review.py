@@ -1433,6 +1433,12 @@ def test_the_footer_is_one_centred_line_ending_on_its_control_then_the_path(tmp_
     assert line.count("<span") >= 2 and "<div" not in line
     # One line (Victor, 20 Oct 2026): the sentence, the toggle, then two faint marks.
     assert 'class="allbtn"' in line and "allbar" not in foot
+    # The pill and its 📋 are one unbreakable group, and past the 1200px column the row
+    # takes the window's width, so both sit on the sentence's row at ~1700px (29 Oct 2026).
+    ctl = line[line.index('<span class="footctl">'):]
+    assert ctl.index('class="allbtn"') < ctl.index('class="diskline"')
+    assert "footer .footrow > .footctl { white-space:nowrap; }" in page
+    assert "footer .footrow { margin-inline:min(0px, calc(50% - 50vw + 1.25rem)); }" in page
     disk = line[line.index('class="diskline"'):]
     assert line.index('class="allbtn"') < line.index('class="diskline"')
     # 📂 reveals in Finder (once a server says it can), 📋 copies; the path is not shown.
@@ -1451,8 +1457,8 @@ def test_the_footer_says_where_the_page_came_from_and_where_to_see_it(tmp_path):
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
     text = re.sub(r"<[^>]+>", "", foot)
-    assert ("Built by https://github.com/victorrentea/human-review (guide). Browse online: demo 1 · "
-            "demo 2. Adopt what you like. Bug or idea → + issue.") in text
+    assert ("Built by https://github.com/victorrentea/human-review (guide). Browse: demo 1 · "
+            "demo 2. Adopt what you like. Bug/idea → + issue.") in text
     assert 'href="https://github.com/victorrentea/human-review"' in foot
     assert 'href="https://victorrentea.ro/talk/architecture-observability-devoxx-26/"' in foot
     assert ">demo 1</a>" in foot and ">demo 2</a>" in foot and "/demo2/review.html" in foot
@@ -1483,7 +1489,7 @@ def test_the_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
     spec = {k: v for k, v in BARE.items() if k != "footer"}
     page, _ = _build(tmp_path, spec)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert "Built by" in foot and "Browse online: <a" in foot and ">demo 2</a>." in foot
+    assert "Built by" in foot and "Browse: <a" in foot and ">demo 2</a>." in foot
 
 
 def test_the_show_all_button_says_what_it_does_next(tmp_path):

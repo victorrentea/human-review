@@ -1500,6 +1500,11 @@ def _main(argv=None) -> int:
     # leans on the seed, and then neither tab draws a dot.
     fixtures_html = render_fixture_registry(root)
     fixtures_html = fixtures_html + "\n" + FIXTURES_JS if fixtures_html else ""
+    # The toggle and its 📋 travel together: one unbreakable group after the sentence, so a
+    # narrow window wraps the pair onto the next line whole instead of splitting the pill
+    # from its mark (Victor, 29 Oct 2026: both on the sentence's row at his ~1700px).
+    footctl_html = (f' <span class="footctl">{allbtn_html.strip()}{diskline_html}</span>'
+                    if allbtn_html or diskline_html else "")
     doc = f"""<!doctype html>
 <html lang="en"{commit_stamp(root, out_dir)}><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1514,7 +1519,7 @@ def _main(argv=None) -> int:
 {lede_html}
 
 {body_html}
-<footer><p class="footrow"><span>{_link_home(spec.get('footer', ''))}</span> {TAKEAWAY}{allbtn_html}{diskline_html}</p></footer>
+<footer><p class="footrow"><span>{_link_home(spec.get('footer', ''))}</span> {TAKEAWAY}{footctl_html}</p></footer>
 </div>
 {SERVER_JS}
 {CAPTION_JS}
