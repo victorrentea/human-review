@@ -121,7 +121,7 @@ def test_a_box_links_to_its_folder_on_github_at_the_reviewed_commit(repo):
     svg = _entity("..web.dto", "..web.dto") + _entity("nobody", "nobody")
     out = folders.link_folders(svg, "shop-api/docs/packages.puml", repo)
     assert ('data-folder="shop-api/src/main/java/com/acme/shop/web/dto" '
-            'data-folder-name="..web.dto">') in out
+            'data-folder-name="..web.dto" data-quiet="">') in out
     assert (f'<a href="https://github.com/acme/shop/tree/{head}/shop-api/src/main/java/com/'
             f'acme/shop/web/dto" data-tip="Open ..web.dto on GitHub">') in out
     assert _entity("nobody", "nobody") in out
@@ -332,6 +332,28 @@ def test_a_box_is_shaded_by_its_share_of_the_lines_added_and_lists_its_files(rep
     assert ">D.java</a>" in pop, "named relative to the box the reader hovered"
     assert f'data-diff-path="{src}/web/dto/D.java"' in pop and f'data-diff-base="{base}"' in pop
     assert "D.java" not in _html.unescape(web), "counted in the deepest box only"
+
+
+def test_a_box_the_branch_left_alone_is_drawn_quiet_and_can_be_filtered(repo, monkeypatch):
+    """Victor, 29 Oct 2026: the eye should go to the boxes that carry the change. A box with
+    no file changed in its folder is stamped `data-quiet`, unless the diff paints it green
+    or red; a card with such a box gets the "Only impacted" filter, a card without none."""
+    from hrbuild.shared import snippets
+    base = _git(repo, "rev-parse", "HEAD")
+    _write(repo, "shop-api/src/main/java/com/acme/shop/web/A.java", "class X {}\nint a;\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "one")
+    monkeypatch.setattr(snippets, "SNIPPET_BASE", base)
+    added = _box("..web.dto", "..web.dto").replace(
+        "<rect ", '<rect style="stroke:var(--dgm-diff-add);" ')
+    svg = _box("..web", "..web") + added + _box("dom", "Domain")
+    out = folders.link_folders(svg, "shop-api/docs/packages.puml", repo)
+    web, dto, dom = out.split("</g>")[:3]
+    assert "data-quiet" not in web, "the branch changed a file in it"
+    assert "data-quiet" not in dto, "the diff paints it: it is the change"
+    assert 'data-quiet=""' in dom
+    assert folders.only_impacted(out) == folders.ONLY_IMPACTED
+    assert folders.only_impacted(web + "</g>") == ""
 
 
 def test_a_box_named_by_a_folder_path_maps_to_that_folder(tmp_path):

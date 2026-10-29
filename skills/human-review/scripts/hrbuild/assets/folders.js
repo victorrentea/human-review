@@ -71,3 +71,45 @@
     }
   });
 })();
+
+// "Only impacted" (`folders.ONLY_IMPACTED`), in a card's header: hides the boxes the build
+// drew quiet (`data-quiet`: nothing of the branch in them) and every arrow to or from one,
+// in each view of the card at once. A quiet box a green or red arrow still points at stays,
+// and so does that arrow: the filter hides context, never the change itself. Static page
+// or served alike, so it does not wait for the probe; delegated, so a swapped-in panel
+// needs no wiring.
+(function () {
+  function changed(link) {
+    return Array.prototype.some.call(link.querySelectorAll('path, polygon'), function (el) {
+      return /--dgm-diff-(add|del)|#2E7D32|#C62828/i.test(
+        (el.getAttribute('style') || '') + (el.getAttribute('stroke') || ''));
+    });
+  }
+  function mark(svg) {
+    var links = svg.querySelectorAll('g.link[data-entity-1][data-entity-2]');
+    var keep = {};
+    Array.prototype.forEach.call(links, function (l) {
+      if (changed(l)) keep[l.getAttribute('data-entity-1')] = keep[l.getAttribute('data-entity-2')] = 1;
+    });
+    var off = {};
+    Array.prototype.forEach.call(svg.querySelectorAll('g.entity[data-quiet]'), function (box) {
+      if (keep[box.id]) return;
+      off[box.id] = 1;
+      box.setAttribute('data-only-off', '');
+    });
+    Array.prototype.forEach.call(links, function (l) {
+      if (off[l.getAttribute('data-entity-1')] || off[l.getAttribute('data-entity-2')]) {
+        l.setAttribute('data-only-off', '');
+      }
+    });
+  }
+  document.addEventListener('change', function (ev) {
+    var box = ev.target.closest && ev.target.closest('.dgm-only input');
+    var card = box && box.closest('.diagram');
+    if (!card) return;
+    if (box.checked) card.querySelectorAll('.svgbox svg').forEach(function (svg) {
+      if (!svg.hasAttribute('data-only-marked')) { mark(svg); svg.setAttribute('data-only-marked', ''); }
+    });
+    card.classList.toggle('dgm-only-on', box.checked);
+  });
+})();

@@ -232,6 +232,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'api': {
         "li": [
             'The OpenAPI contract, main vs this branch, diffed by oasdiff.',
+            '<b>Generated from code</b>: a test writes the spec from the controllers.',
             '<b>Breaking</b>: a client of main can fail.',
             'One DTO change can break many endpoints.',
             'For each break, ask who calls it and if they were updated.',
@@ -283,8 +284,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
             '<a href="https://www.archunit.org/" target="_blank" rel="noopener noreferrer">'
             'ArchUnit</a>, a test library, fails the build on an import the drawing lacks.',
             'A new arrow is new coupling: ask why.',
-            '<b>Green bar</b> in a box = its share of the lines this PR added here.',
-            'Hover a box for its changed files; click one for its diff.',
+            '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
+            '<b>Dimmed box</b>: nothing in it changed; <b>Only impacted</b> hides those and their arrows.',
             '<b>✓ ArchUnit-tested vs code</b> after the title: click it to open that test.',
         ],
         "ex": 'e.g. <code>..domain</code> → <code>..rest</code>: not drawn, so a test fails.',
@@ -294,8 +295,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'The frontend folders and who imports whom.',
             'A test reads every <code>import</code> and fails on one the drawing lacks.',
             'A new arrow is new coupling: ask why.',
-            '<b>Green bar</b> in a box = its share of the lines this PR added here.',
-            'Hover a box for its changed files; click one for its diff.',
+            '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
+            '<b>Dimmed box</b>: nothing in it changed; <b>Only impacted</b> hides those and their arrows.',
             '<b>✓ Tested vs code</b> after the title names that test; click to open it.',
         ],
         "ex": 'e.g. <code>parts</code> → <code>owners</code>: not drawn, so a test fails.',
@@ -304,8 +305,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'The Maven modules and who depends on whom, from <code>mvn dependency:tree</code>.',
             'A new arrow or a cycle between modules: ask why.',
-            '<b>Green bar</b> in a box = its share of the lines this PR added here.',
-            'Hover a box for its changed files; click one for its diff.',
+            '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
+            '<b>Dimmed box</b>: nothing in it changed; <b>Only impacted</b> hides those and their arrows.',
             '<b>✓ Generated from …</b>: the source it is redrawn from; click for the generator.',
         ],
     },

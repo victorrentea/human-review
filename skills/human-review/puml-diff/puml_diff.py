@@ -17,7 +17,8 @@ BFS over the relationship graph (both directions, both sides' edges): the change
 elements themselves wear the strongest amber wash, their direct neighbours a weaker one,
 their neighbours' neighbours the weakest, and anything three hops or further out keeps
 PlantUML's plain grey. An element already painted green or red is left unwashed — it is
-saying it louder already. See `RIPPLE` for why the ladder starts where it does.
+saying it louder already. See `RIPPLE` for why the ladder starts where it does. A diagram
+of body-less boxes (packages, folders, modules) is not washed at all; see `diff`.
 
 Direction is the whole point of the colour. Painting both sides red said only "something
 here moved" and left the reader to infer, from a strikethrough they had to look for,
@@ -615,6 +616,16 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     # one that merely gained a field or an edge, has nothing but the ripple to place it.
     painted = set(old.elements) ^ set(new.elements)
 
+    # Only a diagram whose boxes have a body — a class diagram, an ER diagram — is washed.
+    # On a box-and-arrow picture (packages, folders, modules, C4) a box can only be
+    # "impacted" by an arrow that moved, and that arrow is green or red already; the wash
+    # then painted every box near it in a colour that read as *changed*, while the same box
+    # was plain grey under New and Old (Victor, 29 Oct 2026: "the colours of the box should
+    # be the same if unchanged"). The review page marks what changed in such a box itself —
+    # its share of the lines the branch added — and the focus chooser still says how far
+    # out the picture reaches.
+    washed = any(el.has_body for el in [*old.elements.values(), *new.elements.values()])
+
     def ripple(name):
         """The wash behind one element, or None past the last rung and under a paint job.
 
@@ -622,7 +633,7 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
         commonest shape of a change, and one PlantUML draws in plain grey — is the
         hardest-washed box on the picture, and the ladder fades outwards from it."""
         d = rings.get(name)
-        if d is None or d >= len(RIPPLE) or name in painted:
+        if not washed or d is None or d >= len(RIPPLE) or name in painted:
             return None
         return RIPPLE[d]
 

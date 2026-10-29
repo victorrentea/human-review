@@ -945,7 +945,7 @@ def test_the_action_buttons_sit_in_the_card_header(tmp_path):
 def test_a_button_in_the_header_does_not_flip_the_picture():
     """The header is the card's Diff/New toggle; its buttons must not also flip it, and
     a running Revert finds its status line through the card, not through `.rerun`."""
-    assert "!ev.target.closest('a, button')" in build.DGM_VIEWS_JS
+    assert "!ev.target.closest('a, button, label, input')" in build.DGM_VIEWS_JS
     assert build.EDITOR_JS.count("button.closest('.rerun, .rband, .appenv, .diagram')") == 2
 
 

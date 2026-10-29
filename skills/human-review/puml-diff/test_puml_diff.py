@@ -230,13 +230,23 @@ def test_added_bracket_component_gets_green_header():
     assert f"[Notification] <<..notification>> #line:{HEX_ADD};text:{HEX_ADD}" in _pkg_diff()
 
 
-def test_unchanged_bracket_component_keeps_its_name_and_wears_the_wash():
-    """[Domain] is not added and not removed, so no colour is painted on its name — but
-    both the added and the removed relationship hang off it, which makes it the box a
-    reviewer reads next and so the epicentre of the ripple."""
+def test_unchanged_bracket_component_keeps_its_name_and_its_plain_fill():
+    """[Domain] is not added and not removed, so nothing is painted on it. Both the added
+    and the removed relationship hang off it, and those arrows say so in green and red:
+    a wash behind the box as well made an unchanged package look changed in the Diff and
+    plain under New/Old (Victor, 29 Oct 2026). A box-and-arrow diagram is not washed."""
     out = _pkg_diff()
-    assert f"\n[Domain] <<..domain>> #back:{m.RIPPLE[0].lstrip('#')}\n" in out
-    assert HEX_ADD not in out.split("[Domain]")[1].split("\n")[0]
+    assert "\n[Domain] <<..domain>>\n" in out
+    assert not any(c.lstrip("#") in out for c in m.RIPPLE)
+    assert "shaded" not in out
+
+
+def test_a_focused_package_diagram_names_its_scope_in_plain_words():
+    """No wash, so no washed word: the scope is still said, as plain text."""
+    before, after = m.parse(_PKG_BEFORE), m.parse(_PKG_AFTER)
+    assert "<back:" not in m.diff(before, after, "1")
+    assert "impacted + neighbours" in m.diff(before, after, "1")
+    assert "the impacted elements only" in m.diff(before, after, "0")
 
 
 def test_removed_bracket_component_struck_but_keeps_alias():

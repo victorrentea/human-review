@@ -302,6 +302,21 @@ def _impact_pop(label: str, box: dict, base: str, root: Path, folder: str) -> st
     return files_pop(head, box["files"], base, root, strip=folder)
 
 
+#: A box the diff itself paints: added (green) or removed (red), themed or not yet.
+_PAINTED = re.compile(r'--dgm-diff-(?:add|del)\b|#(?:2E7D32|C62828)\b', re.I)
+
+#: The card's "Only impacted" filter, beside its status chip, on a card that has a quiet box.
+#: Off by default; `folders.js` hides the quiet boxes and every arrow to one, but keeps a
+#: quiet box that a green or red arrow still points at, so the change never dangles.
+ONLY_IMPACTED = ('<label class="dgm-only" data-tip="Hide the boxes this PR left alone, '
+                 'and their arrows"><input type="checkbox">Only impacted</label>')
+
+
+def only_impacted(markup: str) -> str:
+    """The filter for a card whose `markup` has a quiet box, else ""."""
+    return ONLY_IMPACTED if 'data-quiet=""' in markup else ""
+
+
 def link_folders(markup: str, rel: str, root: Path) -> str:
     """Every box in `markup` (inlined SVGs of `rel`) that is a package or a module carries
     `data-folder` / `data-folder-name`, and its shapes are wrapped in a link to the folder
@@ -327,6 +342,11 @@ def link_folders(markup: str, rel: str, root: Path) -> str:
                  f' data-folder-name="{html.escape(label, quote=True)}"')
         inner = _center_label(m["inner"])
         box = impact.get(name)
+        if not box and not _PAINTED.search(m["inner"]):
+            # Nothing of this box changed — no file in its folder, no green or red on it —
+            # so it is drawn quiet, the same in the Diff as under New and Old, and the eye
+            # goes to the boxes that did (Victor, 29 Oct 2026). `ONLY_IMPACTED` hides it.
+            attrs += ' data-quiet=""'
         if box:
             pop = _impact_pop(label, box, base, root, folder)
             attrs += (f' data-impact="{box["share"]:.3f}"'
