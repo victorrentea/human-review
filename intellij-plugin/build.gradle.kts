@@ -66,6 +66,11 @@ intellijPlatform {
             Installs and updates without restarting the IDE.
         """.trimIndent()
         changeNotes = """
+            <h3>0.3.6</h3>
+            <ul>
+              <li><b>Follow the editor</b> works right after a live update, without waiting for a
+                  restart.</li>
+            </ul>
             <h3>0.3.5</h3>
             <ul>
               <li><b>The Pull Requests tool window follows the editor</b>: switching the editor to

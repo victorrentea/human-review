@@ -56,5 +56,6 @@ class HumanReviewPluginListener : DynamicPluginListener {
         if (app.isUnitTestMode || Folders.openProjects().isEmpty()) return
         service<HumanReviewBridge>().start()
         service<PrStatusFold>().install()
+        Folders.openProjects().forEach { it.service<PrFollowService>().start() }
     }
 }

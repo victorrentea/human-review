@@ -132,6 +132,7 @@ class PullRequestsTest : BasePlatformTestCase() {
         val file = myFixture.addFileToProject("src/C.java", "class C {}").virtualFile
         val tree = changesTree(file.path)
         pullRequestsWindow(JPanel(BorderLayout()).apply { add(JScrollPane(tree)) })
+        project.getService(PrFollowService::class.java).start()  // what HumanReviewStartup does
         myFixture.openFileInEditor(file)
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
         assertEquals(file.path, tree.selectionPath?.let { PrFollow.pathOf((it.lastPathComponent as DefaultMutableTreeNode).userObject) })

@@ -18,6 +18,9 @@
 # proves nothing (30 Oct 2026: 0.3.3 reloaded "✅" and leaked). `./deploy-local.sh --verdict`
 # builds and copies nothing: it waits again (RELOAD_WAIT, 300 s by default) for the reload of
 # the last copy — after IntelliJ was given focus — and prints the same two lines.
+#
+# Classes only: IntelliJ reloads the plugin with the plugin.xml it parsed at startup, so what a
+# change *declares* there (an extension, a listener, an action) waits for a restart.
 set -e
 cd "${0:A:h}"
 

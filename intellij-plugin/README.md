@@ -107,7 +107,11 @@ activations and the Pull Requests tree's selection are handed to the EDT as JDK-
   unload but are still referenced" (restart needed). The reload lands only once IntelliJ's window
   gets focus; when it has not within `RELOAD_WAIT` seconds (60), `./deploy-local.sh --verdict`
   waits for it again without building. `IDE_CONFIG=…` picks the IDE when several have it
-  installed.
+  installed. **A hot reload swaps classes, not `plugin.xml`**: IntelliJ reloads the plugin with
+  the descriptor it parsed at startup (`DynamicPlugins.loadPlugin(descriptor)`), so a new
+  extension, listener or action declared there appears only after a restart (or an install from
+  disk or the Marketplace). What must work right after a live update is wired in code — light
+  services started from the startup activity and `pluginLoaded`.
 
 ## Settings
 

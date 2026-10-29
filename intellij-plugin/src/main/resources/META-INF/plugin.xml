@@ -35,13 +35,6 @@
 
     <!-- Updated without a restart (Lifecycle.kt): state put into editors is taken out before the
          unload, and a plugin loaded into a running IDE starts its bridge. -->
-    <!-- Follow the editor in the Pull Requests tool window's changes tree (PullRequests.kt):
-         subscribed and unsubscribed by the platform, with the plugin. -->
-    <projectListeners>
-        <listener class="ro.victorrentea.humanreview.PrFollowListener"
-                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
-    </projectListeners>
-
     <applicationListeners>
         <listener class="ro.victorrentea.humanreview.HumanReviewPluginListener"
                   topic="com.intellij.ide.plugins.DynamicPluginListener"/>

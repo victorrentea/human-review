@@ -462,5 +462,6 @@ class HumanReviewStartup : ProjectActivity {
         if (ApplicationManager.getApplication().isUnitTestMode) return
         service<HumanReviewBridge>().start()
         service<PrStatusFold>().install()
+        project.service<PrFollowService>().start()
     }
 }

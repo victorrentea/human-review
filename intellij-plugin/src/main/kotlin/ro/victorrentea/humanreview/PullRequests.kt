@@ -56,8 +56,8 @@ import javax.swing.tree.TreePath
 //
 // Nor may any of it keep the plugin from unloading (Lifecycle.kt): what makes the GitHub plugin
 // build UI is called off this plugin's stack (OffStack); the editor listener is declared in
-// plugin.xml, so the platform removes it; the AWT listener belongs to a service that takes it
-// out on dispose; and what is left on the GitHub plugin's components is a preferred size and a
+// a project service's message-bus connection, disposed with the plugin; the AWT listener
+// belongs to a service that takes it out on dispose; and what is left on the GitHub plugin's components is a preferred size and a
 // client property — JDK values, no class of ours.
 
 private val LOG = logger<PrOpen>()
@@ -139,13 +139,28 @@ object PrFollow {
     }
 }
 
-/** Declared in plugin.xml (`projectListeners`): the platform subscribes it, and takes it away
- *  with the plugin. */
-class PrFollowListener(private val project: Project) : FileEditorManagerListener {
-    override fun selectionChanged(event: FileEditorManagerEvent) {
-        val file = event.newFile ?: return
-        runCatching { PrFollow.reveal(project, file) }.onFailure { LOG.debug("human-review: follow the editor", it) }
+/**
+ * The editor's selection, followed: a subscription owned by a project service, which the
+ * platform disposes with the plugin — so the connection goes with it. Not a `projectListeners`
+ * entry in plugin.xml: a live update (deploy-local.sh) reloads the classes but keeps the
+ * descriptor IntelliJ parsed at startup, so a listener declared there only after it would wait
+ * for a restart. Started with the bridge (HumanReviewStartup, `pluginLoaded`).
+ */
+@Service(Service.Level.PROJECT)
+class PrFollowService(private val project: Project) : Disposable {
+    private val started = AtomicBoolean(false)
+
+    fun start() {
+        if (!started.compareAndSet(false, true)) return
+        project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+            override fun selectionChanged(event: FileEditorManagerEvent) {
+                val file = event.newFile ?: return
+                runCatching { PrFollow.reveal(project, file) }.onFailure { LOG.debug("human-review: follow the editor", it) }
+            }
+        })
     }
+
+    override fun dispose() {}
 }
 
 /** "Follow the Editor", in the changes tree's right-click menu (human-review-github.xml). */
