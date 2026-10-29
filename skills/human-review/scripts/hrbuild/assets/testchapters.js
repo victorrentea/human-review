@@ -157,11 +157,12 @@
   });
   // "covering" carries the 🤖: which test covers which sentence is a model's mapping, not
   // a measurement (Victor, 20 Oct 2026); "running" is measured, so it has none. Each option
-  // says "tests" itself, with no "Tests:" in front (Victor, 29 Oct 2026). The third field
-  // is the card title's hover.
+  // says "tests" itself, with no "Tests:" in front (Victor, 29 Oct 2026). "running
+  // through changed files" is his label; the probe counts changed *lines* (tests.py
+  // `coverage_join`), so the hover says that. The third field is the card title's hover.
   var MODES = [['cover', 'Tests covering \uD83E\uDD16 the change',
                 'Tests paired with a sentence of the ticket, the ones wearing the fork.'],
-               ['run', 'Tests running through the change',
+               ['run', 'Tests running through changed files',
                 'Tests that ran a changed line, as captured by a coverage probe.'],
                ['all', 'All tests', 'All tests, as captured by a coverage probe.']];
   // The choice's own hover: what the total at the end of its row counts, first - that
@@ -178,8 +179,9 @@
           + ' the rows wearing the fork.'];
     },
     run: function (n) {
-      return [n + ': the tests a coverage probe saw run a changed line, plus any'
-          + ' \uD83E\uDD16 matched to the ticket; each kind\u2019s own count is on its row below.',
+      return [n + ': the tests a coverage probe saw run a changed line of a changed file'
+          + ' (not merely its other lines), plus any \uD83E\uDD16 matched to the ticket;'
+          + ' each kind\u2019s own count is on its row below.',
         'The probe\u2019s part is measured, not guessed: the lines each test executed,'
           + ' recorded as the suite ran.'];
     },

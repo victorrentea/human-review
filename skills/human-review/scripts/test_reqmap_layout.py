@@ -105,7 +105,9 @@ def test_the_title_row_over_the_card_offers_all_tests_where_the_filters_stood(tm
     # tall column that broke the row. The hover says first what the total counts, for
     # every option, and follows the choice.
     assert "var MODES = [['cover', 'Tests covering \\uD83E\\uDD16 the change'," in js
-    assert "['run', 'Tests running through the change'," in js
+    assert "['run', 'Tests running through changed files'," in js
+    # The label says files; what the probe counts is changed lines, and the hover says so.
+    assert "saw run a changed line of a changed file" in js
     assert "['all', 'All tests'," in js
     assert "who.hidden = true;" in js
     assert "rm-mode-why" not in js and "rm-mode-why" not in T.REQMAP_CSS
