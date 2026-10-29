@@ -1,1 +1,3 @@
-  = tests: unchanged, 0.8 s saved
+  * tests -> requirements
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/test-changes.py --base e27182cbe767ce1f44c6812cda555d5b11cd653a --out .human-review/assets/test-changes.json
+[test-changes] 48 test cases in changed test files -> .human-review/assets/test-changes.json (22 added); the run goes from 26 to 48 (+22 / -0)

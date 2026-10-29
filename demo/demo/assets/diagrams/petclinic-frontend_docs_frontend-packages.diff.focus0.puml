@@ -24,9 +24,9 @@ arrow {
   LineColor #78909C
 }
 </style>
-[vets] <<src/app/vets>> #back:F2CF8E
-[visits] <<src/app/visits>> #back:F2CF8E
-[design-system] <<src/app/design-system>> #back:F2CF8E
+[vets] <<src/app/vets>>
+[visits] <<src/app/visits>>
+[design-system] <<src/app/design-system>>
 
 [visits] -[#2E7D32,thickness=2]-> [vets]
 [vets] --> [design-system]

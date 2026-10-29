@@ -1,5 +1,5 @@
 @startuml
-caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — <back:#F2CF8E><color:#000000>impacted</color></back> + <back:#F4DCB4><color:#000000>neighbours</color></back>, shaded by distance (9 of 12 shown)
+caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — impacted + neighbours (9 of 12 shown)
 
 title Frontend Logical Architecture - Diff
 footer frontend-packages.puml — All folders and their imports are tested against the code by scripts/packages-arch.test.mjs
@@ -24,15 +24,15 @@ arrow {
   LineColor #78909C
 }
 </style>
-[app] <<src/app>> #back:F4DCB4
-[owners] <<src/app/owners>> #back:F4DCB4
-[vets] <<src/app/vets>> #back:F2CF8E
-[pets] <<src/app/pets>> #back:F4DCB4
-[visits] <<src/app/visits>> #back:F2CF8E
-[pettypes] <<src/app/pettypes>> #back:F4DCB4
-[specialties] <<src/app/specialties>> #back:F4DCB4
-[design-system] <<src/app/design-system>> #back:F2CF8E
-[generated] <<src/app/generated>> #back:F4DCB4
+[app] <<src/app>>
+[owners] <<src/app/owners>>
+[vets] <<src/app/vets>>
+[pets] <<src/app/pets>>
+[visits] <<src/app/visits>>
+[pettypes] <<src/app/pettypes>>
+[specialties] <<src/app/specialties>>
+[design-system] <<src/app/design-system>>
+[generated] <<src/app/generated>>
 
 [app] <--> [owners]
 [app] <--> [pets]

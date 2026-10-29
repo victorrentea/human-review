@@ -416,6 +416,7 @@
   /* ...and while a road this diff added is up, every other name on the bundle steps back
      with its road. A new road's own peer keeps its direction's colour and wears a star. */
   .coupling-label.faded { opacity: 0.55; }
+  .new-mark { font-size: 1.5em; line-height: 0; vertical-align: -0.12em; }
   .coupling-label.subject {   /* the one you asked about: on no road, so on no side */
     background: rgba(12, 32, 96, 0.96);
     box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.9), 0 6px 18px rgba(15, 23, 42, 0.4);
@@ -563,7 +564,7 @@
   Scroll to zoom<br>
   Shift-click a floor/building to zoom in<br>
   <span id="roadsHint"><b>&#8997; over a building</b>: its coupling, as roads (&#8997;-click to pin, Esc or click the ground to let go)<br>
-    <span id="addedRoadsHint" hidden>&nbsp;&nbsp;&#11088; riding a road: a dependency this diff added, shown by itself on a coupling colour; under &#8997; the rest fade<br></span>
+    <span id="addedRoadsHint" hidden>&nbsp;&nbsp;<span class="new-mark">&#x1F195;</span> riding a road: a dependency this diff added, shown by itself on a coupling colour; under &#8997; the rest fade<br></span>
     <span id="roadJumpHint">&nbsp;&nbsp;&#8984;/Ctrl-click a road: the source line that couples the two<br></span></span>
   <b>&#8679; over a building</b>: what changes with it (co-change colour), or its whole axis (cohesion colour)<br>
   Shift-click the ground (or Esc / breadcrumb) to step out<br>
@@ -582,7 +583,6 @@
 
     <span class="knob">Area</span>
     <select id="areaMetric">
-      <option value="bytes">file size</option>
       <option value="lines" selected>lines of code (LOC)</option>
       <option value="cognitive_complexity">cognitive complexity</option>
       <option value="commits">total commits</option>
@@ -707,14 +707,14 @@ const MODULES = [{"path": "petclinic-backend", "name": "petclinic-backend", "dis
 const REPO_ABS = "/Users/victorrentea/workspace/petclinic-pr-visit-has-vet";
 // The same file on github.com at the commit the city was drawn from, or "" (see
 // _github_blob_base). Used instead of VS Code when the page is not read on this machine.
-const GITHUB_BLOB = "https://github.com/victorrentea/petclinic/blob/7ac6fd59aa81873b46749629cfcf7fe44abe28d1/";
+const GITHUB_BLOB = "https://github.com/victorrentea/petclinic/blob/8373788e5da76160d0124ba621577154df0183dd/";
 // Read off this machine (GitHub Pages, any host but localhost): a vscode:// path is the
 // generating machine's, so a click goes to GitHub instead, or nowhere, and says so.
 const LOCAL_PAGE = location.protocol === "file:" ||
   /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const EDITOR_LINKS = LOCAL_PAGE || !!GITHUB_BLOB;
 const HAS_CHANGES = true;  // any file in the current git change set?
-const CHANGE_SOURCE = {"kind": "pr", "label": "PR #49", "detail": "Link Visit with Vet (#37), reimplemented unguided by Opus", "before": "664c5b3b453fb758230de01e407064c45d07a844", "tooltip": "Link Visit with Vet (#37), reimplemented unguided by Opus\n\nCloses #37.\n\nA visit can now record the vet who attended it, and the vet is optional. You can pick a vet when booking or editing a visit, or leave it empty, since the vet is often unknown when the appointment is made. The owner's page, the all-visits screen and the chatbot's visit list now show each visit's vet. A visit without one reads \"No vet\"; that includes every visit created before this change. The data model is a nullable `visits.vet_id` (migration V4). The API adds `vetId` plus read-only vet first and last names to the visit payloads. A few demo seed visits get a vet so both states show up.\n\nTwo decisions deserve a reviewer's eye. First, editing a visit (PUT) replaces it whole, so a request without `vetId` clears the vet. That is what makes clearing the field persist, as the ticket requires, but a client that omits the field will also wipe the vet. Second, deleting a vet keeps their visits and sets the vet to none (`ON DELETE SET NULL`); refusing the delete would also be defensible. Still open: an unknown `vetId` returns 404, the same as an unknown pet type, rather than 400. The chatbot's `create_visit` can't choose a vet. The new Angular specs have only run in CI, since npm couldn't run in my session. Separately, this branch's CI cancels itself: the push and pull-request runs share one concurrency group, so CI on the fix commit only went green after a manual re-run. That workflow fix belongs on `main`.\n\n\nOpened for the review demo, do not merge.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)", "url": "https://github.com/victorrentea/petclinic/pull/49"};  // what that change set is a diff OF (PR / commit / working tree)
+const CHANGE_SOURCE = {"kind": "pr", "label": "PR #49", "detail": "Link Visit with Vet (#37), reimplemented unguided by Opus", "before": "e27182cbe767ce1f44c6812cda555d5b11cd653a", "tooltip": "Link Visit with Vet (#37), reimplemented unguided by Opus\n\nCloses #37.\n\nA visit can now record the vet who attended it, and the vet is optional. You can pick a vet when booking or editing a visit, or leave it empty, since the vet is often unknown when the appointment is made. The owner's page, the all-visits screen and the chatbot's visit list now show each visit's vet. A visit without one reads \"No vet\"; that includes every visit created before this change. The data model is a nullable `visits.vet_id` (migration V4). The API adds `vetId` plus read-only vet first and last names to the visit payloads. A few demo seed visits get a vet so both states show up.\n\nTwo decisions deserve a reviewer's eye. First, editing a visit (PUT) replaces it whole, so a request without `vetId` clears the vet. That is what makes clearing the field persist, as the ticket requires, but a client that omits the field will also wipe the vet. Second, deleting a vet keeps their visits and sets the vet to none (`ON DELETE SET NULL`); refusing the delete would also be defensible. Still open: an unknown `vetId` returns 404, the same as an unknown pet type, rather than 400. The chatbot's `create_visit` can't choose a vet. The new Angular specs have only run in CI, since npm couldn't run in my session. Separately, this branch's CI cancels itself: the push and pull-request runs share one concurrency group, so CI on the fix commit only went green after a manual re-run. That workflow fix belongs on `main`.\n\n\nOpened for the review demo, do not merge.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)", "url": "https://github.com/victorrentea/petclinic/pull/49"};  // what that change set is a diff OF (PR / commit / working tree)
 const COMMIT_CHOICES = [];   // recent commits that touched rendered code; empty unless the diff came from history
 // What the changed files measured on the other side of the diff: path -> a partial row
 // (size, LOC, complexity, commit counts). Only the change set is in here, and only the
@@ -3555,7 +3555,8 @@ function nameTheBundle(entry, bundle, fade) {
     const fresh = isAddedKind(item.kind);
     div.className = "coupling-label " + (fresh ? baseKind(item.kind)
       : item.kind + (fade && item.kind !== "subject" ? " faded" : ""));
-    div.textContent = (fresh ? "⭐ " : "") + peer.file.name;
+    div.textContent = peer.file.name;
+    if (fresh) div.prepend(Object.assign(document.createElement("span"), { className: "new-mark", textContent: "🆕 " }));
     const label = new CSS2DObject(div);
     label.position.set(peer.mesh.position.x, peer.roofY + LABEL_STEM, peer.mesh.position.z);
     label.center.set(0.5, 1);
@@ -3630,18 +3631,20 @@ for (const kind of [ADDED_KIND.out, ADDED_KIND.in]) {
 // 150 was tried first: on PR #49's city the longest new road is ~560 units, and it carried
 // three or four stars at once, which is the belt again. At 220, one every ~4.5 s.
 const STAR_SPACING = 220;       // × cityUnit between two stars on one road
-const STAR_SIZE = 22;           // CSS px, at every zoom
+const STAR_SIZE = 60;           // CSS px, at every zoom; the 🆕 fills the top half of it
 const STAR_LIFT = 1.2;          // × cityUnit above the road's own deck, so the tarmac never cuts it
 const STAR_MAX = 512;
 function starTexture() {
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 64;
+  canvas.width = canvas.height = 128;
   const ctx = canvas.getContext("2d");
-  ctx.font = "52px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.font = "56px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("⭐", 32, 36);
+  // Above the point, not around it: a lower half would sink into the deck in front of it.
+  ctx.fillText("🆕", 64, 34);
   const tex = new THREE.CanvasTexture(canvas);
+  tex.flipY = false;   // a Points sprite reads its texture upside down; a star never showed it
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -4377,18 +4380,10 @@ function fmtMetric(v) {
     : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function humanBytes(n) {
-  n = Number(n) || 0;
-  if (n < 1024) return n + " B";
-  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
-  return (n / (1024 * 1024)).toFixed(1) + " MB";
-}
-
 // Every metric on its own bullet in the hover. `opt` rows only render for package/
 // module rows (which carry a `files` count); class rows skip them.
 const HOVER_PROPS = [
   { key: "files", label: "files", opt: true },
-  { key: "bytes", label: "size", fmt: humanBytes },
   { key: "lines", label: "lines of code" },
   { key: "cognitive_complexity", label: "cognitive complexity", sub: "complexity_per_kloc" },
   { key: "commits", label: "commits", sub: "commits_per_kloc" },
@@ -5402,7 +5397,6 @@ function onMetricChange() {
 // touch. Written as answers to "what am I looking at?", not as formulas: the formula is
 // in the hover card for anyone who wants it.
 const METRIC_NOTES = {
-  bytes: {note: "how many bytes of source it holds"},
   lines: {note: "lines of code in the file",
           href: "https://en.wikipedia.org/wiki/Source_lines_of_code"},
   cognitive_complexity: {note: "how hard it is to follow (Sonar's measure)",

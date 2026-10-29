@@ -1,232 +1,237 @@
 {
- "scope": [
-  {
-   "auto": "diffstat"
-  },
-  {
-   "auto": "tests",
-   "href": "#requirements"
-  },
-  {
-   "auto": "autofixed",
-   "href": "#review"
-  }
- ],
- "findings": {
-  "auto": "review-points"
- },
- "autofixes": {
-  "auto": "review-points"
- },
- "assumptions": {
-  "auto": "review-points"
- },
- "codecity": {
-  "png": "assets/codecity.png",
-  "href": "assets/codecity/codecity.html"
- },
- "extraCss": [
-  "assets/openapi-compat.css",
-  "assets/complexity-delta.css",
-  "assets/ds-audit.css"
- ],
- "testChanges": "assets/test-changes.json",
- "playwrightTraces": "assets/traces.json",
- "tabs": [
-  {
-   "id": "review",
-   "label": "Review",
-   "count": true,
-   "blocks": [
+  "scope": [
     {
-     "type": "findings"
+      "auto": "diffstat"
     },
     {
-     "type": "autofixes"
+      "auto": "tests",
+      "href": "#requirements"
     },
     {
-     "type": "assumptions"
+      "auto": "autofixed",
+      "href": "#review"
     }
-   ]
+  ],
+  "findings": {
+    "auto": "review-points"
   },
-  {
-   "id": "behaviour",
-   "label": "Demo",
-   "blocks": [
-    {
-     "type": "section",
-     "id": "video"
-    }
-   ]
+  "autofixes": {
+    "auto": "review-points"
   },
-  {
-   "id": "api",
-   "label": "API",
-   "blocks": [
-    {
-     "type": "section",
-     "id": "swaggerdiff"
-    }
-   ]
+  "assumptions": {
+    "auto": "review-points"
   },
-  {
-   "id": "data",
-   "label": "Data",
-   "blocks": [
+  "codecity": {
+    "png": "assets/codecity.png",
+    "href": "assets/codecity/codecity.html"
+  },
+  "extraCss": [
+    "assets/openapi-compat.css",
+    "assets/complexity-delta.css",
+    "assets/ds-audit.css"
+  ],
+  "testChanges": "assets/test-changes.json",
+  "playwrightTraces": "assets/traces.json",
+  "tabs": [
     {
-     "type": "diagrams",
-     "only": [
-      "DomainModel",
-      "DB"
-     ]
+      "id": "review",
+      "label": "Review",
+      "count": true,
+      "blocks": [
+        {
+          "type": "findings"
+        },
+        {
+          "type": "autofixes"
+        },
+        {
+          "type": "assumptions"
+        }
+      ]
     },
     {
-     "type": "section",
-     "id": "conceptual"
-    }
-   ]
-  },
-  {
-   "id": "requirements",
-   "label": "Tests",
-   "blocks": [
-    {
-     "type": "section",
-     "id": "requirements-map"
+      "id": "behaviour",
+      "label": "Demo",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "video"
+        }
+      ]
     },
     {
-     "type": "tests"
+      "id": "api",
+      "label": "API",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "swaggerdiff"
+        }
+      ]
     },
     {
-     "type": "traces"
-    }
-   ]
-  },
-  {
-   "id": "sequence",
-   "label": "Sequence",
-   "blocks": [
-    {
-     "type": "testpairs",
-     "id": "sequences",
-     "kind": "sequence"
-    }
-   ]
-  },
-  {
-   "id": "packages",
-   "label": "Structure",
-   "blocks": [
-    {
-     "type": "diagrams",
-     "only": [
-      "Java packages"
-     ],
-     "context": {
-      "src": "petclinic-backend/docs/packages.puml",
-      "name": "Java packages"
-     }
+      "id": "data",
+      "label": "Data",
+      "blocks": [
+        {
+          "type": "diagrams",
+          "only": [
+            "DomainModel",
+            "DB"
+          ]
+        },
+        {
+          "type": "section",
+          "id": "conceptual"
+        }
+      ]
     },
     {
-     "type": "diagrams",
-     "only": [
-      "Frontend packages"
-     ],
-     "context": {
-      "src": "petclinic-frontend/docs/frontend-packages.puml",
-      "name": "Frontend packages"
-     }
+      "id": "requirements",
+      "label": "Tests",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "requirements-map"
+        },
+        {
+          "type": "tests"
+        },
+        {
+          "type": "traces"
+        }
+      ]
     },
     {
-     "type": "puml",
-     "src": "petclinic-backend/docs/generated/MavenModules.puml",
-     "name": "Maven modules",
-     "status": "unchanged"
+      "id": "sequence",
+      "label": "Sequence",
+      "blocks": [
+        {
+          "type": "testpairs",
+          "id": "sequences",
+          "kind": "sequence"
+        }
+      ]
     },
     {
-     "type": "diagrams",
-     "manifest": "assets/c2/MANIFEST.tsv",
-     "only": [
-      "C2-Containers"
-     ],
-     "id": "c2-containers"
-    }
-   ]
-  },
-  {
-   "id": "city",
-   "label": "Code City",
-   "blocks": [
+      "id": "packages",
+      "label": "Structure",
+      "blocks": [
+        {
+          "type": "diagrams",
+          "only": [
+            "Java packages"
+          ],
+          "context": {
+            "src": "petclinic-backend/docs/packages.puml",
+            "name": "Java packages"
+          }
+        },
+        {
+          "type": "diagrams",
+          "only": [
+            "Frontend packages"
+          ],
+          "context": {
+            "src": "petclinic-frontend/docs/frontend-packages.puml",
+            "name": "Frontend packages"
+          }
+        },
+        {
+          "type": "puml",
+          "src": "petclinic-backend/docs/generated/MavenModules.puml",
+          "name": "Maven modules",
+          "status": "unchanged"
+        },
+        {
+          "type": "diagrams",
+          "manifest": "assets/c2/MANIFEST.tsv",
+          "only": [
+            "C2-Containers"
+          ],
+          "id": "c2-containers"
+        }
+      ]
+    },
     {
-     "type": "codecity"
-    }
-   ]
-  },
-  {
-   "id": "dsaudit",
-   "label": "UX",
-   "blocks": [
+      "id": "city",
+      "label": "Code City",
+      "blocks": [
+        {
+          "type": "codecity"
+        }
+      ]
+    },
     {
-     "type": "section",
-     "id": "ds-audit"
-    }
-   ]
-  },
-  {
-   "id": "complexity",
-   "label": "Complexity",
-   "blocks": [
+      "id": "dsaudit",
+      "label": "UX",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "ds-audit"
+        }
+      ]
+    },
     {
-     "type": "section",
-     "id": "complexity-delta"
-    }
-   ]
-  },
-  {
-   "id": "logging",
-   "label": "Logging",
-   "blocks": [
+      "id": "complexity",
+      "label": "Complexity",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "complexity-delta"
+        }
+      ]
+    },
     {
-     "type": "logging",
-     "base": "origin/main",
-     "paths": [
-      "petclinic-backend"
-     ],
-     "id": "logging-added"
-    }
-   ]
-  },
-  {
-   "id": "owners",
-   "label": "CODEOWNERS",
-   "blocks": [
+      "id": "logging",
+      "label": "Logging",
+      "blocks": [
+        {
+          "type": "logging",
+          "base": "origin/main",
+          "paths": [
+            "petclinic-backend"
+          ],
+          "id": "logging-added"
+        }
+      ]
+    },
     {
-     "type": "codeowners"
+      "id": "owners",
+      "label": "CODEOWNERS",
+      "blocks": [
+        {
+          "type": "codeowners"
+        }
+      ]
     }
-   ]
-  }
- ],
- "pr": {
-  "number": 49,
+  ],
+  "pr": {
+    "number": 49,
+    "title": "Link Visit with Vet (#37), reimplemented unguided by Opus",
+    "url": "https://github.com/victorrentea/petclinic/pull/49",
+    "repo": "https://github.com/victorrentea/petclinic",
+    "branch": "test-pr",
+    "base": "main",
+    "ticket": {
+      "number": 37,
+      "title": "Link Visit with Vet",
+      "url": "https://github.com/victorrentea/petclinic/issues/37"
+    }
+  },
   "title": "Link Visit with Vet (#37), reimplemented unguided by Opus",
-  "url": "https://github.com/victorrentea/petclinic/pull/49",
-  "repo": "https://github.com/victorrentea/petclinic",
-  "branch": "test-pr",
-  "base": "main",
-  "ticket": {
-   "number": 37,
-   "title": "Link Visit with Vet",
-   "url": "https://github.com/victorrentea/petclinic/issues/37"
+  "subtitle": "test-pr — issue #37",
+  "footer": "Built by /human-review from test-pr on 22 Oct 2026.",
+  "verdict": {
+    "score": 7,
+    "bullets": [
+      "Human commits after the review include a deliberate native `<select>` on Edit Visit's vet field to show a design-system violation, plus unrelated diagram edits; the select should not merge.",
+      "A PUT without `vetId` clears the vet and is only an assumption at 0.7 confidence, so any client doing partial updates will silently lose the vet."
+    ]
+  },
+  "mergeRisk": {
+    "door": "two-way",
+    "blast": "visits API",
+    "why": "a nullable vet column that a revert simply stops using; but a PUT that omits vetId clears the vet"
   }
- },
- "title": "Link Visit with Vet (#37), reimplemented unguided by Opus",
- "subtitle": "test-pr — issue #37",
- "footer": "Built by /human-review from test-pr on 22 Oct 2026.",
- "verdict": {
-  "score": 7,
-  "bullets": [
-   "Human commits after the review include a deliberate native `<select>` on Edit Visit's vet field to show a design-system violation, plus unrelated diagram edits; the select should not merge.",
-   "A PUT without `vetId` clears the vet and is only an assumption at 0.7 confidence, so any client doing partial updates will silently lose the vet."
-  ]
- }
 }

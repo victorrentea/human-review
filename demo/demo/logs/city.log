@@ -2,10 +2,9 @@
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/city-coverage.py --in .human-review/assets/test-coverage.json --out .human-review/assets/codecity-coverage.json
 [city-coverage] 127 file(s): line coverage 68.6%, acceptance 50.1% -> .human-review/assets/codecity-coverage.json
     $ git rev-parse HEAD
-    $ git merge-base 664c5b3b453fb758230de01e407064c45d07a844 HEAD
+    $ git merge-base e27182cbe767ce1f44c6812cda555d5b11cd653a HEAD
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/regenerate-codecity.sh --out ".human-review/assets/codecity" --title "Code City" --coverage ".human-review/assets/codecity-coverage.json"
 updating the Code City generators in /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/.tools/codecity ...
-using /opt/homebrew/bin/python3.12 for the generators — .pylibs was vendored for python3.12, not for Python 3.14.7
 repo:  /Users/victorrentea/workspace/petclinic-pr-visit-has-vet
 out:   /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity
 coverage: /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity-coverage.json
@@ -66,8 +65,8 @@ top fan_in:
 loaded 0 bug/regression issue numbers
 flagging bug commits via subject regex (default heuristic): '^(fix|fixed|fixes|bugfix)\\b'
 discovered 6 Maven/Gradle module dir(s)
-walked 1089 commits, 61 flagged as bug-linked
-touched 2485 distinct file paths (across all history)
+walked 1098 commits, 61 flagged as bug-linked
+touched 2487 distinct file paths (across all history)
 found 98 current non-test java files
 loaded complexity for 98 files
 loaded fan-in/out for 98 files
@@ -80,8 +79,8 @@ wrote 5 axes of change over 55 classes to /Users/victorrentea/workspace/petclini
 [5/7] render interactive HTML...
 wrote /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codemap.html (85.3 KB)
 [6/7] render Code City HTML...
-/Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/.tools/codecity/render_codecity.py:1085: SyntaxWarning: invalid escape sequence '\.'
-  html = """<!doctype html>
+/Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/.tools/codecity/render_codecity.py:1798: SyntaxWarning: invalid escape sequence '\.'
+  /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 coupling the change set moved (class: fan-out, fan-in):
   Vet.java: out +0, in +4
   VetRepository.java: out +0, in +2

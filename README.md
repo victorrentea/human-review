@@ -98,12 +98,6 @@ One screenshot per tab of the demo, retaken on every publish.
 
 <sub>[open it live](https://victorrentea.github.io/human-review/demo/review.html#dsaudit) — Native controls sitting where a design-system component belongs — a finding made of an *absence*, which a passing Playwright suite cannot produce.</sub>
 
-### [Logging](docs/tabs/logging.md)
-
-<a href="docs/tabs/logging.md"><img src="demo/demo/tour/logging.jpg" alt="Logging tab" width="100%"></a>
-
-<sub>[open it live](https://victorrentea.github.io/human-review/demo/review.html#logging) — What the change set will say for itself in production — every logging statement it adds or changes, found by syntax, not by grep, and whether a value it logs is personal data.</sub>
-
 ### [CODEOWNERS](docs/tabs/codeowners.md)
 
 <a href="docs/tabs/codeowners.md"><img src="demo/demo/tour/owners.jpg" alt="CODEOWNERS tab" width="100%"></a>
