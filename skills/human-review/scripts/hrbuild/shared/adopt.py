@@ -609,8 +609,8 @@ def place_prompts(tid: str, body: str) -> str:
                 # a card's height away from the button it explains.
             lead = (IMPACT_LEGEND if piece is None and 'class="pkg-impact"' in card
                     else "")
-            # "Show only impacted" leaves the head for this row, between the legend and
-            # the pill (Victor, 29 Oct 2026): it filters the picture, like the legend reads it.
+            # "Show only impacted" leaves the head for this row, right after the legend
+            # (Victor, 29 Oct 2026): it filters by the blue-fill measure the legend names.
             only = (re.compile(r'<label class="dgm-only"[^>]*>.*?</label>', re.S)
                     .search(card, h0, h1[0]) if piece is None and h1 else None)
             if only:

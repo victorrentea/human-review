@@ -103,12 +103,14 @@ button.adopt:focus-visible { outline:2px solid var(--adopt); outline-offset:1px;
    opens a few lines under the tab's title row (head pill) or under the pill (card pill);
    remembered per piece. */
 .adoptline:has(> .hrx-i){gap:.45rem;align-items:center}
-/* The blue fill's legend, at the left end of a package/module card's bottom row, the pill
-   and its "Show only impacted" filter at the right end (adopt.IMPACT_LEGEND). */
+/* The blue fill's legend, at the left end of a package/module card's bottom row, followed by
+   the "Show only impacted" filter that hides by that same measure; the pill and its (i)
+   at the right end (adopt.IMPACT_LEGEND). */
 .impact-legend{display:inline-flex;align-items:center;gap:.4rem;margin-right:auto;
   color:var(--muted);font-size:.78rem;line-height:1.6}
 .impact-legend svg{width:1.9rem;height:.9rem;flex:none}
 .impact-legend b{color:var(--fg);font-weight:600}
+.impact-legend:has(+ .dgm-only){margin-right:.9rem}
 button.hrx-i{--hrx-i:#1d4ed8;--hrx-i-on:#3b82f6;--hrx-ring:rgba(59,130,246,.35);
   display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none;
   width:22px;height:22px;padding:0;border:0;border-radius:50%;

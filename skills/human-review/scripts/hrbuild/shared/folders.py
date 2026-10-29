@@ -306,8 +306,8 @@ def _impact_pop(label: str, box: dict, base: str, root: Path, folder: str) -> st
 _PAINTED = re.compile(r'--dgm-diff-(?:add|del)\b|#(?:2E7D32|C62828)\b', re.I)
 
 #: The card's "Show only impacted" filter, on a card that has a quiet box. Emitted in the
-#: card's head; `adopt.place_prompts` moves it to the card's bottom row, just left of its
-#: "Prompt to get this" pill (Victor, 29 Oct 2026). Off by default; `folders.js` hides the
+#: card's head; `adopt.place_prompts` moves it to the card's bottom row, right after the
+#: blue-fill legend (Victor, 29 Oct 2026). Off by default; `folders.js` hides the
 #: quiet boxes and every arrow to one, but keeps a quiet box that a green or red arrow
 #: still points at, so the change never dangles.
 ONLY_IMPACTED = ('<label class="dgm-only" data-tip="Hide the boxes this PR left alone, '
