@@ -26,7 +26,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const { openDiff, ownedHere, REF_RE } = require('./diff');
+const { openDiff, openCommit, ownedHere, REF_RE } = require('./diff');
 const { openReviewed } = require('./review-open');
 const rangeFocus = require('./range-focus');
 
@@ -88,11 +88,13 @@ async function ownerOf(file) {
 async function handleDiff(query) {
   const file = query.get('file') || '';
   const base = query.get('base') || '';
+  // `head`: a commit's own diff, `base` its parent — a Fixed card's fix commit.
+  const head = query.get('head') || '';
   const line = Math.max(1, Number(query.get('line')) || 1);
 
   // Validated here as well as in diff.js, so a bad ref never reaches the network hop
   // either. Cheap, and the two callers of openDiff are not the only future ones.
-  if (!REF_RE.test(base)) {
+  if (!REF_RE.test(base) || (head && !REF_RE.test(head))) {
     vscode.window.showWarningMessage(`Human Review: ${base ? 'that is not a git ref' : 'no git ref given'} — opening the file instead.`);
     return openPlainRouted(file, line);
   }
@@ -102,7 +104,7 @@ async function handleDiff(query) {
   const mine = owner && owner.entry.pid === process.pid;
 
   if (owner && !mine) {
-    const payload = Buffer.from(JSON.stringify({ file, base, line }), 'utf8');
+    const payload = Buffer.from(JSON.stringify({ file, base, line, ...(head ? { head } : {}) }), 'utf8');
     const res = await request({
       hostname: '127.0.0.1', port: owner.entry.port, path: '/open-diff', method: 'POST',
       headers: {
@@ -123,7 +125,7 @@ async function handleDiff(query) {
   // Either this window owns it, or nobody does and we are the window the OS chose. Doing
   // it here is then the best available answer; `openDiff` still refuses if the path is
   // outside this window's folders, and the fallback below catches that.
-  const done = await openDiff({ file, base, line });
+  const done = await (head ? openCommit : openDiff)({ file, base, head, line });
   if (!done.ok) {
     vscode.window.showWarningMessage(`Human Review: no diff (${done.error}) — opening the file instead.`);
     return openPlainRouted(file, line);

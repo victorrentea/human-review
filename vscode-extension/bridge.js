@@ -23,7 +23,7 @@ const crypto = require('crypto');
 const vscode = require('vscode');
 
 const { REGISTRY } = require('./registry');
-const { openDiff } = require('./diff');
+const { openDiff, openCommit } = require('./diff');
 const { openReviewed, markEdited } = require('./review-open');
 const rangeFocus = require('./range-focus');
 const commentFocus = require('./comment-focus');
@@ -239,9 +239,11 @@ function handle(req, res) {
   // on the right (diff.js). A refusal is a 409 with a sentence the caller relays verbatim.
   if (req.method === 'POST' && url.pathname === '/open-diff') {
     return withJson(req, res, async (parsed) => {
-      const result = await openDiff({
+      // `head`: a commit's own diff, `base` its parent (diff.js `openCommit`).
+      const result = await (parsed.head ? openCommit : openDiff)({
         file: String(parsed.file || parsed.path || ''),
         base: String(parsed.base || ''),
+        head: String(parsed.head || ''),
         line: Number(parsed.line) || 0,
         focus: parsed.focus !== false,
       });

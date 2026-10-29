@@ -38,7 +38,8 @@ import java.nio.file.Path
 /** What a link asks for, parsed and nothing else — the part a test can hold. */
 sealed interface LinkRequest {
     data class Open(val file: String, val line: Int, val endLine: String?, val comment: CommentAim? = null) : LinkRequest
-    data class Diff(val file: String, val base: String, val line: Int) : LinkRequest
+    /** `head`: a commit's own diff, `base` its parent (a Fixed card's fix commit). */
+    data class Diff(val file: String, val base: String, val line: Int, val head: String? = null) : LinkRequest
     data class ReviewOpen(val ref: ReviewRef) : LinkRequest
     data class Unknown(val target: String) : LinkRequest
 }
@@ -52,7 +53,7 @@ object Links {
      *  parameters arrive percent-decoded, a path with spaces in it included. */
     fun parse(target: String?, q: Map<String, String>): LinkRequest = when (target?.trim('/')) {
         "open" -> line(q["line"]).let { at -> LinkRequest.Open(q["file"] ?: "", at, q["endLine"]?.ifEmpty { null }, commentAim(q, at)) }
-        "diff" -> LinkRequest.Diff(q["file"] ?: "", q["base"] ?: "", line(q["line"]))
+        "diff" -> LinkRequest.Diff(q["file"] ?: "", q["base"] ?: "", line(q["line"]), q["head"]?.ifEmpty { null })
         "review-open" -> LinkRequest.ReviewOpen(ReviewRef(
             file = q["file"] ?: "", line = q["line"], endLine = q["endLine"]?.ifEmpty { null },
             sha = q["sha"] ?: "", root = q["root"] ?: "", branch = q["branch"] ?: "",
@@ -100,10 +101,10 @@ object Links {
     )
 
     private fun diff(req: LinkRequest.Diff, registry: Path) {
-        val (file, base, line) = req
+        val (file, base, line, head) = req
         // Validated here as well as in DiffOpen, so a bad ref never reaches the network hop
         // either. Cheap, and the two callers of the diff are not the only future ones.
-        if (!DiffOpen.usableRef(base)) {
+        if (!DiffOpen.usableRef(base) || (head != null && !DiffOpen.usableRef(head))) {
             warn("Human Review: ${if (base.isNotEmpty()) "that is not a git ref" else "no git ref given"} — opening the file instead.")
             return openPlainRouted(file, line, null, registry)
         }
@@ -111,7 +112,8 @@ object Links {
 
         val owner = ownerOf(file, registry)
         if (owner is Owner.There) {
-            val res = Peers.call(owner.peer.peer, "POST", "/open-diff", mapOf("file" to file, "base" to base, "line" to line))
+            val res = Peers.call(owner.peer.peer, "POST", "/open-diff",
+                mapOf("file" to file, "base" to base, "line" to line) + (head?.let { mapOf("head" to it) } ?: emptyMap()))
             if (res?.second?.get("ok")?.let { it.isJsonPrimitive && it.asBoolean } == true) return
             // The owning window refused (no such ref there, file unchanged, or it went away
             // between the ping and now). Say why, once, and still put the reader in the file —
@@ -125,7 +127,9 @@ object Links {
         // Either a project here owns it, or nobody does. Doing it here is then the best
         // available answer; the diff still refuses a path outside every project, and the
         // fallback below catches that.
-        val refused = runCatching { DiffOpen.open(file, base, line, true) }.getOrElse { it.message ?: "$it" }
+        val refused = runCatching {
+            if (head != null) CommitOpen.open(file, base, head, line, true) else DiffOpen.open(file, base, line, true)
+        }.getOrElse { it.message ?: "$it" }
         if (refused != null) {
             warn("Human Review: no diff ($refused) — opening the file instead.")
             openPlainRouted(file, line, null, registry)

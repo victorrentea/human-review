@@ -21,6 +21,12 @@ class LinksTest {
             Links.parse("diff", mapOf("file" to "/r/My File.java", "base" to "origin/main", "line" to "12")))
     }
 
+    @Test fun `a commit's diff carries its head`() {
+        assertEquals(LinkRequest.Diff("/r/A.java", "abc1234", 380, "def5678"),
+            Links.parse("diff", mapOf("file" to "/r/A.java", "base" to "abc1234", "head" to "def5678", "line" to "380")))
+        assertEquals(null, (Links.parse("diff", mapOf("file" to "/r/A.java", "base" to "x", "head" to "")) as LinkRequest.Diff).head)
+    }
+
     @Test fun `review-open carries the commit stamp`() {
         val got = Links.parse("review-open", mapOf("file" to "/r/A.java", "line" to "3", "sha" to "abc1234",
             "root" to "/r", "branch" to "test-pr")) as LinkRequest.ReviewOpen

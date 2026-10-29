@@ -1,10 +1,13 @@
 package ro.victorrentea.humanreview
 
 import com.intellij.diff.DiffContentFactory
+import com.intellij.diff.DiffDialogHints
 import com.intellij.diff.DiffManager
+import com.intellij.diff.chains.SimpleDiffRequestChain
 import com.intellij.diff.requests.SimpleDiffRequest
 import com.intellij.diff.util.DiffUserDataKeys
 import com.intellij.diff.util.Side
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.vfs.VirtualFile
@@ -137,5 +140,93 @@ object DiffOpen {
         val request = SimpleDiffRequest("${plan.title} ↔ ${vf.name}", left, right, plan.title, vf.name)
         if (line > 0) request.putUserData(DiffUserDataKeys.SCROLL_TO_LINE, Pair.create(Side.RIGHT, line - 1))
         DiffManager.getInstance().showDiff(project, request)
+    }
+}
+
+// ---------------------------------------------------------------------------------- a commit
+
+/** One file of a commit: its two sides out of git, null where the commit added or deleted it. */
+class CommitFile(val path: String, val before: ByteArray?, val after: ByteArray?)
+
+/** What `/open-diff` with a `head` decided: a refusal in words, or the commit's files. */
+sealed interface CommitPlan {
+    data class Refused(val error: String) : CommitPlan
+
+    /** `index`: the clicked file among `files`; `base`/`short` the parent's and the commit's. */
+    class Show(val files: List<CommitFile>, val index: Int, val base: String, val short: String,
+               val subject: String) : CommitPlan
+}
+
+// A commit's own diff — `base` its parent, `head` the commit — as every file it changed, in one
+// diff window that steps between them, opened on the clicked file at the clicked line. A Human
+// Review page's Fixed card opens its fix commit this way (Victor, 30 Oct 2026): the fix is a
+// commit, so the click shows the commit, not the file against whatever the tree holds since.
+// Both sides come out of git; the working tree is never read. The port of diff.js `openCommit`.
+object CommitOpen {
+    fun plan(
+        file: String,
+        base: String,
+        head: String,
+        owned: (String) -> Boolean,
+        git: (cwd: String, args: List<String>) -> ByteArray? = { cwd, a -> Git.bytes(cwd, *a.toTypedArray()) },
+    ): CommitPlan {
+        if (file.isEmpty() || !File(file).isAbsolute) return CommitPlan.Refused("absolute path required")
+        if (!DiffOpen.usableRef(base) || !DiffOpen.usableRef(head)) return CommitPlan.Refused("not a usable git ref")
+        val real = runCatching { Path.of(file).toRealPath().toString() }.getOrDefault(file)
+        if (!owned(real) && !owned(file)) return CommitPlan.Refused("that path is not in this window")
+        // The file may be gone from the tree since the commit: git is asked from the nearest
+        // folder that is still there.
+        var dir: File? = File(file).parentFile
+        while (dir != null && !dir.isDirectory) dir = dir.parentFile
+        fun text(cwd: String, vararg a: String) = git(cwd, a.toList())?.toString(Charsets.UTF_8)?.trim().orEmpty()
+        val root = dir?.let { text(it.path, "rev-parse", "--show-toplevel") }.orEmpty()
+        if (root.isEmpty()) return CommitPlan.Refused("that file is not in a git repository")
+        val rel = DiffOpen.relative(root, file) ?: DiffOpen.relative(root, real)
+            ?: return CommitPlan.Refused("that file is outside the repository")
+        val from = text(root, "rev-parse", "--verify", "--quiet", "$base^{commit}")
+        val to = text(root, "rev-parse", "--verify", "--quiet", "$head^{commit}")
+        if (from.isEmpty() || to.isEmpty()) return CommitPlan.Refused("${(if (from.isEmpty()) base else head).take(8)} is not a commit here")
+        val listed = text(root, "diff", "--name-status", "--no-renames", from, to).lines()
+            .mapNotNull { l -> l.split('\t').takeIf { it.size >= 2 }?.let { it[0] to it[1] } }
+        if (listed.isEmpty()) return CommitPlan.Refused("${to.take(8)} changes nothing")
+        val files = listed.map { (st, p) ->
+            CommitFile(p, if (st == "A") null else git(root, listOf("show", "$from:$p")),
+                       if (st == "D") null else git(root, listOf("show", "$to:$p")))
+        }
+        return CommitPlan.Show(files, maxOf(0, files.indexOfFirst { it.path == rel }), from.take(8), to.take(8),
+                               text(root, "log", "-1", "--format=%s", to))
+    }
+
+    /** Plan, then show the commit in the project that owns the file and raise its window. Off
+     *  the EDT. `null` when it is open, else the refusal — a sentence a caller relays verbatim. */
+    fun open(file: String, base: String, head: String, line: Int, focus: Boolean): String? {
+        val plan = plan(file, base, head, owned = { Folders.ownerProject(it) != null })
+        if (plan is CommitPlan.Refused) return plan.error
+        plan as CommitPlan.Show
+        val real = runCatching { Path.of(file).toRealPath().toString() }.getOrDefault(file)
+        val project = Folders.ownerProject(file) ?: Folders.ownerProject(real) ?: return "that path is not in this window"
+        Ide.onEdt {
+            show(project, plan, line)
+            if (focus) runCatching { Ide.raise(project) }  // the diff is open regardless
+        }
+        Ide.remember(project)
+        return null
+    }
+
+    /** EDT only. One request per file, read-only on both sides, the clicked one selected and
+     *  scrolled to `line` (a line of the commit's side). */
+    fun show(project: Project, plan: CommitPlan.Show, line: Int) {
+        val factory = DiffContentFactory.getInstance()
+        val types = FileTypeManager.getInstance()
+        val requests = plan.files.mapIndexed { i, f ->
+            val name = f.path.substringAfterLast('/')
+            val type = types.getFileTypeByFileName(name)
+            fun side(bytes: ByteArray?) = if (bytes == null) factory.createEmpty() else factory.createFromBytes(project, bytes, type, name)
+            SimpleDiffRequest("${plan.short} ${plan.subject} — ${f.path}", side(f.before), side(f.after),
+                              DiffOpen.beforeName(f.path, plan.base), DiffOpen.beforeName(f.path, plan.short)).also {
+                if (i == plan.index && line > 0) it.putUserData(DiffUserDataKeys.SCROLL_TO_LINE, Pair.create(Side.RIGHT, line - 1))
+            }
+        }
+        DiffManager.getInstance().showDiff(project, SimpleDiffRequestChain(requests, plan.index), DiffDialogHints.DEFAULT)
     }
 }

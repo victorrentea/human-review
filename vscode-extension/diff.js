@@ -120,4 +120,72 @@ async function openDiff({ file, base, line = 0, focus = true }) {
   return { ok: true };
 }
 
-module.exports = { openDiff, ownedHere, REF_RE };
+/**
+ * A commit's own diff — `base` its parent, `head` the commit — as the commit's every file in
+ * the changes editor, `file` first (VS Code ≥ 1.86's `vscode.changes`), or as `file` alone
+ * when that command is missing or the commit changed nothing else. A Human Review page's
+ * Fixed card opens its fix commit this way (Victor, 30 Oct 2026): the fix is a commit, so
+ * the click shows the commit, not the file against whatever the tree holds since.
+ *
+ * Both sides come out of git, never the working tree, and are written beside the report
+ * like `openDiff`'s before-image. Refuses rather than improvises, in the same words.
+ * @returns {Promise<{ok: true, files: number} | {ok: false, error: string}>}
+ */
+async function openCommit({ file, base, head, line = 0, focus = true }) {
+  if (!file || !path.isAbsolute(file)) return { ok: false, error: 'absolute path required' };
+  if (!REF_RE.test(base || '') || !REF_RE.test(head || '')) return { ok: false, error: 'not a usable git ref' };
+  if (!ownedHere(safeReal(file)) && !ownedHere(file)) {
+    return { ok: false, error: 'that path is not in this window' };
+  }
+  let dir = path.dirname(file);
+  while (!fs.existsSync(dir) && path.dirname(dir) !== dir) dir = path.dirname(dir);
+  const root = (await git(dir, ['rev-parse', '--show-toplevel']) || '').trim();
+  if (!root) return { ok: false, error: 'that file is not in a git repository' };
+  const rel = path.relative(root, file).split(path.sep).join('/');
+  if (rel.startsWith('..')) return { ok: false, error: 'that file is outside the repository' };
+  const sha = async (ref) => (await git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]) || '').trim();
+  const [from, to] = [await sha(base), await sha(head)];
+  if (!from || !to) return { ok: false, error: `${(from ? head : base).slice(0, 8)} is not a commit here` };
+  const listed = (await git(root, ['diff', '--name-status', '--no-renames', from, to]) || '')
+    .split('\n').filter(Boolean).map((l) => { const [st, p] = l.split('\t'); return { st, p }; });
+  if (!listed.length) return { ok: false, error: `${to.slice(0, 8)} changes nothing` };
+  listed.sort((a, b) => (b.p === rel) - (a.p === rel));
+  const [bs, hs] = [from.slice(0, 8), to.slice(0, 8)];
+  const reportDir = path.join(root, '.human-review');
+  const holder = fs.existsSync(reportDir) ? reportDir : path.join(os.tmpdir(), 'human-review-diffbase');
+  const side = async (ref, short, p, absent) => {
+    const parsed = path.parse(p);
+    const out = path.join(holder, '.diffbase', hs, parsed.dir, `${parsed.name}@${short}${parsed.ext}`);
+    const shown = absent ? Buffer.alloc(0) : await git(root, ['show', `${ref}:${p}`], 'buffer');
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, shown || Buffer.alloc(0));
+    return vscode.Uri.file(out);
+  };
+  let pairs;
+  try {
+    pairs = [];
+    for (const f of listed) {
+      pairs.push([vscode.Uri.file(path.join(root, f.p)),
+        await side(from, bs, f.p, f.st === 'A'), await side(to, hs, f.p, f.st === 'D')]);
+    }
+  } catch (e) {
+    return { ok: false, error: `could not write the commit's files: ${e.message}` };
+  }
+  const subject = ((await git(root, ['log', '-1', '--format=%s', to])) || '').trim();
+  const all = await vscode.commands.getCommands(true);
+  if (pairs.length > 1 && all.includes('vscode.changes')) {
+    await vscode.commands.executeCommand('vscode.changes', `${hs} ${subject}`.trim(), pairs);
+  } else {
+    const mine = pairs[0];
+    const name = path.basename(rel);
+    const at = line > 0 ? new vscode.Range(line - 1, 0, line - 1, 0) : undefined;
+    await vscode.commands.executeCommand('vscode.diff', mine[1], mine[2],
+      `${name} (${hs} ${subject})`.trim(), { preview: false, selection: at });
+  }
+  if (focus) {
+    try { await vscode.commands.executeCommand('workbench.action.focusWindow'); } catch (_) { /* open regardless */ }
+  }
+  return { ok: true, files: pairs.length };
+}
+
+module.exports = { openDiff, openCommit, ownedHere, REF_RE };

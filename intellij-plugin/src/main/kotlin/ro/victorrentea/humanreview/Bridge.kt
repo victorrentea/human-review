@@ -399,8 +399,12 @@ class HumanReviewBridge : Disposable {
     private fun openDiff(ex: HttpExchange) {
         val body = json(ex)
         val file = body.str("file")?.ifEmpty { null } ?: body.str("path") ?: ""
+        val line = (RangeSpan.num(body.raw("line")) ?: 0.0).toInt()
+        // `head`: a commit's own diff, `base` its parent — a Fixed card's fix commit (Diff.kt).
+        val head = body.str("head")?.ifEmpty { null }
         val refused = onEdtBusy {
-            DiffOpen.open(file, body.str("base") ?: "", (RangeSpan.num(body.raw("line")) ?: 0.0).toInt(), !body.isFalse("focus"))
+            if (head != null) CommitOpen.open(file, body.str("base") ?: "", head, line, !body.isFalse("focus"))
+            else DiffOpen.open(file, body.str("base") ?: "", line, !body.isFalse("focus"))
         }
         if (refused != null) return send(ex, 409, mapOf("ok" to false, "error" to refused))
         send(ex, 200, mapOf("ok" to true))
