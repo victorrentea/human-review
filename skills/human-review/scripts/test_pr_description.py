@@ -59,3 +59,22 @@ def test_offline_the_cache_stands_in(tmp_path, monkeypatch):
     other = {"pr": {"number": 52, "url": URL.replace("51", "52")}}
     review.attach_pr_body(other, tmp_path)
     assert "_prBody" not in other
+
+
+def test_merge_risk_closes_the_pr_description_with_its_door_and_blast_radius():
+    """Victor, 29 Oct 2026, after Matt Pocock's "merge danger": one-way or two-way door,
+    and how far it reaches."""
+    spec = {"_prBody": {"url": URL, "body": "Closes #37."},
+            "mergeRisk": {"door": "two-way", "blast": "visits API", "why": "a PUT <b> clears"}}
+    out = review.pr_description_html(spec)
+    assert out.index("Closes") < out.index('class="mergerisk"') < out.index("</details>")
+    assert '<b class="mr-door">Two-way door</b> · blast radius: <b>visits API</b>' in out
+    assert "a PUT &lt;b&gt; clears" in out
+    assert 'mr-oneway">One-way door' in review.merge_risk_html({"mergeRisk": {"door": "One-way"}})
+
+
+def test_merge_risk_without_a_known_door_is_not_drawn_and_stands_alone_without_a_body():
+    assert review.merge_risk_html({"mergeRisk": {"door": "maybe", "blast": "x"}}) == ""
+    assert review.merge_risk_html({}) == ""
+    alone = review.pr_description_html({"mergeRisk": {"door": "two-way"}})
+    assert alone.startswith('<p class="mergerisk">') and "prdesc" not in alone

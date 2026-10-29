@@ -150,6 +150,18 @@ the ticket and never the PR. What never supplies either is a model: a heading wh
 the page disagreeing with GitHub about what the ticket is called.
 
 ```json
+"mergeRisk": {"door": "two-way", "blast": "visits API",
+              "why": "a PUT from a client that omits vetId now clears the visit's vet"}
+```
+
+Matt Pocock's *merge danger*, as the last line of the PR description: is merging this a
+**one-way door** (`"one-way"`: a migration that drops data, a published contract, anything a
+revert does not undo) or a **two-way door** (`"two-way"`: revert and it is as if it never
+happened), and the **blast radius**: the area that breaks if it is wrong, in two or three
+words. `why` is one sentence, the reason for the door. Without a `door` of those two values
+the line is not drawn.
+
+```json
 "scope": [
   {"auto":"diffstat"},
   {"auto":"tests","href":"#requirements"},

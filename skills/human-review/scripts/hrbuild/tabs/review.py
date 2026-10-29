@@ -1853,13 +1853,37 @@ def pr_body_html(body: str, repo_url: str = "") -> str:
     return "".join(out)
 
 
+#: The two kinds of door a merge can be, and how each reads on the page.
+MERGE_DOORS = {"one-way": "One-way door", "two-way": "Two-way door"}
+
+
+def merge_risk_html(spec) -> str:
+    """`mergeRisk` as one line under the PR description: is merging this a one-way or a
+    two-way door, and how far does it reach if it is wrong — Matt Pocock's "merge danger"
+    section (Victor, 29 Oct 2026). Empty without a known `door`: a guessed door is worse
+    than none."""
+    risk = spec.get("mergeRisk") or {}
+    door = MERGE_DOORS.get(str(risk.get("door") or "").strip().lower())
+    if not door:
+        return ""
+    oneway = risk["door"].strip().lower() == "one-way"
+    parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">{door}</b>']
+    blast = str(risk.get("blast") or "").strip()
+    if blast:
+        parts.append(f'blast radius: <b>{html.escape(blast)}</b>')
+    why = str(risk.get("why") or "").strip()
+    line = " · ".join(parts) + (f" — {html.escape(why)}" if why else "")
+    return f'<p class="mergerisk"><span class="mr-h">Merge risk</span> {line}</p>'
+
+
 def pr_description_html(spec) -> str:
     """The PR's description, between the grade's reasons and the counts line. Empty when
-    there is no PR, or its description is empty once the agent's attribution line is cut."""
+    there is no PR, or its description is empty once the agent's attribution line is cut.
+    `mergeRisk` closes it; with no description, it stands alone."""
     got = spec.get("_prBody") or {}
     body = _PR_BODY_BOILERPLATE.sub("", str(got.get("body") or "")).strip()
     if not body:
-        return ""
+        return merge_risk_html(spec)
     # No link to the PR here: the masthead's title already is one.
     m = _PULL_URL.search(str(got.get("url") or ""))
     repo_url = f"https://github.com/{m.group(1)}" if m else ""
@@ -1867,7 +1891,8 @@ def pr_description_html(spec) -> str:
     # page's (Victor, 20 Oct 2026) — a description too long to read whole is one to fold.
     return (f'<details class="prdesc" open aria-label="Pull request description">'
             f'<summary class="prdesc-h">PR description</summary>'
-            f'<div class="prdesc-body">{pr_body_html(body, repo_url)}</div></details>')
+            f'<div class="prdesc-body">{pr_body_html(body, repo_url)}</div>'
+            f'{merge_risk_html(spec)}</details>')
 
 
 def grade_reasons_html(spec) -> str:

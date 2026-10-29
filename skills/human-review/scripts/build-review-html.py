@@ -237,6 +237,7 @@ from hrbuild.tabs.review import (
     _LEDE_SHOWN, _LIST_OFFSET, _merge_seam_shas, _open_list, _pile_anchor, _raised_by,
     _ref_link, _regenerate_offer, _score_target, _tooling_commit_shas,
     gh_comment_link, prepare_pr_push, attach_pr_body, pr_description_html, pr_body_html,
+    MERGE_DOORS, merge_risk_html,
     _md_inline, PR_BODY_JSON, _PULL_URL, _PR_BODY_BOILERPLATE, pr_comment_slug, PR_COMMENTS_JSON,
     PR_PILE_LETTER,
     PR_POSTED_JSON, PR_PUSH_JS, push_pr_button, push_pr_dialog, PUSH_PR_ACTION,
