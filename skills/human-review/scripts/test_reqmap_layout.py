@@ -100,13 +100,24 @@ def test_the_title_row_over_the_card_offers_all_tests_where_the_filters_stood(tm
                               'class="rm-side"')
     assert head < cats < side
     js = T.REQMAP_CHAPTERS_JS
-    # Victor, 29 Oct 2026: "tests" inside each option, no "Tests:" label, and a short
-    # line beside the choice saying what it means.
+    # Victor, 29 Oct 2026: "tests" inside each option, no "Tests:" label. What the choice
+    # means is its hover, not a line beside it: "🤖 matched to the ticket" wrapped into a
+    # tall column that broke the row. The hover says first what the total counts, for
+    # every option, and follows the choice.
     assert "var MODES = [['cover', 'Tests covering \\uD83E\\uDD16 the change'," in js
     assert "['run', 'Tests running through the change'," in js
     assert "['all', 'All tests'," in js
-    assert "who.hidden = true;" in js and "whyEl.textContent = m[3];" in js
-    assert ".rm-tkhead > .rm-mode-why{" in T.REQMAP_CSS
+    assert "who.hidden = true;" in js
+    assert "rm-mode-why" not in js and "rm-mode-why" not in T.REQMAP_CSS
+    assert "matched to the ticket'" not in js
+    tip = js.split("var MODE_TIP = {")[1].split("\n  };")[0]
+    for mode in ("cover", "run", "all"):
+        assert f"    {mode}: function (n) {{\n      return [n + ': " in tip
+    assert "matched to a sentence of the ticket" in tip
+    assert "if (pick) pick.setAttribute('data-tip-html', modeTip(mode, total));" in js
+    # The choice starts where the rows' content does, level with the chapters' carets.
+    assert ".reqmap .rm-code > .rm-tkhead:has(> .rm-mode){padding-left:6px}" in T.REQMAP_CSS
+    assert ".reqmap .rm-code > .rm-tkhead:has(> .rm-mode) > .cov-head{display:none}" in T.REQMAP_CSS
     assert "return mode === 'cover' ? paired(row) : !folded(row);" in js
     assert "sec.hidden = !n;" in js                       # an emptied chapter goes
     assert ".reqmap .rm-list .rm-t[data-off=yes]{display:none}" in T.REQMAP_CSS

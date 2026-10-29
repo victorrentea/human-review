@@ -336,7 +336,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'requirements': {
         "li": [
-            'Left: the ticket; right: <b>Tests:</b> covering it (fork), running changed code (shield), all.',
+            'Tests covering the ticket (fork), running changed code (shield), or all; hover the choice.',
             '<b>green</b> = proven · <b>orange</b> = partly · <b>red</b> = no test; AI-matched, may be wrong.',
             'Name colour = kind: E2E and API weigh most, they prove the feature, not one method.',
             'Click a sentence: a line to each test covering it; <b>▲ ▼</b> = more scrolled away.',

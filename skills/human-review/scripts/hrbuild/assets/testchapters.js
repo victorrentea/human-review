@@ -157,17 +157,45 @@
   });
   // "covering" carries the 🤖: which test covers which sentence is a model's mapping, not
   // a measurement (Victor, 20 Oct 2026); "running" is measured, so it has none. Each option
-  // says "tests" itself, with no "Tests:" in front, and the choice is explained beside it
-  // in one short line (Victor, 29 Oct 2026).
-  // The fourth field is that line; the third stays the card title's hover.
+  // says "tests" itself, with no "Tests:" in front (Victor, 29 Oct 2026). The third field
+  // is the card title's hover.
   var MODES = [['cover', 'Tests covering \uD83E\uDD16 the change',
-                'Tests paired with a sentence of the ticket, the ones wearing the fork.',
-                '\uD83E\uDD16 matched to the ticket'],
+                'Tests paired with a sentence of the ticket, the ones wearing the fork.'],
                ['run', 'Tests running through the change',
-                'Tests that ran a changed line, as captured by a coverage probe.',
-                'ran a changed line'],
-               ['all', 'All tests', 'All tests, as captured by a coverage probe.',
-                'every test in the run']];
+                'Tests that ran a changed line, as captured by a coverage probe.'],
+               ['all', 'All tests', 'All tests, as captured by a coverage probe.']];
+  // The choice's own hover: what the total at the end of its row counts, first - that
+  // total is the number it chose (CLAUDE.md: a tip about numbers says first what they
+  // mean) - then what the choice is, then the `+N ✏️N −N` beside it, which no choice
+  // moves. A short line beside the choice used to say the first part, "🤖 matched to the
+  // ticket", wrapped into a tall column that broke the row (Victor, 29 Oct 2026); the hover
+  // says it whole instead. `n` is the total listed, from `count`.
+  var MODE_TIP = {
+    cover: function (n) {
+      return [n + ': the tests \uD83E\uDD16 matched to a sentence of the ticket, all kinds;'
+          + ' each kind\u2019s own count is on its row below.',
+        'A model\u2019s reading of which test covers which sentence, not a measurement:'
+          + ' the rows wearing the fork.'];
+    },
+    run: function (n) {
+      return [n + ': the tests a coverage probe saw run a changed line, plus any'
+          + ' \uD83E\uDD16 matched to the ticket; each kind\u2019s own count is on its row below.',
+        'The probe\u2019s part is measured, not guessed: the lines each test executed,'
+          + ' recorded as the suite ran.'];
+    },
+    all: function (n) {
+      return [n + ': every test on record, all kinds: the two other choices, the branch\u2019s'
+          + ' tests no probe measured, the ones it deleted, and the rest of the coverage run.',
+        'The rest of the run is listed by name and file only, with no preview to open.'];
+    }
+  };
+  var MOVES_TIP = '+N \u270F\uFE0FN \u2212N: the tests this branch added, edited and deleted,'
+    + ' the same whichever list is chosen.';
+  function modeTip(mode, n) {
+    var l = (MODE_TIP[mode] || MODE_TIP.cover)(n);
+    return '<div>' + esc(l[0]) + '</div><p class="tipfoot">' + esc(l[1]) + '</p><p class="tipfoot">'
+      + esc(MOVES_TIP) + '</p>';
+  }
   var head = map.querySelector('.rm-code > .rm-tkhead');
   var who = head && head.querySelector('.cov-head .rm-who');
   var pick = null;
@@ -181,9 +209,6 @@
       return '<option value="' + m[0] + '"' + (i ? '' : ' selected') + '>' + esc(m[1]) + '</option>';
     }).join('');
     head.insertBefore(pick, who.closest('.cov-head').nextSibling);
-    var why = document.createElement('span');
-    why.className = 'rm-mode-why';
-    head.insertBefore(why, pick.nextSibling);
   }
   // The grand total, on the card's title row in the chapters' own four columns: the sum of
   // their `−`, ✏️ and `+` and of the tests listed (Victor, 19 Oct 2026: the masthead's
@@ -318,6 +343,7 @@
     if (grand) {
       grand.innerHTML = led(sum, total, '', 'listed, all kinds');
     }
+    if (pick) pick.setAttribute('data-tip-html', modeTip(mode, total));
   }
   function setMode(mode) {
     if (mode === 'all') buildOthers();
@@ -326,11 +352,8 @@
     // The card title's hover says what the list is, so it follows the choice.
     var tipEl = map.querySelector('.rm-code > .rm-tkhead .cov-head[data-tip]')
              || map.querySelector('.rm-code > .rm-tkhead .rm-who[data-tip]');
-    var whyEl = map.querySelector('.rm-code > .rm-tkhead > .rm-mode-why');
     MODES.forEach(function (m) {
-      if (m[0] !== mode) return;
-      if (tipEl) tipEl.setAttribute('data-tip', m[2]);
-      if (whyEl) { whyEl.textContent = m[3]; whyEl.setAttribute('data-tip', m[2]); }
+      if (m[0] === mode && tipEl) tipEl.setAttribute('data-tip', m[2]);
     });
     // Rows are kept or dropped one by one (`data-off`, from `listed`), not by these.
     ['unfold', 'unown', 'undel'].forEach(function (k) { list.dataset[k] = 'yes'; });
