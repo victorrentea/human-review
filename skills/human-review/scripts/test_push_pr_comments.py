@@ -686,4 +686,5 @@ def test_the_pr_and_the_page_draw_the_same_doors_and_circles():
     sys.path.insert(0, str(HERE))
     from hrbuild.tabs import review
     assert ppc.BLAST_GLYPHS == review.BLAST_GLYPHS and ppc.BLAST_SIZES == review.BLAST_SIZES
-    assert {k: v.split(" ", 1)[1] for k, v in ppc.MERGE_DOORS.items()} == review.MERGE_DOORS
+    assert ppc.MERGE_DOORS == {k: f"{review.MERGE_DOOR_MARKS[k]} {v}"
+                               for k, v in review.MERGE_DOORS.items()}

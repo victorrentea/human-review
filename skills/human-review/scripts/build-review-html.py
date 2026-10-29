@@ -239,7 +239,7 @@ from hrbuild.tabs.review import (
     _ref_link, _regenerate_offer, _score_target, _tooling_commit_shas,
     gh_comment_link, prepare_pr_push, attach_pr_body, pr_description_html, pr_body_html,
     MERGE_DOORS, merge_risk_html, BLAST_GLYPHS, BLAST_SIZES, blast_size, blast_tip,
-    blast_glyph_html,
+    blast_glyph_html, MERGE_DOOR_MARKS, MERGE_DOOR_TIPS, merge_door, door_mark_html,
     _md_inline, PR_BODY_JSON, _PULL_URL, _PR_BODY_BOILERPLATE, pr_comment_slug, PR_COMMENTS_JSON,
     PR_PILE_LETTER,
     PR_POSTED_JSON, PR_PUSH_JS, push_pr_button, push_pr_dialog, PUSH_PR_ACTION,
@@ -890,8 +890,9 @@ def _main(argv=None) -> int:
     # rather than keeping a second copy that would drift from the highlighter.
     # The blast radius's circle beside the grade (Victor, 29 Oct 2026): how much of the
     # system a wrong merge would reach, before anything else is read. Nothing without a
-    # `mergeRisk.blastSize`.
-    title_score = blast_glyph_html(spec, "titleblast") + title_score
+    # `mergeRisk.blastSize`. And before it the door's mark, ✅ or ⚠️ (Victor, 29 Oct 2026):
+    # door, reach, grade — nothing without a `mergeRisk.door`.
+    title_score = door_mark_html(spec) + blast_glyph_html(spec, "titleblast") + title_score
     extra_css += subprocess.run(
         [sys.executable, str(EXTRACT), "--css"],
         capture_output=True,

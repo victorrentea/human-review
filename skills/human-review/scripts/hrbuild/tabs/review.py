@@ -1851,6 +1851,37 @@ def pr_body_html(body: str, repo_url: str = "") -> str:
         out.append(f"<pre><code>{html.escape(chr(10).join(code))}</code></pre>")
     flush()
     return "".join(out)
+
+
+#: The two kinds of door a merge can be, and how each reads on the page.
+MERGE_DOORS = {"one-way": "One-way door", "two-way": "Two-way door"}
+#: The verdict's mark in front of each door, as on CI's check (Victor, 29 Oct 2026): ✅ for
+#: the door that opens back, ⚠️ for the one that does not — a warning, not a failure. The
+#: MERGE RISK line and the masthead both draw from here.
+MERGE_DOOR_MARKS = {"one-way": "\u26a0\ufe0f", "two-way": "\u2705"}
+#: What each door means, for the masthead mark's hover.
+MERGE_DOOR_TIPS = {"one-way": "One-way door: a revert does not undo it",
+                   "two-way": "Two-way door: a revert simply undoes it"}
+
+
+def merge_door(spec) -> str | None:
+    """`mergeRisk.door` as "one-way" / "two-way", or None when it is neither."""
+    door = str(((spec or {}).get("mergeRisk") or {}).get("door") or "").strip().lower()
+    return door if door in MERGE_DOORS else None
+
+
+def door_mark_html(spec, cls: str = "titledoor") -> str:
+    """The door's mark alone, with its meaning on hover — the masthead's, left of the blast
+    circle. Empty without a known door."""
+    door = merge_door(spec)
+    if not door:
+        return ""
+    tip = MERGE_DOOR_TIPS[door]
+    why = str((spec.get("mergeRisk") or {}).get("why") or "").strip()
+    full = html.escape(tip + (f"\n{why}" if why else ""), quote=True)
+    return (f'<span class="{cls}" data-tip="{full}" aria-label="{html.escape(tip, quote=True)}">'
+            f'{MERGE_DOOR_MARKS[door]}</span>')
+
 #: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a circle
 #: that fills (Victor, 29 Oct 2026) — so a reader knows at a glance what to expect before
 #: reading the words. Index = the level; each with the words its hover says.
@@ -1891,25 +1922,18 @@ def blast_glyph_html(spec, cls: str = "mr-size") -> str:
             f'aria-label="{html.escape(blast_tip(spec), quote=True)}">{BLAST_GLYPHS[n]}</span>')
 
 
-
-#: The two kinds of door a merge can be, and how each reads on the page.
-MERGE_DOORS = {"one-way": "One-way door", "two-way": "Two-way door"}
-
-
 def merge_risk_html(spec) -> str:
     """`mergeRisk` as one line under the PR description: is merging this a one-way or a
     two-way door, and how far does it reach if it is wrong — Matt Pocock's "merge danger"
     section (Victor, 29 Oct 2026). Empty without a known `door`: a guessed door is worse
     than none."""
     risk = spec.get("mergeRisk") or {}
-    door = MERGE_DOORS.get(str(risk.get("door") or "").strip().lower())
-    if not door:
+    key = merge_door(spec)
+    if not key:
         return ""
-    oneway = risk["door"].strip().lower() == "one-way"
-    # The verdict's mark in front, as on CI's check (Victor, 29 Oct 2026): ✅ for the door
-    # that opens back, ⚠️ for the one that does not — a warning, not a failure.
-    mark = "\u26a0\ufe0f" if oneway else "\u2705"
-    parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">{mark} {door}</b>']
+    oneway = key == "one-way"
+    parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">'
+             f'{MERGE_DOOR_MARKS[key]} {MERGE_DOORS[key]}</b>']
     blast = str(risk.get("blast") or "").strip()
     # The size's circle in front of the words, whose hover says the size in words; with a
     # size and no words, the size's words stand in for them.
