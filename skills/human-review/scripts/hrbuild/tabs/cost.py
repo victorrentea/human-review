@@ -353,31 +353,47 @@ def _span(a: str | None, b: str | None) -> str:
     return f"{x} &rarr; {y}" if y else x
 
 
-def _cost_cell(money: str, tokens: float, models=None, model_usd=None) -> str:
+def _cost_cell(money: str, tokens: float, models=None, model_usd=None,
+               efforts=None) -> str:
     """The one number column: the price, its tokens on the hover, the model under it.
 
     Tokens were a column of their own beside the price; Victor (4 Oct 2026) wanted one
     column, the tokens on the price's hover and the model name under the price. The hover
     is a list, one model per line with its tokens and its price (Victor, 14 Oct 2026: a
     percentage of tokens said nothing about where the money went); a model whose price
-    could not be split off the row's (`harness_cost.model_costs`) shows its tokens alone."""
+    could not be split off the row's (`harness_cost.model_costs`) shows its tokens alone.
+
+    `efforts` (`harness_cost.row_efforts`) puts the effort each model ran at beside its
+    name: `Opus 5.5 (high)` under the price, `Opus 5.5 (effort: high, context: 1M)` on the
+    hover — Victor (30 Oct 2026) asked which model and effort wrote PR #49, and nothing on
+    the page said."""
+    import harness_cost
     names = [(str(k), float(v)) for k, v in (models or {}).items()
              if isinstance(v, (int, float)) and v > 0] if isinstance(models, dict) else []
     total = sum(v for _k, v in names)
     names.sort(key=lambda kv: -kv[1])
     big = [(k, v) for k, v in names if total and v / total >= 0.005] or names[:1]
     usd = model_usd if isinstance(model_usd, dict) else {}
+    effs = efforts if isinstance(efforts, dict) else {}
     head = f"{_cost_tokens(tokens)} tokens"
     if names:
         items = "".join(
-            f"<li>{html.escape(k)}: {_cost_tokens(v)} tokens"
+            f"<li>{html.escape(harness_cost.model_signature(k, effs.get(k)))}: "
+            f"{_cost_tokens(v)} tokens"
             + (f" &middot; {_cost_money(usd[k])}" if isinstance(usd.get(k), (int, float)) else "")
             + "</li>" for k, v in names)
         tip = (f'<p class="tipfoot">{head}</p><ul class="tiplist prose">{items}</ul>')
         attr = f'data-tip-html="{html.escape(tip, quote=True)}"'
     else:
         attr = f'data-tip="{html.escape(head, quote=True)}"'
-    model = (f'<span class="costsub">{" · ".join(html.escape(k) for k, _ in big)}</span>'
+
+    def face(k: str) -> str:
+        # Only the effort on the face: `(effort: …, context: …)` is the hover's, and the
+        # column is the narrowest on the tab.
+        got = [x for x, n in sorted(((effs.get(k) or {}).get("efforts") or {}).items(),
+                                    key=lambda kv: -kv[1]) if x and n]
+        return html.escape(k + (f" ({'/'.join(got)})" if got else ""))
+    model = (f'<span class="costsub">{" · ".join(face(k) for k, _ in big)}</span>'
              if big else "")
     return f'<span class="costmoney" {attr}>{money}</span>' + model
 
@@ -1153,6 +1169,7 @@ def components_html(comp: dict | None, fold: str = "", voices: dict | None = Non
     `fold` is the "This guide" row's tab-by-tab breakdown, opened from that row's name.
     One number column (Victor, 4 Oct 2026): the price, its tokens on the hover, the model
     under it; no hint line under each name, no unit caption under the total."""
+    import harness_cost
     rows = [r for r in (comp or {}).get("rows") or [] if isinstance(r, dict)]
     if not rows or not any(r.get("measured") for r in rows):
         return ""
@@ -1226,7 +1243,7 @@ def components_html(comp: dict | None, fold: str = "", voices: dict | None = Non
         # "Prompt to get this" button sits in the header, beside `cost`.
         out.append(f'<tr data-component="{html.escape(r["key"])}"><td>{label}{sub}</td>'
                    + _time_cell(r.get("busySeconds"), r.get("modelSeconds"))
-                   + f'<td>{_cost_cell(_component_money(r, rate), r.get("tokens") or 0, models, model_usd)}'
+                   + f'<td>{_cost_cell(_component_money(r, rate), r.get("tokens") or 0, models, model_usd, harness_cost.row_efforts(entries))}'
                    '</td></tr>')
         if parts:
             out.append("".join(_entry_row(e) for e in entries))

@@ -418,6 +418,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'What this PR cost in tokens, per stage: implementation, review, auto-fixes, this guide.',
             '$ at API list price, not your subscription.',
             'Time = model thinking + tools (builds, tests).',
+            'Under each price: the model, with the effort it ran at in brackets.',
         ],
         "ex": 'e.g. on one PR: implementation $15 · review $5 · auto-fixes $9 · this guide $0.30.',
     },

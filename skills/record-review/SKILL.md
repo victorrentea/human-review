@@ -120,6 +120,27 @@ reason. `review-commits.py` therefore reads the keys off any line of `%B`, with
 `%(trailers)` as the first pass only. Nothing is asked of the agent beyond one key per
 line: a paragraph landing after them is expected and harmless.
 
+**The pull request names the model and effort that wrote it.** This skill never opens the
+PR, but whoever does ends its description with the line `authoring-sessions.py --base
+<base> --pr-footer` prints (in the human-review skill's `scripts/`), in place of Claude
+Code's bare `🤖 Generated with [Claude Code](…)`:
+
+```
+🤖 Generated with [Claude Code](https://claude.com/claude-code) · Opus 5.5 (effort: high, context: 1M)
+```
+
+The words are the commit trailer's, `Co-Authored-By: Claude Opus 5.5 (effort: high,
+context: 1M)`, and they are read, not remembered: every assistant record of a Claude
+transcript carries `model` and `effort`, and a turn past 200k tokens proves the 1M window.
+Where the transcript is gone, the implementation commit's own `Co-Authored-By:` names the
+model (and the effort, when it spells it out): the commit `Implements:` names, else the
+oldest one past a revert to the base — so the line always says which model, and its version.
+PR #49 said only "Generated with Claude Code", and its title said "by Opus" — which Opus,
+at what effort, was in nobody's words until the transcript was opened. `review-cost.json`
+now records the same (`efforts`, `peakContext` on each Claude entry), and the page shows it
+under the `$` tab's prices and on the review chip's hover (`Coded by …`). With neither a
+transcript nor a trailer naming a model, it prints the bare line and exits 5.
+
 **Two commits at least: the implementation, then the review.** The implementation may
 already be several commits by the time this runs — they are left as they are, and
 `Implements:` names the last of them. The review is one commit: the accepted fixes plus

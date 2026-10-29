@@ -1011,3 +1011,98 @@ def test_no_you_column_and_the_time_header_says_tools_are_in_it():
     assert "tools" in b.BUSY_TIP and "<li>" in b.BUSY_TIP
     cell = html.unescape(b._time_cell(600, 240))
     assert "model thinking and writing 4 min" in cell and "waiting for tools 6 min" in cell
+
+
+# --------------------------------------------------------------------------- who coded
+
+def _effort_turn(f: Path, ts: str, mid: str, effort: str, model: str = "claude-opus-5-5",
+                 context: int = 50_000) -> None:
+    """An assistant record as Claude Code writes it: `effort` beside `message.model`."""
+    rec = {"type": "assistant", "timestamp": ts, "effort": effort, "perTurnEffort": effort,
+           "message": {"id": mid, "model": model, "content": [{"type": "text", "text": "ok"}],
+                       "usage": {"input_tokens": 2, "output_tokens": 1,
+                                 "cache_read_input_tokens": context}}}
+    with f.open("a") as fh:
+        fh.write(json.dumps(rec) + "\n")
+
+
+def test_the_coder_is_named_with_the_effort_its_transcript_records(tmp_path, monkeypatch):
+    """PR #49 ended with "🤖 Generated with Claude Code" and its title said "by Opus":
+    which Opus, at what effort, was only in the transcript — where every assistant record
+    carries `model` and `effort`. A record from before the field is filled from it, a turn
+    past 200k tokens proves the 1M window, and a turn outside the window is not counted."""
+    projects = tmp_path / "projects"
+    monkeypatch.setattr(hc.rc(), "PROJECTS", projects)
+    (projects / "-repo").mkdir(parents=True)
+    t = projects / "-repo" / "s1.jsonl"
+    _effort_turn(t, "2026-10-05T17:00:52Z", "m1", "high")
+    _effort_turn(t, "2026-10-05T17:00:52Z", "m1", "high")   # one call streamed as two rows
+    _effort_turn(t, "2026-10-05T17:05:00Z", "m2", "high", context=211_323)
+    _effort_turn(t, "2026-10-05T18:30:00Z", "m3", "low")     # after the window: the review
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    entry = {"harness": hc.CLAUDE, "session": "s1", "models": {"Opus 5.5": 1000},
+             "window": ["2026-10-05T17:00:48+00:00", "2026-10-05T17:11:53+00:00"]}
+    (repo / hc.RECORD_FILE).write_text(json.dumps({"schema": hc.RECORD_SCHEMA, "components": [
+        {"key": "implementation", "measured": True, "entries": [entry]}]}))
+    sig = hc.coder_signature(repo, scan=False)
+    assert sig == "Opus 5.5 (effort: high, context: 1M)"
+    assert hc.pr_footer(sig) == ("🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+                                 " · Opus 5.5 (effort: high, context: 1M)")
+    row = hc.fill_efforts({"entries": [dict(entry)]})
+    assert row["entries"][0]["efforts"] == {"Opus 5.5": {"high": 2}}
+    assert row["entries"][0]["peakContext"] == {"Opus 5.5": 211_323 + 2}
+
+
+def test_mixed_efforts_and_a_small_context_say_only_what_is_known():
+    got = {"efforts": {"medium": 3, "high": 9, "": 4}, "peak": 150_000}
+    assert hc.model_signature("Opus 5.5", got) == "Opus 5.5 (effort: high/medium)"
+    assert hc.model_signature("Opus 5.5", {}) == "Opus 5.5"
+    assert hc.pr_footer("") == hc.CLAUDE_CODE_FOOTER, "nothing known: Claude Code's own line"
+
+
+def test_a_scout_model_is_not_named_as_the_coder():
+    row = {"measured": True, "entries": [
+        {"models": {"Opus 5.5": 950, "Haiku 4.5": 50},
+         "efforts": {"Opus 5.5": {"xhigh": 40}, "Haiku 4.5": {"low": 9}}}]}
+    assert [k for k, _ in hc.coder_models(row)] == ["Opus 5.5"]
+
+
+def test_the_cost_column_names_the_effort_beside_the_model():
+    from hrbuild.tabs import cost
+    cell = cost._cost_cell("$4.78", 11_168_006, {"Opus 5.5": 11_168_006}, {"Opus 5.5": 4.78},
+                           {"Opus 5.5": {"efforts": {"high": 77}, "peak": 211_323}})
+    assert '<span class="costsub">Opus 5.5 (high)</span>' in cell
+    assert "Opus 5.5 (effort: high, context: 1M): 11.2M tokens" in html.unescape(cell)
+    plain = cost._cost_cell("$1", 10, {"Opus 5.5": 10})
+    assert '<span class="costsub">Opus 5.5</span>' in plain, "no effort recorded: the name alone"
+
+
+def test_with_no_transcript_the_implementation_commits_trailer_names_the_coder(tmp_path,
+                                                                               monkeypatch):
+    """The transcript stays on the machine that wrote the code; the commit travels. PR #49's
+    first attempt (`Claude Opus 5`, 17 Sep) was reverted to the base, and `Implements:`
+    names the re-implementation — whose trailer, in Victor's words, carries the effort."""
+    monkeypatch.setattr(hc.rc(), "PROJECTS", tmp_path / "nothing")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    (repo / "a.txt").write_text("base\n")
+    commit(repo, "base", "2026-09-01T10:00:00Z")
+    git(repo, "checkout", "-q", "-b", "feat")
+    (repo / "a.txt").write_text("first try\n")
+    commit(repo, "feat: first try\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+           "2026-09-17T18:29:54Z")
+    (repo / "a.txt").write_text("base\n")
+    commit(repo, "Revert to main", "2026-10-05T16:58:39Z")
+    (repo / "a.txt").write_text("again\n")
+    impl = commit(repo, "Link Visit with Vet\n\nCo-Authored-By: Claude Opus 5.5 "
+                        "(effort: high, context: 1M)", "2026-10-05T17:10:35Z")
+    (repo / "b.txt").write_text("fix\n")
+    commit(repo, f"[auto-fix] x\n\nImplements: {impl}\n"
+                 "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>",
+           "2026-10-05T17:16:43Z")
+    assert hc.implementation_commit(repo, "main") == impl
+    assert hc.coder_signature(repo, "main", scan=False) == "Opus 5.5 (effort: high, context: 1M)"
+    git(repo, "commit", "-q", "--amend", "-m", "[auto-fix] x")   # no Implements: any more
+    assert hc.implementation_commit(repo, "main") == impl, "the oldest commit past the revert"

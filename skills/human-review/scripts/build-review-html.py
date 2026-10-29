@@ -711,6 +711,14 @@ def _main(argv=None) -> int:
             # cost row for the review splits Opus/Sonnet and "Reviewed by Sonnet" hid half.
             reviewed = (harness_cost.review_line(root, out_dir)
                         or (f"Reviewed by {reviewer}" if reviewer else ""))
+            # And who wrote the code, in Victor's trailer words — `Coded by Opus 5.5
+            # (effort: high, context: 1M)` — read off the implementation row and its
+            # transcripts (Victor, 30 Oct 2026: PR #49 said "Generated with Claude Code",
+            # and nothing said which model, at what effort).
+            coded = harness_cost.coder_signature(
+                root, (spec.get("pr") or {}).get("base") or "origin/main", scan=False)
+            if coded:
+                reviewed = (f"{reviewed}. " if reviewed else "") + f"Coded by {coded}"
             computed = {
                 # A colon, not a gap. The pill reads as one sentence — `🤖Fable 5
                 # reviewer: 6 open, 4 fixed` — where before it was a label, a gap and a

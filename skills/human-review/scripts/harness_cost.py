@@ -322,6 +322,259 @@ def claude_model_spans(path: Path, lo, hi) -> list[tuple]:
     return spans
 
 
+#: The window a turn this big could only have fitted in: past 200k tokens of context the
+#: session was on the 1M window. Under it nothing says which — so nothing is printed.
+CONTEXT_1M_OVER = 200_000
+
+
+def transcript_efforts(path: Path, lo=None, hi=None) -> dict[str, dict]:
+    """What a Claude transcript's assistant turns in `[lo, hi]` ran at, model by model:
+    `{"Opus 5.5": {"efforts": {"high": 272}, "peak": 276191}}`.
+
+    Claude Code writes the reasoning effort on every assistant record (`effort`, and
+    `perTurnEffort` beside it), next to `message.model` — so "which model, at what effort"
+    is a fact read off the transcript, not something the coder has to remember to say.
+    `peak` is the largest context a single turn carried (input + cache read + cache
+    written): past `CONTEXT_1M_OVER` it can only have been the 1M window. A record with no
+    `effort` (a Claude Code older than the field) counts under `""`."""
+    lo, hi = parse(lo), parse(hi)
+    out: dict[str, dict] = {}
+    seen: set = set()
+    for rec in rc()._rows(Path(path)):
+        if rec.get("type") != "assistant":
+            continue
+        msg = rec.get("message") or {}
+        raw = str(msg.get("model") or "")
+        if not raw.startswith("claude-"):
+            continue
+        t = parse(rec.get("timestamp"))
+        if (lo or hi) and (t is None or not _within(t, lo, hi)):
+            continue
+        # A message streams as several records; one model call is one turn.
+        key = msg.get("id") or rec.get("requestId") or rec.get("uuid")
+        if key in seen:
+            continue
+        seen.add(key)
+        slot = out.setdefault(rc().label(raw), {"efforts": {}, "peak": 0})
+        eff = str(rec.get("effort") or rec.get("perTurnEffort") or "")
+        slot["efforts"][eff] = slot["efforts"].get(eff, 0) + 1
+        u = msg.get("usage") or {}
+        ctx = sum(int(u.get(k) or 0) for k in ("input_tokens", "cache_read_input_tokens",
+                                                 "cache_creation_input_tokens"))
+        slot["peak"] = max(slot["peak"], ctx)
+    return out
+
+
+def _merge_efforts(into: dict, more: dict) -> dict:
+    for name, got in (more or {}).items():
+        slot = into.setdefault(name, {"efforts": {}, "peak": 0})
+        for eff, n in (got.get("efforts") or {}).items():
+            slot["efforts"][eff] = slot["efforts"].get(eff, 0) + int(n or 0)
+        slot["peak"] = max(slot["peak"], int(got.get("peak") or 0))
+    return into
+
+
+def session_efforts(session: str | None, lo=None, hi=None, agents: bool = True) -> dict:
+    """`transcript_efforts` over a session and, with `agents`, the agents it started in
+    the window — the same reach `claude_entry` bills. `{}` when the transcript is gone."""
+    path = rc().transcript(session) if session else None
+    if path is None:
+        return {}
+    lo, hi = parse(lo), parse(hi)
+    out = _merge_efforts({}, transcript_efforts(path, lo, hi))
+    if agents:
+        for agent in rc().subagent_transcripts(path):
+            first, _last = rc().agent_span([agent])
+            if first is not None and _within(first, lo, hi):
+                _merge_efforts(out, transcript_efforts(Path(agent), lo, hi))
+    return out
+
+
+def _entry_efforts(e: dict) -> dict:
+    """An entry's `efforts` and `peakContext`, in `transcript_efforts`'s shape."""
+    peaks = e.get("peakContext") or {}
+    return {name: {"efforts": dict(eff or {}), "peak": int(peaks.get(name) or 0)}
+            for name, eff in (e.get("efforts") or {}).items()}
+
+
+def _put_efforts(e: dict, got: dict) -> None:
+    """`got` onto an entry: `efforts` `{model: {effort: turns}}`, `peakContext`
+    `{model: tokens}` — each only when it says something."""
+    effs = {k: {x: n for x, n in (v.get("efforts") or {}).items() if x and n}
+            for k, v in (got or {}).items()}
+    effs = {k: v for k, v in effs.items() if v}
+    peaks = {k: int(v["peak"]) for k, v in (got or {}).items() if v.get("peak")}
+    if effs:
+        e["efforts"] = effs
+    if peaks:
+        e["peakContext"] = peaks
+
+
+def fill_efforts(row: dict) -> dict:
+    """A cost row's Claude entries with `efforts` read off their transcripts, when the
+    record predates the field (every `review-cost.json` before 30 Oct 2026, PR #49's
+    among them) and the transcript is still on this disk. An entry that has it keeps it."""
+    for e in (row or {}).get("entries") or []:
+        sid = str(e.get("session") or "")
+        if e.get("efforts") or e.get("harness") != CLAUDE or not sid or sid.startswith("claude -p"):
+            continue
+        win = (e.get("window") or []) + [None, None]
+        _put_efforts(e, session_efforts(sid, win[0], win[1]))
+    return row
+
+
+def row_efforts(entries: list[dict] | None) -> dict:
+    """Every entry's efforts, summed model by model — what a cost row ran at."""
+    out: dict = {}
+    for e in entries or []:
+        _merge_efforts(out, _entry_efforts(e))
+    return out
+
+
+def effort_words(got: dict | None) -> str:
+    """`effort: high, context: 1M` — the inside of the brackets in Victor's commit
+    trailer, `Claude Opus 5.5 (effort: high, context: 1M)`. Efforts in order of turns;
+    the context only when a turn proves it was the 1M window. Empty when neither is known."""
+    got = got or {}
+    effs = sorted(((k, n) for k, n in (got.get("efforts") or {}).items() if k and n),
+                  key=lambda kv: -kv[1])
+    bits = []
+    if effs:
+        bits.append("effort: " + "/".join(k for k, _ in effs))
+    if int(got.get("peak") or 0) > CONTEXT_1M_OVER:
+        bits.append("context: 1M")
+    return ", ".join(bits)
+
+
+def model_signature(name: str, got: dict | None) -> str:
+    """`Opus 5.5 (effort: high, context: 1M)`, or the bare name when nothing is known."""
+    words = effort_words(got)
+    return f"{name} ({words})" if words else name
+
+
+#: Under this share of a row's tokens a model is a scout, not the coder.
+CODER_SHARE = 0.10
+
+
+def coder_models(row: dict | None) -> list[tuple[str, dict]]:
+    """The models that wrote the code, heaviest first, each with what it ran at: the
+    implementation row's models by tokens, those under `CODER_SHARE` left out."""
+    if not row or not row.get("measured"):
+        return []
+    tokens: dict[str, int] = {}
+    for e in row.get("entries") or []:
+        for k, v in (e.get("models") or {}).items():
+            tokens[k] = tokens.get(k, 0) + int(v or 0)
+    total = sum(tokens.values())
+    if not total:
+        return []
+    effs = row_efforts(row.get("entries"))
+    return [(k, effs.get(k) or {}) for k in sorted(tokens, key=lambda k: -tokens[k])
+            if tokens[k] / total >= CODER_SHARE]
+
+
+#: A `Co-Authored-By:` naming a Claude model, as Claude Code writes it (`Claude Opus 5
+#: <noreply@anthropic.com>`) or as Victor's convention does (`Claude Opus 5.5 (effort:
+#: high, context: 1M)`).
+_CO_AUTHOR = re.compile(r"^Co-Authored-By:\s*(?:Claude\s+)?(?P<fam>Opus|Sonnet|Haiku|Fable|Mythos)"
+                        r"\s+(?P<ver>\d+(?:\.\d+)?)\s*(?:\((?P<words>[^)]*)\))?", re.I | re.M)
+
+
+def _trailer_got(words: str | None) -> dict:
+    """`effort: high, context: 1M` back into `transcript_efforts`'s shape."""
+    got: dict = {"efforts": {}, "peak": 0}
+    for bit in (words or "").split(","):
+        k, _, v = (x.strip() for x in bit.partition(":"))
+        if k.lower() == "effort" and v:
+            for eff in v.split("/"):
+                got["efforts"][eff.strip()] = got["efforts"].get(eff.strip(), 0) + 1
+        elif k.lower() == "context" and v.upper() == "1M":
+            got["peak"] = 1_000_000
+    return got
+
+
+def implementation_commit(root: Path, base: str) -> str | None:
+    """The commit that wrote the change: the newest `Implements:` trailer after the
+    branch's restart (`record-review.py finish` writes it on the review commit), else the
+    oldest commit of the branch after the restart that is neither a merge nor an
+    `[auto-fix]`. PR #49: `Implements: 1bcf74d4` — the re-implementation, not the
+    17 Sep attempt (a8cd9973) that 0da5de63 reverted."""
+    fork = git(root, "merge-base", base, "HEAD") or base
+    restart = restart_point(root, base)
+    since = restart[0] if restart else fork
+    log = git(root, "log", "--no-merges", "--format=%H%x00%s%x00%B%x1e", f"{since}..HEAD")
+    commits = [c.strip("\n").split("\x00") for c in log.split("\x1e") if c.strip()]
+    for _sha, _subj, body in commits:
+        m = re.search(r"^Implements:\s*([0-9a-f]{7,40})\b", body, re.M)
+        if m and git(root, "rev-parse", "--verify", "--quiet", m.group(1) + "^{commit}"):
+            return git(root, "rev-parse", m.group(1))
+    plain = [sha for sha, subj, _b in commits if not subj.startswith("[auto-fix]")]
+    return plain[-1] if plain else None
+
+
+def trailer_coders(root: Path, base: str = "origin/main") -> list[tuple[str, dict]]:
+    """The models the implementation commit's `Co-Authored-By:` trailers name, with
+    whatever effort and context they spell out. Portable where a transcript is not: the
+    commit travels with the branch, the transcript stays on the machine that wrote it."""
+    sha = implementation_commit(Path(root), base)
+    if not sha:
+        return []
+    out: dict[str, dict] = {}
+    for m in _CO_AUTHOR.finditer(git(Path(root), "log", "-1", "--format=%B", sha)):
+        name = f"{m['fam'].capitalize()} {m['ver']}"
+        _merge_efforts(out, {name: _trailer_got(m["words"])})
+    return list(out.items())
+
+
+def coder_signature(root: Path, base: str = "origin/main", scan: bool = True) -> str:
+    """`Opus 5.5 (effort: high, context: 1M)` — who wrote the code under review.
+
+    From the implementation row `/record-review` committed (`review-cost.json`), less the
+    sessions the branch reverted (`drop_undone`), its efforts read off the transcripts when
+    the record predates them. With no record, the implementation commit's `Co-Authored-By:`
+    trailers (`trailer_coders`) — which also lend their effort to a recorded model whose
+    transcript is gone. Then the Claude conversations that edited the change set
+    (`claude_authors`), from the fork on — unless `scan` is off, for a caller (the page
+    build) that must not walk every transcript on the machine. Empty when nothing says."""
+    root = Path(root)
+    rec = read_record(root)
+    row = None
+    if rec:
+        row = next((c for c in rec.get("components") or []
+                    if c.get("key") == "implementation"), None)
+        if row:
+            row = fill_efforts(relabel(drop_undone(root, base, json.loads(json.dumps(row)))))
+    found = coder_models(row)
+    trailers = dict(trailer_coders(root, base))
+    if found:
+        found = [(k, v if effort_words(v) else (trailers.get(k) or v)) for k, v in found]
+    elif trailers:
+        found = list(trailers.items())
+    if found:
+        return ", ".join(model_signature(k, v) for k, v in found)
+    if scan:
+        lo = fork_time(root, base)
+        entries = []
+        for s in claude_authors(root, base):
+            got = session_efforts(s["session"], lo, None, agents=False)
+            if got:
+                e = {"models": {k: sum(v["efforts"].values()) for k, v in got.items()}}
+                _put_efforts(e, got)
+                entries.append(e)
+        row = {"measured": bool(entries), "entries": entries}
+    return ", ".join(model_signature(k, v) for k, v in coder_models(row))
+
+
+#: The line Claude Code ends a PR description with; `pr_footer` extends it.
+CLAUDE_CODE_FOOTER = "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+
+
+def pr_footer(signature: str) -> str:
+    """The PR description's last line, naming the model and effort that wrote the code:
+    `🤖 Generated with [Claude Code](…) · Opus 5.5 (effort: high, context: 1M)`."""
+    return CLAUDE_CODE_FOOTER + (f" · {signature}" if signature else "")
+
+
 def claude_entry(session: str | None, lo, hi, what: str) -> dict | None:
     """The session's turns in `[lo, hi]` plus the agents it started inside the window."""
     if not session:
@@ -351,6 +604,10 @@ def claude_entry(session: str | None, lo, hi, what: str) -> dict | None:
     out = entry(CLAUDE, session, what, shown, data["tokens"], data.get("models"),
                 usd=data["cost"], calls=data["messages"],
                 model_seconds=_intervals_union(spans), subagent_models=sub_models)
+    # Which effort each model ran at, and how much context it carried (`model_signature`):
+    # recorded with the money, so the PR footer and the `$` tab can say "Opus 5.5 (effort:
+    # high)" on a machine where the transcript is long gone.
+    _put_efforts(out, session_efforts(session, lo, hi))
     if n_agents:
         # How many, not only which: "Sonnet 5.5" says what the reviewers ran on, and the
         # review chip's "Sonnet 5.5 (4 subagents)" needs the count to say how many read.
@@ -1943,7 +2200,7 @@ def components(root: Path, base: str, review: Path, phases: dict | None = None,
         kept = _guide_from_phases(phases) or kept
     guide = kept
     refreshes = (report or {}).get("refreshes") or []
-    rows = [relabel(c) for c in list(first3) + [guide]]
+    rows = [fill_efforts(relabel(c)) for c in list(first3) + [guide]]
     for c in rows:
         # Re-read at every build, never trusted from a record: `review-cost.json` predates
         # the field, and the store is what the window's turns are read from anyway.

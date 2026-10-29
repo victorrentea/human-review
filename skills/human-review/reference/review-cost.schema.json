@@ -80,7 +80,13 @@
     "subagentModels": {"type": "array", "items": {"type": "string"},
                        "description": "The models of the agents the session forked inside the window, apart from its own — in the review row, the reviewers."},
     "subagents": {"type": "integer", "minimum": 0,
-                  "description": "How many agents the session forked inside the window (harness_cost.claude_entry) — the review chip's '(4 subagents)'."}
+                  "description": "How many agents the session forked inside the window (harness_cost.claude_entry) — the review chip's '(4 subagents)'."},
+    "efforts": {"type": "object",
+                "additionalProperties": {"type": "object",
+                                         "additionalProperties": {"type": "integer", "minimum": 0}},
+                "description": "Claude only: model → reasoning effort → turns at it, read off each assistant record's `effort` (harness_cost.transcript_efforts). What the PR footer and the $ tab print as `Opus 5.5 (effort: high)`."},
+    "peakContext": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0},
+                    "description": "Claude only: model → the largest context one turn carried. Past 200k it proves the 1M window (`context: 1M`)."}
    }
   }
  }

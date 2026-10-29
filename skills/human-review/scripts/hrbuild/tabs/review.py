@@ -1738,8 +1738,11 @@ def _drop_model_line(text: str, spec, short: str | None = None) -> bool:
 PR_BODY_JSON = "pr-body.json"
 _PULL_URL = re.compile(r"github\.com/([^/\s]+/[^/\s]+)/pull/(\d+)")
 #: The attribution line an agent appends to every PR it opens: the same words on every
-#: page, about the tool rather than the change.
-_PR_BODY_BOILERPLATE = re.compile(r"^\s*🤖 Generated with \[Claude Code\]\([^)]*\)\s*$", re.M)
+#: page, about the tool rather than the change. With the model and effort after it
+#: (`· Opus 5.5 (effort: high)`, `harness_cost.pr_footer`) it is still that line: the page
+#: says who coded on the review chip's hover and under the `$` tab's prices instead.
+_PR_BODY_BOILERPLATE = re.compile(
+    r"^\s*🤖 Generated with \[Claude Code\]\([^)]*\)(?:\s*·[^\n]*)?\s*$", re.M)
 
 
 def attach_pr_body(spec: dict, out_dir: Path, root: Path | None = None) -> None:

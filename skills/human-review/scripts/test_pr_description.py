@@ -44,6 +44,16 @@ def test_the_agent_attribution_line_is_left_out():
     assert f'href="{URL}"' not in out   # the masthead's PR#N already links there
 
 
+def test_the_attribution_line_naming_the_model_and_effort_is_left_out_too():
+    """`harness_cost.pr_footer`'s line: the same attribution, the coder's model and effort
+    after it. The page says who coded elsewhere (the review chip, the `$` tab)."""
+    spec = {"_prBody": {"url": URL, "body": "Closes #25.\n\n🤖 Generated with "
+                                             "[Claude Code](https://claude.com/claude-code)"
+                                             " · Opus 5.5 (effort: high, context: 1M)\n"}}
+    out = review.pr_description_html(spec)
+    assert "Closes" in out and "Generated with" not in out and "effort" not in out
+
+
 def test_an_empty_description_draws_nothing():
     assert review.pr_description_html({}) == ""
     assert review.pr_description_html({"_prBody": {"url": URL, "body": "  \n"}}) == ""

@@ -43,6 +43,14 @@ Usage:
   authoring-sessions.py --base origin/main           # the mode, and who, as a table
   authoring-sessions.py --base origin/main --json    # the same, as data
   authoring-sessions.py --base origin/main --paths   # transcript paths, best author first
+  authoring-sessions.py --base origin/main --signature  # Opus 5.5 (effort: high, context: 1M)
+  authoring-sessions.py --base origin/main --pr-footer  # the PR description's last line
+
+`--signature` and `--pr-footer` say which model wrote the code and at what effort, read off
+the transcripts (`harness_cost.coder_signature`): every assistant record carries `model`
+and `effort`. The footer is Claude Code's own `🤖 Generated with [Claude Code](…)` with
+` · Opus 5.5 (effort: high, context: 1M)` after it — the coder ends a PR description with
+it instead of the bare line, so the PR says what its commits' trailers say.
 """
 from __future__ import annotations
 
@@ -341,6 +349,10 @@ def main() -> int:
                     help="print only the transcript paths, best author first")
     ap.add_argument("--top", type=int, default=6, metavar="N",
                     help="how many sessions the table shows (--json always shows all)")
+    ap.add_argument("--signature", action="store_true",
+                    help="print the coding model and effort: Opus 5.5 (effort: high)")
+    ap.add_argument("--pr-footer", action="store_true",
+                    help="print the PR description's footer, with the model and effort")
     args = ap.parse_args()
 
     repo_root = git("rev-parse", "--show-toplevel").strip()
@@ -348,6 +360,17 @@ def main() -> int:
         print("not a git repository", file=sys.stderr)
         return 2
     repo = Path(repo_root).resolve()
+
+    if args.signature or args.pr_footer:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import harness_cost
+        sig = harness_cost.coder_signature(repo, args.base)
+        if not sig:
+            print(f"no Claude transcript on this machine wrote the change against "
+                  f"{args.base}: model and effort unknown", file=sys.stderr)
+        if sig or args.pr_footer:
+            print(harness_cost.pr_footer(sig) if args.pr_footer else sig)
+        return 0 if sig else 5
 
     rows, wanted = authors(args.base, repo)
     if not wanted:
