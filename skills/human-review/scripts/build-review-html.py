@@ -1389,8 +1389,10 @@ def _main(argv=None) -> int:
                      f'{shlex.quote(str(HERE / "serve-review.py"))} {shlex.quote(str(here))}'
                      f' --page {shlex.quote(out_path.name)} --no-open)" && (open "$u" 2>/dev/null'
                      ' || xdg-open "$u") && exit')
-        # Two chips, not one. `static` only says what this copy is, so it has no hover;
-        # `Serve` is the thing to do about it, and it is the one that explains why.
+        # One button, not two (Victor, 29 Oct 2026: "unify them"): `Static · 📋 Serve` —
+        # the state this copy is in, then the way out of it. It used to be a `Static` label
+        # and a `Serve` chip beside it, two pills for one fact and its remedy. Served, the
+        # probe in SERVER_JS swaps the whole button for the `Served ⏹️` badge.
         # The two IDE logos first (`IDE_CHIPS`): which IDE a click on code opens in, green
         # for the connected one. Shown everywhere — off disk the pick picks the link scheme,
         # served it routes through the bridges — and greyed online (`data-local`).
@@ -1402,13 +1404,15 @@ def _main(argv=None) -> int:
             capture_output=True, text=True).stdout.strip()
         mode_html = (
             IDE_CHIPS +
-            '<span class="chip chip-mode" id="hr-mode">Static</span>'
-            '<button type="button" class="chip chip-serve copycmd" id="hr-serve" '
+            '<button type="button" class="chip chip-mode chip-serve copycmd" id="hr-serve" '
             f'data-copy="{html.escape(serve_cmd, quote=True)}" '
             f'data-tip-online="{html.escape(serve_online_tip(pr_repo, pr_branch), quote=True)}" '
-            # Victor's words, verbatim: what the click does, then why anyone wants it.
-            'data-tip="Copy terminal command to start this webpage via a backend so you '
-            'click buttons for actions, not copy terminal commands.">'
+            # What the word means first, then Victor's words, verbatim: what the click
+            # does, and why anyone wants it.
+            'data-tip="Static copy: buttons copy commands. Copy terminal command to start '
+            'this webpage via a backend so you click buttons for actions, not copy terminal '
+            'commands.">'
+            '<span class="mode-word">Static</span><span class="mode-sep">\u00b7</span>'
             f'{CMD_COPY} Serve</button>')
         # And, on the served copy only, the way to make the page catch up with the
         # repository. Both pieces are constants above, so what the page carries is one

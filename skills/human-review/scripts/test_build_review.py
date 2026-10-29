@@ -3972,10 +3972,12 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert '"test": "add-visit.spec.ts:52"' in out
     page, _ = _build(tmp_path, BARE)
     row = page[page.index('<div class="titlerow'):page.index("</div>", page.index('<div class="titlerow'))]
-    assert '<span class="chip chip-mode" id="hr-mode">Static</span>' in row, \
-        "in the title row, against the score, a label with no hover"
-    assert '<button type="button" class="chip chip-serve copycmd" id="hr-serve"' in row
-    assert "\U0001F4CB Serve</button>" in row
+    # One button, not two (Victor, 29 Oct 2026): the state, then the way out of it.
+    assert '<button type="button" class="chip chip-mode chip-serve copycmd" id="hr-serve"' in row
+    assert ('<span class="mode-word">Static</span><span class="mode-sep">\u00b7</span>'
+            '\U0001F4CB Serve</button>') in row
+    assert 'data-tip="Static copy: buttons copy commands.' in row, "the tip says the state first"
+    assert row.count('class="chip chip-mode') == 1 and 'id="hr-mode"' not in row
     assert "hr-mode" not in page[page.index("<footer>"):page.index("</footer>")]
     # Serve copies the way out of static: serve this directory, open the page from
     # the URL the server prints — never a port assumed in advance.
@@ -3984,7 +3986,7 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert line.startswith("cd ") and "serve-review.py" in line and "--page review.html" in line
     assert 'u="$(' in line and 'open "$u"' in line and "7654" not in line
     assert line.endswith(' && exit'), "the server is detached: the terminal closes behind it"
-    assert "if (serveChip) serveChip.hidden = true;" in page, "served: nothing left to copy"
+    assert "serveChip.replaceWith(chip);" in page, "served: the one button becomes the badge"
     assert "chip.textContent = 'Served'" in page
     # And in the tab strip, where a reader picks between several of these — one per
     # branch, a static copy beside a live one — long before anything in the page is on

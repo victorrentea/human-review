@@ -21,8 +21,9 @@ BODY = (
     f'<!doctype html><html data-hr-head="abc" data-hr-root="{ROOT}" data-hr-blob="{BLOB}" '
     'data-hr-dir=".human-review"><head><style>' + build.CSS + '</style>' + build.SERVER_JS
     + '</head><body>'
-    '<button type="button" class="chip chip-serve copycmd" id="hr-serve" data-copy="cd /r" '
-    'data-tip-online="To see it work: click Serve." data-tip="Copy">Serve</button>'
+    '<button type="button" class="chip chip-mode chip-serve copycmd" id="hr-serve" '
+    'data-copy="cd /r" data-tip-online="To see it work: click Serve." data-tip="Copy">'
+    '<span class="mode-word">Static</span><span class="mode-sep">·</span>📋 Serve</button>'
     + build.command_html("cd /r && ./start-docker.sh up", None, label="Start")
     + '<button type="button" class="adopt copycmd" data-copy="a prompt" data-tip="Prompt">'
       'Prompt</button>'
@@ -46,7 +47,8 @@ STATE = """() => {
           src: q('#src').getAttribute('href'), srcTip: q('#src').getAttribute('data-tip'),
           own: q('#own').getAttribute('href'), disk: getComputedStyle(q('.diskline')).display,
           browse: !document.getElementById('online') && !!document.getElementById('online2'),
-          serveTip: q('#hr-serve').getAttribute('data-tip')};
+          serveTip: q('#hr-serve') && q('#hr-serve').getAttribute('data-tip'),
+          mode: (q('.chip-mode') || {}).textContent};
 }"""
 
 
@@ -102,6 +104,7 @@ def test_off_disk_every_script_runs_and_the_copy_buttons_copy(browser, tmp_path)
     s = page.evaluate(STATE)
     assert not s["online"] and s["start"] == "1" and s["src"].startswith("vscode:")
     assert s["disk"] != "none"
+    assert s["serveTip"].startswith("Static copy: buttons copy commands. Click to start")
     page.click(".adopt")
     assert _toast(page) == "Copied — paste it in a terminal"
 
@@ -119,6 +122,7 @@ def test_online_greys_what_needs_the_mac_and_sends_references_to_github(browser)
     assert s["own"].startswith("vscode:"), "the review's own folder is not on GitHub"
     assert s["disk"] == "none" and s["browse"], "no path of the Mac, no link to itself, the other demo linked"
     assert s["serveTip"] == "To see it work: click Serve."
+    assert s["mode"] == "Static·📋 Serve", "one button: the state, then the way out of it"
     page.click(".cmd-copy", force=True)
     assert _toast(page) == build.LOCAL_HINT, "a click explains instead of copying"
     page.hover("#desk")
@@ -137,6 +141,8 @@ def test_served_nothing_is_greyed(browser):
     s = page.evaluate(STATE)
     assert not s["online"] and s["start"] == "1" and s["desk"] == "1"
     assert s["src"].startswith("vscode:")
+    # The one `Static · 📋 Serve` button became the one `Served` badge, in its place.
+    assert s["serveTip"] is None and s["mode"].startswith("Served")
 
 
 def test_on_loopback_without_our_server_it_is_online_too(browser):

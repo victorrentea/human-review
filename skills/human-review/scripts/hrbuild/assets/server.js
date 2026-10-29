@@ -371,13 +371,15 @@ window.HR = (function () {
       if (!icon.dataset.static) icon.dataset.static = icon.href;
       icon.href = icon.dataset.served;
     }
-    // Nothing left to copy: the Serve line is the one that got the reader here.
+    // Nothing left to copy: the Serve line is the one that got the reader here. The one
+    // `Static · 📋 Serve` button becomes the one `Served` badge, in the same place.
     var serveChip = document.getElementById('hr-serve');
-    if (serveChip) serveChip.hidden = true;
-    var chip = document.getElementById('hr-mode');
-    if (!chip) return;
+    if (!serveChip) return;
+    var chip = document.createElement('span');
+    chip.className = 'chip chip-mode chip-served';
+    chip.id = 'hr-mode';
     chip.textContent = 'Served';
-    chip.classList.add('chip-served');
+    serveChip.replaceWith(chip);
     // The badge replaces `Static` and carries what serving means, so the ↺ beside it can
     // keep a one-line hover about what *it* does.
     chip.setAttribute('data-tip', 'Served by the review server (serve-review.py): the '

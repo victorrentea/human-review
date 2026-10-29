@@ -368,6 +368,10 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
 .titlerow button.chip-serve.launches { cursor:pointer; }
 .titlerow button.chip-serve.starting { cursor:progress; opacity:.6; }
 .titlerow button.chip-serve.off, .titlerow button.chip-serve.off:hover { cursor:not-allowed; opacity:.45; border-color:var(--line); color:var(--muted); }
+/* `Static · 📋 Serve`, one button (build-review-html.py, `mode_html`): the state muted, the
+   action at full strength, a dot between. */
+.titlerow button.chip-mode .mode-word { color:var(--muted); }
+.titlerow button.chip-mode .mode-sep { margin:0 .3rem; color:var(--muted); }
 .titlerow .chip-ide[hidden], .titlerow .chip-mode[hidden], .titlerow .chip-serve[hidden], .titlerow .chip-rerun[hidden] { display:none; }
 /* Stop: the ⏹️ after the word `Served`, inside its pill. A bare glyph with no ring of its
    own — the pill's border is the only border — at about the text's cap height, and its own

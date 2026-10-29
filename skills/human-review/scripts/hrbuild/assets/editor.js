@@ -437,9 +437,10 @@
       return;
     }
     chip.classList.add('launches');
-    chip.setAttribute('data-tip', 'Start the review server and reload this tab from it, so '
-      + 'buttons run their action instead of copying a command. Also copies the terminal '
-      + 'command, to run yourself if the launcher (scripts/install-serve-launcher.sh) fails.');
+    chip.setAttribute('data-tip', 'Static copy: buttons copy commands. Click to start the '
+      + 'review server and reload this tab from it, so buttons run their action instead of '
+      + 'copying a command. Also copies the terminal command, to run yourself if the '
+      + 'launcher (scripts/install-serve-launcher.sh) fails.');
   })();
 
   // Where a running command says what it is doing: a line under the control that started
