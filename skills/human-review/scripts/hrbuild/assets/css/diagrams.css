@@ -63,10 +63,8 @@
 .focus button[aria-pressed="true"] { background:var(--link); border-color:var(--link); color:var(--on-fill); }
 /* Diff / New / Old, in two buttons and three states. The second button holds both
    words and toggles between them, because a third pill would cost as much room as the
-   two that matter and this control has to fit above a sequence diagram as easily as
-   above a small one. Why it exists at all: a sequence diagram is generated from traces
-   whose call ORDER is not stable between runs, so the delta reports moves nobody made.
-   The reader needs a one-click escape to the raw before/after — this is it. */
+   two that matter. A sequence diagram gets New/Old alone: drawn from traces whose call
+   ORDER is not stable between runs, its delta reported moves nobody made. */
 .dgmviews { margin-top:.7rem; }
 .dgmbar { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; margin-bottom:.5rem; }
 .dgmbar button { border:2px solid var(--line); background:var(--card); color:var(--muted);
@@ -145,20 +143,11 @@
    and what is left of the diagram is the diagram. */
 .testpair > .diagram { background:transparent; border:0; border-radius:0;
   padding:0; margin:.55rem 0 0; }
-/* With the title gone, the .puml path is the only thing left in a paired diagram's
-   header row, and `space-between` would park it on the left under the fold arrow. */
-.diagram.dgm-bare .head .dgm-src { margin-left:auto; }
-/* …and then the header row went away entirely. A paired card had two rows of furniture
-   stacked on top of each other, each half empty: Diff/New/Old hard left on one, the
-   `.puml` path hard right on the other, a band of nothing between them. They are one
-   line about one picture — the controls, then what the picture is — so `DGM_VIEWS_JS`
-   moves the header's contents into the button bar and drops the empty row. The pieces
-   keep their own alignment; only the row they sit on changed. */
-.dgmbar .badge { margin-left:.2rem; }
-.dgmbar .dgm-src { margin-left:auto; color:var(--muted); font:inherit; text-decoration:none;
-  border-bottom:1px dotted var(--line); }
-.dgmbar .dgm-src:hover { color:var(--link); border-bottom-color:currentColor; }
-.diagram.dgm-bare > .head:empty { display:none; }
+/* A bar outside its widget — a sequence's New/Old, in its test's row (sequence.py) — has
+   no `.dgmviews[data-state]` above it to be painted from, so it carries the state itself
+   and DGM_VIEWS_JS keeps it in step with the panes. */
+.dgmbar[data-state="new"] .dgm-newold { background:var(--view-new); border-color:var(--view-new); color:var(--on-fill); }
+.dgmbar[data-state="old"] .dgm-newold { background:var(--view-old); border-color:var(--view-old); color:var(--on-fill); }
 
 /* The edit offer now opens the block, where the deleted caption sentence used to sit —
    see `drawio_widget_html`. One row, not a sentence over a row of pills: the sentence and

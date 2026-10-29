@@ -32,24 +32,25 @@ def read_manifest(path: Path):
 VIEW_WORDS = {"new": "New", "old": "Old"}
 
 
-def dgm_views_html(panes, initial: str = "diff") -> str:
+def dgm_views_html(panes, initial: str = "diff", bar: bool = True) -> str:
     """The Diff / New-Old control and its panes — the ONE implementation of it.
 
-    `panes` is an ordered list of `(view, inner-html)` with `"diff"` first. Three states
-    off two buttons: the second holds both words and toggles between them, with the live
-    one underlined, because a third pill costs as much room as the two that carry the
-    argument and this control has to sit above a tall sequence diagram as comfortably as
-    above a small structural one.
+    `panes` is an ordered list of `(view, inner-html)`, `"diff"` first when there is one.
+    Three states off two buttons: the second holds both words and toggles between them,
+    with the live one underlined, because a third pill costs as much room as the two that
+    carry the argument.
 
-    `initial` is which of the three the widget opens on. It is "diff" for a *structural*
-    diagram, where the delta is a clean two-colour drawing and the whole point of the
-    section. Two callers pass "new" instead, for the same reason in two guises: the delta
-    is not trustworthy enough to be the first thing read. The UX audit's is a pixel mask
-    over a screenshot, and a half-ghosted photo of a form has to be decoded before it says
-    anything; a sequence diagram's is drawn from traces, and a run that reorders two
-    concurrent calls — or a generator that relabels an arrow — is reported as a change
-    nobody made. In both cases the undiffed picture is the one that reads at a glance, and
-    the delta stays one click away for when the question is what moved.
+    `initial` is which state the widget opens on. It is "diff" for a *structural* diagram,
+    where the delta is a clean two-colour drawing and the whole point of the section. The
+    UX audit passes "new": its delta is a pixel mask over a screenshot, and a half-ghosted
+    photo of a form has to be decoded before it says anything.
+
+    A sequence diagram has no Diff at all (Victor, 30 Oct 2026): it is drawn from traces,
+    and a run that reorders two concurrent calls — or a generator that relabels an arrow —
+    reorders the rows, so the delta reported changes nobody made and confused more than it
+    showed. Its panes are New and Old alone, and no Diff button is drawn for a widget with
+    no Diff pane. `bar=False` leaves the buttons out: a sequence beside its test wears them
+    in the test's row instead (`seq_views_bar`, the same buttons).
 
     Callers: `render_diagrams` below, for every PlantUML delta, and `drawio_widget_html`,
     for the hand-drawn conceptual model. Behaviour and styling live in `DGM_VIEWS_JS` / the
@@ -57,59 +58,86 @@ def dgm_views_html(panes, initial: str = "diff") -> str:
     is driven by the same code as one emitted here — a second implementation of this would
     drift within a week.
     """
-    pair = [v for v, _ in panes if v in VIEW_WORDS]
+    views = [v for v, _ in panes]
+    pair = [v for v in views if v in VIEW_WORDS]
     # Nothing to switch to: a lone "Diff" button is a control that does nothing, and a
     # frame colour-coding one state is a legend for a single entry. Emit the picture.
-    if not pair:
+    if not pair or len(views) == 1:
         return "".join(body for _, body in panes)
     # A caller asking to open on a side that did not render would open on nothing at all,
-    # so an absent side falls back to the delta rather than blanking the widget.
-    if initial not in {v for v, _ in panes}:
-        initial = "diff"
-    buttons = ['<button type="button" class="dgm-diff" data-go="diff" '
-               f'aria-pressed="{str(initial == "diff").lower()}" '
-               'data-tip="Green added, red removed">Diff</button>']
+    # so an absent side falls back to the first pane rather than blanking the widget.
+    if initial not in views:
+        initial = views[0]
+    panels = "".join(
+        f'<div class="dgmpane" data-view="{v}"{"" if v == initial else " hidden"}>{body}</div>'
+        for v, body in panes)
+    buttons = _dgm_buttons(views, initial) if bar else ""
+    return (f'<div class="dgmviews" data-state="{initial}">'
+            + (f'<div class="dgmbar">{buttons}</div>' if buttons else "") + panels + "</div>")
+
+
+def _dgm_buttons(views, initial: str) -> str:
+    """The widget's buttons: Diff when there is a delta pane, then the New/Old pair."""
+    buttons = []
+    if "diff" in views:
+        buttons.append('<button type="button" class="dgm-diff" data-go="diff" '
+                       f'aria-pressed="{str(initial == "diff").lower()}" '
+                       'data-tip="Green added, red removed">Diff</button>')
+    pair = [v for v in views if v in VIEW_WORDS]
     if pair:
         buttons.append(
             '<button type="button" class="dgm-newold" data-go="newold" '
             f'aria-pressed="{str(initial != "diff").lower()}" '
-            'data-tip="The diagram without the diff: click New or Old.">'
+            'data-tip="The diagram on this branch, or at the base: click New or Old.">'
             + "/".join(f'<u data-view="{v}"{' class="on"' if v == initial else ""}>'
                        f'{VIEW_WORDS[v]}</u>' for v in pair)
             + "</button>")
-    panels = "".join(
-        f'<div class="dgmpane" data-view="{v}"{"" if v == initial else " hidden"}>{body}</div>'
-        for v, body in panes)
-    return (f'<div class="dgmviews" data-state="{initial}"><div class="dgmbar">'
-            + "".join(buttons) + "</div>" + panels + "</div>")
+    return "".join(buttons)
 
 
-def _diagram_views(row, assets: Path, full_svg: Path, root: Path):
+def seq_views_bar(card: str) -> str:
+    """The New/Old buttons a sequence card left out (`bar=False`), for its test's row.
+
+    Read off the card itself, so the row offers exactly the panes the card holds: none
+    for a sequence this branch added (there is no Old), none for an unchanged one. The
+    bar carries its own `data-state`, which `DGM_VIEWS_JS` keeps in step with the card's
+    `.dgmviews`, since the stylesheet can no longer reach it from there."""
+    m = re.search(r'"dgmviews" data-state="(\w+)">', card)
+    if not m:
+        return ""
+    views = re.findall(r'<div class="dgmpane" data-view="(\w+)"', card)
+    return (f'<span class="dgmbar seqviews" data-state="{m[1]}">'
+            f'{_dgm_buttons(views, m[1])}</span>')
+
+
+def _diagram_views(row, assets: Path, full_svg: Path, root: Path, bar: bool = True):
     """One diagram's panes: the delta (with its focus chooser inside it) plus whichever
     of the undiffed pair `puml-diff.sh` managed to render. Returns the markup and whether
     a New/Old pair exists — the header only advertises itself as a toggle when it does.
 
-    A sequence diagram opens on `New`, a structural one on `Diff`. Not a preference: a
-    structural delta is derived from two files a human wrote, so every mark in it is a
-    change somebody made, while a sequence delta is derived from two *recordings*. The
-    order of concurrent calls is not stable between runs and the generator's own labels
-    move under it, so the differ reliably reports arrows nobody touched — which is what
-    the New/Old button's tooltip has always warned about, and what the guide keeps having
-    to say out loud next to the picture. Opening on the recording itself puts the reader
-    in front of something true first; the delta is one click away, where the claim it
-    makes can be taken with the caveat it needs."""
-    panes = [("diff", _focus_views(row, assets, full_svg, root))]
+    A sequence diagram has no delta pane (see `dgm_views_html`): New, and Old beside it
+    when the base had one. Only a manifest whose New side did not render falls back to
+    the delta picture, alone — the one drawing of this branch's run there is."""
+    sides = []
     for view, column in (("new", "new_svg"), ("old", "old_svg")):
         name = (row.get(column) or "").strip()
         if name and (assets / name).is_file():
-            panes.append((view, f'<div class="svgbox">{inline_svg(assets / name, root)}</div>'))
+            sides.append((view, f'<div class="svgbox">{inline_svg(assets / name, root)}</div>'))
+    if row.get("kind") == "sequence":
+        if not sides or sides[0][0] != "new":
+            return _focus_views(row, assets, full_svg, root), False
+        # A sequence this branch added has nothing to compare with: its picture alone.
+        if row.get("status") == "added" or len(sides) == 1:
+            return sides[0][1], False
+        return dgm_views_html(sides, initial="new", bar=bar), True
+    panes = [("diff", _focus_views(row, assets, full_svg, root))] + sides
     if len(panes) == 1:
         return panes[0][1], False
     # A diagram this branch added has nothing to compare with: Diff (all green) and a lone
     # New are two buttons that change nothing (Victor, 4 Oct 2026). Its picture alone.
     if row.get("status") == "added" and panes[1][0] == "new":
         return panes[1][1], False
-    return dgm_views_html(panes, initial="new" if row.get("kind") == "sequence" else "diff"), True
+    return dgm_views_html(panes, initial="diff", bar=bar), True
 
 
 # `{{drawio:conceptual}}` — the hand-drawn diagram's three pictures, read off
@@ -818,7 +846,7 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") 
         if r.get("status") == UNCHANGED:
             body, toggles = _unchanged_body(r, manifest.parent, root, out_dir), False
         elif svg_rel and svg_rel.is_file():
-            body, toggles = _diagram_views(r, manifest.parent, svg_rel, root)
+            body, toggles = _diagram_views(r, manifest.parent, svg_rel, root, bar=not bare)
         else:
             body, toggles = _why_not_drawn(r, manifest.parent), False
         # A package's or a Maven module's box opens its folder — every view of it, the
@@ -827,11 +855,12 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") 
             body = link_folders(body, r["source"], root)
         test_src = (f' data-test-src="vscode://file/{(root / bare).resolve()}:1:1"'
                     if bare and (root / bare).is_file() else "")
-        parts.append(
-            f'<div class="diagram{" dgm-toggles" if toggles else ""}{" dgm-bare" if bare else ""}"'
-            f'{test_src}>'
-            f'<div class="head">'
-            + ("" if bare else f'<b>{html.escape(labels.get(r["name"]) or _pretty(r["name"]))}</b>')
+        # A card beside its test (`bare`) has no header row of its own any more: its New/Old
+        # buttons and its `.puml` link ride in the test's row (`render_testpairs`), so the
+        # picture starts one line higher (Victor, 30 Oct 2026). Only a badge with something
+        # to say keeps a head.
+        head = (
+            ("" if bare else f'<b>{html.escape(labels.get(r["name"]) or _pretty(r["name"]))}</b>')
             # A badge earns its place by saying something surprising. "modified" is what
             # a diagram in a delta gallery always is, and "structural" is legible from the
             # picture — so only the states that carry information get one.
@@ -845,8 +874,12 @@ def render_diagrams(spec, root: Path, out_dir: Path, rows=None, bare: str = "") 
                "" if bare or r.get("kind") == "sequence" else CHANGED_BADGE)
             + only_impacted(body)
             + ("" if bare or r.get("kind") == "sequence" else _row_provenance(r, root))
-            + _source_link(r["source"], root, out_dir,
-                           ".puml" if r.get("kind") == "sequence" else None) + '</div>'
+            + ("" if bare else _source_link(r["source"], root, out_dir,
+                                            ".puml" if r.get("kind") == "sequence" else None)))
+        parts.append(
+            f'<div class="diagram{" dgm-toggles" if toggles and not bare else ""}'
+            f'{" dgm-bare" if bare else ""}"{test_src}>'
+            + (f'<div class="head">{head}</div>' if head else "")
             + (f"<p>{note}</p>" if note else "")
             + ("" if bare else _provenance(r["source"], root))
             + genseq_details_at_render(r, manifest.parent, root)

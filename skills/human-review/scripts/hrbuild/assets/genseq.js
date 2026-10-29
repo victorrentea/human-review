@@ -338,8 +338,8 @@
   all.forEach(function (diagram) {
     if (diagram.__hrGenseq) return;
     diagram.__hrGenseq = true;
-    // Every carrier, not the first: a diagram is now drawn three times in one card
-    // (Diff / New / Old), and each side's handles are keyed by ids derived from that
+    // Every carrier, not the first: a diagram is drawn twice in one card
+    // (New / Old), and each side's handles are keyed by ids derived from that
     // side's payloads. One carrier covered one side, and the other panes' handles were
     // dropped as dead. Merged work-tree-first; the ids are content-derived, so an id
     // present on both sides carries the same payload either way.

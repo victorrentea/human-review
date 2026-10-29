@@ -9,7 +9,8 @@ import re
 import subprocess
 from pathlib import Path
 
-from ..shared.diagrams import _context_svg, _source_link, render_diagrams, select_rows
+from ..shared.diagrams import (_context_svg, _source_link, render_diagrams, select_rows,
+                                seq_views_bar)
 from ..shared.layout import _squash
 from ..shared.fixtures import fixture_colors, fixtures_by_test
 from ..shared.genseq import (GENSEQ_HANDLE, GENSEQ_OVERLAY, genseq_by_test, genseq_details,
@@ -160,7 +161,7 @@ def _cat_chip(cat: str | None, test_rel: str = "") -> str:
 
 
 def _lang_label(test_rel: str, root: Path | None = None, line: int | None = None,
-                mark: str = "", lead: str = "") -> str:
+                mark: str = "", lead: str = "", views: str = "", puml: str = "") -> str:
     """The test's file name — `OwnerListTest.java`, `owner-search.feature`,
     `add-visit.spec.ts` — at the row's right end, as the way to the code, with the glyph for
     what the branch did to it right beside.
@@ -175,20 +176,31 @@ def _lang_label(test_rel: str, root: Path | None = None, line: int | None = None
     open-in-editor handler on `document` takes it; `SEQFOLD_JS` keeps the click from also
     folding the row. A test not in this checkout has nothing to open and stays plain text.
 
-    `lead` goes first inside the label: the DB fixture dot, which sits just before the file
-    name (Victor, 19 Oct 2026) — where the Tests tab's `fixtures.js` puts the same dot, and
-    out of the sentence, which reads better without a mark in its middle.
+    `lead` is the DB fixture dot, which sits just before the file name (Victor, 19 Oct
+    2026) — where the Tests tab's `fixtures.js` puts the same dot, and out of the sentence,
+    which reads better without a mark in its middle.
+
+    One line, read left to right (Victor, 30 Oct 2026): `New/Old` (`views`, the card's
+    buttons, when it has both sides), then `📄 / 🗄 owner-search.feature ⇉ .puml` — what
+    the branch did to the file, the fixture it starts on, the file, and the diagram that
+    file's run writes (`puml`). That `.puml` link and the buttons used to be a second row
+    of their own inside the open pair, above the picture.
     """
     name = Path(test_rel).name
     if not name:
         return lead
     face = html.escape(name)
+    # The slash separates the two marks, so it is only there when both are.
+    lead = (f'{mark}<span class="seqslash" aria-hidden="true">/</span>{lead}'
+            if mark and lead else mark + lead)
+    tail = (f'<span class="seqgen" data-tip="The test\'s run writes this diagram">'
+            f'\u21c9</span>{puml}' if puml else "")
     if root is not None and (root / test_rel).is_file():
         at = line or 1
         face = (f'<a class="srcref seqfile" href="vscode://file/{(root / test_rel).resolve()}'
                 f':{at}:1" data-tip="Open in VS Code: {html.escape(name, quote=True)}'
                 f' (line {at})">{face}</a>')
-    return f'<span class="seqlang">{lead}{face}{mark}</span>'
+    return f'<span class="seqlang">{views}{lead}{face}{tail}</span>'
 
 
 #: A JUnit scenario's title as the generator writes it: `AddVisitApiTest: adds a visit…`.
@@ -465,7 +477,8 @@ def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
                  scenarios: list[tuple[int, str]] = (),
                  cat: str | None = None, why: str | None = None,
                  also: str | None = None, via: tuple[str, ...] = (),
-                 root: Path | None = None, fixture: str = "") -> str:
+                 root: Path | None = None, fixture: str = "", views: str = "",
+                 puml: str = "") -> str:
     """The test and the sequence its run recorded, folded closed together under one row
     that names the test and links to it.
 
@@ -497,13 +510,15 @@ def _folded_pair(puml_rel: str, test_rel: str, pieces: list[str],
     after it was needed.
 
     `fixture` is the DB fixture dot the test starts from, at the right end just before the
-    file name — the Tests tab's own dot (see `render_testpairs`).
+    file name — the Tests tab's own dot (see `render_testpairs`). `views` and `puml` are the
+    card's New/Old buttons and its `.puml` link, on the same row (see `_lang_label`).
     """
     titles = [t for _, t in scenarios if t]
     name = _pair_title(titles) if titles else html.escape(test_rel.rsplit("/", 1)[-1])
     lines = [ln for ln, _ in scenarios if ln]
     mark = next((m.group(0) for q in quoted for m in [FILEMARK.search(q)] if m), "")
-    label = _lang_label(test_rel, root, min(lines) if lines else None, mark, lead=fixture)
+    label = _lang_label(test_rel, root, min(lines) if lines else None, mark, lead=fixture,
+                        views=views, puml=puml)
     return (f'<details class="testpair" open id="{pair_anchor(puml_rel)}"'
             f' data-test="{html.escape(test_rel)}">'
             f'<summary data-tip="{html.escape(test_rel)}">'
@@ -927,8 +942,7 @@ def _stale_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path) -> 
             f' data-test-src="vscode://file/{(root / test_rel).resolve()}:1:1">'
             '<div class="head"><span class="badge sev-med" data-tip="No delta was drawn '
             'for this diagram, but it differs from the base — the diagram manifest is '
-            'older than the picture">delta not drawn</span>'
-            + _source_link(rel, root) + '</div>'
+            'older than the picture">delta not drawn</span></div>'
             '<p class="sub">This sequence differs from the base ref, but no delta was '
             'drawn for it: <code>assets/diagrams/MANIFEST.tsv</code> is older than the '
             'diagram. Press <b>Rerun</b> — or run <code>run-steps.py --only diagrams</code>'
@@ -943,7 +957,8 @@ def _unchanged_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path)
     The same bare card `render_diagrams` draws for a delta — no title, no provenance line,
     the test's href on the card for the scenario links — with two differences that are
     the whole point: the pill says UNCHANGED in the neutral colour a `puml` context block
-    wears, and there is no Diff/New/Old bar, because there is nothing to diff against.
+    wears, and there is no New/Old bar, because there is nothing to compare against. Its
+    `.puml` link is in the test's row, as every pair's is.
     The picture is drawn from the committed `.puml` by the `puml` block's own renderer,
     and the generator's sidecar rides along so the handles in it still expand."""
     rel = puml_rel
@@ -951,8 +966,7 @@ def _unchanged_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path)
     body = f'<div class="svgbox">{inline_svg(cache, root)}</div>' if cache else why_not
     return (f'<div class="diagram dgm-bare"'
             f' data-test-src="vscode://file/{(root / test_rel).resolve()}:1:1">'
-            '<div class="head"><span class="badge sev-info">unchanged</span>'
-            + _source_link(rel, root) + '</div>'
+            '<div class="head"><span class="badge sev-info">unchanged</span></div>'
             + genseq_details(rel, root, work_tree=True)
             + body + '</div>')
 
@@ -1226,11 +1240,11 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path,
             pieces = [] if (root / test_rel).is_file() else [_unquoted_note(test_rel, root)]
             if puml_rel in lost_by_rel:
                 pieces.append(lost_note_html(lost_by_rel[puml_rel]))
-            pieces.append(
-                _stale_sequence(puml_rel, test_rel, root, out_dir) if row is STALE
-                else render_diagrams(merged, root, out_dir, [row], bare=test_rel)
-                if row is not None
-                else _unchanged_sequence(puml_rel, test_rel, root, out_dir))
+            card = (_stale_sequence(puml_rel, test_rel, root, out_dir) if row is STALE
+                    else render_diagrams(merged, root, out_dir, [row], bare=test_rel)
+                    if row is not None
+                    else _unchanged_sequence(puml_rel, test_rel, root, out_dir))
+            pieces.append(card)
             hit = picked_for(test_rel, scenarios, selection)
             if hit is not None:
                 drew.add(picked.index(hit))
@@ -1250,7 +1264,9 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path,
                           else len(TEST_KIND_ORDER),
                           _folded_pair(puml_rel, test_rel, pieces, quoted, scenarios, cat,
                                        why, also, via, root=root,
-                                       fixture=fixture_dot(test_rel, scenarios))))
+                                       fixture=fixture_dot(test_rel, scenarios),
+                                       views=seq_views_bar(card),
+                                       puml=_source_link(puml_rel, root, out_dir, ".puml"))))
             register(puml_rel, scenarios)
     # By kind, in the Tests card's order (`TEST_KIND_ORDER`); within a kind, as planned.
     parts += [h for _, h in sorted(pairs, key=lambda p: p[0])]

@@ -118,7 +118,7 @@
   // Capture, so a diagram scrolled sideways inside its own box moves its copy too.
   document.addEventListener('scroll', schedule, {capture: true, passive: true});
   window.addEventListener('resize', schedule);
-  // A tab switch, a pair folded open or shut, a Diff / New / Old toggle: each changes
+  // A tab switch, a pair folded open or shut, a New / Old toggle: each changes
   // which diagram is under the masthead without scrolling anything.
   document.addEventListener('click', schedule);
   document.addEventListener('toggle', schedule, true);

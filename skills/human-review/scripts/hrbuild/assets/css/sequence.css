@@ -99,6 +99,19 @@ details.testpair > summary:hover > .testcat { color:var(--tc); }
    bold block with a bottom margin, which sat the name 4px above the row's centre. */
 .seqlang a.seqfile { margin:0; font:inherit; color:var(--link); text-decoration:none; }
 .seqlang a.seqfile:hover { border-bottom-style:solid; }
+/* The rest of the row's right end, one line (Victor, 30 Oct 2026): `New/Old`, then
+   `📄 / 🗄 file ⇉ .puml`. The buttons are the card's own (diagrams.css paints them), set
+   smaller to sit in a row of text, and only while the pair is open: shut, there is no
+   picture for them to switch. The `.puml` is the card's file link, as grey as it was. */
+.seqlang .seqviews { margin:0 .35rem 0 0; flex-wrap:nowrap; }
+.seqlang .seqviews button { font:600 .72rem/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  padding:0 .55rem; border-width:1.5px; }
+details.testpair:not([open]) > summary .seqviews { display:none; }
+.seqlang .seqslash, .seqlang .seqgen { color:var(--muted); }
+.seqlang .seqgen { cursor:default; }
+.seqlang a.dgm-src { color:var(--muted); text-decoration:none;
+  border-bottom:1px dotted var(--line); }
+.seqlang a.dgm-src:hover { color:var(--link); border-bottom-color:currentColor; }
 /* The suites' own last lines, folded inside the band that says why this tab was not
    re-traced. Wrapped rather than scrolled sideways: a Maven line is wider than any panel. */
 .seqverdict pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.76rem;

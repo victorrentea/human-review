@@ -4333,19 +4333,17 @@ def test_the_sequences_are_a_registry_the_detective_reads(tmp_path):
     assert "{SEQLINK_JS}" in src
 
 
-def test_the_paired_card_draws_its_controls_and_its_name_on_one_row():
-    """A paired card had two half-empty rows stacked: buttons hard left on one, the .puml
-    path hard right on the other. The bar stays inside .dgmviews — the stylesheet paints
-    the buttons off [data-state] there — and the header's contents move into it."""
+def test_a_paired_sequence_wears_its_new_old_in_the_tests_row():
+    """A paired card had a second row of furniture inside the open pair: New/Old on the left,
+    the .puml path on the right. Both now sit in the test's own row (sequence.py), so the
+    script no longer merges a header into the bar: it looks the buttons up from the pair,
+    keeps the row's bar in step through its own `data-state`, and a press does not fold the
+    pair it sits in (Victor, 30 Oct 2026)."""
     js = build.DGM_VIEWS_JS
-    # Over the page at load, and over a panel or card a rebuild swaps in (`hr:swapped`).
-    assert "root.querySelectorAll('.diagram.dgm-bare > .head')" in js
-    assert "merge(document);" in js
-    assert "while (head.firstChild) bar.appendChild(head.firstChild);" in js
-    # Both lookups that used to start from `views` now start from the card.
-    assert "(views.closest('.diagram') || views).querySelectorAll('.dgmbar button[data-go]')" in js
-    assert "bar.closest('.diagram').querySelector('.dgmviews')" in js, \
-        "the merged row keeps the large hit area the header used to be"
+    assert "merge(document);" not in js, "nothing left to merge"
+    assert "views.closest('details.testpair') || views.closest('.diagram') || views" in js
+    assert "around.querySelectorAll('.dgmbar[data-state]')" in js
+    assert "if (button.closest('summary')) ev.preventDefault();" in js
 
 
 def test_one_files_excerpts_are_shared_out_among_its_scenarios(tmp_path):

@@ -3,24 +3,31 @@
 // or written by hand — picks up the identical behaviour with no registration step.
 // The swap is animated by focus.js (draw.io and PlantUML cards), which watches `data-state` here:
 // this file only flips the panes, and must keep flipping them through that attribute.
+//
+// A sequence beside its test has no Diff, and its New/Old buttons are not in the card: they
+// ride in the test's row (`details.testpair > summary`, sequence.py `_lang_label`), a bar of
+// their own with a `data-state` the stylesheet paints from. So the buttons a widget answers
+// to are looked up from its pair when it has one, else from its card.
 (function () {
+  function scope(views) {
+    return views.closest('details.testpair') || views.closest('.diagram') || views;
+  }
   function show(views, state) {
     views.setAttribute('data-state', state);
     views.querySelectorAll(':scope > .dgmpane').forEach(function (pane) {
       pane.hidden = pane.getAttribute('data-view') !== state;
     });
-    var pair = (views.closest('.diagram') || views).querySelector('.dgm-newold');
-    if (pair) {
-      pair.querySelectorAll('u[data-view]').forEach(function (word) {
-        word.classList.toggle('on', word.getAttribute('data-view') === state);
-      });
-    }
-    // From the card, not from `views`: on a paired diagram the bar has been lifted out
-    // of `.dgmviews` and into the header's row (see the merge below).
-    (views.closest('.diagram') || views).querySelectorAll('.dgmbar button[data-go]').forEach(function (b) {
+    var around = scope(views);
+    around.querySelectorAll('.dgm-newold u[data-view]').forEach(function (word) {
+      word.classList.toggle('on', word.getAttribute('data-view') === state);
+    });
+    around.querySelectorAll('.dgmbar button[data-go]').forEach(function (b) {
       var go = b.getAttribute('data-go');
       b.setAttribute('aria-pressed',
         String(go === 'diff' ? state === 'diff' : state !== 'diff'));
+    });
+    around.querySelectorAll('.dgmbar[data-state]').forEach(function (bar) {
+      bar.setAttribute('data-state', state);
     });
   }
   // From the delta, the first click lands on New; from New it lands on Old, and back.
@@ -36,8 +43,11 @@
   document.addEventListener('click', function (ev) {
     var button = ev.target.closest('.dgmbar button[data-go]');
     if (button) {
+      // In a pair's row the buttons sit inside its <summary>: the press must not also
+      // fold the pair shut under the picture it just swapped.
+      if (button.closest('summary')) ev.preventDefault();
       var views = button.closest('.dgmviews')
-        || (button.closest('.diagram') || document).querySelector('.dgmviews');
+        || (button.closest('details.testpair, .diagram') || document).querySelector('.dgmviews');
       // Three states, three targets: Diff, and each word of New/Old picks its own pane.
       // The words used to swap whatever was on, so a click on the lit "Old" went to New.
       var word = ev.target.closest('u[data-view]');
@@ -53,34 +63,10 @@
     // does its "Show only impacted" filter on a card with no pill row to move it to.
     var head = ev.target.closest('.diagram.dgm-toggles > .head');
     if (head && !ev.target.closest('a, button, label, input')) flip(head.parentElement.querySelector('.dgmviews'));
-    // Same bargain for the merged row: its empty middle is the large hit area the header
-    // used to be, and a click on the path still opens the editor rather than swapping the
+    // Same bargain for the button row: its empty middle is a larger hit area than the
+    // pills, and a click on a link in it still opens the link rather than swapping the
     // picture out from under it.
     var bar = ev.target.closest('.diagram.dgm-toggles .dgmbar');
     if (bar && !ev.target.closest('a')) flip(bar.closest('.diagram').querySelector('.dgmviews'));
-  });
-
-  // The merge. Only on a paired card (`dgm-bare`), which is the one that lost its title
-  // and was left with a header row holding a single right-aligned path — a whole row of
-  // page for one filename. Elsewhere the header still carries a real heading and earns
-  // its own line.
-  //
-  // The bar keeps its place inside `.dgmviews`, because the stylesheet paints the buttons
-  // off `[data-state]` on that element; what travels is the header's contents. `show` and
-  // the click handler are the two places that then have to look the bar up from the card
-  // instead of from `views`, and they do.
-  //
-  // Over the whole page at load, and over whatever a rebuild swaps in later (`hr:swapped`:
-  // a tab's panel, or a redrawn card), which arrives with its header not yet merged.
-  function merge(root) {
-    root.querySelectorAll('.diagram.dgm-bare > .head').forEach(function (head) {
-      var bar = head.parentElement.querySelector('.dgmviews > .dgmbar');
-      if (!bar) return;
-      while (head.firstChild) bar.appendChild(head.firstChild);
-    });
-  }
-  merge(document);
-  document.addEventListener('hr:swapped', function (ev) {
-    if (ev.detail && ev.detail.querySelectorAll) merge(ev.detail);
   });
 })();

@@ -151,17 +151,44 @@ def test_only_a_diagram_that_toggles_advertises_its_header(tmp_path):
     assert out.count('class="diagram"') == 1
 
 
-def test_a_sequence_diagram_opens_on_the_recording_not_on_the_delta(tmp_path):
-    """A sequence delta is the difference between two RECORDINGS, and a run that reorders
-    two concurrent calls produces marks nobody made. The reader meets the picture that is
-    simply true, and reaches for the delta deliberately."""
+def test_a_sequence_diagram_has_no_diff_only_new_and_old(tmp_path):
+    """A sequence delta is the difference between two RECORDINGS: a run that reorders two
+    concurrent calls reorders the rows, and the delta reported moves nobody made (Victor,
+    30 Oct 2026: "diffing sequence diagrams makes no sense"). New and Old only, on New."""
     row = {"name": "add-visit.spec.ts.genseq", "kind": "sequence", "focus": "",
            "svg": _svg(tmp_path / "d.svg", "delta"),
            "new_svg": _svg(tmp_path / "n.svg", "after"),
            "old_svg": _svg(tmp_path / "o.svg", "before")}
-    out, _ = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
+    out, toggles = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
+    assert toggles is True
     assert 'class="dgmviews" data-state="new"' in out
-    assert '<div class="dgmpane" data-view="diff" hidden>' in out
+    assert 'data-view="diff"' not in out and 'data-go="diff"' not in out
+    assert "delta" not in out, "the delta picture is not on the page at all"
+    assert '<u data-view="new" class="on">New</u>/<u data-view="old">Old</u>' in out
+
+
+def test_a_sequence_beside_its_test_leaves_its_buttons_for_the_row(tmp_path):
+    """`bar=False`: the card holds the panes, and `seq_views_bar` reads them back off it
+    for the test's row — the same buttons, carrying the state the stylesheet paints."""
+    row = {"name": "s.genseq", "kind": "sequence", "focus": "", "status": "modified",
+           "svg": _svg(tmp_path / "d.svg", "delta"),
+           "new_svg": _svg(tmp_path / "n.svg", "after"),
+           "old_svg": _svg(tmp_path / "o.svg", "before")}
+    card, _ = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path, bar=False)
+    assert "dgmbar" not in card and "<button" not in card
+    bar = diagrams.seq_views_bar(card)
+    assert bar.startswith('<span class="dgmbar seqviews" data-state="new">')
+    assert 'data-go="newold"' in bar and 'data-go="diff"' not in bar
+    assert diagrams.seq_views_bar("<div class=\"svgbox\"></div>") == ""
+
+
+def test_a_sequence_this_branch_added_has_no_toggle(tmp_path):
+    """No Old to compare with: the picture alone, and nothing to switch."""
+    row = {"name": "s.genseq", "kind": "sequence", "focus": "", "status": "added",
+           "svg": _svg(tmp_path / "d.svg", "delta"),
+           "new_svg": _svg(tmp_path / "n.svg", "after")}
+    out, toggles = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
+    assert toggles is False and "dgmviews" not in out and "after" in out
 
 
 def test_a_structural_diagram_still_opens_on_the_delta(tmp_path):
@@ -176,12 +203,14 @@ def test_a_structural_diagram_still_opens_on_the_delta(tmp_path):
 
 
 def test_a_sequence_diagram_whose_new_side_did_not_render_falls_back_to_the_delta(tmp_path):
-    """Opening on a side plantuml never wrote would open on nothing at all."""
+    """Opening on a side plantuml never wrote would open on nothing at all, and the base's
+    picture alone would pass for this branch's: the delta is the one drawing of this run."""
     row = {"name": "gone.genseq", "kind": "sequence", "focus": "",
            "svg": _svg(tmp_path / "d.svg", "delta"),
            "old_svg": _svg(tmp_path / "o.svg", "before")}
-    out, _ = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
-    assert 'class="dgmviews" data-state="diff"' in out
+    out, toggles = build._diagram_views(row, tmp_path, tmp_path / "d.svg", tmp_path)
+    assert toggles is False and "dgmviews" not in out
+    assert "delta" in out and "before" not in out
 
 
 def test_an_empty_title_drops_the_heading_instead_of_printing_a_blank_one(tmp_path):
@@ -540,12 +569,22 @@ def _pairs_fixture(tmp_path, *, quote_test=True, test_on_disk=True):
     return html
 
 
-def test_a_pair_keeps_the_three_state_viewer(tmp_path):
+def test_a_pair_keeps_the_new_old_viewer_and_wears_its_buttons_in_the_row(tmp_path):
+    """No Diff for a sequence (Victor, 30 Oct 2026), and no second row inside the pair:
+    the New/Old buttons and the `.puml` link sit in the test's row, after the file."""
     html = _pairs_fixture(tmp_path)
     assert 'class="dgmviews"' in html
-    assert html.count('<div class="dgmpane"') == 3
-    for view in ("diff", "new", "old"):
-        assert f'data-view="{view}"' in html
+    assert html.count('<div class="dgmpane"') == 2
+    assert 'data-view="diff"' not in html and 'data-go="diff"' not in html
+    pair = html[html.index('<details class="testpair"'):]
+    summary = pair[pair.index("<summary"):pair.index("</summary>")]
+    assert '<span class="dgmbar seqviews" data-state="new">' in summary
+    assert summary.index("seqviews") < summary.index('class="srcref seqfile"') \
+        < summary.index('class="seqgen"') < summary.index('class="dgm-src"')
+    assert ">.puml</a>" in summary
+    card = pair[pair.index("</summary>"):]
+    assert "dgmbar" not in card and 'class="dgm-src"' not in card
+    assert 'class="head"' not in card, "the card's own row is gone"
 
 
 def test_a_pair_carries_both_payload_sidecars(tmp_path):
@@ -602,7 +641,9 @@ def test_the_fold_is_labelled_with_the_scenario_and_keeps_the_path_as_its_toolti
     is not lost — it is the summary's tooltip — and it is not printed a third time here,
     because the fold's row under it and the diagram below both already carry it."""
     html_out = _pairs_fixture(tmp_path)
-    assert '<summary data-tip="spec.ts">A scenario<span class="seqlang"><a class="srcref seqfile"' in html_out
+    assert re.search(r'<summary data-tip="spec.ts">A scenario<span class="seqlang">'
+                     r'<span class="dgmbar seqviews"[^>]*>.*?</span><a class="srcref seqfile"',
+                     html_out)
 
 
 def test_a_paired_diagram_does_not_repeat_the_name_the_fold_just_said(tmp_path):
