@@ -480,6 +480,27 @@ def test_the_expand_toggle_counts_changes_by_that_name():
     assert "expand 1 impacted" not in page and "expand 1 change" not in page
 
 
+def test_each_change_row_says_which_side_of_the_call_it_is_on():
+    """Victor, 29 Oct 2026: no INFO badge (what is not breaking is information); a → for a
+    change to the request, a ← for one to the response, read off oasdiff's rule id rather
+    than its English; nothing for a change that is neither."""
+    assert ovd.change_side("new-optional-request-parameter") == "request"
+    assert ovd.change_side("new-optional-request-property") == "request"
+    assert ovd.change_side("response-optional-property-added") == "response"
+    assert ovd.change_side("response-media-type-removed+response-media-type-added") == "response"
+    assert ovd.change_side("endpoint-added") is None and ovd.change_side("api-path-removed-without-deprecation") is None
+    old = {"paths": {"/api/vets": {"get": {"responses": {"200": {"description": "ok"}}}}}}
+    raw = [{"id": "new-optional-request-parameter", "operation": "GET", "path": "/api/vets",
+            "level": 1, "text": "added the new optional `query` request parameter `page`",
+            "section": "paths"}]
+    _, entries, _, _ = ovd.build_model(old, old, raw)
+    assert entries["GET /api/vets"]["changes"][0]["side"] == "request"
+    page = ovd.render({"paths": {}}, {}, [], {}, "main", "branch")
+    assert "c.level === 3 ? 'breaking' : c.level === 2 ? 'warn' : ''" in page, "no INFO word"
+    assert page.count("changeRows(") == 4, "one renderer for the endpoint, global and plain lists"
+    assert 'lvl-ghost" aria-hidden="true">breaking' in page, "the badge column is BREAKING-wide"
+
+
 def test_the_bar_reads_title_endpoints_changes_then_the_embedders_slot():
     """Victor, 29 Oct 2026: "OpenAPI diff", not "visual diff"; the expand toggle right
     after the endpoint chips; the right end left to the embedding page (the review puts

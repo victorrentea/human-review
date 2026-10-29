@@ -234,8 +234,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'The OpenAPI contract, main vs this branch, diffed by oasdiff.',
             '<b>Generated from code</b>: a test writes the spec from the controllers.',
             '<b>Breaking</b>: a client of main can fail.',
-            'One DTO change can break many endpoints.',
-            'For each break, ask who calls it and if they were updated.',
+            'One DTO change breaks many endpoints: for each, ask who calls it and if they were updated.',
+            '<b>→</b> a change to the request, <b>←</b> to the response; no badge means not breaking.',
             '<b>changes: expand</b> opens every endpoint and field the branch changed.',
         ],
         "code": (
