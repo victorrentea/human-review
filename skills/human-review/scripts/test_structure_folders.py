@@ -337,7 +337,7 @@ def test_a_box_is_shaded_by_its_share_of_the_lines_added_and_lists_its_files(rep
 def test_a_box_the_branch_left_alone_is_drawn_quiet_and_can_be_filtered(repo, monkeypatch):
     """Victor, 29 Oct 2026: the eye should go to the boxes that carry the change. A box with
     no file changed in its folder is stamped `data-quiet`, unless the diff paints it green
-    or red; a card with such a box gets the "Only impacted" filter, a card without none."""
+    or red; a card with such a box gets the "Show only impacted" filter, a card without none."""
     from hrbuild.shared import snippets
     base = _git(repo, "rev-parse", "HEAD")
     _write(repo, "shop-api/src/main/java/com/acme/shop/web/A.java", "class X {}\nint a;\n")

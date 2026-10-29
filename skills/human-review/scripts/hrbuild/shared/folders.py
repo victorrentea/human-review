@@ -305,11 +305,13 @@ def _impact_pop(label: str, box: dict, base: str, root: Path, folder: str) -> st
 #: A box the diff itself paints: added (green) or removed (red), themed or not yet.
 _PAINTED = re.compile(r'--dgm-diff-(?:add|del)\b|#(?:2E7D32|C62828)\b', re.I)
 
-#: The card's "Only impacted" filter, beside its status chip, on a card that has a quiet box.
-#: Off by default; `folders.js` hides the quiet boxes and every arrow to one, but keeps a
-#: quiet box that a green or red arrow still points at, so the change never dangles.
+#: The card's "Show only impacted" filter, on a card that has a quiet box. Emitted in the
+#: card's head; `adopt.place_prompts` moves it to the card's bottom row, just left of its
+#: "Prompt to get this" pill (Victor, 29 Oct 2026). Off by default; `folders.js` hides the
+#: quiet boxes and every arrow to one, but keeps a quiet box that a green or red arrow
+#: still points at, so the change never dangles.
 ONLY_IMPACTED = ('<label class="dgm-only" data-tip="Hide the boxes this PR left alone, '
-                 'and their arrows"><input type="checkbox">Only impacted</label>')
+                 'and their arrows"><input type="checkbox">Show only impacted</label>')
 
 
 def only_impacted(markup: str) -> str:

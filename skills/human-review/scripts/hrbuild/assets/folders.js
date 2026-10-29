@@ -72,7 +72,7 @@
   });
 })();
 
-// "Only impacted" (`folders.ONLY_IMPACTED`), in a card's header: hides the boxes the build
+// "Show only impacted" (`folders.ONLY_IMPACTED`), in a card's bottom row: hides the boxes the build
 // drew quiet (`data-quiet`: nothing of the branch in them) and every arrow to or from one,
 // in each view of the card at once. A quiet box a green or red arrow still points at stays,
 // and so does that arrow: the filter hides context, never the change itself. Static page

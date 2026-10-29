@@ -326,3 +326,20 @@ def test_a_card_with_green_fill_bars_explains_them_left_of_its_pill():
     assert "share of the lines this PR added" in foot
     plain = place_prompts("packages", _card("Java packages", "packages.puml"))
     assert "impact-legend" not in plain
+
+
+def test_show_only_impacted_moves_from_the_head_to_the_bottom_row_left_of_the_pill():
+    # Victor, 29 Oct 2026: the filter sits just left of "Prompt to get this", the blue
+    # fill's legend at the left end of that row; the head keeps the title and the badges.
+    from hrbuild.shared.folders import ONLY_IMPACTED
+    bar = '<svg><rect class="pkg-impact" x="1" y="1" width="5" height="9"/></svg>'
+    card = _card("Java packages", "packages.puml", bar).replace(
+        "<span>packages.puml</span>", ONLY_IMPACTED + "<span>packages.puml</span>")
+    out = place_prompts("packages", card)
+    head = out[out.index('<div class="head">'):out.index('<div class="svgbox">')]
+    assert "dgm-only" not in head and "packages.puml" in head
+    foot = out[out.index('<div class="adoptline'):]
+    assert out.count('class="dgm-only"') == 1
+    assert (foot.index('class="impact-legend"') < foot.index('class="dgm-only"')
+            < foot.index("Prompt to get this"))
+    assert ">Show only impacted</label>" in foot
