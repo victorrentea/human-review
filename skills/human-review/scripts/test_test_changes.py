@@ -742,7 +742,7 @@ def test_without_a_github_remote_a_deleted_test_gets_no_guessed_url(tmp_path):
     ("", ""),
 ])
 def test_only_a_github_remote_becomes_a_blob_url(remote, repo):
-    assert tc.github_repo(remote) == repo
+    assert tc.forge_repo(remote) == repo
 
 
 # --------------------------------------------------------------------------- #

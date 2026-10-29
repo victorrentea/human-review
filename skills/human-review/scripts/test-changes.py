@@ -62,6 +62,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hrbuild.shared.forge import forge_at, forge_from_any_remote  # noqa: E402
+
 # --------------------------------------------------------------------------- #
 # what counts as a test file
 # --------------------------------------------------------------------------- #
@@ -680,28 +684,27 @@ def git(root: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
 
 
-def github_repo(remote: str) -> str:
-    """`https://github.com/owner/repo` for an `origin` remote on github.com, or "" — the
-    ssh form, the https form, with or without `.git`. Anything else has no blob URL this
-    script can be sure of, and a guessed link is worse than none."""
-    m = re.match(r"^(?:git@github\.com:|ssh://git@github\.com/|https?://(?:[^@/]+@)?github\.com/)"
-                 r"([^/\s]+/[^/\s]+?)(?:\.git)?/?$", remote.strip())
-    return f"https://github.com/{m.group(1)}" if m else ""
+def forge_repo(remote: str) -> str:
+    """The web root of the repository an `origin` remote names on a known forge, or "" —
+    the ssh form, the https form, with or without `.git`. Anything else has no blob URL
+    this script can be sure of, and a guessed link is worse than none."""
+    forge = forge_from_any_remote(remote)
+    return forge.repo_url if forge else ""
 
 
 def base_url(repo: str, sha: str, rel: str, line: int | None) -> str:
-    """The test as it was at the base commit, on github.com — the only place a deleted
-    test still exists. Empty without a GitHub remote or a resolved commit."""
+    """The test as it was at the base commit, on the forge — the only place a deleted
+    test still exists. Empty without a forge remote or a resolved commit."""
     if not repo or not sha:
         return ""
-    return f"{repo}/blob/{sha}/{rel}" + (f"#L{line}" if line else "")
+    return forge_at(repo).blob_url(sha, rel, line)
 
 
 def link_deleted_to_base(root: Path, base: str, rows: list[dict]) -> str:
     """Stamp every deleted row with `baseUrl` (and `baseSha`) — its declaration at the
     base commit. Returns the resolved base commit, "" when it cannot be resolved."""
     sha = git(root, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}").stdout.strip()
-    repo = github_repo(git(root, "remote", "get-url", "origin").stdout)
+    repo = forge_repo(git(root, "remote", "get-url", "origin").stdout)
     for r in rows:
         if r["status"] != "deleted" or r.get("silenced") == "commented":
             continue

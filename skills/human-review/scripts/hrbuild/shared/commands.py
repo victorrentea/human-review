@@ -8,6 +8,7 @@ from pathlib import Path
 import shlex
 
 from .actions import ACTIONS, declare_action
+from .forge import project_of
 
 #: The one glyph a command wears — whichever of the two is true of *this* copy of the
 #: report. Characters and not SVG: they are one text node each, they inherit the pill's
@@ -478,8 +479,7 @@ def serve_online_tip(repo_url: str, branch: str) -> str:
 
     `.human-review/` is not committed, so a clone of the project alone has no page: the
     reader generates it, then serves it. The project and branch are the page's own."""
-    m = re.match(r"https?://github\.com/([^/]+/[^/#?]+?)(?:\.git)?/?$", repo_url or "")
-    proj = m[1] if m else ""
+    proj = project_of(repo_url)
     name = proj.split("/")[-1] if proj else "the project"
     clone = (f"clone {SKILL_REPO} and {proj}" + (f" (branch {branch})" if branch else "")
              if proj else f"clone {SKILL_REPO} and the project")

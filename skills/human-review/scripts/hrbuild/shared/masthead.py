@@ -6,6 +6,7 @@ import html
 import urllib.parse
 
 from .chips import base_warning
+from .forge import forge_at, is_pull_url
 
 # The guide is one of forty tabs the reviewer has open, all of them named after the
 # branch. At that width the strip has room for the favicon and nothing else — so the
@@ -67,14 +68,14 @@ def page_title(spec: dict) -> str:
         num = f'PR#{html.escape(str(pr["number"]))}'
         if pr.get("url"):
             num = (f'<a class="prref" href="{html.escape(pr["url"])}" '
-                   'data-tip="Open on GitHub">'
+                   f'data-tip="Open on {forge_at(pr["url"]).name}">'
                    f'{num}</a>')
         return f'{num} {html.escape(pr["title"])}' + title_ticket_ref(pr, pr["title"])
     title = spec.get("title", "Review guide")
     # Where `PR#37` would stand, two muted words: every judge of eval runs 13-18 read the
     # missing publish button and GitHub links as a silent omission — the hover on the
     # counts line was not enough. A `/pull/` URL alone still counts as a PR.
-    nopr = ("" if not pr or "/pull/" in str(pr.get("url") or "") else
+    nopr = ("" if not pr or is_pull_url(pr.get("url")) else
             '<span class="nopr" data-tip="No pull request yet — no GitHub links or '
             'publishing.">no PR</span> ')
     return nopr + html.escape(title) + title_ticket_ref(pr, title)
@@ -95,7 +96,9 @@ def title_ticket_ref(pr: dict, title: str) -> str:
         return ""
     ref = f"#{html.escape(str(num))}"
     if t.get("url"):
-        tip = f"Open the ticket on GitHub: {t['title']}" if t.get("title") else "Open the ticket on GitHub"
+        where = forge_at(t["url"]).name
+        tip = (f"Open the ticket on {where}: {t['title']}" if t.get("title")
+               else f"Open the ticket on {where}")
         ref = (f'<a class="prref ticketref" href="{html.escape(t["url"])}" '
                f'data-tip="{html.escape(tip)}">{ref}</a>')
     return f" ({ref})"
@@ -184,7 +187,7 @@ def outside_note(state: dict | None, repo: str = "") -> str:
         # Sha and raw subject, one commit per line: the subjects are the commits' own words,
         # untranslated, because a paraphrase of a commit message is a claim about it.
         sha = html.escape(c["sha"][:8])
-        face = (f'<a href="{html.escape(repo.rstrip("/"))}/commit/{html.escape(c["sha"])}"'
+        face = (f'<a href="{html.escape(forge_at(repo.rstrip("/")).commit_url(c["sha"]))}"'
                 f' target="_blank" rel="noopener"><code>{sha}</code></a>'
                 if repo else f'<code>{sha}</code>')
         return f'<li>{face} {html.escape(c.get("subject") or "")}</li>'
@@ -232,14 +235,15 @@ def ref_badges(spec: dict, state: dict | None = None) -> str:
     """
     pr = spec.get("pr") or {}
     repo = (pr.get("repo") or "").rstrip("/")
+    forge = forge_at(repo)
     warning = base_warning(state)
 
     def ref_html(ref: str, cls: str) -> str:
         name = f'<b class="refname {cls}">{html.escape(ref)}</b>'
         if not repo:
             return name
-        href = html.escape(f"{repo}/tree/{urllib.parse.quote(ref)}")
-        return (f'<a class="refl" href="{href}" data-tip="Open on GitHub" '
+        href = html.escape(forge.tree_url(urllib.parse.quote(ref)))
+        return (f'<a class="refl" href="{href}" data-tip="Open on {forge.name}" '
                 f'target="_blank" rel="noopener">{name}</a>')
 
     branch, base = pr.get("branch"), pr.get("base")

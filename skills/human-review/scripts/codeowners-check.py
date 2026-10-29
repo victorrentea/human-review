@@ -45,6 +45,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from hrbuild.shared.filemark import mark_path, page_path  # noqa: E402
+from hrbuild.shared.forge import forge_for  # noqa: E402
 
 APPROVAL_REQUIRED, CLEAR, NO_FILE = "approval_required", "no_owners_touched", "no_codeowners"
 # Not every required owner is the same phone call. A team named for the guardrail system
@@ -309,21 +310,16 @@ def file_link(root: Path, path: str, status: str, line: int = 1, label: str = No
             f"{label}</a>")
 
 
-def github_file_url(root: Path, rel: str) -> str | None:
-    """`https://github.com/<owner>/<repo>/blob/<ref>/<rel>`, or None off GitHub.
+def forge_file_url(root: Path, rel: str) -> str | None:
+    """`rel` on the forge `origin` is on (`<repo>/blob/<ref>/<rel>` on GitHub), or None off
+    one, and the caller keeps the editor link.
 
-    The repository is read from `origin`, spelt either way, the same way the page builds
-    every other github.com link (`hrbuild/shared/snippets.github_blob_base`); anything that
-    is not github.com is None and the caller keeps the editor link. The ref is the commit
-    under review when a remote branch already holds it — the file as this branch has it,
-    at a URL that does not move — and the branch name otherwise, which is what the PR on
-    GitHub shows once it is pushed."""
-    url = run(["git", "-C", str(root), "remote", "get-url", "origin"])
-    if url.returncode != 0:
-        return None
-    m = re.match(r"(?:https://github\.com/|git@github\.com:)(?P<slug>[^/]+/[^/]+?)(?:\.git)?$",
-                 url.stdout.strip())
-    if not m:
+    The forge is read the way the page reads it for every other link
+    (`hrbuild/shared/forge.forge_for`). The ref is the commit under review when a remote
+    branch already holds it — the file as this branch has it, at a URL that does not move —
+    and the branch name otherwise, which is what the PR shows once it is pushed."""
+    forge = forge_for(root)
+    if not forge:
         return None
     head = run(["git", "-C", str(root), "rev-parse", "HEAD"])
     ref = head.stdout.strip() if head.returncode == 0 else ""
@@ -334,7 +330,7 @@ def github_file_url(root: Path, rel: str) -> str | None:
         ref = name if name and name != "HEAD" else ref
     if not ref:
         return None
-    return f"https://github.com/{m['slug']}/blob/{ref}/{rel}"
+    return forge.blob_url(ref, rel)
 
 
 def render(root: Path, data: dict) -> str:
@@ -359,9 +355,10 @@ def render(root: Path, data: dict) -> str:
     # reads as part of the sentence, underlined, not as a monospace link shouting over it.
     if data["codeowners"]:
         rel = html.escape(data["codeowners"])
-        hub = github_file_url(root, data["codeowners"])
+        hub = forge_file_url(root, data["codeowners"])
         if hub:
-            link = (f'<a data-tip="Open on GitHub: {rel}" href="{html.escape(hub, quote=True)}"'
+            link = (f'<a data-tip="Open on {forge_for(root).name}: {rel}" '
+                    f'href="{html.escape(hub, quote=True)}"'
                     f' target="_blank" rel="noopener">{rel}</a>')
         else:
             link = (f'<a data-tip="Open in VS Code: {rel}"'

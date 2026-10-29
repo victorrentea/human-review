@@ -139,8 +139,13 @@ from hrbuild.shared.commands import (
 )
 from hrbuild.shared.snippets import (
     DIFF_CONTEXT, diff_html, DIFF_INLINE_TOKEN, diff_link_html, DIFF_TOKEN, diff_uri_handler,
-    expand_snippets, github_blob_base, review_step_rev, SNIPPET_BASE, snippet_html,
+    expand_snippets, review_step_rev, SNIPPET_BASE, snippet_html,
     SNIPPET_TOKEN, _extract_module, _parse_unified, set_diff_base, commit_stamp
+)
+from hrbuild.shared.forge import (
+    api_forge, find_issue, find_pull, forge_at, forge_for, forge_from_any_remote, FORGES,
+    GhError, github_blob_base, GitHubForge, GitHubPrApi, is_comment_url, is_pull_url,
+    project_of, pull_root, repo_web_root, _REVIEW_THREADS_QUERY, _sh, TRANSIENT
 )
 from hrbuild.shared.filemark import (
     FILE_MARK_D, FILE_PAGE, FILE_PAGE_D, FILE_PENCIL, FILE_PLUS, filemark, filemark_kind,
@@ -241,11 +246,11 @@ from hrbuild.tabs.review import (
     MERGE_DOORS, merge_risk_html, BLAST_GLYPHS, BLAST_SIZES, blast_size, blast_tip,
     blast_glyph_html, MERGE_DOOR_MARKS, MERGE_DOOR_TIPS, merge_door, door_mark_html,
     grade_pill_with_risk,
-    _md_inline, PR_BODY_JSON, _PULL_URL, _PR_BODY_BOILERPLATE, pr_comment_slug, PR_COMMENTS_JSON,
+    _md_inline, PR_BODY_JSON, _PR_BODY_BOILERPLATE, pr_comment_slug, PR_COMMENTS_JSON,
     PR_PILE_LETTER,
     PR_POSTED_JSON, PR_PUSH_JS, push_pr_button, push_pr_dialog, PUSH_PR_ACTION,
     PUSH_PR_DRY_ACTION, _PR_SLUG_MAX, PR_PREVIEW_TAG, PR_RESULT_TAG, _payload_changed,
-    VSCODE_PR_URI, vscode_pr_uri, vscode_pr_link, _PR_URL, VSC_ICON, vscode_file_link,
+    VSCODE_PR_URI, vscode_pr_uri, vscode_pr_link, VSC_ICON, vscode_file_link,
     IJ_ICON, IDE_FACE, IDE_CHIPS, GH_ICON,
     _taken_fold_html, _tooling_fold_html,
     API_VERDICT_HTML, FILM_VERDICT_JSON, GATE_JSON, GRADE_CAPS, MODEL_GRADE_LINES, PILE_SIGNALS,
@@ -956,7 +961,7 @@ def _main(argv=None) -> int:
     # takeover note, which the band used to carry, is always drawn here now.
     set_bands([POINTS_MISSING_BAND if (spec.get("_reviewPoints") or {}).get("missing")
                else ""],
-              top=[points_note_band(spec.get("_reviewPoints"), github_blob_base(root))])
+              top=[points_note_band(spec.get("_reviewPoints"), repo_web_root(root))])
 
     def render_block(block):
         """One block of a tab, as (html, weight, changes).
@@ -1407,7 +1412,7 @@ def _main(argv=None) -> int:
         # served it routes through the bridges — and greyed online (`data-local`).
         # The repository and branch this page reviews, for the published copy's Serve tip.
         pr = spec.get("pr") or {}
-        pr_repo = pr.get("repo") or github_blob_base(root) or ""
+        pr_repo = pr.get("repo") or repo_web_root(root) or ""
         pr_branch = pr.get("branch") or subprocess.run(
             ["git", "-C", str(root), "branch", "--show-current"],
             capture_output=True, text=True).stdout.strip()

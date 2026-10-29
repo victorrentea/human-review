@@ -64,6 +64,10 @@ import sys
 import time
 from pathlib import Path
 
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hrbuild.shared.forge import api_forge  # noqa: E402
+
 HR = Path(".human-review")
 
 
@@ -116,7 +120,7 @@ def configured_workflows(cli: list[str], config: str) -> list[str]:
 def list_workflows() -> list[dict] | None:
     """The repository's active workflows, or None when GitHub could not be asked — which is
     a discovery failure, never "this repository has no CI"."""
-    r = run("gh workflow list --json id,name,path,state")
+    r = api_forge().ci_workflows()
     if r.returncode != 0:
         return None
     try:
@@ -146,8 +150,7 @@ def latest_runs(sha: str, workflow: str | None,
                 fields: str = RUN_FIELDS) -> tuple[list[dict] | None, str]:
     """Runs for exactly `sha` (optionally of one workflow), newest first. None + the reason
     when GitHub could not be asked."""
-    sel = f' --workflow "{workflow}"' if workflow else ""
-    r = run(f'gh run list --commit "{sha}"{sel} --limit 50 --json {fields}')
+    r = api_forge().ci_runs(sha, workflow, fields)
     if r.returncode != 0:
         return None, ((r.stderr or "") + (r.stdout or "")).strip()
     try:
@@ -350,7 +353,7 @@ def sonar_evidence(evidence: dict, root: Path = Path(".")) -> dict | None:
         run_id = wf.get("runId")
         if not run_id or wf.get("status") not in (None, "completed"):
             continue
-        r = run(f"gh run view {int(run_id)} --json jobs,event,headBranch")
+        r = api_forge().ci_run(run_id)
         try:
             view = json.loads(r.stdout or "") if r.returncode == 0 else None
         except json.JSONDecodeError:
@@ -359,11 +362,9 @@ def sonar_evidence(evidence: dict, root: Path = Path(".")) -> dict | None:
             continue
         pr = None
         if (view.get("event") or "").startswith("pull_request"):
-            pr = run(f"gh api repos/{{owner}}/{{repo}}/actions/runs/{int(run_id)} "
-                     "--jq '.pull_requests[0].number // empty'").stdout.strip()
+            pr = api_forge().ci_run_pr(run_id)
             if not pr.isdigit() and view.get("headBranch"):
-                pr = run(f"gh pr list --head {shlex.quote(view['headBranch'])} --state all "
-                         "--limit 1 --json number --jq '.[0].number // empty'").stdout.strip()
+                pr = api_forge().pr_for_branch(view["headBranch"])
             pr = int(pr) if pr.isdigit() else None
         found = sonar_from_run(view, evidence.get("sha") or wf.get("sha") or "", root, pr)
         if found:
@@ -501,7 +502,7 @@ def gate(wait_minutes: float, workflows: list[str] | None = None,
         return False, "cannot resolve HEAD", dict(evidence, verdict="no-head")
     evidence["sha"] = sha
 
-    if not shutil.which("gh"):
+    if not api_forge().available():
         return True, (f"no `gh` — no build proved this commit ({sha[:12]}); say so in the "
                       "guide"), dict(evidence, verdict="unproven-no-gh")
 

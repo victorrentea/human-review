@@ -40,6 +40,9 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+from hrbuild.shared.forge import api_forge  # noqa: E402
 
 
 def _sibling(name: str, filename: str):
@@ -69,16 +72,6 @@ SYSTEM = ("You grade code changes for a human reviewer. You answer with exactly 
 def git(root: Path, *args: str) -> str:
     p = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
     return p.stdout.strip() if p.returncode == 0 else ""
-
-
-def gh_json(root: Path, *args: str) -> dict | None:
-    if not shutil.which("gh"):
-        return None
-    try:
-        p = subprocess.run(["gh", *args], cwd=root, capture_output=True, text=True, timeout=60)
-        return json.loads(p.stdout) if p.returncode == 0 and p.stdout.strip() else None
-    except (subprocess.TimeoutExpired, ValueError):
-        return None
 
 
 def read_json(path: Path):
@@ -147,8 +140,8 @@ def prune(spec: dict, root: Path) -> list[str]:
 def facts(root: Path, review: Path) -> dict:
     """The PR, its ticket, the branch: everything the masthead says that a program can ask."""
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
-    pr = gh_json(root, "pr", "view", "--json", "number,title,url,headRefName,baseRefName")
-    repo = (gh_json(root, "repo", "view", "--json", "url") or {}).get("url")
+    pr = api_forge().current_pr(root)
+    repo = api_forge().repo_web_url(root)
     tb = read_json(review / "ticket-body.json") or read_json(review / "ticket.json") or {}
     ticket = None
     if tb.get("number"):

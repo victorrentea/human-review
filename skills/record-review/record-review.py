@@ -119,6 +119,14 @@ def _cost_modules():
     return harness_cost, review_points_schema
 
 
+def _forge():
+    """The forge CI runs on, asked through the human-review skill beside this one."""
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
+    from hrbuild.shared.forge import api_forge
+    return api_forge()
+
+
 def record_cost(repo: Path, state: dict, harness_name: str) -> tuple[dict | None, str]:
     """Measure the three components and write COST. Never stops the commit: a measurement
     that fails is a row that says so, and the review it measures is still recorded."""
@@ -648,9 +656,7 @@ def ci(args) -> int:
     deadline = time.time() + args.wait_minutes * 60
     runs: list = []
     while time.time() < deadline:
-        out = subprocess.run(["gh", "run", "list", "--commit", sha, "--json",
-                              "databaseId,name,status,conclusion"],
-                             capture_output=True, text=True).stdout
+        out = _forge().ci_runs_of(sha)
         runs = json.loads(out or "[]")
         if runs and all(r["status"] == "completed" for r in runs):
             break
@@ -670,8 +676,7 @@ def ci(args) -> int:
         return 0
     print(f"CI              FAILED on {sha[:8]} — each line is a finding (`source: CI`):")
     for r in failed:
-        log = subprocess.run(["gh", "run", "view", str(r["databaseId"]), "--log-failed"],
-                             capture_output=True, text=True).stdout
+        log = _forge().ci_failed_log(r["databaseId"])
         plain = re.sub(r"\x1b\[[0-9;]*m|\^\[\[[0-9;]*m", "", log)
         errors = [l.split("\t")[-1][29:] if "\t" in l else l for l in plain.splitlines()
                   if re.search(r"##\[error\]|ERROR|FAILED|✖", l)]

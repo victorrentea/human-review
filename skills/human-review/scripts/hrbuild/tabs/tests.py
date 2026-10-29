@@ -5,12 +5,13 @@ import html
 import json
 import re
 import shlex
-import subprocess
+import subprocess  # noqa: F401 - test_reqmap_layout fakes `gh` through `T.subprocess`
 import sys
 from pathlib import Path
 
 from ..shared.actions import rebuild_interpreter
 from ..shared.commands import RUN_TESTS_FACE
+from ..shared.forge import api_forge, forge_at
 from ..shared.util import PENCIL, TEST_KIND_ORDER, TESTCHANGES
 
 # What happened to a test, and what the page calls it. The colour classes are the page's
@@ -528,19 +529,14 @@ def _append_inside(el: str, extra: str) -> str:
 
 def _issue_url(pr: dict, number: int) -> str:
     repo = (pr.get("repo") or "").rstrip("/")
-    return f"{repo}/issues/{number}" if repo else ""
+    return forge_at(repo).issue_url(number) if repo else ""
 
 
 def _gh_issue(pr: dict, number: int, out_dir: Path) -> dict | None:
-    """Ask GitHub once for the issue's title, and write the answer down."""
-    slug = re.sub(r"^https?://github\.com/", "", pr.get("repo") or "").strip("/")
-    args = ["gh", "issue", "view", str(number), "--json", "number,title,url"]
-    if slug:
-        args += ["-R", slug]
+    """Ask the forge once for the issue's title, and write the answer down."""
+    forge = forge_at(pr.get("repo"))
     try:
-        raw = subprocess.run(args, capture_output=True, text=True, timeout=20,
-                             check=True).stdout
-        got = json.loads(raw)
+        got = api_forge().issue(number, forge.slug if forge else "", "number,title,url")
         ref = {"number": int(got["number"]), "title": got["title"],
                "url": got.get("url") or _issue_url(pr, number)}
     except Exception as exc:                      # noqa: BLE001 - every failure is the same

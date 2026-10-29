@@ -16,7 +16,8 @@ from ..shared.actions import ACTIONS, declare_action, rebuild_interpreter, RERUN
 from ..shared.bands import _lede_above, _flush_top_bands
 from ..shared.chips import reviewer_names, _angry_bot
 from ..shared.commands import command_html
-from ..shared.snippets import DIFF_CONTEXT, diff_html, github_blob_base
+from ..shared.forge import api_forge, find_pull, forge_at, forge_for, is_pull_url, pull_root
+from ..shared.snippets import DIFF_CONTEXT, diff_html
 
 # The report's contract lives next to the scripts, beside the parser that writes it: the
 # directory this package sits in is on sys.path whenever the package is importable.
@@ -316,8 +317,8 @@ def points_note_band(points: dict | None, repo: str | None = None) -> str:
 
     def sha(h: str) -> str:
         code = f"<code>{h}</code>"
-        return (f'<a href="{repo}/commit/{h}" target="_blank" rel="noopener">{code}</a>'
-                if repo else code)
+        return (f'<a href="{forge_at(repo).commit_url(h)}" target="_blank" '
+                f'rel="noopener">{code}</a>' if repo else code)
     n = len(commits)
     rows = "".join(f"<li>{sha(h)} {subject}</li>" for h, subject in commits)
     return (f'<div class="rband rband-warn" role="status">'
@@ -1310,15 +1311,15 @@ def _spec_commit_signals(spec, root: Path | None, base_ref: str | None) -> list[
     found = [c for c in _before_range_commits(spec, root, base_ref) if c["spec"]]
     if not found:
         return []
-    gh = github_blob_base(Path(root)) if root else None
+    forge = forge_for(Path(root)) if root else None
     out = []
     for c in found:
         sig = _signal("spec-commit", f"Built against the spec in {c['sha'][:8]}",
                       f"{c['sha'][:8]} {c['subject']} — wrote {c['spec']}/, the OpenSpec "
                       "change this branch implements, before the reviewed range: the spec "
                       "the change was built against, not unreviewed code")
-        if gh:
-            sig.update(href=f"{gh}/commit/{c['sha']}", linkText=f"{c['spec']}/")
+        if forge:
+            sig.update(href=forge.commit_url(c['sha']), linkText=f"{c['spec']}/")
         out.append(sig)
     return out
 
@@ -1368,10 +1369,10 @@ def _decision_link(entry: dict, root: Path | None) -> tuple[str, str, str] | Non
     if not where:
         return None
     href = ref.get("href") or ""
-    gh = github_blob_base(Path(root)) if (root is not None and path) else None
-    head = _git_out(root, "rev-parse", "HEAD") if gh else None
-    if gh and head:
-        href = f"{gh}/blob/{head}/{path}" + (f"#L{line}" if line else "")
+    forge = forge_for(Path(root)) if (root is not None and path) else None
+    head = _git_out(root, "rev-parse", "HEAD") if forge else None
+    if forge and head:
+        href = forge.blob_url(head, path, line)
     elif path and root is not None and not href:
         href = f"vscode://file/{(Path(root) / path).resolve()}" + (f":{line}:1" if line else "")
     return where, quote, href
@@ -1736,7 +1737,6 @@ def _drop_model_line(text: str, spec, short: str | None = None) -> bool:
 # --------------------------------------------------------------------------------------- #
 
 PR_BODY_JSON = "pr-body.json"
-_PULL_URL = re.compile(r"github\.com/([^/\s]+/[^/\s]+)/pull/(\d+)")
 #: The attribution line an agent appends to every PR it opens: the same words on every
 #: page, about the tool rather than the change. With the model and effort after it
 #: (`· Opus 5.5 (effort: high)`, `harness_cost.pr_footer`) it is still that line: the page
@@ -1751,8 +1751,8 @@ def attach_pr_body(spec: dict, out_dir: Path, root: Path | None = None) -> None:
     `pr-body.json` so a build with no network still has the last one it saw. Nothing when
     the content file names no PR. `HR_NO_GITHUB` keeps the test suite off the network."""
     pr = spec.get("pr") or {}
-    m = _PULL_URL.search(str(pr.get("url") or ""))
-    num = pr.get("number") or (int(m.group(2)) if m else None)
+    found = find_pull(pr.get("url"))
+    num = pr.get("number") or (found[1] if found else None)
     if not num:
         return
     cache = out_dir / PR_BODY_JSON
@@ -1763,13 +1763,8 @@ def attach_pr_body(spec: dict, out_dir: Path, root: Path | None = None) -> None:
     if str(got.get("number")) != str(num):
         got = {}
     if not os.environ.get("HR_NO_GITHUB"):
-        args = ["gh", "pr", "view", str(num), "--json", "number,body,url"]
-        if m:
-            args += ["-R", m.group(1)]
         try:
-            out = subprocess.run(args, capture_output=True, text=True, timeout=15,
-                                 cwd=root, check=True)
-            raw = json.loads(out.stdout)
+            raw = api_forge().pr_body(num, found[0].slug if found else None, root)
             got = {"number": num, "url": raw.get("url") or pr.get("url") or "",
                    "body": raw.get("body") or ""}
             cache.write_text(json.dumps(got, indent=1) + "\n", encoding="utf-8")
@@ -1799,7 +1794,7 @@ def _md_inline(text: str, repo_url: str) -> str:
     if repo_url:
         # `commit #1` counts commits, it is not issue #1.
         t = re.sub(r"(?<![\w&/])(?<!commit )(?<!commits )#(\d+)\b", lambda m: stash(
-            f'<a href="{html.escape(repo_url)}/issues/{m.group(1)}" target="_blank" '
+            f'<a href="{html.escape(forge_at(repo_url).issue_url(m.group(1)))}" target="_blank" '
             f'rel="noopener">#{m.group(1)}</a>'), t, flags=re.I)
     t = html.escape(t, quote=False)
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
@@ -2002,8 +1997,8 @@ def pr_description_html(spec) -> str:
     if not body:
         return merge_risk_html(spec)
     # No link to the PR here: the masthead's title already is one.
-    m = _PULL_URL.search(str(got.get("url") or ""))
-    repo_url = f"https://github.com/{m.group(1)}" if m else ""
+    found = find_pull(got.get("url"))
+    repo_url = found[0].repo_url if found else ""
     # Folds away from its own heading, open by default; no inner scrollbar inside the
     # page's (Victor, 20 Oct 2026) — a description too long to read whole is one to fold.
     return (f'<details class="prdesc" open aria-label="Pull request description">'
@@ -2525,7 +2520,7 @@ def _commit_face(sha: str, repo: str | None, tip: str = "") -> str:
     code = f"<code>{html.escape(sha[:8])}</code>"
     t = f' data-tip="{html.escape(tip, quote=True)}"' if tip else ""
     if repo:
-        return (f'<a href="{html.escape(repo)}/commit/{html.escape(sha)}" target="_blank" '
+        return (f'<a href="{html.escape(forge_at(repo).commit_url(sha))}" target="_blank" '
                 f'rel="noopener"{t}>{code}</a>')
     return f"<span{t}>{code}</span>" if t else code
 
@@ -2775,7 +2770,8 @@ def attribute_fix_hunks(spec: dict, out_dir: Path, root: Path | None = None) -> 
     # Every commit of the fix range named, and what `review-commits.py` doubted about it,
     # for the pile's intro (`pile_intro`) and the block under the pile.
     commits = fix_commits(points, root, fixed_by)
-    repo = github_blob_base(Path(root))
+    forge = forge_for(Path(root))
+    repo = forge.repo_url if forge else None
     points["fixCommits"] = commits
     points["fixCommitsHtml"] = fix_commits_html(
         commits, repo, points.get("source") or "review-points.md")
@@ -3170,8 +3166,8 @@ def link_spec_citations(spec: dict, out_dir: Path, root: Path | None = None) -> 
                if (Path(root) / r).is_file()), None)
     if not change and not qa:
         return 0
-    gh = github_blob_base(Path(root))
-    head = _git_out(root, "rev-parse", "HEAD") if gh else None
+    forge = forge_for(Path(root))
+    head = _git_out(root, "rev-parse", "HEAD") if forge else None
     linked = 0
 
     def link(m: re.Match) -> str:
@@ -3189,10 +3185,10 @@ def link_spec_citations(spec: dict, out_dir: Path, root: Path | None = None) -> 
         face = re.sub(r":\d+(?:[-–]\d+)?(?:,\d+(?:[-–]\d+)?)*$", "", m.group(0))
         out = (f'<a class="specref" href="{html.escape(vs, quote=True)}" data-tip="{tip}">'
                f'{face}</a>')
-        if gh and head:
-            web = f"{gh}/blob/{head}/{urllib_quote(rel)}" + (f"#L{line}" if line else "")
+        if forge and head:
+            web = forge.blob_url(head, urllib_quote(rel), line)
             out += (f'<a class="specref-gh" href="{html.escape(web, quote=True)}" '
-                    f'target="_blank" rel="noopener" data-tip="{html.escape(at)} on GitHub, '
+                    f'target="_blank" rel="noopener" data-tip="{html.escape(at)} on {forge.name}, '
                     f'at {head[:8]}">↗</a>')
         linked += 1
         return out
@@ -4000,7 +3996,7 @@ def pr_exists(spec: dict, out_dir: Path) -> bool:
     or a `/pull/` URL), or an earlier push left its receipt. Read off what the run already
     knows rather than asked of GitHub at build time — the build runs offline too."""
     pr = spec.get("pr") or {}
-    if pr.get("number") or "/pull/" in str(pr.get("url") or ""):
+    if pr.get("number") or is_pull_url(pr.get("url")):
         return True
     return (out_dir / PR_POSTED_JSON).is_file()
 
@@ -4012,7 +4008,6 @@ def pr_exists(spec: dict, out_dir: Path) -> bool:
 #: overview in the window that takes the URI, without a prompt; no path of the handler
 #: takes a comment or a thread, so the PR is as close as the link can aim.
 VSCODE_PR_URI = "vscode://github.vscode-pull-request-github/open-pull-request-webview?uri="
-_PR_URL = re.compile(r"^(https://github\.com/[^/#?]+/[^/#?]+/pull/\d+)")
 
 
 #: The VS Code mark, in its blue, in front of every *in VS Code*.
@@ -4062,8 +4057,8 @@ IDE_CHIPS = ''.join(
 
 def vscode_pr_uri(url: str | None) -> str | None:
     """The PR an `html_url` belongs to, as the extension's open-in-VS-Code URI."""
-    m = _PR_URL.match(url or "")
-    return VSCODE_PR_URI + urllib.parse.quote(m.group(1), safe="") if m else None
+    root = pull_root(url)
+    return VSCODE_PR_URI + urllib.parse.quote(root, safe="") if root else None
 
 
 def vscode_pr_link(url: str | None, cls: str = "f-vsc") -> str:
@@ -4073,7 +4068,7 @@ def vscode_pr_link(url: str | None, cls: str = "f-vsc") -> str:
     uri = vscode_pr_uri(url)
     if not uri:
         return ""
-    n = _PR_URL.match(url).group(1).rsplit("/", 1)[1]
+    n = pull_root(url).rsplit("/", 1)[1]
     return (f' <a class="{cls}" href="{html.escape(uri, quote=True)}" '
             f'data-tip="Open PR #{n} in VS Code (GitHub Pull Requests)">{VSC_ICON} in VS Code</a>')
 

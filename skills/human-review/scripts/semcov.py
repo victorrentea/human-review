@@ -52,6 +52,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
+from hrbuild.shared.forge import api_forge, find_issue, forge_at  # noqa: E402
 
 SKILL = HERE.parent
 SCHEMA_PATH = SKILL / "reference" / "test-mapping.schema.json"
@@ -114,13 +115,8 @@ def _tests_tab():
 # --- 1. the ticket ----------------------------------------------------------------------
 
 def _gh_issue_full(slug: str, number: int) -> dict | None:
-    args = ["gh", "issue", "view", str(number), "--json",
-            "number,title,body,author,createdAt,url"]
-    if slug:
-        args += ["-R", slug]
     try:
-        out = subprocess.run(args, capture_output=True, text=True, timeout=20, check=True)
-        return json.loads(out.stdout)
+        return api_forge().issue(number, slug, "number,title,body,author,createdAt,url")
     except Exception as exc:                      # noqa: BLE001 - every failure is the same
         print(f"[semcov] `gh issue view {number}` did not answer ({exc}); the ticket "
               f"column needs its body. It is cached in {TICKET_BODY_CACHE} once it does.",
@@ -129,12 +125,12 @@ def _gh_issue_full(slug: str, number: int) -> dict | None:
 
 
 def _avatar(login: str) -> str:
-    """The author's GitHub avatar as a data URI, so the page needs no network to draw it."""
+    """The author's avatar on the forge as a data URI, so the page needs no network to
+    draw it."""
     if not login:
         return ""
     try:
-        with urllib.request.urlopen(f"https://github.com/{login}.png?size=48",
-                                    timeout=10) as r:
+        with urllib.request.urlopen(api_forge().avatar_url(login), timeout=10) as r:
             kind = r.headers.get_content_type() or "image/png"
             return f"data:{kind};base64," + base64.b64encode(r.read()).decode()
     except Exception:                             # noqa: BLE001 - an initial stands in
@@ -168,8 +164,8 @@ def _issue(number: int, slug: str, out_dir: Path, title: str = "",
 
 
 def _repo_slug(spec: dict) -> str:
-    pr = spec.get("pr") or {}
-    return re.sub(r"^https?://github\.com/", "", pr.get("repo") or "").strip("/")
+    forge = forge_at((spec.get("pr") or {}).get("repo"))
+    return forge.slug if forge else ""
 
 
 def front_matter(path: Path) -> dict:
@@ -189,10 +185,9 @@ def front_matter(path: Path) -> dict:
     return out
 
 
-#: An issue number in a ticket value: `#25`, `25`, `GH-25`, `issue 25` (and, below, a
-#: github.com issue URL or `owner/repo#25`).
+#: An issue number in a ticket value: `#25`, `25`, `GH-25`, `issue 25` (and, below, an
+#: issue URL on the forge (`find_issue`) or `owner/repo#25`).
 _BARE_ISSUE = re.compile(r"^\s*(?:#|gh-?|issue\s*#?)?\s*(\d+)\s*$", re.I)
-_GH_ISSUE_URL = re.compile(r"^https?://github\.com/([^/\s]+/[^/\s]+)/issues/(\d+)\b", re.I)
 
 
 def _ticket_value(value: str, slug: str) -> tuple[tuple[int, str] | None, str]:
@@ -207,9 +202,9 @@ def _ticket_value(value: str, slug: str) -> tuple[tuple[int, str] | None, str]:
     m = _BARE_ISSUE.match(v)
     if m:
         return (int(m.group(1)), slug), ""
-    m = _GH_ISSUE_URL.match(v)
-    if m:
-        return (int(m.group(2)), m.group(1)), ""
+    found = find_issue(v)
+    if found:
+        return (found[1], found[0].slug), ""
     m = re.match(r"^([\w.-]+/[\w.-]+)#(\d+)$", v)
     if m:
         return (int(m.group(2)), m.group(1)), ""

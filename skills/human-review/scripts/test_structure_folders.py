@@ -82,13 +82,13 @@ def repo(tmp_path):
     folders._packages.cache_clear()
     folders.maven_modules.cache_clear()
     folders._tree_base.cache_clear()
-    folders.github_blob_base.cache_clear()
+    folders.forge_for.cache_clear()
     folders._branch_files.cache_clear()
     yield r
     folders._packages.cache_clear()
     folders.maven_modules.cache_clear()
     folders._tree_base.cache_clear()
-    folders.github_blob_base.cache_clear()
+    folders.forge_for.cache_clear()
 
 
 def test_a_package_box_maps_to_its_folder_under_the_root_every_box_agrees_on(repo):

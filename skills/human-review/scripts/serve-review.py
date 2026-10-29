@@ -58,6 +58,10 @@ Usage:
 import argparse, collections, functools, hashlib, http.server, json, os, re, secrets, shlex, shutil, socket, socketserver, subprocess, sys, threading, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path, PurePosixPath
 
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hrbuild.shared.forge import api_forge, is_comment_url  # noqa: E402
+
 MARKER = "/__human_review__"
 OPEN = "/__open__"
 OPEN_DIFF = "/__open_diff__"
@@ -459,11 +463,6 @@ def line_span(q: dict) -> tuple[int, int | None]:
     return line, end
 
 
-#: A comment, a review or the PR itself on GitHub — the only URL a click may hand an editor
-#: to open in a browser. Anchored at both ends: anything else that arrives is dropped.
-_GH_COMMENT_URL = re.compile(r"^https://github\.com/[^/\s?#]+/[^/\s?#]+/pull/\d+([/?#]\S*)?$")
-
-
 def comment_aim(q: dict, line: int) -> dict:
     """The PR comment thread a click asks the editor to bring up, as `open_in_editor` /
     `review_open` keyword arguments: `{"comment": True}`, plus `comment_line` when GitHub
@@ -478,7 +477,7 @@ def comment_aim(q: dict, line: int) -> dict:
     at = int(raw) if raw.isdigit() and int(raw) > 0 else None
     url = (q.get("commentUrl") or [""])[0]
     return {"comment": True, **({"comment_line": at} if at and at != line else {}),
-            **({"comment_url": url} if _GH_COMMENT_URL.match(url) else {})}
+            **({"comment_url": url} if is_comment_url(url) else {})}
 
 
 def _comment_fields(comment, comment_line, comment_url=None):
@@ -2232,10 +2231,6 @@ def _host_of(value: str) -> str:
 
 _PR_THREADS_CACHE: dict = {"at": 0.0, "answer": None}
 _PR_THREADS_LOCK = threading.Lock()
-_PR_THREADS_QUERY = """query($owner:String!,$name:String!,$pr:Int!,$after:String){
-  repository(owner:$owner,name:$name){pullRequest(number:$pr){
-    reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}
-      nodes{isResolved comments(first:1){nodes{databaseId}}}}}}}"""
 
 
 def pr_threads_target(root) -> tuple[str, int] | None:
@@ -2256,32 +2251,12 @@ def pr_threads(root) -> dict:
         if _PR_THREADS_CACHE["answer"] and time.time() - _PR_THREADS_CACHE["at"] < PR_THREADS_TTL:
             return _PR_THREADS_CACHE["answer"]
         target = pr_threads_target(root)
-        if not target or not shutil.which("gh"):
+        forge = api_forge()
+        if not target or not forge.available():
             return {"error": "no pushed PR comments, or no gh"}
-        owner, _, name = target[0].partition("/")
-        resolved, still_open, after = [], 0, None
-        while True:
-            args = ["gh", "api", "graphql", "-f", f"query={_PR_THREADS_QUERY}",
-                    "-F", f"owner={owner}", "-F", f"name={name}", "-F", f"pr={target[1]}"]
-            if after:
-                args += ["-F", f"after={after}"]
-            try:
-                out = subprocess.run(args, capture_output=True, text=True, timeout=20)
-                page = json.loads(out.stdout)["data"]["repository"]["pullRequest"]["reviewThreads"]
-            except (subprocess.SubprocessError, OSError, ValueError, KeyError, TypeError):
-                return {"error": "GitHub did not answer"}
-            for t in page["nodes"]:
-                first = (t.get("comments") or {}).get("nodes") or [{}]
-                if not first[0].get("databaseId"):
-                    continue
-                if t.get("isResolved"):
-                    resolved.append(first[0]["databaseId"])
-                else:
-                    still_open += 1
-            if not page["pageInfo"]["hasNextPage"]:
-                break
-            after = page["pageInfo"]["endCursor"]
-        answer = {"resolved": resolved, "open": still_open}
+        answer = forge.review_threads(*target)
+        if "error" in answer:
+            return answer
         _PR_THREADS_CACHE.update(at=time.time(), answer=answer)
         return answer
 

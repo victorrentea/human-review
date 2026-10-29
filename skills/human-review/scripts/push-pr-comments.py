@@ -87,6 +87,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+from hrbuild.shared.forge import TRANSIENT, GhError, api_forge  # noqa: E402
+
+#: The forge's PR comment API: `gh api` on GitHub. The plan is written against its paths.
+PR_API = api_forge().pr_api()
 DEFAULT_FILE = ".human-review/pr-comments.json"
 POSTED_SUFFIX = ".posted.json"
 REVIEW_MARKER = "<!-- hr:review -->"         # a summary from before rounds were told apart
@@ -305,14 +311,11 @@ def _find_anchor(lines: list[str], anchor: str, near: int) -> int | None:
 
 def permalink(repo: str | None, rev: str, path: str, start: int | None = None,
               end: int | None = None) -> str | None:
-    """`https://github.com/o/r/blob/<sha>/<path>#L57-L59` — the exact lines at one commit.
-    GitHub renders such a link, alone on its line in a comment, as the code it points at."""
+    """The exact lines at one commit, on the forge (`…/blob/<sha>/<path>#L57-L59`). GitHub
+    renders such a link, alone on its line in a comment, as the code it points at."""
     if not repo or not rev:
         return None
-    url = f"https://github.com/{repo}/blob/{rev}/{path}"
-    if start:
-        url += f"#L{start}" + (f"-L{end}" if end and end > start else "")
-    return url
+    return api_forge().of_slug(repo).blob_url(rev, path, start, end)
 
 
 def _sha(diff: Diff, rev: str | None) -> str | None:
@@ -494,8 +497,7 @@ class Call:
     expect: list = field(default_factory=list)
 
     def shell(self) -> str:
-        return (f"gh api -X {self.method} {self.path} --input - <<'JSON'\n"
-                + json.dumps(self.payload, indent=2, ensure_ascii=False) + "\nJSON")
+        return PR_API.shell(self.method, self.path, self.payload)
 
 
 @dataclass
@@ -654,7 +656,7 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
                 there = ("in the review's summary" if r.mode == "body"
                          else f"at {_where(r.comment)}"
                          + (", in this round's review" if gather else ""))
-                deletes.append(Call("DELETE", f"repos/{repo}/pulls/comments/{old['id']}", {},
+                deletes.append(Call("DELETE", PR_API.comment_path(repo, old['id']), {},
                                     f"delete {r.cid}: at {_where(old)}, it belongs {there}"))
                 p.notes.append(f"{r.cid}: posted at {_where(old)}; deleted and posted again "
                                + there)
@@ -666,7 +668,7 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
                                "is (GitHub cannot move a comment)")
         if old is not None:
             if (old.get("body") or "").strip() != r.comment["body"].strip():
-                p.calls.append(Call("PATCH", f"repos/{repo}/pulls/comments/{old['id']}",
+                p.calls.append(Call("PATCH", PR_API.comment_path(repo, old['id']),
                                     {"body": r.comment["body"]}, f"update {r.cid}"))
                 p.fate[r.cid] = "update"
             else:
@@ -679,7 +681,7 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
             if ours is not None and in_summary(r, ours.get("body") or ""):
                 p.fate[r.cid] = "same"
         elif r.mode == "file":
-            p.calls.append(Call("POST", f"repos/{repo}/pulls/{pr}/comments",
+            p.calls.append(Call("POST", PR_API.comments_path(repo, pr),
                                 {**r.comment, "commit_id": diff.head}, f"file comment {r.cid}",
                                 expect=[r.cid]))
         else:
@@ -688,7 +690,7 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
     body = review_body(payload, folded)
     if ours is not None:
         if (ours.get("body") or "").strip() != body.strip():
-            p.calls.append(Call("PUT", f"repos/{repo}/pulls/{pr}/reviews/{ours['id']}",
+            p.calls.append(Call("PUT", PR_API.review_path(repo, pr, ours['id']),
                                 {"body": body}, "update the review's body"))
     # In reviews of BATCH: one review with 41 comments outlived GitHub's 10 s and came back
     # 504 while it was being created anyway. The first batch carries the summary when this
@@ -698,7 +700,7 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
     more = more_marker(payload.get("commit_id"))
     for k, chunk in enumerate(batches):
         first = k == 0 and ours is None
-        p.calls.append(Call("POST", f"repos/{repo}/pulls/{pr}/reviews", {
+        p.calls.append(Call("POST", PR_API.reviews_path(repo, pr), {
             "commit_id": diff.head,
             "event": "COMMENT",
             "body": body if first else
@@ -714,27 +716,8 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
 
 
 # --------------------------------------------------------------------------- #
-# GitHub, through gh
+# what a failed call means (the calls themselves: `PR_API`, hrbuild/shared/forge.py)
 # --------------------------------------------------------------------------- #
-
-#: What a 5xx or a timeout looks like in `gh`'s words — a call GitHub may have carried out
-#: anyway, so the next step is to look, not to send it again.
-TRANSIENT = re.compile(r"\(HTTP 5\d\d\)|HTTP 5\d\d|timed? ?out|couldn't respond to your request "
-                       r"in time|bad gateway|connection reset|unexpected EOF", re.I)
-
-
-class GhError(RuntimeError):
-    """A `gh` call that failed, with GitHub's HTTP status when it said one."""
-
-    def __init__(self, text: str):
-        super().__init__(text)
-        m = re.search(r"\(HTTP (\d{3})\)|HTTP (\d{3})", text)
-        self.status = int(m.group(1) or m.group(2)) if m else None
-
-    @property
-    def transient(self) -> bool:
-        return (self.status or 0) >= 500 or bool(TRANSIENT.search(str(self)))
-
 
 def is_transient(e: Exception) -> bool:
     return getattr(e, "transient", None) if isinstance(e, GhError) else \
@@ -756,47 +739,6 @@ def plain_reason(e: Exception) -> str:
     if status == 404:
         return "GitHub could not find the pull request"
     return "GitHub refused the request"
-
-
-class Gh:
-    """Everything this script asks of GitHub goes through `gh api`, so the credentials are
-    the reader's own and nothing here ever sees a token."""
-
-    def run(self, args: list[str], data: dict | None = None) -> str:
-        r = subprocess.run(["gh", *args], input=json.dumps(data) if data is not None else None,
-                           capture_output=True, text=True)
-        if r.returncode:
-            raise GhError(f"gh {' '.join(args[:4])}: {r.stderr.strip() or r.stdout.strip()}")
-        return r.stdout
-
-    def login(self) -> str | None:
-        try:
-            return self.run(["api", "user", "--jq", ".login"]).strip() or None
-        except RuntimeError:
-            return None
-
-    def list(self, path: str) -> list[dict]:
-        out = self.run(["api", "--paginate", path, "--jq", ".[]"])
-        return [json.loads(l) for l in out.splitlines() if l.strip()]
-
-    def send(self, call: Call) -> dict:
-        out = self.run(["api", "-X", call.method, call.path, "--input", "-"], call.payload)
-        return json.loads(out) if out.strip() else {}
-
-    def pr(self, root: Path, pr: int | None) -> dict:
-        args = ["pr", "view", *([str(pr)] if pr else []), "--json",
-                "number,url,headRefOid,baseRefName,headRefName"]
-        r = subprocess.run(["gh", *args], capture_output=True, text=True, cwd=root)
-        if r.returncode:
-            raise RuntimeError(r.stderr.strip() or "no PR for this branch")
-        return json.loads(r.stdout)
-
-    def repo(self, root: Path) -> str:
-        r = subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner", "-q",
-                            ".nameWithOwner"], capture_output=True, text=True, cwd=root)
-        if r.returncode:
-            raise RuntimeError(r.stderr.strip())
-        return r.stdout.strip()
 
 
 def _markers(comments: list[dict]) -> dict[str, list[dict]]:
@@ -826,7 +768,7 @@ def settle(gh, repo: str, pr: int, call: Call, sleep=time.sleep,
     for _ in range(tries):
         sleep(wait)
         try:
-            seen = len(want & set(_markers(gh.list(f"repos/{repo}/pulls/{pr}/comments"))))
+            seen = len(want & set(_markers(gh.list(PR_API.comments_path(repo, pr)))))
         except RuntimeError:
             continue
         if seen == len(want):
@@ -881,8 +823,8 @@ def record_state(p: Plan, gh, repo: str, pr: int, posted_path: Path, meta: dict,
                  error: Exception | None = None, sent: int = 0) -> dict:
     """What is on the PR now, item by item, written to `pr-comments.posted.json`."""
     try:
-        after = gh.list(f"repos/{repo}/pulls/{pr}/comments")
-        reviews = gh.list(f"repos/{repo}/pulls/{pr}/reviews")
+        after = gh.list(PR_API.comments_path(repo, pr))
+        reviews = gh.list(PR_API.reviews_path(repo, pr))
     except RuntimeError as e:
         after, reviews = [], []
         error = error or e
@@ -1210,7 +1152,7 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
 
-    gh = Gh()
+    gh = PR_API
     if a.check:
         diff = load_diff(root, a.base or "origin/main", "HEAD")
         p = plan(payload, diff, a.repo or "OWNER/REPO", a.pr or 0, [], [])
@@ -1236,8 +1178,8 @@ def main(argv=None) -> int:
         print(f"note: local HEAD {local[:8]} is not the PR head {head[:8]} — anchoring on the "
               "PR head, which is what GitHub shows", file=sys.stderr)
     try:
-        existing = gh.list(f"repos/{repo}/pulls/{pr}/comments")
-        reviews = gh.list(f"repos/{repo}/pulls/{pr}/reviews")
+        existing = gh.list(PR_API.comments_path(repo, pr))
+        reviews = gh.list(PR_API.reviews_path(repo, pr))
     except RuntimeError as e:
         if not a.dry_run:
             print(f"cannot list the PR's comments: {e}", file=sys.stderr)
@@ -1265,8 +1207,8 @@ def main(argv=None) -> int:
         return 0
 
     def replan() -> Plan:
-        return plan(payload, diff, repo, pr, gh.list(f"repos/{repo}/pulls/{pr}/comments"),
-                    gh.list(f"repos/{repo}/pulls/{pr}/reviews"), owned)
+        return plan(payload, diff, repo, pr, gh.list(PR_API.comments_path(repo, pr)),
+                    gh.list(PR_API.reviews_path(repo, pr)), owned)
 
     record = execute(p, gh, repo, pr, posted_path,
                      {"repo": repo, "pr": pr, "url": info["url"], "head": head,

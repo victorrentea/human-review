@@ -9,6 +9,7 @@ import urllib.parse
 from pathlib import Path
 
 from .changes import changed_files, files_pop
+from .forge import forge_at
 from .util import PENCIL, _git
 
 # What a diffstat must never count. Every path below is written by a generator -- a
@@ -432,8 +433,7 @@ def _compare_href(pr: dict | None, base: str | None = None) -> str:
     branch = pr.get("branch") or ""
     if not (repo and base and branch):
         return ""
-    return (f"{repo}/compare/{urllib.parse.quote(base)}..."
-            f"{urllib.parse.quote(branch)}")
+    return forge_at(repo).compare_url(urllib.parse.quote(base), urllib.parse.quote(branch))
 
 
 def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None,
@@ -540,7 +540,7 @@ def diffstat_chips(root: Path, state: dict | None, extra: list[str] | None,
     # pass of 3 Oct 2026: the face is the count, and the base is the page's business.
     lines_tip = skipped.strip()
     if href:
-        lines_tip += " Click for the full diff on GitHub."
+        lines_tip += f" Click for the full diff on {forge_at(pr['repo']).name}."
     return [
         {"label": "files",
          "value": files_value,

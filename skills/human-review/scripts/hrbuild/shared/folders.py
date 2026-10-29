@@ -26,7 +26,7 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 
 from .changes import changed_files, files_pop
-from .snippets import github_blob_base
+from .forge import forge_for
 
 #: A component declaration, in the spellings PlantUML accepts: `[Label]`, `[Label] as a`,
 #: `component "Label" as a`, `component a as "Label"`, `component Name`, and the same with
@@ -190,12 +190,12 @@ def maven_modules(root: Path) -> dict[str, str]:
 
 @functools.lru_cache(maxsize=None)
 def _tree_base(root: Path) -> str | None:
-    """`https://github.com/<owner>/<repo>/tree/<HEAD>` — the folder as the reviewed commit
-    has it — or None without a github.com remote."""
-    repo = github_blob_base(root)
+    """The repository's tree at HEAD on its forge (`…/tree/<HEAD>`) — the folder as the
+    reviewed commit has it — or None without a forge remote."""
+    forge = forge_for(root)
     head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
                           capture_output=True, text=True).stdout.strip()
-    return f"{repo}/tree/{head}" if repo and head else None
+    return forge.tree_url(head) if forge and head else None
 
 
 def folder_targets(rel: str, root: Path) -> dict[str, tuple[str, str]]:

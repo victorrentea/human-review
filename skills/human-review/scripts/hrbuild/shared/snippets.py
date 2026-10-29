@@ -11,6 +11,7 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+from .forge import forge_for
 from .util import EXTRACT
 
 # The caption is prose, and prose about this project says things like `{{ visit | vetName }}`.
@@ -46,23 +47,6 @@ DIFF_INLINE_TOKEN = re.compile(
 # GitHub shows before you click "expand": enough to place a hunk in its method, short
 # enough that the diff stays the thing being read.
 DIFF_CONTEXT = 3
-
-
-@functools.lru_cache(maxsize=None)
-def github_blob_base(root: Path) -> str | None:
-    """`https://github.com/<owner>/<repo>` for this checkout, or None when it is not one.
-
-    Read from `origin` rather than configured, because a URL that has to be maintained by
-    hand in a content file is a URL that eventually points at somebody else's fork. Both
-    remote spellings are accepted; anything that is not github.com returns None and the
-    caller falls back to the editor link, which always works."""
-    proc = subprocess.run(["git", "-C", str(root), "remote", "get-url", "origin"],
-                          capture_output=True, text=True)
-    if proc.returncode != 0:
-        return None
-    m = re.match(r"(?:https://github\.com/|git@github\.com:)(?P<slug>[^/]+/[^/]+?)(?:\.git)?$",
-                 proc.stdout.strip())
-    return f"https://github.com/{m['slug']}" if m else None
 
 
 def _parse_unified(diff_text: str):
@@ -259,14 +243,14 @@ def commit_stamp(root: Path, out_dir: Path | None = None) -> str:
              "data-hr-open-uri": diff_uri_handler() or ""}
     # What the copy published online needs instead of an editor: every `vscode://file/…`
     # reference becomes the same file on GitHub (server.js). The commit when a remote
-    # branch holds it — a URL that does not move — else the branch, as `github_file_url`
+    # branch holds it — a URL that does not move — else the branch, as `forge_file_url`
     # in codeowners-check.py picks; and the review's own folder, which is not committed,
     # so a reference into it is greyed rather than sent to a 404.
-    base = github_blob_base(root)
-    if base:
+    forge = forge_for(root)
+    if forge:
         ref = head if git("branch", "-r", "--contains", head) else (
             git("rev-parse", "--abbrev-ref", "HEAD").replace("HEAD", "") or head)
-        attrs["data-hr-blob"] = f"{base}/blob/{ref}"
+        attrs["data-hr-blob"] = forge.blob_prefix(ref)
     if out_dir is not None:
         try:
             rel = Path(out_dir).resolve().relative_to(Path(root).resolve()).as_posix()

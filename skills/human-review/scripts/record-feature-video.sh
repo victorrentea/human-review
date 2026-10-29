@@ -251,7 +251,7 @@ if [ -z "$CARD_SUBTITLE" ]; then
   CARD_SUBTITLE="$(python3 -c "$TITLE_FROM_GUIDE" "$ROOT/.human-review/content.json" 2>/dev/null || true)"
 fi
 if [ -z "$CARD_SUBTITLE" ]; then
-  CARD_SUBTITLE="$(gh pr view --json title --jq .title 2>/dev/null || true)"
+  CARD_SUBTITLE="$(python3 "$SCRIPT_DIR/hrbuild/shared/forge.py" pr-title 2>/dev/null || true)"
 fi
 if [ -z "$CARD_SUBTITLE" ]; then
   CARD_SUBTITLE="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
