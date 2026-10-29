@@ -1882,6 +1882,47 @@ def door_mark_html(spec, cls: str = "titledoor") -> str:
     return (f'<span class="{cls}" data-tip="{tip}" aria-label="{tip}">'
             f'{MERGE_DOOR_MARKS[door]}</span>')
 
+def grade_pill_with_risk(spec, pill: str) -> str:
+    """The grade pill with the merge's door and blast circle inside it, in front of the
+    number: one pill reading `✅ ◔ 7/10` (Victor, 29 Oct 2026). The marks are their own
+    target — `.ts-risk`, which tabs.js sends to the MERGE RISK line (`#mergerisk`), opening
+    the PR description round it — while the number keeps the pill's own link. One hover for
+    the three, a line each. `pill` unchanged without a door or a size; the marks alone in a
+    plain pill when there is no grade."""
+    door, n = merge_door(spec), blast_size(spec)
+    marks, lines = [], []
+    if door:
+        marks.append(f'<span class="titledoor">{MERGE_DOOR_MARKS[door]}</span>')
+        lines.append(f"{MERGE_DOOR_MARKS[door]} {MERGE_DOOR_TIPS[door]}")
+    if n is not None:
+        marks.append(f'<span class="titleblast">{BLAST_GLYPHS[n]}</span>')
+        lines.append(f"{BLAST_GLYPHS[n]} {blast_tip(spec)}")
+    if not marks:
+        return pill
+    risk = (f'<span class="ts-risk" role="link" aria-label="Merge risk: '
+            f'{html.escape("; ".join(l.split(" ", 1)[1] for l in lines), quote=True)}">'
+            f'{"".join(marks)}</span>')
+    if not pill:
+        tip = "<br>".join(html.escape(l) for l in lines + ["Click: the merge risk"])
+        return (f'<span class="titlescore ts-alone" data-tip-html="{html.escape(tip, quote=True)}">'
+                f'{risk}</span>')
+    m = re.match(r'<(?:a|span) class="titlescore[^>]*>', pill)
+    if not m:
+        return risk + pill
+    tag = m.group(0)
+    said = re.search(r' data-tip="([^"]*)"', tag)
+    grade = html.unescape(said.group(1)) if said else ""
+    if said:
+        tag = tag.replace(said.group(0), "")
+    if grade:
+        lines.append(grade)
+    glyphs = " ".join(l.split(" ", 1)[0] for l in lines[:len(marks)])
+    lines.append(f"Click {glyphs}: the merge risk line")
+    tip = "<br>".join(html.escape(l) for l in lines)
+    return (f'{tag[:-1]} data-tip-html="{html.escape(tip, quote=True)}">{risk}'
+            + pill[m.end():])
+
+
 #: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a circle
 #: that fills (Victor, 29 Oct 2026) — so a reader knows at a glance what to expect before
 #: reading the words. Index = the level; each with the words its hover says.
@@ -1944,7 +1985,9 @@ def merge_risk_html(spec) -> str:
         parts.append(f'blast radius: {glyph + " " if glyph else ""}<b>{what}</b>')
     why = str(risk.get("why") or "").strip()
     line = " · ".join(parts) + (f" — {html.escape(why)}" if why else "")
-    return f'<p class="mergerisk"><span class="mr-h">Merge risk</span> {line}</p>'
+    # `id`: where the masthead's ✅ ◔ go (tabs.js, `.ts-risk`).
+    return (f'<p class="mergerisk" id="mergerisk"><span class="mr-h">Merge risk</span> '
+            f'{line}</p>')
 
 
 def pr_description_html(spec) -> str:

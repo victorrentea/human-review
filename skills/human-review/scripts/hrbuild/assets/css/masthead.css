@@ -116,11 +116,14 @@ h1 .nopr { font-size:.55em; font-weight:600; vertical-align:middle; color:var(--
    is clickable, and the tooltip says where it goes. */
 a.titlescore { text-decoration:none; cursor:pointer; }
 a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor inset; }
-/* The blast radius's circle (`blast_glyph_html`), left of the grade: a bare glyph, no pill,
-   as tall as the pill's figures; its hover says the radius in words. */
-.titlerow .titleblast { font-size:1.05rem; line-height:1; color:var(--fg); opacity:.8; cursor:help; }
-/* The merge's door, ✅ or ⚠️ (`door_mark_html`), before the circle: an emoji, no pill. */
-.titlerow .titledoor { font-size:.9rem; line-height:1; cursor:help; }
+/* The merge's door and the blast circle, inside the grade pill in front of the number
+   (`grade_pill_with_risk`): their own click target, to the MERGE RISK line (tabs.js). */
+.titlescore .ts-risk { display:inline-flex; align-items:center; gap:.2rem; margin-right:.3rem;
+            cursor:pointer; line-height:1; }
+.titlescore .titledoor { font-size:.8rem; }
+.titlescore .titleblast { font-size:1rem; color:var(--fg); opacity:.8; }
+.titlescore.ts-alone { background:var(--card); }
+.titlescore.ts-alone .ts-risk { margin-right:0; }
 .titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }
 .titlescore.v-mid  { background:rgba(217,130,24,.18); color:#9a5b06; }
 .titlescore.v-bad  { background:rgba(215,38,61,.16); color:#d7263d; }

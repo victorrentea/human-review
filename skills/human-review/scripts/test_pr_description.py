@@ -77,7 +77,7 @@ def test_merge_risk_without_a_known_door_is_not_drawn_and_stands_alone_without_a
     assert review.merge_risk_html({"mergeRisk": {"door": "maybe", "blast": "x"}}) == ""
     assert review.merge_risk_html({}) == ""
     alone = review.pr_description_html({"mergeRisk": {"door": "two-way"}})
-    assert alone.startswith('<p class="mergerisk">') and "prdesc" not in alone
+    assert alone.startswith('<p class="mergerisk" id="mergerisk">') and "prdesc" not in alone
 
 
 def test_the_blast_radius_wears_a_circle_that_fills_with_its_size():
@@ -117,3 +117,22 @@ def test_the_masthead_shows_the_doors_mark_before_the_circle_with_its_meaning_on
     # The MERGE RISK line draws the same mark from the same table.
     assert f"{review.MERGE_DOOR_MARKS['two-way']} Two-way door</b>" in \
         review.merge_risk_html({"mergeRisk": {"door": "two-way"}})
+
+
+def test_the_door_and_the_circle_ride_inside_the_grade_pill_with_one_hover_for_all_three():
+    """Victor, 29 Oct 2026: one pill, `✅ ◔ 7/10`; the marks go to the MERGE RISK line."""
+    spec = {"mergeRisk": {"door": "two-way", "blast": "visits API", "blastSize": 1}}
+    pill = ('<a class="titlescore v-mid" href="#review" data-tip="Why 7/10? Open the Review '
+            'tab"><b>7</b><small>/10</small><i></i></a>')
+    out = review.grade_pill_with_risk(spec, pill)
+    assert out.startswith('<a class="titlescore v-mid" href="#review" data-tip-html="✅ Two-way '
+                          'door: a revert simply undoes it&lt;br&gt;◔ Blast radius: visits API — '
+                          'about a quarter of the system&lt;br&gt;Why 7/10? Open the Review tab')
+    assert 'data-tip="' not in out, "one hover, not the grade's alone"
+    assert ('<span class="titledoor">✅</span><span class="titleblast">◔</span></span>'
+            '<b>7</b><small>/10</small>') in out and out.count('class="ts-risk"') == 1
+    assert review.grade_pill_with_risk({}, pill) == pill
+    assert review.grade_pill_with_risk({"mergeRisk": {"door": "one-way"}}, "").startswith(
+        '<span class="titlescore ts-alone"')
+    # The line the marks go to.
+    assert 'id="mergerisk"' in review.merge_risk_html(spec)

@@ -163,6 +163,27 @@
     if (i >= 0 && i !== active) select(i, false, true);
   });
 
+  // The masthead's ✅ ◔ (`grade_pill_with_risk`): to the MERGE RISK line, on whichever tab
+  // holds it, opening the PR description it closes if that was folded, and a brief glow so
+  // the eye lands on it (Victor, 29 Oct 2026). The number beside them keeps its own link.
+  document.addEventListener('click', function (ev) {
+    var mark = ev.target.closest && ev.target.closest('.ts-risk');
+    var line = mark && document.getElementById('mergerisk');
+    if (!line) return;
+    ev.preventDefault();
+    var i = panelIndexOf(line);
+    if (i >= 0 && (i !== active || document.body.classList.contains('showall'))) {
+      document.body.classList.remove('showall');
+      select(i, true, true);
+    }
+    var fold = line.closest('details');
+    if (fold && !fold.open) fold.open = true;
+    line.scrollIntoView({block: 'center'});
+    line.classList.remove('mr-flash');
+    void line.offsetWidth;
+    line.classList.add('mr-flash');
+  });
+
   // Opening on a deep link: the hash may name a tab, or anything inside one.
   var wanted = decodeURIComponent((location.hash || '').slice(1));
   var start = 0;

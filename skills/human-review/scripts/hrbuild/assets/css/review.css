@@ -312,6 +312,10 @@ html.ide-none a.f-vsc, html.ide-none a.pr-vsc, html.hr-online ol.findings > li >
 .mr-h { margin-right:.35rem; font:700 .68rem/1.7 inherit; letter-spacing:.09em; text-transform:uppercase;
   color:var(--muted); }
 .mr-door { color:#2e9e5b; }
+/* Arrived at from the masthead's ✅ ◔ (tabs.js): a brief glow, then as it was. */
+.mergerisk.mr-flash { animation:mr-flash 1.6s ease-out; border-radius:4px; }
+@keyframes mr-flash { 0%, 35% { background:color-mix(in srgb, #f2c94c 45%, transparent); }
+  100% { background:transparent; } }
 /* The blast radius's size, ○ to ●, in front of its words. */
 .mr-size { font-size:1.05em; cursor:help; }
 .mr-door.mr-oneway { color:#d7263d; }

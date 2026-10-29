@@ -347,7 +347,7 @@ defect, it is the defect, quoted. It still applies, to the tab ledes and the sec
 Write `.human-review/content.json` against **`reference/content-schema.md`** — every shape,
 every block type, the tab vocabulary, and everything the renderer already enforces so you do
 not restate it. Always give it a **`mergeRisk`**: one-way or two-way door, the blast radius,
-and its `blastSize` (0–4: how much of the system it reaches).
+and its `blastSize` (0–4: how much of the project does this PR change?).
 
 **Change no code in this step.** Not a fix, not a comment, not a rename. The page used to
 apply the non-disputable half of its own findings and leave them uncommitted for the human

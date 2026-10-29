@@ -158,12 +158,13 @@ Matt Pocock's *merge danger*, as the last line of the PR description: is merging
 **one-way door** (`"one-way"`: a migration that drops data, a published contract, anything a
 revert does not undo) or a **two-way door** (`"two-way"`: revert and it is as if it never
 happened), and the **blast radius**: the area that breaks if it is wrong, in two or three
-words. **`blastSize`** is how much of the system that area is, 0–4, drawn as a circle that
-fills — `0` ○ barely anything (one screen, one edge case), `1` ◔ about a quarter (one API or
-one feature), `2` ◑ about half, `3` ◕ about three quarters, `4` ● the whole system (auth,
-a shared table, the build). The circle stands in front of the blast radius, beside the grade
-in the masthead, and in the review's summary on the PR. Judge it against the whole
-repository, not the diff; without it no circle is drawn. `why` is one sentence, the reason
+words. **`blastSize`** answers *how much of the project does this PR change?*, 0–4, drawn
+as a circle that fills — `0` ○ barely anything (one screen, one edge case), `1` ◔ about a
+quarter (one feature or API, even through every layer), `2` ◑ about half, `3` ◕ about three
+quarters, `4` ● all of it (auth, a shared table, the build). Estimate it from how the diff
+spreads over the codebase — which modules and features it reaches, out of all of them — not
+from its line count. The circle stands in front of the blast radius, inside the grade pill
+in the masthead, and in the review's summary on the PR; without it no circle is drawn. `why` is one sentence, the reason
 for the door. Without a `door` of those two values the line is not drawn.
 
 ```json
