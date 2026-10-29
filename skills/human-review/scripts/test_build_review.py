@@ -3029,8 +3029,8 @@ def test_the_review_chip_leads_with_what_is_left_to_do(tmp_path):
     label, a gap and a row of figures: the second shape is what a measurement looks like,
     and this is a claim a model made about the diff.
 
-    `fixed`, not `auto-fixed`: how the fix arrived is a word for the hover, and the pill
-    needs the characters for the coder's half of the sentence."""
+    `auto`, not `auto-fixed`: the long word is for the hover, and the pill needs the
+    characters for the coder's half of the sentence."""
     page, _ = _build(tmp_path, dict(
         BARE, scope=[{"auto": "autofixed", "href": "#one"}],
         findings=[{"title": f"f{i}", "body": "<p>b</p>", "source": "/code-review"}
@@ -3038,14 +3038,14 @@ def test_the_review_chip_leads_with_what_is_left_to_do(tmp_path):
         autofixes=[{"title": f"a{i}", "source": "/simplify"} for i in range(3)]))
     # Eval run 10: the agent names moved to the hover, so the scope bar keeps one row.
     assert '"angry-bot" alt="" aria-hidden="true" src="data:image/png;base64,' in page and \
-        '<b>9 open</b> · <b>3 fixed</b>' in page, \
+        '<b>9 open</b> · <b>3 auto</b>' in page, \
         "every count is bold together with what it counts"
-    assert "auto-fixed" not in page[page.index('<header class="masthead">'):
-                                    page.index("</header>")], \
-        "the long word stays on the counts line under the tab, which has room for it"
+    assert "auto-fixed</b>" not in page[page.index('<header class="masthead">'):
+                                        page.index("</header>")], \
+        "the face says `auto` (Victor, 29 Oct 2026); the long word is the hover's"
     # Copy pass (3 Oct 2026): the hover spells out the face and names the reviewer; the
     # per-pass split of the total left it.
-    assert "Review: 9 open · 3 fixed." in page
+    assert "Review: 9 open · 3 auto-fixed." in page
     assert "12 raised" not in page
 
 
@@ -3572,11 +3572,11 @@ def test_the_list_lede_counts_all_three_piles(tmp_path):
     assert "yours to confirm" not in page, \
         "the card's own purple chip already says which pile it is"
     assert "9 open LLM review issues" in page
-    assert "3 auto-fixed" in page
+    assert "3 auto" in page
     assert ('<span class="lede-who">\U0001f916:</span> <a href="#assumed">2 assumptions</a> / '
             '<span class="lede-who"><img class="angry-bot"') in page
     assert (':</span> <a href="#first">9 open LLM review issues</a> &middot; '
-            '<a href="#fixed">3 auto-fixed</a>') in page, \
+            '<a href="#fixed">3 auto</a>') in page, \
         "in round order — what was assumed while coding, then what the review raised and "\
         "fixed — and every clause is the jump to the chapter it counts"
     assert page.index('class="sub counts pilelede"') < page.index("Requires human review"), \
@@ -3687,7 +3687,7 @@ def test_a_count_with_no_chapter_to_jump_to_is_not_a_link(tmp_path):
         autofixes=[{"title": "x"}],
         tabs=[{"id": "review", "label": "Review", "blocks": [{"type": "findings"}]}]))
     assert '<a href="#first">1 open LLM review issue</a>' in page
-    assert "1 auto-fixed" in page and '<a href="#fixed">' not in page
+    assert "1 auto" in page and '<a href="#fixed">' not in page
 
 
 def _repo_with_a_buried_file(tmp_path):
@@ -5119,12 +5119,12 @@ def test_the_counts_line_says_open_not_declined(tmp_path):
     spec, points = _points_spec(POINTS_DOC, tmp_path)
     build.reset_list()
     lede = build.opening_lede(spec)
-    assert "1 open review issue" in lede and "1 auto-fixed" in lede
+    assert "1 open review issue" in lede and "1 auto" in lede
     assert "2 assumptions" in lede
     assert "declined" not in lede and "open LLM review issue" not in lede
     # Open leads: it is the pile the reader still owes a decision to, in both
     # vocabularies, and the fixed pile is what is already done either way.
-    assert lede.index("1 open review issue") < lede.index("1 auto-fixed")
+    assert lede.index("1 open review issue") < lede.index("1 auto")
 
 
 def test_a_content_file_that_writes_its_own_piles_keeps_the_old_wording():
@@ -5137,7 +5137,7 @@ def test_a_content_file_that_writes_its_own_piles_keeps_the_old_wording():
     build.reset_list()
     lede = build.opening_lede(spec)
     assert "6 open LLM review issues" in lede
-    assert "4 auto-fixed" in lede
+    assert "4 auto" in lede
     assert "6 assumptions" in lede
 
 
@@ -5212,17 +5212,17 @@ def test_the_scope_chip_says_the_same_thing_as_the_counts_line(tmp_path):
     # sentence, by the agent that wrote the code, and it is never traded away for room.
     assert build.scope_chip_face(spec) == \
         ('\U0001f916Code: <b>7 unsure</b>; '
-         '\U0001f916Review: <b>6 open</b>, <b>3 fixed</b>')
+         '\U0001f916Review: <b>6 open</b>, <b>3 auto</b>')
     small = {"findings": [{"title": "f"}], "autofixes": [{"title": "a"}],
              "assumptions": [{"title": "s", "confidence": .4}]}
     assert build.scope_chip_face(small, "Opus 5") == \
         ('\U0001f916Code: <b>1 unsure</b>; '
-         '\U0001f916Review: <b>1 open</b>, <b>1 fixed</b>')
+         '\U0001f916Review: <b>1 open</b>, <b>1 auto</b>')
     build.reset_list()
     lede = build.opening_lede(dict(spec, tabs=[{"id": "review", "label": "R", "blocks": [
         {"type": "findings"}, {"type": "autofixes"}, {"type": "assumptions", "mode": "A"}]}]))
-    assert "6 open LLM review issues" in lede and "3 auto-fixed" in lede
-    assert lede.index("open") < lede.index("auto-fixed")
+    assert "6 open LLM review issues" in lede and "3 auto" in lede
+    assert lede.index("open") < lede.index("3 auto")
 
 
 def test_refuted_claims_are_not_on_the_page_and_not_counted_as_open(tmp_path):
@@ -5243,7 +5243,7 @@ def test_refuted_claims_are_not_on_the_page_and_not_counted_as_open(tmp_path):
     assert build.refuted_number(spec) == 4, "the data still knows; the page does not say"
     badge = build.review_tab_badge(spec)
     assert badge == {"count": 8, "label": "8 open review issues"}
-    assert build.scope_chip_face(spec) == '\U0001f916Review: <b>8 open</b>, <b>1 fixed</b>'
+    assert build.scope_chip_face(spec) == '\U0001f916Review: <b>8 open</b>, <b>1 auto</b>'
     build.reset_list()
     lede = build.opening_lede(dict(spec, tabs=[{"id": "review", "label": "R", "blocks": [
         {"type": "findings"}, {"type": "autofixes"}]}]))
@@ -5279,9 +5279,9 @@ def test_the_chip_carries_the_coders_assumptions_as_its_own_sentence(tmp_path):
         env=_sessionless_env())
     # Eval run 10: one robot, the counts only; the two agents are named in the hover.
     assert ('\U0001f916 <b>8 assumptions</b> / <img class="angry-bot" alt="" aria-hidden="true" '
-            'src="data:image/png;base64,') in page and '<b>6 open</b> · <b>3 fixed</b>' in page, \
+            'src="data:image/png;base64,') in page and '<b>6 open</b> · <b>3 auto</b>' in page, \
         "every count bold with its noun, the coder's first"
-    assert "Coding agent: 8 assumptions, 7 under 70% sure. Review: 6 open · 3 fixed." in page, \
+    assert "Coding agent: 8 assumptions, 7 under 70% sure. Review: 6 open · 3 auto-fixed." in page, \
         "the hover's first sentence spells out what the face abbreviates"
     assert "recorded while implementing" not in page, \
         "copy pass: the face counts them and the Review tab lists them"
@@ -5289,10 +5289,10 @@ def test_the_chip_carries_the_coders_assumptions_as_its_own_sentence(tmp_path):
     assert build.scope_chip_face({"findings": [], "autofixes": [],
                                   "assumptions": [{"title": "s", "confidence": .5}]}) == \
         ('\U0001f916Code: <b>1 unsure</b>; '
-         '\U0001f916Review: <b>0 open</b>, <b>0 fixed</b>')
+         '\U0001f916Review: <b>0 open</b>, <b>0 auto</b>')
     # And gone entirely at zero — no `; 🤖coder: 0 assumptions`.
     assert build.scope_chip_face({"findings": [{"title": "f"}], "autofixes": []}) == \
-        '\U0001f916Review: <b>1 open</b>, <b>0 fixed</b>'
+        '\U0001f916Review: <b>1 open</b>, <b>0 auto</b>'
     assert "coder" not in build.scope_chip_face(
         {"findings": [{"title": "f"}], "autofixes": [], "assumptions": []})
 
@@ -6273,14 +6273,14 @@ def test_the_review_chip_face_is_counts_only_so_the_scope_bar_keeps_one_row():
     refuted count is gone from it altogether (Victor, 5 Oct 2026)."""
     face = build.review_chip_face(10, 6, 6)
     assert face.startswith('\U0001f916 <b>6 assumptions</b> / <img class="angry-bot"')
-    assert face.endswith('<b>10 open</b> · <b>6 fixed</b>')
+    assert face.endswith('<b>10 open</b> · <b>6 auto</b>')
     face = build.review_chip_face(1, 0, 0)
-    assert "assumption" not in face and face.endswith('<b>1 open</b> · <b>0 fixed</b>'), \
+    assert "assumption" not in face and face.endswith('<b>1 open</b> · <b>0 auto</b>'), \
         "no assumptions: that count is absent, not zeroed"
     assert build.review_chip_key(10, 6, 6, 3) == \
-        "Coding agent: 6 assumptions, 3 under 70% sure. Review: 10 open · 6 fixed."
+        "Coding agent: 6 assumptions, 3 under 70% sure. Review: 10 open · 6 auto-fixed."
     assert build.review_chip_key(10, 6, 6) == \
-        "Coding agent: 6 assumptions. Review: 10 open · 6 fixed."
+        "Coding agent: 6 assumptions. Review: 10 open · 6 auto-fixed."
 
 
 def test_without_a_pull_request_the_page_says_so_on_hover_only(tmp_path):

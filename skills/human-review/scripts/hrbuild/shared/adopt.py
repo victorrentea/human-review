@@ -206,7 +206,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'Local hooks and CI guard the rest; <code>/human-review</code> builds this page.',
             'Read the assumptions first: a wrong guess is a wrong feature.',
             'Open issues: you decide, top first: <b>must look</b> › <b>worth a look</b> › <b>nit</b>.',
-            'Auto-fixed: skim them, and stop only at a fix that changed behaviour.',
+            'Auto (auto-fixed): skim them, and stop only at a fix that changed behaviour.',
         ],
     },
     'behaviour': {
