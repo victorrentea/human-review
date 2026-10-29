@@ -14,11 +14,19 @@ for: every line the page is built from, in one string.
 from __future__ import annotations
 
 import os
+import site
 from pathlib import Path
 
 # A build reads the PR's description from GitHub (`attach_pr_body`); the suite's fixtures
 # name real PR URLs, and a test must not depend on the network or on what a PR says today.
 os.environ.setdefault("HR_NO_GITHUB", "1")
+
+# Several tests point `HOME` at an empty folder so no real transcript leaks into a cost
+# number. Python finds its user site (`~/Library/Python/3.x`) through `HOME`, and that is
+# where Pygments and PyYAML live on a Homebrew Python, so such a build failed with "needs
+# Pygments" instead of testing anything. Pinning the user base here keeps it found
+# whatever `HOME` a test hands its subprocess.
+os.environ.setdefault("PYTHONUSERBASE", site.getuserbase())
 
 HERE = Path(__file__).resolve().parent
 
