@@ -147,6 +147,10 @@ def _colorize_arrow(arrow: str, colour: str) -> str:
 BLOCK_RE = re.compile(
     r"^(?P<kw>group|alt|else|opt|loop|par|break|critical)\b\s*(?P<rest>.*)$", re.I)
 BLOCK_END_RE = re.compile(r"^end$", re.I)
+# A group's `[…]` tail, drawn by PlantUML beside the tab rather than in it — the traced
+# frames put how the transaction ended there: `group tx [committed]`.
+GROUP_TAIL_RE = re.compile(r"^(?P<title>.*?)\s*\[(?P<note>[^\[\]]*)\]$")
+INLINE_COLOR_RE = re.compile(r"</?color(?::[^>]*)?>", re.I)
 ACTIVATE_RE = re.compile(r"^activate\s+(?P<who>\S.*?)\s*$", re.I)
 
 
@@ -182,7 +186,16 @@ def _mark_block(m: "re.Match[str]", removed: bool) -> str:
     if rest.startswith("#"):        # the source chose a colour already; it keeps it
         return f'{m["kw"]} {rest}'
     tint = REMOVED_TINT if removed else ADDED_TINT
-    title = (_struck(rest) if removed else _added(rest)) if rest else ""
+    paint = _struck if removed else _added
+    tail = GROUP_TAIL_RE.match(rest) if m["kw"].lower() == "group" else None
+    if tail:
+        # `group tx [committed]`: PlantUML finds the second label only when the line ENDS
+        # in `]`, so the two parts are painted apart — wrapped whole, the `</color>` after
+        # the bracket put `[committed]` inside the tab. The source's own colour inside the
+        # brackets goes: nested, it would win over the delta's.
+        note = INLINE_COLOR_RE.sub("", tail["note"])
+        return f'{m["kw"]} {tint} {paint(tail["title"])} [{paint(note)}]'
+    title = paint(rest) if rest else ""
     return f'{m["kw"]} {tint} {title}'.rstrip()
 
 

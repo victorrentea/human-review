@@ -348,7 +348,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "move": 'details.seqhow',
         "li": [
             'One per test with the tracing tag, or that this branch wrote or edited.',
-            'HTTP calls, SQL with parameters, calls across services and modules.',
+            'HTTP, SQL with parameters, calls across services and modules; '
+            '<b>tx</b>: committed/rolled back.',
             'Diff: green/red = a call this PR added/removed; its tx box and activation bar tinted.',
             'Click <b>⊕</b> for the SQL or JSON; <b>values</b> fills in each <b>?</b>.',
             'An IDE logo on a call opens that method in the IDE whose logo is green, top right.',

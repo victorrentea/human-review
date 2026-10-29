@@ -595,6 +595,33 @@ def test_a_removed_call_puts_its_transaction_back_struck_and_balanced():
     assert lines.count("activate Backend") == 1 and lines.count("deactivate Backend") == 1
 
 
+_TX_OUTCOME = "group tx [<color:#888888>committed</color>]"
+
+
+def test_an_added_frame_keeps_its_outcome_beside_the_tab():
+    # PlantUML reads `[…]` as the second label only at the very end of the line; wrapped
+    # whole, the outcome moved into the tab and kept its own grey over the delta's green.
+    call = _VETS_CALL.replace("group tx", _TX_OUTCOME)
+    out = _no_caption(sq.diff(_SEQ_FRAME % _BASE_CALLS,
+                              _SEQ_FRAME % (call + "\n" + _BASE_CALLS)))
+    assert (f"group {sq.ADDED_TINT} <color:{sq.ADDED}>tx</color> "
+            f"[<color:{sq.ADDED}>committed</color>]") in out.splitlines()
+
+
+def test_a_removed_frame_strikes_its_outcome_too():
+    call = _VETS_CALL.replace("group tx", _TX_OUTCOME)
+    out = _no_caption(sq.diff(_SEQ_FRAME % (call + "\n" + _BASE_CALLS),
+                              _SEQ_FRAME % _BASE_CALLS))
+    assert (f"group {sq.REMOVED_TINT} <color:{sq.REMOVED}><s>tx</s></color> "
+            f"[<color:{sq.REMOVED}><s>committed</s></color>]") in out.splitlines()
+
+
+def test_an_unchanged_frame_keeps_its_outcome_verbatim():
+    call = _VETS_CALL.replace("group tx", _TX_OUTCOME)
+    out = _no_caption(sq.diff(_SEQ_FRAME % call, _SEQ_FRAME % call))
+    assert _TX_OUTCOME in out.splitlines()
+
+
 def test_a_removed_bracket_whose_partner_survived_is_dropped():
     old = _SEQ_FRAME % "group tx\nBackend -> DB: a\nBackend -> DB: b\nend"
     new = _SEQ_FRAME % "Backend -> DB: a\nBackend -> DB: b\nend"
