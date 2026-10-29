@@ -579,7 +579,7 @@ def browser():
         b.close()
 
 
-def _picker_page(browser, ides, pick=None, extra=""):
+def _picker_page(browser, ides, pick=None, extra="", state="on"):
     """A served page with the masthead logos, one source link and one *in VS Code* link,
     against a fake server whose badge poll answers `ides`. Returns the page and the
     requests it sent (`METHOD path`, and the body of a POST)."""
@@ -607,7 +607,9 @@ def _picker_page(browser, ides, pick=None, extra=""):
             return route.fulfill(body='{"humanReview": 1, "token": "t"}',
                                  content_type="application/json")
         if "/__editor__" in url:
-            return route.fulfill(body=json.dumps({"state": "on", "tip": "Click\nstate line",
+            tip = "Click to open a new IntelliJ in r\nstate line" if state == "off" \
+                else "Click\nstate line"
+            return route.fulfill(body=json.dumps({"state": state, "tip": tip,
                                                   "ides": ides}),
                                  content_type="application/json")
         if "/__editor_open__" in url:
@@ -675,6 +677,20 @@ def test_the_logos_connect_one_ide_at_a_time_and_clicks_follow_it(browser):
     # …and the other one can be connected now.
     page.click("#hr-ide-vscode")
     assert _states(page) == ["vscode:ide-on", "idea:hidden"]
+    page.close()
+
+
+def test_a_picked_ide_with_no_window_on_the_checkout_is_red_and_a_press_opens_it(browser):
+    """Victor, 29 Oct 2026: IntelliJ was green while its only window had another project,
+    and every button failed until a disconnect and a reconnect."""
+    page, sent = _picker_page(browser, [], pick="idea", state="off")
+    page.wait_for_function("document.querySelector('#hr-ide-idea.ide-off')")
+    assert _states(page) == ["vscode:hidden", "idea:ide-off"]
+    assert page.get_attribute("#hr-ide-idea", "data-tip") == "Click to open a new IntelliJ in r"
+    page.click("#hr-ide-idea")
+    page.wait_for_timeout(200)
+    assert any(u.startswith("POST /__editor_open__") and '"ide":"idea"' in u for u in sent), sent
+    assert page.evaluate("localStorage.getItem('hr-ide')") == "idea", "still the pick"
     page.close()
 
 

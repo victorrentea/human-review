@@ -165,19 +165,24 @@
   // them like every `data-local` control and server.js answers a press.
   var chips = [].slice.call(document.querySelectorAll('.chip-ide[data-ide]'));
   var said = null;                         // the last badge poll's answer, about `ide()`
+  // Picked, but the server says no window of it has this checkout: red, not green, and a
+  // press opens it there rather than disconnecting (Victor, 29 Oct 2026: it was green with
+  // IntelliJ on another project, and every button failed until a disconnect and reconnect).
+  function away(app) { return SERVED && app === ide() && !!said && said.state === 'off'; }
   function paintChips() {
     var on = ide(), local = reachable();
     chips.forEach(function (chip) {
       var app = chip.getAttribute('data-ide'), name = IDE_NAME[app], mine = local && app === on;
-      var near = mine && SERVED && said && said.state === 'near';
-      chip.classList.toggle('ide-on', mine && !near);
+      var near = mine && SERVED && said && said.state === 'near', gone = mine && away(app);
+      chip.classList.toggle('ide-on', mine && !near && !gone);
       chip.classList.toggle('ide-near', !!near);
-      chip.classList.toggle('ide-off', local && !mine);
+      chip.classList.toggle('ide-off', local && (!mine || gone));
       chip.hidden = local && !!on && !mine;
       chip.setAttribute('aria-pressed', mine ? 'true' : 'false');
       // One line, what a press does (Victor, 20 Oct 2026: "say click to disconnect IntelliJ,
       // the rest should not be there"). The colour already tells the state.
-      var head = (mine ? 'Click to disconnect ' : 'Click to connect ') + name;
+      var head = gone ? (said.tip || '').split('\n')[0] || 'Click to open this checkout in ' + name
+        : (mine ? 'Click to disconnect ' : 'Click to connect ') + name;
       chip.setAttribute('data-tip', head);
       chip.removeAttribute('data-tip-html');
     });
@@ -190,6 +195,7 @@
         return;
       }
       var app = chip.getAttribute('data-ide');
+      if (away(app) && window.HR.connectIde) { window.HR.connectIde(app); return; }
       if (app === ide()) {
         choose(null);
         flash(IDE_NAME[app] + ' disconnected — code clicks now copy the path');
