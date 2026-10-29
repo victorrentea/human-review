@@ -1,8 +1,11 @@
 /* A DB fixture's colour: in its chip on the Demo tab's DB Fixture row, and (fixtures.js) on each
-   row of the Tests tab whose test starts on it; a test that starts empty gets none. The ring is the page's own text colour at
-   low alpha, so a light dot holds its edge on the light theme and a dark one on the dark. */
-.fx-dot { display:inline-block; flex:0 0 auto; width:.6rem; height:.6rem; border-radius:50%;
-  background:var(--fx, #8b929c); box-shadow:0 0 0 1px color-mix(in srgb, currentColor 35%, transparent);
+   row of the Tests tab whose test starts on it; a test that starts empty gets none. */
+/* Drawn as a database, not a dot (Victor, 29 Oct 2026: "the dot means nothing — it is the
+   base you start from"): a cylinder of stacked discs, cut out of the fixture's colour. */
+.fx-dot { display:inline-block; flex:0 0 auto; width:.72rem; height:.92rem;
+  background:var(--fx, #8b929c);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20.5'%3E%3Cellipse cx='8' cy='3' rx='7' ry='2.6'/%3E%3Cpath d='M1 4.8v3.2c0 1.45 3.13 2.6 7 2.6s7-1.15 7-2.6v-3.2c0 1.45-3.13 2.6-7 2.6S1 6.25 1 4.8zM1 9.6v3.2c0 1.45 3.13 2.6 7 2.6s7-1.15 7-2.6v-3.2c0 1.45-3.13 2.6-7 2.6S1 11.05 1 9.6zM1 14.4v3.2c0 1.45 3.13 2.6 7 2.6s7-1.15 7-2.6v-3.2c0 1.45-3.13 2.6-7 2.6S1 15.85 1 14.4z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20.5'%3E%3Cellipse cx='8' cy='3' rx='7' ry='2.6'/%3E%3Cpath d='M1 4.8v3.2c0 1.45 3.13 2.6 7 2.6s7-1.15 7-2.6v-3.2c0 1.45-3.13 2.6-7 2.6S1 6.25 1 4.8zM1 9.6v3.2c0 1.45 3.13 2.6 7 2.6s7-1.15 7-2.6v-3.2c0 1.45-3.13 2.6-7 2.6S1 11.05 1 9.6zM1 14.4v3.2c0 1.45 3.13 2.6 7 2.6s7-1.15 7-2.6v-3.2c0 1.45-3.13 2.6-7 2.6S1 15.85 1 14.4z'/%3E%3C/svg%3E") center / contain no-repeat;
   vertical-align:middle; cursor:help; }
 .appenv-fx .fx-dot { cursor:inherit; }
 .rm-t .fx-dot { margin:0 .1rem; align-self:center; cursor:pointer; }
