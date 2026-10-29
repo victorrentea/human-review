@@ -60,7 +60,7 @@ from hrbuild.shared.actions import (
     ACTIONS, ACTIONS_FILE, declare_action, declare_rerun_actions, declare_rerun_tests_action,
     declare_tab_reruns, slow_steps, RERUN_TESTS_ACTION,
     tab_rerun_id, tab_steps, TAB_AI, TAB_TIPS, AI_STEPS, PRICED, _load,
-    RERUN_ACTION, RERUN_AI_ACTION, write_actions
+    RERUN_ACTION, RERUN_AI_ACTION, write_actions, rebuild_interpreter
 )
 from hrbuild.shared.assets import (
     APP_ENV_JS, CAPTION_JS, CSS, CSS_FILES, DGM_VIEWS_JS, EDITOR_JS, FOCUS_JS, FOOTER_CSS,
@@ -349,42 +349,6 @@ WHOLE_DOCUMENT = re.compile(r"\s*(?:<!--.*?-->\s*)*<(?:!doctype\b|html\b|head\b)
 #: not about the diff: it is the overview of what the system really does when a test runs.
 #: Victor, 5 Oct 2026: "The Sequence tab should never be crossed out."
 NEVER_STRUCK = frozenset({"testpairs"})
-
-
-def rebuild_interpreter() -> str:
-    """How to say "python, with Pygments" on *this* machine, in a command a reader pastes.
-
-    Not `sys.executable`. Under `uv run --with pygments` that is a path inside a build
-    directory uv deletes on exit, so the one command guaranteed to have worked is also the
-    one guaranteed not to work again — and a command that fails when pasted is worse than
-    no command, because it is tried first and believed second.
-
-    So: plain `python3` when it can already import Pygments, which is the legible answer
-    and the portable one; `uv run --with pygments python` when it cannot and uv is here,
-    which installs nothing permanently and is ~100ms warm; and only then the interpreter
-    running this build, which at least names something real.
-    """
-    # The probe has to ask what `python3` means *in the reader's terminal*, not in this
-    # process. Under `uv run` the front of PATH is two throwaway directories — the
-    # interpreter's own, and the one holding the packages `--with` installed — and both
-    # answer to `python3` with Pygments importable, so a naive probe cheerfully reports
-    # that `python3` works about interpreters that are deleted on exit. Dropping every
-    # ephemeral directory is what asks the right question; if nothing outside them answers
-    # to `python3`, that is an answer too, and the uv line below is the honest one.
-    env = dict(os.environ)
-    throwaway = [str(Path(sys.prefix)), env.get("VIRTUAL_ENV") or "",
-                 os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv")]
-    env["PATH"] = os.pathsep.join(
-        d for d in env.get("PATH", "").split(os.pathsep)
-        if d and not any(t and (d == t or d.startswith(t + os.sep)) for t in throwaway))
-    env.pop("VIRTUAL_ENV", None)
-    outside = shutil.which("python3", path=env["PATH"])
-    if outside and subprocess.run([outside, "-c", "import pygments"],
-                                  capture_output=True, env=env).returncode == 0:
-        return "python3"
-    if shutil.which("uv", path=env["PATH"]) or shutil.which("uv"):
-        return "uv run --with pygments python"
-    return shlex.quote(sys.executable)
 
 
 def page_stylesheets(spec: dict, out_dir: Path) -> list[str]:

@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ..shared.actions import rebuild_interpreter
 from ..shared.commands import RUN_TESTS_FACE
 from ..shared.util import PENCIL, TEST_KIND_ORDER, TESTCHANGES
 
@@ -1942,7 +1943,7 @@ def declare_run_tests_rerun(root: Path, out_dir: Path, skill_dir: Path, *,
         return None
     steps += [s for s in then if s not in steps]
     here = shlex.quote(str(root.resolve()))
-    line = (f"{shlex.quote(sys.executable)} {shlex.quote(str(refresh))} "
+    line = (f"{rebuild_interpreter()} {shlex.quote(str(refresh))} "
             f"--dir {shlex.quote(rel)} --steps {shlex.quote(','.join(steps))} --force --no-serve")
     action = declare_action(tab_rerun_id(RUN_TESTS_ACTION, tab), f"cd {here} && {line}",
                             reload=True, label=label)

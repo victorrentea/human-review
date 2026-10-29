@@ -12,7 +12,7 @@ import sys
 import urllib.parse
 from pathlib import Path
 
-from ..shared.actions import ACTIONS, declare_action, RERUN_ACTION
+from ..shared.actions import ACTIONS, declare_action, rebuild_interpreter, RERUN_ACTION
 from ..shared.bands import _lede_above, _flush_top_bands
 from ..shared.chips import reviewer_names, _angry_bot
 from ..shared.commands import command_html
@@ -3810,7 +3810,7 @@ def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> d
         rel = str(out_dir.resolve().relative_to(root.resolve()))
     except ValueError:
         return None
-    here, py = shlex.quote(str(root.resolve())), shlex.quote(sys.executable)
+    here, py = shlex.quote(str(root.resolve())), rebuild_interpreter()
     push = (f"{py} {shlex.quote(str(script))}"
             f" --file {shlex.quote(rel + '/' + PR_COMMENTS_JSON)}")
     refresh = (f"{py} {shlex.quote(str(skill_dir / 'refresh-report.py'))}"

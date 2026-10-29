@@ -1,8 +1,12 @@
 """The register of commands the served page may ask the server to run."""
 from __future__ import annotations
 
+import functools
 import json
+import os
 import shlex
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,6 +40,44 @@ ACTIONS_FILE = ".actions.json"
 # signatures that have nothing to do with it. `main` clears it before a build and writes
 # it after, which is the only ordering that matters.
 ACTIONS: dict[str, dict] = {}
+
+
+@functools.lru_cache(maxsize=None)
+def rebuild_interpreter() -> str:
+    """How to say "python, with Pygments" on *this* machine, in a command a reader pastes
+    or the server runs — every command in the manifest starts with it.
+
+    Not `sys.executable`. Under `uv run --with pygments` that is a path inside a build
+    directory uv deletes on exit, so the one command guaranteed to have worked is also the
+    one guaranteed not to work again — and a command that fails when pasted is worse than
+    no command, because it is tried first and believed second.
+
+    So: plain `python3` when it can already import Pygments, which is the legible answer
+    and the portable one; `uv run --with pygments python` when it cannot and uv is here,
+    which installs nothing permanently and is ~100ms warm; and only then the interpreter
+    running this build, which at least names something real.
+    """
+    # The probe has to ask what `python3` means *in the reader's terminal*, not in this
+    # process. Under `uv run` the front of PATH is two throwaway directories — the
+    # interpreter's own, and the one holding the packages `--with` installed — and both
+    # answer to `python3` with Pygments importable, so a naive probe cheerfully reports
+    # that `python3` works about interpreters that are deleted on exit. Dropping every
+    # ephemeral directory is what asks the right question; if nothing outside them answers
+    # to `python3`, that is an answer too, and the uv line below is the honest one.
+    env = dict(os.environ)
+    throwaway = [str(Path(sys.prefix)), env.get("VIRTUAL_ENV") or "",
+                 os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv")]
+    env["PATH"] = os.pathsep.join(
+        d for d in env.get("PATH", "").split(os.pathsep)
+        if d and not any(t and (d == t or d.startswith(t + os.sep)) for t in throwaway))
+    env.pop("VIRTUAL_ENV", None)
+    outside = shutil.which("python3", path=env["PATH"])
+    if outside and subprocess.run([outside, "-c", "import pygments"],
+                                  capture_output=True, env=env).returncode == 0:
+        return "python3"
+    if shutil.which("uv", path=env["PATH"]) or shutil.which("uv"):
+        return "uv run --with pygments python"
+    return shlex.quote(sys.executable)
 
 
 def declare_action(action_id: str, command: str, *, params: dict[str, str] | None = None,
@@ -97,7 +139,7 @@ def declare_rerun_actions(root: Path, out_dir: Path, skill_dir: Path) -> None:
     except ValueError:
         return
     here = shlex.quote(str(root.resolve()))
-    py = shlex.quote(sys.executable)
+    py = rebuild_interpreter()
     at = shlex.quote(rel)
     declare_action(
         RERUN_ACTION,
@@ -153,7 +195,7 @@ def declare_rerun_tests_action(root: Path, out_dir: Path, skill_dir: Path) -> di
     if not slow:
         return None
     here = shlex.quote(str(root.resolve()))
-    line = (f"{shlex.quote(sys.executable)} {shlex.quote(str(refresh))}"
+    line = (f"{rebuild_interpreter()} {shlex.quote(str(refresh))}"
             f" --dir {shlex.quote(rel)} --steps all --force --no-serve")
     declare_action(RERUN_TESTS_ACTION, f"cd {here} && {line}", reload=True,
                    label="Re-run the tests and every other slow step, then rebuild this page")
@@ -282,7 +324,7 @@ def declare_tab_reruns(root: Path, out_dir: Path, skill_dir: Path,
     except ValueError:
         return {}
     here = shlex.quote(str(root.resolve()))
-    py = shlex.quote(sys.executable)
+    py = rebuild_interpreter()
     at = shlex.quote(rel)
     feeds = tab_steps(skill_dir)
     out: dict[str, dict] = {}
