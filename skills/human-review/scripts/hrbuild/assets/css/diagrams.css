@@ -265,10 +265,15 @@
 .diagram .head .dgm-only:hover, .diagram .head .dgm-only:has(input:checked) { color:var(--fg); }
 .diagram .head .dgm-only input { margin:0; accent-color:var(--link); cursor:pointer; }
 .diagram.dgm-only-on .svgbox [data-only-off] { display:none; }
-/* The API verdict band's credential, at its right end: the Data card's ✓ badge and file
-   link (`api_spec_provenance`), so the contract says where it comes from like a diagram. */
-.apiverdict .apiprov { margin-left:1rem; display:inline-flex; align-items:center; gap:.7rem;
-  white-space:nowrap; vertical-align:middle; }
-.apiverdict .apiprov .dgm-src { font:500 .8rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+/* The API spec's credential: the Data card's ✓ badge and file link (`api_spec_provenance`),
+   so the contract says where it comes from like a diagram. At the right end of the visual
+   diff's bar, projected into its `prov` slot; at the band's end when there is no diff. */
+.apiprov { display:inline-flex; align-items:center; gap:.7rem; white-space:nowrap;
+  vertical-align:middle; }
+.apiverdict .apiprov { margin-left:1rem; }
+.apiprov .dgm-src { font:500 .8rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
   color:var(--link); text-decoration:none; }
-.apiverdict .apiprov .dgm-src:hover { text-decoration:underline; }
+.apiprov .dgm-src:hover { text-decoration:underline; }
+/* The spec's version, ending the band's line after the differ's report: small, mono, quiet. */
+.apiverdict .apiver { margin-left:.6rem; font:500 .8rem/1.3 ui-monospace, SFMono-Regular,
+  Menlo, monospace; opacity:.75; white-space:nowrap; }

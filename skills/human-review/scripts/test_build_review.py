@@ -6736,3 +6736,27 @@ def test_the_api_band_says_its_spec_is_generated_from_code_and_links_it(tmp_path
     assert ">openapi.yaml</a>" in head
     assert out.endswith('<script>x = "</div>";</script>'), "the band's own </div>, not the last"
     assert build.api_spec_provenance("<p>no band</p>", tmp_path) == "<p>no band</p>"
+
+
+def test_the_api_spec_credit_rides_the_visual_diffs_bar_and_the_version_the_band(tmp_path):
+    """Victor, 29 Oct 2026: the band is one line — verdict, counts, differ, then the
+    spec's version — and "Generated from code  openapi.yaml" moves to the right end of the
+    visual diff's bar, projected into its `prov` slot from the shadow host."""
+    import subprocess
+    (tmp_path / "openapi.yaml").write_text("openapi: 3.0.1\ninfo:\n  title: t\n  version: '1.0'\n")
+    test = tmp_path / "src/test/java/OpenApiExtractorTest.java"
+    test.parent.mkdir(parents=True)
+    test.write_text('class OpenApiExtractorTest { void gen() {\n'
+                    '  Files.writeString(Path.of("../openapi.yaml"), spec); } }\n')
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    band = ('<div class="apiverdict green"><span class="v">Backwards compatible</span></div>'
+            '<div class="oavhost" id="embed-swaggerdiff" role="region"></div><template></template>')
+    out = build.api_spec_provenance(band, tmp_path)
+    head = out[:out.index("</div>")]
+    assert head.endswith('>v1.0</span>') and "Generated from code" not in head
+    host = out[out.index('id="embed-swaggerdiff"'):]
+    host = host[:host.index("</div>")]
+    assert '<span slot="prov" class="apiprov">' in host and "Generated from code" in host
+    assert ">openapi.yaml</a>" in host
+    assert build.spec_version(tmp_path / "openapi.yaml") == "1.0"

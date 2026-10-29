@@ -170,7 +170,7 @@ from hrbuild.shared.folders import (
 from hrbuild.shared.changes import changed_files, file_link, files_pop, _numbers
 from hrbuild.shared.diagrams import (
     CARD_NAME, card_rerun_html, card_rerun_id, REFRESH_CARD,
-    CHANGED_BADGE, UNCHANGED_CONTEXT_TIP, api_spec_provenance, diagram_provenance, generated_badge, prov_badge, _row_provenance,
+    CHANGED_BADGE, UNCHANGED_CONTEXT_TIP, api_spec_provenance, spec_version, diagram_provenance, generated_badge, prov_badge, _row_provenance,
     _PROV_CODE, _PROV_SOURCES, _WRITES, _TEST_PATH, _prov_source, _mentions,
     CM_LEGEND_NEW, CM_LEGEND_TODO, DEFAULT_FOCUS, DGM_SRC_ANCHOR, dgm_views_html, DRAWIO_TOKEN,
     drawio_unchanged, drawio_unchanged_at, drawio_widget_html, expand_drawio,

@@ -236,6 +236,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             '<b>Breaking</b>: a client of main can fail.',
             'One DTO change can break many endpoints.',
             'For each break, ask who calls it and if they were updated.',
+            '<b>changes: expand</b> opens every endpoint and field the branch changed.',
         ],
         "code": (
             '<span class="c">e.g. GET /api/owners/1</span>\n'

@@ -656,8 +656,9 @@ def render(model, entries, global_changes, tags, old_label, new_label) -> str:
     n_changes = change_total(entries, global_changes)
     # Victor, 7 Oct 2026 (Devoxx): "it should say expand 25 changes" — the number is the
     # verdict band's count of changes, so the toggle names them changes, not "impacted".
-    label = (f"expand {n_changes} change{'' if n_changes == 1 else 's'}" if n_changes
-             else "expand changes")
+    # Since 29 Oct 2026 the toggle sits after a `changes:` label, the way the chips sit
+    # after `endpoints:`, so the noun is the label's and the toggle keeps the number.
+    label = f"expand {n_changes}" if n_changes else "expand"
     return (TEMPLATE.replace("__EXPAND_LABEL__", label)
             .replace("__TIP_JS__", _tip_js())
             .replace("__PAYLOAD__", payload))
@@ -779,6 +780,7 @@ TEMPLATE = r"""<!doctype html>
   .dot.added    { background: var(--dv-added); }
   .dot.removed  { background: var(--dv-removed); }
   .dot.untouched{ background: #4a4a52; }
+  .dv-group { display: inline-flex; align-items: center; white-space: nowrap; }
   .dv-spacer { flex: 1; }
   .dv-toggle {
     display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
@@ -1445,21 +1447,28 @@ TEMPLATE = r"""<!doctype html>
 <body>
 <div id="dv-app">
 <div class="dv-bar">
-  <h1>OpenAPI visual diff</h1>
+  <!-- "OpenAPI diff", not "visual diff" (Victor, 29 Oct 2026): the picture says it. -->
+  <h1>OpenAPI diff</h1>
   <!-- The spec's version, beside the title (Victor, 20 Oct 2026): on a line of its own
-       under the bar it cost a row for four characters. Filled in at boot from DATA.spec. -->
+       under the bar it cost a row for four characters. Filled in at boot from DATA.spec,
+       standalone only: embedded in the review, the verdict band above says it. -->
   <span class="dv-ver" id="dv-ver"></span>
   <!-- The pair of refs used to sit here, between the title and the chips. Embedded in the
        review -- which is how this page is read -- the masthead two inches above already
        says which branch is against which base, on every tab, and saying it again here
        only cost the chips their room. Standalone it is not lost: it is the tab title. -->
   <span id="dv-chips"></span>
-  <span class="dv-spacer"></span>
   <!-- No tooltip here on purpose: the checkbox demonstrates itself the moment it is
        ticked. The count is the verdict line's count: that line
        says "25 changes" right above this diff, and a toggle that opened 11 endpoints
-       with no number on it read as a second, contradicting tally. -->
-  <label class="dv-toggle"><input type="checkbox" id="dv-expand"> __EXPAND_LABEL__</label>
+       with no number on it read as a second, contradicting tally. Beside the endpoint
+       chips and labelled like them, `changes: [] expand 25` (Victor, 29 Oct 2026): the
+       two groups are the two units this bar counts in. -->
+  <span class="dv-group" id="dv-changes"><span class="dv-unit">changes:</span><label class="dv-toggle"><input type="checkbox" id="dv-expand"> __EXPAND_LABEL__</label></span>
+  <span class="dv-spacer"></span>
+  <!-- An embedding page projects its own credit for the spec here (the review's
+       "Generated from code  openapi.yaml"), styled by that page. Empty standalone. -->
+  <slot name="prov"></slot>
 </div>
 <div id="dv-global"></div>
 <div id="swagger-ui"></div>
@@ -2386,7 +2395,7 @@ function boot() {
   booted = true;
   var ver = DATA.spec && DATA.spec.info && DATA.spec.info.version;
   const verEl = root.getElementById('dv-ver');
-  if (ver && verEl) verEl.textContent = 'v' + ver;
+  if (ver && verEl && !HOST) verEl.textContent = 'v' + ver;
   SwaggerUIBundle({
     spec: DATA.spec,   // already fully dereferenced by the generator
     domNode: root.getElementById('swagger-ui'),
@@ -2422,7 +2431,7 @@ function retryBundle() {
 function plainList() {
   if (booted) return;
   booted = true;
-  root.getElementById('dv-expand').closest('label').style.display = 'none';
+  root.getElementById('dv-changes').style.display = 'none';
   const ops = Object.entries(DATA.ops).filter(([, e]) => e.state !== 'untouched')
     .sort((a, b) => ORDER.indexOf(a[1].state) - ORDER.indexOf(b[1].state));
   const box = root.getElementById('swagger-ui');

@@ -473,8 +473,25 @@ def test_the_expand_toggle_counts_changes_by_that_name():
             "text": "endpoint added", "section": "paths"}]
     model, entries, global_changes, tags = ovd.build_model(old, new, raw)
     page = ovd.render(model, entries, global_changes, tags, "main", "branch")
-    assert 'id="dv-expand"> expand 1 change</label>' in page
-    assert "expand 1 impacted" not in page
+    # Since 29 Oct 2026 the noun is the group's label, the way `endpoints:` labels the
+    # chips: `changes: [] expand 1`.
+    assert ('<span class="dv-unit">changes:</span><label class="dv-toggle">'
+            '<input type="checkbox" id="dv-expand"> expand 1</label>') in page
+    assert "expand 1 impacted" not in page and "expand 1 change" not in page
+
+
+def test_the_bar_reads_title_endpoints_changes_then_the_embedders_slot():
+    """Victor, 29 Oct 2026: "OpenAPI diff", not "visual diff"; the expand toggle right
+    after the endpoint chips; the right end left to the embedding page (the review puts
+    its "Generated from code  openapi.yaml" there); the version only standalone."""
+    page = ovd.render({"paths": {}}, {}, [], {}, "main", "branch")
+    bar = page[page.index('<div class="dv-bar">'):]
+    bar = bar[:bar.index('<div id="dv-global">')]
+    assert "<h1>OpenAPI diff</h1>" in bar and "visual diff</h1>" not in bar
+    order = [bar.index(x) for x in ('id="dv-chips"', 'id="dv-changes"', 'class="dv-spacer"',
+                                     '<slot name="prov">')]
+    assert order == sorted(order)
+    assert "if (ver && verEl && !HOST)" in page, "embedded, the review's band says the version"
 
 
 def test_a_node_that_will_not_open_gets_its_tree_redrawn_once():

@@ -536,12 +536,43 @@ def generated_badge(rel: str, root: Path, mentions: list | None = None,
                       else f"Written by {Path(path).name}", href)
 
 
+def spec_version(path: Path) -> str:
+    """`info.version` of an OpenAPI spec, YAML or JSON, or "" when it has none. Read with
+    PyYAML when it is installed, else by pattern: the build does not require PyYAML, and
+    the version is one scalar under `info:` in every spec a generator writes."""
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    try:
+        import yaml  # type: ignore
+        doc = yaml.safe_load(text)
+        ver = ((doc or {}).get("info") or {}).get("version") if isinstance(doc, dict) else None
+        return "" if ver is None else str(ver)
+    except Exception:  # no PyYAML, or a spec it cannot read: the patterns below
+        pass
+    flow = re.search(r'^info:\s*\{[^}]*?\bversion:\s*["\']?([^"\',}]+)', text, re.M)
+    block = re.search(r'^info:[ \t]*\n((?:(?:[ \t]+.*)?\n)*)', text, re.M)
+    inner = block and re.search(r'^[ \t]+version:[ \t]*["\']?([^"\'\n#]+?)["\']?[ \t]*$',
+                                block.group(1), re.M)
+    js = re.search(r'"info"\s*:\s*\{[^{}]*?"version"\s*:\s*"([^"]+)"', text)
+    m = flow or inner or js
+    return m.group(1).strip() if m else ""
+
+
 def api_spec_provenance(band: str, root: Path, out_dir: Path | None = None) -> str:
-    """The API verdict band, ending on where its contract comes from, the way a diagram
-    card's head does (Victor, 29 Oct 2026): *Generated from code*, linked to the test that
-    writes the spec, then the spec itself, linked like a card's `.puml`. The spec is
-    `spec` in human-review.json (`openapi.yaml` by default). Unchanged when the band is
-    missing or nothing in the checkout writes the spec."""
+    """The API tab's head, finished with what the spec itself says about its origin.
+
+    * The spec's version ends the verdict band's line, after the differ's report
+      (Victor, 29 Oct 2026): it used to sit beside the visual diff's title, a row lower.
+    * *Generated from code*, linked to the test that writes the spec, then the spec
+      itself, linked like a card's `.puml` (Victor, 29 Oct 2026), goes to the right end
+      of the visual diff's bar: it is projected into that bar's `prov` slot as a light
+      child of its shadow host, so it keeps this page's styles. With no visual diff on
+      the tab it ends the band instead, where it sat before.
+
+    The spec is `spec` in human-review.json (`openapi.yaml` by default). Unchanged when
+    the band is missing or the spec is not in the checkout."""
     # The band's own `</div>`: it holds only spans, and the section goes on past it (the
     # visual diff, whose script has `</div>`s of its own in strings).
     start = band.find('<div class="apiverdict')
@@ -555,13 +586,21 @@ def api_spec_provenance(band: str, root: Path, out_dir: Path | None = None) -> s
     spec = (cfg.get("spec") if isinstance(cfg, dict) else None) or "openapi.yaml"
     if not (Path(root) / spec).is_file():
         return band
+    ver = spec_version(Path(root) / spec)
+    stamp = (f'<span class="apiver" data-tip="The version in {html.escape(Path(spec).name)}'
+             f'\'s info block">v{html.escape(ver)}</span>') if ver else ""
     badge = generated_badge(spec, root, source="code",
                             tip="{test} writes this contract from the Java controllers and "
                                 "DTOs, so it is the code's, never hand-edited")
-    if not badge:
-        return band
-    return (band[:end] + f'<span class="apiprov">{badge}'
-            f'{_source_link(spec, root, out_dir)}</span>' + band[end:])
+    prov = (f'{badge}{_source_link(spec, root, out_dir)}') if badge else ""
+    host = re.search(r'<div class="oavhost" id="embed-swaggerdiff"[^>]*>(?=</div>)', band)
+    if prov and host:
+        band = (band[:host.end()] + f'<span slot="prov" class="apiprov">{prov}</span>'
+                + band[host.end():])
+        prov = ""
+    elif prov:
+        prov = f'<span class="apiprov">{prov}</span>'
+    return band[:end] + stamp + prov + band[end:]
 
 
 def _provenance(rel: str, root: Path) -> str:
