@@ -164,12 +164,13 @@ from hrbuild.shared.genseq import (
 from hrbuild.shared.folders import (
     folder_targets, link_folders, maven_modules, package_folders, puml_boxes, _artifact_id,
     _DECL, _ENTITY, _KEYWORD, _ls_files, _module_dir, _packages, _pattern, _SOURCE_DIR,
-    _STEREO, _tree_base, box_impact, _branch_files, _impact_bar, _center_label, _impact_pop, _RECT, _ATTR
+    _STEREO, _tree_base, box_impact, _branch_files, _impact_bar, _center_label, _impact_pop, _RECT, _ATTR,
+    _PAINTED, ONLY_IMPACTED, only_impacted
 )
 from hrbuild.shared.changes import changed_files, file_link, files_pop, _numbers
 from hrbuild.shared.diagrams import (
     CARD_NAME, card_rerun_html, card_rerun_id, REFRESH_CARD,
-    CHANGED_BADGE, UNCHANGED_CONTEXT_TIP, diagram_provenance, prov_badge, _row_provenance,
+    CHANGED_BADGE, UNCHANGED_CONTEXT_TIP, api_spec_provenance, diagram_provenance, generated_badge, prov_badge, _row_provenance,
     _PROV_CODE, _PROV_SOURCES, _WRITES, _TEST_PATH, _prov_source, _mentions,
     CM_LEGEND_NEW, CM_LEGEND_TODO, DEFAULT_FOCUS, DGM_SRC_ANCHOR, dgm_views_html, DRAWIO_TOKEN,
     drawio_unchanged, drawio_unchanged_at, drawio_widget_html, expand_drawio,
@@ -1138,6 +1139,8 @@ def _main(argv=None) -> int:
                 raise SystemExit(f'[review] tab block references no section: {block["id"]}')
             # The API verdict band is red when the contract breaks (or the two differs
             # disagree): the pill goes red with it, the CODEOWNERS way.
+            if block["id"] == "swaggerdiff":
+                body = api_spec_provenance(body, root, out_dir)
             if block["id"] == "swaggerdiff" and 'class="apiverdict red"' in body:
                 auto_badge["tabClass"] = "alarm"
                 auto_badge["label"] = "breaking contract change"

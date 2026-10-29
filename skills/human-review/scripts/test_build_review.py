@@ -6714,3 +6714,25 @@ def test_each_files_count_opens_onto_the_files_it_counts(tmp_path):
     # Deleted: no working-tree side to open, so the name alone.
     assert "Gone.java" in pops["removed"] and "<a " not in pops["removed"]
     assert _chip_face(files["value"]).count("<span") == 3
+
+
+def test_the_api_band_says_its_spec_is_generated_from_code_and_links_it(tmp_path):
+    """Victor, 29 Oct 2026: the API tab says, like a diagram card, that its contract is
+    written by a test from the Java code, and links the spec itself."""
+    import subprocess
+    (tmp_path / "human-review.json").write_text('{"spec": "openapi.yaml"}')
+    (tmp_path / "openapi.yaml").write_text("openapi: 3.0.1\n")
+    test = tmp_path / "src/test/java/OpenApiExtractorTest.java"
+    test.parent.mkdir(parents=True)
+    test.write_text('class OpenApiExtractorTest { void gen() {\n'
+                    '  Files.writeString(Path.of("../openapi.yaml"), spec); } }\n')
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    band = ('<div class="apiverdict green"><span class="v">Backwards compatible</span></div>'
+            '<script>x = "</div>";</script>')
+    out = build.api_spec_provenance(band, tmp_path)
+    head = out[:out.index("</div>")]
+    assert "Generated from code" in head and "OpenApiExtractorTest.java" in head
+    assert ">openapi.yaml</a>" in head
+    assert out.endswith('<script>x = "</div>";</script>'), "the band's own </div>, not the last"
+    assert build.api_spec_provenance("<p>no band</p>", tmp_path) == "<p>no band</p>"
