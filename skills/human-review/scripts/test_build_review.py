@@ -2063,6 +2063,21 @@ def test_a_test_that_no_longer_runs_says_so_beside_its_own_row():
     assert ">disabled</span>" in out and 'class="tsilenced"' in out
 
 
+def test_a_silenced_rows_hover_says_whether_the_branch_did_it():
+    """A `@wip` feature cucumber.js excluded on main too is not this branch's doing, and the
+    stamp's hover is where a reader of one row finds out (hr-claude-18, 30 Oct 2026)."""
+    def tip(**r):
+        out = build.render_tests([dict({"name": "t", "path": "src/a.feature", "line": 3,
+                                        "silenced": "disabled"}, **r)], Path("/repo"))
+        return out.split('class="tsilenced" data-tip="')[1].split('"')[0]
+    assert tip(status="added") == "Written on this branch already switched off; it has never run."
+    assert tip(status="unchanged", wasSilenced="disabled") == \
+        "Still written; never runs, and did not run at the base either."
+    assert tip(status="modified") == "Ran at the base; this branch switched it off, so it never runs now."
+    assert tip(status="deleted", silenced="commented") == \
+        "Ran at the base; this branch switched it off, so it never runs now."
+
+
 def test_a_commented_out_test_is_not_reported_as_a_plain_deletion():
     out = build.render_tests(
         [{"name": "parked", "path": "src/test/VisitTest.java", "status": "deleted",
@@ -2119,7 +2134,8 @@ def test_the_tests_no_list_shows_are_named_on_their_counts_hover():
     gone = out[out.index('class="removed"'):]
     assert 'data-tip="2 tests gone: VisitTest.java: parked, obsolete"' in gone
     off = out[out.index('class="toff"'):]
-    assert 'data-tip="Still written; never runs: VisitTest.java: arrives_off"' in off
+    assert ('data-tip="Written on this branch already switched off (@Disabled, .skip, a tag '
+            'like @wip), so it has never run and pins nothing: VisitTest.java: arrives_off"') in off
     for name in ("create_withVet", "update_ok", "untouched"):
         assert name not in out
 
@@ -2128,7 +2144,35 @@ def test_a_test_that_never_runs_is_counted_under_that_and_not_under_new():
     """`new` and `@Disabled` is not news about coverage, it is news about a test that has
     never run — and counting it under "new" hides it among the twenty-one that do run."""
     out, _ = build.render_test_ledger(LEDGER_ROWS, Path("/repo"))
-    assert ">1 stopped running</span>" in out and 'data-tip="1 new test">+1</span>' in out
+    assert ">1 new, never runs</span>" in out and 'data-tip="1 new test">+1</span>' in out
+    assert "stopped running" not in out, "it never ran, so nothing stopped"
+
+
+def test_only_a_test_this_branch_switched_off_stopped_running():
+    """hr-claude-18 (30 Oct 2026) showed "3 stopped running" for visit-date-range.feature:
+    a Feature tagged `@wip` that cucumber.js leaves out on main and on the branch alike.
+    Two of its scenarios never ran at the base, and the third the branch wrote under the
+    same tag. Stopped means ran at the base and not now — `wasSilenced` says it did not."""
+    rows = [
+        {"name": "A visit cannot predate the pet", "path": "src/visit-date-range.feature",
+         "status": "unchanged", "line": 8, "silenced": "disabled", "wasSilenced": "disabled"},
+        {"name": "The reported year 0009 date is refused",
+         "path": "src/visit-date-range.feature", "status": "added", "line": 12,
+         "silenced": "disabled"},
+        {"name": "edited_while_off", "path": "src/test/VisitTest.java", "status": "modified",
+         "line": 20, "silenced": "disabled", "wasSilenced": "disabled"},
+        {"name": "switched_off_here", "path": "src/test/VisitTest.java", "status": "unchanged",
+         "line": 30, "silenced": "disabled"},
+    ]
+    out, moved = build.render_test_ledger(rows, Path("/repo"))
+    assert moved == 3, "the scenario off at the base and still off moved nothing"
+    stopped = out[out.index(">1 stopped running") - 400:out.index(">1 stopped running")]
+    assert stopped.endswith("VisitTest.java: switched_off_here\""), stopped
+    assert ">1 new, never runs</span>" in out
+    assert 'data-tip="1 test edited"' in out, "edited while off is an edit, not a stop"
+    assert ("1 more test in the files this change set touched, left exactly as they were; "
+            "1 of them already switched off at the base, and still off: "
+            "visit-date-range.feature: A visit cannot predate the pet") in out
 
 
 def test_the_untouched_rest_are_counted_rather_than_listed():
@@ -2150,7 +2194,7 @@ def test_the_ledger_is_one_line_of_counts_and_nothing_to_unfold():
     # Three slots in a `.tmoves` grid, so the chapters' counts stand under them in columns
     # (Victor, 14 Oct 2026); no dot between "stopped" and the counts, which sit apart.
     # `+` last and a blank fourth, where a chapter puts its total behind its `+N` (19 Oct).
-    assert ('>1 stopped running</span><span class="tmoves">'
+    assert ('>1 new, never runs</span><span class="tmoves">'
             '<span class="removed" data-tip="2 tests gone: VisitTest.java: parked, obsolete">'
             '\u22122</span>'
             f'<span class="changed" data-tip="1 test edited">{build.PENCIL}1</span>'

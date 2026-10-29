@@ -107,7 +107,8 @@ def resolve_tests(entries, index: dict, root: Path) -> list[dict]:
             line, silenced = found
             row = {"name": name, "path": rel, "status": "unchanged", "line": line}
             if silenced:
-                row["silenced"] = silenced
+                # Its file is not in the diff, so it was just as off at the base.
+                row["silenced"] = row["wasSilenced"] = silenced
         out.append(dict(row, note=e.get("note", "")))
     return out
 
@@ -178,7 +179,14 @@ def render_tests(rows, root: Path, flags: bool = True) -> str:
         # around it, and a flag that shoves its own row sideways costs more than it says.
         state = ""
         if r.get("silenced"):
-            state = (f'<span class="tsilenced" data-tip="Still written; never runs.">'
+            # Whose doing it is: written switched off, switched off here, or off at the
+            # base already — a `@wip` feature the runner skipped on main too is not news.
+            whose = ("Written on this branch already switched off; it has never run."
+                     if r["status"] == "added" else
+                     "Still written; never runs, and did not run at the base either."
+                     if r.get("wasSilenced") else
+                     "Ran at the base; this branch switched it off, so it never runs now.")
+            state = (f'<span class="tsilenced" data-tip="{whose}">'
                      f'{SILENCED_LABEL.get(r["silenced"], r["silenced"])}</span>')
         elif r.get("wasSilenced") and r["status"] != "deleted":
             state = ('<span class="tback" data-tip="Was disabled; runs now.">'
@@ -217,22 +225,34 @@ def render_test_ledger(rows, root: Path) -> tuple[str, int]:
     no list on the page shows — tests that stopped running and tests that are gone, which
     run nothing and so cover nothing — keep their names, on their count's hover.
     `root` is unused since the list went; the callers still pass it.
+
+    "Stopped running" means it ran at the base and does not now — the same test the chip's
+    `disabled` total counts (test-changes.py:totals). A test switched off at the base and
+    still off was not stopped by this branch: it is counted with the rest it left alone,
+    and named on that hover. A new one written already switched off never started, so it
+    is said apart, "new, never runs" (Victor, 30 Oct 2026: hr-claude-18 showed "3 stopped
+    running" for a `@wip` feature cucumber.js had excluded on main all along — two
+    scenarios that never ran there and one the branch added under the same tag).
     """
-    off, new, gone, edited = [], [], [], []
+    off, born_off, new, gone, edited, still_off = [], [], [], [], [], []
     untouched = 0
     for r in rows:
-        if r.get("silenced") and r["status"] != "deleted":
+        if r["status"] == "deleted":
+            gone.append(r)
+        elif r.get("silenced") and r["status"] == "added":
+            born_off.append(r)
+        elif r.get("silenced") and not r.get("wasSilenced"):
             off.append(r)
         elif r["status"] == "added":
             new.append(r)
-        elif r["status"] == "deleted":
-            gone.append(r)
         elif r["status"] == "modified":
             edited.append(r)
         else:
             untouched += 1
+            if r.get("silenced"):
+                still_off.append(r)
 
-    moved = len(off) + len(new) + len(gone) + len(edited)
+    moved = len(off) + len(born_off) + len(new) + len(gone) + len(edited)
     if not moved and not untouched:
         return "", 0
     # The three moves are their signs and their counts only, `+54 −9 ✏️7` (Victor, 5 Oct
@@ -254,16 +274,26 @@ def render_test_ledger(rows, root: Path) -> tuple[str, int]:
              count("added", "+", new, "new tests"))
     moves = (f'<span class="tmoves">{"".join(x or "<span></span>" for x in slots)}'
              '<span></span></span>' if any(slots) else "")
-    stopped = ""
-    if off:
-        why = f"Still written; never runs: {_names_by_file(off)}"
-        stopped = (f'<span class="toff" data-tip="{html.escape(why, quote=True)}">'
-                   f'{len(off)} stopped running</span>')
+    def silenced(items: list, face: str, why: str) -> str:
+        if not items:
+            return ""
+        tip = f"{why}: {_names_by_file(items)}"
+        return (f'<span class="toff" data-tip="{html.escape(tip, quote=True)}">'
+                f'{len(items)} {face}</span>')
+    stopped = silenced(off, "stopped running",
+                       "Ran at the base; this branch switched it off (@Disabled, .skip, "
+                       "a tag like @wip), so it is still written and never runs")
+    unborn = silenced(born_off, f"new, never run{'s' if len(born_off) == 1 else ''}",
+                      "Written on this branch already switched off (@Disabled, .skip, a tag "
+                      "like @wip), so it has never run and pins nothing")
     # No dot between them: the counts sit at the row's right end, under the chapters'
     # columns, and "stopped running" at its left (CSS), so a dot would float between.
-    face = "".join(x for x in (stopped, moves) if x) or "no test moved"
+    face = "".join(x for x in (stopped, unborn, moves) if x) or "no test moved"
     rest = (f'{untouched} more test{"s" if untouched != 1 else ""} in the files this '
             "change set touched, left exactly as they were") if untouched else ""
+    if still_off:
+        rest += (f"; {len(still_off)} of them already switched off at the base, and "
+                 f"still off: {_names_by_file(still_off)}")
     tip = f' data-tip="{html.escape(rest, quote=True)}"' if rest else ""
     return f'<p class="tledger" id="test-ledger"{tip}>{face}</p>', moved
 
