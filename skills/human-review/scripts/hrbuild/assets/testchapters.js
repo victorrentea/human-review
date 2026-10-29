@@ -45,6 +45,9 @@
   var CH = [['e2e', 'end-to-end, from the browser'],
             ['api', 'calling the API directly'],
             ['unit', 'one component, isolated']];
+  // In the page's order, not this list's: `TEST_KIND_ORDER` (shared/util.py), which the
+  // Sequence tab sorts its pairs by too.
+  if (D.order) CH.sort(function (a, b) { return D.order.indexOf(a[0]) - D.order.indexOf(b[0]); });
   // Which chapters start open: none (Victor, 7 Oct 2026). Each heading carries its own
   // +added / -deleted / edited counts, so the closed card reads as a summary by kind.
   var OPEN = {};

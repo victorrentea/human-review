@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from ..shared.commands import RUN_TESTS_FACE
-from ..shared.util import PENCIL, TESTCHANGES
+from ..shared.util import PENCIL, TEST_KIND_ORDER, TESTCHANGES
 
 # What happened to a test, and what the page calls it. The colour classes are the page's
 # existing added/removed vocabulary — the same green and red the diff gutters, the line
@@ -1238,6 +1238,7 @@ def relabel_cats(frag: str) -> str:
             return m.group(0)
         if isinstance(data.get("cats"), dict):
             data["cats"] = {k: CAT_LABELS.get(k, v) for k, v in data["cats"].items()}
+        data["order"] = list(TEST_KIND_ORDER)
         return m.group(1) + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + m.group(3)
     return re.sub(r'(<script type="application/json" class="rm-data">)(.*?)(</script>)', blob, frag,
                   flags=re.S)

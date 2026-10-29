@@ -22,6 +22,12 @@ TESTCHANGES = HERE / "test-changes.py"
 # ✍️ writing hand it was until 20 Oct 2026 (Victor: "replace the hand with a pencil").
 PENCIL = "\u270f\ufe0f"
 
+#: The order the kinds of test are listed in, wherever the page lists them by kind: the
+#: Tests card's chapters (sent to `testchapters.js` in its `rm-data` blob) and the Sequence
+#: tab's pairs. One tuple, so the two tabs cannot drift apart (Victor, 29 Oct 2026: E2E
+#: first, then API, "the same order" on both).
+TEST_KIND_ORDER = ("e2e", "api", "unit")
+
 
 #: A diagram whose file name is an abbreviation a heading should spell out: the card
 #: drawn from `DB.puml` is titled "Database" (Victor, 7 Oct 2026). The file link beside

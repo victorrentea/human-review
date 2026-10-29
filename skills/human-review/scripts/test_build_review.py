@@ -4123,6 +4123,24 @@ def test_a_pair_says_what_kind_of_test_drew_it(tmp_path):
     assert ".testcat[data-cat=api]" in build.CSS and ".testcat[data-cat=unit]" in build.CSS
 
 
+def test_the_sequence_tab_and_the_tests_card_list_the_kinds_in_one_order():
+    """Victor, 29 Oct 2026: E2E first, then API, "the same order" as the Tests card — held
+    by one tuple both read, not by two lists that happen to agree today."""
+    import importlib, inspect
+    seq = importlib.import_module("hrbuild.tabs.sequence")
+    tests = importlib.import_module("hrbuild.tabs.tests")
+    assert build.TEST_KIND_ORDER == ("e2e", "api", "unit")
+    assert seq.TEST_KIND_ORDER is build.TEST_KIND_ORDER is tests.TEST_KIND_ORDER
+    # The card's chapters take the order from the blob, whatever its own list says.
+    frag = ('<script type="application/json" class="rm-data">'
+            + json.dumps({"cats": {"e2e": "E2E"}}) + "</script>")
+    assert '"order": ["e2e", "api", "unit"]' in tests.relabel_cats(frag)
+    assert "if (D.order) CH.sort(" in tests.REQMAP_CHAPTERS_JS
+    # The tab sorts its pairs by it, stable within a kind.
+    src = inspect.getsource(seq)
+    assert "TEST_KIND_ORDER.index(cat)" in src and "sorted(pairs, key=lambda p: p[0])" in src
+
+
 def test_a_pair_also_says_what_wrote_the_test(tmp_path):
     """`UI` covered a Playwright spec and a Cucumber feature alike, and the shut row gave
     a reader no way to tell which was which — though only one of them is written in a

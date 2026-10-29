@@ -16,6 +16,7 @@ from ..shared.genseq import (GENSEQ_HANDLE, GENSEQ_OVERLAY, genseq_by_test, gens
                              genseq_file, pair_anchor, test_of_genseq)
 from ..shared.snippets import SNIPPET_BASE, snippet_html
 from ..shared.svg import inline_svg
+from ..shared.util import TEST_KIND_ORDER
 
 #: The three kinds of test the page names, and what each one is — the Tests tab's own
 #: vocabulary, word for word, because a reader who learnt `UI` over there must not have to
@@ -1188,6 +1189,7 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path,
     # diagram's chapters name, and one for a diagram that names none.
     tests_shown: set[tuple] = set()
 
+    pairs: list[tuple[int, str]] = []
     for test_rel, entries in plan.items():
         quoted_by_pair = _share_excerpts(test_rel, entries, snippets, used, root)
         for puml_rel, row in entries:
@@ -1224,11 +1226,15 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path,
             if why == "tagged" and also is None:
                 via = touched_via(test_rel, root)
                 also = "touched" if via else None
-            parts.append(_folded_pair(puml_rel, test_rel, pieces, quoted, scenarios,
-                                      _pair_cat(puml_rel, root,
-                                                authored_cat.get(test_rel)), why, also, via,
-                                      root=root, fixture=fixture_dot(test_rel, scenarios)))
+            cat = _pair_cat(puml_rel, root, authored_cat.get(test_rel))
+            pairs.append((TEST_KIND_ORDER.index(cat) if cat in TEST_KIND_ORDER
+                          else len(TEST_KIND_ORDER),
+                          _folded_pair(puml_rel, test_rel, pieces, quoted, scenarios, cat,
+                                       why, also, via, root=root,
+                                       fixture=fixture_dot(test_rel, scenarios))))
             register(puml_rel, scenarios)
+    # By kind, in the Tests card's order (`TEST_KIND_ORDER`); within a kind, as planned.
+    parts += [h for _, h in sorted(pairs, key=lambda p: p[0])]
 
     orphaned = [x for x in snippets if id(x) not in used] + undrawn
     tail = block.get("unpaired") or {}
