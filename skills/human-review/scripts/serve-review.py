@@ -960,6 +960,30 @@ def open_db_in_idea(root: Path, url: str) -> dict | None:
     return None
 
 
+#: How long a click that had to open the checkout in IntelliJ waits for that window's
+#: bridge to answer before giving up: a cold project open plus the plugin's start.
+IDEA_OPEN_WAIT_S = 180
+
+
+def launch_idea_for_db(root: Path, url: str, wait=IDEA_OPEN_WAIT_S, poll=2.0) -> dict:
+    """No IntelliJ window has `root`: open it there, then show the Database view once its
+    bridge answers — in the background, so the click gets its answer now. The data source
+    is written first, so the project IntelliJ opens already holds it even if the wait runs
+    out (Victor, 29 Oct 2026: "open it there, then click again" was a chore the server can
+    do itself)."""
+    write_data_source(Path(root), url)
+    _launch_in("idea", root)
+
+    def finish():
+        deadline = time.monotonic() + wait
+        while time.monotonic() < deadline:
+            time.sleep(poll)
+            if open_db_in_idea(Path(root), url) is not None:
+                return
+    threading.Thread(target=finish, daemon=True).start()
+    return {"how": "launching", "window": Path(root).name}
+
+
 def reveal_in_finder(path: Path) -> None:
     """`open -R`: a Finder window on the folder with the file selected — the answer to
     "where is this?" that a path read off the screen leaves the reader to type."""
@@ -2372,11 +2396,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if ROOT is None or url is None:
                 self.reply_text("No running database known yet: start the app first", 409)
                 return
-            done = open_db_in_idea(Path(ROOT), url)
-            if done is None:
-                self.reply_text(f"No IntelliJ window has {ROOT} open: open it there (the "
-                                "IntelliJ logo in the header), then click again", 409)
-                return
+            done = open_db_in_idea(Path(ROOT), url) or launch_idea_for_db(Path(ROOT), url)
             self.reply_json({"url": url, **done})
             return
         if route == REVEAL_FOLDER:

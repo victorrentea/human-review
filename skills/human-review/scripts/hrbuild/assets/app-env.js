@@ -326,6 +326,9 @@
         return r.json().then(function (j) {
           flash(j.how === 'opened'
             ? 'In IntelliJ (' + j.window + '): Database view, data source “Running DB”'
+            : j.how === 'launching'
+            ? 'Opening ' + j.window + ' in IntelliJ: its Database view comes up once the '
+              + 'project has loaded'
             : 'IntelliJ is in front, but its Human Review plugin is too old to open the '
               + 'Database view: update it');
         });

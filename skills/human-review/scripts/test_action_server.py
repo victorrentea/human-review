@@ -496,6 +496,26 @@ def test_the_data_source_is_upserted_and_the_others_are_kept(tmp_path):
     assert mine.findtext("auth-provider") == "no-auth"
 
 
+def test_no_intellij_window_on_the_checkout_opens_it_there_then_shows_the_db(tmp_path, monkeypatch):
+    launched, tries = [], []
+    monkeypatch.setattr(srv, "_launch_in", lambda app, folder: launched.append((app, folder)))
+    # The window comes up on the second poll.
+    monkeypatch.setattr(srv, "open_db_in_idea", lambda root, url: (
+        tries.append(root), {"how": "opened"} if len(tries) > 1 else None)[1])
+    url = "jdbc:postgresql://localhost:1/p?user=u&password=p"
+    done = srv.launch_idea_for_db(tmp_path, url, wait=5, poll=0.01)
+    assert done == {"how": "launching", "window": tmp_path.name}
+    assert launched == [("idea", tmp_path)]
+    # The project IntelliJ opens already holds the data source.
+    import xml.etree.ElementTree as ET
+    root = ET.parse(tmp_path / ".idea" / "dataSources.xml").getroot()
+    assert root.findtext("component/data-source/jdbc-url") == url
+    deadline = time.monotonic() + 3
+    while len(tries) < 2 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert len(tries) == 2
+
+
 def test_a_section_with_no_runtime_declares_nothing(tmp_path):
     build.ACTIONS.clear()
     (tmp_path / "assets").mkdir()
