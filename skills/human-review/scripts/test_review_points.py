@@ -1216,3 +1216,38 @@ def test_a_line_split_in_two_is_carried_to_the_half_most_like_it(tmp_path):
     assert rp.map_line(hunks, 5) == 6
     unlike = [{**hunks[0], "new": ["log.info(\"x\");", "return 1;"]}]
     assert rp.map_line(unlike, 3) is None, "a line replaced by something else is gone"
+
+
+def test_each_fixed_item_names_the_commit_that_fixed_it(tmp_path):
+    """Visits-paginated's round had two `[auto-fix]` commits, e1d37517 for the backend and
+    4321c5bc for the grid. Each Fixed item's buttons go to its own (`fixCommit`): the commit
+    that touched its files, told apart by who last wrote its lines when several did."""
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "t@t")
+    _git(repo, "config", "user.name", "t")
+    (repo / "A.java").write_text("a1\na2\na3\n")
+    (repo / "B.ts").write_text("b1\nb2\nb3\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "impl")
+    impl = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "A.java").write_text("a1\nA2\na3\n")
+    _git(repo, "commit", "-qam", "[auto-fix] backend")
+    first = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "A.java").write_text("a1\nA2\nA3\n")
+    (repo / "B.ts").write_text("b1\nB2\nb3\n")
+    _git(repo, "commit", "-qam", "[auto-fix] grid")
+    second = _git(repo, "rev-parse", "HEAD").strip()
+    prov = {"implementation": impl, "reviewCommit": second}
+    assert rp.round_fix_commit(repo, prov) == second
+    assert rp.fix_commit_of(repo, ["B.ts:2"], prov) == second
+    # Both commits touched A.java; its line 2 was last written by the first.
+    assert rp.fix_commit_of(repo, ["A.java:2"], prov) == first
+    assert rp.fix_commit_of(repo, ["A.java:3"], prov) == second
+    assert rp.fix_commit_of(repo, ["A.java:2"], prov, own=impl) == impl, "fixed-in wins"
+    # Refs on a file the round never touched: the round's own commit.
+    assert rp.fix_commit_of(repo, ["C.md:1"], prov) == second
+    # No implementation to start a range from: `fixed-in: HEAD` is the recording commit.
+    assert rp.fix_commit_of(repo, ["A.java:2"], {"reviewCommit": first}, pinned="HEAD") == first
+    assert rp.fix_commit_of(repo, ["A.java:2"], {"reviewCommit": first}) is None

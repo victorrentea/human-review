@@ -884,6 +884,116 @@ def reanchor(root: Path, ref: str, written: list[str], to: str | None = None) ->
     return next((t for t in tried if t["ref"] and not t["blank"]), tried[0])
 
 
+# ------------------------------------------------------------------ the commit that fixed it
+# Every Fixed item was fixed by a commit on the branch, and its buttons on the page — and its
+# note on the forge — go to that commit (Victor, 30 Oct 2026: an auto-fix is not a PR
+# comment, it is a commit). The round's fix commit has always been recorded (`fixed-in`, the
+# review commit); which commit fixed *each* item is read off the history here, once, for the
+# page and for `push-pr-comments.py`, and written into `review-points.json` as `fixCommit`.
+
+#: The subject an `[auto-fix]` commit opens on, and the trailer a review commit carries.
+FIX_GREP = (r"--grep=^\[auto-fix\]", "--grep=^Review-Points:")
+
+
+def _sha_of(root: Path, rev: str | None) -> str | None:
+    if not rev or rev == WORKTREE:
+        return None
+    r = _run_git(root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+    return r.stdout.strip() or None if r.returncode == 0 else None
+
+
+def _is_ancestor(root: Path, a: str, b: str) -> bool:
+    return _run_git(root, "merge-base", "--is-ancestor", a, b).returncode == 0
+
+
+def round_fix_commit(root: Path | None, prov: dict) -> str | None:
+    """The commit whose hunks are the round's fixes, or None when there is none after the
+    implementation commit: the review commit when it descends from the implementation and
+    is not it, else the newest commit after the implementation whose subject opens on
+    `[auto-fix]` or whose message carries a `Review-Points:` trailer."""
+    impl = (prov or {}).get("implementation") or (prov or {}).get("auditedHead")
+    impl_sha = _sha_of(root, impl) if root else None
+    if not impl_sha:
+        return None
+    review = _sha_of(root, (prov or {}).get("reviewCommit"))
+    if review and review != impl_sha and _is_ancestor(root, impl_sha, review):
+        return review
+    r = _run_git(root, "log", "--format=%H", *FIX_GREP, f"{impl_sha}..HEAD")
+    return next((ln.strip() for ln in r.stdout.splitlines() if ln.strip()), None)
+
+
+def _blamed(root: Path, ref: str, at: str) -> list[str]:
+    """The commits that last wrote each line `ref` names, as of `at`."""
+    path, spans = ref_spans(ref)
+    out: list[str] = []
+    for lo, hi in spans or []:
+        r = _run_git(root, "blame", "--porcelain", "-L", f"{lo},{hi}", at, "--", path)
+        out += [ln.split()[0] for ln in r.stdout.splitlines()
+                if re.match(r"^[0-9a-f]{40} \d+ \d+", ln)]
+    return out
+
+
+def item_fix_commit(root: Path | None, refs: list[str], impl: str | None, head: str | None,
+                    explicit: str | None = None) -> str | None:
+    """The commit that fixed one item: full sha, or None when nothing after the
+    implementation can have.
+
+    `explicit` (the item's own `fixed-in: <sha>`, not `HEAD`) wins. Otherwise the commits in
+    `impl..head` that touched the item's files: one is the answer; several are told apart by
+    who last wrote the item's own lines at `head` (`git blame`), the newest winning a tie;
+    none (a fix that only deleted lines, or refs elsewhere) leaves the round's commit, `head`.
+    `head` is the round's fix commit (`round_fix_commit`)."""
+    if root is None:
+        return None
+    pinned = _sha_of(root, explicit) if explicit and explicit.upper() != "HEAD" else None
+    if pinned:
+        return pinned
+    impl_sha, head_sha = _sha_of(root, impl), _sha_of(root, head)
+    if not (impl_sha and head_sha) or impl_sha == head_sha:
+        return None
+    files = sorted({ref_spans(r)[0] for r in refs or [] if r})
+    touched = _run_git(root, "log", "--format=%H", f"{impl_sha}..{head_sha}", "--",
+                       *files).stdout.split() if files else []
+    if len(touched) <= 1:
+        return touched[0] if touched else head_sha
+    votes: dict[str, int] = {}
+    for ref in refs or []:
+        for sha in _blamed(root, ref, head_sha):
+            if sha in touched:
+                votes[sha] = votes.get(sha, 0) + 1
+    if not votes:
+        return touched[0]                # newest first: the last word on those files
+    best = max(votes.values())
+    return next(sha for sha in touched if votes.get(sha) == best)
+
+
+def fix_commit_of(root: Path | None, refs: list[str], prov: dict, own: str | None = None,
+                  pinned: str | None = None) -> str | None:
+    """The commit that fixed one Fixed item, by the whole rule: `item_fix_commit` over the
+    round (`round_fix_commit`, or the rev the front-matter's `fixed-in` pins). A record with
+    no implementation commit has no range to read: there `fixed-in: HEAD` — the item's own
+    (`own`) or the file's (`pinned`) — names the commit that recorded it, the review commit."""
+    if root is None:
+        return None
+    prov = prov or {}
+    head = (_sha_of(root, pinned) if pinned and pinned.upper() != "HEAD" else None) \
+        or round_fix_commit(root, prov)
+    impl = prov.get("implementation") or prov.get("auditedHead")
+    sha = item_fix_commit(root, refs, impl, head, own)
+    if not sha and "HEAD" in {(own or "").strip().upper(), (pinned or "").strip().upper()}:
+        sha = _sha_of(root, prov.get("reviewCommit"))
+    return sha
+
+
+def stamp_fix_commits(doc: dict, root: Path | None, fixed_in: str | None = None) -> None:
+    """`fixCommit` on every Fixed item whose fixing commit the history names."""
+    for item in doc.get("autofixes") or [] if root is not None else []:
+        sha = fix_commit_of(root, item.get("refs") or [], doc.get("provenance") or {},
+                            item.get("_fixed_in") or None, fixed_in)
+        if sha:
+            item["fixCommit"] = sha
+
+
 def document(path: Path, rel: str, root: Path | None = None) -> dict:
     """The parsed file as the build reads it, plus what had to be thrown away."""
     parsed = parse(path.read_text(encoding="utf-8", errors="replace"))
@@ -898,6 +1008,9 @@ def document(path: Path, rel: str, root: Path | None = None) -> dict:
     # Read before the bookkeeping keys are stripped: `fixed_in` is derived from the items'
     # own `fixed-in`, which is exactly what is about to be thrown away.
     fixed_in = top_fixed_in(front, piles)
+    prov = provenance(front, root, rel)
+    # Which commit fixed each Fixed item, read while each still has its own `fixed-in`.
+    stamp_fix_commits({"provenance": prov, "autofixes": piles["autofixes"]}, root, fixed_in)
     for items in piles.values():
         for item in items:
             item.pop("_fixed_in", None)
@@ -906,7 +1019,7 @@ def document(path: Path, rel: str, root: Path | None = None) -> dict:
         "schema": review_points_schema.SCHEMA_VERSION,
         "mode": "points",
         "source": rel,
-        "provenance": provenance(front, root, rel),
+        "provenance": prov,
         "fixed_in": fixed_in,
         "findings": piles["findings"],
         "autofixes": piles["autofixes"],

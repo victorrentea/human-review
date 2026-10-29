@@ -98,7 +98,8 @@
         "body": {"$ref": "#/$defs/html"},
         "refs": {"$ref": "#/$defs/refs"},
         "snippets": {"$ref": "#/$defs/snippets"},
-        "diffs": {"$ref": "#/$defs/diffs"}
+        "diffs": {"$ref": "#/$defs/diffs"},
+        "fixCommit": {"$ref": "#/$defs/rev", "description": "The commit that fixed this item, full sha, read off the history (review-points.py item_fix_commit): where its buttons and its note on the forge go."}
       }
     },
     "assumption": {
