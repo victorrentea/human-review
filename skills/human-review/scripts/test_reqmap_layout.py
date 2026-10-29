@@ -106,17 +106,17 @@ def test_the_title_row_over_the_card_offers_all_tests_where_the_filters_stood(tm
     # every option, and follows the choice.
     assert "var MODES = [['cover', 'Tests covering \\uD83E\\uDD16 the change'," in js
     assert "['run', 'Tests running through changed files'," in js
-    # The label says files; what the probe counts is changed lines, and the hover says so.
-    assert "saw run a changed line of a changed file" in js
     assert "['all', 'All tests'," in js
     assert "who.hidden = true;" in js
     assert "rm-mode-why" not in js and "rm-mode-why" not in T.REQMAP_CSS
     assert "matched to the ticket'" not in js
+    # One short sentence per option, starting with the number it explains (Victor, 30 Oct).
     tip = js.split("var MODE_TIP = {")[1].split("\n  };")[0]
-    for mode in ("cover", "run", "all"):
-        assert f"    {mode}: function (n) {{\n      return [n + ': " in tip
-    assert "matched to a sentence of the ticket" in tip
-    assert "if (pick) pick.setAttribute('data-tip-html', modeTip(mode, total));" in js
+    assert "cover: function (n) { return n + ' tests \\uD83E\\uDD16 matched to a sentence" in tip
+    assert "run: function (n) { return n + ' tests ran a changed line, or were" in tip
+    assert "all: function (n) { return n + ': every test on record.'; }" in tip
+    assert "if (pick) pick.setAttribute('data-tip', (MODE_TIP[mode] || MODE_TIP.cover)(total));" in js
+    assert "tipfoot" not in tip and "MOVES_TIP" not in js
     # The choice starts where the rows' content does, level with the chapters' carets.
     assert ".reqmap .rm-code > .rm-tkhead:has(> .rm-mode){padding-left:6px}" in T.REQMAP_CSS
     assert ".reqmap .rm-code > .rm-tkhead:has(> .rm-mode) > .cov-head{display:none}" in T.REQMAP_CSS

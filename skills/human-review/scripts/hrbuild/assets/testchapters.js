@@ -165,39 +165,16 @@
                ['run', 'Tests running through changed files',
                 'Tests that ran a changed line, as captured by a coverage probe.'],
                ['all', 'All tests', 'All tests, as captured by a coverage probe.']];
-  // The choice's own hover: what the total at the end of its row counts, first - that
-  // total is the number it chose (CLAUDE.md: a tip about numbers says first what they
-  // mean) - then what the choice is, then the `+N ✏️N −N` beside it, which no choice
-  // moves. A short line beside the choice used to say the first part, "🤖 matched to the
-  // ticket", wrapped into a tall column that broke the row (Victor, 29 Oct 2026); the hover
-  // says it whole instead. `n` is the total listed, from `count`.
+  // The choice's own hover, one sentence: the total at the end of its row, then what that
+  // total counts (CLAUDE.md: a tip about numbers says first what they mean). A short line
+  // beside the choice used to say it, "🤖 matched to the ticket", and wrapped into a tall
+  // column that broke the row (Victor, 29 Oct 2026). The `+N ✏️N −N` beside the total
+  // explain themselves on their own hovers. `n` is the total listed, from `count`.
   var MODE_TIP = {
-    cover: function (n) {
-      return [n + ': the tests \uD83E\uDD16 matched to a sentence of the ticket, all kinds;'
-          + ' each kind\u2019s own count is on its row below.',
-        'A model\u2019s reading of which test covers which sentence, not a measurement:'
-          + ' the rows wearing the fork.'];
-    },
-    run: function (n) {
-      return [n + ': the tests a coverage probe saw run a changed line of a changed file'
-          + ' (not merely its other lines), plus any \uD83E\uDD16 matched to the ticket;'
-          + ' each kind\u2019s own count is on its row below.',
-        'The probe\u2019s part is measured, not guessed: the lines each test executed,'
-          + ' recorded as the suite ran.'];
-    },
-    all: function (n) {
-      return [n + ': every test on record, all kinds: the two other choices, the branch\u2019s'
-          + ' tests no probe measured, the ones it deleted, and the rest of the coverage run.',
-        'The rest of the run is listed by name and file only, with no preview to open.'];
-    }
+    cover: function (n) { return n + ' tests \uD83E\uDD16 matched to a sentence of the ticket.'; },
+    run: function (n) { return n + ' tests ran a changed line, or were \uD83E\uDD16 matched to the ticket.'; },
+    all: function (n) { return n + ': every test on record.'; }
   };
-  var MOVES_TIP = '+N \u270F\uFE0FN \u2212N: the tests this branch added, edited and deleted,'
-    + ' the same whichever list is chosen.';
-  function modeTip(mode, n) {
-    var l = (MODE_TIP[mode] || MODE_TIP.cover)(n);
-    return '<div>' + esc(l[0]) + '</div><p class="tipfoot">' + esc(l[1]) + '</p><p class="tipfoot">'
-      + esc(MOVES_TIP) + '</p>';
-  }
   var head = map.querySelector('.rm-code > .rm-tkhead');
   var who = head && head.querySelector('.cov-head .rm-who');
   var pick = null;
@@ -345,7 +322,7 @@
     if (grand) {
       grand.innerHTML = led(sum, total, '', 'listed, all kinds');
     }
-    if (pick) pick.setAttribute('data-tip-html', modeTip(mode, total));
+    if (pick) pick.setAttribute('data-tip', (MODE_TIP[mode] || MODE_TIP.cover)(total));
   }
   function setMode(mode) {
     if (mode === 'all') buildOthers();
