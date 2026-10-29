@@ -1867,7 +1867,10 @@ def merge_risk_html(spec) -> str:
     if not door:
         return ""
     oneway = risk["door"].strip().lower() == "one-way"
-    parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">{door}</b>']
+    # The verdict's mark in front, as on CI's check (Victor, 29 Oct 2026): ✅ for the door
+    # that opens back, ⚠️ for the one that does not — a warning, not a failure.
+    mark = "\u26a0\ufe0f" if oneway else "\u2705"
+    parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">{mark} {door}</b>']
     blast = str(risk.get("blast") or "").strip()
     if blast:
         parts.append(f'blast radius: <b>{html.escape(blast)}</b>')

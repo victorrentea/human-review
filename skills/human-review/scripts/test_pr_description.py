@@ -68,9 +68,9 @@ def test_merge_risk_closes_the_pr_description_with_its_door_and_blast_radius():
             "mergeRisk": {"door": "two-way", "blast": "visits API", "why": "a PUT <b> clears"}}
     out = review.pr_description_html(spec)
     assert out.index("Closes") < out.index('class="mergerisk"') < out.index("</details>")
-    assert '<b class="mr-door">Two-way door</b> · blast radius: <b>visits API</b>' in out
+    assert '<b class="mr-door">✅ Two-way door</b> · blast radius: <b>visits API</b>' in out
     assert "a PUT &lt;b&gt; clears" in out
-    assert 'mr-oneway">One-way door' in review.merge_risk_html({"mergeRisk": {"door": "One-way"}})
+    assert 'mr-oneway">⚠️ One-way door' in review.merge_risk_html({"mergeRisk": {"door": "One-way"}})
 
 
 def test_merge_risk_without_a_known_door_is_not_drawn_and_stands_alone_without_a_body():
