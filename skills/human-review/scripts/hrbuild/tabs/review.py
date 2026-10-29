@@ -732,7 +732,7 @@ SCOPE_CHIP_MAX_LEN = 34
 
 
 def scope_chip_face(spec, reviewer: str | None = None) -> str:
-    """`\U0001f916Code: <b>7 unsure</b>; \U0001f916Review: <b>6 open</b>, <b>3 auto</b>`
+    """`\U0001f916Code: <b>7 unsure</b>; \U0001f916Review: <b>6 open</b>, <b>3 auto fixed</b>`
     — the masthead's review chip, whole, off the same `pile_numbers` the counts line
     under the header reads, so the two cannot drift.
 
@@ -745,7 +745,7 @@ def scope_chip_face(spec, reviewer: str | None = None) -> str:
     the role, the hover names the model."""
     open_n, fixed_n, _ = pile_numbers(spec)
     unsure_n = unsure_number(spec)
-    face = f"\U0001f916Review: <b>{open_n} open</b>, <b>{fixed_n} auto</b>"
+    face = f"\U0001f916Review: <b>{open_n} open</b>, <b>{fixed_n} auto fixed</b>"
     if unsure_n:
         face = f"\U0001f916Code: <b>{unsure_n} unsure</b>; " + face
     return face
@@ -2011,7 +2011,7 @@ def opening_lede(spec) -> str:
                 f"{n_open} open review issue{'' if n_open == 1 else 's'}",
                 "findings", "first"))
         if spec.get("autofixes"):
-            parts.append(clause(f"{len(spec['autofixes'])} auto", "autofixes", "fixed"))
+            parts.append(clause(f"{len(spec['autofixes'])} auto fixed", "autofixes", "fixed"))
     else:
         if spec.get("findings"):
             # "open LLM review issues", not "open, worst first": the ordering fact was the
@@ -2025,10 +2025,11 @@ def opening_lede(spec) -> str:
                 f"{n_open} open LLM review issue{'' if n_open == 1 else 's'}",
                 "findings", "first"))
         if spec.get("autofixes"):
-            # `auto`, the masthead chip's word for the same pile (Victor, 29 Oct 2026:
-            # "4 fixed" → "4 auto"): one counter, one word, on the chip and on this line.
+            # `auto fixed`, the masthead chip's words for the same pile (Victor, 29 Oct 2026:
+            # "4 fixed" → "4 auto" → "4 auto fixed"): one counter, one wording, on the chip
+            # and on this line.
             # The heading of the pile and the badge on each item still spell it out.
-            parts.append(clause(f"{len(spec['autofixes'])} auto",
+            parts.append(clause(f"{len(spec['autofixes'])} auto fixed",
                                 "autofixes", "fixed"))
     # Last, because the first two clauses count what a review pass produced and this one
     # counts what it could not: a reader who has just been told how many items are open

@@ -579,7 +579,7 @@ def chip_html(c: dict) -> str:
 
 
 def review_chip_face(open_n: int, fixed_n: int, assumed_n: int) -> str:
-    """`🤖 <b>6 assumptions</b> / <angry-bot> <b>10 open</b> · <b>6 auto</b>` — the masthead's review chip,
+    """`🤖 <b>6 assumptions</b> / <angry-bot> <b>10 open</b> · <b>6 auto fixed</b>` — the masthead's review chip,
     numbers only, one robot.
 
     Eval run 10: `🤖Code: 6 unsure; 🤖Review: 10 open · 3 refuted, 6 fixed` was 379px of a
@@ -592,7 +592,7 @@ def review_chip_face(open_n: int, fixed_n: int, assumed_n: int) -> str:
     — the under-70% share is the hover's (`review_chip_key`). With none it is absent rather
     than zeroed: a zero is a claim the page cannot stand behind. The
     refuted claims are not on the page at all (Victor, 5 Oct 2026), so not here either."""
-    rest = f"{_angry_bot()}<b>{open_n} open</b> · <b>{fixed_n} auto</b>"
+    rest = f"{_angry_bot()}<b>{open_n} open</b> · <b>{fixed_n} auto fixed</b>"
     if not assumed_n:
         return rest
     # A slash after the coder's guesses, then the angry robot for what the review left open:
