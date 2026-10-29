@@ -154,9 +154,12 @@
    The shrink was sized for five words and cannot hold eight at a readable size, and the
    reason for refusing a second row is gone: the build moves the legend *under* the ticket
    (`tests.py:reqmap_layout`), where a wrapped row lands on nothing. Packed from the left,
-   so a short second row does not spread its two words to the far edges. */
+   so a short second row does not spread its two words to the far edges.
+   One row again under the ticket (Victor, 30 Oct 2026): `executed` became `ran` and the
+   gap went from .86em to .6em, which leaves ~45px of slack with all seven at 14px in the
+   544px ticket of a 1728px window. Narrower windows still wrap. */
 .reqmap .rm-legend{display:flex;flex-wrap:wrap;justify-content:flex-start;
-  align-items:center;gap:.35em .86em;min-height:var(--rm-key-h);margin-bottom:10px;
+  align-items:center;gap:.35em .6em;min-height:var(--rm-key-h);margin-bottom:10px;
   padding:0 2px;font-size:min(1em,calc(3.2cqi - 0.5px));max-width:100%}
 /* A thin grey frame around all five, so the row reads as five badges rather than as five
    words that happen to be coloured. `N/A` is why it is on all of them and not only on the

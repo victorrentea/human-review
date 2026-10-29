@@ -76,14 +76,15 @@ CAT_KEY = ('<p class="rm-cats"><span><span class="rm-cat" data-cat="e2e">E2E</sp
            'the screen</span><span><span class="rm-cat" data-cat="api">API</span>REST/MCP</span>'
            '<span><span class="rm-cat" data-cat="unit">Unit</span>one isolated component'
            '</span></p>')
-# Copy pass (3 Oct 2026): only `executed` keeps a hover — "fully covered", "partially",
-# "missing" and "N/A" say themselves.
+# Copy pass (3 Oct 2026): only `ran` keeps a hover — "fully covered", "partially",
+# "missing" and "N/A" say themselves. `ran`, not `executed` (Victor, 30 Oct 2026): the
+# shorter word lets the whole key sit on one row under the ticket.
 # No "Legend:" word (Victor, 4 Oct 2026): framed coloured words under the ticket say it.
 LEGEND = ('<div class="rm-legend">'
           '<span class="rm-lg" data-cov="covered">fully covered</span>'
           '<span class="rm-lg" data-cov="partly">partially</span>'
           '<span class="rm-lg" data-cov="exercised" data-tip="Run by a test, never '
-          'asserted">executed</span>'
+          'asserted">ran</span>'
           '<span class="rm-lg" data-cov="missing">missing</span>'
           '<span class="rm-lg" data-cov="none">N/A</span></div>')
 #: The two states only some matrices use, added to the legend when one of them is on it:
@@ -98,7 +99,7 @@ COV_ATTR = {"covered": "covered", "partial": "partly", "exercised": "exercised",
             "missing": "missing", "n/a": "none", "unmapped": "unmapped",
             "unconfirmed": "unconfirmed", "narrowed": "narrowed"}
 COV_LABEL = {"covered": "covered", "partial": "partly covered",
-             "exercised": "exercised, never asserted", "missing": "no covering tests",
+             "exercised": "ran, never asserted", "missing": "no covering tests",
              "n/a": "not a claim", "unmapped": "not paired yet",
              "unconfirmed": "paired on shared words, not confirmed",
              "narrowed": "narrowed on purpose — not delivered as written"}
