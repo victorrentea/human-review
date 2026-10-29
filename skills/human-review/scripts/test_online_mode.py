@@ -93,6 +93,23 @@ def _toast(page):
                          " return t && t.classList.contains('shown') ? t.textContent : null }")
 
 
+def _toast_says(page, text, timeout=2000):
+    """The toast once it says `text`, or whatever it says when `timeout` ms have passed.
+
+    A copy toast is shown from the `.then` of the clipboard write, so it is never there
+    the instant the click returns. Chromium 151 (Playwright 1.62) happened to reject an
+    ungranted write before `click` came back; Chromium 156 (Playwright 1.64) rejects it a
+    few milliseconds later, and a test that read the toast at once saw nothing."""
+    try:
+        page.wait_for_function(
+            "t => { const e = document.getElementById('copy-toast');"
+            " return !!e && e.classList.contains('shown') && e.textContent === t }",
+            arg=text, timeout=timeout)
+    except Exception:                                # the assertion below says what it got
+        pass
+    return _toast(page)
+
+
 def test_off_disk_every_script_runs_and_the_copy_buttons_copy(browser, tmp_path):
     """Off disk the probe settles before editor.js runs, so `onready` calls back at once:
     registered above `var connected`, it threw, and every click handler below it was lost —
@@ -105,8 +122,17 @@ def test_off_disk_every_script_runs_and_the_copy_buttons_copy(browser, tmp_path)
     assert not s["online"] and s["start"] == "1" and s["src"].startswith("vscode:")
     assert s["disk"] != "none"
     assert s["serveTip"].startswith("Static copy: buttons copy commands. Click to start")
+    # Off disk nothing grants the clipboard, so the write is refused and the page falls
+    # back on `execCommand('copy')` over a hidden textarea: that is what has to carry the
+    # prompt, and the toast only follows it.
+    page.evaluate("""() => { const run = document.execCommand.bind(document);
+      window.copied = [];
+      document.execCommand = c => { if (c === 'copy') window.copied.push(
+        document.activeElement && document.activeElement.value); return run(c); }; }""")
     page.click(".adopt")
-    assert _toast(page) == "Copied — paste it in a terminal"
+    assert _toast_says(page, "Copied — paste it in a terminal") \
+        == "Copied — paste it in a terminal"
+    assert page.evaluate("window.copied") == ["a prompt"]
 
 
 def test_online_greys_what_needs_the_mac_and_sends_references_to_github(browser):
@@ -130,8 +156,8 @@ def test_online_greys_what_needs_the_mac_and_sends_references_to_github(browser)
     assert page.evaluate("document.querySelector('.tip.visible').textContent") \
         == build.LOCAL_HINT
     page.click(".adopt")
-    page.wait_for_timeout(200)              # the clipboard write settles, then the toast
-    assert _toast(page) == "Copied — paste it in a terminal"
+    assert _toast_says(page, "Copied — paste it in a terminal") \
+        == "Copied — paste it in a terminal"
 
 
 def test_served_nothing_is_greyed(browser):
