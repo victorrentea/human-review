@@ -295,6 +295,13 @@
    source as it was at the base commit (`semcov.py:base_part`); only one whose base could
    not be read is shut - no disclosure arrow, nothing to press. */
 .reqmap .rm-t[data-gone=yes] .rm-tt{text-decoration:line-through;opacity:.65}
+/* Switched off (@wip, @Disabled, .skip): listed, never counted - greyed, and saying so in
+   words beside its file, the reason on the words' hover (semcov `never_runs`). */
+.reqmap .rm-t[data-norun=yes] .rm-tt,.reqmap .rm-t[data-norun=yes] .rm-cat{opacity:.5}
+.reqmap .rm-norun{flex:0 0 auto;align-self:center;font-size:11px;color:var(--muted,#6b6b6b);
+  border:1px dashed currentColor;border-radius:3px;padding:0 4px;cursor:help;white-space:nowrap}
+.reqmap .rm-cat[data-strength=off]{background:transparent;
+  box-shadow:inset 0 0 0 1px currentColor;opacity:.4}
 .reqmap .rm-t[data-shut=yes] .rm-thead{cursor:default}
 .reqmap .rm-t[data-shut=yes] .rm-thead:hover{background:none}
 .reqmap .rm-t[data-shut=yes] .rm-chev{visibility:hidden}

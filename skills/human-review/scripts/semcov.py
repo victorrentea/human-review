@@ -672,6 +672,36 @@ def _stamp(st: dict) -> str:
     return STAMP.get(st.get("status"), "unchanged")
 
 
+def never_runs(st: dict) -> str:
+    """Why a test the manifest says is switched off (`test-changes.py`'s `silenced`: an
+    `@Disabled`, a `.skip`, a `@wip` tag) does not run, in the words the Tests tab's own
+    stamps use: written that way, switched off here, or off at the base already. Empty for
+    a test that runs."""
+    if not st.get("silenced") or st.get("status") == "deleted":
+        return ""
+    if st.get("status") == "added":
+        return "Written on this branch already switched off; it has never run."
+    if st.get("wasSilenced"):
+        return "Still written; never runs, and did not run at the base either."
+    return "Ran at the base; this branch switched it off, so it never runs now."
+
+
+def sibling_kind(live: list[dict]):
+    """`kind(file) -> cat | None`: the kind most of a file's measured tests are, else the
+    one kind every measured test in its folder agrees on. One unmeasured row read off the
+    file's text alone ("unit") must not outvote five a browser run measured as E2E."""
+    votes: dict[str, dict] = {}
+    for r in live:
+        v = votes.setdefault(r["file"], {})
+        v[r["cat"]] = v.get(r["cat"], 0) + 1
+    by_file = {f: max(v, key=v.get) for f, v in votes.items()}
+    by_dir: dict[str, set] = {}
+    for r in live:
+        by_dir.setdefault(str(Path(r["file"]).parent), set()).add(r["cat"])
+    near = {d: next(iter(c)) for d, c in by_dir.items() if len(c) == 1}
+    return lambda file: by_file.get(file) or near.get(str(Path(file).parent))
+
+
 def deleted_rows(test_doc: dict | None, root: Path, live: list[dict] = ()) -> list[dict]:
     """Every test the branch deleted (a name at the base that HEAD no longer declares —
     `test-changes.py`), as card rows, in manifest order.
@@ -684,19 +714,9 @@ def deleted_rows(test_doc: dict | None, root: Path, live: list[dict] = ()) -> li
     feature the browser suite runs is UI like its siblings, not whatever the file's text
     alone suggests."""
     T = _tests_tab()
-    # The kind most of the file's live tests are: one unmeasured row read off the file's
-    # text alone ("unit") must not outvote five a browser run measured as E2E.
-    votes: dict[str, dict] = {}
-    for r in live:
-        v = votes.setdefault(r["file"], {})
-        v[r["cat"]] = v.get(r["cat"], 0) + 1
-    kind = {f: max(v, key=v.get) for f, v in votes.items()}
     # A file none of whose tests is live still has siblings: a deleted e2e spec in a folder
-    # of e2e specs is E2E, not the "unit" its text alone reads as. Only where they agree.
-    by_dir: dict[str, set] = {}
-    for r in live:
-        by_dir.setdefault(str(Path(r["file"]).parent), set()).add(r["cat"])
-    near = {d: next(iter(c)) for d, c in by_dir.items() if len(c) == 1}
+    # of e2e specs is E2E, not the "unit" its text alone reads as (`sibling_kind`).
+    kind = sibling_kind(live)
     out, seen = [], set()
     for t in (test_doc or {}).get("tests") or []:
         file, line = t.get("path"), t.get("baseLine")
@@ -707,8 +727,7 @@ def deleted_rows(test_doc: dict | None, root: Path, live: list[dict] = ()) -> li
             continue
         seen.add(rid)
         row = {"id": rid, "file": file, "line": int(line), "title": t.get("name") or "",
-               "suite": "", "cat": (kind.get(file) or near.get(str(Path(file).parent))
-                                    or T._cov_cat({"file": file}, root)),
+               "suite": "", "cat": kind(file) or T._cov_cat({"file": file}, root),
                "status": "deleted", "headLine": t.get("line"),
                "viaHelper": [], "hits": {}, "aimed": True,
                "baseRef": t.get("baseSha") or (test_doc or {}).get("base") or ""}
@@ -752,6 +771,9 @@ def covering_tests(spec: dict, out_dir: Path, root: Path) -> tuple[list[dict], b
         # join above never named them. They come last, in a group of their own that starts
         # folded (`test_rank` 2), and the model is offered them like any other row.
         named = {(r["file"], r["title"]) for r in rows}
+        # Its kind from the measured tests beside it, like a deleted one's: hr-claude-18's
+        # unmeasured `@wip` scenario read "Unit" in a folder of E2E features.
+        kind = sibling_kind(rows)
         for t in (test_doc or {}).get("tests") or []:
             file, line = t.get("path"), t.get("line")
             if t.get("status") not in ("added", "modified") or not file or not line:
@@ -761,9 +783,10 @@ def covering_tests(spec: dict, out_dir: Path, root: Path) -> tuple[list[dict], b
             seen.add(f"{file}:{line}")
             rows.append({"id": f"{file}:{line}", "file": file, "line": int(line),
                          "title": t.get("name") or "", "suite": "",
-                         "cat": T._cov_cat({"file": file}, root),
+                         "cat": kind(file) or T._cov_cat({"file": file}, root),
                          "status": _stamp(t), "viaHelper": t.get("viaHelper") or [],
-                         "hits": {}, "aimed": True, "unmeasured": True})
+                         "hits": {}, "aimed": True, "unmeasured": True,
+                         **_off(t)})
         return rows + deleted_rows(test_doc, root, rows), True
     for t in (test_doc or {}).get("tests") or []:
         file, line = t.get("path"), t.get("line")
@@ -776,8 +799,16 @@ def covering_tests(spec: dict, out_dir: Path, root: Path) -> tuple[list[dict], b
                      "title": t.get("name") or "", "suite": "",
                      "cat": T._cov_cat({"file": file}, root),
                      "status": _stamp(t), "viaHelper": t.get("viaHelper") or [],
-                     "hits": {}, "aimed": True})
+                     "hits": {}, "aimed": True, **_off(t)})
     return rows + deleted_rows(test_doc, root, rows), False
+
+
+def _off(st: dict) -> dict:
+    """`{"off": why}` for a row the manifest says is switched off, `{}` otherwise. Only an
+    unmeasured row is asked: a test a coverage probe measured ran, whatever its tag says —
+    the scan cannot see whether the runner excludes `@wip`, the probe can."""
+    why = never_runs(st)
+    return {"off": why} if why else {}
 
 
 def live_rows(rows: list[dict]) -> list[dict]:
@@ -2052,6 +2083,50 @@ def merge(sentences: list[dict], scripted: dict, model: dict | None,
     return out
 
 
+#: What a sentence whose coverage rested on a test that never runs is told instead.
+NEVER_RUN_GAP = "Paired with tests that never run (switched off): {names}. They prove nothing."
+
+
+def discount_never_run(entries: list[dict], rows: list[dict]) -> list[dict]:
+    """The coverage each sentence's *running* tests stand behind (Victor, 30 Oct 2026).
+
+    A test switched off — `@wip`, `@Disabled`, `.skip`, new or old (`covering_tests`'
+    `off`) — stays paired, listed under the requirement and marked "never runs", but it
+    pins nothing: the sentence is coloured by the rest of its tests, `missing` when there
+    is no rest. Only ever lowers a colour; `n/a` and `narrowed` are facts about the
+    requirement and are left alone. Each link to such a test carries `off`."""
+    off = {r["id"]: r["off"] for r in rows if r.get("off")}
+    if not off:
+        return entries
+    title = {r["id"]: r.get("title") or r["id"] for r in rows}
+    out = []
+    for e in entries:
+        dead = [t for t in e.get("tests") or [] if t["id"] in off]
+        if not dead:
+            out.append(e)
+            continue
+        e = json.loads(json.dumps(e))
+        for t in e["tests"]:
+            if t["id"] in off:
+                t["off"] = True
+        live = [t for t in e["tests"] if not t.get("off")]
+        before, cov = e["coverage"], e["coverage"]
+        strengths = {t["strength"] for t in live}
+        if cov in ("covered", "partial") and "asserted" not in strengths:
+            cov = "exercised" if live else "missing"
+        elif cov in ("exercised", "unconfirmed") and not live:
+            cov = "missing"
+        if cov != before:
+            names = ", ".join(f"“{title.get(t['id'], t['id'])}”" for t in dead)
+            e["coverage"] = cov
+            e["gap"], e["gapKind"] = NEVER_RUN_GAP.format(names=names), "tests"
+            e.setdefault("downgrades", []).append(
+                {"by": "never runs", "from": before, "to": cov,
+                 "why": "its tests that never run are not counted"})
+        out.append(e)
+    return out
+
+
 # --- 4. the page ------------------------------------------------------------------------
 
 def _when(iso: str) -> str:
@@ -2144,16 +2219,20 @@ def _sentence_data(entry: dict, rows_by: dict) -> dict:
     groups: dict[str, list] = {}
     for t in entry["tests"]:
         cat = rows_by[t["id"]]["cat"] if t["id"] in rows_by else "unit"
-        groups.setdefault(cat, []).append({"id": t["id"], "strength": t["strength"],
-                                           "why": t.get("why") or "", "by": t.get("by")
-                                           or entry.get("by") or "script"})
+        ev = {"id": t["id"], "strength": t["strength"], "why": t.get("why") or "",
+              "by": t.get("by") or entry.get("by") or "script"}
+        if t.get("off"):
+            # Still drawn to the sentence, but greyed and counted apart (`discount_never_run`).
+            ev["off"] = True
+        groups.setdefault(cat, []).append(ev)
     out_groups = []
     for cat in ("e2e", "api", "unit"):
         if cat in groups:
             ts = groups[cat]
             counts = {}
             for t in ts:
-                counts[t["strength"]] = counts.get(t["strength"], 0) + 1
+                k = "never runs" if t.get("off") else t["strength"]
+                counts[k] = counts.get(k, 0) + 1
             out_groups.append({"cat": cat, "tests": ts,
                                "sum": ", ".join(f"×{n} {k}" for k, n in sorted(counts.items()))})
     d = {"cov": COV_ATTR[entry["coverage"]], "label": COV_LABEL[entry["coverage"]],
@@ -2363,6 +2442,9 @@ def render(ticket: dict, blocks: list[dict], rows: list[dict], entries: list[dic
         if r.get("viaHelper"):
             # Which helper, on the stamp's hover: the row's own source shows no edit.
             tests[r["id"]]["via"] = T.via_helper_tip(r["viaHelper"])
+        if r.get("off"):
+            # Switched off: the row is greyed and says "never runs", this on its hover.
+            tests[r["id"]]["off"] = r["off"]
     # A test paired with the ticket is listed under the first sentence it covers, in the
     # ticket's reading order (Victor, 4 Oct 2026): the card reads down the spec.
     where, sections = spec_sections(blocks)
@@ -2501,7 +2583,8 @@ def write_fragment(spec: dict, out_dir: Path, root: Path) -> str | None:
                         g["decisions"])["tests"]
     digests = offered_digests(asked)
     model = reanchor(model, moved_tests(model, digests))
-    entries = merge(g["sentences"], g["scripted"], model, g["decisions"])
+    entries = discount_never_run(merge(g["sentences"], g["scripted"], model,
+                                       g["decisions"]), g["rows"])
     why = pairing_stale(out_dir, [t["id"] for t in asked], spec,
                         digests) if model is not None else None
     cmd = rerun_command(out_dir, root)

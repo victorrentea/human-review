@@ -552,6 +552,94 @@ def test_a_test_edited_through_a_helper_is_stamped_so_on_the_card(tmp_path):
     assert {t["status"] for t in asked["tests"]} <= {"new", "changed", "unchanged", "deleted"}
 
 
+def _with_a_wip_scenario(tmp_path):
+    """`_repo`, plus what hr-claude-18 did: a scenario written under a Feature that is
+    `@wip` (excluded by the runner on main too), next to a feature an E2E run measured."""
+    root, review = _repo(tmp_path)
+    (root / "e2e").mkdir()
+    (root / "e2e" / "visit.feature").write_text(
+        "Feature: Visits\n  Scenario: Editing a visit changes the vet\n"
+        "    When I edit the visit\n    Then the vet is helen\n", encoding="utf-8")
+    (root / "e2e" / "range.feature").write_text(
+        "@wip\nFeature: Range\n  Scenario: A year 0009 visit is refused\n"
+        "    When I book a visit for 0009-07-20\n    Then the visit is refused\n",
+        encoding="utf-8")
+    cov = json.loads((review / "assets" / "test-coverage.json").read_text(encoding="utf-8"))
+    cov["tests"].append({"id": "4", "suite": "Playwright", "title": "Editing a visit changes the vet",
+                         "file": "e2e/visit.feature", "line": 2, "source": "v8",
+                         "hits": {"src/Visit.java": [3]}})
+    (review / "assets" / "test-coverage.json").write_text(json.dumps(cov), encoding="utf-8")
+    doc = json.loads((review / "assets" / "test-changes.json").read_text(encoding="utf-8"))
+    doc["tests"] += [{"name": "Editing a visit changes the vet", "path": "e2e/visit.feature",
+                      "line": 2, "status": "unchanged"},
+                     {"name": "A year 0009 visit is refused", "path": "e2e/range.feature",
+                      "line": 3, "status": "added", "silenced": "disabled"}]
+    (review / "assets" / "test-changes.json").write_text(json.dumps(doc), encoding="utf-8")
+    return root, review
+
+
+def test_a_switched_off_test_is_listed_but_marked_never_runs_and_kind_e2e(tmp_path):
+    """hr-claude-18 (30 Oct 2026): its new `@wip` scenario sat on the card as a plain "new"
+    Unit test. It never runs, so it says so, greyed; and a scenario is never Unit."""
+    root, review = _with_a_wip_scenario(tmp_path)
+    rows, measured = S.covering_tests(S._spec(review), review, root)
+    assert measured
+    row = next(r for r in rows if r["file"] == "e2e/range.feature")
+    assert row["off"] == "Written on this branch already switched off; it has never run."
+    assert row["cat"] == "e2e", "a scenario beside a measured E2E feature is E2E"
+    cat = S._tests_tab()._cov_cat
+    assert cat({"file": "petclinic-test/src/lone.feature"}, root) == "e2e", "even alone"
+    assert cat({"file": "backend/src/test/resources/features/o.feature"}, root) == "api"
+    assert not any(r.get("off") for r in rows if r is not row), "a measured test ran"
+    g = S.gather(S._spec(review), review, root)
+    page = S.render(g["ticket"], g["blocks"], g["rows"],
+                    S.merge(g["sentences"], g["scripted"], None), root)
+    data = json.loads(page.split('class="rm-data">')[1].split("</script>")[0])
+    assert data["tests"]["e2e/range.feature:3"]["off"] == row["off"]
+    js = (S.ASSETS / "reqmap.js").read_text(encoding="utf-8")
+    assert "row.dataset.norun='yes'" in js and '">never runs</span>' in js
+    assert "row.dataset.off" not in js, "testchapters.js owns data-off"
+
+
+def test_a_requirement_is_coloured_without_its_tests_that_never_run():
+    """Victor, 30 Oct 2026: a switched-off test may stay under the requirement, but the
+    requirement's coverage is what its running tests give — `missing` when none is left."""
+    rows = [{"id": "a.feature:3", "title": "off one", "off": "Written on this branch "
+             "already switched off; it has never run.", "cat": "e2e"},
+            {"id": "T.java:9", "title": "live one", "cat": "api"}]
+    entries = [
+        {"id": "only-off", "coverage": "covered", "by": "model",
+         "tests": [{"id": "a.feature:3", "strength": "asserted"}]},
+        {"id": "both", "coverage": "covered", "by": "model",
+         "tests": [{"id": "a.feature:3", "strength": "asserted"},
+                   {"id": "T.java:9", "strength": "asserted"}]},
+        {"id": "partly", "coverage": "partial", "by": "model",
+         "tests": [{"id": "a.feature:3", "strength": "asserted"},
+                   {"id": "T.java:9", "strength": "exercised"}]},
+        {"id": "keyword", "coverage": "unconfirmed", "by": "script",
+         "tests": [{"id": "a.feature:3", "strength": "asserted"}]},
+        {"id": "scope", "coverage": "narrowed", "by": "model",
+         "tests": [{"id": "a.feature:3", "strength": "asserted"}]},
+    ]
+    out = {e["id"]: e for e in S.discount_never_run(entries, rows)}
+    assert {k: e["coverage"] for k, e in out.items()} == {
+        "only-off": "missing", "both": "covered", "partly": "exercised",
+        "keyword": "missing", "scope": "narrowed"}
+    assert out["only-off"]["tests"] == [{"id": "a.feature:3", "strength": "asserted",
+                                         "off": True}], "still listed, marked"
+    assert out["only-off"]["gap"] == S.NEVER_RUN_GAP.format(names="“off one”")
+    assert "gap" not in out["both"]
+    assert entries[0]["coverage"] == "covered", "the input is not edited in place"
+    by = {r["id"]: r for r in rows}
+    d = S._sentence_data(out["both"], by)
+    e2e = next(g for g in d["groups"] if g["cat"] == "e2e")
+    assert e2e["tests"][0]["off"] and e2e["sum"] == "×1 never runs"
+    assert d["cov"] == "covered"
+    js = (S.ASSETS / "reqmap.js").read_text(encoding="utf-8")
+    assert "strength:ev.off?'off':ev.strength" in js, "no strength badge for it"
+    assert "if(ev.off)norun++;return !ev.off;" in js, "nor a count on the sentence hover"
+
+
 def test_a_sentence_nobody_paired_is_not_called_missing(tmp_path):
     root, review = _repo(tmp_path)
     g = S.gather(S._spec(review), review, root)

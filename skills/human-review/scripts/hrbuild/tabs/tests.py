@@ -953,8 +953,15 @@ def _cov_cat(r: dict, root: Path) -> str:
         return "unit"
     if (r.get("suite") or "").endswith("Cucumber"):
         return "api"
+    file = r.get("file") or ""
+    if file.endswith(".feature"):
+        # A Gherkin scenario is never one isolated component. With no run to say which
+        # suite took it, its place does: JVM Cucumber under `src/test/` drives the API
+        # (the suite rule above), a feature anywhere else is an end-to-end one (hr-claude-18:
+        # an unmeasured `@wip` scenario of petclinic-test read "Unit").
+        return "api" if "src/test/" in file else "e2e"
     try:
-        text = (root / (r.get("file") or "")).read_text(encoding="utf-8")
+        text = (root / file).read_text(encoding="utf-8")
     except OSError:
         return "unit"
     return "api" if _API_MARKERS.search(text) else "unit"

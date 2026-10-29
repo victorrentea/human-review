@@ -246,6 +246,10 @@
     // as it was at the base commit; only one whose base could not be read stays shut.
     if(t.status==='deleted')row.dataset.gone='yes';
     if(t.status==='deleted'&&!t.parts.length)row.dataset.shut='yes';
+    // semcov: switched off (@wip, @Disabled, .skip) - greyed, "never runs", why on its
+    // hover; listed, never counted (`discount_never_run`). Not `data-off`: testchapters.js
+    // owns that one for the rows its choice hides.
+    if(t.off)row.dataset.norun='yes';
     // The location is a link in its own right, not decoration on a button: the row opens
     // the source here, the link opens the file in the editor, and both are wanted.
     var pins=(COVERS[id]||[]).length;
@@ -286,6 +290,8 @@
       // a file, so it comes after the file has been named. Between the title and the
       // location it sat between two things that belong together and was read as part of
       // the sentence naming the test.
+      +(t.off?'<span class="rm-norun" data-tip="'+esc(t.off).replace(/"/g,'&quot;')
+              +'">never runs</span>':'')
       +ran(t)+stamp(t)+'</div>'
       +'<div class="rm-tbody"><div class="rm-tinner"></div></div>';
     // Not a button if there is nothing to press: a row that cannot open should not tell a
@@ -573,7 +579,8 @@
     // Which of the nine cover this sentence, and how hard each one pins it.
     var hit={};
     (s.groups||[]).forEach(function(g){g.tests.forEach(function(ev){
-      hit[ev.id]={cat:g.cat,strength:ev.strength,why:ev.why,by:ev.by};});});
+      hit[ev.id]={cat:g.cat,strength:ev.off?'off':ev.strength,why:ev.why,by:ev.by,
+                  off:ev.off};});});
     list.dataset.sel='yes';outline(null);
     Array.prototype.forEach.call(list.querySelectorAll('.rm-t'),function(row){
       var h=hit[row.dataset.id],b=row.querySelector('.rm-cat');
@@ -583,7 +590,8 @@
       row.dataset.open='no';
       row.querySelector('.rm-thead').setAttribute('aria-expanded','false');
       if(h){b.dataset.strength=h.strength;row.querySelector('.rm-thead')
-        .setAttribute('data-tip',(h.by==='model'?'\uD83E\uDD16 ':'')+h.strength+' — '+(h.why||''));}
+        .setAttribute('data-tip',h.off?'never runs \u2014 not counted: '+(D.tests[row.dataset.id].off||'')
+          :(h.by==='model'?'\uD83E\uDD16 ':'')+h.strength+' — '+(h.why||''));}
       else{delete b.dataset.strength;row.querySelector('.rm-thead').removeAttribute('data-tip');}
     });
     // A gap is a criticism of the REQUIREMENT, so it is shown beside the requirement.
@@ -613,11 +621,15 @@
   // clicking will do, because nothing else on the page announces that.
   Array.prototype.forEach.call(root.querySelectorAll('.rm-f[data-s]'),function(f){
     var s=D.sentences[f.dataset.s];if(!s)return;
+    // semcov: a test that never runs is no badge's count; it is said apart, after them.
+    var norun=0;
     var tip=(s.groups||[]).map(function(g){
-      return '<span class="rm-cat" data-cat="'+g.cat+'">'+esc(D.cats[g.cat])
-        +'</span><span class="rm-n">\u00D7'+g.tests.length+'</span>';}).join('');
+      var n=g.tests.filter(function(ev){if(ev.off)norun++;return !ev.off;}).length;
+      return n?'<span class="rm-cat" data-cat="'+g.cat+'">'+esc(D.cats[g.cat])
+        +'</span><span class="rm-n">\u00D7'+n+'</span>':'';}).join('');
     tip=tip?tip
            :'<span class="rm-do">no test \u00B7 click for what is missing</span>';
+    if(norun)tip+='<span class="rm-do"> \u00B7 '+norun+' never run'+(norun===1?'s':'')+'</span>';
     // semcov: who paired it, after the badges - the script's evidence or a model's reading.
     tip+=s.cov==='unmapped'?'<span class="rm-do"> not paired yet \u00B7 run the 🤖</span>'
         :s.cov==='unconfirmed'?'<span class="rm-do"> \u00B7 unconfirmed \u00B7 run the 🤖</span>'
