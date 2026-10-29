@@ -1851,6 +1851,45 @@ def pr_body_html(body: str, repo_url: str = "") -> str:
         out.append(f"<pre><code>{html.escape(chr(10).join(code))}</code></pre>")
     flush()
     return "".join(out)
+#: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a circle
+#: that fills (Victor, 29 Oct 2026) — so a reader knows at a glance what to expect before
+#: reading the words. Index = the level; each with the words its hover says.
+BLAST_GLYPHS = ("\u25cb", "\u25d4", "\u25d1", "\u25d5", "\u25cf")
+BLAST_SIZES = ("barely anything", "about a quarter of the system", "about half the system",
+               "about three quarters of the system", "the whole system")
+
+
+def blast_size(spec) -> int | None:
+    """`mergeRisk.blastSize` as 0–4, or None. No fallback from the words: "visits API" says
+    where, not how much of the system that is, and a guessed circle is worse than none."""
+    raw = ((spec or {}).get("mergeRisk") or {}).get("blastSize")
+    if isinstance(raw, bool):
+        return None
+    try:
+        n = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+    return n if 0 <= n < len(BLAST_GLYPHS) else None
+
+
+def blast_tip(spec) -> str:
+    """The glyph's hover, first line first: "Blast radius: visits API — about a quarter of
+    the system". Empty without a size."""
+    n = blast_size(spec)
+    if n is None:
+        return ""
+    blast = str((spec.get("mergeRisk") or {}).get("blast") or "").strip()
+    return f"Blast radius: {blast + ' — ' if blast else ''}{BLAST_SIZES[n]}"
+
+
+def blast_glyph_html(spec, cls: str = "mr-size") -> str:
+    """The circle, with its hover. Empty without a size."""
+    n = blast_size(spec)
+    if n is None:
+        return ""
+    return (f'<span class="{cls}" data-tip="{html.escape(blast_tip(spec), quote=True)}" '
+            f'aria-label="{html.escape(blast_tip(spec), quote=True)}">{BLAST_GLYPHS[n]}</span>')
+
 
 
 #: The two kinds of door a merge can be, and how each reads on the page.
@@ -1872,8 +1911,13 @@ def merge_risk_html(spec) -> str:
     mark = "\u26a0\ufe0f" if oneway else "\u2705"
     parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">{mark} {door}</b>']
     blast = str(risk.get("blast") or "").strip()
-    if blast:
-        parts.append(f'blast radius: <b>{html.escape(blast)}</b>')
+    # The size's circle in front of the words, whose hover says the size in words; with a
+    # size and no words, the size's words stand in for them.
+    glyph = blast_glyph_html(spec)
+    n = blast_size(spec)
+    if blast or glyph:
+        what = html.escape(blast) if blast else BLAST_SIZES[n]
+        parts.append(f'blast radius: {glyph + " " if glyph else ""}<b>{what}</b>')
     why = str(risk.get("why") or "").strip()
     line = " · ".join(parts) + (f" — {html.escape(why)}" if why else "")
     return f'<p class="mergerisk"><span class="mr-h">Merge risk</span> {line}</p>'

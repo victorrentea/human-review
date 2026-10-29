@@ -78,3 +78,30 @@ def test_merge_risk_without_a_known_door_is_not_drawn_and_stands_alone_without_a
     assert review.merge_risk_html({}) == ""
     alone = review.pr_description_html({"mergeRisk": {"door": "two-way"}})
     assert alone.startswith('<p class="mergerisk">') and "prdesc" not in alone
+
+
+def test_the_blast_radius_wears_a_circle_that_fills_with_its_size():
+    """Victor, 29 Oct 2026: ○ ◔ ◑ ◕ ●, so a reader knows at a glance what to expect."""
+    spec = {"mergeRisk": {"door": "two-way", "blast": "visits API", "blastSize": 1}}
+    out = review.merge_risk_html(spec)
+    assert ('blast radius: <span class="mr-size" data-tip="Blast radius: visits API — about '
+            'a quarter of the system"') in out
+    assert "◔</span> <b>visits API</b>" in out
+    assert [review.BLAST_GLYPHS[review.blast_size({"mergeRisk": {"blastSize": n}})]
+            for n in (0, "2", 3, 4)] == ["○", "◑", "◕", "●"]
+    # No size, or one off the scale: the words alone, no guessed circle.
+    for bad in (None, 5, -1, "big", True):
+        assert review.blast_size({"mergeRisk": {"blastSize": bad}}) is None
+    assert "mr-size" not in review.merge_risk_html({"mergeRisk": {"door": "two-way",
+                                                                  "blast": "visits API"}})
+    # A size with no words says the size.
+    alone = review.merge_risk_html({"mergeRisk": {"door": "one-way", "blastSize": 4}})
+    assert "●</span> <b>the whole system</b>" in alone
+
+
+def test_the_masthead_draws_the_circle_beside_the_grade_with_its_meaning_on_hover():
+    out = review.blast_glyph_html({"mergeRisk": {"blast": "visits API", "blastSize": 1}},
+                                  "titleblast")
+    assert out.startswith('<span class="titleblast" data-tip="Blast radius: visits API — '
+                          'about a quarter of the system"') and out.endswith("◔</span>")
+    assert review.blast_glyph_html({"mergeRisk": {"blast": "visits API"}}) == ""

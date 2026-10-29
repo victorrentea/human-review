@@ -660,3 +660,30 @@ def test_resolve_puts_the_prefix_on_what_is_sent():
                          diff())
     assert folded.mode == "body"
     assert folded.comment["body"].startswith("🤖💭🤷‍♂️ **Assumption** — x")
+
+
+def test_the_review_summary_carries_the_merge_risk_with_its_blast_circle(tmp_path):
+    """The page's MERGE RISK line, on the PR: read from the content.json beside the payload,
+    the size in words after the circle because GitHub has no hover."""
+    (tmp_path / "content.json").write_text(json.dumps({"mergeRisk": {
+        "door": "two-way", "blast": "visits API", "blastSize": 1,
+        "why": "a nullable column a revert stops using"}}), encoding="utf-8")
+    payload = ppc.attach_merge_risk({"body": "**Review record**: 1 auto-fixed.",
+                                     "comments": []}, tmp_path / "pr-comments.json")
+    body = ppc.review_body(payload, [])
+    assert body.startswith("**Review record**: 1 auto-fixed.\n\n**Merge risk** **✅ Two-way "
+                           "door** · blast radius: ◔ **visits API** (about a quarter of the "
+                           "system) — a nullable column a revert stops using\n\n<!-- hr:review")
+    # The payload's own wins; no door, no line; no size, no circle.
+    assert ppc.attach_merge_risk({"mergeRisk": {"door": "one-way"}},
+                                 tmp_path / "x.json")["mergeRisk"] == {"door": "one-way"}
+    assert ppc.merge_risk_md({"door": "maybe", "blast": "x"}) == ""
+    assert ppc.merge_risk_md({"door": "one-way", "blast": "auth"}) == \
+        "**Merge risk** **⚠️ One-way door** · blast radius: **auth**"
+
+
+def test_the_pr_and_the_page_draw_the_same_doors_and_circles():
+    sys.path.insert(0, str(HERE))
+    from hrbuild.tabs import review
+    assert ppc.BLAST_GLYPHS == review.BLAST_GLYPHS and ppc.BLAST_SIZES == review.BLAST_SIZES
+    assert {k: v.split(" ", 1)[1] for k, v in ppc.MERGE_DOORS.items()} == review.MERGE_DOORS

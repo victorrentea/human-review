@@ -116,6 +116,9 @@ h1 .nopr { font-size:.55em; font-weight:600; vertical-align:middle; color:var(--
    is clickable, and the tooltip says where it goes. */
 a.titlescore { text-decoration:none; cursor:pointer; }
 a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor inset; }
+/* The blast radius's circle (`blast_glyph_html`), left of the grade: a bare glyph, no pill,
+   as tall as the pill's figures; its hover says the radius in words. */
+.titlerow .titleblast { font-size:1.05rem; line-height:1; color:var(--fg); opacity:.8; cursor:help; }
 .titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }
 .titlescore.v-mid  { background:rgba(217,130,24,.18); color:#9a5b06; }
 .titlescore.v-bad  { background:rgba(215,38,61,.16); color:#d7263d; }

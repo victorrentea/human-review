@@ -517,11 +517,65 @@ def _face(r: Resolved) -> str:
     return r.comment["path"] + (f":{a}" + (f"-{b}" if b and b != a else "") if a else "")
 
 
+#: The merge risk's door and the blast radius's size, as the page draws them
+#: (`hrbuild/tabs/review.py`: MERGE_DOORS, BLAST_GLYPHS, BLAST_SIZES — a test holds the two
+#: copies equal). Here, because this script runs without the page's package.
+MERGE_DOORS = {"one-way": "\u26a0\ufe0f One-way door", "two-way": "\u2705 Two-way door"}
+BLAST_GLYPHS = ("\u25cb", "\u25d4", "\u25d1", "\u25d5", "\u25cf")
+BLAST_SIZES = ("barely anything", "about a quarter of the system", "about half the system",
+               "about three quarters of the system", "the whole system")
+CONTENT_JSON = "content.json"
+
+
+def merge_risk_md(risk: dict | None) -> str:
+    """`mergeRisk` as the review summary's line on the PR, the page's MERGE RISK line in
+    markdown: the door, the blast radius behind its circle — with the size in words, since
+    GitHub has no hover to say it — and why. Empty without a known door, like the page."""
+    risk = risk if isinstance(risk, dict) else {}
+    door = MERGE_DOORS.get(str(risk.get("door") or "").strip().lower())
+    if not door:
+        return ""
+    parts = [f"**{door}**"]
+    blast = str(risk.get("blast") or "").strip()
+    raw = risk.get("blastSize")
+    try:
+        n = None if isinstance(raw, bool) else int(str(raw).strip())
+    except (TypeError, ValueError):
+        n = None
+    if n is not None and not 0 <= n < len(BLAST_GLYPHS):
+        n = None
+    if n is not None:
+        parts.append(f"blast radius: {BLAST_GLYPHS[n]} "
+                     + (f"**{blast}** ({BLAST_SIZES[n]})" if blast else f"**{BLAST_SIZES[n]}**"))
+    elif blast:
+        parts.append(f"blast radius: **{blast}**")
+    why = str(risk.get("why") or "").strip()
+    return "**Merge risk** " + " · ".join(parts) + (f" — {why}" if why else "")
+
+
+def attach_merge_risk(payload: dict, file: Path) -> dict:
+    """The page's `mergeRisk`, from the `content.json` beside the payload, onto the payload
+    — unless the payload already carries one. Read at push time, so the summary on the PR
+    says what the page says without the agent writing it twice."""
+    if isinstance(payload, dict) and "mergeRisk" not in payload:
+        try:
+            risk = json.loads((file.parent / CONTENT_JSON).read_text(encoding="utf-8")) \
+                .get("mergeRisk")
+        except (OSError, ValueError, AttributeError):
+            risk = None
+        if isinstance(risk, dict):
+            payload["mergeRisk"] = risk
+    return payload
+
+
 def review_body(payload: dict, folded: list[Resolved]) -> str:
-    """The review's own body: the payload's line, then every item GitHub could not take on a
-    line of the diff, each with a permalink to its exact lines on a line of its own — which
-    GitHub renders as the code. Ends with this round's marker."""
+    """The review's own body: the payload's line, the merge risk's, then every item GitHub
+    could not take on a line of the diff, each with a permalink to its exact lines on a line
+    of its own — which GitHub renders as the code. Ends with this round's marker."""
     body = (payload.get("body") or "").rstrip()
+    risk = merge_risk_md(payload.get("mergeRisk"))
+    if risk:
+        body = f"{body}\n\n{risk}".lstrip()
     if folded:
         body += ("\n\n**Not on a line of this diff** — GitHub takes a review comment only on "
                  "a line the PR changed or shows around a change, so these are quoted here, "
@@ -1148,6 +1202,7 @@ def main(argv=None) -> int:
     except (BadPayload, ValueError) as e:
         print(f"{a.file} is not a pushable payload:\n{e}", file=sys.stderr)
         return 2
+    attach_merge_risk(payload, file)
     why = stale_reason(root, payload, a.points)
     if why:
         print(f"{a.file} is not this branch's: {why}. Its lines were written for other code; "
