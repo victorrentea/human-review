@@ -100,9 +100,13 @@ def test_the_title_row_over_the_card_offers_all_tests_where_the_filters_stood(tm
                               'class="rm-side"')
     assert head < cats < side
     js = T.REQMAP_CHAPTERS_JS
-    assert "var MODES = [['cover', 'covering \\uD83E\\uDD16 the change'," in js
-    assert "['run', 'running the change'," in js and "['all', 'all'," in js
-    assert "who.textContent = 'Tests:';" in js
+    # Victor, 29 Oct 2026: "tests" inside each option, no "Tests:" label, and a short
+    # line beside the choice saying what it means.
+    assert "var MODES = [['cover', 'Tests covering \\uD83E\\uDD16 the change'," in js
+    assert "['run', 'Tests running through the change'," in js
+    assert "['all', 'All tests'," in js
+    assert "who.hidden = true;" in js and "whyEl.textContent = m[3];" in js
+    assert ".rm-tkhead > .rm-mode-why{" in T.REQMAP_CSS
     assert "return mode === 'cover' ? paired(row) : !folded(row);" in js
     assert "sec.hidden = !n;" in js                       # an emptied chapter goes
     assert ".reqmap .rm-list .rm-t[data-off=yes]{display:none}" in T.REQMAP_CSS

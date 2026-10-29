@@ -152,8 +152,11 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
 .scopenote a { color:inherit; }
 /* The selected tab's accent wash runs on a little past the strip, fading to the page: the
    panel below reads as the open tab's, without colouring the panel itself (Victor, 29 Oct
-   2026: "doar sus un efect mic sugestiv"). The hairline goes, so the tab flows into it. */
+   2026: "doar sus un efect mic sugestiv"). The hairline goes, so the tab flows into it.
+   On the body's own background, at the masthead's measured foot (`--strip-h`), not on the
+   sticky masthead: there it painted over whatever scrolled under it ("să fie pe
+   background"), here everything on the page is drawn above it. */
 .masthead:has(.tabstrip) { border-bottom-color:transparent; }
-.masthead:has(.tabstrip)::after { content:""; position:absolute; left:0; right:0; top:100%;
-  height:14px; pointer-events:none;
-  background:linear-gradient(var(--accent-soft), transparent); }
+body:has(> .masthead .tabstrip, .masthead .tabstrip) {
+  background:linear-gradient(var(--accent-soft), transparent) 0 var(--strip-h, 0) / 100% 14px
+             no-repeat, var(--bg); }

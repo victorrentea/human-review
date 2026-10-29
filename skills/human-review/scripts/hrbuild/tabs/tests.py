@@ -1479,11 +1479,15 @@ REQMAP_CSS = """
    `data-off`; the rest of the run's rows exist only under "all". */
 .reqmap .rm-list:not([data-all=yes]) .rm-cho{display:none}
 .reqmap .rm-list .rm-t[data-off=yes]{display:none}
-.reqmap .rm-code > .rm-tkhead > .rm-mode{flex:0 1 auto;min-width:0;align-self:center;
+.reqmap .rm-code > .rm-tkhead > .rm-mode{flex:0 0 auto;min-width:0;align-self:center;
   margin-left:6px;padding:1px 4px;font:inherit;font-weight:600;color:var(--fg,#1c1c1c);
   background:transparent;border:1px solid var(--border,#d0d7de);border-radius:6px;
   cursor:pointer;text-overflow:ellipsis}
 .reqmap .rm-code > .rm-tkhead > .rm-mode:hover{border-color:var(--link)}
+/* What the chosen option means, beside it, muted: the room left between the choice and the
+   totals, wrapping to a second small line rather than cut. Its hover says it whole. */
+.reqmap .rm-code > .rm-tkhead > .rm-mode-why{flex:0 1 auto;min-width:0;align-self:center;
+  margin-left:8px;font-size:11.5px;line-height:1.2;font-weight:400;color:var(--muted)}
 .reqmap .rm-code > .rm-tkhead > .rm-mode option{background:var(--bg,#fff);color:var(--fg,#1c1c1c)}
 /* The grand total closes the title row, in the chapters' four columns and right above
    them. The strip's own 16px right padding is the headings', so the columns stand one

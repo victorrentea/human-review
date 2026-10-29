@@ -153,17 +153,24 @@
     x.parentNode.removeChild(x);
   });
   // "covering" carries the 🤖: which test covers which sentence is a model's mapping, not
-  // a measurement (Victor, 20 Oct 2026); "running" is measured, so it has none.
-  var MODES = [['cover', 'covering \uD83E\uDD16 the change',
-                'Tests paired with a sentence of the ticket, the ones wearing the fork.'],
-               ['run', 'running the change',
-                'Tests that ran a changed line, as captured by a coverage probe.'],
-               ['all', 'all', 'All tests, as captured by a coverage probe.']];
+  // a measurement (Victor, 20 Oct 2026); "running" is measured, so it has none. Each option
+  // says "tests" itself, with no "Tests:" in front, and the choice is explained beside it
+  // in one short line (Victor, 29 Oct 2026).
+  // The fourth field is that line; the third stays the card title's hover.
+  var MODES = [['cover', 'Tests covering \uD83E\uDD16 the change',
+                'Tests paired with a sentence of the ticket, the ones wearing the fork.',
+                '\uD83E\uDD16 matched to the ticket'],
+               ['run', 'Tests running through the change',
+                'Tests that ran a changed line, as captured by a coverage probe.',
+                'ran a changed line'],
+               ['all', 'All tests', 'All tests, as captured by a coverage probe.',
+                'every test in the run']];
   var head = map.querySelector('.rm-code > .rm-tkhead');
   var who = head && head.querySelector('.cov-head .rm-who');
   var pick = null;
   if (who) {
-    who.textContent = 'Tests:';
+    who.textContent = '';
+    who.hidden = true;
     pick = document.createElement('select');
     pick.className = 'rm-mode';
     pick.setAttribute('aria-label', 'Which tests the card lists');
@@ -171,6 +178,9 @@
       return '<option value="' + m[0] + '"' + (i ? '' : ' selected') + '>' + esc(m[1]) + '</option>';
     }).join('');
     head.insertBefore(pick, who.closest('.cov-head').nextSibling);
+    var why = document.createElement('span');
+    why.className = 'rm-mode-why';
+    head.insertBefore(why, pick.nextSibling);
   }
   // The grand total, on the card's title row in the chapters' own four columns: the sum of
   // their `−`, ✏️ and `+` and of the tests listed (Victor, 19 Oct 2026: the masthead's
@@ -313,7 +323,12 @@
     // The card title's hover says what the list is, so it follows the choice.
     var tipEl = map.querySelector('.rm-code > .rm-tkhead .cov-head[data-tip]')
              || map.querySelector('.rm-code > .rm-tkhead .rm-who[data-tip]');
-    MODES.forEach(function (m) { if (m[0] === mode && tipEl) tipEl.setAttribute('data-tip', m[2]); });
+    var whyEl = map.querySelector('.rm-code > .rm-tkhead > .rm-mode-why');
+    MODES.forEach(function (m) {
+      if (m[0] !== mode) return;
+      if (tipEl) tipEl.setAttribute('data-tip', m[2]);
+      if (whyEl) { whyEl.textContent = m[3]; whyEl.setAttribute('data-tip', m[2]); }
+    });
     // Rows are kept or dropped one by one (`data-off`, from `listed`), not by these.
     ['unfold', 'unown', 'undel'].forEach(function (k) { list.dataset[k] = 'yes'; });
     count();
