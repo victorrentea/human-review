@@ -13,8 +13,9 @@
 ## What you see
 
 - **How were these produced?** — shut, at the top: three lines on what a span and a
-  trace are, and one fold further in a screenshot of a real trace of a test on the tab,
-  in Grafana Tempo, linked to that test's diagram so the two can be compared.
+  trace are, and under them a screenshot of a trace in Grafana Tempo: one of a test on the
+  tab, linked to that test's diagram so the two can be compared, when the run had a Grafana
+  to shoot it in — otherwise an example kept with the skill.
 - **One fold per test** — tagged API · JUnit, UI · Playwright or UI · Gherkin. Open one and
   the diagram that test's run actually produced is beside its source.
 - **Why each picture is there** — `tagged` (the test carries `@generate_sequence` /
@@ -74,7 +75,8 @@
 - For the trace screenshot, a Grafana with the run's traces while the stack is up — the
   `app`'s own `GRAFANA_URL` by default, or `"trace": {"grafana": …, "attribute":
   "span.test.name"}` — and a span attribute carrying each test's name. Without them the
-  tab simply offers no picture; `"trace": false` turns it off.
+  tab shows the skill's own example trace instead, so a bare Tempo (no Docker, no Grafana)
+  is enough for the whole tab; `"trace": false` turns the shot off.
 
 ## Deeper
 

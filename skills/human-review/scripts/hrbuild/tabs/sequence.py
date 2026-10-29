@@ -959,10 +959,16 @@ def _unchanged_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path)
 
 #: One trace of the traced run, shot in Grafana while its stack was up (`trace-shot.py`,
 #: from `run-steps.py` `_sequence`), and beside it what it shows: which diagram, how many
-#: traces that test made. Absent on a run with no Grafana to shoot — the picture is then
-#: simply not offered.
+#: traces that test made. Absent on a run with no Grafana to shoot.
 TRACE_SHOT = "assets/sequence.trace.png"
 TRACE_SHOT_META = "assets/sequence.trace.json"
+#: What a run with no Grafana shows instead: one real trace from a petclinic test, kept with
+#: the skill. Victor, 29 Oct 2026: the picture is there to show what a trace is, not to be this
+#: run's own — so a project traced into a bare Tempo (no Docker, no Grafana) still gets it.
+TRACE_EXAMPLE = "assets/sequence.trace-example.png"
+_TRACE_EXAMPLE_SRC = Path(__file__).resolve().parent.parent / "assets" / "trace-example.png"
+TRACE_EXAMPLE_SAID = ("An example of a trace, in Grafana Tempo: one test's request, the "
+                      "repository calls it made and their SQL, each a bar as long as it took.")
 
 #: The three steps from a test to the picture of it, for a reader who has never met a
 #: trace. Tiny on purpose, and free of the machinery — no script, no file, no command: the
@@ -991,9 +997,10 @@ def _trace_shot_html(out_dir: Path, root: Path, shown: dict[str, str]) -> str:
     It names the test the trace belongs to and links to that test's pair when the pair is
     on this tab (`shown`: diagram path -> test file), so the waterfall and the sequence can
     be read side by side. The image links to itself: a trace is wide and dense, and the
-    reader who wants it bigger gets the full-resolution file, not a thumbnail."""
+    reader who wants it bigger gets the full-resolution file, not a thumbnail.
+    With no shot of its own, the run gets `TRACE_EXAMPLE`, copied next to the page."""
     if not (Path(out_dir) / TRACE_SHOT).is_file():
-        return ""
+        return _trace_example_html(Path(out_dir))
     try:
         meta = json.loads((Path(out_dir) / TRACE_SHOT_META).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -1023,6 +1030,18 @@ def _trace_shot_html(out_dir: Path, root: Path, shown: dict[str, str]) -> str:
             f'<a class="seqhow-img" href="{TRACE_SHOT}" target="_blank" rel="noopener"'
             ' data-tip="Open full size">'
             f'<img src="{TRACE_SHOT}" alt="{html.escape(alt, quote=True)}" loading="lazy">'
+            "</a></div>")
+
+
+def _trace_example_html(out_dir: Path) -> str:
+    target = out_dir / TRACE_EXAMPLE
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(_TRACE_EXAMPLE_SRC.read_bytes())
+    return ('<div class="seqhow-shot">'
+            f'<p class="seqhow-cap">{TRACE_EXAMPLE_SAID}</p>'
+            f'<a class="seqhow-img" href="{TRACE_EXAMPLE}" target="_blank" rel="noopener"'
+            ' data-tip="Open full size">'
+            f'<img src="{TRACE_EXAMPLE}" alt="An example trace in Grafana Tempo" loading="lazy">'
             "</a></div>")
 
 

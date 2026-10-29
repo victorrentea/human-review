@@ -110,7 +110,7 @@
       "//39": "Grafana is `grafana` ({NAME}s from app.vars expand), else app.vars'",
       "//40": "GRAFANA_URL, else $GRAFANA_URL; `attribute` is the span attribute a test's",
       "//41": "run carries its name in (default span.test.name). `false` turns it off; no",
-      "//42": "Grafana or no matching trace leaves the picture out and says so in a note.",
+      "//42": "Grafana or no matching trace shows the skill's example trace instead, and a note.",
       "trace": {"grafana": "http://localhost:3300", "attribute": "span.test.name"},
       "commands": [
         "cd petclinic-test && GENSEQ_SELECT={tests.e2e} ./run-tests-with-tracing.sh",

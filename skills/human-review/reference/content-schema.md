@@ -339,7 +339,8 @@ the suites were not re-traced, `run-steps.py` says so itself, in the band over t
 The one explanation the tab does carry is the build's, not the author's: a shut *How were
 these produced?* at its top — three lines on spans and traces — with, one fold further in,
 a screenshot of a real trace of a test on the tab, taken in Grafana by the `sequence` step
-while its stack was up (`trace-shot.py` → `assets/sequence.trace.png`; absent, not offered).
+while its stack was up (`trace-shot.py` → `assets/sequence.trace.png`; absent, the skill's
+example trace, `hrbuild/assets/trace-example.png`, copied beside the page).
 
 **The kind of test — `UI` / `API` / `unit` — is not authored.** Every pair leads with the
 Tests tab's own chip, read off the diagram it holds: the first lifeline is the end the run

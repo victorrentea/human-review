@@ -4823,7 +4823,7 @@ def _how(out: str) -> str:
     return out[:out.index('<details class="testpair"')]
 
 
-def test_the_tab_opens_on_how_its_pictures_were_made_shut_and_without_a_shot_offers_none(
+def test_the_tab_opens_on_how_its_pictures_were_made_shut_and_without_a_shot_shows_the_example(
         tmp_path):
     review = _one_traced_pair(tmp_path)
     out, weight, _ = build.render_testpairs(TESTPAIRS, {}, [], tmp_path, review)
@@ -4847,8 +4847,12 @@ def test_the_tab_opens_on_how_its_pictures_were_made_shut_and_without_a_shot_off
     assert "OpenTelemetry" in how and "<dfn>span</dfn>" in how and "<dfn>trace</dfn>" in how
     # No machinery in it: the reviewer is busy, and the two words are what they lack.
     assert not re.search(r"\.(sh|py|ts|json|puml)\b|run-tests|trace-shot", how)
-    assert "seqhow-shot" not in out and "sequence.trace.png" not in out, \
-        "no picture on disk, no fold offering one"
+    # Victor, 29 Oct 2026: the picture shows what a trace is, so a run that shot none (no
+    # Grafana: a bare Tempo, no Docker) shows the skill's own example, copied beside the page.
+    assert "sequence.trace.png" not in out
+    assert '<img src="assets/sequence.trace-example.png"' in how
+    assert "An example of a trace" in how
+    assert (review / "assets/sequence.trace-example.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     assert weight == 1, "an explanation is not an exhibit"
 
 

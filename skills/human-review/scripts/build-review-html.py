@@ -285,7 +285,7 @@ from hrbuild.tabs.sequence import (
     SEQ_ALSO, ledger_status,
     SEQ_TOUCHED, touched_via, _branch_changed, _direct_imports, _TS_IMPORT, _JAVA_IMPORT,
     TRACE_SHOT, TRACE_SHOT_META, TRACE_ANSWER, TRACE_HOW, TRACE_SAMPLED, trace_how_html,
-    _trace_shot_html
+    _trace_shot_html, TRACE_EXAMPLE, _TRACE_EXAMPLE_SRC, TRACE_EXAMPLE_SAID, _trace_example_html
 )
 from hrbuild.tabs.tests import (
     LEDGER_TAB, CAT_LABELS, relabel_cats, TRACED_RANK, TRACED_LABEL, REQMAP_FIT_JS, render_requirements, render_test_ledger, _names_by_file, render_tests,
