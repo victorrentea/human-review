@@ -183,7 +183,7 @@ from hrbuild.shared.diagrams import (
     find_diagram_source, read_manifest, render_diagrams, render_puml,
     select_rows, shorten_dgm_src, unchanged_row, UNCHANGED, UNCHANGED_BADGE, VIEW_WORDS,
     _context_svg, _diagram_views, _drawio_unchanged_card, _focus_views, _provenance,
-    _source_link,
+    _source_link, _dgm_buttons, seq_views_bar,
     _unchanged_body, _why_not_drawn, trace_legend
 )
 from hrbuild.shared.c4 import C4_DIR, C4_MIN_SCALE, C4_SCALE, C4_VIEWBOX, render_c4, _c4_badge, _c4_body, \
