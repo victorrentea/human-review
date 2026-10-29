@@ -140,7 +140,8 @@ from hrbuild.shared.commands import (
 from hrbuild.shared.snippets import (
     DIFF_CONTEXT, diff_html, DIFF_INLINE_TOKEN, diff_link_html, DIFF_TOKEN, diff_uri_handler,
     expand_snippets, review_step_rev, SNIPPET_BASE, snippet_html,
-    SNIPPET_TOKEN, _extract_module, _parse_unified, set_diff_base, commit_stamp
+    SNIPPET_TOKEN, _extract_module, _parse_unified, set_diff_base, commit_stamp,
+    _installed_diff_handler
 )
 from hrbuild.shared.forge import (
     api_forge, find_issue, find_pull, forge_at, forge_for, forge_from_any_remote, FORGES,

@@ -1124,9 +1124,6 @@ def test_a_deleted_test_opens_in_the_ide_as_a_diff_where_the_removal_landed(tmp_
     IDE". Its file as a diff against the base, the caret on its HEAD `line` - the page's
     ordinary diff handle, as data the card's `−N` popover draws."""
     monkeypatch.setenv("HUMAN_REVIEW_DIFF_URI_HANDLER", "")
-    # Cached per process: an earlier test that found the extension installed would win.
-    from hrbuild.shared.snippets import diff_uri_handler
-    diff_uri_handler.cache_clear()
     root, review, sha = _with_a_deleted_test(tmp_path)
     _, data = _card(root, review)
     ide = data["tests"]["test/VisitTest.java:13@base"]["ide"]
@@ -1134,7 +1131,6 @@ def test_a_deleted_test_opens_in_the_ide_as_a_diff_where_the_removal_landed(tmp_
     assert ide == {"href": f"vscode://file/{target}:12:1", "base": sha, "path": "test/VisitTest.java"}
     # The file itself gone: no right-hand side, so no diff - the base link stays.
     assert S.deleted_ide(root, {"file": "test/Gone.java", "headLine": 3, "baseRef": sha}) is None
-    diff_uri_handler.cache_clear()
     js = (Path(__file__).parent / "hrbuild" / "assets" / "testchapters.js").read_text(encoding="utf-8")
     assert "data-gone=\"' + esc(cat || '')" in js and "function goneHtml(cat)" in js
     assert "openIde(t.ide)" in js and "openIde(g.t.ide)" in js

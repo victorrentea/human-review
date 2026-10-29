@@ -193,7 +193,6 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     return '<div class="ghdiff">' + bar + scroll + note + '</div>'
 
 
-@functools.lru_cache(maxsize=None)
 def diff_uri_handler() -> str | None:
     """The extension id that can open a diff for a guide read off disk, if it is installed.
 
@@ -206,15 +205,26 @@ def diff_uri_handler() -> str | None:
     So it is emitted only where it will work, and the check is for the thing itself rather
     than for a flag someone has to remember to set. `HUMAN_REVIEW_DIFF_URI_HANDLER` forces
     it either way — an id to use, or empty to suppress it — for building a guide meant to
-    be read on another machine."""
+    be read on another machine.
+
+    Only the disk scan is cached, per home folder. The override is read on every call: a
+    cached answer used to outlive the environment it was computed in, so the first caller
+    in a process decided for every later one — a test that set the variable got whatever
+    an earlier test had found installed."""
     override = os.environ.get("HUMAN_REVIEW_DIFF_URI_HANDLER")
     if override is not None:
         return override.strip() or None
+    return _installed_diff_handler(Path.home())
+
+
+@functools.lru_cache(maxsize=None)
+def _installed_diff_handler(home: Path) -> str | None:
+    """The first extension under `home` that carries the diff URI handler, if any."""
     # The Human Review extension (vscode-extension/ in this repo) first; victor-vsc, where its
     # URI handler was born and which still carries one, after it.
     for ext in ("victorrentea.human-review", "victorrentea.victor-vsc"):
-        for store in (Path.home() / ".vscode" / "extensions",
-                      Path.home() / ".vscode-insiders" / "extensions"):
+        for store in (home / ".vscode" / "extensions",
+                      home / ".vscode-insiders" / "extensions"):
             try:
                 if any(d.name.startswith(ext + "-") for d in store.iterdir()):
                     return ext
