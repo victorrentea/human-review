@@ -1451,9 +1451,10 @@ def test_the_footer_says_where_the_page_came_from_and_where_to_see_it(tmp_path):
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
     text = re.sub(r"<[^>]+>", "", foot)
-    assert ("Built by https://github.com/victorrentea/human-review. Browse online: demo 1 · "
+    assert ("Built by https://github.com/victorrentea/human-review (guide). Browse online: demo 1 · "
             "demo 2. Adopt what you like. Bug or idea → + issue.") in text
     assert 'href="https://github.com/victorrentea/human-review"' in foot
+    assert 'href="https://victorrentea.ro/talk/architecture-observability-devoxx-26/"' in foot
     assert ">demo 1</a>" in foot and ">demo 2</a>" in foot and "/demo2/review.html" in foot
     assert "https://victorrentea.github.io/human-review/" in foot
     assert 'href="https://github.com/victorrentea/human-review/issues/new/choose"' in foot

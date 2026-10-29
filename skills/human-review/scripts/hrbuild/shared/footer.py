@@ -20,6 +20,10 @@ DEMO_PAGES_URL = "https://victorrentea.github.io/human-review/demo/review.html"
 #: The second published demo (petclinic#53, server-side paging), named beside the first so
 #: a reader can compare two reviews (Victor, 20 Oct 2026).
 DEMO2_PAGES_URL = "https://victorrentea.github.io/human-review/demo2/review.html"
+#: The Devoxx 2026 talk that walks through this page — recording, summary, wiki — as the
+#: guide to it, linked right after the repo (Victor, 29 Oct 2026). Outside the
+#: `takeaway-online` span, so it stays on the demo pages too.
+TALK_URL = "https://victorrentea.ro/talk/architecture-observability-devoxx-26/"
 
 # Still built and still linked from the index, just not from here: `.github/workflows/
 # demo-zip.yml` attaches a zip per snapshot to a rolling release. The footer used to offer
@@ -87,7 +91,9 @@ ISSUES_URL = f"{HOME_URL}/issues/new/choose"
 # page and how to run it, the only thing left to say is that it is theirs to change.
 TAKEAWAY = (
     '<span class="takeaway">'
-    f'Built by <a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a>. '
+    f'Built by <a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a> '
+    f'(<a href="{TALK_URL}" target="_blank" rel="noopener" '
+    'data-tip="The talk that walks through this page: recording, summary, wiki">guide</a>). '
     # Its own span: server.js hides the sentence on the page it links to.
     f'<span class="takeaway-online">Browse online: <a href="{DEMO_PAGES_URL}" target="_blank" '
     'rel="noopener">demo 1</a> · '
