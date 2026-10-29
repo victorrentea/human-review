@@ -110,7 +110,7 @@ def test_the_masthead_draws_the_circle_beside_the_grade_with_its_meaning_on_hove
 def test_the_masthead_shows_the_doors_mark_before_the_circle_with_its_meaning_on_hover():
     """Victor, 29 Oct 2026: the green check beside the grade too — one table for both."""
     two = review.door_mark_html({"mergeRisk": {"door": "Two-way", "why": "a revert stops it"}})
-    assert 'data-tip="Two-way door: a revert simply undoes it\na revert stops it"' in two
+    assert 'data-tip="Two-way door: a revert simply undoes it"' in two
     assert two.endswith(f"{review.MERGE_DOOR_MARKS['two-way']}</span>") and "✅" in two
     assert "⚠️</span>" in review.door_mark_html({"mergeRisk": {"door": "one-way"}})
     assert review.door_mark_html({}) == "" == review.door_mark_html({"mergeRisk": {"door": "?"}})

@@ -1876,10 +1876,10 @@ def door_mark_html(spec, cls: str = "titledoor") -> str:
     door = merge_door(spec)
     if not door:
         return ""
-    tip = MERGE_DOOR_TIPS[door]
-    why = str((spec.get("mergeRisk") or {}).get("why") or "").strip()
-    full = html.escape(tip + (f"\n{why}" if why else ""), quote=True)
-    return (f'<span class="{cls}" data-tip="{full}" aria-label="{html.escape(tip, quote=True)}">'
+    # The meaning alone: the `why` made the hover a page-wide line (the tip has no line
+    # breaks), and it is already on the MERGE RISK line.
+    tip = html.escape(MERGE_DOOR_TIPS[door], quote=True)
+    return (f'<span class="{cls}" data-tip="{tip}" aria-label="{tip}">'
             f'{MERGE_DOOR_MARKS[door]}</span>')
 
 #: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a circle
