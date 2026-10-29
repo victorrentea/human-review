@@ -145,6 +145,7 @@
                     function (w) { w.textContent = shown ? IDE_NAME[shown] : 'your IDE'; });
     paintChips();
     titleTips();
+    aimAll(document);
     document.dispatchEvent(new CustomEvent('hr-ide'));
   }
   window.HR.ide = function () { return SERVED ? ide() : null; };
@@ -207,6 +208,47 @@
     });
   });
 
+  // ---- The href itself follows the pick ------------------------------------------------
+  // Every code link is built as `vscode://file/…`, and that stays its address: kept in
+  // `data-hr-code` the first time this sees it, and read through `codeHref` by everything
+  // that needs the file and line (here, genseq.js, xref.js). What the `href` SAYS is the
+  // picked IDE's own URL — IntelliJ's `jetbrains://` when it is the pick and a click can
+  // reach it — so the status bar on hover, a middle-click and Copy Link Address all name
+  // the IDE the reader chose (Victor, 29 Oct 2026: a `.dgm-src` hovered with IntelliJ
+  // picked still read `vscode://`). Re-aimed on every pick (`paintIde`), and for every link
+  // a script draws or re-points later (the observer below): a statement panel's handler,
+  // a tooltip's file list, a test row opened for the first time.
+  var XLINK_NS = 'http://www.w3.org/1999/xlink';
+  var CODE_LINK = 'a[href^="vscode://file/"], a[data-hr-code]';
+  function codeHref(a) {
+    var h = a.getAttribute('href') || '';
+    return /^vscode:\/\/file\//.test(h) ? h : (a.getAttribute('data-hr-code') || h);
+  }
+  window.HR.codeHref = codeHref;
+  function aim(a) {
+    var h = a.getAttribute('href') || '';
+    // A link re-pointed by a script carries its new address; one turned into GitHub's
+    // online (server.js) or into anything else is no longer this file's to aim.
+    if (/^vscode:\/\/file\//.test(h)) a.setAttribute('data-hr-code', h);
+    else if (h.indexOf('jetbrains://idea/human-review/') !== 0) return;
+    var want = reachable() && ide() === 'idea' ? (ideaLink(a) || codeHref(a)) : codeHref(a);
+    if (h === want) return;
+    a.setAttribute('href', want);
+    if (a.hasAttributeNS && a.hasAttributeNS(XLINK_NS, 'href')) a.setAttributeNS(XLINK_NS, 'xlink:href', want);
+  }
+  function aimAll(root) {
+    if (root.matches && root.matches(CODE_LINK)) aim(root);
+    if (root.querySelectorAll) [].forEach.call(root.querySelectorAll(CODE_LINK), aim);
+  }
+  if (window.MutationObserver) {
+    new MutationObserver(function (records) {
+      records.forEach(function (r) {
+        if (r.type === 'attributes') { if (r.target.matches && r.target.matches(CODE_LINK)) aim(r.target); return; }
+        [].forEach.call(r.addedNodes, function (n) { if (n.nodeType === 1) aimAll(n); });
+      });
+    }).observe(document.documentElement, {childList: true, subtree: true, attributes: true, attributeFilter: ['href']});
+  }
+
   // Registered only now, below every `var` that `paintIde` reads. Each asset is its own
   // script element, so off disk (and online, where nothing is probed) the answer has settled
   // before this file runs and `onready` calls back *synchronously*: registered at the top,
@@ -258,7 +300,9 @@
   // belongs to JetBrains Toolbox, which hands it to its IntelliJ — the reason this is only
   // ever sent to a reader who picked IntelliJ.
   function ideaLink(link) {
-    var aim = parse(link.getAttribute('href') || '');
+    // The href first, then the address editor.js keeps once the href names IntelliJ
+    // (`codeHref`, spelled out: this runs in tests without the rest of the file).
+    var aim = parse(link.getAttribute('href') || '') || parse(link.getAttribute('data-hr-code') || '');
     if (!aim) return null;
     function url(kind, q) {
       var out = [];
@@ -551,10 +595,35 @@
     }
   }
 
+  // THE one way a click reaches source code (Victor, 29 Oct 2026: "it should never happen
+  // again"). Every code link on the page is an `<a href="vscode://file/…">` — HTML or SVG,
+  // drawn by the build or by a script — and this listener on `document` turns its click into
+  // whatever the IDE picked in the masthead takes: a request to the server with `ide=`,
+  // IntelliJ's `jetbrains://` off disk, VS Code's own handler, or a copied `path:line`. The
+  // href is only the address. A script that opens code without a real click on such a link
+  // — a panel that keeps its clicks to itself, a handle whose target it computed — hands it
+  // to `HR.openCode` (below) instead of `location.href`, which is how the Sequence tab's
+  // statement panel opened VS Code with IntelliJ picked. test_editor_links.py fails a page,
+  // or a script, that navigates to an editor any other way.
   document.addEventListener('click', function (ev) {
-    var link = ev.target.closest && ev.target.closest('a[href^="vscode:"]');
+    var link = ev.target.closest && ev.target.closest('a[href^="vscode:"], a[data-hr-code]');
     if (!link || ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
     ev.preventDefault();
+    openCode(link);
+  });
+  // `link`: the anchor, or a bare `vscode://file/…` href for a target no anchor carries.
+  function openCode(link) {
+    if (typeof link === 'string') {
+      var made = document.createElement('a');
+      made.setAttribute('href', link);
+      link = made;
+    }
+    // Online the references are GitHub's or greyed (server.js); one handed over by a script
+    // gets the same answer the greyed ones give.
+    if (document.documentElement.classList.contains('hr-online')) {
+      flash('Works on a local copy \u2014 see Serve');
+      return;
+    }
     // Both logos red: the reader disconnected the IDEs, so nothing opens one. The reference
     // is copied instead, and the toast says where to connect one.
     if (window.HR.ideOff()) {
@@ -575,9 +644,9 @@
       // beside this handle names — and a diff that opens scrolled to the top of a
       // five-hundred-line class leaves the reader hunting for the four lines the box is
       // about, which is the hunt this button exists to end.
-      var aim = parse(link.getAttribute('href'));
+      var at = parse(codeHref(link));
       fetch('/__open_diff__?path=' + encodeURIComponent(dpath) + '&base=' + encodeURIComponent(base)
-            + (aim ? '&line=' + encodeURIComponent(aim.line) : '') + ideQuery())
+            + (at ? '&line=' + encodeURIComponent(at.line) : '') + ideQuery())
         .then(function (r) {
           if (!r.ok) return r.text().then(function (t) { flash(t || 'Could not open the diff'); });
           if (r.status === 200) return r.json().then(function (j) { if (fellBack(j)) flash(fellBack(j)); });
@@ -598,14 +667,14 @@
     // Off disk, at top level, with the extension: its handler finds the window holding the
     // reviewed version of the file, and says so in VS Code when none does.
     var aimed = !SERVED && !EMBEDDED && !base && STAMP.hrHead && STAMP.hrOpenUri
-      && parse(link.getAttribute('href'));
+      && parse(codeHref(link));
     if (aimed) {
       window.location.href = 'vscode://' + STAMP.hrOpenUri + '/review-open?file='
         + encodeURIComponent(aimed.path) + '&line=' + aimed.line + endQuery(link, aimed.line)
         + '&' + commitQuery();
       return;
     }
-    var ref2 = SERVED && parse(link.getAttribute('href'));
+    var ref2 = SERVED && parse(codeHref(link));
     if (ref2) {
       fetch('/__open__?path=' + encodeURIComponent(ref2.path) + '&line=' + ref2.line
             + endQuery(link, ref2.line) + commentQuery(link, ref2.path, ref2.line)
@@ -634,12 +703,13 @@
       // the right thing — but silently, it reads as the feature being broken rather than
       // unavailable. That is exactly how this landed the first time, so it says so.
       if (base) flash('No diff channel here \u2014 opening the file at the change.');
-      window.location.href = link.getAttribute('href');
+      window.location.href = codeHref(link);
       return;
     }
     var ref = refOf(link);
     copy(ref).then(function () { flash('Copied ' + ref + ' — paste into Quick Open (\u2318P)'); });
-  });
+  }
+  window.HR.openCode = openCode;
   // A finding's title opens its first reference in the picked IDE (Victor, 20 Oct 2026):
   // the card's IDE link when it has one, else the first source reference in its body.
   // The click is handed to that link, so it goes wherever a click on the link would —
@@ -651,7 +721,7 @@
     // Online the IDE link is hidden and inert: the body's reference, now GitHub's, instead.
     // Asked at the click: a served page is `hr-online` until its probe answers.
     return (!online && li.querySelector(':scope > a.f-vsc'))
-      || li.querySelector('a.srcref[href^="vscode:"], a.srcref[href^="http"]');
+      || li.querySelector('a.srcref[href^="vscode:"], a.srcref[data-hr-code], a.srcref[href^="http"]');
   }
   function markTitles(root) {
     [].forEach.call(root.querySelectorAll('ol.findings > li > .f-title'), function (t) {
@@ -687,7 +757,7 @@
   // `path:line`, which is what Quick Open takes
   function refOf(link) {
     return (link.textContent || '').trim().split('-')[0]
-      || decodeURIComponent(link.getAttribute('href')).replace(/^vscode:\/\/file\/*/, '/').replace(/:\d+$/, '');
+      || decodeURIComponent(codeHref(link)).replace(/^vscode:\/\/file\/*/, '/').replace(/:\d+$/, '');
   }
 
   // The connected logo, served: is that IDE's window on this checkout, and is the checkout

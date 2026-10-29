@@ -41,8 +41,10 @@
     if (root.matches && root.matches('.rm-part')) parts.unshift(root);
     parts.forEach(function (part) {
       if (part.dataset.xrefId) return;
-      var link = part.querySelector('a.srcref:not(.rm-diff)[href^="vscode:"]');
-      var seen = link && INDEX[link.getAttribute('href')];
+      // Keyed by the link's `vscode://file/` address, which editor.js keeps in `data-hr-code`
+      // once the href names IntelliJ instead.
+      var link = part.querySelector('a.srcref:not(.rm-diff)[href^="vscode:"], a.srcref:not(.rm-diff)[data-hr-code]');
+      var seen = link && INDEX[link.getAttribute('data-hr-code') || link.getAttribute('href')];
       if (!seen) { part.dataset.xrefId = ''; return; }
       part.dataset.xrefId = seen.id;
       if (!seen.shut) return;
