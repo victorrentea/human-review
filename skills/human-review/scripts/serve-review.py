@@ -1008,7 +1008,7 @@ def served_file(root, page) -> Path | None:
     return target if target.is_relative_to(base) and target.is_file() else None
 
 
-def bridge_diff(target: Path, sha: str, line: int, app="vscode") -> bool:
+def bridge_diff(target: Path, sha: str, line: int, app="vscode", head: str | None = None) -> bool:
     """Ask the VS Code window that owns `target` to open the diff *and* put the caret on
     `line`. True when one took it.
 
@@ -1021,11 +1021,16 @@ def bridge_diff(target: Path, sha: str, line: int, app="vscode") -> bool:
     a sha and this side has already resolved one, so the two ends cannot disagree about
     what `origin/main` meant between one click and the next.
 
-    False, too, from an IntelliJ that does not do diffs yet (its /open-diff answers 501)."""
+    False, too, from an IntelliJ that does not do diffs yet (its /open-diff answers 501).
+
+    `head`: a commit's own diff — `sha` its parent, `head` the commit — which the bridge
+    opens as that commit's every file, landing on `target` at `line`. A bridge from before
+    `head` shows `sha` against the working tree instead, which still holds the change."""
     for candidate in {target, target.resolve()}:
         for entry, _info in windows_of(app, candidate):
             try:
                 payload = json.dumps({"file": str(target), "base": sha,
+                                      **({"head": head} if head else {}),
                                       "line": line, "focus": True}).encode()
                 req = urllib.request.Request(
                     f"http://127.0.0.1:{entry['port']}/open-diff", method="POST",
@@ -1049,7 +1054,7 @@ def code_cli():
     return str(mac) if mac.is_file() else None
 
 
-def open_diff(rel, base, served_root, line=None, app="vscode"):
+def open_diff(rel, base, served_root, line=None, app="vscode", head=None):
     """Open `rel` as a diff — the file at `base` on the left, the working tree on the right,
     scrolled to `line` where anything on this machine can do that.
 
@@ -1071,18 +1076,32 @@ def open_diff(rel, base, served_root, line=None, app="vscode"):
     `app` "idea" (`pick_ide`): IntelliJ's bridge first, as for VS Code, and where it cannot
     show the diff — its M1 answers /open-diff with 501 — the file at the line, in IntelliJ.
     Never `code --diff`: the reader chose the other editor, and a diff popping up in VS Code
-    is not what they asked for."""
+    is not what they asked for.
+
+    `head` (a Fixed card's fix commit, Victor 30 Oct 2026): the commit's own diff, `base`
+    its parent — the bridge opens every file of the commit, landing on this one; `code
+    --diff` gets this file at `base` and at `head`. Never the working tree on the right."""
     if ROOT is None:
         return "This server is not attached to a repository"
     sha = resolve_ref(base)
     if sha is None:
         return f"{base or 'that ref'} is not a ref this checkout knows"
+    head_sha = resolve_ref(head) if head else None
+    if head and head_sha is None:
+        return f"{head} is not a commit this checkout knows"
     target = (ROOT / rel).resolve()
     try:
         target.relative_to(ROOT.resolve())
     except ValueError:
         return "That file is outside the repository"
-    if not target.is_file():
+    after = None
+    if head_sha:
+        got = subprocess.run(["git", "-C", str(ROOT), "show", f"{head_sha}:{rel}"],
+                             capture_output=True)
+        if got.returncode != 0:
+            return f"{Path(rel).name} is not in {head_sha[:8]}"
+        after = got.stdout
+    elif not target.is_file():
         return f"{Path(rel).name} is no longer in the working tree"
     show = subprocess.run(["git", "-C", str(ROOT), "show", f"{sha}:{rel}"],
                           capture_output=True)
@@ -1090,8 +1109,9 @@ def open_diff(rel, base, served_root, line=None, app="vscode"):
     # A file added since `sha` did not exist there: its recorded before-state is empty, and
     # an all-additions diff is a real one (the ref itself resolved, above).
     added = show.returncode != 0
-    if not added and show.stdout == target.read_bytes():
-        return f"{Path(rel).name} is unchanged since {short}"
+    if not added and show.stdout == (after if after is not None else target.read_bytes()):
+        return (f"{Path(rel).name} is unchanged in {head_sha[:8]}" if head_sha
+                else f"{Path(rel).name} is unchanged since {short}")
     stem, ext = Path(rel).stem, Path(rel).suffix
     before = Path(served_root) / ".diffbase" / short / Path(rel).parent / f"{stem}@{short}{ext}"
     before.parent.mkdir(parents=True, exist_ok=True)
@@ -1101,11 +1121,19 @@ def open_diff(rel, base, served_root, line=None, app="vscode"):
     # is measured and known to pick the right window; swapping it out for a route with
     # nothing extra to offer would be churn.
     # Not for an added file: the bridge reads the left side out of git, where there is none.
-    if line and not added and bridge_diff(target, sha, line, app):
+    if line and (head_sha or not added) and bridge_diff(target, sha, line, app, head_sha):
         return None
     if app != "vscode":
-        open_in_editor(target, line or 1, app=app)
-        return None
+        if target.is_file():
+            open_in_editor(target, line or 1, app=app)
+            return None
+        return f"{Path(rel).name} is no longer in the working tree"
+    if head_sha:
+        # The commit's side too, beside the parent's, so `code --diff` shows the commit.
+        hs = head_sha[:8]
+        target = Path(served_root) / ".diffbase" / hs / Path(rel).parent / f"{stem}@{hs}{ext}"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(after)
     cli = code_cli()
     if not cli:
         # No VS Code launcher: fall back to what every other reference on the page does
@@ -2661,7 +2689,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             app, fell = pick_ide(ide, ROOT / rel) if ide and ROOT is not None else ("vscode", False)
             problem = open_diff(rel, q.get("base", [""])[0], Handler.root,
                                 int(aim) if aim.isdigit() and aim != "0" else None,
-                                **({"app": app} if ide else {}))
+                                **({"app": app} if ide else {}),
+                                **({"head": q["head"][0]} if q.get("head", [""])[0] else {}))
             if problem is None:
                 Handler.opens += 1
                 if ide:

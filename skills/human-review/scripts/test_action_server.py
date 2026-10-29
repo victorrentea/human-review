@@ -826,6 +826,46 @@ def test_a_file_added_since_the_base_opens_as_an_all_additions_diff(tmp_path, mo
     srv.ROOT = None
 
 
+def test_a_fix_commit_opens_as_the_commits_own_diff_never_against_the_tree(tmp_path, monkeypatch):
+    """A Fixed card's IDE button (Victor, 30 Oct 2026): `head` is the fix commit and `base`
+    its parent. The bridge is asked for that commit; without one, `code --diff` gets the
+    file at the parent and at the commit — not the working tree, which has moved on."""
+    def git(*a):
+        return subprocess.run(["git", "-C", str(tmp_path), *a], check=True,
+                              capture_output=True, text=True).stdout.strip()
+    git("init", "-q")
+    git("config", "user.email", "t@t")
+    git("config", "user.name", "t")
+    (tmp_path / "A.java").write_text("class A {}\n")
+    git("add", ".")
+    git("commit", "-qm", "impl")
+    (tmp_path / "A.java").write_text("class A { int fixed; }\n")
+    git("commit", "-qam", "[auto-fix] fix")
+    fix = git("rev-parse", "HEAD")
+    (tmp_path / "A.java").write_text("class A { int later; }\n")
+    srv.ROOT = tmp_path
+    ran, bridged = [], []
+    monkeypatch.setattr(srv, "code_cli", lambda: "code")
+    monkeypatch.setattr(srv, "bridge_diff", lambda *a: bridged.append(a) or True)
+    served = tmp_path / ".human-review"
+    assert srv.open_diff("A.java", f"{fix}^", served, line=1, head=fix) is None
+    assert bridged[0][1] == git("rev-parse", f"{fix}^") and bridged[0][4] == fix
+    monkeypatch.setattr(srv, "bridge_diff", lambda *a: False)
+    real = subprocess.run
+
+    def fake(argv, **kw):
+        ran.append(argv)
+        return real(argv, **kw) if argv[0] == "git" else None
+    monkeypatch.setattr(srv.subprocess, "run", fake)
+    assert srv.open_diff("A.java", f"{fix}^", served, line=1, head=fix) is None
+    diff = next(a for a in ran if a[:2] == ["code", "--diff"])
+    assert Path(diff[2]).read_text() == "class A {}\n"
+    assert Path(diff[3]).read_text() == "class A { int fixed; }\n"
+    assert Path(diff[3]).name == f"A@{fix[:8]}.java"
+    assert srv.open_diff("A.java", f"{fix}^", served, head="no-such-ref") is not None
+    srv.ROOT = None
+
+
 def test_the_probe_says_whether_this_page_can_rebuild_itself(server, tmp_path):
     srv.ROOT = tmp_path
     assert json.loads(_call(server, "GET", srv.MARKER)[1])["rerun"] is True

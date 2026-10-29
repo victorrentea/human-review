@@ -313,7 +313,9 @@
     }
     var base = link.getAttribute('data-diff-base');
     if (base && link.getAttribute('data-diff-path')) {
-      return url('diff', {file: aim.path, base: base, line: aim.line});
+      // `head`: a commit's own diff (a Fixed card's fix commit), not against the tree.
+      return url('diff', {file: aim.path, base: base, head: link.getAttribute('data-diff-head'),
+                          line: aim.line});
     }
     var end = endOf(link, aim.line);
     // A PR comment's card, as the served page sends it (`commentQuery`).
@@ -645,7 +647,11 @@
       // five-hundred-line class leaves the reader hunting for the four lines the box is
       // about, which is the hunt this button exists to end.
       var at = parse(codeHref(link));
+      // `data-diff-head`: the diff is a commit's own — `base` its parent, `head` the commit
+      // (a Fixed card's fix commit, Victor 30 Oct 2026) — not `base` against the tree.
+      var head = link.getAttribute('data-diff-head');
       fetch('/__open_diff__?path=' + encodeURIComponent(dpath) + '&base=' + encodeURIComponent(base)
+            + (head ? '&head=' + encodeURIComponent(head) : '')
             + (at ? '&line=' + encodeURIComponent(at.line) : '') + ideQuery())
         .then(function (r) {
           if (!r.ok) return r.text().then(function (t) { flash(t || 'Could not open the diff'); });
