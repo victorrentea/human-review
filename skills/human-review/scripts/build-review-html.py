@@ -145,7 +145,8 @@ from hrbuild.shared.snippets import (
 from hrbuild.shared.forge import (
     api_forge, find_issue, find_pull, forge_at, forge_for, forge_from_any_remote, FORGES,
     GhError, github_blob_base, GitHubForge, GitHubPrApi, is_comment_url, is_pull_url,
-    project_of, pull_root, repo_web_root, _REVIEW_THREADS_QUERY, _sh, TRANSIENT
+    project_of, pull_root, repo_web_root, _REVIEW_THREADS_QUERY, _sh, TRANSIENT,
+    is_commit_comment_url,
 )
 from hrbuild.shared.filemark import (
     FILE_MARK_D, FILE_PAGE, FILE_PAGE_D, FILE_PENCIL, FILE_PLUS, filemark, filemark_kind,
@@ -247,7 +248,7 @@ from hrbuild.tabs.review import (
     blast_glyph_html, MERGE_DOOR_MARKS, MERGE_DOOR_TIPS, merge_door, door_mark_html,
     grade_pill_with_risk,
     _md_inline, PR_BODY_JSON, _PR_BODY_BOILERPLATE, pr_comment_slug, PR_COMMENTS_JSON,
-    PR_PILE_LETTER,
+    PR_PILE_LETTER, _PILE_OF_ID, stamp_fix_commits, fix_commit_links,
     PR_POSTED_JSON, PR_PUSH_JS, push_pr_button, push_pr_dialog, PUSH_PR_ACTION,
     PUSH_PR_DRY_ACTION, _PR_SLUG_MAX, PR_PREVIEW_TAG, PR_RESULT_TAG, _payload_changed,
     VSCODE_PR_URI, vscode_pr_uri, vscode_pr_link, VSC_ICON, vscode_file_link,

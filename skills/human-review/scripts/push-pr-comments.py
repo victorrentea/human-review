@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Push the Review tab's three piles onto the pull request, as inline comments on the code.
+"""Push the Review tab's three piles onto GitHub: the open issues and the assumptions as
+inline comments on the pull request, each auto-fix as a note on the commit that fixed it.
+
+**An auto-fix is never a PR comment** (Victor, 30 Oct 2026). It is already fixed by a commit
+on the branch, and on the PR it was clutter in *Files changed* among the issues still open.
+Its note — what the reviewer saw, what the fix did — is a *commit comment* on its fix commit
+(`resolve_fixes`), on the fixed line when that commit's diff shows it. The fix commit is the
+payload comment's own `fix_commit`, else the one `review-points.py` reads off the history for
+the item's lines (`item_fix_commit`). Auto-fixes an older push posted on the PR are left
+there, and kept in the record as `retired`.
 
 The judgement is not made here. The agent that wrote `review-points.md` also writes
 `.human-review/pr-comments.json` — the exact body of GitHub's *create a review* call
@@ -495,6 +504,8 @@ class Call:
     why: str
     #: The markers this call puts on the PR — what `settle` waits for after a 5xx.
     expect: list = field(default_factory=list)
+    #: Where `settle` looks for them: the PR's comments, or a fix commit's.
+    listing: str | None = None
 
     def shell(self) -> str:
         return PR_API.shell(self.method, self.path, self.payload)
@@ -509,9 +520,14 @@ class Plan:
     #: Per item: "new" (not on GitHub yet), "update" (there, body edited), "move" (there,
     #: on other lines: deleted and posted again) or "same" (there as it should be).
     fate: dict = field(default_factory=dict)
+    #: The auto-fixes, as notes on their fix commits — never among `resolved`.
+    fixes: list = field(default_factory=list)
 
     def to_send(self) -> list[Resolved]:
         return [r for r in self.resolved if self.fate.get(r.cid) != "same"]
+
+    def notes_to_send(self) -> list[FixNote]:
+        return [n for n in self.fixes if n.sha and self.fate.get(n.cid) != "same"]
 
 
 def _face(r: Resolved) -> str:
@@ -570,7 +586,7 @@ def attach_merge_risk(payload: dict, file: Path) -> dict:
     return payload
 
 
-def review_body(payload: dict, folded: list[Resolved]) -> str:
+def review_body(payload: dict, folded: list[Resolved], fixes: list | None = None) -> str:
     """The review's own body: the payload's line, the merge risk's, then every item GitHub
     could not take on a line of the diff, each with a permalink to its exact lines on a line
     of its own — which GitHub renders as the code. Ends with this round's marker."""
@@ -578,6 +594,9 @@ def review_body(payload: dict, folded: list[Resolved]) -> str:
     risk = merge_risk_md(payload.get("mergeRisk"))
     if risk:
         body = f"{body}\n\n{risk}".lstrip()
+    notes = fix_notes_md(fixes or [])
+    if notes:
+        body = f"{body}\n\n{notes}".lstrip()
     if folded:
         body += ("\n\n**Not on a line of this diff** — GitHub takes a review comment only on "
                  "a line the PR changed or shows around a change, so these are quoted here, "
@@ -613,7 +632,8 @@ def owned_ids(record: dict | None) -> set[int]:
     """The comment ids the previous push's record says this pipeline posted — the only ones
     a push may delete to post again on other lines."""
     out = set()
-    for c in ((record or {}).get("comments") or {}).values():
+    for c in [*((record or {}).get("comments") or {}).values(),
+              *((record or {}).get("retired") or {}).values()]:
         m = DISCUSSION.search(str((c or {}).get("html_url") or ""))
         if m:
             out.add(int(m.group(1)))
@@ -621,13 +641,19 @@ def owned_ids(record: dict | None) -> set[int]:
 
 
 def plan(payload: dict, diff: Diff, repo: str, pr: int,
-         existing: list[dict], reviews: list[dict], owned: set[int] | None = None) -> Plan:
+         existing: list[dict], reviews: list[dict], owned: set[int] | None = None,
+         fixes: list[FixNote] | None = None,
+         on_commits: dict[str, list[dict]] | None = None) -> Plan:
     """Pure: the calls a push would make. `existing` is the PR's review comments and
     `reviews` its reviews, as GitHub lists them; `owned` the comment ids the previous push
-    recorded (`owned_ids`), which are the only ones it may delete and post again."""
+    recorded (`owned_ids`, `owned_note_ids`), which are the only ones it may delete and post
+    again. The auto-fixes are never PR comments: `fixes` are their notes, already placed on
+    their fix commits (`resolve_fixes`), and `on_commits` those commits' comments."""
     owned = owned or set()
     p = Plan()
-    p.resolved = [resolve(c, diff, payload.get("commit_id"), repo) for c in payload["comments"]]
+    p.fixes = list(fixes or [])
+    p.resolved = [resolve(c, diff, payload.get("commit_id"), repo)
+                  for c in payload["comments"] if not is_fix(c)]
     by_marker: dict[str, dict] = {}
     for e in existing:
         m = MARKER.search(e.get("body") or "")
@@ -687,7 +713,7 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
         else:
             new_lines.append(r)
 
-    body = review_body(payload, folded)
+    body = review_body(payload, folded, p.fixes)
     if ours is not None:
         if (ours.get("body") or "").strip() != body.strip():
             p.calls.append(Call("PUT", PR_API.review_path(repo, pr, ours['id']),
@@ -710,9 +736,247 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
         }, f"create a review with {len(chunk)} line comment(s)"
            + (f" (part {k + 1} of {len(batches)})" if len(batches) > 1 else ""),
             expect=[r.cid for r in chunk]))
+    # The auto-fixes' notes, on their fix commits, after the PR's comments.
+    deletes += plan_notes(p, p.fixes, repo, on_commits or {}, owned)
     # Last: a comment is deleted only once its replacement has been accepted.
     p.calls.extend(deletes)
     return p
+
+
+# --------------------------------------------------------------------------- #
+# auto-fixes: a note on the commit that fixed each one, never a PR comment
+# --------------------------------------------------------------------------- #
+# Victor, 30 Oct 2026: an auto-fixed item is already fixed by a commit on the branch, and as
+# a PR comment it was clutter in the PR's *Files changed*, where the open issues are. Its
+# explanation — what the reviewer saw, what the fix did — goes on the fix commit instead, as
+# a commit comment on the fixed line when that line is in the commit's diff, where a reader
+# who wants it finds it and one who does not never scrolls past it. The open issues and the
+# assumptions stay PR comments. Auto-fixes an older push left on the PR are not touched.
+
+#: What a commit comment's lines are counted against: GitHub's diff of the commit with its
+#: first parent, three lines of context.
+NOTE_CONTEXT = 3
+COMMIT_COMMENT = re.compile(r"#commitcomment-(\d+)$")
+
+
+def is_fix(c: dict) -> bool:
+    """Whether a payload comment is an auto-fix's — its pile, or its id's letter."""
+    cid = str(c.get("hr_id") or "")
+    return c.get("pile") == "fixed" or cid.startswith(PILES["fixed"] + ":")
+
+
+@dataclass
+class FixNote:
+    """One auto-fix's note, placed on its fix commit."""
+    cid: str
+    title: str
+    sha: str | None                # the fix commit; None: no commit names it, not posted
+    comment: dict                  # what is sent: body, and path + position when on a line
+    line: int | None = None        # the file line at `sha` the note sits on
+    note: str = ""                 # how it was placed, when not as written
+    url: str | None = None         # the commit on the forge
+
+    @property
+    def where(self) -> str:
+        if not self.sha:
+            return "no fix commit"
+        at = self.comment.get("path")
+        return (f"fix commit {self.sha[:8]}"
+                + (f" · {at}" + (f":{self.line}" if self.line else "") if at else ""))
+
+
+def commit_positions(root: Path, sha: str, path: str) -> tuple[dict[int, int], list[int]]:
+    """`({new line: diff position}, [lines the commit added])` of `path` in `sha`'s diff with
+    its first parent — GitHub's `position`: the line under the file's first `@@` is 1, and
+    every line after it counts, later `@@` headers included. Empty when the commit did not
+    change the file."""
+    r = subprocess.run(["git", "-C", str(root), "diff", "--no-color", "--no-ext-diff",
+                        f"-U{NOTE_CONTEXT}", f"{sha}^1", sha, "--", path],
+                       capture_output=True, text=True)
+    pos, new_no, at, added = 0, 0, {}, []
+    started = False
+    for line in r.stdout.splitlines() if r.returncode == 0 else []:
+        m = HUNK.match(line)
+        if m:
+            if started:
+                pos += 1
+            started, new_no = True, int(m.group(1))
+            continue
+        if not started or line.startswith("\\"):
+            continue
+        pos += 1
+        if line.startswith("-"):
+            continue
+        at[new_no] = pos
+        if line.startswith("+"):
+            added.append(new_no)
+        new_no += 1
+    return at, added
+
+
+def _points_items(root: Path, points_file: str) -> tuple[dict, dict]:
+    """`({slug: Fixed item}, provenance)` out of `review-points.md`, or empty."""
+    rp = _rp()
+    try:
+        doc = rp.parse((root / points_file).read_text(encoding="utf-8"))
+    except (OSError, ValueError, KeyError, getattr(rp, "Unparseable", ValueError)):
+        return {}, {}
+    items = {slug(i.get("title", "")): i for i in doc["piles"].get("autofixes") or []}
+    return items, {**rp.provenance(doc["front"], root, points_file),
+                   "_pinned": (doc["front"].get("fixed-in") or "").strip()}
+
+
+def fix_note_body(c: dict, item: dict | None) -> str:
+    """The note: what the reviewer saw and what the fix did, as the page's card says them —
+    out of `review-points.md` when the item is there, else the payload's own words."""
+    item = item or {}
+    title = item.get("title") or c.get("title") or ""
+    parts = [f"**Auto-fixed** — {title}"]
+    if item.get("observation"):
+        parts.append(f"**Reviewer:** {_short(item['observation'], BODY_MAX - 200)}")
+    elif item.get("body"):
+        parts.append(_short(item["body"], BODY_MAX - 200))
+    if item.get("fix"):
+        parts.append(f"**Fix:** {_short(item['fix'], 300)}")
+    if len(parts) == 1:
+        text = MARKER.sub("", c.get("body") or "").strip()
+        text = re.sub(r"^(?:\S*\s)?\*\*Auto-fixed\*\*(?: in [0-9a-f]{7,40})?\s*[—-]?\s*", "",
+                      OLD_LEAD.sub("", text))
+        if text and text.split("\n", 1)[0].strip() == title.strip():
+            text = text.split("\n", 1)[1].strip() if "\n" in text else ""
+        if text:
+            parts.append(text)
+    by = item.get("source")
+    if by and f"raised by {by}" not in parts[-1]:
+        parts.append(f"<sub>raised by {by}</sub>")
+    return "\n\n".join(p for p in parts if p)
+
+
+def resolve_fixes(payload: dict, root: Path | None, repo: str | None,
+                  points_file: str = "review-points.md") -> list[FixNote]:
+    """Every auto-fix of the payload as a note on its fix commit, placed on the commit's
+    diff: the comment's line carried from where it was written (`at`, else `commit_id`) to
+    the fix commit; on it when the commit's diff shows it, else on the nearest line the
+    commit added in that file, else on the commit itself.
+
+    The fix commit: the comment's own `fix_commit`, else the commit `review-points.py`
+    names for the item's lines (`item_fix_commit`), else none — and an auto-fix with no
+    commit is said so and not posted, never put back on the PR."""
+    fixes = [c for c in payload.get("comments") or [] if is_fix(c)]
+    if not fixes:
+        return []
+    rp = _rp()
+    items, prov = _points_items(root, points_file) if root else ({}, {})
+    forge = api_forge().of_slug(repo) if repo else None
+    out = []
+    for c in fixes:
+        cid = c.get("hr_id") or hr_id("fixed", c["title"])
+        item = items.get(cid.split(":", 1)[1])
+        body = prefixed(fix_note_body(c, item), "fixed")
+        body = f"{body}\n\n{marker(cid)}"
+        sha = None
+        if root is not None:
+            sha = rp._sha_of(root, c.get("fix_commit"))
+            if not sha:
+                refs = (item or {}).get("refs") or (
+                    [f"{c['path']}:{c['line']}"] if c.get("path") and c.get("line") else [])
+                sha = rp.fix_commit_of(root, refs, prov, (item or {}).get("_fixed_in") or None,
+                                       prov.get("_pinned") or None)
+        n = FixNote(cid=cid, title=c.get("title") or (item or {}).get("title", ""), sha=sha,
+                    comment={"body": body}, url=forge.commit_url(sha) if forge and sha else None)
+        out.append(n)
+        if not sha:
+            n.note = "no commit on this branch names its fix — not posted"
+            continue
+        path = c.get("path")
+        at, added = commit_positions(root, sha, path) if path else ({}, [])
+        if not at:
+            n.note = (f"{path} is not in {sha[:8]}'s diff — the note is on the commit"
+                      if path else "")
+            continue
+        # A commit comment sits on one line: a range's first, where its reader starts.
+        line = (c.get("start_line") or c.get("line")) if c.get("subject_type") != "file" \
+            else None
+        frm = c.get("at") or payload.get("commit_id")
+        if line and frm and rp._sha_of(root, frm) != sha:
+            hunks = rp.file_hunks(root, path, frm, sha)
+            line = rp.map_line(hunks, int(line)) if hunks else line
+        if not line or line not in at:
+            near = min(added or list(at), key=lambda k: abs(k - (line or 0)))
+            n.note = (f"{path}:{line} is not in {sha[:8]}'s diff — on {near}, the nearest line "
+                      "the fix changed" if line else f"on {path}:{near}, the fix's first line")
+            line = near
+        n.line = line
+        n.comment = {"body": body, "path": path, "position": at[line]}
+    return out
+
+
+def fix_notes_md(notes: list[FixNote]) -> str:
+    """The review summary's pointer to where the auto-fixes' notes went."""
+    placed = [n for n in notes if n.sha]
+    if not placed:
+        return ""
+    shas: dict[str, str | None] = {}
+    for n in placed:
+        shas.setdefault(n.sha, n.url)
+    k = len(placed)
+    return (f"**Auto-fixed** — {k} item{'' if k == 1 else 's'}, each fixed by a commit on this "
+            "branch; the review's note on each is a comment on its fix commit, not here: "
+            + ", ".join(f"[`{s[:8]}`]({u})" if u else f"`{s[:8]}`" for s, u in shas.items()))
+
+
+def owned_note_ids(record: dict | None) -> set[int]:
+    """The commit comments the previous push recorded as this pipeline's."""
+    out = set()
+    for c in ((record or {}).get("comments") or {}).values():
+        m = COMMIT_COMMENT.search(str((c or {}).get("html_url") or ""))
+        if m and (c or {}).get("mode") == "commit":
+            out.add(int(m.group(1)))
+    return out
+
+
+def plan_notes(p: "Plan", notes: list[FixNote], repo: str,
+               on_commits: dict[str, list[dict]], owned: set[int]) -> list[Call]:
+    """Pure: the calls that put each note on its fix commit, given the commits' comments as
+    GitHub lists them (`on_commits`, by sha). Same rules as the PR's: a note already there
+    is edited, never posted twice; one that now belongs on another line is deleted and
+    posted again only when the previous push recorded it as its own. Deletes come back
+    apart, to run last."""
+    deletes = []
+    for n in notes:
+        if not n.sha:
+            p.notes.append(f"{n.cid}: {n.note}")
+            continue
+        if n.note:
+            p.notes.append(f"{n.cid}: {n.note}")
+        old = _markers(on_commits.get(n.sha) or []).get(n.cid, [None])[-1]
+        place = (n.comment.get("path"), n.comment.get("position"))
+        if old is not None and (old.get("path"), old.get("position")) != place:
+            if old["id"] in owned:
+                deletes.append(Call("DELETE", PR_API.commit_comment_path(repo, old["id"]), {},
+                                    f"delete {n.cid}: it belongs at {n.where}"))
+                p.notes.append(f"{n.cid}: on {n.sha[:8]} at another line; deleted and posted "
+                               "again")
+                p.fate[n.cid] = "move"
+                old = None
+            else:
+                p.notes.append(f"{n.cid}: posted earlier on {n.sha[:8]} at another line, not "
+                               "in this pipeline's record — left where it is")
+        if old is not None:
+            if (old.get("body") or "").strip() != n.comment["body"].strip():
+                p.calls.append(Call("PATCH", PR_API.commit_comment_path(repo, old["id"]),
+                                    {"body": n.comment["body"]}, f"update {n.cid}",
+                                    listing=PR_API.commit_comments_path(repo, n.sha)))
+                p.fate[n.cid] = "update"
+            else:
+                p.notes.append(f"{n.cid}: already on {n.sha[:8]}, unchanged")
+                p.fate[n.cid] = "same"
+            continue
+        p.fate.setdefault(n.cid, "new")
+        p.calls.append(Call("POST", PR_API.commit_comments_path(repo, n.sha), n.comment,
+                            f"note {n.cid} on {n.where}", expect=[n.cid],
+                            listing=PR_API.commit_comments_path(repo, n.sha)))
+    return deletes
 
 
 # --------------------------------------------------------------------------- #
@@ -768,7 +1032,8 @@ def settle(gh, repo: str, pr: int, call: Call, sleep=time.sleep,
     for _ in range(tries):
         sleep(wait)
         try:
-            seen = len(want & set(_markers(gh.list(PR_API.comments_path(repo, pr)))))
+            seen = len(want & set(_markers(gh.list(call.listing
+                                                   or PR_API.comments_path(repo, pr)))))
         except RuntimeError:
             continue
         if seen == len(want):
@@ -821,13 +1086,25 @@ def execute(p: Plan, gh, repo: str, pr: int, posted_path: Path, meta: dict,
 
 def record_state(p: Plan, gh, repo: str, pr: int, posted_path: Path, meta: dict,
                  error: Exception | None = None, sent: int = 0) -> dict:
-    """What is on the PR now, item by item, written to `pr-comments.posted.json`."""
+    """What is on the PR — and on the fix commits — now, item by item, written to
+    `pr-comments.posted.json`."""
+    try:
+        before = json.loads(posted_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        before = {}
     try:
         after = gh.list(PR_API.comments_path(repo, pr))
         reviews = gh.list(PR_API.reviews_path(repo, pr))
     except RuntimeError as e:
         after, reviews = [], []
         error = error or e
+    on_commits: dict[str, list[dict]] = {}
+    for sha in sorted({n.sha for n in p.fixes if n.sha}):
+        try:
+            on_commits[sha] = gh.list(PR_API.commit_comments_path(repo, sha))
+        except RuntimeError as e:
+            on_commits[sha] = []
+            error = error or e
     marks = _markers(after)
     review = next((r for r in reviews if p.marker in (r.get("body") or "")), None)
     record = {
@@ -862,15 +1139,51 @@ def record_state(p: Plan, gh, repo: str, pr: int, posted_path: Path, meta: dict,
             "commit_id": e.get("commit_id") or rev or meta.get("head"),
             **({"permalink": r.permalink} if r.permalink else {}),
         }
+    # The auto-fixes: each a note on its fix commit (`mode: commit`), its link the comment's
+    # own, which GitHub shows on the commit's page.
+    note_dups = []
+    for n in p.fixes:
+        if not n.sha:
+            missing.append(n.cid)
+            continue
+        es = _markers(on_commits.get(n.sha) or []).get(n.cid) or []
+        e = es[-1] if es else {}
+        if len(es) > 1:
+            note_dups.append(n.cid)
+        there = bool(e.get("html_url"))
+        present += there
+        if not there:
+            missing.append(n.cid)
+        record["comments"][n.cid] = {
+            "pile": "fixed", "title": n.title, "mode": "commit",
+            "html_url": e.get("html_url"), "path": n.comment.get("path"),
+            "line": n.line, "commit_id": n.sha, "fix_commit": n.sha,
+            **({"commit_url": n.url} if n.url else {}),
+        }
+    # An auto-fix an older push posted on the PR stays there, untouched: kept here as
+    # `retired`, so the record still knows the comment is this pipeline's.
+    retired = dict(before.get("retired") or {}) if before.get("pr") in (None, pr) else {}
+    for cid, c in ((before.get("comments") or {}) if before.get("pr") in (None, pr)
+                   else {}).items():
+        if cid.startswith(PILES["fixed"] + ":") and (c or {}).get("mode") != "commit" \
+                and (c or {}).get("html_url"):
+            retired[cid] = {**c, "why": "auto-fixes are notes on their fix commits now; "
+                                        "this PR comment was left on GitHub"}
+    if retired:
+        record["retired"] = retired
     ours = {r.cid for r in p.resolved}
-    dups = sorted(cid for cid, es in marks.items() if cid in ours and len(es) > 1)
-    total = len(p.resolved)
+    dups = sorted([cid for cid, es in marks.items() if cid in ours and len(es) > 1]
+                  + note_dups)
+    total = len(p.resolved) + len(p.fixes)
     record.update(expected=total, present=present, missing=missing, duplicates=dups,
                   sent=sent, status="complete" if present == total and error is None
                   else "partial")
     if record["status"] == "complete":
-        msg = (f"All {total} comments are on GitHub PR #{pr}." if sent else
-               f"All {total} comments were already on GitHub PR #{pr}.")
+        shas = sorted({n.sha[:8] for n in p.fixes if n.sha})
+        on = (f" — {len(p.fixes)} of them notes on fix commit{'' if len(shas) == 1 else 's'} "
+              + ", ".join(shas) if shas else "")
+        msg = (f"All {total} comments are on GitHub PR #{pr}{on}." if sent else
+               f"All {total} comments were already on GitHub PR #{pr}{on}.")
     else:
         why = plain_reason(error) if error else "Not everything reached GitHub"
         left = total - present
@@ -895,10 +1208,15 @@ def preview(p: Plan, pr: int, repo: str, url: str | None, user: str | None) -> d
         where = (_where(r.comment) if r.mode != "body"
                  else _face(r) + " (in the review's summary)")
         items.append({"id": r.cid, "fate": p.fate.get(r.cid, "new"), "where": where,
-                      "pile": r.pile, "title": r.title,
+                      "pile": r.pile, "title": r.title, "target": "pr",
                       "text": MARKER.sub("", r.comment["body"]).strip()})
-    return {"pr": pr, "repo": repo, "url": url, "user": user, "total": len(p.resolved),
-            "already": len(p.resolved) - len(items), "items": items,
+    for n in p.notes_to_send():
+        items.append({"id": n.cid, "fate": p.fate.get(n.cid, "new"), "where": n.where,
+                      "pile": "fixed", "title": n.title, "target": "commit",
+                      "commit": n.sha, "text": MARKER.sub("", n.comment["body"]).strip()})
+    total = len(p.resolved) + sum(1 for n in p.fixes if n.sha)
+    return {"pr": pr, "repo": repo, "url": url, "user": user, "total": total,
+            "already": total - len(items), "items": items,
             "calls": len(p.calls)}
 
 
@@ -919,7 +1237,7 @@ def _load_points_parser():
 
 def _short(text: str, limit: int) -> str:
     text = TOKEN.sub(lambda m: f"`{m.group(1).strip()}`", text or "").strip()
-    para = re.split(r"\n\s*\n", text, 1)[0].strip()
+    para = re.split(r"\n\s*\n", text, maxsplit=1)[0].strip()
     para = re.sub(r"\s*\n\s*", " ", para)
     if len(para) > limit:
         para = para[:limit].rsplit(" ", 1)[0].rstrip(",;:—-") + " …"
@@ -988,6 +1306,7 @@ def from_review_points(root: Path, points_file: str, at: str | None = None) -> d
     except subprocess.CalledProcessError:
         at_sha = at
     comments, counts = [], {"fixed": 0, "ignored": 0, "assumption": 0}
+    prov = rp.provenance(front, root, points_file)
     for key, pile in (("autofixes", "fixed"), ("findings", "ignored"), ("assumptions", "assumption")):
         for item in doc["piles"][key]:
             refs = item.get("refs") or []
@@ -996,6 +1315,10 @@ def from_review_points(root: Path, points_file: str, at: str | None = None) -> d
             counts[pile] += 1
             fixed = item.get("_fixed_in") or front.get("fixed-in")
             fixed_sha = at_sha if (fixed or "").upper() == "HEAD" else (fixed or None)
+            # Where an auto-fix's note goes: the commit that fixed it, recorded here so the
+            # push does not have to work it out again.
+            fix_commit = rp.fix_commit_of(root, refs, prov, item.get("_fixed_in") or None,
+                                          front.get("fixed-in")) if pile == "fixed" else None
             ref = refs[0]
             m = re.match(r"^(.*?):(\d+)(?:-(\d+))?$", ref)
             c: dict = {"hr_id": hr_id(pile, item["title"]), "pile": pile, "title": item["title"]}
@@ -1012,13 +1335,16 @@ def from_review_points(root: Path, points_file: str, at: str | None = None) -> d
                     pass
             else:
                 c.update(path=ref, subject_type="file")
-            c["body"] = comment_body(pile, item, fixed_sha, None)
+            c["body"] = (fix_note_body(c, item) if pile == "fixed"
+                         else comment_body(pile, item, fixed_sha, None))
+            if fix_commit:
+                c["fix_commit"] = fix_commit
             comments.append(c)
     summary = (f"**Review record** from `{points_file}`"
                + (f" ({front['reviewers']})" if front.get("reviewers") else "")
                + f": {counts['fixed']} auto-fixed · {counts['ignored']} declined and still open"
-               f" · {counts['assumption']} assumptions. Each is on the line it is about, or "
-               "quoted below with its lines when that line is not in the diff.")
+               f" · {counts['assumption']} assumptions. Each open one is on the line it is "
+               "about, or quoted below with its lines when that line is not in the diff.")
     return {"version": 1, "commit_id": git(root, "rev-parse", at).strip(), "event": "COMMENT",
             "body": summary, "comments": comments,
             "generated_by": "push-pr-comments.py --from-review-points"}
@@ -1095,6 +1421,12 @@ def summarize(p: Plan, out=None) -> None:
         modes[r.mode] += 1
     print(f"{len(p.resolved)} comments: {modes['line']} on a line, {modes['file']} on a "
           f"file, {modes['body']} folded into the review body", file=out)
+    if p.fixes:
+        k = sum(1 for n in p.fixes if n.sha)
+        print(f"{len(p.fixes)} auto-fix{'' if len(p.fixes) == 1 else 'es'}: not PR comments — "
+              f"{k} note{'' if k == 1 else 's'} on {'its' if k == 1 else 'their'} fix commit"
+              f"{'' if k == 1 else 's'}" + "".join(f"\n  · {n.cid} → {n.where}" for n in p.fixes),
+              file=out)
     for n in p.notes:
         print(f"  · {n}", file=out)
 
@@ -1155,7 +1487,8 @@ def main(argv=None) -> int:
     gh = PR_API
     if a.check:
         diff = load_diff(root, a.base or "origin/main", "HEAD")
-        p = plan(payload, diff, a.repo or "OWNER/REPO", a.pr or 0, [], [])
+        p = plan(payload, diff, a.repo or "OWNER/REPO", a.pr or 0, [], [],
+                 fixes=resolve_fixes(payload, root, a.repo, a.points))
         summarize(p)
         return 0
 
@@ -1177,15 +1510,27 @@ def main(argv=None) -> int:
     if local != head:
         print(f"note: local HEAD {local[:8]} is not the PR head {head[:8]} — anchoring on the "
               "PR head, which is what GitHub shows", file=sys.stderr)
+    # The auto-fixes, as notes on their fix commits — which have to be on the PR to be
+    # commented on.
+    fixes = resolve_fixes(payload, root, repo, a.points)
+    for n in fixes:
+        if n.sha and subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor",
+                                     n.sha, head], capture_output=True).returncode != 0:
+            n.note, n.sha = f"its fix commit {n.sha[:8]} is not on the PR yet — not posted", None
+
+    def on_fix_commits() -> dict[str, list[dict]]:
+        return {sha: gh.list(PR_API.commit_comments_path(repo, sha))
+                for sha in sorted({n.sha for n in fixes if n.sha})}
     try:
         existing = gh.list(PR_API.comments_path(repo, pr))
         reviews = gh.list(PR_API.reviews_path(repo, pr))
+        on_commits = on_fix_commits()
     except RuntimeError as e:
         if not a.dry_run:
             print(f"cannot list the PR's comments: {e}", file=sys.stderr)
             return 4
         print(f"note: could not list existing comments ({e}); assuming none", file=sys.stderr)
-        existing, reviews = [], []
+        existing, reviews, on_commits = [], [], {}
     posted_path = file.with_name(file.stem + POSTED_SUFFIX)
     try:
         before = json.loads(posted_path.read_text(encoding="utf-8"))
@@ -1193,8 +1538,9 @@ def main(argv=None) -> int:
         before = {}
     # Only what the last push recorded as its own may be deleted and posted again; and only
     # on the PR that record is about.
-    owned = owned_ids(before) if before.get("pr") in (None, pr) else set()
-    p = plan(payload, diff, repo, pr, existing, reviews, owned)
+    owned = (owned_ids(before) | owned_note_ids(before)) if before.get("pr") in (None, pr) \
+        else set()
+    p = plan(payload, diff, repo, pr, existing, reviews, owned, fixes, on_commits)
     print(f"{info['url']} @ {head[:8]} (merge-base {diff.base[:8]})")
     summarize(p)
     if a.dry_run:
@@ -1208,7 +1554,7 @@ def main(argv=None) -> int:
 
     def replan() -> Plan:
         return plan(payload, diff, repo, pr, gh.list(PR_API.comments_path(repo, pr)),
-                    gh.list(PR_API.reviews_path(repo, pr)), owned)
+                    gh.list(PR_API.reviews_path(repo, pr)), owned, fixes, on_fix_commits())
 
     record = execute(p, gh, repo, pr, posted_path,
                      {"repo": repo, "pr": pr, "url": info["url"], "head": head,

@@ -206,7 +206,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'Merge risk, under the PR text: ✅ two-way or ⚠️ one-way door; its blast radius, ○ to ●.',
             'Read the assumptions first: a wrong guess is a wrong feature.',
             'Open issues: you decide, top first: <b>must look</b> › <b>worth a look</b> › <b>nit</b>.',
-            'Auto fixed: skim them, and stop only at a fix that changed behaviour.',
+            'Auto fixed: its icons open the fix commit (GitHub, IDE); stop only at behaviour changes.',
         ],
     },
     'behaviour': {

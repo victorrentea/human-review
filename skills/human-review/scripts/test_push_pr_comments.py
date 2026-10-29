@@ -290,7 +290,10 @@ def test_from_review_points_then_check_against_a_real_diff(tmp_path, capsys):
     payload = json.loads((root / ppc.DEFAULT_FILE).read_text())
     by = {x["hr_id"]: x for x in payload["comments"]}
     assert by["F:return-the-vet"]["anchor"] == "Vet vet() { return vet; }"
-    assert by["F:return-the-vet"]["body"].startswith("**Auto-fixed** in ")
+    # An auto-fix is a note on its fix commit: the commit is recorded, the words are the item's.
+    assert by["F:return-the-vet"]["body"].startswith("**Auto-fixed** — Return the vet")
+    assert "The vet was dropped." in by["F:return-the-vet"]["body"]
+    assert by["F:return-the-vet"]["fix_commit"] == _git(root, "rev-parse", "HEAD").strip()
     assert by["A:none-means-none"]["start_line"] == 2
     assert "confidence 0.50" in by["A:none-means-none"]["body"]
     assert "**Open issue** · low" in by["I:rename-the-class"]["body"]
@@ -298,7 +301,10 @@ def test_from_review_points_then_check_against_a_real_diff(tmp_path, capsys):
 
     assert ppc.main(["--root", str(root), "--check", "--base", "main"]) == 0
     out = capsys.readouterr().out
-    assert "3 comments: 2 on a line, 0 on a file, 1 folded" in out
+    assert "2 comments: 1 on a line, 0 on a file, 1 folded" in out
+    head = _git(root, "rev-parse", "HEAD").strip()
+    assert "1 auto-fix: not PR comments — 1 note on its fix commit" in out
+    assert f"F:return-the-vet → fix commit {head[:8]} · src/A.java:3" in out
 
 
 def test_the_pages_copy_of_slug_agrees_with_this_one():
@@ -494,7 +500,8 @@ def test_a_payload_older_than_the_record_is_stale_and_rebuilt_at_the_records_com
     assert fresh["commit_id"] == rec
     by = {x["hr_id"]: x for x in fresh["comments"]}
     assert by["F:return-the-vet"]["anchor"] == "Vet vet() { return vet; }"
-    assert by["F:return-the-vet"]["body"].startswith(f"**Auto-fixed** in {rec[:8]}")
+    # The auto-fix's note goes on the commit that recorded it, not on the later one.
+    assert by["F:return-the-vet"]["fix_commit"] == rec
 
 
 def test_a_round_without_its_own_summary_gathers_its_comments_into_one_review(tmp_path):
@@ -688,3 +695,161 @@ def test_the_pr_and_the_page_draw_the_same_doors_and_circles():
     assert ppc.BLAST_GLYPHS == review.BLAST_GLYPHS and ppc.BLAST_SIZES == review.BLAST_SIZES
     assert ppc.MERGE_DOORS == {k: f"{review.MERGE_DOOR_MARKS[k]} {v}"
                                for k, v in review.MERGE_DOORS.items()}
+
+
+# ------------------------------------------------- auto-fixes: notes on their fix commits
+# Victor, 30 Oct 2026: an auto-fixed item is fixed by a commit already, so it is never a PR
+# comment. Its note goes on that commit, on the fixed line; the open issues stay on the PR.
+
+def _fix_repo(root: Path) -> tuple[str, str]:
+    """An implementation commit, then the `[auto-fix]` commit that fixed `src/A.java:3` and
+    recorded `review-points.md`."""
+    root.mkdir()
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "config", "user.email", "t@t"), _git(root, "config", "user.name", "t")
+    (root / "src").mkdir()
+    (root / "src/A.java").write_text("class A {\n  Vet vet;\n}\n")
+    (root / "src/B.java").write_text("class B {}\n")
+    _git(root, "add", "."), _git(root, "commit", "-qm", "impl")
+    impl = _git(root, "rev-parse", "HEAD").strip()
+    (root / "src/A.java").write_text("class A {\n  Vet vet;\n  Vet vet() { return vet; }\n}\n")
+    (root / "review-points.md").write_text(
+        f"---\nimplementation: {impl}\nfixed-in: HEAD\n---\n\n## Fixed\n\n"
+        "### Return the vet\n- file: src/A.java:3\n- source: tests reviewer\n"
+        "- observation: The getter dropped the vet.\n- fix: it returns the field.\n")
+    _git(root, "add", "."), _git(root, "commit", "-qm", "[auto-fix] return the vet")
+    return impl, _git(root, "rev-parse", "HEAD").strip()
+
+
+def test_commit_positions_count_like_github(tmp_path):
+    """GitHub's `position`: 1 is the line under the file's first `@@`, and every later line
+    counts — the second hunk's header included."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git(root, "init", "-q"), _git(root, "config", "user.email", "t@t")
+    _git(root, "config", "user.name", "t")
+    lines = [f"l{i}" for i in range(1, 31)]
+    (root / "f.txt").write_text("\n".join(lines) + "\n")
+    _git(root, "add", "."), _git(root, "commit", "-qm", "one")
+    lines[1], lines[25] = "two", "twenty-six"
+    (root / "f.txt").write_text("\n".join(lines) + "\n")
+    _git(root, "commit", "-qam", "two")
+    sha = _git(root, "rev-parse", "HEAD").strip()
+    at, added = ppc.commit_positions(root, sha, "f.txt")
+    assert added == [2, 26]
+    body = _git(root, "diff", f"{sha}^1", sha, "--", "f.txt").splitlines()
+    first = next(i for i, ln in enumerate(body) if ln.startswith("@@"))
+    for line, pos in at.items():
+        assert body[first + pos][1:] == lines[line - 1], (line, pos)
+    assert at[2] == 3 and at[26] == at[5] + 2 + 4     # hunk 1 ends at 5; `@@` counts once
+    assert ppc.commit_positions(root, sha, "nothing.txt") == ({}, [])
+
+
+class FixGh(FakeGh):
+    """`FakeGh` with each commit's comments too, as GitHub keeps them apart from the PR's."""
+
+    def __init__(self):
+        super().__init__()
+        self.on_commit: dict[str, list[dict]] = {}
+
+    def list(self, path: str) -> list[dict]:
+        if "/commits/" in path:
+            return list(self.on_commit.get(path.split("/commits/")[1].split("/")[0], []))
+        return super().list(path)
+
+    def send(self, call: ppc.Call) -> dict:
+        if "/commits/" in call.path:
+            self.sent.append(call)
+            sha = call.path.split("/commits/")[1].split("/")[0]
+            cid = self._next()
+            self.on_commit.setdefault(sha, []).append(
+                {**call.payload, "id": cid,
+                 "html_url": f"https://github.com/{REPO}/commit/{sha}#commitcomment-{cid}"})
+            return {}
+        if call.path.startswith(f"repos/{REPO}/comments/"):
+            self.sent.append(call)
+            cid = int(call.path.rsplit("/", 1)[1])
+            for sha, cs in self.on_commit.items():
+                if call.method == "DELETE":
+                    self.on_commit[sha] = [x for x in cs if x["id"] != cid]
+                for x in cs:
+                    if x["id"] == cid:
+                        x["body"] = call.payload["body"]
+            return {}
+        return super().send(call)
+
+
+def _fix_payload(fix: str) -> dict:
+    return {"event": "COMMENT", "body": "Review record.", "commit_id": fix, "comments": [
+        c(pile="fixed", title="Return the vet", path="src/A.java", line=3,
+          body=f"🛠 **Auto-fixed** in {fix[:8]} — Return the vet"),
+        c(title="Keep the vet", anchor="return vet;")]}
+
+
+def test_an_auto_fix_is_a_note_on_its_fix_commit_never_a_pr_comment(tmp_path):
+    root = tmp_path / "repo"
+    impl, fix = _fix_repo(root)
+    payload = _fix_payload(fix)
+    fixes = ppc.resolve_fixes(payload, root, REPO)
+    assert [(n.cid, n.sha, n.line) for n in fixes] == [("F:return-the-vet", fix, 3)]
+    # On the fixed line of the commit's own diff: `@@ -1,3 +1,4 @@`, then lines 1, 2, 3.
+    assert fixes[0].comment["path"] == "src/A.java" and fixes[0].comment["position"] == 3
+    body = fixes[0].comment["body"]
+    assert body.startswith("🤖⚔️🤖✅ **Auto-fixed** — Return the vet")
+    assert "**Reviewer:** The getter dropped the vet." in body and "**Fix:** it returns" in body
+    assert body.endswith("<!-- hr:F:return-the-vet -->")
+
+    gh = FixGh()
+    # What an older push left: this auto-fix as a PR comment, recorded as this pipeline's.
+    gh.comments.append({"id": 5, "path": "src/A.java", "line": 3, "html_url":
+                        f"https://github.com/{REPO}/pull/7#discussion_r5",
+                        "body": "old <!-- hr:F:return-the-vet -->"})
+    posted = tmp_path / "pr-comments.posted.json"
+    posted.write_text(json.dumps({"pr": PR, "comments": {"F:return-the-vet": {
+        "pile": "fixed", "mode": "line", "html_url": gh.comments[0]["html_url"]}}}))
+    owned = ppc.owned_ids(json.loads(posted.read_text()))
+    p = ppc.plan(payload, diff(), REPO, PR, gh.list("x/comments"), [], owned, fixes,
+                 {fix: gh.list(f"repos/{REPO}/commits/{fix}/comments")})
+    assert [r.cid for r in p.resolved] == ["I:keep-the-vet"]
+    notes = [x for x in p.calls if "/commits/" in x.path]
+    assert [(x.method, x.path) for x in notes] == [("POST", f"repos/{REPO}/commits/{fix}/comments")]
+    assert not any(x.method == "DELETE" for x in p.calls), "the old PR comment stays"
+    review = next(x for x in p.calls if x.path.endswith("/reviews"))
+    assert all("hr:F:" not in k["body"] for k in review.payload["comments"])
+    assert f"its fix commit, not here: [`{fix[:8]}`](https://github.com/{REPO}/commit/{fix})" \
+        in review.payload["body"]
+    pv = ppc.preview(p, PR, REPO, None, None)
+    note = next(i for i in pv["items"] if i["target"] == "commit")
+    assert note["where"] == f"fix commit {fix[:8]} · src/A.java:3" and note["commit"] == fix
+
+    rec = ppc.execute(p, gh, REPO, PR, posted, {"pr": PR}, sleep=lambda _s: None)
+    entry = rec["comments"]["F:return-the-vet"]
+    assert entry["mode"] == "commit" and entry["commit_id"] == fix and entry["line"] == 3
+    assert entry["html_url"].startswith(f"https://github.com/{REPO}/commit/{fix}#commitcomment-")
+    assert rec["status"] == "complete" and f"notes on fix commit {fix[:8]}" in rec["message"]
+    assert rec["retired"]["F:return-the-vet"]["html_url"].endswith("#discussion_r5")
+    assert 5 in ppc.owned_ids(rec), "the retired comment is still known as this pipeline's"
+    assert any(x["id"] == 5 for x in gh.comments)
+
+    # A second push: the note is there as it should be, nothing is sent.
+    gh.sent.clear()
+    p2 = ppc.plan(payload, diff(), REPO, PR, gh.list("x/comments"), gh.list("x/reviews"),
+                  ppc.owned_ids(rec) | ppc.owned_note_ids(rec), fixes,
+                  {fix: gh.list(f"repos/{REPO}/commits/{fix}/comments")})
+    assert p2.fate["F:return-the-vet"] == "same"
+    assert not [x for x in p2.calls if "/commits/" in x.path or "/comments/" in x.path]
+
+
+def test_an_auto_fix_no_commit_names_is_said_and_not_posted(tmp_path):
+    root = tmp_path / "repo"
+    impl, fix = _fix_repo(root)
+    payload = _fix_payload(fix)
+    payload["comments"][0]["title"] = "Not in the record"
+    payload["comments"][0]["path"] = "elsewhere.txt"
+    (root / "review-points.md").unlink()
+    fixes = ppc.resolve_fixes(payload, root, REPO)
+    assert fixes[0].sha is None
+    p = ppc.plan(payload, diff(), REPO, PR, [], [], set(), fixes, {})
+    assert not [x for x in p.calls if "/commits/" in x.path]
+    assert any("not posted" in n for n in p.notes)
+    assert all("hr:F:" not in str(x.payload) for x in p.calls)

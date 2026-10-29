@@ -16,8 +16,9 @@ from ..shared.actions import ACTIONS, declare_action, rebuild_interpreter, RERUN
 from ..shared.bands import _lede_above, _flush_top_bands
 from ..shared.chips import reviewer_names, _angry_bot
 from ..shared.commands import command_html
-from ..shared.forge import api_forge, find_pull, forge_at, forge_for, is_pull_url, pull_root
-from ..shared.snippets import DIFF_CONTEXT, diff_html
+from ..shared.forge import (api_forge, find_pull, forge_at, forge_for,
+                            is_commit_comment_url, is_pull_url, pull_root)
+from ..shared.snippets import DIFF_CONTEXT, diff_html, diff_uri_handler
 
 # The report's contract lives next to the scripts, beside the parser that writes it: the
 # directory this package sits in is on sys.path whenever the package is importable.
@@ -2430,7 +2431,8 @@ def render_autofixes(fixes, badge: str = "auto-fixed") -> str:
     for f in fixes:
         refs = _finding_refs(f)
         items.append(
-            '<li class="fixed">' + gh_comment_link(f)
+            # Its fix commit's buttons, never a PR comment's: it is fixed already.
+            '<li class="fixed">' + fix_commit_links(f)
             + _finding_source(f)
             + f'<span class="badge sev-fixed">{html.escape(badge)}</span>'
             + f' <span class="f-title">{f["title"]}</span>'
@@ -2743,6 +2745,88 @@ def _fix_range(item: dict, points: dict,
             d.get("head") or fixed_by or prov.get("reviewCommit"))
 
 
+def stamp_fix_commits(spec: dict, points: dict, root: Path, fixed_by: str | None,
+                      forge) -> None:
+    """Each Fixed item's own fix commit, and where its two buttons go: `_fixSha`, the
+    forge's page of that commit (`_fixUrl`) and the IDE's view of its diff (`_fixOpen`).
+
+    An auto-fixed item is already fixed by a commit on the branch, so it is not a PR comment
+    (Victor, 30 Oct 2026): its GitHub button opens that commit, and its IDE button opens the
+    commit's diff, landing on the item's file and line. The commit is the one
+    `review-points.py` recorded (`fixCommit`), else the one the history names for its lines
+    (`item_fix_commit`), else the round's."""
+    rp = _points_parser()
+    prov = points.get("provenance") or {}
+    review = prov.get("reviewCommit") or fixed_by
+    seen: dict[str, tuple] = {}
+    for f in spec.get("autofixes") or []:
+        if not isinstance(f, dict):
+            continue
+        sha = _git_out(root, "rev-parse", "--verify", "--quiet",
+                       f"{f.get('fixCommit')}^{{commit}}") if f.get("fixCommit") else None
+        # A report from before `fixCommit` was recorded: the same rule, asked here.
+        sha = sha or rp.fix_commit_of(root, f.get("refs") or [], prov, None,
+                                      points.get("fixed_in"))
+        if not sha:
+            continue
+        if sha not in seen:
+            changed = set((_git_out(root, "diff-tree", "--no-commit-id", "--name-only", "-r",
+                                    "--root", sha) or "").splitlines())
+            seen[sha] = (_git_out(root, "rev-parse", "--verify", "--quiet", f"{sha}^1") or "",
+                         _git_out(root, "log", "-1", "--format=%s", sha) or "", changed)
+        parent, subject, changed = seen[sha]
+        f["_fixSha"], f["_fixSubject"] = sha, subject
+        if forge:
+            f["_fixUrl"], f["_fixForge"] = forge.commit_url(sha), forge.name
+        # The item's first ref whose file the commit changed, read at the commit: where the
+        # diff lands. Refs are written at the review commit; carried to `sha` when it is
+        # an earlier commit of the round.
+        for ref in f.get("refs") or []:
+            path, spans = _ref_spans(str(ref))
+            if path not in changed or not parent:
+                continue
+            at = ref
+            if spans and review and review != sha:
+                at = rp.remap_ref(Path(root), ref, review, sha) or ref
+            _, spans = _ref_spans(at)
+            f["_fixOpen"] = {"path": path, "line": spans[0][0] if spans else 1,
+                             "base": parent, "abs": str((Path(root) / path).resolve())}
+            break
+
+
+def fix_commit_links(f) -> str:
+    """A Fixed card's two buttons, GitHub's mark and the IDE's: the fix commit on the forge
+    (its note there, once pushed) and the commit's diff in the reader's IDE. Every tooltip
+    says what the click does; editor.js words the IDE's name after the pick."""
+    sha = f.get("_fixSha") or ""
+    short = sha[:8]
+    out = ""
+    url = f.get("_fixNoteUrl") or f.get("_fixUrl")
+    if url:
+        where = f.get("_fixForge") or "GitHub"
+        tip = (f"Open the fix commit {short} on {where}"
+               + (" — the review's note on this fix is a comment there"
+                  if f.get("_fixNoteUrl") else ""))
+        out += (f' <a class="f-gh f-commit" href="{html.escape(url, quote=True)}" '
+                f'target="_blank" rel="noopener" aria-label="Fix commit on {where}" '
+                f'data-tip="{html.escape(tip, quote=True)}">{GH_ICON}</a>')
+    o = f.get("_fixOpen")
+    if o:
+        at = f"{Path(o['path']).name}:{o['line']}"
+        tip = f"Open the fix commit {short} in VS Code — its diff, at {at}"
+        handler = diff_uri_handler()
+        uri = ""
+        if handler:
+            q = urllib.parse.urlencode({"file": o["abs"], "base": o["base"], "head": sha,
+                                        "line": o["line"]})
+            uri = f' data-diff-uri="{html.escape(f"vscode://{handler}/diff?{q}", quote=True)}"'
+        out += (f' <a class="f-vsc f-commit" href="vscode://file/{html.escape(o["abs"])}'
+                f':{o["line"]}:1"{uri} data-diff-path="{html.escape(o["path"], quote=True)}"'
+                f' data-diff-base="{html.escape(o["base"])}" data-diff-head="{html.escape(sha)}"'
+                f' data-tip="{html.escape(tip, quote=True)}">{IDE_FACE}</a>')
+    return out
+
+
 def attribute_fix_hunks(spec: dict, out_dir: Path, root: Path | None = None) -> None:
     """Show each Fixed card the hunks its own anchors reach, and list the rest after the pile.
 
@@ -2776,6 +2860,7 @@ def attribute_fix_hunks(spec: dict, out_dir: Path, root: Path | None = None) -> 
     points["fixCommitsHtml"] = fix_commits_html(
         commits, repo, points.get("source") or "review-points.md")
     points["fixWarnings"] = review_commits_warnings(out_dir, commits)
+    stamp_fix_commits(spec, points, root, fixed_by, forge)
     fixes = [f for f in spec.get("autofixes") or [] if isinstance(f, dict)
              and (f.get("diffs") or (fixed_by and f.get("refs")))]
     if not fixes:
@@ -3856,6 +3941,7 @@ PR_POSTED_JSON = "pr-comments.posted.json"
 PUSH_PR_ACTION = "__push_pr_comments__"
 PUSH_PR_DRY_ACTION = "__push_pr_comments__:dry"
 PR_PILE_LETTER = {"autofixes": "F", "findings": "I", "assumptions": "A"}
+_PILE_OF_ID = {"F": "fixed", "I": "ignored", "A": "assumption"}
 _PR_SLUG_MAX = 48
 
 
@@ -3946,9 +4032,22 @@ def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> d
     urls = {cid: (c or {}).get("html_url")
             for cid, c in (posted.get("comments") or {}).items()}
     modes = {cid: (c or {}).get("mode") for cid, c in (posted.get("comments") or {}).items()}
+    # Auto-fixes the last push still posted as PR comments, from before they became notes
+    # on their fix commits: what a push would post has changed, so "re-publish" is offered.
+    stale_fixes = False
     for key, letter in PR_PILE_LETTER.items():
         for item in spec.get(key) or []:
             cid = f"{letter}:{pr_comment_slug(item.get('title', ''))}"
+            if letter == "F":
+                # An auto-fix is fixed by a commit, so its note is a comment on that commit,
+                # never a PR comment (Victor, 30 Oct 2026); one an earlier push left on the
+                # PR stays there, unlinked. The card's buttons go to the commit itself.
+                c = (posted.get("comments") or {}).get(cid) or {}
+                if c.get("mode") == "commit" and is_commit_comment_url(c.get("html_url")):
+                    item["_fixNoteUrl"] = c["html_url"]
+                elif c.get("html_url"):
+                    stale_fixes = True
+                continue
             if urls.get(cid):
                 item["_ghUrl"] = urls[cid]
                 item["_ghInSummary"] = modes.get(cid) == "body"
@@ -3962,7 +4061,8 @@ def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> d
                 if not item["_ghInSummary"] and c.get("path") and c.get("line"):
                     item["_ghThread"] = {"path": c["path"], "line": c["line"],
                                          "start": c.get("start_line") or c["line"]}
-    counts = {p: sum(1 for c in comments if c.get("pile") == p)
+    counts = {p: sum(1 for c in comments if (c.get("pile") or _PILE_OF_ID.get(
+                  str(c.get("hr_id") or "")[:1])) == p)
               for p in ("fixed", "ignored", "assumption")}
     spec["_prPush"] = {"count": len(comments), "counts": counts,
                        "posted": sum(1 for u in urls.values() if u),
@@ -3975,7 +4075,7 @@ def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> d
                        "message": posted.get("message"),
                        # Edited since it went out: the payload is not the one the record
                        # was posted from, so "Published" gets a small re-publish beside it.
-                       "changed": _payload_changed(out_dir, posted)}
+                       "changed": _payload_changed(out_dir, posted) or stale_fixes}
     return spec["_prPush"]
 
 
@@ -4215,10 +4315,23 @@ function hrVscPr(url) {
   // The ↗ beside every item the record says is on GitHub — what a rebuild would bake in,
   // put there without one.
   function decorate(r) {
-    var by = {};
+    var by = {}, fix = {};
     Object.keys(r.comments || {}).forEach(function (cid) {
+      // An auto-fix's note is a comment on its fix commit (`mode: commit`); one an older
+      // push left on the PR is not this card's link any more.
+      if (/^F:/.test(cid)) { fix[cid.slice(2)] = r.comments[cid]; return; }
       by[cid.replace(/^[A-Za-z]:/, '')] = r.comments[cid]; });
+    document.querySelectorAll('li.fixed > .f-title').forEach(function (t) {
+      var c = fix[slug(t.textContent)];
+      var a = t.parentNode.querySelector(':scope > a.f-gh');
+      if (!c || c.mode !== 'commit' || !c.html_url || !a) return;
+      // Still the fix commit's page, now at the note on it.
+      a.href = c.html_url;
+      a.dataset.tip = 'Open the fix commit ' + String(c.commit_id || '').slice(0, 8)
+        + ' on GitHub \u2014 the review\u2019s note on this fix is a comment there';
+    });
     document.querySelectorAll('.f-title').forEach(function (t) {
+      if (t.closest('li.fixed')) return;
       var c = by[slug(t.textContent)];
       if (!c || !c.html_url) return;
       // At the head of the card, floated to the right end of its header row (review.css):
@@ -4302,6 +4415,12 @@ function hrVscPr(url) {
       .then(function (r) {
         if (!r) return;
         rec = r; decorate(r);
+        // Auto-fixes an older push posted on the PR: they go on their fix commits now, so
+        // what a push would post has changed (`prepare_pr_push`'s `stale_fixes`).
+        var stale = Object.keys(r.comments || {}).some(function (cid) {
+          var c = r.comments[cid] || {};
+          return /^F:/.test(cid) && c.mode !== 'commit' && !!c.html_url; });
+        if (stale) { changed = true; return; }
         if (!r.payload_sha256) { changed = false; return; }
         return fetch('pr-comments.json', {cache: 'no-store'})
           .then(function (x) { return x.ok ? x.text() : null; }).then(sha)
@@ -4321,8 +4440,17 @@ function hrVscPr(url) {
       var items = pv.items || [];
       if (!items.length) return back('All ' + n(pv.total, 'comment') + ' are already on '
         + 'GitHub PR #' + pv.pr + '.', 'ok');
-      dlg.querySelector('.pp-q').textContent = 'Post ' + n(items.length, 'comment')
-        + ' on GitHub PR #' + pv.pr + (pv.user ? ' as @' + pv.user : '') + '?';
+      // Open issues and assumptions go on the PR; an auto-fix's note on its fix commit.
+      var onPr = items.filter(function (i) { return i.target !== 'commit'; }).length;
+      var notes = items.length - onPr;
+      var shas = items.filter(function (i) { return i.target === 'commit'; })
+        .map(function (i) { return String(i.commit || '').slice(0, 8); })
+        .filter(function (x, k, all) { return x && all.indexOf(x) === k; });
+      var fixWords = notes ? n(notes, 'note') + ' on fix commit' + (shas.length === 1 ? ' '
+        : 's ') + shas.join(', ') : '';
+      dlg.querySelector('.pp-q').textContent = 'Post '
+        + (onPr ? n(onPr, 'comment') + ' on GitHub PR #' + pv.pr + (notes ? ' and ' : '') : '')
+        + fixWords + (pv.user ? ' as @' + pv.user : '') + '?';
       var edits = items.filter(function (i) { return i.fate === 'update'; }).length;
       var sub = [];
       if (pv.already) sub.push(n(pv.already, 'comment') + ' already there stay as they are.');
@@ -4392,7 +4520,7 @@ def push_pr_button(spec) -> str:
     face = "Publish on GitHub"
     partial = pp.get("status") == "partial"
     done = pp.get("status") == "complete" and bool(pp.get("reviewUrl") or pp.get("prUrl"))
-    n = c['fixed'] + c['ignored'] + c['assumption']
+    n, fixes = c['ignored'] + c['assumption'], c['fixed']
     if done:
         # A fact, not a control (Victor, 19 Oct 2026): the check comes from the CSS.
         label, state = "Published on GitHub", "done"
@@ -4401,8 +4529,11 @@ def push_pr_button(spec) -> str:
                + (f" — {pp['pushedAt'][:16].replace('T', ' ')}" if pp.get("pushedAt") else ""))
     else:
         label, state = ("Retry", "retry") if partial else (face, "")
-        tip = (f"{n} inline PR comment{'' if n == 1 else 's'}. Asks before posting; "
-               "re-pushing posts only what is missing, never twice."
+        # An auto-fix is not a PR comment: its note goes on the commit that fixed it.
+        tip = (f"{n} inline PR comment{'' if n == 1 else 's'}"
+               + (f", and {fixes} note{'' if fixes == 1 else 's'} on the fix commit"
+                  f"{'' if fixes == 1 else 's'} for what was auto-fixed" if fixes else "")
+               + ". Asks before posting; re-pushing posts only what is missing, never twice."
                + (f" Last pushed {pp['pushedAt'][:16].replace('T', ' ')}."
                   if again and pp.get("pushedAt") else ""))
     note = pp.get("message") if partial else ""

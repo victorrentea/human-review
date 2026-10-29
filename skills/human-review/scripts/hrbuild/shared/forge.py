@@ -81,6 +81,16 @@ class GitHubPrApi:
     def review_path(repo: str, pr: int, review_id) -> str:
         return f"repos/{repo}/pulls/{pr}/reviews/{review_id}"
 
+    # A commit's own comments: where an auto-fix's note goes, on the commit that fixed it,
+    # not on the PR (Victor, 30 Oct 2026: a fixed item on the PR is clutter in its diff).
+    @staticmethod
+    def commit_comments_path(repo: str, sha: str) -> str:
+        return f"repos/{repo}/commits/{sha}/comments"
+
+    @staticmethod
+    def commit_comment_path(repo: str, comment_id) -> str:
+        return f"repos/{repo}/comments/{comment_id}"
+
     @staticmethod
     def shell(method: str, path: str, payload: dict) -> str:
         """The call as a reader could paste it — what a dry run prints."""
@@ -199,6 +209,13 @@ class GitHubForge:
         may hand an editor to open in a browser."""
         return bool(re.match(r"^https://github\.com/[^/\s?#]+/[^/\s?#]+/pull/\d+([/?#]\S*)?$",
                              url))
+
+    @staticmethod
+    def is_commit_comment_url(url: str) -> bool:
+        """A comment on a commit (`…/commit/<sha>#commitcomment-<id>`) — where an
+        auto-fix's note lives, as against a PR comment."""
+        return bool(re.match(r"^https://github\.com/[^/\s?#]+/[^/\s?#]+/commit/[0-9a-f]{7,40}"
+                             r"#commitcomment-\d+$", str(url or "")))
 
     @staticmethod
     def find_issue(text: str) -> tuple[str, int] | None:
@@ -457,6 +474,10 @@ def find_pull(text):
 
 def is_comment_url(url: str) -> bool:
     return any(f.is_comment_url(url) for f in FORGES)
+
+
+def is_commit_comment_url(url: str) -> bool:
+    return any(f.is_commit_comment_url(url) for f in FORGES)
 
 
 def find_issue(text: str):

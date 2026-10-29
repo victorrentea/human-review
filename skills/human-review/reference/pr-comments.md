@@ -2,8 +2,18 @@
 
 The agent that writes `review-points.md` writes this file too, in the same sitting, while
 it still knows *which line* each item is about. It is the body of GitHub's *create a
-review* call — `POST /repos/{owner}/{repo}/pulls/{n}/reviews` — with every Fixed, Ignored
-and Assumptions item as an inline comment on the code it concerns. The Review tab's
+review* call — `POST /repos/{owner}/{repo}/pulls/{n}/reviews` — with every Ignored and
+Assumptions item as an inline comment on the code it concerns.
+
+**A Fixed item is not a PR comment.** It is already fixed by a commit on the branch, and on
+the PR it was clutter in *Files changed* among the issues still open. Write it here all the
+same, `pile: "fixed"`, on the line it is about: the push posts it as a **note on its fix
+commit** (`POST /repos/{owner}/{repo}/commits/{sha}/comments`), on that line when the
+commit's diff shows it, its body rebuilt from the item's `observation` and `fix` in
+`review-points.md` (*Reviewer:* … *Fix:* …). The fix commit is the comment's own
+`fix_commit` when you give it, else the one `review-points.py` reads off the history for the
+item's lines. The page's Fixed cards link that commit, on GitHub and in the IDE, never a PR
+comment; an auto-fix an older push left on the PR stays there, untouched. The Review tab's
 **Publish on GitHub** button runs `scripts/push-pr-comments.py`, which re-checks the anchors
 against the PR as it is at that moment and sends the file. It does not write a word of it:
 no model runs at push time, so what lands on the PR is what you wrote here.
@@ -60,7 +70,8 @@ record is `review-points.md`). Write it **after** commit #2, so `commit_id` is t
 
 Everything outside `comments[]` except `version` is GitHub's own field. Inside a comment,
 `path`, `line`, `start_line`, `side`, `body` and `subject_type` are GitHub's; `pile`,
-`title` and `anchor` are for the script and are stripped before sending.
+`title`, `anchor` and a Fixed item's optional `fix_commit` (the full sha of the commit that
+fixed it) are for the script and are stripped before sending.
 
 ## The rules
 
@@ -94,7 +105,7 @@ Everything outside `comments[]` except `version` is GitHub's own field. Inside a
 
    | pile | opens with |
    | --- | --- |
-   | `fixed` | `**Auto-fixed** in <short sha>` — the commit that holds the fix |
+   | `fixed` | `**Auto-fixed** in <short sha>` — on the PR never: the push turns it into a note on that commit |
    | `ignored` | `**Open issue** · <severity> · declined` — then *why* it was declined |
    | `assumption` | `**Assumption** · confidence <0.00>` — then the reading **not** taken |
 

@@ -309,3 +309,139 @@ def test_changed_means_the_payload_is_not_the_file_it_was_pushed_from(tmp_path):
     assert not build._payload_changed(tmp_path, {"payload_sha256": _sha(PAYLOAD_TEXT)})
     assert build._payload_changed(tmp_path, {"payload_sha256": _sha("other")})
     assert not build._payload_changed(tmp_path, {}), "an old record cannot say"
+
+
+# ------------------------------------------------- auto-fixes: their fix commit, not the PR
+# Victor, 30 Oct 2026: an auto-fixed item is fixed by a commit already. Its card's buttons
+# open that commit — on GitHub, and as the commit's diff in the IDE — never a PR comment;
+# the push puts its note on the commit.
+
+FIX = "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
+PARENT = "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1"
+
+
+def fixed_item(**kw) -> dict:
+    return {"title": "Unknown vetId untested", "_fixSha": FIX, "_fixForge": "GitHub",
+            "_fixUrl": f"https://github.com/o/r/commit/{FIX}",
+            "_fixOpen": {"path": "src/VisitTest.java", "line": 380, "base": PARENT,
+                         "abs": "/r/petclinic/src/VisitTest.java"}, **kw}
+
+
+def test_a_fixed_card_opens_its_fix_commit_on_github_and_in_the_ide(monkeypatch):
+    monkeypatch.setenv("HUMAN_REVIEW_DIFF_URI_HANDLER", "victorrentea.human-review")
+    links = build.fix_commit_links(fixed_item())
+    assert f'class="f-gh f-commit" href="https://github.com/o/r/commit/{FIX}"' in links
+    assert 'data-tip="Open the fix commit be762955 on GitHub"' in links
+    assert "PR comment" not in links and "discussion_r" not in links
+    # The IDE's: the commit's own diff, parent to commit, landing on the item's line.
+    assert 'href="vscode://file//r/petclinic/src/VisitTest.java:380:1"' in links
+    assert f'data-diff-base="{PARENT}" data-diff-head="{FIX}"' in links
+    assert 'data-diff-path="src/VisitTest.java"' in links
+    assert "Open the fix commit be762955 in VS Code — its diff, at VisitTest.java:380" in links
+    assert f"head={FIX}" in links and "vscode://victorrentea.human-review/diff?" in links
+    # Once pushed, GitHub's mark lands on the note on that commit.
+    note = f"https://github.com/o/r/commit/{FIX}#commitcomment-9"
+    links = build.fix_commit_links(fixed_item(_fixNoteUrl=note))
+    assert f'href="{note}"' in links and "the review&#x27;s note on this fix" in links
+    assert build.fix_commit_links({"title": "no commit"}) == ""
+
+
+def test_only_a_comment_on_a_commit_is_an_auto_fixs_note():
+    from hrbuild.shared.forge import is_commit_comment_url
+    assert is_commit_comment_url(f"https://github.com/o/r/commit/{FIX}#commitcomment-9")
+    assert not is_commit_comment_url("https://github.com/o/r/pull/51#discussion_r7")
+    assert not is_commit_comment_url(f"https://github.com/o/r/commit/{FIX}")
+    assert not is_commit_comment_url(f"https://github.com/o/r/commit/{FIX}#commitcomment-9 x")
+    assert not is_commit_comment_url(None)
+
+
+def test_an_auto_fix_is_never_linked_to_its_old_pr_comment(tmp_path):
+    out_dir = tmp_path / ".human-review"
+    out_dir.mkdir()
+    (out_dir / build.PR_COMMENTS_JSON).write_text(json.dumps({"comments": [
+        {"pile": "fixed", "title": "Return the vet", "path": "src/A.java", "line": 3, "body": "b"},
+        {"pile": "ignored", "title": "Keep the vet", "path": "src/A.java", "line": 12, "body": "b"}]}))
+    old = {"mode": "line", "path": "src/A.java", "line": 3,
+           "html_url": "https://github.com/o/r/pull/51#discussion_r7"}
+    (out_dir / build.PR_POSTED_JSON).write_text(json.dumps(
+        {"status": "complete", "comments": {"F:return-the-vet": old}}))
+    spec = {"pr": {"number": 51}, "autofixes": [{"title": "Return the vet"}]}
+    build.prepare_pr_push(spec, out_dir, tmp_path, HERE)
+    item = spec["autofixes"][0]
+    assert "_ghUrl" not in item and "_fixNoteUrl" not in item
+    assert spec["_prPush"]["changed"], "it would go on the commit now: re-publish is offered"
+    assert spec["_prPush"]["counts"] == {"fixed": 1, "ignored": 1, "assumption": 0}
+    note = {"mode": "commit", "commit_id": FIX,
+            "html_url": f"https://github.com/o/r/commit/{FIX}#commitcomment-9"}
+    (out_dir / build.PR_POSTED_JSON).write_text(json.dumps(
+        {"status": "complete", "comments": {"F:return-the-vet": note}}))
+    spec = {"pr": {"number": 51}, "autofixes": [{"title": "Return the vet"}]}
+    build.prepare_pr_push(spec, out_dir, tmp_path, HERE)
+    assert spec["autofixes"][0]["_fixNoteUrl"] == note["html_url"]
+    assert not spec["_prPush"]["changed"]
+    face = build.push_pr_button({"_prPush": {**spec["_prPush"], "status": None}})
+    assert "1 inline PR comment, and 1 note on the fix commit for what was auto-fixed" in face
+
+
+def test_the_dialog_says_where_auto_fix_notes_go(browser):
+    preview = json.loads(json.dumps(PREVIEW))
+    preview["items"].append({"id": "F:c", "fate": "new", "pile": "fixed", "title": "C",
+                             "target": "commit", "commit": FIX,
+                             "where": f"fix commit {FIX[:8]} · src/C.java:9",
+                             "text": "🤖⚔️🤖✅ **Auto-fixed** — C"})
+    page = open_page(browser, {build.PUSH_PR_DRY_ACTION: {
+        "exit": 0, "output": out(build.PR_PREVIEW_TAG, preview)}}, {})
+    page.click(".pr-push")
+    page.locator("#pr-push-dlg").wait_for(state="visible")
+    assert page.locator(".pp-q").inner_text() == (
+        "Post 2 comments on GitHub PR #51 and 1 note on fix commit be762955 as @victorrentea?")
+    page.click(".pp-what summary")
+    assert "fix commit be762955 · src/C.java:9" in page.locator(".pp-list li").nth(2).inner_text()
+
+
+def test_the_page_points_a_fixed_card_at_its_note_never_at_a_pr_comment(browser):
+    """`decorate`, after a push, without a rebuild: the Fixed card's GitHub mark moves to
+    the note on its fix commit; an auto-fix the record still has as a PR comment gets no
+    PR link, and re-publish is offered."""
+    def html(rec):
+        stub = """<script>window.HR = {onready: function (f) { f({token: 't'}); },
+          can: function () { return true; }, keepPlace: function () {},
+          run: function () { return Promise.resolve({}); }};</script>"""
+        card = ('<li class="fixed">' + build.fix_commit_links(fixed_item())
+                + '<span class="f-title">Return the vet</span></li>')
+        spec = {"_prPush": {"count": 1, "posted": 1, "pushedAt": None,
+                            "counts": {"fixed": 1, "ignored": 0, "assumption": 0}}}
+        return ('<!doctype html><html data-hr-root="/r/petclinic"><head>' + stub
+                + '</head><body><p class="sub counts">' + build.push_pr_button(spec) + "</p>"
+                + build.push_pr_dialog(spec) + f'<ol class="findings">{card}</ol></body></html>')
+
+    for rec, want in (
+            ({"status": "complete", "url": "https://github.com/o/r/pull/51", "pr": 51,
+              "comments": {"F:return-the-vet": {
+                  "mode": "commit", "commit_id": FIX,
+                  "html_url": f"https://github.com/o/r/commit/{FIX}#commitcomment-9"}}},
+             f"https://github.com/o/r/commit/{FIX}#commitcomment-9"),
+            ({"status": "complete", "url": "https://github.com/o/r/pull/51", "pr": 51,
+              "comments": {"F:return-the-vet": {
+                  "mode": "line", "html_url": "https://github.com/o/r/pull/51#discussion_r7"}}},
+             f"https://github.com/o/r/commit/{FIX}")):
+        page = browser.new_page()
+
+        def server(rec):
+            def serve(route):
+                name = route.request.url.rsplit("/", 1)[-1]
+                if name == "review.html":
+                    return route.fulfill(body=html(rec), content_type="text/html")
+                if name == "pr-comments.posted.json":
+                    return route.fulfill(body=json.dumps(rec), content_type="application/json")
+                return route.fulfill(status=404, body="")
+            return serve
+        page.route("http://127.0.0.1:9/**", server(rec))
+        page.goto("http://127.0.0.1:9/review.html")
+        page.wait_for_function("document.querySelector('.pr-push').dataset.state === 'done'")
+        links = page.locator("li.fixed > a.f-gh")
+        assert links.count() == 1 and links.get_attribute("href") == want
+        assert page.locator("a.f-gh[href*='discussion_r']").count() == 0
+        assert page.locator(".pr-repub").is_visible() == (rec["comments"]["F:return-the-vet"]
+                                                          ["mode"] != "commit")
+        page.close()
