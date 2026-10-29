@@ -422,7 +422,7 @@ def logging_fragment(block, root: Path, base: str | None = None):
             f'Uses of '
             f'<span class="dfn" data-tip-side="right"'
             f' data-tip-html="{html.escape(logging_libraries_tip(), quote=True)}">'
-            f'common Java logging libraries</span> in the diff</h2>'
+            f'common Java logging libraries</span></h2>'
             '<p class="tabsub">Found by syntax-aware search over Java sources</p>')
     body = ""
     # No header bar and no surrounding card any more: no heading repeating "logging", no

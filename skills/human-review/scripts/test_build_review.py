@@ -858,7 +858,7 @@ def test_the_logging_tab_opens_on_one_computed_heading(tmp_path, monkeypatch):
         "title and body on the logging block are the renderer's now, not the author's"
     assert 'id="logging-added"' in frag, "the deep link the heading carried still lands"
     assert "Uses of <span" in frag
-    assert ">common Java logging libraries</span> in the diff</h2>" in frag
+    assert ">common Java logging libraries</span></h2>" in frag
     # The hover, and the fact that it is read rather than typed.
     assert "org.slf4j" in frag and "ch.qos.logback" in frag
     assert r"org\.slf4j" in build._logextract().RULES["log-import"]  # escaped there
