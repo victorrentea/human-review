@@ -143,6 +143,40 @@ class HeadlessIdeTest : HeavyPlatformTestCase() {
         assertTrue(diffs.isEmpty())
     }
 
+    // ------------------------------------------------------------------ /open-pr
+
+    fun `test open-pr refuses what is not a PR, and says so when the GitHub plugin is not there`() {
+        val (bad, said) = post("/open-pr", mapOf("url" to "https://github.com/o/r/issues/7"))
+        assertEquals(400, bad)
+        assertEquals(PrOpen.NOT_A_PR, said["error"].asString)
+        // The test IDE loads no GitHub plugin: a sentence for the reader, never a 500.
+        val (code, body) = post("/open-pr", mapOf("url" to "https://github.com/o/r/pull/7", "root" to repo.dir.toString()))
+        assertEquals(body.toString(), 409, code)
+        assertEquals(PrOpen.NO_GITHUB, body["error"].asString)
+    }
+
+    // ------------------------------------------------------------------ off this plugin's stack
+
+    /** Every platform method OffStack is handed (Ide, Diff, Bridge) exists, with those parameter
+     *  types, in the platform the plugin is built against: a typo would only show when clicked. */
+    fun `test the platform calls made off this plugin's stack resolve against this platform`() {
+        val vf = LocalFileSystem.getInstance().findFileByNioFile(Path.of(path("src/Owner.java")))!!
+        val bool = java.lang.Boolean.TYPE
+        OffStack.runnable(OpenFileDescriptor(project, vf, 0, 0), OpenFileDescriptor::class.java, "navigateInEditor",
+            Project::class.java to project, bool to true)
+        OffStack.runnable(OpenFileDescriptor(project, vf), OpenFileDescriptor::class.java, "navigate", bool to true)
+        OffStack.runnable(DiffManager.getInstance(), DiffManager::class.java, "showDiff",
+            Project::class.java to project, DiffRequest::class.java to null)
+        OffStack.runnable(DiffManager.getInstance(), DiffManager::class.java, "showDiff",
+            Project::class.java to project, DiffRequestChain::class.java to null, DiffDialogHints::class.java to DiffDialogHints.DEFAULT)
+        val select = OffStack.runnable(com.intellij.ide.projectView.ProjectView.getInstance(project),
+            com.intellij.ide.projectView.ProjectView::class.java, "select",
+            Any::class.java to null, com.intellij.openapi.vfs.VirtualFile::class.java to vf, bool to true)
+        val tw = java.lang.reflect.Proxy.newProxyInstance(javaClass.classLoader, arrayOf(com.intellij.openapi.wm.ToolWindow::class.java)) { _, _, _ -> null }
+        OffStack.runnable(tw, com.intellij.openapi.wm.ToolWindow::class.java, "activate", Runnable::class.java to select)
+        OffStack.runnable(tw, com.intellij.openapi.wm.ToolWindow::class.java, "activate", Runnable::class.java to null)
+    }
+
     // ------------------------------------------------------------------ /review-open
 
     fun `test review-open opens the reviewed version here, as a range`() {

@@ -3,7 +3,9 @@ package ro.victorrentea.humanreview
 import com.intellij.diff.DiffContentFactory
 import com.intellij.diff.DiffDialogHints
 import com.intellij.diff.DiffManager
+import com.intellij.diff.chains.DiffRequestChain
 import com.intellij.diff.chains.SimpleDiffRequestChain
+import com.intellij.diff.requests.DiffRequest
 import com.intellij.diff.requests.SimpleDiffRequest
 import com.intellij.diff.util.DiffUserDataKeys
 import com.intellij.diff.util.Side
@@ -139,7 +141,9 @@ object DiffOpen {
         val right = factory.create(project, vf)
         val request = SimpleDiffRequest("${plan.title} ↔ ${vf.name}", left, right, plan.title, vf.name)
         if (line > 0) request.putUserData(DiffUserDataKeys.SCROLL_TO_LINE, Pair.create(Side.RIGHT, line - 1))
-        DiffManager.getInstance().showDiff(project, request)
+        // The diff window's editors and toolbars are built off this plugin's stack (OffStack).
+        OffStack.later(OffStack.runnable(DiffManager.getInstance(), DiffManager::class.java, "showDiff",
+            Project::class.java to project, DiffRequest::class.java to request))
     }
 }
 
@@ -227,6 +231,9 @@ object CommitOpen {
                 if (i == plan.index && line > 0) it.putUserData(DiffUserDataKeys.SCROLL_TO_LINE, Pair.create(Side.RIGHT, line - 1))
             }
         }
-        DiffManager.getInstance().showDiff(project, SimpleDiffRequestChain(requests, plan.index), DiffDialogHints.DEFAULT)
+        // Off this plugin's stack, like DiffOpen.show.
+        OffStack.later(OffStack.runnable(DiffManager.getInstance(), DiffManager::class.java, "showDiff",
+            Project::class.java to project, DiffRequestChain::class.java to SimpleDiffRequestChain(requests, plan.index),
+            DiffDialogHints::class.java to DiffDialogHints.DEFAULT))
     }
 }

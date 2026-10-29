@@ -17,6 +17,8 @@ import com.intellij.openapi.fileEditor.impl.EditorTabPresentationUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowId
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -82,9 +84,14 @@ class HumanReviewBridge : Disposable {
             registryFile = Registry.publish(registry, http.address.port, secret, pid)
             // `dispose()` runs on a normal exit; a `kill <pid>` skips services but still runs
             // JVM shutdown hooks, and a stale entry with a dead port is one more thing every
-            // caller has to time out on.
-            shutdownHook = Thread { registryFile?.let { runCatching { Files.deleteIfExists(it) } } }
-                .also { Runtime.getRuntime().addShutdownHook(it) }
+            // caller has to time out on. The hook's task is the JDK's own `Files.deleteIfExists`
+            // (OffStack), not a lambda of ours: the JVM's hook table is a static map, and a class
+            // of this plugin in it would pin the classloader if the hook were ever left behind.
+            registryFile?.let { file ->
+                shutdownHook = Thread(OffStack.runnable(null, Files::class.java, "deleteIfExists",
+                    Path::class.java to file))
+                    .also { Runtime.getRuntime().addShutdownHook(it) }
+            }
             log.info("human-review bridge listening on 127.0.0.1:${http.address.port}")
         } catch (e: Exception) {
             log.warn("human-review: listener failed", e)
@@ -168,6 +175,7 @@ class HumanReviewBridge : Disposable {
                 "POST" to "/open-diff" -> openDiff(ex)
                 "POST" to "/review-open" -> reviewOpen(ex)
                 "POST" to "/open-url" -> openUrl(ex)
+                "POST" to "/open-pr" -> openPr(ex)
                 else -> send(ex, 404, mapOf("ok" to false))
             }
         } catch (e: HttpError) {
@@ -290,11 +298,13 @@ class HumanReviewBridge : Disposable {
             "revealInExplorer" -> {
                 val vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(path!!))
                     ?: return send(ex, 404, mapOf("ok" to false, "error" to "no such file or folder: $path"))
-                onEdt {
-                    ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW)
-                        ?.activate { ProjectView.getInstance(project).select(null, vf, true) }
-                    raise(project)
-                }
+                // The Project view's pane may be built by this activation: off our stack
+                // (OffStack), the select handed to `activate` as a JDK-owned Runnable too.
+                val tw = onEdt { ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW) }
+                val select = OffStack.runnable(ProjectView.getInstance(project), ProjectView::class.java, "select",
+                    Any::class.java to null, VirtualFile::class.java to vf, java.lang.Boolean.TYPE to true)
+                onEdtBusy { OffStack.runOnEdt(if (tw == null) select else OffStack.runnable(tw, ToolWindow::class.java, "activate", Runnable::class.java to select)) }
+                onEdt { raise(project) }
                 remember(project)
             }
             "humanReview.openDatabase" -> {
@@ -303,12 +313,13 @@ class HumanReviewBridge : Disposable {
                 val vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(path!!))
                     ?: return send(ex, 404, mapOf("ok" to false, "error" to "no such file: $path"))
                 vf.refresh(false, false)
-                val shown = onEdt {
+                val tw = onEdt {
                     raise(project)
-                    val tw = ToolWindowManager.getInstance(project).getToolWindow(DATABASE_TOOL_WINDOW)
-                    tw?.activate(null)
-                    tw != null
+                    ToolWindowManager.getInstance(project).getToolWindow(DATABASE_TOOL_WINDOW)
                 }
+                // Its content (a tree, toolbars) is built on first show: off our stack (OffStack).
+                if (tw != null) onEdtBusy { OffStack.runOnEdt(OffStack.runnable(tw, ToolWindow::class.java, "activate", Runnable::class.java to null)) }
+                val shown = tw != null
                 remember(project)
                 return send(ex, 200, mapOf("ok" to true, "folder" to firstFolder(project),
                                            "toolWindow" to shown))
@@ -358,6 +369,24 @@ class HumanReviewBridge : Disposable {
             if (focus) raise(project)
         }
         send(ex, 200, mapOf("ok" to true, "url" to target, "folder" to firstFolder(project), "view" to "tool-window"))
+    }
+
+    // Show a pull request in IntelliJ's GitHub "Pull Requests" tool window, its tab selected
+    // (PullRequests.kt): the page's "in IntelliJ" beside a review posted to the PR. `url` is the
+    // PR's GitHub URL; `root` (optional, a path in the checkout) picks the project window, the
+    // way `/open-url`'s does. A refusal is a 409 with a sentence the caller shows the reader.
+    private fun openPr(ex: HttpExchange) {
+        val body = json(ex)
+        val pr = PrOpen.parse(body.str("url"))
+            ?: return send(ex, 400, mapOf("ok" to false, "error" to PrOpen.NOT_A_PR))
+        val root = body.str("root")?.takeIf { it.isNotEmpty() && Path.of(it).isAbsolute }
+        val project = root?.let { Folders.ownerProject(it) } ?: recentTarget() ?: onEdt(ModalityState.any()) { lastFocusedProject() }
+            ?: return send(ex, 404, mapOf("ok" to false, "error" to "no project is open"))
+        val refused = PrOpen.open(project, pr)
+        if (refused != null) return send(ex, 409, mapOf("ok" to false, "error" to refused, "folder" to firstFolder(project)))
+        onEdt { raise(project) }
+        remember(project)
+        send(ex, 200, mapOf("ok" to true, "number" to pr.number, "folder" to firstFolder(project)))
     }
 
     // Open a file at a line (or a range, `endLine`) in the project that owns it, and raise that
@@ -432,5 +461,6 @@ class HumanReviewStartup : ProjectActivity {
         // Not in a test run: a test starts its own bridge on its own registry, when it wants one.
         if (ApplicationManager.getApplication().isUnitTestMode) return
         service<HumanReviewBridge>().start()
+        service<PrStatusFold>().install()
     }
 }

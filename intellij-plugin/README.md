@@ -16,7 +16,8 @@ twin of [`vscode-extension/`](../vscode-extension), speaking the same wire proto
   or VS Code window running the bridge (it is handed over). Edited since: an amber note on the
   line. Nowhere: a refusal with a prompt to copy for a coding agent.
 - **Pages read off disk** reach the plugin through `jetbrains://idea/human-review/…` links
-  (`open`, `diff`, `review-open`, the query of the VS Code extension's URI handler), which the
+  (`open`, `diff`, `review-open`, the query of the VS Code extension's URI handler, and
+  `open-pr?url=…&root=…`), which the
   page sends when the reader picked IntelliJ in the masthead earlier. `jetbrains://` is owned by
   JetBrains Toolbox, which hands it to the IntelliJ it manages: without Toolbox those clicks go
   nowhere.
@@ -33,6 +34,18 @@ twin of [`vscode-extension/`](../vscode-extension), speaking the same wire proto
   opened only when you click it. (VS Code expands the thread in the editor; IntelliJ has no public
   API for that.) The bridge answers `comment: "notified"`, or `"none"` when no GitHub URL came with
   the click; `/editor-state` reports the last one as `lastComment`.
+- **GitHub pull requests**, in the bundled GitHub plugin's *Pull Requests* tool window (nothing
+  of that plugin is linked against: its view models are internal, so `PullRequests.kt` finds the
+  tool window by id, the tree and the status block by shape and name, and degrades to a no-op):
+  - **Follow the editor**: switching the editor to a file of the open PR selects it in the PR's
+    changes tree and scrolls there. On by default; right-click the tree → *Follow the Editor*.
+  - **A foldable status block**: double-click the checks/reviewers block under the tree to fold
+    it to its first line ("✓ All required checks have passed") and give the tree the room; again
+    to unfold. Remembered; also right-click the tree → *Fold the Status Block*.
+  - **Open a PR there**: the review page's *in IntelliJ* beside a review posted to the PR opens it
+    in that tool window, its tab selected and its timeline open (`/open-pr`, or the `open-pr`
+    link off disk) — in the window that has the checkout, after checking the tool window is on
+    the PR's repository.
 - **Installs and updates without a restart** — a dynamic plugin (below).
 
 ## How it connects
@@ -43,8 +56,10 @@ window in one JVM, unlike VS Code's one extension host per window) and publishes
 deleted on exit and on unload. Only `127.0.0.1`, only callers sending the token in
 `x-relay-token`, and only a short allowlist: `/ping` (with the plugin's `version`),
 `/editor-state`, `/open-file`, `/open-diff`, `/review-open`, `/open-url` (`{url, root?,
-preserveFocus?}`; http(s) only), and `/command` with `workbench.action.focusWindow`,
-`humanReview.status` or `revealInExplorer`.
+preserveFocus?}`; http(s) only), `/open-pr` (`{url, root?}`: a `https://github.com/…/pull/N`;
+`409` with a sentence when the GitHub plugin is off, not connected, or on another repository),
+and `/command` with `workbench.action.focusWindow`, `humanReview.status`, `revealInExplorer` or
+`humanReview.openDatabase`.
 
 ## Install
 
@@ -70,6 +85,13 @@ unload it closes its port, deletes `idea-<pid>.json`, and takes its highlights, 
 and its notification back out of the editors (`Lifecycle.kt`); a plugin loaded into a running IDE
 starts its bridge for the projects already open.
 
+**Nothing that builds UI is called from the plugin's own stack** (`OffStack.kt`). Every toolbar
+keeps a `Throwable` of where it was created, and a Throwable keeps the class of every frame: an
+editor opened from a lambda of ours held the old build's classloader for as long as it stayed
+open, and the 30 Oct 2026 reload failed with "not unload-safe". Editors, diffs, tool-window
+activations and the Pull Requests tree's selection are handed to the EDT as JDK-owned Runnables
+(a method handle wrapped by `MethodHandleProxies`), so no frame of ours is under them.
+
 - **Colleagues** get new versions from the Marketplace like any plugin: *Settings → Plugins →
   Updates → Update*, applied live without a restart prompt; or tick *Update plugins
   automatically* (Settings → Appearance & Behavior → System Settings → Updates) and they arrive
@@ -80,8 +102,12 @@ starts its bridge for the projects already open.
   and the plugin installed from disk once. It keeps the installed jar's file name (a new name is
   ignored), stages the copy outside `lib/` and renames it into place (never an overwrite: the
   loaded classloader still reads the old file), then watches `idea.log`: ✅ on
-  `- load plugin 'Human Review'`, exit 3 on `failed to unload` (restart needed — something of the
-  old version is still referenced). `IDE_CONFIG=…` picks the IDE when several have it installed.
+  `- load plugin 'Human Review'`, then 30 s more for IntelliJ's verdict on the build it replaced
+  — since 2026.2 that comes *after* the load, silent when clean, and exit 3 on "expected to
+  unload but are still referenced" (restart needed). The reload lands only once IntelliJ's window
+  gets focus; when it has not within `RELOAD_WAIT` seconds (60), `./deploy-local.sh --verdict`
+  waits for it again without building. `IDE_CONFIG=…` picks the IDE when several have it
+  installed.
 
 ## Settings
 
@@ -91,6 +117,8 @@ starts its bridge for the projects already open.
   the copy installed with the `human-review` Claude Code plugin, else `~/workspace/human-review`.
 - **Open the review page in the Human Review tool window** (default on): where a click on the
   status-bar item opens the page. Off, or an IDE without JCEF: the OS browser.
+- **Pull Requests tool window: follow the editor** (default on) and **fold the status block**
+  (default off) — the same two toggles as in the changes tree's right-click menu.
 
 ## Develop
 

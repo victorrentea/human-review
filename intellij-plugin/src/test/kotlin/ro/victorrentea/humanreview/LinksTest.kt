@@ -33,6 +33,12 @@ class LinksTest {
         assertEquals(ReviewRef("/r/A.java", "3", null, "abc1234", "/r", "test-pr"), got.ref)
     }
 
+    @Test fun `open-pr carries the PR's URL and the checkout`() {
+        assertEquals(LinkRequest.OpenPr("https://github.com/o/r/pull/7", "/r"),
+            Links.parse("open-pr", mapOf("url" to "https://github.com/o/r/pull/7", "root" to "/r")))
+        assertEquals(LinkRequest.OpenPr("", null), Links.parse("open-pr", mapOf("root" to "")))
+    }
+
     @Test fun `anything else is unknown, named`() {
         assertEquals(LinkRequest.Unknown("reload"), Links.parse("reload", emptyMap()))
         assertEquals(LinkRequest.Unknown(""), Links.parse(null, emptyMap()))

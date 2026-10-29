@@ -59,10 +59,29 @@ intellijPlatform {
                   offers the thread on GitHub.</li>
               <li>A <b>human-review</b> status-bar item: is this checkout's review served? Click
                   to serve it and open the page.</li>
+              <li><b>GitHub pull requests</b>: the bundled GitHub plugin's Pull Requests tool
+                  window follows the editor in a PR's changes tree, its status block folds to one
+                  line, and a review page opens a PR there.</li>
             </ul>
             Installs and updates without restarting the IDE.
         """.trimIndent()
         changeNotes = """
+            <h3>0.3.5</h3>
+            <ul>
+              <li><b>The Pull Requests tool window follows the editor</b>: switching the editor to
+                  a file of the open pull request selects it in the PR's changes tree and scrolls
+                  there. On by default; right-click the tree → <i>Follow the Editor</i>, or
+                  Settings → Tools → Human Review.</li>
+              <li><b>A foldable status block</b>: double-click the checks and reviewers block under
+                  the changes tree to fold it to its first line and give the tree the room; again
+                  to unfold. Remembered; also in the tree's right-click menu.</li>
+              <li><b>Open a PR in IntelliJ</b>: a review page's <i>in IntelliJ</i> beside a review
+                  posted to the PR opens it in the Pull Requests tool window, its tab selected.</li>
+              <li><b>Fixed</b>: a live update could end in "not unload-safe" and a restart — an
+                  editor or a diff opened from a review link kept the previous build's classes
+                  alive. Editors, diffs and tool windows are now opened off the plugin's own
+                  stack.</li>
+            </ul>
             <h3>0.3.1</h3>
             <ul>
               <li>No internal or deprecated IntelliJ API through 2026.3: the plugin's version, a

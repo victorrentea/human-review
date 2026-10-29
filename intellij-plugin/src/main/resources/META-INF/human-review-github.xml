@@ -1,0 +1,19 @@
+<!-- Loaded only when the bundled GitHub plugin is enabled (plugin.xml, optional depends). Its
+     action groups have had these ids since 2024.3; the actions are PullRequests.kt's. -->
+<idea-plugin>
+    <actions>
+        <action id="HumanReview.PullRequest.FollowEditor" class="ro.victorrentea.humanreview.PrFollowToggle"
+                text="Follow the Editor"
+                description="Select, in this pull request's changes, the file the editor switches to (Human Review)">
+            <add-to-group group-id="Github.PullRequest.Changes.Popup" anchor="after"
+                          relative-to-action="Github.PullRequest.Details.Commit.Tree.ViewOptions"/>
+        </action>
+        <action id="HumanReview.PullRequest.FoldStatus" class="ro.victorrentea.humanreview.PrStatusFoldToggle"
+                text="Fold the Status Block"
+                description="Show the checks and reviewers block as one line; a double-click on it does the same (Human Review)">
+            <add-to-group group-id="Github.PullRequest.Changes.Popup" anchor="after"
+                          relative-to-action="HumanReview.PullRequest.FollowEditor"/>
+            <add-to-group group-id="Github.PullRequest.Details.Popup" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

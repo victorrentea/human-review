@@ -94,14 +94,22 @@ object Ide {
      */
     fun open(project: Project, vf: VirtualFile, line: Int, endLine: Any?, warn: String?, focus: Boolean): Opened? {
         val line0 = maxOf(1, line) - 1
+        val editors = FileEditorManager.getInstance(project)
+        // Navigate, then take the text editor it selected: every synchronous FileEditorManager
+        // open is deprecated in 2026.3, for a suspend replacement 2024.3 does not have. The
+        // navigation itself runs off this plugin's stack (OffStack): the editor it creates must
+        // not keep our classloader alive past an unload.
+        val bool = java.lang.Boolean.TYPE
+        OffStack.runOnEdt(OffStack.runnable(OpenFileDescriptor(project, vf, line0, 0), OpenFileDescriptor::class.java,
+            "navigateInEditor", Project::class.java to project, bool to true))
+        val inText = onEdt { !project.isDisposed && editors.getSelectedEditor(vf) is TextEditor }
+        if (!inText) {
+            // No text editor shows it (a `.drawio.png`): whichever editor claims it.
+            OffStack.runOnEdt(OffStack.runnable(OpenFileDescriptor(project, vf), OpenFileDescriptor::class.java,
+                "navigate", bool to true))
+        }
         val ranged = onEdt {
-            val editors = FileEditorManager.getInstance(project)
-            // Navigate, then take the text editor it selected: every synchronous FileEditorManager
-            // open is deprecated in 2026.3, for a suspend replacement 2024.3 does not have.
-            if (!OpenFileDescriptor(project, vf, line0, 0).navigateInEditor(project, true)) {
-                OpenFileDescriptor(project, vf).navigate(true)
-                if (!editors.isFileOpen(vf)) return@onEdt null
-            }
+            if (project.isDisposed || !editors.isFileOpen(vf)) return@onEdt null
             val editor = (editors.getSelectedEditor(vf) as? TextEditor)?.editor
             // A caller that found the file edited since the commit it is quoting says so, on the
             // line the reader lands on rather than in a toast elsewhere.

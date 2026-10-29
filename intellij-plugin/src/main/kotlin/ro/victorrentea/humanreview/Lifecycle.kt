@@ -37,6 +37,8 @@ object HumanReviewPlugin {
      *  restartable, so a test can call it and go on. */
     fun shutdown() {
         ApplicationManager.getApplication().getServiceIfCreated(HumanReviewBridge::class.java)?.stop()
+        // The Pull Requests tool window's status blocks unfolded, and the AWT listener out.
+        ApplicationManager.getApplication().getServiceIfCreated(PrStatusFold::class.java)?.dispose()
         RangeFocus.clear()
         EditedMark.clear()
         CommentNotice.forget()
@@ -53,5 +55,6 @@ class HumanReviewPluginListener : DynamicPluginListener {
         val app = ApplicationManager.getApplication()
         if (app.isUnitTestMode || Folders.openProjects().isEmpty()) return
         service<HumanReviewBridge>().start()
+        service<PrStatusFold>().install()
     }
 }

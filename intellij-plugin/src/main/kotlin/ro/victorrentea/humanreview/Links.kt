@@ -41,6 +41,9 @@ sealed interface LinkRequest {
     /** `head`: a commit's own diff, `base` its parent (a Fixed card's fix commit). */
     data class Diff(val file: String, val base: String, val line: Int, val head: String? = null) : LinkRequest
     data class ReviewOpen(val ref: ReviewRef) : LinkRequest
+    /** A pull request by its GitHub URL, in the Pull Requests tool window of the project that
+     *  owns `root` (PullRequests.kt). */
+    data class OpenPr(val url: String, val root: String?) : LinkRequest
     data class Unknown(val target: String) : LinkRequest
 }
 
@@ -49,7 +52,7 @@ object Links {
 
     private fun line(v: String?) = maxOf(1, RangeSpan.num(v)?.takeIf { !it.isNaN() }?.toInt() ?: 1)
 
-    /** `target` is the path segment after the command (`open`, `diff`, `review-open`); the
+    /** `target` is the path segment after the command (`open`, `diff`, `review-open`, `open-pr`); the
      *  parameters arrive percent-decoded, a path with spaces in it included. */
     fun parse(target: String?, q: Map<String, String>): LinkRequest = when (target?.trim('/')) {
         "open" -> line(q["line"]).let { at -> LinkRequest.Open(q["file"] ?: "", at, q["endLine"]?.ifEmpty { null }, commentAim(q, at)) }
@@ -59,6 +62,7 @@ object Links {
             sha = q["sha"] ?: "", root = q["root"] ?: "", branch = q["branch"] ?: "",
             comment = q["comment"] == "1" || q["comment"] == "true", commentLine = q["commentLine"],
             commentUrl = q["commentUrl"]?.ifEmpty { null }))
+        "open-pr" -> LinkRequest.OpenPr(q["url"] ?: "", q["root"]?.ifEmpty { null })
         else -> LinkRequest.Unknown(target ?: "")
     }
 
@@ -84,6 +88,7 @@ object Links {
             is LinkRequest.Open -> openPlainRouted(req.file, req.line, req.endLine, registry, req.comment)
             is LinkRequest.Diff -> diff(req, registry)
             is LinkRequest.ReviewOpen -> reviewOpen(req.ref, registry)
+            is LinkRequest.OpenPr -> openPr(req, registry)
             is LinkRequest.Unknown -> warn("Human Review: nothing handles /${req.target}")
         }
     }
@@ -163,6 +168,28 @@ object Links {
         comment?.let { CommentNotice.offer(project, opened.path, it.line, it.url) }
     }
 
+    /**
+     * The PR in the Pull Requests tool window of the window that has the checkout (`root`): here,
+     * or handed to another IntelliJ process that owns it; else the window the reader was last in.
+     * A refusal is said here, in the IDE the link was handed to — the page has nowhere to say it.
+     */
+    private fun openPr(req: LinkRequest.OpenPr, registry: Path) {
+        val pr = PrOpen.parse(req.url) ?: return warn("Human Review: ${PrOpen.NOT_A_PR}")
+        val root = req.root?.takeIf { File(it).isAbsolute }
+        val owner = root?.let { ownerOf(it, registry) }
+        if (owner is Owner.There && owner.peer.peer.app == "idea") {
+            val res = Peers.call(owner.peer.peer, "POST", "/open-pr", mapOf("url" to req.url, "root" to root), timeoutMs = 15_000)
+            if (res?.second?.get("ok")?.let { it.isJsonPrimitive && it.asBoolean } == true) return
+            // An older plugin there (no such route), or it went away: done here instead.
+            res?.second?.get("error")?.takeIf { it.isJsonPrimitive }?.asString?.let { return warn("Human Review: $it") }
+        }
+        val project = (owner as? Owner.Here)?.project ?: Ide.onEdt(ModalityState.any()) { Ide.lastFocusedProject() }
+            ?: return warn("Human Review: no project is open")
+        PrOpen.open(project, pr)?.let { return warn("Human Review: $it") }
+        runCatching { Ide.onEdt { Ide.raise(project) } }
+        Ide.remember(project)
+    }
+
     /** A guide read off disk has nowhere to show "no window has this", so it is said here, in
      *  the IDE the link was handed to — with the prompt one click away. */
     private fun reviewOpen(ref: ReviewRef, registry: Path) {
@@ -191,7 +218,7 @@ object Links {
     }
 }
 
-/** `jetbrains://idea/human-review/<open|diff|review-open>?…`, registered as `jbProtocolCommand`. */
+/** `jetbrains://idea/human-review/<open|diff|review-open|open-pr>?…`, registered as `jbProtocolCommand`. */
 class HumanReviewProtocolCommand : JBProtocolCommand(Links.COMMAND) {
     // The work raises the project window that owns the file. The IDE's own "focus the IDE
     // window" after a command would then bring forward whichever frame it considers current —

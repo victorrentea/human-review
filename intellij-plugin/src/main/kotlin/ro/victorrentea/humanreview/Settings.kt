@@ -19,13 +19,21 @@ import javax.swing.JComponent
  *
  *  `pageInIde` — where a click on the status-bar item opens the page: the Human Review tool
  *  window (true, the default, as VS Code opens it in its Simple Browser beside the code) or the
- *  OS browser. An IDE without JCEF uses the browser whatever this says (`ReviewPage.target`). */
+ *  OS browser. An IDE without JCEF uses the browser whatever this says (`ReviewPage.target`).
+ *
+ *  `prFollowEditor` — the GitHub plugin's Pull Requests tool window selects, in an open PR's
+ *  changes tree, the file the editor switches to (PullRequests.kt). On by default.
+ *
+ *  `prStatusFolded` — that tool window's status block (checks, reviewers) shows one line, and a
+ *  double-click on it unfolds it (PullRequests.kt). Off by default; remembered. */
 @Service(Service.Level.APP)
 @State(name = "HumanReviewSettings", storages = [Storage("human-review.xml")])
 class HumanReviewSettings : PersistentStateComponent<HumanReviewSettings.Data> {
     class Data {
         var serveScript: String = ""
         var pageInIde: Boolean = true
+        var prFollowEditor: Boolean = true
+        var prStatusFolded: Boolean = false
     }
 
     private var data = Data()
@@ -43,6 +51,14 @@ class HumanReviewSettings : PersistentStateComponent<HumanReviewSettings.Data> {
         get() = data.pageInIde
         set(v) { data.pageInIde = v }
 
+    var prFollowEditor: Boolean
+        get() = data.prFollowEditor
+        set(v) { data.prFollowEditor = v }
+
+    var prStatusFolded: Boolean
+        get() = data.prStatusFolded
+        set(v) { data.prStatusFolded = v }
+
     companion object {
         fun get(): HumanReviewSettings = service()
     }
@@ -52,6 +68,8 @@ class HumanReviewSettings : PersistentStateComponent<HumanReviewSettings.Data> {
 class HumanReviewConfigurable : Configurable {
     private var field: JBTextField? = null
     private var inIde: JBCheckBox? = null
+    private var follow: JBCheckBox? = null
+    private var fold: JBCheckBox? = null
 
     override fun getDisplayName() = "Human Review"
 
@@ -69,25 +87,42 @@ class HumanReviewConfigurable : Configurable {
                 componentStyle = UIUtil.ComponentStyle.SMALL
                 foreground = UIUtil.getContextHelpForeground()
             })
+            .addComponent(JBCheckBox("Pull Requests tool window: follow the editor — select the editor's file in the PR's changes tree",
+                HumanReviewSettings.get().prFollowEditor).also { follow = it })
+            .addComponent(JBCheckBox("Pull Requests tool window: fold the status block (checks, reviewers) to one line",
+                HumanReviewSettings.get().prStatusFolded).also { fold = it })
+            .addComponentToRightColumn(JBLabel("Both also in the tool window: right-click the changes tree. " +
+                "A double-click on the status block folds or unfolds it.").apply {
+                componentStyle = UIUtil.ComponentStyle.SMALL
+                foreground = UIUtil.getContextHelpForeground()
+            })
             .addComponentFillVertically(javax.swing.JPanel(), 0)
             .panel
     }
 
     override fun isModified() = field?.text?.trim() != HumanReviewSettings.get().serveScript ||
-        inIde?.isSelected != HumanReviewSettings.get().pageInIde
+        inIde?.isSelected != HumanReviewSettings.get().pageInIde ||
+        follow?.isSelected != HumanReviewSettings.get().prFollowEditor ||
+        fold?.isSelected != HumanReviewSettings.get().prStatusFolded
 
     override fun apply() {
         HumanReviewSettings.get().serveScript = field?.text ?: ""
         inIde?.let { HumanReviewSettings.get().pageInIde = it.isSelected }
+        follow?.let { HumanReviewSettings.get().prFollowEditor = it.isSelected }
+        fold?.let { PrStatusFold.setFolded(it.isSelected) }
     }
 
     override fun reset() {
         field?.text = HumanReviewSettings.get().serveScript
         inIde?.isSelected = HumanReviewSettings.get().pageInIde
+        follow?.isSelected = HumanReviewSettings.get().prFollowEditor
+        fold?.isSelected = HumanReviewSettings.get().prStatusFolded
     }
 
     override fun disposeUIResources() {
         field = null
         inIde = null
+        follow = null
+        fold = null
     }
 }
