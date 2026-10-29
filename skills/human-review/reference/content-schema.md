@@ -325,7 +325,7 @@ off the pictures themselves — every `.genseq.puml` names the scenario that dre
 `@GenerateSequence` in Java, the Playwright `{tag: [GENERATE_SEQUENCE_TAG]}`. Each scenario is
 quoted from its tag to its last line, one multi-span reference per test file. A tagged
 scenario no picture names lands in the group *Tagged for tracing, but no diagram yet*, with why.
-The heading is the skill's too: *Sequence diagrams generated for end-to-end traced tests*.
+The heading is the skill's too: *Sequence diagrams generated from end-to-end traced tests*.
 
 A `snippets`, `title` or `body` typed here is dropped and named on stderr. Eval run 5
 (3 Oct 2026) typed its snippets by copying another branch's line ranges, and its

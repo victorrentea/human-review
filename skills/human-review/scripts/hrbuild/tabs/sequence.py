@@ -1278,7 +1278,7 @@ def render_testpairs(block, dspec, manifest_rows, root: Path, out_dir: Path,
     # first picture should be. An absent title still gets the default; only an author who
     # typed an empty one is asking for the space back. The default names what the tab is —
     # the label says *Sequence*, and the heading says of what: the tests' own runs.
-    title = block.get("title", "Sequence diagrams generated for end-to-end traced tests")
+    title = block.get("title", "Sequence diagrams generated from end-to-end traced tests")
     head = ((f'<h2 class="tabtitle" id="{html.escape(block.get("id", "sequences"))}">'
              f'{html.escape(title)}</h2>') if title else "")
     # Its subtitle: about every picture on the tab, the committed ones a band may be warning
