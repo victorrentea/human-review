@@ -4005,7 +4005,7 @@ def test_a_trace_row_is_addressed_by_its_test_and_the_header_says_which_page_thi
     assert "querySelectorAll('.rm-t[data-id]')" in page
     # Served, the 🎭 is a link into the viewer in a new window; off disk it copies the
     # show-trace line. The page carries no trace list, no frame, no rows.
-    assert "'Open test replay'" in page
+    assert "'Playwright test replay'" in page
     assert "tv.target = '_blank'" in page and "copy(t.cmd)" in page
     assert "traceview" not in page and 'class="traces"' not in page
 

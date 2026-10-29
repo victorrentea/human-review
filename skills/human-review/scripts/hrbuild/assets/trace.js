@@ -52,7 +52,7 @@
         // not against ours: a relative path would be looked for inside the viewer's folder.
         tv.href = reg.viewer + '?trace=' + encodeURIComponent(new URL(t.trace, location.href).href);
         tv.target = '_blank'; tv.rel = 'noopener';
-        tv.setAttribute('data-tip', 'Open test replay');
+        tv.setAttribute('data-tip', 'Playwright test replay');
         tv.addEventListener('click', function (ev) { ev.stopPropagation(); });
       } else {
         tv.href = '#';
