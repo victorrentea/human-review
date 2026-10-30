@@ -10,7 +10,8 @@ import sys
 from pathlib import Path
 
 from .actions import declare_action, rebuild_interpreter
-from .commands import RERUN_MARK_SCRIPT, TAB_RERUN_TIP, rerun_face, rerun_html
+from .commands import (RERUN_MARK_SCRIPT, TAB_RERUN_TIP, drawio_open_html, rerun_face,
+                       rerun_html)
 from .folders import link_folders, only_impacted
 from .genseq import (genseq_details_at_base, genseq_details_at_render, genseq_file,
                      test_of_genseq)
@@ -259,9 +260,13 @@ def _drawio_unchanged_card(name: str, verdict: dict, assets: Path, root: Path) -
     context diagram gets — title, UNCHANGED, the file, the whole picture.
 
     Everything else the widget carries is about a change. Diff / New-Old switches
-    between two identical drawings; the red frame marks a delta that is empty; and the
-    offer above it — relayout in draw.io, update the report, revert the diagram — is
-    the to-do list for a re-layout nobody owes."""
+    between two identical drawings; the red frame marks a delta that is empty; and
+    Revert has nothing to put back.
+
+    **Edit in app / Edit on web stay** (Victor, 30 Oct 2026): an untouched drawing is
+    still one the reader may want to change, and hunting for the file was the only way
+    in. After a save the card's own green ring redraws it, and a drawing that now differs
+    from the base comes back as the full widget, Revert included."""
     svg = next((assets / f"{name}-{suffix}.svg" for suffix in ("new", "original", "diff")
                 if (assets / f"{name}-{suffix}.svg").is_file()), None)
     if svg is None:
@@ -269,12 +274,14 @@ def _drawio_unchanged_card(name: str, verdict: dict, assets: Path, root: Path) -
                 f'write <code>{html.escape(name)}-new.svg</code></p>')
     rel = verdict.get("diagram") or ""
     title = _pretty(Path(rel).name.split(".")[0]) if rel else _pretty(name)
+    edit = drawio_open_html(verdict.get("drawio_url") or "", verdict.get("drawio_web_url") or "")
     # `data-drawio` names the card, for `refresh-card.py` to find it in the finished page and
     # for the page to swap it in place; the ring after the title is the card's own.
     return (f'<div class="diagram" data-drawio="{html.escape(name, quote=True)}">'
             f'<div class="head"><b>{html.escape(title)}</b>'
             + card_rerun_html(name, assets, root) + UNCHANGED_BADGE
             + diagram_provenance(rel, root, verdict.get("tested_against") or "")
+            + (f'<div class="rerun-acts">{edit}</div>' if edit else "")
             + (_source_link(rel, root) if rel else "") + '</div>'
             f'<div class="svgbox">{inline_svg(svg, root)}</div>'
             + trace_legend(verdict) + '</div>')

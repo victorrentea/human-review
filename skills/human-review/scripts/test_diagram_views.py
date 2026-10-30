@@ -1455,25 +1455,35 @@ def test_an_unchanged_diagram_is_the_plain_card_whichever_renderer_draws_it(
                          out), who
         assert out.count('class="svgbox"') == 1, f"{who}: one picture, the whole one"
         assert "whole current picture" in out, who
+        # The hand-drawn one keeps its two edit links (they open draw.io, not a run).
+        edit = ('class="rerun',) if who == "drawio" else ()
         for control in ('class="dgmviews"', "dgm-diff", "dgm-newold", 'class="focus"',
                         "dgm-toggles", 'class="rerun', "dgm-open", "data-action=",
                         "cmlegend"):
+            if control in edit:
+                continue
             assert control not in out, f"{who} still carries {control}"
         for delta in ("delta", "nothing changed at this focus level", "base picture"):
             assert f"<text>{delta}</text>" not in out, f"{who} drew the {delta!r} svg"
 
 
-def test_an_unchanged_drawing_is_the_plain_card(tmp_path):
-    """The conceptual model's own case, named: no edit offer, no Update / Revert, and the
-    card names its file the way every other diagram card does."""
+def test_an_unchanged_drawing_is_the_plain_card_that_can_still_be_edited(tmp_path):
+    """The conceptual model's own case, named: no Update / Revert, and the card names its
+    file the way every other diagram card does. Edit in app / Edit on web stay, in the
+    header: an untouched drawing is still one the reader may want to change (Victor,
+    30 Oct 2026)."""
     assets = _drawio_set(tmp_path / "assets")
     (assets / "conceptual-diff.json").write_text(json.dumps({
         "added": [], "removed": [], "changed": [], "moved": [], "red": [], "rerun": RERUN,
-        "diagram": "docs/ConceptualModel.drawio.png"}))
+        "diagram": "docs/ConceptualModel.drawio.png",
+        "drawio_url": "drawio:///repo/C.drawio.png",
+        "drawio_web_url": "https://app.diagrams.net/#Rx"}))
     out = build.drawio_widget_html("conceptual", assets, tmp_path, REBUILD)
     assert "<b>Conceptual Model</b>" in out
-    assert "Load changes" not in out
-    assert "Revert" not in out and "Edit on" not in out
+    assert "Load changes" not in out and "Revert" not in out
+    head = out.split('<div class="svgbox">')[0]
+    assert 'href="drawio:///repo/C.drawio.png"' in head and "Edit in app" in head
+    assert 'href="https://app.diagrams.net/#Rx"' in head and "Edit on web" in head
 
 
 def test_a_drawing_with_a_layout_still_owed_is_not_unchanged(tmp_path):
