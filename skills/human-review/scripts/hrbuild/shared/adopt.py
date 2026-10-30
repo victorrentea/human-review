@@ -203,7 +203,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'The coder 🤖 writes; adversarial reviewers attack it; it fixes what holds up.',
             '<code>/record-review</code> files what it assumed and fixed; <code>/human-review</code> builds this page.',
-            'Merge risk, under the PR text: ✅ two-way or ⚠️ one-way door; its blast radius, ○ to ●.',
+            'Merge risk: ✅ two-way or ⚠️ one-way door, blast ○ to ●; Publish adds it to the PR text.',
             'Read the assumptions first: a wrong guess is a wrong feature.',
             'Open issues: you decide, top first: <b>must look</b> › <b>worth a look</b> › <b>nit</b>.',
             'Auto fixed: its icons open the fix commit (GitHub, IDE); stop only at behaviour changes.',

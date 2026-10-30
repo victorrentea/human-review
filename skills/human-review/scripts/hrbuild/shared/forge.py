@@ -4,7 +4,8 @@ Everything the skill knows about the place the reviewed code is pushed to lives 
 nowhere else: the shape of its web URLs (a file at a commit, a folder, a commit, a
 comparison, a pull request, an issue, an author's face), how to recognise one of those
 URLs when a content file or an API answer hands one over, and every question asked of it
-over its command line (`gh`): a PR's description, an issue, the PR's comments and review
+over its command line (`gh`): a PR's description (read, and rewritten for its
+merge-risk line), an issue, the PR's comments and review
 threads, the CI runs of a commit. `test_forge_seam.py` fails a `gh` call or a
 `https://github.com/` URL of the reviewed repo built anywhere else.
 
@@ -287,6 +288,25 @@ class GitHubForge:
         out = subprocess.run(args, capture_output=True, text=True, timeout=15,
                              cwd=root, check=True)
         return json.loads(out.stdout)
+
+    @staticmethod
+    def update_pr_body(number, body: str, slug: str | None, root: Path | None) -> None:
+        """Replace a PR's description with `body`, raising `GhError` when GitHub refused
+        and `subprocess.TimeoutExpired` when it did not answer."""
+        args = ["gh", "pr", "edit", str(number), "--body-file", "-"]
+        if slug:
+            args += ["-R", slug]
+        r = subprocess.run(args, input=body, capture_output=True, text=True, timeout=30,
+                           cwd=root)
+        if r.returncode:
+            raise GhError(f"gh pr edit {number}: {r.stderr.strip() or r.stdout.strip()}")
+
+    @staticmethod
+    def update_pr_body_shell(number, slug: str | None, path) -> str:
+        """`update_pr_body` as a reader could paste it, the body read from `path` — what a
+        dry run prints."""
+        return (f"gh pr edit {number}" + (f" -R {shlex.quote(slug)}" if slug else "")
+                + f" --body-file {shlex.quote(str(path))}")
 
     @staticmethod
     def pr_title_here() -> None:

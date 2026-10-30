@@ -164,7 +164,12 @@ quarter (one feature or API, even through every layer), `2` ◑ about half, `3` 
 quarters, `4` ● all of it (auth, a shared table, the build). Estimate it from how the diff
 spreads over the codebase — which modules and features it reaches, out of all of them — not
 from its line count. The circle stands in front of the blast radius, inside the grade pill
-in the masthead, and in the review's summary on the PR; without it no circle is drawn. `why` is one sentence, the reason
+in the masthead, and in the review's summary on the PR; without it no circle is drawn.
+**Publish on GitHub** also writes the whole line into the **PR's own description**, just above
+the agent's "🤖 Generated with …" footer, between `<!-- hr:merge-risk -->` and
+`<!-- /hr:merge-risk -->` — a re-publish replaces that block, and the page's PR DESCRIPTION
+card leaves it out, since its own MERGE RISK line says the same
+(`push-pr-comments.py --description-only [--dry-run]` does that step alone). `why` is one sentence, the reason
 for the door. Without a `door` of those two values the line is not drawn.
 
 ```json

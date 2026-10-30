@@ -678,15 +678,96 @@ def test_the_review_summary_carries_the_merge_risk_with_its_blast_circle(tmp_pat
     payload = ppc.attach_merge_risk({"body": "**Review record**: 1 auto-fixed.",
                                      "comments": []}, tmp_path / "pr-comments.json")
     body = ppc.review_body(payload, [])
-    assert body.startswith("**Review record**: 1 auto-fixed.\n\n**Merge risk** **✅ Two-way "
-                           "door** · blast radius: ◔ **visits API** (about a quarter of the "
+    assert body.startswith("**Review record**: 1 auto-fixed.\n\n**Merge risk:** ✅ Two-way "
+                           "door · blast radius: ◔ **visits API** (about a quarter of the "
                            "system) — a nullable column a revert stops using\n\n<!-- hr:review")
     # The payload's own wins; no door, no line; no size, no circle.
     assert ppc.attach_merge_risk({"mergeRisk": {"door": "one-way"}},
                                  tmp_path / "x.json")["mergeRisk"] == {"door": "one-way"}
     assert ppc.merge_risk_md({"door": "maybe", "blast": "x"}) == ""
     assert ppc.merge_risk_md({"door": "one-way", "blast": "auth"}) == \
-        "**Merge risk** **⚠️ One-way door** · blast radius: **auth**"
+        "**Merge risk:** ⚠️ One-way door · blast radius: **auth**"
+
+
+# ------------------------------------------------- the merge risk in the PR's description
+
+FOOTER = "🤖 Generated with [Claude Code](https://claude.com/claude-code) · Opus 5.5"
+RISK = {"door": "two-way", "blast": "visits API", "blastSize": 1, "why": "a revert stops it"}
+LINE = ("**Merge risk:** ✅ Two-way door · blast radius: ◔ **visits API** (about a quarter "
+        "of the system) — a revert stops it")
+
+
+def test_the_merge_risk_goes_just_above_the_attribution_footer():
+    out = ppc.with_merge_risk(f"Adds a vet.\r\n\r\n{FOOTER}", LINE)
+    assert out == (f"Adds a vet.\n\n<!-- hr:merge-risk -->\n{LINE}\n<!-- /hr:merge-risk -->"
+                   f"\n\n{FOOTER}")
+    assert out.rstrip().endswith(FOOTER), "the footer stays the last line"
+
+
+def test_a_re_publish_replaces_the_block_and_never_adds_a_second():
+    once = ppc.with_merge_risk(f"Adds a vet.\n\n{FOOTER}", LINE)
+    assert ppc.with_merge_risk(once, LINE) == once
+    moved = ppc.with_merge_risk(once, LINE.replace("◔", "◑"))
+    assert moved.count("<!-- hr:merge-risk -->") == 1 and "◑" in moved and "◔" not in moved
+    assert moved.endswith(FOOTER) and moved.startswith("Adds a vet.\n\n<!--")
+
+
+def test_without_a_footer_the_block_closes_the_body_and_without_a_line_nothing_changes():
+    out = ppc.with_merge_risk("Adds a vet.\n", LINE)
+    assert out == f"Adds a vet.\n\n<!-- hr:merge-risk -->\n{LINE}\n<!-- /hr:merge-risk -->"
+    assert ppc.with_merge_risk(out, LINE) == out
+    assert ppc.with_merge_risk("", LINE) == f"<!-- hr:merge-risk -->\n{LINE}\n<!-- /hr:merge-risk -->"
+    assert ppc.with_merge_risk("Adds a vet.", "") == "Adds a vet."
+
+
+class FakeForge:
+    def __init__(self, body="", fail=None):
+        self.body, self.fail, self.edits = body, fail, []
+
+    def pr_body(self, number, slug, root):
+        return {"number": number, "body": self.body, "url": "u"}
+
+    def update_pr_body(self, number, body, slug, root):
+        if self.fail:
+            raise ppc.GhError(self.fail)
+        self.edits.append((number, slug, body))
+        self.body = body
+
+    @staticmethod
+    def update_pr_body_shell(number, slug, path):
+        return f"edit {number} {slug} {path}"
+
+
+def test_publishing_writes_the_description_once_and_says_when_it_is_already_there(tmp_path):
+    f = FakeForge(f"Adds a vet.\n\n{FOOTER}")
+    assert ppc.write_description(f, tmp_path, "o/r", 49, RISK) == {"fate": "new", "text": LINE}
+    assert f.edits[0][:2] == (49, "o/r") and LINE in f.edits[0][2]
+    assert ppc.write_description(f, tmp_path, "o/r", 49, RISK) == {"fate": "same", "text": LINE}
+    assert len(f.edits) == 1, "nothing sent when it already says so"
+    f.body += "\n"                     # what `gh pr edit --body-file` leaves of a file
+    assert ppc.write_description(f, tmp_path, "o/r", 49, RISK)["fate"] == "same"
+    assert ppc.write_description(f, tmp_path, "o/r", 49, {**RISK, "door": "one-way"})["fate"] \
+        == "update"
+    assert ppc.write_description(f, tmp_path, "o/r", 49, {"door": "?"}) == {}
+    said = ppc.write_description(FakeForge("x", fail="gh pr edit 49: HTTP 403"), tmp_path,
+                                 "o/r", 49, RISK)
+    assert set(said) == {"error"}
+
+
+def test_description_only_dry_run_prints_the_new_body_and_writes_nothing(tmp_path, monkeypatch,
+                                                                        capsys):
+    (tmp_path / ".human-review").mkdir()
+    (tmp_path / ".human-review" / "content.json").write_text(json.dumps({"mergeRisk": RISK}))
+    f = FakeForge(f"Adds a vet.\n\n{FOOTER}")
+    monkeypatch.setattr(ppc, "FORGE", f)
+    assert ppc.main(["--root", str(tmp_path), "--description-only", "--dry-run",
+                     "--pr", "49", "--repo", "o/r"]) == 0
+    got = capsys.readouterr()
+    assert got.out == ppc.with_merge_risk(f"Adds a vet.\n\n{FOOTER}", LINE) + "\n"
+    assert "edit 49 o/r" in got.err and not f.edits
+    assert ppc.main(["--root", str(tmp_path), "--description-only", "--pr", "49",
+                     "--repo", "o/r"]) == 0
+    assert len(f.edits) == 1
 
 
 def test_the_pr_and_the_page_draw_the_same_doors_and_circles():

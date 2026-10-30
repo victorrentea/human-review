@@ -18,6 +18,13 @@ comment; an auto-fix an older push left on the PR stays there, untouched. The Re
 against the PR as it is at that moment and sends the file. It does not write a word of it:
 no model runs at push time, so what lands on the PR is what you wrote here.
 
+After the comments, the same push writes `content.json`'s **`mergeRisk`** into the **PR's
+description** — the page's MERGE RISK line, word for word, between `<!-- hr:merge-risk -->`
+markers just above the "🤖 Generated with …" footer (at the end without one). A re-push
+replaces the block and sends nothing when it already says the same; the confirmation names
+it ("…and the merge risk in its description"). `--description-only --dry-run` prints the new
+description without writing it; `--description-only` writes it alone.
+
 It sends it in reviews of at most 15 comments, serially and a second apart (one review of 41
 timed out at GitHub's 10 seconds and was created anyway), never re-sends a call that came
 back 5xx without first looking at what it left on the PR, and skips every comment whose

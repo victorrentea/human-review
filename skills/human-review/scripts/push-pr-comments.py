@@ -77,6 +77,13 @@ Usage:
   push-pr-comments.py --from-review-points        # (re)write the payload from review-points.md
   push-pr-comments.py --drop-stale                # rebuild/drop a payload from another branch
   push-pr-comments.py --pr 49 --repo victorrentea/petclinic --dry-run
+  push-pr-comments.py --description-only --dry-run > body.md   # the PR body with the merge risk
+
+**The merge risk goes into the PR's description too.** After the comments, a push writes
+`content.json`'s `mergeRisk` — the page's MERGE RISK line, in the same words and marks — into
+the PR's own description, between `<!-- hr:merge-risk -->` markers just above the agent's
+"🤖 Generated with …" footer (at the end without one). A re-push replaces that block, never
+adds a second, and sends nothing when it already says the same (`with_merge_risk`).
 
 Exit codes: 0 ok · 2 bad payload / no PR · 3 no payload file · 4 a GitHub call failed.
 """
@@ -99,6 +106,9 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 from hrbuild.shared.forge import TRANSIENT, GhError, api_forge  # noqa: E402
+
+#: The forge whose `gh` reads and rewrites the PR's description.
+FORGE = api_forge()
 
 #: The forge's PR comment API: `gh api` on GitHub. The plan is written against its paths.
 PR_API = api_forge().pr_api()
@@ -546,14 +556,15 @@ CONTENT_JSON = "content.json"
 
 
 def merge_risk_md(risk: dict | None) -> str:
-    """`mergeRisk` as the review summary's line on the PR, the page's MERGE RISK line in
-    markdown: the door, the blast radius behind its circle — with the size in words, since
-    GitHub has no hover to say it — and why. Empty without a known door, like the page."""
+    """`mergeRisk` as the page's MERGE RISK line in markdown — the line in the review's
+    summary and in the PR's description: the door, the blast radius behind its circle —
+    with the size in words, since GitHub has no hover to say it — and why. Empty without a
+    known door, like the page."""
     risk = risk if isinstance(risk, dict) else {}
     door = MERGE_DOORS.get(str(risk.get("door") or "").strip().lower())
     if not door:
         return ""
-    parts = [f"**{door}**"]
+    parts = [door]
     blast = str(risk.get("blast") or "").strip()
     raw = risk.get("blastSize")
     try:
@@ -568,7 +579,68 @@ def merge_risk_md(risk: dict | None) -> str:
     elif blast:
         parts.append(f"blast radius: **{blast}**")
     why = str(risk.get("why") or "").strip()
-    return "**Merge risk** " + " · ".join(parts) + (f" — {why}" if why else "")
+    return "**Merge risk:** " + " · ".join(parts) + (f" — {why}" if why else "")
+
+
+# --------------------------------------------------------------------------- #
+# the merge risk in the PR's own description
+# --------------------------------------------------------------------------- #
+
+#: The merge risk's block in the PR's description (Victor, 30 Oct 2026: a reader of the PR
+#: should not have to find the review's summary to learn whether merging it can be undone).
+#: Between markers, so a re-publish replaces it instead of adding a second one; the page's
+#: PR DESCRIPTION card hides it, since its own MERGE RISK line says the same.
+MR_OPEN, MR_CLOSE = "<!-- hr:merge-risk -->", "<!-- /hr:merge-risk -->"
+MR_BLOCK = re.compile(r"\n*[ \t]*<!--\s*hr:merge-risk\s*-->.*?<!--\s*/hr:merge-risk\s*-->"
+                      r"[ \t]*\n*", re.S)
+#: The attribution line an agent ends a PR with: the block goes just above it, so it stays
+#: the last line.
+PR_FOOTER = re.compile(r"^[ \t]*\U0001f916 Generated with\b", re.M)
+
+
+def with_merge_risk(body: str | None, line: str) -> str:
+    """`body` with exactly one merge-risk block holding `line`: an earlier block replaced,
+    else a new one just above the last attribution footer, else at the end. `body` as it
+    is (line endings made `\\n`) when there is no line to write."""
+    text = (body or "").replace("\r\n", "\n")
+    if not line:
+        return text
+    rest = MR_BLOCK.sub("\n\n", text).strip("\n")
+    block = f"{MR_OPEN}\n{line}\n{MR_CLOSE}"
+    feet = list(PR_FOOTER.finditer(rest))
+    if feet:
+        head, foot = rest[:feet[-1].start()].rstrip("\n"), rest[feet[-1].start():]
+        return (f"{head}\n\n" if head.strip() else "") + f"{block}\n\n{foot}"
+    return (f"{rest.rstrip()}\n\n" if rest.strip() else "") + block
+
+
+def description_plan(forge, root: Path, repo: str | None, pr: int, risk) -> dict | None:
+    """What publishing does to the PR's description: `{fate, text, body}` — `fate` is
+    `new` (no block yet), `update` (a block with other words) or `same` — or None when there
+    is no merge risk to write. Raises when the description cannot be read."""
+    line = merge_risk_md(risk)
+    if not line:
+        return None
+    old = str((forge.pr_body(pr, repo, root) or {}).get("body") or "").replace("\r\n", "\n")
+    new = with_merge_risk(old, line)
+    # Trailing whitespace is not a change: `gh pr edit --body-file` keeps a file's last
+    # newline, and `with_merge_risk` drops it.
+    fate = "same" if new.rstrip() == old.rstrip() else \
+        ("update" if MR_BLOCK.search(old) else "new")
+    return {"fate": fate, "text": line, "body": new}
+
+
+def write_description(forge, root: Path, repo: str | None, pr: int, risk) -> dict:
+    """Put the merge risk into the PR's description. `{fate, text}` on success (`fate`
+    `same` when it already said so and nothing was sent), `{error}` when GitHub did not take
+    it, `{}` when there is no merge risk."""
+    try:
+        d = description_plan(forge, root, repo, pr, risk)
+        if d and d["fate"] != "same":
+            forge.update_pr_body(pr, d["body"], repo, root)
+    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as e:
+        return {"error": plain_reason(e) if isinstance(e, RuntimeError) else str(e)}
+    return {k: d[k] for k in ("fate", "text")} if d else {}
 
 
 def attach_merge_risk(payload: dict, file: Path) -> dict:
@@ -1450,6 +1522,9 @@ def main(argv=None) -> int:
     ap.add_argument("--drop-stale", action="store_true",
                     help="when the payload's commit is not on this branch, rebuild it from "
                          "review-points.md (or delete it when there is none); nothing else")
+    ap.add_argument("--description-only", action="store_true",
+                    help="only put the merge risk into the PR's description; with --dry-run, "
+                         "print the new description and post nothing")
     a = ap.parse_args(argv)
     root = Path(a.root).resolve()
     file = root / a.file
@@ -1458,6 +1533,9 @@ def main(argv=None) -> int:
         done = drop_stale(root, file, a.points, a.at)
         print(done or f"{a.file}: current (or absent) — left as it is")
         return 0
+
+    if a.description_only:
+        return description_only(root, file, a.pr, a.repo, a.dry_run)
 
     if a.from_review_points:
         payload = from_review_points(root, a.points, a.at)
@@ -1544,12 +1622,23 @@ def main(argv=None) -> int:
     print(f"{info['url']} @ {head[:8]} (merge-base {diff.base[:8]})")
     summarize(p)
     if a.dry_run:
+        try:
+            desc = description_plan(FORGE, root, repo, pr, payload.get("mergeRisk"))
+        except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as e:
+            print(f"note: could not read the PR's description ({e}); its merge risk is left "
+                  "out of this preview", file=sys.stderr)
+            desc = None
         print(f"\n{len(p.calls)} call(s) would be made:\n")
         for c in p.calls:
             print(f"# {c.why}\n{c.shell()}\n")
+        if desc and desc["fate"] != "same":
+            print(f"# the merge risk into the PR's description ({desc['fate']}): "
+                  f"{desc['text']}\n{FORGE.update_pr_body_shell(pr, repo, '<new body>')}\n")
+        pv = preview(p, pr, repo, info["url"], gh.login())
+        if desc:
+            pv["description"] = {k: desc[k] for k in ("fate", "text")}
         # Last, on one line: what the page's confirmation shows — never the calls above.
-        print(PREVIEW_TAG + " " + json.dumps(preview(p, pr, repo, info["url"], gh.login()),
-                                             ensure_ascii=False))
+        print(PREVIEW_TAG + " " + json.dumps(pv, ensure_ascii=False))
         return 0
 
     def replan() -> Plan:
@@ -1562,6 +1651,18 @@ def main(argv=None) -> int:
                       # payload on disk is no longer this file.
                       "payload_sha256": hashlib.sha256(file.read_bytes()).hexdigest()},
                      replan=replan)
+    # The merge risk into the PR's description, after the comments: a reader of the PR sees
+    # it without opening the review's summary. Its own failure is said, never hidden.
+    desc = write_description(FORGE, root, repo, pr, payload.get("mergeRisk"))
+    if desc:
+        record["description"] = desc
+        if desc.get("error"):
+            record["message"] += (f" The merge risk did not reach the PR description "
+                                  f"({desc['error']}); click Retry.")
+        elif desc["fate"] != "same":
+            record["message"] += " The merge risk is in the PR description."
+        posted_path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n",
+                               encoding="utf-8")
     print(record["message"], file=sys.stderr if record["status"] != "complete" else sys.stdout)
     if record.get("error"):
         print(f"  ({record['error']})", file=sys.stderr)
@@ -1569,7 +1670,43 @@ def main(argv=None) -> int:
         {k: record.get(k) for k in ("status", "expected", "present", "missing", "duplicates",
                                     "message", "review_url", "pr", "url")},
         ensure_ascii=False))
-    return 0 if record["status"] == "complete" else 4
+    return 0 if record["status"] == "complete" and not desc.get("error") else 4
+
+
+def description_only(root: Path, file: Path, pr: int | None, repo: str | None,
+                     dry_run: bool) -> int:
+    """`--description-only`: the merge risk from the `content.json` beside `--file` into
+    the PR's description, nothing else. A dry run prints the new description on stdout —
+    redirect it to a file — and the command that would apply it on stderr."""
+    risk = attach_merge_risk({}, file).get("mergeRisk")
+    if not merge_risk_md(risk):
+        print(f"no mergeRisk with a door in {file.parent / CONTENT_JSON} — nothing to write",
+              file=sys.stderr)
+        return 3
+    try:
+        number = PR_API.pr(root, pr)["number"] if not pr else pr
+        repo = repo or PR_API.repo(root)
+    except RuntimeError as e:
+        print(f"cannot find the PR: {e}", file=sys.stderr)
+        return 2
+    if not dry_run:
+        desc = write_description(FORGE, root, repo, number, risk)
+        if desc.get("error"):
+            print(f"the merge risk did not reach PR #{number}'s description: {desc['error']}",
+                  file=sys.stderr)
+            return 4
+        print(f"PR #{number}'s description: merge risk "
+              + ("already there" if desc["fate"] == "same" else "written") + f" — {desc['text']}")
+        return 0
+    try:
+        desc = description_plan(FORGE, root, repo, number, risk)
+    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as e:
+        print(f"cannot read PR #{number}'s description: {e}", file=sys.stderr)
+        return 4
+    sys.stdout.write(desc["body"] + "\n")
+    print(f"# {desc['fate']}: {desc['text']}\n# apply with: "
+          + FORGE.update_pr_body_shell(number, repo, "<this output>"), file=sys.stderr)
+    return 0
 
 
 if __name__ == "__main__":

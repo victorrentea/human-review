@@ -54,6 +54,21 @@ def test_the_attribution_line_naming_the_model_and_effort_is_left_out_too():
     assert "Closes" in out and "Generated with" not in out and "effort" not in out
 
 
+def test_the_merge_risk_a_push_wrote_into_the_description_is_said_once():
+    """`push-pr-comments.py` puts the MERGE RISK line into the PR's description between
+    markers; the card's own line says it, so the copy in the body is left out."""
+    spec = {"mergeRisk": {"door": "two-way", "blast": "visits API", "blastSize": 1},
+            "_prBody": {"url": URL, "body": "Closes #25.\n\n<!-- hr:merge-risk -->\n"
+                        "**Merge risk:** ✅ Two-way door · blast radius: ◔ **visits API**\n"
+                        "<!-- /hr:merge-risk -->\n\n🤖 Generated with "
+                        "[Claude Code](https://claude.com/claude-code)"}}
+    out = review.pr_description_html(spec)
+    assert "Closes" in out and out.count("Two-way door") == 1 and "hr:merge-risk" not in out
+    only = {**spec, "_prBody": {"url": URL, "body": "<!-- hr:merge-risk -->\nx\n"
+                                                    "<!-- /hr:merge-risk -->"}}
+    assert review.pr_description_html(only).startswith('<p class="mergerisk"')
+
+
 def test_an_empty_description_draws_nothing():
     assert review.pr_description_html({}) == ""
     assert review.pr_description_html({"_prBody": {"url": URL, "body": "  \n"}}) == ""

@@ -1746,6 +1746,12 @@ _PR_BODY_BOILERPLATE = re.compile(
     r"^\s*🤖 Generated with \[Claude Code\]\([^)]*\)(?:\s*·[^\n]*)?\s*$", re.M)
 
 
+#: The merge risk a push wrote into the description (`push-pr-comments.py`'s `MR_BLOCK`):
+#: cut from the card, whose own MERGE RISK line says it, so the page says it once.
+_PR_BODY_MERGE_RISK = re.compile(
+    r"<!--\s*hr:merge-risk\s*-->.*?<!--\s*/hr:merge-risk\s*-->", re.S)
+
+
 def attach_pr_body(spec: dict, out_dir: Path, root: Path | None = None) -> None:
     """Put the PR's description on `spec["_prBody"]`: asked of GitHub (`gh pr view`) at
     every build, so an edit on GitHub shows at the next refresh, and written down in
@@ -1994,7 +2000,8 @@ def pr_description_html(spec) -> str:
     there is no PR, or its description is empty once the agent's attribution line is cut.
     `mergeRisk` closes it; with no description, it stands alone."""
     got = spec.get("_prBody") or {}
-    body = _PR_BODY_BOILERPLATE.sub("", str(got.get("body") or "")).strip()
+    body = _PR_BODY_BOILERPLATE.sub("", _PR_BODY_MERGE_RISK.sub(
+        "\n\n", str(got.get("body") or ""))).strip()
     if not body:
         return merge_risk_html(spec)
     # No link to the PR here: the masthead's title already is one.
@@ -4421,7 +4428,9 @@ function hrVscPr(url) {
       if (s.exit !== 0 || !pv) return back('Could not read the pull request from GitHub '
         + '\\u2014 check that gh is logged in, then try again.', 'err');
       var items = pv.items || [];
-      if (!items.length) return back('All ' + n(pv.total, 'comment') + ' are already on '
+      // The merge risk goes into the PR's description too; `same` when it already says so.
+      var desc = pv.description && pv.description.fate !== 'same' ? pv.description : null;
+      if (!items.length && !desc) return back('All ' + n(pv.total, 'comment') + ' are already on '
         + 'GitHub PR #' + pv.pr + '.', 'ok');
       // Open issues and assumptions go on the PR; an auto-fix's note on its fix commit.
       var onPr = items.filter(function (i) { return i.target !== 'commit'; }).length;
@@ -4431,9 +4440,13 @@ function hrVscPr(url) {
         .filter(function (x, k, all) { return x && all.indexOf(x) === k; });
       var fixWords = notes ? n(notes, 'note') + ' on fix commit' + (shas.length === 1 ? ' '
         : 's ') + shas.join(', ') : '';
-      dlg.querySelector('.pp-q').textContent = 'Post '
-        + (onPr ? n(onPr, 'comment') + ' on GitHub PR #' + pv.pr + (notes ? ' and ' : '') : '')
-        + fixWords + (pv.user ? ' as @' + pv.user : '') + '?';
+      var what = [];
+      if (onPr) what.push(n(onPr, 'comment') + ' on GitHub PR #' + pv.pr);
+      if (fixWords) what.push(fixWords);
+      if (desc) what.push('the merge risk in ' + (onPr ? 'its' : 'GitHub PR #' + pv.pr
+        + '\\u2019s') + ' description');
+      dlg.querySelector('.pp-q').textContent = 'Post ' + what.join(' and ')
+        + (pv.user ? ' as @' + pv.user : '') + '?';
       var edits = items.filter(function (i) { return i.fate === 'update'; }).length;
       var sub = [];
       if (pv.already) sub.push(n(pv.already, 'comment') + ' already there stay as they are.');
@@ -4447,6 +4460,13 @@ function hrVscPr(url) {
         li.appendChild(el('div', 'pp-text', i.text));
         list.appendChild(li);
       });
+      if (desc) {
+        var dl = el('li');
+        dl.appendChild(el('code', 'pp-where', 'PR description'
+          + (desc.fate === 'update' ? ' (replaces its merge risk)' : '')));
+        dl.appendChild(el('div', 'pp-text', desc.text));
+        list.appendChild(dl);
+      }
       dlg.querySelector('.pp-what').open = false;
       if (label) rep.textContent = label;
       show(); b.disabled = rep.disabled = true;
@@ -4455,8 +4475,8 @@ function hrVscPr(url) {
         dlg.removeEventListener('close', once);
         if (dlg.returnValue !== 'post') return back();
         b.textContent = 'Posting\\u2026';
-        say('Posting ' + n(items.length, 'comment') + ' on GitHub \\u2014 this can take a '
-          + 'minute.', 'info');
+        say('Posting ' + (items.length ? n(items.length, 'comment') : 'the merge risk')
+          + ' on GitHub \\u2014 this can take a minute.', 'info');
         HR.run(b.dataset.push).then(function (s2) {
           var r = tagged(s2.output, '""" + PR_RESULT_TAG + """');
           var text = r ? r.message : (s2.exit === 0 ? 'Posted.' : 'Posting stopped before '

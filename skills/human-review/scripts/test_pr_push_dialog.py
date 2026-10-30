@@ -428,6 +428,34 @@ def test_the_dialog_says_where_auto_fix_notes_go(browser):
     assert "fix commit be762955 · src/C.java:9" in page.locator(".pp-list li").nth(2).inner_text()
 
 
+def test_the_dialog_says_the_merge_risk_goes_into_the_pr_description(browser):
+    line = "**Merge risk:** ✅ Two-way door · blast radius: ◔ **visits API**"
+    page = open_page(browser, {build.PUSH_PR_DRY_ACTION: {"exit": 0, "output": out(
+        build.PR_PREVIEW_TAG, {**PREVIEW, "description": {"fate": "new", "text": line}})}}, {})
+    page.click(".pr-push")
+    page.locator("#pr-push-dlg").wait_for(state="visible")
+    assert page.locator(".pp-q").inner_text() == (
+        "Post 2 comments on GitHub PR #51 and the merge risk in its description as @victorrentea?")
+    page.click(".pp-what summary")
+    assert "PR description" in page.locator(".pp-list li").nth(2).inner_text()
+
+
+def test_every_comment_already_there_still_offers_a_changed_merge_risk(browser):
+    page = open_page(browser, {build.PUSH_PR_DRY_ACTION: {"exit": 0, "output": out(
+        build.PR_PREVIEW_TAG, {**PREVIEW, "already": 43, "items": [],
+                               "description": {"fate": "update", "text": "x"}})}}, {})
+    page.click(".pr-push")
+    page.locator("#pr-push-dlg").wait_for(state="visible")
+    assert page.locator(".pp-q").inner_text() == (
+        "Post the merge risk in GitHub PR #51\u2019s description as @victorrentea?")
+    same = open_page(browser, {build.PUSH_PR_DRY_ACTION: {"exit": 0, "output": out(
+        build.PR_PREVIEW_TAG, {**PREVIEW, "already": 43, "items": [],
+                               "description": {"fate": "same", "text": "x"}})}}, {})
+    same.click(".pr-push")
+    same.wait_for_function("document.querySelector('.pr-push-msg').textContent !== ''")
+    assert not same.locator("#pr-push-dlg").is_visible()
+
+
 def test_the_page_points_a_fixed_card_at_its_note_never_at_a_pr_comment(browser):
     """`decorate`, after a push, without a rebuild: the Fixed card's GitHub mark moves to
     the note on its fix commit; an auto-fix the record still has as a PR comment gets no
