@@ -3,8 +3,8 @@
  "mode": "points",
  "source": "review-points.md",
  "provenance": {
-  "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
-  "auditedBase": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+  "base": "215038746359a252cf10e12c2f02bbab2a7f4286",
+  "auditedBase": "215038746359a252cf10e12c2f02bbab2a7f4286",
   "auditedHead": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "head": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
@@ -181,7 +181,8 @@
     {
      "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:419"
     }
-   ]
+   ],
+   "fixCommit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
   },
   {
    "title": "Unknown vetId on edit and on owner-page booking untested",
@@ -200,7 +201,8 @@
     {
      "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:351"
     }
-   ]
+   ],
+   "fixCommit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
   },
   {
    "title": "Deleting a vet with visits is untested",
@@ -215,7 +217,8 @@
     {
      "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:429"
     }
-   ]
+   ],
+   "fixCommit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
   },
   {
    "title": "Chatbot list_visits omits the vet",
@@ -238,7 +241,8 @@
     {
      "ref": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java:81"
     }
-   ]
+   ],
+   "fixCommit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
   }
  ],
  "assumptions": [
@@ -334,14 +338,14 @@
   }
  ],
  "meta": {
-  "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+  "base": "215038746359a252cf10e12c2f02bbab2a7f4286",
   "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "reviewers": "4 read-only Sonnet subagents (correctness, security, ticket-fit, tests briefs)",
   "session": "82329d0a-55d2-448f-aff5-0363cf80b32f"
  },
  "frontmatter": {
-  "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
-  "audited-base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+  "base": "215038746359a252cf10e12c2f02bbab2a7f4286",
+  "audited-base": "215038746359a252cf10e12c2f02bbab2a7f4286",
   "audited-head": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
   "head": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",

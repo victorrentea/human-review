@@ -1,3 +1,1 @@
-  * api -> api
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base e27182cbe767ce1f44c6812cda555d5b11cd653a --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
-[openapi-compat] needs PyYAML: python3 -m pip install pyyaml
+  = api: unchanged, 1.4 s saved

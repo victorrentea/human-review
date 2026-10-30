@@ -232,6 +232,7 @@
   "mergeRisk": {
     "door": "two-way",
     "blast": "visits API",
+    "blastSize": 1,
     "why": "a nullable vet column that a revert simply stops using; but a PUT that omits vetId clears the vet"
   }
 }
