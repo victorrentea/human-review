@@ -235,7 +235,7 @@ def test_an_empty_title_drops_the_heading_instead_of_printing_a_blank_one(tmp_pa
                                          "kind": "sequence"},
                                         {"manifest": "MANIFEST.tsv"}, rows,
                                         tmp_path, tmp_path)
-    assert 'class="tabtitle"' in kept and "Sequence diagrams generated from end-to-end traced tests" in kept
+    assert 'class="tabtitle"' in kept and "Sequence diagrams generated from traced tests" in kept
 
 
 # ── the frame that says which picture you are on ──────────────────────────────────
@@ -1610,7 +1610,7 @@ def test_the_sequence_tab_quotes_what_the_tags_and_the_pictures_say(tmp_path, mo
              "unpaired": {"id": "tests-nosequence",
                           "title": "Tagged for tracing, and no diagram came back"}}
     out, weight, _ = seq.render_testpairs(block, {}, [], root, root / ".human-review")
-    assert '<h2 class="tabtitle" id="sequences">Sequence diagrams generated from end-to-end traced tests</h2>' in out
+    assert '<h2 class="tabtitle" id="sequences">Sequence diagrams generated from traced tests</h2>' in out
     assert out.count('class="testpair" open') == 2
     assert "Searching shows the first page" in out and "Add a visit" in out
     tail = out[out.index("Tagged for tracing, and no diagram came back"):]
