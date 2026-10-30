@@ -348,8 +348,9 @@ Write `.human-review/content.json` against **`reference/content-schema.md`** —
 every block type, the tab vocabulary, and everything the renderer already enforces so you do
 not restate it. Always give it a **`mergeRisk`**: one-way or two-way door, the blast radius,
 and its `blastSize` (0–4: how much of the project does this PR change?). It is published, not
-only drawn: **Publish on GitHub** writes the same MERGE RISK line into the PR's own
-description (just above the "🤖 Generated with …" footer, between `<!-- hr:merge-risk -->`
+only drawn: **Publish on GitHub** writes the same facts into the PR's own description as
+a **Merge risk** line over two bullets — `- Two-way door: ✅ <why>` (or `- One-way door: ⚠️
+<why>`) and `- Blast radius: ◔ **<blast>** (<size in words>)` — (just above the "🤖 Generated with …" footer, between `<!-- hr:merge-risk -->`
 markers, replaced on every re-publish) and into the review's summary.
 
 **Change no code in this step.** Not a fix, not a comment, not a rename. The page used to

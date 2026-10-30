@@ -678,23 +678,29 @@ def test_the_review_summary_carries_the_merge_risk_with_its_blast_circle(tmp_pat
     payload = ppc.attach_merge_risk({"body": "**Review record**: 1 auto-fixed.",
                                      "comments": []}, tmp_path / "pr-comments.json")
     body = ppc.review_body(payload, [])
-    assert body.startswith("**Review record**: 1 auto-fixed.\n\n**Merge risk:** ✅ Two-way "
-                           "door · blast radius: ◔ **visits API** (about a quarter of the "
-                           "system) — a nullable column a revert stops using\n\n<!-- hr:review")
+    assert body.startswith("**Review record**: 1 auto-fixed.\n\n**Merge risk**\n"
+                           "- Two-way door: ✅ a nullable column a revert stops using\n"
+                           "- Blast radius: ◔ **visits API** (about a quarter of the system)"
+                           "\n\n<!-- hr:review")
     # The payload's own wins; no door, no line; no size, no circle.
     assert ppc.attach_merge_risk({"mergeRisk": {"door": "one-way"}},
                                  tmp_path / "x.json")["mergeRisk"] == {"door": "one-way"}
     assert ppc.merge_risk_md({"door": "maybe", "blast": "x"}) == ""
     assert ppc.merge_risk_md({"door": "one-way", "blast": "auth"}) == \
-        "**Merge risk:** ⚠️ One-way door · blast radius: **auth**"
+        "**Merge risk**\n- One-way door: ⚠️\n- Blast radius: **auth**"
+    # A size with no words says the size; no blast at all, no blast bullet.
+    assert ppc.merge_risk_md({"door": "two-way", "blastSize": 4, "why": "w"}) == \
+        "**Merge risk**\n- Two-way door: ✅ w\n- Blast radius: ● **the whole system**"
+    assert ppc.merge_risk_md({"door": "One-Way", "why": "drops a column"}) == \
+        "**Merge risk**\n- One-way door: ⚠️ drops a column"
 
 
 # ------------------------------------------------- the merge risk in the PR's description
 
 FOOTER = "🤖 Generated with [Claude Code](https://claude.com/claude-code) · Opus 5.5"
 RISK = {"door": "two-way", "blast": "visits API", "blastSize": 1, "why": "a revert stops it"}
-LINE = ("**Merge risk:** ✅ Two-way door · blast radius: ◔ **visits API** (about a quarter "
-        "of the system) — a revert stops it")
+LINE = ("**Merge risk**\n- Two-way door: ✅ a revert stops it\n"
+        "- Blast radius: ◔ **visits API** (about a quarter of the system)")
 
 
 def test_the_merge_risk_goes_just_above_the_attribution_footer():
@@ -710,6 +716,18 @@ def test_a_re_publish_replaces_the_block_and_never_adds_a_second():
     moved = ppc.with_merge_risk(once, LINE.replace("◔", "◑"))
     assert moved.count("<!-- hr:merge-risk -->") == 1 and "◑" in moved and "◔" not in moved
     assert moved.endswith(FOOTER) and moved.startswith("Adds a vet.\n\n<!--")
+
+
+def test_a_block_in_the_old_one_line_shape_is_replaced_by_the_bullets():
+    """Victor, 30 Oct 2026: the door and the blast radius as "label: value" bullets. A PR
+    published before that carries the one-line block; the next publish swaps it whole."""
+    old = ("Adds a vet.\n\n<!-- hr:merge-risk -->\n**Merge risk:** ✅ Two-way door · blast "
+           "radius: ◔ **visits API** — a revert stops it\n<!-- /hr:merge-risk -->\n\n" + FOOTER)
+    new = ppc.with_merge_risk(old, LINE)
+    assert new == ppc.with_merge_risk(f"Adds a vet.\n\n{FOOTER}", LINE)
+    assert "**Merge risk:**" not in new and new.count("- Blast radius:") == 1
+    f = FakeForge(old)
+    assert ppc.description_plan(f, Path("."), "o/r", 49, RISK)["fate"] == "update"
 
 
 def test_without_a_footer_the_block_closes_the_body_and_without_a_line_nothing_changes():
@@ -774,8 +792,8 @@ def test_the_pr_and_the_page_draw_the_same_doors_and_circles():
     sys.path.insert(0, str(HERE))
     from hrbuild.tabs import review
     assert ppc.BLAST_GLYPHS == review.BLAST_GLYPHS and ppc.BLAST_SIZES == review.BLAST_SIZES
-    assert ppc.MERGE_DOORS == {k: f"{review.MERGE_DOOR_MARKS[k]} {v}"
-                               for k, v in review.MERGE_DOORS.items()}
+    assert ppc.MERGE_DOORS == review.MERGE_DOORS
+    assert ppc.MERGE_DOOR_MARKS == review.MERGE_DOOR_MARKS
 
 
 # ------------------------------------------------- auto-fixes: notes on their fix commits

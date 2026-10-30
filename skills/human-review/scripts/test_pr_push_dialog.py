@@ -429,7 +429,7 @@ def test_the_dialog_says_where_auto_fix_notes_go(browser):
 
 
 def test_the_dialog_says_the_merge_risk_goes_into_the_pr_description(browser):
-    line = "**Merge risk:** ✅ Two-way door · blast radius: ◔ **visits API**"
+    line = "**Merge risk**\n- Two-way door: ✅\n- Blast radius: ◔ **visits API**"
     page = open_page(browser, {build.PUSH_PR_DRY_ACTION: {"exit": 0, "output": out(
         build.PR_PREVIEW_TAG, {**PREVIEW, "description": {"fate": "new", "text": line}})}}, {})
     page.click(".pr-push")

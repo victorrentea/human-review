@@ -165,7 +165,9 @@ quarters, `4` ● all of it (auth, a shared table, the build). Estimate it from 
 spreads over the codebase — which modules and features it reaches, out of all of them — not
 from its line count. The circle stands in front of the blast radius, inside the grade pill
 in the masthead, and in the review's summary on the PR; without it no circle is drawn.
-**Publish on GitHub** also writes the whole line into the **PR's own description**, just above
+**Publish on GitHub** also writes it into the **PR's own description** — a **Merge risk** line
+over two bullets, `- Two-way door: ✅ <why>` and `- Blast radius: ◔ **<blast>** (<size>)`
+(the review's summary carries the same) — just above
 the agent's "🤖 Generated with …" footer, between `<!-- hr:merge-risk -->` and
 `<!-- /hr:merge-risk -->` — a re-publish replaces that block, and the page's PR DESCRIPTION
 card leaves it out, since its own MERGE RISK line says the same

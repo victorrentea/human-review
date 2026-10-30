@@ -19,8 +19,17 @@ against the PR as it is at that moment and sends the file. It does not write a w
 no model runs at push time, so what lands on the PR is what you wrote here.
 
 After the comments, the same push writes `content.json`'s **`mergeRisk`** into the **PR's
-description** — the page's MERGE RISK line, word for word, between `<!-- hr:merge-risk -->`
-markers just above the "🤖 Generated with …" footer (at the end without one). A re-push
+description** — the page's MERGE RISK facts in its words and marks, as a **Merge risk** line
+over two "label: value" bullets:
+
+```markdown
+**Merge risk**
+- Two-way door: ✅ <why>
+- Blast radius: ◔ **<blast>** (<blastSize in words>)
+```
+
+(`- One-way door: ⚠️ <why>` for the other door; no blast bullet without a blast) — between
+`<!-- hr:merge-risk -->` markers just above the "🤖 Generated with …" footer (at the end without one). A re-push
 replaces the block and sends nothing when it already says the same; the confirmation names
 it ("…and the merge risk in its description"). `--description-only --dry-run` prints the new
 description without writing it; `--description-only` writes it alone.

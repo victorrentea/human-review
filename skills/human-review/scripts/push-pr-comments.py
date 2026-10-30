@@ -80,7 +80,8 @@ Usage:
   push-pr-comments.py --description-only --dry-run > body.md   # the PR body with the merge risk
 
 **The merge risk goes into the PR's description too.** After the comments, a push writes
-`content.json`'s `mergeRisk` — the page's MERGE RISK line, in the same words and marks — into
+`content.json`'s `mergeRisk` — the page's MERGE RISK facts, in the same words and marks, as
+a **Merge risk** line over two "label: value" bullets (the door, the blast radius) — into
 the PR's own description, between `<!-- hr:merge-risk -->` markers just above the agent's
 "🤖 Generated with …" footer (at the end without one). A re-push replaces that block, never
 adds a second, and sends nothing when it already says the same (`with_merge_risk`).
@@ -545,10 +546,12 @@ def _face(r: Resolved) -> str:
     return r.comment["path"] + (f":{a}" + (f"-{b}" if b and b != a else "") if a else "")
 
 
-#: The merge risk's door and the blast radius's size, as the page draws them
-#: (`hrbuild/tabs/review.py`: MERGE_DOORS, BLAST_GLYPHS, BLAST_SIZES — a test holds the two
-#: copies equal). Here, because this script runs without the page's package.
-MERGE_DOORS = {"one-way": "\u26a0\ufe0f One-way door", "two-way": "\u2705 Two-way door"}
+#: The merge risk's door, its mark and the blast radius's size, as the page draws them
+#: (`hrbuild/tabs/review.py`: MERGE_DOORS, MERGE_DOOR_MARKS, BLAST_GLYPHS, BLAST_SIZES — a
+#: test holds the two copies equal). Here, because this script runs without the page's
+#: package.
+MERGE_DOORS = {"one-way": "One-way door", "two-way": "Two-way door"}
+MERGE_DOOR_MARKS = {"one-way": "\u26a0\ufe0f", "two-way": "\u2705"}
 BLAST_GLYPHS = ("\u25cb", "\u25d4", "\u25d1", "\u25d5", "\u25cf")
 BLAST_SIZES = ("barely anything", "about a quarter of the system", "about half the system",
                "about three quarters of the system", "the whole system")
@@ -556,15 +559,23 @@ CONTENT_JSON = "content.json"
 
 
 def merge_risk_md(risk: dict | None) -> str:
-    """`mergeRisk` as the page's MERGE RISK line in markdown — the line in the review's
-    summary and in the PR's description: the door, the blast radius behind its circle —
-    with the size in words, since GitHub has no hover to say it — and why. Empty without a
-    known door, like the page."""
+    """`mergeRisk` in markdown, for the review's summary and the PR's description: a
+    heading line and a bullet per fact, each "label: value" (Victor, 30 Oct 2026) — the
+    door with its mark and why, then the blast radius behind its circle, with the size in
+    words since GitHub has no hover to say it:
+
+        **Merge risk**
+        - Two-way door: ✅ a revert simply stops using the column
+        - Blast radius: ◔ **visits API** (about a quarter of the system)
+
+    Empty without a known door, like the page; no blast bullet without a blast."""
     risk = risk if isinstance(risk, dict) else {}
-    door = MERGE_DOORS.get(str(risk.get("door") or "").strip().lower())
-    if not door:
+    key = str(risk.get("door") or "").strip().lower()
+    if key not in MERGE_DOORS:
         return ""
-    parts = [door]
+    why = str(risk.get("why") or "").strip()
+    lines = ["**Merge risk**",
+             f"- {MERGE_DOORS[key]}: {MERGE_DOOR_MARKS[key]}" + (f" {why}" if why else "")]
     blast = str(risk.get("blast") or "").strip()
     raw = risk.get("blastSize")
     try:
@@ -574,12 +585,11 @@ def merge_risk_md(risk: dict | None) -> str:
     if n is not None and not 0 <= n < len(BLAST_GLYPHS):
         n = None
     if n is not None:
-        parts.append(f"blast radius: {BLAST_GLYPHS[n]} "
-                     + (f"**{blast}** ({BLAST_SIZES[n]})" if blast else f"**{BLAST_SIZES[n]}**"))
+        lines.append(f"- Blast radius: {BLAST_GLYPHS[n]} " + (
+            f"**{blast}** ({BLAST_SIZES[n]})" if blast else f"**{BLAST_SIZES[n]}**"))
     elif blast:
-        parts.append(f"blast radius: **{blast}**")
-    why = str(risk.get("why") or "").strip()
-    return "**Merge risk:** " + " · ".join(parts) + (f" — {why}" if why else "")
+        lines.append(f"- Blast radius: **{blast}**")
+    return "\n".join(lines)
 
 
 # --------------------------------------------------------------------------- #
@@ -599,9 +609,10 @@ PR_FOOTER = re.compile(r"^[ \t]*\U0001f916 Generated with\b", re.M)
 
 
 def with_merge_risk(body: str | None, line: str) -> str:
-    """`body` with exactly one merge-risk block holding `line`: an earlier block replaced,
-    else a new one just above the last attribution footer, else at the end. `body` as it
-    is (line endings made `\\n`) when there is no line to write."""
+    """`body` with exactly one merge-risk block holding `line` (`merge_risk_md`, several
+    lines): an earlier block replaced whatever its shape, else a new one just above the
+    last attribution footer, else at the end. `body` as it is (line endings made `\\n`)
+    when there is no line to write."""
     text = (body or "").replace("\r\n", "\n")
     if not line:
         return text
