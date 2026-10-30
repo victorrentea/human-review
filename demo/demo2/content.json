@@ -1,232 +1,238 @@
 {
- "scope": [
-  {
-   "auto": "diffstat"
-  },
-  {
-   "auto": "tests",
-   "href": "#requirements"
-  },
-  {
-   "auto": "autofixed",
-   "href": "#review"
-  }
- ],
- "findings": {
-  "auto": "review-points"
- },
- "autofixes": {
-  "auto": "review-points"
- },
- "assumptions": {
-  "auto": "review-points"
- },
- "codecity": {
-  "png": "assets/codecity.png",
-  "href": "assets/codecity/codecity.html"
- },
- "extraCss": [
-  "assets/openapi-compat.css",
-  "assets/complexity-delta.css",
-  "assets/ds-audit.css"
- ],
- "testChanges": "assets/test-changes.json",
- "playwrightTraces": "assets/traces.json",
- "tabs": [
-  {
-   "id": "review",
-   "label": "Review",
-   "count": true,
-   "blocks": [
+  "scope": [
     {
-     "type": "findings"
+      "auto": "diffstat"
     },
     {
-     "type": "autofixes"
+      "auto": "tests",
+      "href": "#requirements"
     },
     {
-     "type": "assumptions"
+      "auto": "autofixed",
+      "href": "#review"
     }
-   ]
+  ],
+  "findings": {
+    "auto": "review-points"
   },
-  {
-   "id": "behaviour",
-   "label": "Demo",
-   "blocks": [
-    {
-     "type": "section",
-     "id": "video"
-    }
-   ]
+  "autofixes": {
+    "auto": "review-points"
   },
-  {
-   "id": "api",
-   "label": "API",
-   "blocks": [
-    {
-     "type": "section",
-     "id": "swaggerdiff"
-    }
-   ]
+  "assumptions": {
+    "auto": "review-points"
   },
-  {
-   "id": "data",
-   "label": "Data",
-   "blocks": [
+  "codecity": {
+    "png": "assets/codecity.png",
+    "href": "assets/codecity/codecity.html"
+  },
+  "extraCss": [
+    "assets/openapi-compat.css",
+    "assets/complexity-delta.css",
+    "assets/ds-audit.css"
+  ],
+  "testChanges": "assets/test-changes.json",
+  "playwrightTraces": "assets/traces.json",
+  "tabs": [
     {
-     "type": "diagrams",
-     "only": [
-      "DomainModel",
-      "DB"
-     ]
+      "id": "review",
+      "label": "Review",
+      "count": true,
+      "blocks": [
+        {
+          "type": "findings"
+        },
+        {
+          "type": "autofixes"
+        },
+        {
+          "type": "assumptions"
+        }
+      ]
     },
     {
-     "type": "section",
-     "id": "conceptual"
-    }
-   ]
-  },
-  {
-   "id": "requirements",
-   "label": "Tests",
-   "blocks": [
-    {
-     "type": "section",
-     "id": "requirements-map"
+      "id": "behaviour",
+      "label": "Demo",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "video"
+        }
+      ]
     },
     {
-     "type": "tests"
+      "id": "api",
+      "label": "API",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "swaggerdiff"
+        }
+      ]
     },
     {
-     "type": "traces"
-    }
-   ]
-  },
-  {
-   "id": "sequence",
-   "label": "Sequence",
-   "blocks": [
-    {
-     "type": "testpairs",
-     "id": "sequences",
-     "kind": "sequence"
-    }
-   ]
-  },
-  {
-   "id": "packages",
-   "label": "Structure",
-   "blocks": [
-    {
-     "type": "diagrams",
-     "only": [
-      "Java packages"
-     ],
-     "context": {
-      "src": "petclinic-backend/docs/packages.puml",
-      "name": "Java packages"
-     }
+      "id": "data",
+      "label": "Data",
+      "blocks": [
+        {
+          "type": "diagrams",
+          "only": [
+            "DomainModel",
+            "DB"
+          ]
+        },
+        {
+          "type": "section",
+          "id": "conceptual"
+        }
+      ]
     },
     {
-     "type": "diagrams",
-     "only": [
-      "Frontend packages"
-     ],
-     "context": {
-      "src": "petclinic-frontend/docs/frontend-packages.puml",
-      "name": "Frontend packages"
-     }
+      "id": "requirements",
+      "label": "Tests",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "requirements-map"
+        },
+        {
+          "type": "tests"
+        },
+        {
+          "type": "traces"
+        }
+      ]
     },
     {
-     "type": "puml",
-     "src": "petclinic-backend/docs/generated/MavenModules.puml",
-     "name": "Maven modules",
-     "status": "unchanged"
+      "id": "sequence",
+      "label": "Sequence",
+      "blocks": [
+        {
+          "type": "testpairs",
+          "id": "sequences",
+          "kind": "sequence"
+        }
+      ]
     },
     {
-     "type": "diagrams",
-     "manifest": "assets/c2/MANIFEST.tsv",
-     "only": [
-      "C2-Containers"
-     ],
-     "id": "c2-containers"
-    }
-   ]
-  },
-  {
-   "id": "city",
-   "label": "Code City",
-   "blocks": [
+      "id": "packages",
+      "label": "Structure",
+      "blocks": [
+        {
+          "type": "diagrams",
+          "only": [
+            "Java packages"
+          ],
+          "context": {
+            "src": "petclinic-backend/docs/packages.puml",
+            "name": "Java packages"
+          }
+        },
+        {
+          "type": "diagrams",
+          "only": [
+            "Frontend packages"
+          ],
+          "context": {
+            "src": "petclinic-frontend/docs/frontend-packages.puml",
+            "name": "Frontend packages"
+          }
+        },
+        {
+          "type": "puml",
+          "src": "petclinic-backend/docs/generated/MavenModules.puml",
+          "name": "Maven modules",
+          "status": "unchanged"
+        },
+        {
+          "type": "diagrams",
+          "manifest": "assets/c2/MANIFEST.tsv",
+          "only": [
+            "C2-Containers"
+          ],
+          "id": "c2-containers"
+        }
+      ]
+    },
     {
-     "type": "codecity"
-    }
-   ]
-  },
-  {
-   "id": "dsaudit",
-   "label": "UX",
-   "blocks": [
+      "id": "city",
+      "label": "Code City",
+      "blocks": [
+        {
+          "type": "codecity"
+        }
+      ]
+    },
     {
-     "type": "section",
-     "id": "ds-audit"
-    }
-   ]
-  },
-  {
-   "id": "complexity",
-   "label": "Complexity",
-   "blocks": [
+      "id": "dsaudit",
+      "label": "UX",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "ds-audit"
+        }
+      ]
+    },
     {
-     "type": "section",
-     "id": "complexity-delta"
-    }
-   ]
-  },
-  {
-   "id": "logging",
-   "label": "Logging",
-   "blocks": [
+      "id": "complexity",
+      "label": "Complexity",
+      "blocks": [
+        {
+          "type": "section",
+          "id": "complexity-delta"
+        }
+      ]
+    },
     {
-     "type": "logging",
-     "base": "origin/main",
-     "paths": [
-      "petclinic-backend"
-     ],
-     "id": "logging-added"
-    }
-   ]
-  },
-  {
-   "id": "owners",
-   "label": "CODEOWNERS",
-   "blocks": [
+      "id": "logging",
+      "label": "Logging",
+      "blocks": [
+        {
+          "type": "logging",
+          "base": "origin/main",
+          "paths": [
+            "petclinic-backend"
+          ],
+          "id": "logging-added"
+        }
+      ]
+    },
     {
-     "type": "codeowners"
+      "id": "owners",
+      "label": "CODEOWNERS",
+      "blocks": [
+        {
+          "type": "codeowners"
+        }
+      ]
     }
-   ]
-  }
- ],
- "pr": {
-  "number": 53,
+  ],
+  "pr": {
+    "number": 53,
+    "title": "Visits grid: server-side paging, sortable by every column (#52)",
+    "url": "https://github.com/victorrentea/petclinic/pull/53",
+    "repo": "https://github.com/victorrentea/petclinic",
+    "branch": "visits-paginated",
+    "base": "main",
+    "ticket": {
+      "number": 52,
+      "title": "Add pagination to Visits grid",
+      "url": "https://github.com/victorrentea/petclinic/issues/52"
+    }
+  },
   "title": "Visits grid: server-side paging, sortable by every column (#52)",
-  "url": "https://github.com/victorrentea/petclinic/pull/53",
-  "repo": "https://github.com/victorrentea/petclinic",
-  "branch": "visits-paginated",
-  "base": "main",
-  "ticket": {
-   "number": 52,
-   "title": "Add pagination to Visits grid",
-   "url": "https://github.com/victorrentea/petclinic/issues/52"
+  "subtitle": "visits-paginated — issue #52",
+  "footer": "Built by /human-review from visits-paginated on 22 Oct 2026.",
+  "verdict": {
+    "score": 8,
+    "bullets": [
+      "The human commits are two merges of `origin/main` into the branch plus their `review-points` base-moved markers; they bring in main's changes, not edits to the Visits feature itself.",
+      "The API accepts page sizes 1..100 while the ticket asks for 5/10/20; the cap is only enforced in the grid, so other clients can request sizes the ticket never meant."
+    ]
+  },
+  "mergeRisk": {
+    "door": "two-way",
+    "blast": "visits grid and its API",
+    "blastSize": 1,
+    "why": "no migration, no data written; GET /api/visits answers a page instead of a list, and its one client, the grid, ships with it"
   }
- },
- "title": "Visits grid: server-side paging, sortable by every column (#52)",
- "subtitle": "visits-paginated — issue #52",
- "footer": "Built by /human-review from visits-paginated on 22 Oct 2026.",
- "verdict": {
-  "score": 8,
-  "bullets": [
-   "The human commits are two merges of `origin/main` into the branch plus their `review-points` base-moved markers; they bring in main's changes, not edits to the Visits feature itself.",
-   "The API accepts page sizes 1..100 while the ticket asks for 5/10/20; the cap is only enforced in the grid, so other clients can request sizes the ticket never meant."
-  ]
- }
 }

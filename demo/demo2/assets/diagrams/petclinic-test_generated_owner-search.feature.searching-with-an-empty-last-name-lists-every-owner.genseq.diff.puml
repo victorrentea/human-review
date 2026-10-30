@@ -3,6 +3,8 @@ caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color>
 hide footbox
 skinparam hyperlinkUnderline false
 skinparam hyperlinkColor #1A4FA0
+skinparam sequenceGroupFontColor #888888
+skinparam sequenceGroupFontStyle plain
 title [[src://petclinic-test/src/owner-search.feature:27{Click to open the test} Test: Searching with an empty last name lists every owner]] - Diff
 footer @generate_sequence in src/owner-search.feature — generated from real traces of end-to-end test runs, do not edit ❗
 participant Browser
