@@ -131,3 +131,8 @@ with `forge_for(root)` (from `origin`; None off a forge, keep the editor link) o
 GitHub goes there, never into a tab or a script: `test_forge_seam.py` fails a `gh` call or
 a `https://github.com/` URL of the reviewed repo spelled anywhere else. Links to the
 skill's own home (`victorrentea/human-review`) are not the forge and stay where they are.
+
+## Memoria lui Claude
+
+Memoria generală (cine e Victor, cum vrea să lucrezi) e în repo-ul privat `victorrentea/assistant`.
+Într-o sesiune din cloud, atașează-l la sesiune și urmează-i `CLAUDE.md`-ul. Pe Mac se încarcă singură.
