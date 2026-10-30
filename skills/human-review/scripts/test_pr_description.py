@@ -59,7 +59,7 @@ def test_the_merge_risk_a_push_wrote_into_the_description_is_said_once():
     markers; the card's own line says it, so the copy in the body is left out."""
     spec = {"mergeRisk": {"door": "two-way", "blast": "visits API", "blastSize": 1},
             "_prBody": {"url": URL, "body": "Closes #25.\n\n<!-- hr:merge-risk -->\n"
-                        "**Merge risk:** ✅ Two-way door · blast radius: ◔ **visits API**\n"
+                        "**Merge risk**\n- Two-way door: ✅\n- Blast radius: ◔ **visits API**\n"
                         "<!-- /hr:merge-risk -->\n\n🤖 Generated with "
                         "[Claude Code](https://claude.com/claude-code)"}}
     out = review.pr_description_html(spec)
@@ -93,9 +93,11 @@ def test_merge_risk_closes_the_pr_description_with_its_door_and_blast_radius():
             "mergeRisk": {"door": "two-way", "blast": "visits API", "why": "a PUT <b> clears"}}
     out = review.pr_description_html(spec)
     assert out.index("Closes") < out.index('class="mergerisk"') < out.index("</details>")
-    assert '<b class="mr-door">✅ Two-way door</b> · blast radius: <b>visits API</b>' in out
+    assert ('<b class="mr-door"><span class="mr-mark">✅</span> Two-way door</b> · blast radius: '
+            '<b>visits API</b>') in out
     assert "a PUT &lt;b&gt; clears" in out
-    assert 'mr-oneway">⚠️ One-way door' in review.merge_risk_html({"mergeRisk": {"door": "One-way"}})
+    assert 'mr-oneway"><span class="mr-mark">⚠️</span> One-way door' in \
+        review.merge_risk_html({"mergeRisk": {"door": "One-way"}})
 
 
 def test_merge_risk_without_a_known_door_is_not_drawn_and_stands_alone_without_a_body():
@@ -140,7 +142,7 @@ def test_the_masthead_shows_the_doors_mark_before_the_circle_with_its_meaning_on
     assert "⚠️</span>" in review.door_mark_html({"mergeRisk": {"door": "one-way"}})
     assert review.door_mark_html({}) == "" == review.door_mark_html({"mergeRisk": {"door": "?"}})
     # The MERGE RISK line draws the same mark from the same table.
-    assert f"{review.MERGE_DOOR_MARKS['two-way']} Two-way door</b>" in \
+    assert f'"mr-mark">{review.MERGE_DOOR_MARKS["two-way"]}</span> Two-way door</b>' in \
         review.merge_risk_html({"mergeRisk": {"door": "two-way"}})
 
 

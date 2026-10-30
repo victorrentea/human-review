@@ -1978,8 +1978,10 @@ def merge_risk_html(spec) -> str:
     if not key:
         return ""
     oneway = key == "one-way"
+    # The mark in a span of its own, so it can be sized to the words' capitals like the
+    # circle: an emoji drawn at the text's size stands a head taller than its letters.
     parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">'
-             f'{MERGE_DOOR_MARKS[key]} {MERGE_DOORS[key]}</b>']
+             f'<span class="mr-mark">{MERGE_DOOR_MARKS[key]}</span> {MERGE_DOORS[key]}</b>']
     blast = str(risk.get("blast") or "").strip()
     # The size's circle in front of the words, whose hover says the size in words; with a
     # size and no words, the size's words stand in for them.

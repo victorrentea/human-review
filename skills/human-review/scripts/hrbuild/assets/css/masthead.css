@@ -118,10 +118,18 @@ a.titlescore { text-decoration:none; cursor:pointer; }
 a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor inset; }
 /* The merge's door and the blast circle, inside the grade pill in front of the number
    (`grade_pill_with_risk`): their own click target, to the MERGE RISK line (tabs.js). */
-.titlescore .ts-risk { display:inline-flex; align-items:center; gap:.2rem; margin-right:.3rem;
+/* One row of three equal marks (Victor, 30 Oct 2026): the box, the circle and the grade's
+   digits the same height, the box-to-circle gap the circle-to-digit gap. Each glyph is
+   sized to the digits' capitals (9.5px of ink at 2x, measured headless at 1728px): an
+   emoji fills its whole em, so it is drawn smaller than the text, and the circle, a
+   symbol-font glyph that fills two thirds of its em and sits on the baseline, larger and
+   lifted. The two gaps are ink to ink, 4px each — `gap` here, `margin-right` plus the
+   pill's own .15rem gap before the digits. */
+.titlescore .ts-risk { display:inline-flex; align-items:center; gap:5px; margin-right:1.5px;
             cursor:pointer; line-height:1; }
-.titlescore .titledoor { font-size:.8rem; }
-.titlescore .titleblast { font-size:1rem; color:var(--fg); opacity:.8; }
+.titlescore .titledoor { font-size:7.6px; line-height:1; position:relative; top:-.5px; }
+.titlescore .titleblast { font-size:14.8px; line-height:1; position:relative; top:-1.75px;
+            color:var(--fg); opacity:.8; }
 .titlescore.ts-alone { background:var(--card); }
 .titlescore.ts-alone .ts-risk { margin-right:0; }
 .titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }

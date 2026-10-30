@@ -317,8 +317,12 @@ html.ide-none a.f-vsc, html.ide-none a.pr-vsc, html.hr-online ol.findings > li >
 .mergerisk.mr-flash { animation:mr-flash 1.6s ease-out; border-radius:4px; }
 @keyframes mr-flash { 0%, 35% { background:color-mix(in srgb, #f2c94c 45%, transparent); }
   100% { background:transparent; } }
-/* The blast radius's size, ○ to ●, in front of its words. */
-.mr-size { font-size:1.05em; cursor:help; }
+/* The door's mark and the blast radius's size, ○ to ●, each as tall as the line's capitals
+   and centred on them (11px of ink at 2x, measured headless at 1728px), like the masthead
+   pill's marks (Victor, 30 Oct 2026): the emoji, which fills its em and hangs below the
+   baseline, drawn smaller and lifted; the circle, two thirds of its em, larger. */
+.mr-mark { font-size:.64em; line-height:1; position:relative; top:-2px; }
+.mr-size { font-size:1.13em; line-height:1; position:relative; top:-.1em; cursor:help; }
 .mr-door.mr-oneway { color:#d7263d; }
 .prdesc-body pre { overflow:auto; padding:.4rem .6rem; border-radius:4px;
           background:color-mix(in srgb, var(--fg) 6%, transparent); font-size:.85rem; }
