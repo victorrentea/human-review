@@ -377,7 +377,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'Open the changed screens: is each change wanted?',
             '✅ judged fine · ⚠️ a gap · ⚪ changed, but no control to judge.',
             'Hover a red box: the tag found, struck, against the tag it should be.',
-            'Chrome · Edge by the title: every picture, as that browser drew it.',
+            'Browser logos (title: all, bar: one screen): each picture as it drew it.',
         ],
         "ex": 'e.g. a home-made combo box, or an inline <code>style=</code>.',
     },
