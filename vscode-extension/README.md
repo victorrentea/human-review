@@ -30,14 +30,14 @@ actions: open a file, open a diff, reveal a folder, raise the window, show the r
 VS Code's Simple Browser.
 
 A page opened straight off disk (no server) reaches the extension through
-`vscode://victorrentea.human-review/…` links instead.
+`vscode://victor-rentea.human-review/…` links instead.
 
 ## Install
 
-From the Marketplace: search **Human Review** (publisher `victorrentea`), or
+From the Marketplace: search **Human Review** (publisher `victor-rentea`), or
 
 ```sh
-code --install-extension victorrentea.human-review
+code --install-extension victor-rentea.human-review
 ```
 
 From the repository, without the Marketplace — the packaged extension is committed next to

@@ -168,7 +168,7 @@ Installed as a Claude Code plugin, the same file is in the plugin's own copy of 
 repository (`~/.claude/plugins/cache/human-review/…/vscode-extension/dist/`), or download
 it from
 <https://github.com/victorrentea/human-review/raw/main/vscode-extension/dist/human-review.vsix>.
-Once published, it is also on the Marketplace as `victorrentea.human-review`.
+Once published, it is also on the Marketplace as `victor-rentea.human-review`.
 
 There are two commands, and they are the two ends of one flow. Implement the change however
 you like — then, **in the same conversation** that wrote it (Claude Code, or Copilot Chat in

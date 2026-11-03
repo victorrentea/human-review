@@ -1,4 +1,4 @@
-// `vscode://victorrentea.human-review/…` — the channel a page has when it has no server.
+// `vscode://victor-rentea.human-review/…` — the channel a page has when it has no server.
 //
 // The Human Review guide read over http can ask its own origin to do things (that is
 // `/__open__` and `/__open_diff__`). Read straight off disk from Chrome — which is how it

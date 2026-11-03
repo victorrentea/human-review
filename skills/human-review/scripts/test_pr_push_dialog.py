@@ -357,7 +357,7 @@ def fixed_item(**kw) -> dict:
 
 
 def test_a_fixed_card_opens_its_fix_commit_on_github_and_in_the_ide(monkeypatch):
-    monkeypatch.setenv("HUMAN_REVIEW_DIFF_URI_HANDLER", "victorrentea.human-review")
+    monkeypatch.setenv("HUMAN_REVIEW_DIFF_URI_HANDLER", "victor-rentea.human-review")
     links = build.fix_commit_links(fixed_item())
     assert f'class="f-gh f-commit" href="https://github.com/o/r/commit/{FIX}"' in links
     assert 'data-tip="Open the fix commit be762955 on GitHub"' in links
@@ -367,7 +367,7 @@ def test_a_fixed_card_opens_its_fix_commit_on_github_and_in_the_ide(monkeypatch)
     assert f'data-diff-base="{PARENT}" data-diff-head="{FIX}"' in links
     assert 'data-diff-path="src/VisitTest.java"' in links
     assert "Open the fix commit be762955 in VS Code — its diff, at VisitTest.java:380" in links
-    assert f"head={FIX}" in links and "vscode://victorrentea.human-review/diff?" in links
+    assert f"head={FIX}" in links and "vscode://victor-rentea.human-review/diff?" in links
     # Once pushed, GitHub's mark lands on the note on that commit.
     note = f"https://github.com/o/r/commit/{FIX}#commitcomment-9"
     links = build.fix_commit_links(fixed_item(_fixNoteUrl=note))

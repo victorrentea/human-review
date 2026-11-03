@@ -399,7 +399,7 @@ trailer if the claim was never true.
 **The page opens itself.** The first time `refresh-report.py` starts the server it shows
 the page — in the VS Code window's own browser, beside the code, when the run is in a VS
 Code terminal and the Human Review VS Code extension (`vscode-extension/` in this repository,
-`victorrentea.human-review`) is installed; in the default browser otherwise. Later rebuilds open nothing: the tab already
+`victor-rentea.human-review`) is installed; in the default browser otherwise. Later rebuilds open nothing: the tab already
 open catches up by itself — it swaps in place only the tabs the rebuild changed (the build
 writes them beside the page, `tabs/<id>.html`), and reloads whole when a shared part moved.
 Do not open it again by hand, and never `open review.html`.

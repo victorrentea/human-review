@@ -222,7 +222,7 @@ def _installed_diff_handler(home: Path) -> str | None:
     """The first extension under `home` that carries the diff URI handler, if any."""
     # The Human Review extension (vscode-extension/ in this repo) first; victor-vsc, where its
     # URI handler was born and which still carries one, after it.
-    for ext in ("victorrentea.human-review", "victorrentea.victor-vsc"):
+    for ext in ("victor-rentea.human-review", "victorrentea.victor-vsc"):
         for store in (home / ".vscode" / "extensions",
                       home / ".vscode-insiders" / "extensions"):
             try:

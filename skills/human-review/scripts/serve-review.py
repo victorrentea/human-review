@@ -708,7 +708,7 @@ def editor_state(sha, root, branch, ide=None) -> dict:
     open_here = f"Click to open a new {ed} in {folder}"
     if not pings:
         what = ("plugin installed in IntelliJ" if app == "idea"
-                else "extension (victorrentea.human-review) installed")
+                else "extension (victor-rentea.human-review) installed")
         return {"state": "off", "window": None, **facts,
                 "tip": f"{open_here}\nNo {ed} window answers: is the Human Review {what}?"}
     holder, claim = None, 0
