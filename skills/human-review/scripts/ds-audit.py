@@ -1579,6 +1579,16 @@ details.dsa-screen > summary:hover { color: var(--link); }
   border-radius: .2rem; box-sizing: border-box; align-self: center; flex: none; }
 .dsa:has(.dsa-frameon:not(:checked)) .dsa-frame,
 .dsa:has(.dsa-frameon:not(:checked)) .dsa-framecap { display: none; }
+/* Chrome · Edge, in the title: a two-button segment, the pressed one filled. Sized as
+   body text, not as the heading it sits in. */
+.dsa-browsers { display: inline-flex; margin-left: .8rem; vertical-align: middle;
+  border: 2px solid var(--line); border-radius: .45rem; overflow: hidden; }
+.dsa-br { font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.5;
+  padding: .1rem .7rem; border: 0; background: var(--card); color: var(--muted); cursor: pointer; }
+.dsa-br + .dsa-br { border-left: 2px solid var(--line); }
+.dsa-br:hover { color: var(--fg); }
+.dsa-br[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+details.dsa-screen.dsa-nobr .dsa-shot img { opacity: .55; }
 .dsa-frametoggle { margin-left: .6rem; font-size: .82rem; display: inline-flex; gap: .35rem;
   align-items: center; cursor: pointer; user-select: none; color: var(--fg); }
 .dsa-frametoggle input { accent-color: var(--dsa-frame); margin: 0; }
@@ -1707,6 +1717,29 @@ HL_JS = """<script data-hr-swap="keep">
   document.addEventListener('change', function (ev) {
     if (!ev.target.classList || !ev.target.classList.contains('dsa-frameon')) return;
     document.querySelectorAll('.dsa-frameon').forEach(function (c) { c.checked = ev.target.checked; });
+  });
+  // Chrome · Edge: every picture of the tab swaps to that browser's capture, which sits
+  // beside the primary's as `<name>.<browser>.png`. A screen that browser did not shoot
+  // keeps the primary's picture and says so (`dsa-nobr`).
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest && ev.target.closest('.dsa-br[data-br]');
+    if (!btn) return;
+    var run = btn.closest('.dsa-run') || document;
+    var br = btn.getAttribute('data-br'), primary = btn.hasAttribute('data-primary');
+    run.querySelectorAll('.dsa-br').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
+    run.querySelectorAll('details.dsa-screen').forEach(function (d) {
+      var has = primary || (' ' + (d.getAttribute('data-brs') || '') + ' ')
+        .indexOf(' ' + br + ' ') >= 0;
+      d.querySelectorAll('.dsa-shot img').forEach(function (img) {
+        var base = img.getAttribute('data-src0');
+        if (!base) { base = img.getAttribute('src'); img.setAttribute('data-src0', base); }
+        img.setAttribute('src', primary || !has ? base
+          : base.replace(/\\.png(?=$|[?#])/, '.' + br + '.png'));
+      });
+      d.classList.toggle('dsa-nobr', !has);
+    });
   });
   document.addEventListener('mouseout', function (ev) {
     var tr = ev.target.closest && ev.target.closest('.dsa-table tr[data-find]');
@@ -2362,10 +2395,62 @@ def render_screen(screen: dict, assets_prefix: str, build, registry: dict | None
     # one thing worth scanning for — the icon — without paying for a picture nobody
     # asked to see yet.
     return (f'<div class="dsa">'
-            f'<details class="dsa-screen" id="dsa-{slug(screen["screen"])}">'
+            f'<details class="dsa-screen" id="dsa-{slug(screen["screen"])}"'
+            f'{_brs_attr(screen)}>'
             f'<summary><span class="disclose" aria-hidden="true"></span>{summary}</summary>'
             f'{_with_frame_toggle(build.dgm_views_html(panes, initial="new"), frames)}'
             f'{table}{considered}</details></div>')
+
+
+def _brs_attr(screen: dict) -> str:
+    """The browsers other than the primary this screen was also shot in, for the switch."""
+    brs = " ".join(sorted(screen.get("browsers") or {}))
+    return f' data-brs="{html.escape(brs)}"' if brs else ""
+
+
+def _major(version: str) -> str:
+    return (version or "").split(".")[0]
+
+
+def browser_switch(result: dict) -> str:
+    """Chrome · Edge, beside the tab's title: which browser every picture below is shown
+    as. Nothing when the run was shot in one browser only. Each button's tooltip says what
+    it shows, then how far that browser's pictures are from the primary's — "identical on
+    all 5" is the answer a reviewer usually gets, and the one worth having in writing."""
+    brs = result.get("browsers") or []
+    if len(brs) < 2:
+        return ""
+    primary = brs[0]
+    touched = [sc for sc in result.get("screens") or [] if screen_touched(sc)]
+    out = []
+    for i, b in enumerate(brs):
+        name = f'{b["label"]} {_major(b.get("version", ""))}'.strip()
+        if i == 0:
+            tip = (f"Every picture below as {name} drew it, base and branch. "
+                   "The marks and verdicts were judged on these.")
+        else:
+            got = [(sc, (sc.get("browsers") or {}).get(b["id"])) for sc in touched]
+            got = [(sc, d) for sc, d in got if d]
+            off = [(sc, max(v for v in d.values() if v is not None))
+                   for sc, d in got if any(v for v in d.values())]
+            tip = f"Every picture below as {name} drew it, base and branch. "
+            if not got:
+                tip += "No screen was shot in it."
+            elif not off:
+                tip += (f"Pixel-identical to {primary['label']} on all {len(got)} "
+                        f"changed screen{'' if len(got) == 1 else 's'}.")
+            else:
+                worst = max(off, key=lambda t: t[1])
+                tip += (f"Differs from {primary['label']} on {len(off)} of {len(got)} "
+                        f"changed screens — most on {_title_case(worst[0]['screen'])}, "
+                        f"{worst[1]:.2%} of its pixels.")
+        out.append(f'<button type="button" class="dsa-br" data-br="{html.escape(b["id"])}"'
+                   + (' data-primary=""' if i == 0 else "")
+                   + f' aria-pressed="{"true" if i == 0 else "false"}"'
+                   f' data-tip="{html.escape(tip, quote=True)}">{html.escape(b["label"])}'
+                   "</button>")
+    return ('<span class="dsa-browsers" role="group" aria-label="Browser the pictures '
+            'were shot in">' + "".join(out) + "</span>")
 
 
 FRAME_TOGGLE = ('<label class="dsa-frametoggle">'
@@ -2501,7 +2586,7 @@ def render(result: dict, assets_prefix: str, *, root: Path | None = None,
     return (
         f'<!-- ds-audit render {RENDER_STAMP} -->'
         '<div class="dsa-run">'
-        '<h2 class="tabtitle">UX design system</h2>'
+        f'<h2 class="tabtitle">UX design system{browser_switch(result)}</h2>'
         f'{unlisted_line}'
         f'<p class="dsa-hdr">{verdict_line}</p>'
         f'{how_box(result)}'
@@ -2515,6 +2600,66 @@ def render(result: dict, assets_prefix: str, *, root: Path | None = None,
 
 
 # ── capture ───────────────────────────────────────────────────────────────────────
+
+#: The browsers a screen is shot in. The first one found is the *primary*: its captures
+#: carry every verdict, mark and change frame, and its PNGs keep the names they always had.
+#: Every other one re-shoots only the changed screens, into `<name>.<id>.png`, so the tab's
+#: Chrome · Edge switch can swap the pictures under the same marks — both are Blink, so the
+#: DOM boxes the marks are drawn from are the same boxes in either. A browser not installed
+#: is skipped with a line on stderr; with none of them, the bundled Chromium stands in.
+BROWSERS = {
+    "chrome": ("Chrome", "chrome", (
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "~/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/opt/google/chrome/chrome")),
+    "edge": ("Edge", "msedge", (
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        "~/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        "/opt/microsoft/msedge/msedge")),
+}
+
+
+def resolve_browsers(wanted: list[str]) -> list[dict]:
+    """`[{"id", "label", "launch"}]` for each browser in `wanted` that is installed, in the
+    order asked. `launch` is what `chromium.launch` takes: the executable's path, found
+    here rather than through Playwright's `channel`, which only looks in /Applications —
+    an Edge unpacked into ~/Applications without sudo is still Edge."""
+    out = []
+    for b in wanted:
+        if b not in BROWSERS:
+            raise SystemExit(f"[ds-audit] unknown browser {b!r} — one of {', '.join(BROWSERS)}")
+        label, _channel, paths = BROWSERS[b]
+        exe = next((Path(x).expanduser() for x in paths if Path(x).expanduser().is_file()),
+                   None)
+        if exe:
+            out.append({"id": b, "label": label, "launch": {"executable_path": str(exe)}})
+        else:
+            print(f"[ds-audit] {label} is not installed — not shot in it", file=sys.stderr)
+    return out or [{"id": "chromium", "label": "Chromium", "launch": {}}]
+
+
+def browser_png(png: Path, browser: str | None) -> Path:
+    """Where a capture taken in `browser` is written: the primary keeps the plain name."""
+    return png if not browser else png.with_name(f"{png.stem}.{browser}.png")
+
+
+def browser_diff(a_png: Path, b_png: Path, threshold: float = 0.1) -> float | None:
+    """The share of pixels two browsers drew differently on the same screen — what the
+    switch's tooltip quotes. None when either picture is missing; pages of different
+    heights are compared over the part they share, and the height gap counts as different."""
+    try:
+        import numpy as np
+        from PIL import Image
+        a = np.asarray(Image.open(a_png).convert("RGB"))
+        b = np.asarray(Image.open(b_png).convert("RGB"))
+    except Exception:
+        return None
+    h, w = min(a.shape[0], b.shape[0]), min(a.shape[1], b.shape[1])
+    diff = int(_yiq_mask(a[:h, :w], b[:h, :w], threshold).sum())
+    total = max(a.shape[0], b.shape[0]) * max(a.shape[1], b.shape[1])
+    diff += total - h * w
+    return diff / total if total else 0.0
+
 
 def answers(url: str, timeout: float = 3.0) -> bool:
     """Whether anything at all is serving `url` (any HTTP status counts — a dev server
@@ -2545,14 +2690,16 @@ def unreachable(wanted: list, label_new: str, label_old: str) -> list[str]:
 
 
 def capture(url: str, png: Path, *, viewport, epoch: int, seed: int, wait_for: str | None,
-            settle_ms: int, mask: list[str], color_scheme: str) -> dict:
+            settle_ms: int, mask: list[str], color_scheme: str,
+            launch: dict | None = None) -> dict:
     from playwright.sync_api import sync_playwright
 
     pin = PIN_JS.replace("__EPOCH__", str(epoch)).replace("__SEED__", str(seed))
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--force-color-profile=srgb",
                                           "--font-render-hinting=none",
-                                          "--disable-lcd-text"])
+                                          "--disable-lcd-text"], **(launch or {}))
+        version = browser.version
         ctx = browser.new_context(viewport={"width": viewport[0], "height": viewport[1]},
                                   device_scale_factor=1, color_scheme=color_scheme,
                                   reduced_motion="reduce", locale="en-GB",
@@ -2581,6 +2728,7 @@ def capture(url: str, png: Path, *, viewport, epoch: int, seed: int, wait_for: s
         browser.close()
     snap["settled"] = identical
     snap["png"] = str(png)
+    snap["browser_version"] = version
     return snap
 
 
@@ -2880,6 +3028,10 @@ def main():
                     help="the frozen wall clock, ms since epoch")
     ap.add_argument("--seed", type=int, default=20260903)
     ap.add_argument("--color-scheme", default="light", choices=("light", "dark"))
+    ap.add_argument("--browsers", default=os.environ.get("DS_AUDIT_BROWSERS", "chrome,edge"),
+                    help="browsers to shoot in, comma-separated (default chrome,edge; "
+                         "$DS_AUDIT_BROWSERS). The first installed one carries the verdicts; "
+                         "the rest re-shoot the changed screens for the tab's switch")
     ap.add_argument("--threshold", type=float, default=0.1,
                     help="pixelmatch YIQ threshold (0..1)")
     ap.add_argument("--assets", default=".", help="directory the PNGs are written to")
@@ -2985,6 +3137,8 @@ def main():
     # nothing — each has its own browser, context and PNG — so they are taken in parallel
     # (`--jobs`, one sync Playwright per thread) and then read back in screen order, so
     # everything downstream of this loop is exactly what the serial run produced.
+    browsers = resolve_browsers([b.strip() for b in args.browsers.split(",") if b.strip()])
+    primary = browsers[0]
     shot: dict = {}
     if not cap_dir:
         from concurrent.futures import ThreadPoolExecutor
@@ -2995,7 +3149,7 @@ def main():
             name, side, url = job
             print(f"[ds-audit] {name}: capturing {url}", file=sys.stderr, flush=True)
             png = assets / f"ds-audit-{slug(name)}-{side}.png"
-            return (name, side), capture(url, png, **common)
+            return (name, side), capture(url, png, launch=primary["launch"], **common)
 
         with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
             shot = dict(pool.map(take, todo))
@@ -3062,6 +3216,52 @@ def main():
         screens.append(screen)
 
     result = build_result(screens, registry)
+    versions = {primary["id"]: next((s.get("browser_version") for s in shot.values()
+                                     if s.get("browser_version")), "")}
+    others = [] if cap_dir else browsers[1:]
+    if others:
+        urls = {name: {"new": n, "old": o} for name, n, o in wanted}
+        todo = [(b, sc, side) for b in others for sc in screens if screen_touched(sc)
+                for side in ("new", "old")]
+
+        def retake(job):
+            b, sc, side = job
+            stem = slug(sc["screen"])
+            print(f'[ds-audit] {sc["screen"]}: capturing {side} in {b["label"]}',
+                  file=sys.stderr, flush=True)
+            png = browser_png(assets / f"ds-audit-{stem}-{side}.png", b["id"])
+            try:
+                return job, capture(urls[sc["screen"]][side], png, launch=b["launch"],
+                                    **common)
+            except Exception as e:  # one browser failing must not cost the audit
+                print(f'[ds-audit] {b["label"]} could not shoot {sc["screen"]} {side}: {e}',
+                      file=sys.stderr)
+                return job, None
+
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
+            again = list(pool.map(retake, todo))
+        for b in others:
+            for sc in screens:
+                if not screen_touched(sc):
+                    continue
+                got = {side: snap for (bb, s2, side), snap in again
+                       if bb is b and s2 is sc and snap}
+                if len(got) < 2:
+                    continue
+                versions.setdefault(b["id"], got["new"].get("browser_version", ""))
+                stem = assets / f'ds-audit-{slug(sc["screen"])}'
+                pngs = {side: browser_png(Path(f"{stem}-{side}.png"), b["id"])
+                        for side in ("new", "old")}
+                pixel_delta(pngs["old"], pngs["new"],
+                            browser_png(Path(f"{stem}-delta.png"), b["id"]), args.threshold)
+                sc.setdefault("browsers", {})[b["id"]] = {
+                    side: browser_diff(Path(f"{stem}-{side}.png"), pngs[side], args.threshold)
+                    for side in ("new", "old")}
+    result["browsers"] = [{"id": b["id"], "label": b["label"],
+                           "version": versions.get(b["id"], "")}
+                          for b in browsers if b is primary or any(
+                              b["id"] in (sc.get("browsers") or {}) for sc in screens)]
     result["unlisted"] = [dict(zip(("component", "route", "via"), u.split("=", 2)))
                           for u in args.unlisted]
     Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
