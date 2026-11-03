@@ -11,8 +11,10 @@ name: vscode extension
 #     old bridge to everyone installing from the repo;
 #  3. on main, the version in package.json is published to the VS Code Marketplace and to
 #     Open VSX when that version is not there yet — so publishing is "bump the version, push".
-#     Each registry is skipped, with a notice, while its token secret (VSCE_PAT, OVSX_PAT) is
-#     not set.
+#     The Marketplace needs no secret: Trusted Publishing lets this workflow, by its filename,
+#     publish for the victor-rentea publisher over OIDC, so renaming this file breaks the
+#     policy set on the publisher's Trusted Publishing tab. Open VSX is skipped, with a
+#     notice, while its OVSX_PAT secret is not set.
 on:
   push:
     paths:
@@ -52,11 +54,13 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: vscode-extension
     env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - uses: actions/checkout@v4
@@ -66,12 +70,11 @@ jobs:
       - name: VS Code Marketplace
         run: |
           set -e
-          if [ -z "$VSCE_PAT" ]; then echo "::notice::VSCE_PAT not set: Marketplace publish skipped"; exit 0; fi
           want=$(node -p "require('./package.json').version")
           have=$(npx --yes @vscode/vsce show victor-rentea.human-review --json 2>/dev/null \
                  | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{console.log(JSON.parse(s).versions[0].version)}catch{console.log('')}})")
           if [ "$want" = "$have" ]; then echo "Marketplace already has $want"; exit 0; fi
-          npx --yes @vscode/vsce publish --packagePath dist/human-review.vsix -p "$VSCE_PAT"
+          npx --yes @vscode/vsce publish --packagePath dist/human-review.vsix --oidc
       - name: Open VSX
         run: |
           set -e

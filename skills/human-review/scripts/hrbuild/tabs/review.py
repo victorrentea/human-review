@@ -1800,9 +1800,11 @@ def _md_inline(text: str, repo_url: str) -> str:
         f'{html.escape(m.group(1))}</a>'), t)
     if repo_url:
         # `commit #1` counts commits, it is not issue #1.
+        # A forge with no issue tracker (Bitbucket) has no URL for it: left as text.
         t = re.sub(r"(?<![\w&/])(?<!commit )(?<!commits )#(\d+)\b", lambda m: stash(
-            f'<a href="{html.escape(forge_at(repo_url).issue_url(m.group(1)))}" target="_blank" '
-            f'rel="noopener">#{m.group(1)}</a>'), t, flags=re.I)
+            f'<a href="{html.escape(u)}" target="_blank" rel="noopener">#{m.group(1)}</a>'
+            if (u := forge_at(repo_url).issue_url(m.group(1))) else f"#{m.group(1)}"),
+            t, flags=re.I)
     t = html.escape(t, quote=False)
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
     return re.sub(r"\x00(\d+)\x00", lambda m: keep[int(m.group(1))], t)

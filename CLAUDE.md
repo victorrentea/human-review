@@ -122,14 +122,16 @@ orchestrator.
 
 ## Everything about the forge goes through `hrbuild/shared/forge.py`
 
-The forge hosting the *reviewed* repository (GitHub today, Bitbucket next — issue #4) is
-one module: its web URLs (`forge.blob_url`, `commit_url`, `tree_url`, `compare_url`,
+The forge hosting the *reviewed* repository (GitHub, or Bitbucket Server / Data Center —
+`BitbucketServerForge`, issue #4; comment push and Jira still missing) is one module: its web URLs (`forge.blob_url`, `commit_url`, `tree_url`, `compare_url`,
 `issue_url`…), the recognisers for its URLs (`find_pull`, `pull_root`, `is_comment_url`…)
 and every `gh` call (`api_forge().issue(…)`, `.ci_runs(…)`, `.pr_api()`…). Get a forge
 with `forge_for(root)` (from `origin`; None off a forge, keep the editor link) or
 `forge_at(pr["repo"])`, and the word for a link from `forge.name`. New code that touches
 GitHub goes there, never into a tab or a script: `test_forge_seam.py` fails a `gh` call or
-a `https://github.com/` URL of the reviewed repo spelled anywhere else. Links to the
+a `https://github.com/` URL of the reviewed repo spelled anywhere else. A method added to
+`GitHubForge` gets its Bitbucket twin in the same commit (`test_forge_bitbucket.py`), or a
+Bitbucket checkout hits `gh` with a GitHub-shaped question. Links to the
 skill's own home (`victorrentea/human-review`) are not the forge and stay where they are.
 
 ## Memoria lui Claude

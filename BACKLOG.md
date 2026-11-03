@@ -54,6 +54,12 @@ Status: ✅ done · 🔄 in progress · ⏸ blocked / needs a decision · 💬 d
 ## Sequences / C2 (petclinic)
 - ✅ notification-service merged into main (`61998a8d`) and test-pr (`c0b9503a`); sequences re-recorded in docker (`32c943ad`); was: notification-service is on the unmerged branch `origin/notification-service`, not on main. Once it lands on main: merge main into test-pr, re-run the traced tests, re-render the sequences and C2 (a new container between Backend and the SMS gateway)
 
+## Bitbucket Server / Data Center (issue #4, averath on 10.5)
+- ✅ `BitbucketServerForge` in `hrbuild/shared/forge.py`: origin detection, every web link, PR title/description (+ merge-risk line), Jenkins build statuses as the CI gate, review-thread counts
+- ⏸ push review comments to a Bitbucket PR (`push-pr-comments.py` speaks GitHub's review API; needs a Bitbucket planner: anchors, versions, tasks)
+- ⏸ Jira tickets: ticket numbers are ints all through semcov / Tests tab / write-content; a Jira key is a string
+- ⏸ verify against a real Bitbucket 10.x (only faked REST answers so far)
+
 ## Later additions (24 Sep)
 - ✅ UX: "frame the changes" right after New/Old · intro text removed · "1 introduced by this branch" (`334afe0`)
 - ✅ Complexity: bigger ▶/▼ (`38d9102`) · CODEOWNERS: file heading linking to it (`db98413`)

@@ -147,7 +147,8 @@ from hrbuild.shared.forge import (
     api_forge, find_issue, find_pull, forge_at, forge_for, forge_from_any_remote, FORGES,
     GhError, github_blob_base, GitHubForge, GitHubPrApi, is_comment_url, is_pull_url,
     project_of, pull_root, repo_web_root, _REVIEW_THREADS_QUERY, _sh, TRANSIENT,
-    is_commit_comment_url,
+    is_commit_comment_url, BitbucketPrApi, BitbucketServerForge, _BB_ROOT, _bb_env,
+    _bb_configured_base, _quote_all, _dt_iso,
 )
 from hrbuild.shared.filemark import (
     FILE_MARK_D, FILE_PAGE, FILE_PAGE_D, FILE_PENCIL, FILE_PLUS, filemark, filemark_kind,

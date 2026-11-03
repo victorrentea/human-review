@@ -516,8 +516,9 @@ window.HR = (function () {
           || a.querySelector('.ide-word')) return;
       var line = m[2] || '1';
       var end = window.HR.endOf ? window.HR.endOf(a, line) : null;
-      var url = blob + '/' + rel.split('/').map(encodeURIComponent).join('/')
-        + (line !== '1' || end ? '#L' + line + (end ? '-L' + end : '') : '');
+      var L = st.hrBlobL === '-' ? '' : 'L', where = 'on ' + (st.hrForge || 'GitHub');
+      var url = blob + '/' + rel.split('/').map(encodeURIComponent).join('/') + (st.hrBlobAt || '')
+        + (line !== '1' || end ? '#' + L + line + (end ? '-' + L + end : '') : '');
       a.setAttribute('href', url);
       if (a.hasAttributeNS(XLINK, 'href')) a.setAttributeNS(XLINK, 'xlink:href', url);
       a.setAttribute('target', '_blank');
@@ -525,8 +526,8 @@ window.HR = (function () {
       ['data-tip', 'aria-label'].forEach(function (k) {
         var t = a.getAttribute(k);
         if (!t) return;
-        a.setAttribute(k, /^Click to open in (the )?editor$/.test(t) ? 'Open on GitHub'
-          : t.replace(/ in (VS Code|the editor)\b/, ' on GitHub'));
+        a.setAttribute(k, /^Click to open in (the )?editor$/.test(t) ? 'Open ' + where
+          : t.replace(/ in (VS Code|the editor)\b/, ' ' + where));
       });
     });
   }

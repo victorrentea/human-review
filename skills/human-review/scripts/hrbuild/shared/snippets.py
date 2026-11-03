@@ -261,6 +261,10 @@ def commit_stamp(root: Path, out_dir: Path | None = None) -> str:
         ref = head if git("branch", "-r", "--contains", head) else (
             git("rev-parse", "--abbrev-ref", "HEAD").replace("HEAD", "") or head)
         attrs["data-hr-blob"] = forge.blob_prefix(ref)
+        # Bitbucket puts the ref after the path (`?at=`) and writes lines `#5-7`, not `#L5-L7`.
+        attrs["data-hr-blob-at"] = forge.blob_query(ref)
+        attrs["data-hr-blob-l"] = "L" if forge.line_anchor(1, 2) == "#L1-L2" else "-"
+        attrs["data-hr-forge"] = forge.name
     if out_dir is not None:
         try:
             rel = Path(out_dir).resolve().relative_to(Path(root).resolve()).as_posix()

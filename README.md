@@ -510,6 +510,24 @@ Hard requirements — nothing runs without these:
   pushing the branch and waiting for CI to go green, and stops if it is not
   (a repository with no CI is let through, and the guide says no build proved it)
 
+### On Bitbucket Server / Data Center instead of GitHub
+
+An `origin` on Bitbucket (`https://host/scm/KEY/repo.git`, or ssh on port 7999) is picked up
+on its own; there is no `gh` to install. What it needs instead, as environment variables:
+
+- **`BITBUCKET_TOKEN`** — your HTTP access token (*Manage account › HTTP access tokens*;
+  read for the page, write for the merge-risk line on the PR description)
+- **`BITBUCKET_URL`** — the instance's web address, only when `origin` is an ssh remote on
+  a port other than 7999 (`https://bitbucket.acme.com`, with its context path if any)
+- **`JENKINS_USER`** / **`JENKINS_TOKEN`** — optional, to quote a failed build's log
+
+What works: every link on the page (files, lines, commits, branches, the compare view, the
+pull request), the PR's title and description, and the CI gate — it waits on the build
+statuses Jenkins (or anything else) posts to the commit, each status key standing for a
+workflow, so `ci.workflows` in `human-review.json` names keys. Not yet (issue #4): pushing
+review comments to the pull request, and reading the ticket from Jira — give the
+requirement as `ticket:` text in the meantime.
+
 Everything else buys a tab, and its absence costs only that tab:
 
 - **A `review-points.md`** at the repository root, written by `/record-review` — the
