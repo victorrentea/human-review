@@ -208,7 +208,7 @@
   ],
   "pr": {
     "number": 49,
-    "title": "Link Visit with Vet (#37), reimplemented unguided by Opus",
+    "title": "Link Visit with Vet (issue #37)",
     "url": "https://github.com/victorrentea/petclinic/pull/49",
     "repo": "https://github.com/victorrentea/petclinic",
     "branch": "test-pr",
@@ -219,7 +219,7 @@
       "url": "https://github.com/victorrentea/petclinic/issues/37"
     }
   },
-  "title": "Link Visit with Vet (#37), reimplemented unguided by Opus",
+  "title": "Link Visit with Vet (issue #37)",
   "subtitle": "test-pr — issue #37",
   "footer": "Built by /human-review from test-pr on 22 Oct 2026.",
   "verdict": {

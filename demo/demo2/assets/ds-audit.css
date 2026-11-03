@@ -141,7 +141,13 @@ details.dsa-screen > summary:hover { color: var(--link); }
 details.dsa-screen.dsa-nobr .dsa-shot img { opacity: .55; }
 /* Another engine's picture: the boxes were measured on the primary's layout, and WebKit
    lays the same page out a few pixels apart, so they are not drawn over it. */
-details.dsa-screen.dsa-alt .dsa-mark, details.dsa-screen.dsa-alt .dsa-frame { display: none; }
+/* Another browser's picture: the primary's marks and frames would sit where Chrome laid
+   the page out, so they give way to the ones re-measured on that browser (`.dsa-brlayer`). */
+details.dsa-screen.dsa-alt .dsa-shot > .dsa-mark, details.dsa-screen.dsa-alt .dsa-shot > .dsa-frame { display: none; }
+.dsa-brlayer { position: absolute; inset: 0; display: none; pointer-events: none; }
+details.dsa-screen[data-br-on="chrome"] .dsa-brlayer[data-br="chrome"],
+details.dsa-screen[data-br-on="edge"] .dsa-brlayer[data-br="edge"],
+details.dsa-screen[data-br-on="safari"] .dsa-brlayer[data-br="safari"] { display: block; }
 /* Two logos in one cell (Chrome and Edge): side by side, slightly overlapping. */
 .dsa-br .dsa-logo + .dsa-logo { margin-left: -.3rem; }
 .dsa-frametoggle { margin-left: .6rem; font-size: .82rem; display: inline-flex; gap: .35rem;
