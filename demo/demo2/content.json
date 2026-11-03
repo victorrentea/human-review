@@ -234,5 +234,11 @@
     "blast": "visits grid and its API",
     "blastSize": 1,
     "why": "no migration, no data written; GET /api/visits answers a page instead of a list, and its one client, the grid, ships with it"
-  }
+  },
+  "sections": [
+    {
+      "id": "video",
+      "intro": "The list of all visits used to be one long scroll; now it comes in small pages.\nWatch: we flip pages, change their size and sort by any column."
+    }
+  ]
 }
