@@ -563,7 +563,7 @@ def ticket_ref(spec: dict, out_dir: Path) -> dict | None:
     in the content file is an author saying which ticket this is and what it is called,
     and nothing overrules it. A cached `ticket.json` is the same answer, resolved by an
     earlier build. Otherwise the number is read off the PR's own title — `Link Visit with
-    Vet (#37), reimplemented unguided by Opus` names its issue, and a `#49` there would be
+    Vet (issue #37)` names its issue, and a `#49` there would be
     the PR quoting itself, so the PR's own number is not a candidate — and the title comes
     from `gh issue view`, which is asked once and written down.
 

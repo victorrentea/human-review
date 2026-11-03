@@ -129,7 +129,7 @@ remote. The mark is recomputed on every build from the refs as they stand, so me
 in (or fetching) clears it by itself; there is nothing to reset.
 
 `ticket` names the **issue the branch answers**, which is not always the PR: a PR titled
-*Link Visit with Vet (#37), reimplemented unguided by Opus* answers #37 and is #49. The
+*Link Visit with Vet (issue #37)* answers #37 and is #49. The
 Tests tab heads the ticket frame with it, linked to the issue.
 
 ```json
