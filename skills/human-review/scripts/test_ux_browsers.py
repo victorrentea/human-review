@@ -63,7 +63,43 @@ def test_each_screen_shot_in_both_gets_its_own_logos_on_its_bar():
 def test_another_engines_picture_hides_the_marks_measured_on_the_primary():
     frag = ds.render(_two_browser_result(), "assets/")
     assert "d.classList.toggle('dsa-alt', has && br !== primary)" in frag
-    assert "details.dsa-screen.dsa-alt .dsa-mark" in ds.CSS
+    assert "details.dsa-screen.dsa-alt .dsa-shot > .dsa-mark" in ds.CSS
+
+
+def _laid_out_result():
+    """Safari laid the screen out 7px lower and cut one frame of its own."""
+    result = _two_browser_result((0.0018, 0.0031))
+    sc = result["screens"][0]
+    boxes = {side: {f["id"]: dict(f["box"], y=f["box"]["y"] + 7) for f in sc["findings"]
+                    if f["side"] == side} for side in ("new", "old")}
+    sc["browser_layout"] = {"safari": {
+        "pages": {s: dict(sc["sides"][s]["page"]) for s in ("new", "old")},
+        "boxes": boxes,
+        "frames": {"new": [{"x": 1, "y": 2, "w": 30, "h": 40}], "old": []}}}
+    return result, sc
+
+
+def test_safari_gets_its_own_marks_and_frames_measured_on_its_layout():
+    """Victor, 3 Nov 2026: "nu se văd diffuri pe safari" — the marks were hidden there."""
+    result, sc = _laid_out_result()
+    frag = ds.render(result, "assets/")
+    assert frag.count('<div class="dsa-brlayer" data-br="safari">') == 3, "diff, new, old"
+    layer = frag[frag.index('<div class="dsa-brlayer" data-br="safari">'):]
+    layer = layer[:layer.index('</div></div>')]
+    assert '<div class="dsa-frame"' in layer and "dsa-mark" in layer
+    assert 'details.dsa-screen[data-br-on="safari"] .dsa-brlayer[data-br="safari"]' in ds.CSS
+    bar = frag[frag.index('<span class="dsa-browsers dsa-local"'):]
+    assert "Marks and frames re-measured on Safari&#x27;s own layout." in bar
+    assert "are hidden" not in bar
+
+
+def test_a_mark_safari_could_not_find_is_left_off_its_layer():
+    result, sc = _laid_out_result()
+    sc["browser_layout"]["safari"]["boxes"] = {"new": {}, "old": {}}
+    frag = ds.render(result, "assets/")
+    layer = frag[frag.index('<div class="dsa-brlayer" data-br="safari">'):]
+    layer = layer[:layer.index('</div></div>')]
+    assert "dsa-mark" not in layer
 
 
 def test_the_switch_tooltip_says_whether_the_browsers_agree():

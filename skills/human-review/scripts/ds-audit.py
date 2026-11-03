@@ -1603,7 +1603,13 @@ details.dsa-screen > summary:hover { color: var(--link); }
 details.dsa-screen.dsa-nobr .dsa-shot img { opacity: .55; }
 /* Another engine's picture: the boxes were measured on the primary's layout, and WebKit
    lays the same page out a few pixels apart, so they are not drawn over it. */
-details.dsa-screen.dsa-alt .dsa-mark, details.dsa-screen.dsa-alt .dsa-frame { display: none; }
+/* Another browser's picture: the primary's marks and frames would sit where Chrome laid
+   the page out, so they give way to the ones re-measured on that browser (`.dsa-brlayer`). */
+details.dsa-screen.dsa-alt .dsa-shot > .dsa-mark, details.dsa-screen.dsa-alt .dsa-shot > .dsa-frame { display: none; }
+.dsa-brlayer { position: absolute; inset: 0; display: none; pointer-events: none; }
+details.dsa-screen[data-br-on="chrome"] .dsa-brlayer[data-br="chrome"],
+details.dsa-screen[data-br-on="edge"] .dsa-brlayer[data-br="edge"],
+details.dsa-screen[data-br-on="safari"] .dsa-brlayer[data-br="safari"] { display: block; }
 /* Two logos in one cell (Chrome and Edge): side by side, slightly overlapping. */
 .dsa-br .dsa-logo + .dsa-logo { margin-left: -.3rem; }
 .dsa-frametoggle { margin-left: .6rem; font-size: .82rem; display: inline-flex; gap: .35rem;
@@ -1812,7 +1818,7 @@ def _pct(v, total):
 
 def shot_html(png_rel: str, page: dict, marks: list[dict],
               frames: list[dict] | None = None, numbered: bool | None = None,
-              fnums: dict[int, int] | None = None) -> str:
+              fnums: dict[int, int] | None = None, alts: list[dict] | None = None) -> str:
     """A screenshot with boxes over it, positioned in percentages so the picture stays
     responsive — the report is read on a laptop and on a projector. `frames` are the
     change frames (`change_frames`), drawn under the marks so a badge stays readable.
@@ -1827,16 +1833,39 @@ def shot_html(png_rel: str, page: dict, marks: list[dict],
     `fnums` (`frame_numbers`) maps a frame's place in the list to its number. A frame
     that holds no verdict is not in it and carries no number: a number is a key into the
     table, and a frame with nothing judged in it has no row to key. Left out, every frame
-    is numbered by its place."""
-    w, h = max(page["w"], 1), max(page["h"], 1)
+    is numbered by its place.
+
+    `alts` are the same marks and frames as another browser laid them out
+    (`browser_layout`): `{"br", "page", "marks", "frames"}` each, drawn in a layer of their
+    own that shows only while that browser's picture is (`.dsa-brlayer`). The caption under
+    the picture stays the primary's: it names the change, not where it was drawn."""
     out = [f'<div class="dsa-shot"><img src="{html.escape(png_rel)}" alt="" loading="lazy">']
+    boxed = [fr for fr in frames or [] if not fr.get("insert")]
+    if numbered is None:
+        numbered = len(boxed) > 1
+    layer, caps = _overlay(page, marks, frames, numbered, fnums)
+    out.append(layer)
+    for alt in alts or []:
+        inner, _ = _overlay(alt["page"], alt["marks"], alt["frames"], numbered,
+                            alt.get("fnums", fnums))
+        out.append(f'<div class="dsa-brlayer" data-br="{html.escape(alt["br"])}">{inner}</div>')
+    out.append("</div>")
+    if caps:
+        out.append('<p class="dsa-framecap">' + "".join(
+            f'<span class="dsa-fcap"><i></i>{f"{n} " if numbered and n else ""}'
+            f'<b>{html.escape(label)}</b></span>' for n, label in caps) + "</p>")
+    return "".join(out)
+
+
+def _overlay(page: dict, marks: list[dict], frames: list[dict] | None,
+             numbered: bool, fnums: dict[int, int] | None) -> tuple[str, list]:
+    """The frames and marks over one picture, and the caption entries its frames make."""
+    w, h = max(page["w"], 1), max(page["h"], 1)
+    out = []
     # A frame's words go UNDER the picture, never on it. The chip used to ride the frame's
     # top edge, and eval run 8's sat over the table's own header (`Pets`) — the screen the
     # reader came to look at, covered by the label explaining it. With more than one frame
     # each gets a small number outside its corner, and the caption is keyed by it.
-    boxed = [fr for fr in frames or [] if not fr.get("insert")]
-    if numbered is None:
-        numbered = len(boxed) > 1
     caps = []
     for i, fr in enumerate(frames or []):
         style = (f'left:{_pct(fr["x"], w)};top:{_pct(fr["y"], h)};'
@@ -1865,12 +1894,7 @@ def shot_html(png_rel: str, page: dict, marks: list[dict],
             f'<div class="dsa-mark {m["cls"]}" style="{style}" '
             f'data-find="{html.escape(m["id"])}" {tip}>'
             f'<b>{badge}</b>{num}</div>')
-    out.append("</div>")
-    if caps:
-        out.append('<p class="dsa-framecap">' + "".join(
-            f'<span class="dsa-fcap"><i></i>{f"{n} " if numbered and n else ""}'
-            f'<b>{html.escape(label)}</b></span>' for n, label in caps) + "</p>")
-    return "".join(out)
+    return "".join(out), caps
 
 
 def _centre_in(box: dict, frame: dict) -> bool:
@@ -2342,7 +2366,24 @@ def render_screen(screen: dict, assets_prefix: str, build, registry: dict | None
                       in_frame=nums.get(m["id"], (None, False))[1])
                  for m in _marks_for(findings, side, registry)]
         return LEGEND + shot_html(f"{stem}-{side}.png", pages[side], marks,
-                                  frames.get(side), numbered, fnums)
+                                  frames.get(side), numbered, fnums, alts(side, marks))
+
+    layouts = screen.get("browser_layout") or {}
+
+    def alts(side, marks):
+        """The marks and frames of `side` once more for each other browser, moved to
+        where that browser laid each element out. A frame keeps its number only when that
+        browser cut as many frames as the primary did — the numbers key the table."""
+        out = []
+        for br, lay in sorted(layouts.items()):
+            boxes = lay["boxes"].get(side) or {}
+            fr = (lay.get("frames") or {}).get(side) or []
+            same = len(fr) == len(frames.get(side) or [])
+            out.append({"br": br, "page": lay["pages"][side], "frames": fr,
+                        "fnums": fnums if same else {},
+                        "marks": [dict(m, box=boxes[m["id"].removesuffix(":d")])
+                                  for m in marks if m["id"].removesuffix(":d") in boxes]})
+        return out
 
     # The delta pane: the pixel mask over the new shot, with the elements the DOM says
     # are new or changed outlined on top of it. Neither half is enough on its own.
@@ -2360,7 +2401,8 @@ def render_screen(screen: dict, assets_prefix: str, build, registry: dict | None
     # one *opens* is a separate question, and here the answer is New — see the call to
     # `dgm_views_html` at the bottom of this function.
     panes = [("diff", DIFF_LEGEND + shot_html(f"{stem}-delta.png", pages["new"], delta_marks,
-                                                      frames.get("new"), numbered, fnums)),
+                                                      frames.get("new"), numbered, fnums,
+                                                      alts("new", delta_marks))),
              ("new", annotated("new")), ("old", annotated("old"))]
 
     rows = []
@@ -2491,6 +2533,8 @@ def _aka(b: dict) -> str:
 
 #: Said on a non-primary browser's tooltip: why the boxes vanish when it is picked.
 MARKS_HIDDEN = "Marks and frames are hidden: they were measured on {primary}'s layout."
+#: Said instead when the marks and frames were re-measured on that browser's own layout.
+MARKS_REMEASURED = "Marks and frames re-measured on {name}'s own layout."
 #: Said on the primary's tooltip when its button carries Edge's logo too.
 SAME_AS_EDGE = ("Edge draws them the same: it is Chromium too, and shot side by side the "
                 "two came out pixel-identical.")
@@ -2537,7 +2581,9 @@ def browser_switch(result: dict) -> str:
                         f"changed screens — most on {_title_case(worst[0]['screen'])}, "
                         f"{worst[1]:.2%} of its pixels.")
             if got:
-                tip += " " + MARKS_HIDDEN.format(primary=primary["label"])
+                laid = all(b["id"] in (sc.get("browser_layout") or {}) for sc, _ in got)
+                tip += " " + (MARKS_REMEASURED.format(name=b["label"]) if laid
+                              else MARKS_HIDDEN.format(primary=primary["label"]))
         out.append(_br_button(b, tip, i == 0, i == 0))
     return ('<span class="dsa-browsers dsa-global" role="group" aria-label="Browser every '
             'picture is shown as">' + "".join(out) + "</span>")
@@ -2562,7 +2608,9 @@ def screen_switch(screen: dict, browsers: list | None) -> str:
             vs = {side: _vs_primary(d.get(side), primary["label"]) for side in ("new", "old")}
             tip += (f": {vs['new']}." if vs["new"] == vs["old"]
                     else f": branch {vs['new']}, base {vs['old']}.")
-            tip += " " + MARKS_HIDDEN.format(primary=primary["label"])
+            tip += " " + (MARKS_REMEASURED.format(name=b["label"])
+                          if b["id"] in (screen.get("browser_layout") or {})
+                          else MARKS_HIDDEN.format(primary=primary["label"]))
         else:
             tip += "." + (" " + SAME_AS_EDGE if "edge" in _aka(b).lower() else "")
         out.append(_br_button(b, tip, i == 0, i == 0))
@@ -2812,6 +2860,24 @@ def browser_diff(a_png: Path, b_png: Path, threshold: float = 0.1) -> float | No
     total = max(a.shape[0], b.shape[0]) * max(a.shape[1], b.shape[1])
     diff += total - h * w
     return diff / total if total else 0.0
+
+
+def browser_layout(screen: dict, snaps: dict, pngs: dict) -> dict:
+    """Where another browser put what the primary judged: each finding's box re-read from
+    that browser's own DOM (by the element's signature, the key a finding's id carries),
+    the change frames re-cut from that browser's own pictures, and its pictures' size, the
+    denominator the overlay's percentages need. Without it the marks drawn on Safari's
+    picture sat where Chrome had laid the element out, so they were hidden — and Safari
+    showed no change at all (Victor, 3 Nov 2026: "nu se văd diffuri pe safari")."""
+    boxes = {}
+    for side in ("new", "old"):
+        by_sig = {n["sig"]: n["box"] for n in snaps[side].get("nodes") or []}
+        boxes[side] = {f["id"]: by_sig[f["element"]["sig"]] for f in screen["findings"]
+                       if f["side"] == side and f["element"]["sig"] in by_sig}
+    return {"pages": {side: _png_size(pngs[side], snaps[side].get("page") or {"w": 1, "h": 1})
+                      for side in ("new", "old")},
+            "boxes": boxes,
+            "frames": change_frames(pngs["old"], pngs["new"])}
 
 
 def answers(url: str, timeout: float = 3.0) -> bool:
@@ -3427,6 +3493,7 @@ def main():
                 sc.setdefault("browsers", {})[b["id"]] = {
                     side: browser_diff(Path(f"{stem}-{side}.png"), pngs[side], args.threshold)
                     for side in ("new", "old")}
+                sc.setdefault("browser_layout", {})[b["id"]] = browser_layout(sc, got, pngs)
     result["browsers"] = [{"id": b["id"], "label": b["label"],
                            "version": versions.get(b["id"], "")}
                           for b in browsers if b is primary or any(
