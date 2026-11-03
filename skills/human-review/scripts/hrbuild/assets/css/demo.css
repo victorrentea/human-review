@@ -209,3 +209,8 @@
 .dsv-grid td.dsv-fkv { cursor:help; }
 .dsv-grid td.dsv-null { color:var(--muted); font-style:italic; }
 .dsv-more { margin:.2rem .45rem; color:var(--muted); font-size:.85em; }
+
+/* The film's two-sentence intro, above the player: plain words for a first-time reader. */
+.vidintro { margin:.2rem 0 .9rem; max-width:62rem; font-size:1.02rem; line-height:1.55; }
+.vidintro p { margin:0; }
+.vidintro p + p { margin-top:.25rem; color:var(--muted); }

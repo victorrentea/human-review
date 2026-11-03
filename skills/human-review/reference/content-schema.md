@@ -439,6 +439,14 @@ named under the strip.
 ### `video` section (Step 5)
 
 ```json
+"intro": "Each visit can now name the vet who saw the pet.\nThe film books one with a vet, then one without."
+```
+
+`intro` is printed above the player, one paragraph per line: two short sentences, as if
+to a five-year-old — what the feature is, then what the film shows. No jargon, no class
+names; the transcript beside the player carries the detail.
+
+```json
 "appLinks": [
   {"href": "http://localhost:4200/owners/2", "label": "owner detail", "anchor": "visit list"},
   {"href": "http://localhost:4200/vets",     "label": "vets",  "anchor": "who will attend"},
@@ -754,7 +762,7 @@ sections, which it rebuilds from its own table whatever `sections` says:
 
 | section | tab | what the build puts in it |
 | --- | --- | --- |
-| `video` | Demo | `assets/feature.webm` (yours: `video`, `appLinks`, `runtime` — when you give none, `runtime` is `steps.video.app` for HEAD and `appLinks` the screens the UX audit found changed, linked on the first caption naming them) — with no film, the recorder's verdict |
+| `video` | Demo | `assets/feature.webm` (yours: `video`, `appLinks`, `runtime`, `intro` — when you give none, `runtime` is `steps.video.app` for HEAD and `appLinks` the screens the UX audit found changed, linked on the first caption naming them) — with no film, the recorder's verdict |
 | `swaggerdiff` | API | `includeHtml` `assets/openapi-verdict.html` + `embed` `assets/openapi-visual-diff.html#only-touched` |
 | `conceptual` | Data | `{{drawio:conceptual}}`, title `""` |
 | `requirements-map` | Tests | `includeHtml` `assets/requirements-map.html` (drawn by `semcov.py` at build time once `test-mapping.json` exists), `includeFirst` |

@@ -55,8 +55,9 @@ LAYOUT_SECTIONS: dict[str, dict] = {
 }
 
 #: Keys of a canonical section the content file may still set: where the film landed (the
-#: project's `steps.video.out`), and the environment row and app links under it.
-LAYOUT_MODEL_KEYS = {"video": ("video", "appLinks", "runtime")}
+#: project's `steps.video.out`), the environment row and app links under it, and the
+#: two-sentence plain-words intro above the player.
+LAYOUT_MODEL_KEYS = {"video": ("video", "appLinks", "runtime", "intro")}
 
 #: Which step produces each canonical include — named in the notice that replaces a
 #: fragment the run did not write, so the reader knows what to re-run.

@@ -382,6 +382,13 @@ def video_html(s, out_dir: Path) -> str:
     # (`place_tab_reruns` puts them at the end of this `h2`) re-record the film, not the app;
     # the voice switch follows them on the same row. It used to ride the Running app band,
     # but which voice narrates is a fact about the film, not about the app (Victor, 7 Oct).
+    # What the film is about, in two plain sentences, right above the player (Victor, 3 Nov
+    # 2026): a gentle way in for a reader who has not read the ticket. Model-written, so
+    # it is escaped; one sentence per paragraph keeps it short on the page.
+    intro = "".join(f"<p>{html.escape(p)}</p>"
+                    for p in (s.get("intro") or "").split("\n") if p.strip())
+    if intro:
+        head += f'<div class="vidintro">{intro}</div>'
     return (head + video_verdict_html(rel, out_dir)
             + f'<div class="vidwrap">{player}<div class="vidside">'
             f'<div class="vidhead"><h2 class="tabtitle">&#127916; Intro</h2>{switch}</div>'
