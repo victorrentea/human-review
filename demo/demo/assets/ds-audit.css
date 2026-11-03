@@ -118,6 +118,16 @@ details.dsa-screen > summary:hover { color: var(--link); }
   border-radius: .2rem; box-sizing: border-box; align-self: center; flex: none; }
 .dsa:has(.dsa-frameon:not(:checked)) .dsa-frame,
 .dsa:has(.dsa-frameon:not(:checked)) .dsa-framecap { display: none; }
+/* Chrome · Edge, in the title: a two-button segment, the pressed one filled. Sized as
+   body text, not as the heading it sits in. */
+.dsa-browsers { display: inline-flex; margin-left: .8rem; vertical-align: middle;
+  border: 2px solid var(--line); border-radius: .45rem; overflow: hidden; }
+.dsa-br { font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.5;
+  padding: .1rem .7rem; border: 0; background: var(--card); color: var(--muted); cursor: pointer; }
+.dsa-br + .dsa-br { border-left: 2px solid var(--line); }
+.dsa-br:hover { color: var(--fg); }
+.dsa-br[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+details.dsa-screen.dsa-nobr .dsa-shot img { opacity: .55; }
 .dsa-frametoggle { margin-left: .6rem; font-size: .82rem; display: inline-flex; gap: .35rem;
   align-items: center; cursor: pointer; user-select: none; color: var(--fg); }
 .dsa-frametoggle input { accent-color: var(--dsa-frame); margin: 0; }
