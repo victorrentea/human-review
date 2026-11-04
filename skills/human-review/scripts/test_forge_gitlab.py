@@ -669,6 +669,7 @@ def test_a_commit_note_lists_back_at_the_position_it_was_planned_in(monkeypatch)
 def test_the_page_knows_a_gitlab_comment_link():
     spec = importlib.util.spec_from_file_location("ppc", HERE / "push-pr-comments.py")
     ppc = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = ppc            # its dataclasses look themselves up there
     spec.loader.exec_module(ppc)
     record = {"comments": {"I:x": {"html_url": ROOT + "/-/merge_requests/1#note_11"},
                            "F:y": {"mode": "commit", "html_url": ROOT + "/-/commit/abc1234#note_12"}}}
