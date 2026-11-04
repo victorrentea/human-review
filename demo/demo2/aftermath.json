@@ -1,7 +1,7 @@
 {
  "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
  "review_short": "4321c5bc",
- "head": "84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d",
+ "head": "7c30589ed5661fe2abe635ade560b53189c46ad6",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -686,22 +686,267 @@
    "measured": true,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "a3845d7dd4d3eb0c84da1d83cad7b91c750700d8",
+   "short": "a3845d7d",
+   "when": "2026-10-30T00:06:45+02:00",
+   "subject": "Merge main: tx frames say how they ended, Tempo without Docker",
+   "files": [
+    {
+     "path": ".claude/agents/reviewer-uncle-bob.md",
+     "added": 7,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/drawio-png/SKILL.md",
+     "added": 2,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".gitignore",
+     "added": 4,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "README.md",
+     "added": 2,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/run-tests-with-tracing.sh",
+     "added": 10,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/main/java/victor/training/petclinic/TransactionOutcomeTracing.java",
+     "added": 35,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/src/test/java/victor/training/petclinic/TransactionOutcomeTracingTest.java",
+     "added": 63,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-observability/tempo-local.yaml",
+     "added": 51,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/AGENTS.md",
+     "added": 6,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/README.md",
+     "added": 5,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
+     "added": 4,
+     "deleted": 4,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
+     "added": 6,
+     "deleted": 6,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/run-tests-with-tracing.sh",
+     "added": 19,
+     "deleted": 5,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/generate.ts",
+     "added": 3,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/tempo-client.spec.ts",
+     "added": 13,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/tempo-client.ts",
+     "added": 12,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+     "added": 41,
+     "deleted": 6,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.ts",
+     "added": 30,
+     "deleted": 13,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "start-backend.sh",
+     "added": 8,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "start-tempo.sh",
+     "added": 71,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 392,
+   "deleted": 47,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "642db15fc139a4f4542ab08934910ba325df8e80",
+   "short": "642db15f",
+   "when": "2026-10-30T00:06:57+02:00",
+   "subject": "review-points: base moved past main's 6ebaae49 (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "6691753d002f66bf0253be30a4504c4532ef78d6",
+   "short": "6691753d",
+   "when": "2026-10-30T00:12:06+02:00",
+   "subject": "Merge main: [committed] beside a tx frame is grey from the diagram header",
+   "files": [
+    {
+     "path": "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
+     "added": 6,
+     "deleted": 4,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
+     "added": 8,
+     "deleted": 6,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml",
+     "added": 2,
+     "deleted": 0,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+     "added": 5,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.ts",
+     "added": 16,
+     "deleted": 6,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 37,
+   "deleted": 19,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "7c30589ed5661fe2abe635ade560b53189c46ad6",
+   "short": "7c30589e",
+   "when": "2026-10-30T00:12:06+02:00",
+   "subject": "review-points: base moved past main's 21503874 (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 6,
-  "files": 73,
-  "added": 1158,
-  "deleted": 347,
+  "commits": 10,
+  "files": 83,
+  "added": 1564,
+  "deleted": 390,
   "code": {
-   "files": 69,
-   "added": 1155,
-   "deleted": 344
+   "files": 79,
+   "added": 1545,
+   "deleted": 377
   },
   "generated": {
    "files": 4,
-   "added": 3,
-   "deleted": 3
+   "added": 19,
+   "deleted": 13
   }
  },
  "clean": false

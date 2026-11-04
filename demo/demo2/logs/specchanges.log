@@ -1,1 +1,4 @@
-  = specchanges: unchanged, 0.3 s saved
+  * specchanges -> api
+    $ git merge-base 215038746359a252cf10e12c2f02bbab2a7f4286 HEAD
+    $ openapi-changes html-report --no-logo --no-explorer --report-file .human-review/assets/openapi-changes.html '215038746359a252cf10e12c2f02bbab2a7f4286:openapi.yaml' ./openapi.yaml
+[1mreport written to '.human-review/assets/openapi-changes.html' (3089kb)[m

@@ -1,1 +1,4 @@
-  - logging: skipped (ast-grep not installed)
+  * logging -> logging
+    $ git merge-base 215038746359a252cf10e12c2f02bbab2a7f4286 HEAD
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/logextract.py petclinic-backend --repo . --since 215038746359a252cf10e12c2f02bbab2a7f4286 --json .human-review/assets/logging.json
+0 logging statement(s) on added/modified lines

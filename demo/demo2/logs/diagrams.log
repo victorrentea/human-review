@@ -1,5 +1,5 @@
   * diagrams -> data,packages
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh e27182cbe767ce1f44c6812cda555d5b11cd653a .human-review/assets/diagrams
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh 215038746359a252cf10e12c2f02bbab2a7f4286 .human-review/assets/diagrams
 [puml-diff] petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.diff.puml
 [puml-diff] petclinic-test/generated/VisitListTest.java.a-visit-carries-its-pet-and-owner.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_VisitListTest.java.a-visit-carries-its-pet-and-owner.genseq.diff.puml
 [puml-diff] petclinic-test/generated/VisitListTest.java.default-page-is-the-ten-latest-visits.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_VisitListTest.java.default-page-is-the-ten-latest-visits.genseq.diff.puml
@@ -9,6 +9,6 @@
 [puml-diff] petclinic-test/generated/visits.spec.ts.clicking-a-column-header-sorts-by-it-and-keeps-the-sort-in-the-url.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_visits.spec.ts.clicking-a-column-header-sorts-by-it-and-keeps-the-sort-in-the-url.genseq.diff.puml
 [puml-diff] petclinic-test/generated/visits.spec.ts.shows-the-ten-latest-visits-on-initial-load.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_visits.spec.ts.shows-the-ten-latest-visits-on-initial-load.genseq.diff.puml
 [puml-diff] 8 diagram(s) -> .human-review/assets/diagrams (see MANIFEST.tsv)
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base e27182cbe767ce1f44c6812cda555d5b11cd653a --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base 215038746359a252cf10e12c2f02bbab2a7f4286 --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
 .human-review/assets/conceptual-{original,new,diff}.svg  (added 0 boxes, 0 lines · removed 0 boxes, 0 lines · 0 changed · 0 moved, rendered by drawio)
   8 concept(s) linked to their class

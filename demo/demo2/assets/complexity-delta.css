@@ -80,7 +80,6 @@ details.cx-row.cx-same:hover { opacity:.9; }
     ellipsis and the ↗ stays whole. */
 .cx-cell { display:flex; align-items:center; gap:3px; min-width:0; overflow:hidden; }
 .cx-cell .cx-path { flex:0 1 auto; min-width:0; }
-.cx-cell a.cg-go { flex:none; }
 /* Calls the engine could not bind: not in the number, so the row says so, in amber — a
     caveat about the measurement, not about the code. */
 .cx-nf { flex:none; margin-left:4px; padding:1px 5px; border-radius:8px; white-space:nowrap;
@@ -162,15 +161,18 @@ a.cx-why-line:hover code { text-decoration:underline; }
 .cg-svg .cg-e.cg-hot { stroke:var(--cg-hot); stroke-width:1.6; }
 .cg-svg .cg-ah.cg-hot { fill:var(--cg-hot); }
 .cg-col { display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
-/* A class: a faint tint of its hue and a hairline of it, named once on top. The left
-    padding is the lane the same-class arrows run in. */
+/* A class: one faint neutral tint and a hairline of it, every class alike, named once on
+    top. The left padding is the lane the same-class arrows run in. */
 .cg-k { position:relative; padding:0 8px 8px 18px; border-radius:9px;
-        background:color-mix(in srgb, var(--cg-hue, var(--muted)) 7%, transparent);
-        border:1px solid color-mix(in srgb, var(--cg-hue, var(--muted)) 30%, transparent); }
-.cg-h0 { --cg-hue:#b45309; } .cg-h1 { --cg-hue:#be185d; } .cg-h2 { --cg-hue:#6d28d9; }
-.cg-h3 { --cg-hue:#0e7490; } .cg-h4 { --cg-hue:#c2410c; } .cg-h5 { --cg-hue:#a21caf; }
+        background:color-mix(in srgb, var(--muted) 7%, transparent);
+        border:1px solid color-mix(in srgb, var(--muted) 30%, transparent); }
 .cg-kh { display:flex; align-items:center; gap:3px; height:22px; margin-left:-10px; }
-.cg-c { font:500 10.5px/14px system-ui,sans-serif; color:var(--cg-hue, var(--muted)); }
+.cg-c { font:500 10.5px/14px system-ui,sans-serif; color:var(--muted); }
+/* A name is the way into the editor: it keeps its colour at rest, so the graph stays
+    quiet, and underlines under the pointer, class and method alike. */
+a.cg-c, a.cg-go-m, a.cx-path { color:inherit; text-decoration:none; }
+a.cg-c { color:var(--muted); }
+a.cg-c:hover, a.cg-go-m:hover, a.cx-path:hover { color:var(--link); text-decoration:underline; }
 .cg-ms { display:flex; flex-direction:column; align-items:stretch; gap:9px; }
 /* A method: a solid card on the faded box, its name bold, its score hard right. The
     names are set in the UI face, not monospace: the graph is as wide as its deepest chain
@@ -187,15 +189,6 @@ a.cx-why-line:hover code { text-decoration:underline; }
 .cg-m { display:flex; align-items:center; font:600 11.5px/14px system-ui,sans-serif; }
 .cg-cog { grid-column:2; grid-row:1; padding-right:7px; font:700 10px/1.3 ui-monospace,Menlo,monospace;
           text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
-/* ↗ is the only way into the editor from the graph, so it is a real target, not a glyph:
-    a small square that fills blue under the pointer. On a block it stays quiet until the
-    block is under the pointer — the method's name is what the block is for. */
-a.cg-go { display:inline-block; min-width:14px; text-align:center; border-radius:3px;
-          font:700 11px/14px system-ui,sans-serif; color:var(--link); text-decoration:none; }
-a.cg-go:hover { background:var(--link); color:var(--card); }
-.cg-mh a.cg-go { min-width:12px; font-size:10.5px; line-height:1; }
-.cg-mh a.cg-go { opacity:.45; }
-.cg-n:hover .cg-mh a.cg-go, .cg-n:focus-within .cg-mh a.cg-go { opacity:1; }
 /* Clicked open: a tint of the link blue, and its frame unless the branch's green holds it. */
 .cg-n.cg-open { background:color-mix(in srgb, var(--link) 8%, var(--card)); opacity:1; }
 .cg-n.cg-open:not(.cg-add):not(.cg-cut) { border-color:var(--link);
@@ -234,8 +227,6 @@ a.cx-why-new .cx-why-inc { color:var(--cx-added); }
 @media (prefers-color-scheme: dark) {
   .cx-lede, .cx-group { --cx-added:#4ec27f; --cx-removed:#9fb0d0; }
   .cx-colh-added { color:#4ec27f; }
-  .cg-h0 { --cg-hue:#fbbf24; } .cg-h1 { --cg-hue:#f472b6; } .cg-h2 { --cg-hue:#a78bfa; }
-  .cg-h3 { --cg-hue:#22d3ee; } .cg-h4 { --cg-hue:#fb923c; } .cg-h5 { --cg-hue:#e879f9; }
   .cx-bar i { background:#3d3d4a; }
   /* The verb is the only coloured *text* on the row, and the light palette was never
      re-themed for dark: #2e7d32 on --card is 3.3:1 and #1565c0 is 2.9:1, so forty-three

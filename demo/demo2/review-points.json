@@ -4,7 +4,7 @@
  "source": "review-points.md",
  "provenance": {
   "base": "215038746359a252cf10e12c2f02bbab2a7f4286",
-  "auditedBase": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+  "auditedBase": "215038746359a252cf10e12c2f02bbab2a7f4286",
   "auditedHead": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
   "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
   "head": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
@@ -199,7 +199,8 @@
     {
      "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:57"
     }
-   ]
+   ],
+   "fixCommit": "e1d375177ab3e6da286947d07d9d97d3d7cfb9a1"
   },
   {
    "title": "Cucumber visit-count step read only the first page of all visits",
@@ -214,7 +215,8 @@
     {
      "ref": "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java:57-59"
     }
-   ]
+   ],
+   "fixCommit": "e1d375177ab3e6da286947d07d9d97d3d7cfb9a1"
   },
   {
    "title": "Navigation promise left unhandled; a failed navigation vanished silently",
@@ -233,7 +235,8 @@
     {
      "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:164-172"
     }
-   ]
+   ],
+   "fixCommit": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd"
   },
   {
    "title": "Injected dependencies were not readonly",
@@ -248,7 +251,8 @@
     {
      "ref": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:35-36"
     }
-   ]
+   ],
+   "fixCommit": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd"
   }
  ],
  "assumptions": [
