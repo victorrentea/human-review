@@ -105,7 +105,8 @@ From `$ARGUMENTS`: **empty** → uncommitted work, `BASE=HEAD` — unless the wo
 clean, which is the normal state right after `/record-review`: then the branch against
 `origin/main`. **A ref / range / SHA** →
 `BASE=<the older ref>`. **A PR** (`#123`, a github URL) → `gh pr checkout <n>`, and
-`BASE=$(gh pr view <n> --json baseRefName -q .baseRefName)`. Default `origin/main`. Print a
+`BASE=$(gh pr view <n> --json baseRefName -q .baseRefName)`; on GitLab `glab mr checkout <n>`
+and `BASE=$(glab mr view <n> -F json | jq -r .target_branch)`. Default `origin/main`. Print a
 one-line scope banner; an empty change set is "Nothing to review." and stop.
 
 ```sh

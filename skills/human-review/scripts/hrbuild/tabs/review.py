@@ -16,7 +16,7 @@ from ..shared.actions import ACTIONS, declare_action, rebuild_interpreter, RERUN
 from ..shared.bands import _lede_above, _flush_top_bands
 from ..shared.chips import reviewer_names, _angry_bot
 from ..shared.commands import command_html
-from ..shared.forge import (api_forge, find_pull, forge_at, forge_for,
+from ..shared.forge import (api_forge, find_pull, forge_at, forge_for, GitHubForge,
                             is_commit_comment_url, is_pull_url, pull_root)
 from ..shared.snippets import DIFF_CONTEXT, diff_html, diff_uri_handler
 
@@ -2825,7 +2825,7 @@ def fix_commit_links(f) -> str:
                   if f.get("_fixNoteUrl") else ""))
         out += (f' <a class="f-gh f-commit" href="{html.escape(url, quote=True)}" '
                 f'target="_blank" rel="noopener" aria-label="Fix commit on {where}" '
-                f'data-tip="{html.escape(tip, quote=True)}">{GH_ICON}</a>')
+                f'data-tip="{html.escape(tip, quote=True)}">{forge_icon(where)}</a>')
     o = f.get("_fixOpen")
     if o:
         at = f"{Path(o['path']).name}:{o['line']}"
@@ -4006,6 +4006,7 @@ def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> d
     new parameter."""
     spec["_prPush"] = None
     spec["_noPr"] = not pr_exists(spec, out_dir)
+    forge_name = (forge_for(root) or GitHubForge).name
     drop_stale_pr_comments(out_dir, root, skill_dir)
     try:
         payload = json.loads((out_dir / PR_COMMENTS_JSON).read_text(encoding="utf-8"))
@@ -4066,6 +4067,7 @@ def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> d
                 continue
             if urls.get(cid):
                 item["_ghUrl"] = urls[cid]
+                item["_ghForge"] = forge_name
                 item["_ghInSummary"] = modes.get(cid) == "body"
                 # Where the thread sits, for the click that opens the card's lines in VS
                 # Code to bring it up there too (`gh_comment_link`'s data-pr-*).
@@ -4083,6 +4085,7 @@ def prepare_pr_push(spec: dict, out_dir: Path, root: Path, skill_dir: Path) -> d
     spec["_prPush"] = {"count": len(comments), "counts": counts,
                        "posted": sum(1 for u in urls.values() if u),
                        "pushedAt": posted.get("pushed_at"), "pr": posted.get("pr"),
+                       "forge": forge_name,
                        "reviewUrl": posted.get("review_url"), "prUrl": posted.get("url"),
                        # A push that stopped half-way says so on the page until a retry
                        # completes it — the record is what is on GitHub, not what was meant.
@@ -4154,6 +4157,11 @@ GH_ICON = ('<svg class="gh-ico" viewBox="0 0 16 16" width="14" height="14" aria-
            '.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8'
            'c0-4.42-3.58-8-8-8z"/></svg>')
 
+def forge_icon(name: str) -> str:
+    """A card's way to its forge: GitHub's mark on GitHub, an arrow anywhere else."""
+    return GH_ICON if name == "GitHub" else "↗"
+
+
 #: The face of a link that opens a file in the reader's IDE: both marks, of which the page
 #: shows the picked IDE's, and its name for a screen reader only (`.sr`), which editor.js
 #: rewrites (`.ide-word`) to the one picked. No words on screen (Victor, 20 Oct 2026): the
@@ -4173,7 +4181,8 @@ IDE_CHIPS = ''.join(
 
 def vscode_pr_uri(url: str | None) -> str | None:
     """The PR an `html_url` belongs to, as the extension's open-in-VS-Code URI."""
-    root = pull_root(url)
+    # GitHub's extension, so GitHub's URLs only: it can open nothing else.
+    root = GitHubForge.pull_root(url)
     return VSCODE_PR_URI + urllib.parse.quote(root, safe="") if root else None
 
 
@@ -4214,8 +4223,9 @@ def gh_comment_link(f) -> str:
         return ""
     # A line the PR's diff does not show cannot carry a review comment; the push quotes it
     # in the review's summary instead, with a permalink to the lines, and the link says so.
-    tip = ("In the review's summary on GitHub — this line is not in the PR's diff"
-           if f.get("_ghInSummary") else "Open the PR comment on GitHub")
+    forge = f.get("_ghForge") or "GitHub"
+    tip = (f"In the review's summary on {forge} — this line is not in the PR's diff"
+           if f.get("_ghInSummary") else f"Open the PR comment on {forge}")
     # An inline thread says where it sits, so editor.js can ask VS Code to bring it up —
     # expanded and focused — when the reader opens the card's lines (`comment=1`). A
     # summary-only item has no thread in the file, so it says nothing.
@@ -4224,8 +4234,8 @@ def gh_comment_link(f) -> str:
              f' data-pr-line="{int(t["line"])}" data-pr-start="{int(t["start"])}"'
              if t.get("path") and t.get("line") else "")
     return (f' <a class="f-gh" href="{html.escape(url, quote=True)}" target="_blank" '
-            f'rel="noopener" aria-label="On GitHub" data-tip="{html.escape(tip, quote=True)}"'
-            f'{where}>{GH_ICON}</a>'
+            f'rel="noopener" aria-label="On {forge}" data-tip="{html.escape(tip, quote=True)}"'
+            f'{where}>{forge_icon(forge)}</a>'
             + vscode_file_link(f.get("_ghFile"), f.get("_ghWhere") or "the file"))
 
 
@@ -4254,7 +4264,9 @@ PR_PUSH_JS = """<script data-hr-swap="rerun">
 var HR_VSC_PR = '""" + VSCODE_PR_URI + """';
 var HR_PR_FACE = '""" + (VSC_ICON + IJ_ICON).replace("'", "\\'") + """ see in <span class="ide-word">VS Code</span>';
 var HR_IDE_FACE = '""" + IDE_FACE.replace("'", "\\'") + """';
-var HR_GH_ICON = '""" + GH_ICON + """';
+// The forge the build found (`data-hr-forge`); its mark only on GitHub, an arrow elsewhere.
+var HR_FORGE = document.documentElement.dataset.hrForge || 'GitHub';
+var HR_GH_ICON = HR_FORGE === 'GitHub' ? '""" + GH_ICON + """' : '\\u2197';
 function hrVscPr(url) {
   var m = /^(https:\\/\\/github\\.com\\/[^\\/#?]+\\/[^\\/#?]+\\/pull\\/\\d+)/.exec(url || '');
   return m ? HR_VSC_PR + encodeURIComponent(m[1]) : null;
@@ -4286,7 +4298,7 @@ function hrVscPr(url) {
     rep.dataset.tip = 'The comments changed since they were published \\u2014 post the '
       + 'difference; nothing already there is posted twice';
     b.after(rep); }
-  var face = b.dataset.face || 'Publish on GitHub';
+  var face = b.dataset.face || 'Publish on ' + HR_FORGE;
   var rec = null, changed = false;
   function tagged(out, tag) {
     var ls = String(out || '').split('\\n');
@@ -4326,7 +4338,7 @@ function hrVscPr(url) {
       // Still the fix commit's page, now at the note on it.
       a.href = c.html_url;
       a.dataset.tip = 'Open the fix commit ' + String(c.commit_id || '').slice(0, 8)
-        + ' on GitHub \u2014 the review\u2019s note on this fix is a comment there';
+        + ' on ' + HR_FORGE + ' \u2014 the review\u2019s note on this fix is a comment there';
     });
     document.querySelectorAll('.f-title').forEach(function (t) {
       if (t.closest('li.fixed')) return;
@@ -4338,13 +4350,14 @@ function hrVscPr(url) {
       var a = li && li.querySelector(':scope > a.f-gh');
       if (!a) {
         a = el('a', 'f-gh'); a.innerHTML = HR_GH_ICON; a.target = '_blank'; a.rel = 'noopener';
-        a.setAttribute('aria-label', 'On GitHub');
+        a.setAttribute('aria-label', 'On ' + HR_FORGE);
         (li || t.parentNode).insertBefore(a, (li || t.parentNode).firstChild);
       }
       a.href = c.html_url;
       a.dataset.tip = c.mode === 'body'
-        ? 'In the review\\u2019s summary on GitHub \\u2014 this line is not in the PR\\u2019s diff'
-        : 'Open the PR comment on GitHub';
+        ? 'In the review\\u2019s summary on ' + HR_FORGE
+          + ' \\u2014 this line is not in the PR\\u2019s diff'
+        : 'Open the PR comment on ' + HR_FORGE;
       if (c.mode !== 'body' && c.path && c.line) {
         a.dataset.prPath = c.path; a.dataset.prLine = c.line;
         a.dataset.prStart = c.start_line || c.line; }
@@ -4384,7 +4397,7 @@ function hrVscPr(url) {
     if (st === 'complete' && (rec.review_url || rec.url)) {
       // A fact, not a control (Victor, 19 Oct 2026): grey "✓ Published", the check in
       // green from the CSS, nothing to press — re-publish is the action that is left.
-      b.textContent = 'Published on GitHub'; b.dataset.state = 'done';
+      b.textContent = 'Published on ' + HR_FORGE; b.dataset.state = 'done';
       b.tabIndex = -1; b.setAttribute('aria-disabled', 'true');
       b.dataset.tip = 'Published as a review on '
         + (rec.pr ? 'PR #' + rec.pr : 'the pull request') + (rec.pushed_at
@@ -4429,18 +4442,18 @@ function hrVscPr(url) {
   HR.onready(function () { if (HR.can(b.dataset.push)) { b.hidden = false; load(); } });
   function done(text, kind) { show(); if (text) say(text, kind); }
   function publish(from) {
-    b.disabled = rep.disabled = true; from.textContent = 'Checking GitHub\\u2026'; say('');
+    b.disabled = rep.disabled = true; from.textContent = 'Checking ' + HR_FORGE + '\\u2026'; say('');
     var label = from === rep ? 're-publish' : null;
     function back(text, kind) { if (label) rep.textContent = label; done(text, kind); }
     HR.run(b.dataset.dry).then(function (s) {
       var pv = tagged(s.output, '""" + PR_PREVIEW_TAG + """');
-      if (s.exit !== 0 || !pv) return back('Could not read the pull request from GitHub '
+      if (s.exit !== 0 || !pv) return back('Could not read the pull request from ' + HR_FORGE + ' '
         + '\\u2014 check that gh is logged in, then try again.', 'err');
       var items = pv.items || [];
       // The merge risk goes into the PR's description too; `same` when it already says so.
       var desc = pv.description && pv.description.fate !== 'same' ? pv.description : null;
       if (!items.length && !desc) return back('All ' + n(pv.total, 'comment') + ' are already on '
-        + 'GitHub PR #' + pv.pr + '.', 'ok');
+        + HR_FORGE + ' PR #' + pv.pr + '.', 'ok');
       // Open issues and assumptions go on the PR; an auto-fix's note on its fix commit.
       var onPr = items.filter(function (i) { return i.target !== 'commit'; }).length;
       var notes = items.length - onPr;
@@ -4450,9 +4463,9 @@ function hrVscPr(url) {
       var fixWords = notes ? n(notes, 'note') + ' on fix commit' + (shas.length === 1 ? ' '
         : 's ') + shas.join(', ') : '';
       var what = [];
-      if (onPr) what.push(n(onPr, 'comment') + ' on GitHub PR #' + pv.pr);
+      if (onPr) what.push(n(onPr, 'comment') + ' on ' + HR_FORGE + ' PR #' + pv.pr);
       if (fixWords) what.push(fixWords);
-      if (desc) what.push('the merge risk in ' + (onPr ? 'its' : 'GitHub PR #' + pv.pr
+      if (desc) what.push('the merge risk in ' + (onPr ? 'its' : HR_FORGE + ' PR #' + pv.pr
         + '\\u2019s') + ' description');
       dlg.querySelector('.pp-q').textContent = 'Post ' + what.join(' and ')
         + (pv.user ? ' as @' + pv.user : '') + '?';
@@ -4485,11 +4498,11 @@ function hrVscPr(url) {
         if (dlg.returnValue !== 'post') return back();
         b.textContent = 'Posting\\u2026';
         say('Posting ' + (items.length ? n(items.length, 'comment') : 'the merge risk')
-          + ' on GitHub \\u2014 this can take a minute.', 'info');
+          + ' on ' + HR_FORGE + ' \\u2014 this can take a minute.', 'info');
         HR.run(b.dataset.push).then(function (s2) {
           var r = tagged(s2.output, '""" + PR_RESULT_TAG + """');
           var text = r ? r.message : (s2.exit === 0 ? 'Posted.' : 'Posting stopped before '
-            + 'GitHub answered \\u2014 click Retry; nothing already there is posted twice.');
+            + HR_FORGE + ' answered \\u2014 click Retry; nothing already there is posted twice.');
           load().then(function () {
             if (s2.exit !== 0 && !(rec && rec.status === 'partial')) {
               b.textContent = 'Retry'; b.dataset.state = 'retry'; }
@@ -4497,7 +4510,7 @@ function hrVscPr(url) {
           });
         }, function () {
           back('Lost the review server while posting \\u2014 reload the page to see what '
-            + 'reached GitHub.', 'err');
+            + 'reached ' + HR_FORGE + '.', 'err');
         });
       });
     }, function () {
@@ -4529,13 +4542,14 @@ def push_pr_button(spec) -> str:
         return ""
     c = pp["counts"]
     again = pp["posted"] > 0
-    face = "Publish on GitHub"
+    forge = pp.get("forge") or "GitHub"
+    face = f"Publish on {forge}"
     partial = pp.get("status") == "partial"
     done = pp.get("status") == "complete" and bool(pp.get("reviewUrl") or pp.get("prUrl"))
     n, fixes = c['ignored'] + c['assumption'], c['fixed']
     if done:
         # A fact, not a control (Victor, 19 Oct 2026): the check comes from the CSS.
-        label, state = "Published on GitHub", "done"
+        label, state = f"Published on {forge}", "done"
         tip = ("Published as a review on "
                + (f"PR #{pp['pr']}" if pp.get("pr") else "the pull request")
                + (f" — {pp['pushedAt'][:16].replace('T', ' ')}" if pp.get("pushedAt") else ""))

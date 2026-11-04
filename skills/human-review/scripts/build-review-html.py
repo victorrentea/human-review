@@ -148,7 +148,8 @@ from hrbuild.shared.forge import (
     GhError, github_blob_base, GitHubForge, GitHubPrApi, is_comment_url, is_pull_url,
     project_of, pull_root, repo_web_root, _REVIEW_THREADS_QUERY, _sh, TRANSIENT,
     is_commit_comment_url, BitbucketPrApi, BitbucketServerForge, _BB_ROOT, _bb_env,
-    _bb_configured_base, _quote_all, _dt_iso,
+    _bb_configured_base, _quote_all, _dt_iso, GitLabForge, GitLabPrApi, same_forge, _GlDiff,
+    _GL_HUNK, _GL_REMOTE, _GL_ROOT, _gl_configured_base, _gl_host_of, _gl_is_host, _gl_is_named,
 )
 from hrbuild.shared.filemark import (
     FILE_MARK_D, FILE_PAGE, FILE_PAGE_D, FILE_PENCIL, FILE_PLUS, filemark, filemark_kind,
@@ -255,7 +256,7 @@ from hrbuild.tabs.review import (
     PR_POSTED_JSON, PR_PUSH_JS, push_pr_button, push_pr_dialog, PUSH_PR_ACTION,
     PUSH_PR_DRY_ACTION, _PR_SLUG_MAX, PR_PREVIEW_TAG, PR_RESULT_TAG, _payload_changed,
     VSCODE_PR_URI, vscode_pr_uri, vscode_pr_link, VSC_ICON, vscode_file_link,
-    IJ_ICON, IDE_FACE, IDE_CHIPS, GH_ICON,
+    IJ_ICON, IDE_FACE, IDE_CHIPS, forge_icon, GH_ICON,
     _taken_fold_html, _tooling_fold_html,
     API_VERDICT_HTML, FILM_VERDICT_JSON, GATE_JSON, GRADE_CAPS, MODEL_GRADE_LINES, PILE_SIGNALS,
     SEQUENCE_VERDICT_JSON, _after_review_signal, _api_signal, _base_ref, _ci_signal,

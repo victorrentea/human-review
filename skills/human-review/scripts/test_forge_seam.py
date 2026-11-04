@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Everything GitHub-specific about the reviewed repository goes through one module.
 
-`hrbuild/shared/forge.py` is the seam a second forge (Bitbucket, issue #4) plugs into: the
-web URLs of the reviewed repository, the URL spellings that recognise one, and every `gh`
-call. This fails the day a script calls `gh` or spells a `https://github.com/` URL itself,
+`hrbuild/shared/forge.py` is the seam every other forge (GitLab, Bitbucket, issue #4) plugs
+into: the web URLs of the reviewed repository, the URL spellings that recognise one, and
+every `gh` or `glab` call. This fails the day a script calls either or spells a
+`https://github.com/` URL itself,
 because that call is one more place a second forge would have to be taught about, and one
 nobody would find until a Bitbucket page linked to github.com.
 
@@ -32,6 +33,7 @@ FOREIGN_OWNERS = ("victorrentea/", "oasdiff/", "OpenAPITools/")
 ALLOWED = {
     # Prompt permissions handed to the model (a deny-list of command prefixes), not a call.
     ("human-review/scripts/rerun-review.py", "gh pr"),
+    ("human-review/scripts/rerun-review.py", "glab mr"),
     # The skill's own Pages site, derived from *its* origin so a fork links to itself.
     ("human-review/scripts/readme-tour.py", "github.com[:/]"),
     # The skill's own issue tracker (`HOME_URL`), the footer's "report a problem".
@@ -44,7 +46,8 @@ ALLOWED = {
 #: A web path only a forge lays out this way, right after a repository URL.
 FORGE_PATH = re.compile(r"/(?:blob|tree|commit|compare|pull|issues)/")
 
-GH_SHELL = re.compile(r"(?:^|[\s$(|;&`])gh\s+(?:api|pr|run|issue|repo|workflow|auth|release)\b")
+GH_SHELL = re.compile(r"(?:^|[\s$(|;&`])(?:gh\s+(?:api|pr|run|issue|repo|workflow|auth|release)"
+                      r"|glab\s+(?:api|mr|ci|issue|repo|auth|release))\b")
 
 
 def _sources(suffix: str) -> list[Path]:
@@ -79,11 +82,12 @@ def python_findings(path: Path) -> list[tuple[int, str]]:
     out = []
     for n in ast.walk(tree):
         if isinstance(n, (ast.List, ast.Tuple)) and n.elts \
-                and isinstance(n.elts[0], ast.Constant) and n.elts[0].value == "gh":
-            out.append((n.lineno, '["gh", …] argv'))
+                and isinstance(n.elts[0], ast.Constant) and n.elts[0].value in ("gh", "glab"):
+            out.append((n.lineno, f'["{n.elts[0].value}", …] argv'))
             continue
         if isinstance(n, ast.Call) and getattr(n.func, "attr", getattr(n.func, "id", "")) == "which" \
-                and any(isinstance(a, ast.Constant) and a.value == "gh" for a in n.args):
+                and any(isinstance(a, ast.Constant) and a.value in ("gh", "glab")
+                        for a in n.args):
             out.append((n.lineno, 'which("gh")'))
             continue
         if isinstance(n, ast.JoinedStr):
@@ -98,7 +102,7 @@ def python_findings(path: Path) -> list[tuple[int, str]]:
             text = n.value
         else:
             continue
-        if text.startswith("gh "):
+        if text.startswith(("gh ", "glab ")):
             out.append((n.lineno, text[:120]))
         elif "github.com" in text.replace("\\", "") and not _foreign_only(text):
             out.append((n.lineno, text[:120]))
@@ -133,7 +137,8 @@ def test_nothing_outside_the_forge_module_calls_gh_or_spells_a_github_url():
 def test_the_scan_sees_the_forge_modules_own_calls():
     """A scanner that finds nothing anywhere would pass the test above for ever."""
     found = " ".join(text for _, text in python_findings(SEAM))
-    for needle in ('["gh", …] argv', 'which("gh")', "gh run list", "https://github.com/{}"):
+    for needle in ('["gh", …] argv', '["glab", …] argv', 'which("gh")', "gh run list",
+                   "https://github.com/{}"):
         assert needle in found
 
 

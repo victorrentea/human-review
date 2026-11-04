@@ -2522,11 +2522,11 @@ def test_both_github_remote_spellings_resolve_to_the_same_repo(tmp_path, monkeyp
         assert build.github_blob_base(repo) == "https://github.com/victorrentea/petclinic"
 
 
-def test_a_non_github_remote_gets_no_link(tmp_path):
+def test_a_remote_on_no_known_forge_gets_no_link(tmp_path):
     import subprocess as sp
     sp.run(["git", "init", "-q", str(tmp_path)], check=True)
     sp.run(["git", "-C", str(tmp_path), "remote", "add", "origin",
-            "https://gitlab.com/x/y.git"], check=True)
+            "https://code.example.org/x/y.git"], check=True)
     assert build.github_blob_base(tmp_path) is None
 
 

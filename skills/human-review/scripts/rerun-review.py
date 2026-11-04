@@ -106,10 +106,11 @@ FIX_ID = re.compile(r"\bFIX-(\d+)\b")
 READ_ONLY_GIT = ("diff", "log", "show", "merge-base", "status", "blame", "grep",
                  "rev-parse", "ls-files")
 #: …and what it may not do even if a project's own settings would let it. Every verb that
-#: stages, commits, rewrites or publishes, and `gh pr` — posting is the human's button.
+#: stages, commits, rewrites or publishes, and `gh pr` / `glab mr` — posting is the human's
+#: button.
 DENIED = ("git add", "git commit", "git push", "git reset", "git checkout", "git switch",
           "git stash", "git restore", "git rebase", "git merge", "git cherry-pick",
-          "git rm", "git mv", "git revert", "git am", "git apply", "gh pr")
+          "git rm", "git mv", "git revert", "git am", "git apply", "gh pr", "glab mr")
 
 
 # --------------------------------------------------------------------------- #
@@ -231,6 +232,7 @@ def claude_argv(root: Path, session: str) -> list[str]:
     allowed = ["Read", "Grep", "Glob", "Edit", "Write", "Skill", "Agent", "Task",
                *(f"Bash(git {verb}:*)" for verb in READ_ONLY_GIT),
                "Bash(gh issue view:*)",
+               "Bash(glab issue view:*)",
                f"Bash({py} {HERE / 'review-points.py'}:*)",
                f"Bash({py} {HERE / 'push-pr-comments.py'}:*)"]
     denied = [f"Bash({verb}:*)" for verb in DENIED]

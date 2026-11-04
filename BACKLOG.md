@@ -54,6 +54,13 @@ Status: ✅ done · 🔄 in progress · ⏸ blocked / needs a decision · 💬 d
 ## Sequences / C2 (petclinic)
 - ✅ notification-service merged into main (`61998a8d`) and test-pr (`c0b9503a`); sequences re-recorded in docker (`32c943ad`); was: notification-service is on the unmerged branch `origin/notification-service`, not on main. Once it lands on main: merge main into test-pr, re-run the traced tests, re-render the sequences and C2 (a new container between Backend and the SMS gateway)
 
+## GitLab (issue #4, jaivalis)
+- ✅ `GitLabForge` + `GitLabPrApi` in `hrbuild/shared/forge.py`, through `glab api`: origin detection (nested groups), every web link, MR title/description, issues, comment push, resolved threads, the pipeline as the CI gate. Run end to end on a real GitLab CE 19.5 with glab 1.128 and a real runner
+- ⏸ merged-results pipelines: their SHA is the merge ref's, so the gate sees none for the branch's head (needs `merge_requests/:iid/pipelines`)
+- ⏸ the page says "PR"; on an MR that wants "MR" and `!7`
+- ⏸ a job-level gate (`ci.workflows` naming a job), if a pipeline's status turns out too coarse
+- ⏸ *in VS Code* / *in IntelliJ* for an MR: both open GitHub PRs only
+
 ## Bitbucket Server / Data Center (issue #4, averath on 10.5)
 - ✅ `BitbucketServerForge` in `hrbuild/shared/forge.py`: origin detection, every web link, PR title/description (+ merge-risk line), Jenkins build statuses as the CI gate, review-thread counts
 - ⏸ push review comments to a Bitbucket PR (`push-pr-comments.py` speaks GitHub's review API; needs a Bitbucket planner: anchors, versions, tasks)

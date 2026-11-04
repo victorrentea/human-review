@@ -516,9 +516,10 @@ window.HR = (function () {
           || a.querySelector('.ide-word')) return;
       var line = m[2] || '1';
       var end = window.HR.endOf ? window.HR.endOf(a, line) : null;
-      var L = st.hrBlobL === '-' ? '' : 'L', where = 'on ' + (st.hrForge || 'GitHub');
+      var L = st.hrBlobL === '-' ? '' : 'L', E = st.hrBlobL === 'L-' ? '' : L;
+      var where = 'on ' + (st.hrForge || 'GitHub');
       var url = blob + '/' + rel.split('/').map(encodeURIComponent).join('/') + (st.hrBlobAt || '')
-        + (line !== '1' || end ? '#' + L + line + (end ? '-' + L + end : '') : '');
+        + (line !== '1' || end ? '#' + L + line + (end ? '-' + E + end : '') : '');
       a.setAttribute('href', url);
       if (a.hasAttributeNS(XLINK, 'href')) a.setAttributeNS(XLINK, 'xlink:href', url);
       a.setAttribute('target', '_blank');
@@ -591,8 +592,8 @@ window.HR = (function () {
     function paint(ids) {
       var got = {}, seen = {}, n = {open: 0, fixed: 0, assumed: 0};
       ids.forEach(function (i) { got[String(i)] = true; });
-      [].forEach.call(document.querySelectorAll('a.f-gh[href*="#discussion_r"]'), function (a) {
-        var li = a.closest('li'), id = (a.href.match(/discussion_r(\d+)/) || [])[1];
+      [].forEach.call(document.querySelectorAll('a.f-gh[href*="#discussion_r"], a.f-gh[href*="#note_"]'), function (a) {
+        var li = a.closest('li'), id = (a.href.match(/(?:discussion_r|#note_)(\d+)/) || [])[1];
         if (!li || !id) return;
         var on = !!got[id];
         li.classList.toggle('gh-resolved', on);

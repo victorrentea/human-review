@@ -506,9 +506,30 @@ Hard requirements — nothing runs without these:
 
 - **`python3`**, with **Pygments** and **Pillow** — the page builder cannot render at all
   without them
-- **`git`**, **`plantuml`**, and the **`gh`** CLI against a GitHub remote: the run opens by
+- **`git`**, **`plantuml`**, and the **`gh`** CLI against a GitHub remote (**`glab`** on
+  GitLab, see below): the run opens by
   pushing the branch and waiting for CI to go green, and stops if it is not
   (a repository with no CI is let through, and the guide says no build proved it)
+
+### On GitLab instead of GitHub
+
+An `origin` on gitlab.com, or on any host with `gitlab` in its name (`gitlab.acme.com`), is
+picked up on its own, nested groups included. It needs the **`glab`** CLI instead of `gh`,
+logged in as you (`glab auth login`, per host), and **`GITLAB_HOST`** only for a self-managed
+instance named anything else (`GITLAB_HOST=code.acme.com`). A `GITLAB_TOKEN` in the
+environment is used on gitlab.com and on the instance `GITLAB_HOST` names, and on no other:
+a token must not follow a cloned repository's `origin` to a host you never chose.
+
+All of it works: every link on the page, the merge request's title and description (with
+the merge-risk line), the ticket from a GitLab issue, **pushing the review as comments**
+(a discussion on each line, a note for the summary, each auto-fix's note on its fix commit),
+which threads are resolved, and the CI gate. On GitLab a commit has one pipeline, so the gate
+waits on that pipeline as a whole: `.gitlab-ci.yml` is the only workflow name there is, and
+a merged-results pipeline, whose SHA is not the branch's, is not seen yet. `CODEOWNERS` is
+read from `.gitlab/` too, sections and all.
+
+The page still says "PR" for a merge request, and its *in VS Code* / *in IntelliJ* buttons
+for a merge request are not there: both open GitHub pull requests only.
 
 ### On Bitbucket Server / Data Center instead of GitHub
 

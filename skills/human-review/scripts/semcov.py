@@ -52,7 +52,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
-from hrbuild.shared.forge import api_forge, find_issue, forge_at  # noqa: E402
+from hrbuild.shared.forge import api_forge, find_issue, forge_at, same_forge  # noqa: E402
 
 SKILL = HERE.parent
 SCHEMA_PATH = SKILL / "reference" / "test-mapping.schema.json"
@@ -204,7 +204,8 @@ def _ticket_value(value: str, slug: str) -> tuple[tuple[int, str] | None, str]:
         return (int(m.group(1)), slug), ""
     found = find_issue(v)
     if found:
-        return (found[1], found[0].slug), ""
+        # An issue on another forge is not this forge's issue of the same number.
+        return ((found[1], found[0].slug) if same_forge(found[0], api_forge()) else None), ""
     m = re.match(r"^([\w.-]+/[\w.-]+)#(\d+)$", v)
     if m:
         return (int(m.group(2)), m.group(1)), ""

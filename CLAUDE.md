@@ -122,16 +122,19 @@ orchestrator.
 
 ## Everything about the forge goes through `hrbuild/shared/forge.py`
 
-The forge hosting the *reviewed* repository (GitHub, or Bitbucket Server / Data Center —
-`BitbucketServerForge`, issue #4; comment push and Jira still missing) is one module: its web URLs (`forge.blob_url`, `commit_url`, `tree_url`, `compare_url`,
+The forge hosting the *reviewed* repository (GitHub; GitLab through `glab`, `GitLabForge`,
+all but the IDE's PR links; or Bitbucket Server / Data Center, `BitbucketServerForge`, comment push and Jira
+still missing; issue #4) is one module: its web URLs (`forge.blob_url`, `commit_url`, `tree_url`, `compare_url`,
 `issue_url`…), the recognisers for its URLs (`find_pull`, `pull_root`, `is_comment_url`…)
-and every `gh` call (`api_forge().issue(…)`, `.ci_runs(…)`, `.pr_api()`…). Get a forge
+and every `gh` or `glab` call (`api_forge().issue(…)`, `.ci_runs(…)`, `.pr_api()`…). Get a forge
 with `forge_for(root)` (from `origin`; None off a forge, keep the editor link) or
 `forge_at(pr["repo"])`, and the word for a link from `forge.name`. New code that touches
-GitHub goes there, never into a tab or a script: `test_forge_seam.py` fails a `gh` call or
+GitHub goes there, never into a tab or a script: `test_forge_seam.py` fails a `gh` or `glab` call or
 a `https://github.com/` URL of the reviewed repo spelled anywhere else. A method added to
-`GitHubForge` gets its Bitbucket twin in the same commit (`test_forge_bitbucket.py`), or a
-Bitbucket checkout hits `gh` with a GitHub-shaped question. Links to the
+`GitHubForge` gets its GitLab and Bitbucket twins in the same commit
+(`test_forge_gitlab.py`, `test_forge_bitbucket.py`), or such a checkout hits `gh` with a
+GitHub-shaped question. A GitHub-shaped comment call stays in that shape: `GitLabPrApi`
+translates it, so `push-pr-comments.py` keeps planning in GitHub's words. Links to the
 skill's own home (`victorrentea/human-review`) are not the forge and stay where they are.
 
 ## Memoria lui Claude

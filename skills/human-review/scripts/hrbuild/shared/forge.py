@@ -1,11 +1,11 @@
-"""The forge that hosts the reviewed repository — GitHub, or Bitbucket Server / Data Center
-(issue #4) — behind one seam.
+"""The forge that hosts the reviewed repository — GitHub, GitLab, or Bitbucket Server / Data
+Center (issue #4) — behind one seam.
 
 Everything the skill knows about the place the reviewed code is pushed to lives here and
 nowhere else: the shape of its web URLs (a file at a commit, a folder, a commit, a
 comparison, a pull request, an issue, an author's face), how to recognise one of those
 URLs when a content file or an API answer hands one over, and every question asked of it
-over its command line (`gh`): a PR's description (read, and rewritten for its
+over its command line (`gh`, `glab`): a PR's description (read, and rewritten for its
 merge-risk line), an issue, the PR's comments and review
 threads, the CI runs of a commit. `test_forge_seam.py` fails a `gh` call or a
 `https://github.com/` URL of the reviewed repo built anywhere else.
@@ -24,6 +24,7 @@ branch's PR title, or nothing.
 from __future__ import annotations
 
 import functools
+import hashlib
 import json
 import re
 import shlex
@@ -154,6 +155,8 @@ class GitHubForge:
 
     #: What a reader is told a link opens on: "Open on GitHub".
     name = "GitHub"
+    #: How a reader fixes a refused login, in the words of a sentence ending "your …".
+    auth_hint = "gh login (run `gh auth status`)"
 
     def __init__(self, repo_url: str = ""):
         self.repo_url = repo_url
@@ -484,6 +487,8 @@ class BitbucketServerForge:
     GitHub workflow, so the preflight gate waits on them unchanged."""
 
     name = "Bitbucket"
+    #: How a reader fixes a refused login, in the words of a sentence ending "your …".
+    auth_hint = "token (`BITBUCKET_TOKEN`)"
 
     def __init__(self, repo_url: str = ""):
         self.repo_url = (repo_url or "").rstrip("/")
@@ -914,6 +919,739 @@ def _dt_iso(millis: float) -> str:
         .strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# --------------------------------------------------------------------------------------- #
+# GitLab, gitlab.com or self-managed (issue #4)
+# --------------------------------------------------------------------------------------- #
+
+_GL_REMOTE = re.compile(r"^(?:(?P<scheme>https?)://(?:[^@/]+@)?(?P<web>[^/\s]+)/"
+                        r"|ssh://(?:[^@/]+@)?(?P<ssh>[^/:\s]+)(?::\d+)?/"
+                        r"|[^@/\s]+@(?P<scp>[^/:\s]+):)"
+                        r"(?P<path>[^\s?#]+?)(?:\.git)?/?$")
+_GL_HUNK = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+#: Everything after a project's path in a web URL: `/-/` starts GitLab's own routes, which is
+#: what tells `group/sub/repo` from a page of it, however deep the groups go.
+_GL_ROOT = r"(?P<root>https?://[A-Za-z0-9.-]+(?::\d+)?/[\w.~%+/-]+?)/-/"
+
+
+def _gl_configured_base() -> str:
+    """The instance glab is pointed at, `GITLAB_HOST` or its shorter `GL_HOST`, as a web base
+    with no trailing slash. glab takes either a host or a URL there."""
+    import os
+    base = (os.environ.get("GITLAB_HOST") or os.environ.get("GL_HOST") or "").strip().rstrip("/")
+    return base if not base or "://" in base else f"https://{base}"
+
+
+def _gl_host_of(url: str) -> str:
+    """The host of a URL, or of a bare `host[:port]`, without its port."""
+    return re.sub(r"^https?://", "", url or "").split("/")[0].split(":")[0].lower()
+
+
+def _gl_is_named(host: str) -> bool:
+    """Whether a host is known for GitLab, not guessed: gitlab.com, or the instance named by
+    `GITLAB_HOST`."""
+    host = _gl_host_of(host)
+    configured = _gl_configured_base()
+    return host == "gitlab.com" or (bool(configured) and host == _gl_host_of(configured))
+
+
+def _gl_is_host(host: str) -> bool:
+    """Whether a host is GitLab's: named (`_gl_is_named`), or with a label that says so
+    (`gitlab.acme.com`, `gitlab-int.acme.com`, but not `gitlabels.acme.com`). A self-managed
+    instance called anything else is reached by setting `GITLAB_HOST`."""
+    return _gl_is_named(host) or any(re.fullmatch(r"gitlab(?:[-_\d].*)?", label)
+                                     for label in _gl_host_of(host).split("."))
+
+
+class _GlDiff:
+    """One file's unified diff, read the way a position on GitLab has to be written: a line
+    the diff did not add needs its old number as well, or GitLab answers 400, and a multi-line
+    comment names both numbers of its ends. Unchanged lines outside every hunk are numbered
+    too, which GitLab accepts as an expanded line. `positions` is GitHub's diff position (the
+    line under the first `@@` is 1, later `@@` count) for each new line, which is what a
+    commit comment's payload is planned in."""
+
+    def __init__(self, text: str):
+        self.added: set[int] = set()
+        self.old_at: dict[int, int] = {}
+        self.positions: dict[int, int] = {}
+        self.shifts: list[tuple[int, int]] = []     # (new line, new - old from there on)
+        old = new = pos = 0
+        for line in (text or "").split("\n"):
+            m = _GL_HUNK.match(line)
+            if m:
+                pos += 1 if self.shifts else 0
+                old, new = int(m[1]), int(m[2])
+                self.shifts.append((new, new - old))
+                continue
+            if not self.shifts or not line or line.startswith("\\"):
+                continue
+            pos += 1
+            if line.startswith("+"):
+                self.added.add(new)
+                self.old_at[new], self.positions[new] = old, pos
+                new += 1
+            elif line.startswith("-"):
+                old += 1
+            else:
+                self.old_at[new], self.positions[new] = old, pos
+                old, new = old + 1, new + 1
+            self.shifts.append((new, new - old))
+
+    def old_of(self, new: int) -> int:
+        """The old file's number at new line `new`: a line's own when it was kept, and for an
+        added line the one GitLab's `line_code` carries, the next old line."""
+        if new in self.old_at:
+            return self.old_at[new]
+        return new - next((d for at, d in reversed(self.shifts) if at <= new), 0)
+
+    def line_at(self, position: int) -> int | None:
+        return next((n for n, p in self.positions.items() if p == position), None)
+
+
+class GitLabPrApi:
+    """A merge request's comments, spoken in GitHub's words, because `push-pr-comments.py`
+    plans its calls in them: paths, `list` and `send`, with `glab api` underneath so the
+    credentials are the reader's own. What differs is translated here and only here:
+
+    - A GitHub review (one summary and its line comments in one call) has no twin: its body
+      becomes a note on the MR, and each comment a discussion. `settle` and `replan` already
+      treat a review as something that may have landed in part, so nothing depends on one
+      call being atomic. The "continued" summaries of later batches are dropped: they exist
+      for GitHub's 10 seconds, and on an MR they would only be noise.
+    - GitHub addresses a comment by its id alone, GitLab by its project, MR or commit, and
+      discussion too, so `list` remembers each note's path for `comment_path` & co. A plan
+      is always made from a listing, which is what makes that safe.
+    - A comment's place is a `position` with the diff's three refs and both line numbers,
+      built from GitLab's own diff (`_GlDiff`)."""
+
+    def __init__(self, forge: "GitLabForge"):
+        self.forge = forge
+        self.notes: dict[int, str] = {}
+        self.diffs: dict[str, tuple[dict, dict]] = {}
+
+    # The REST paths the push plans its calls against. Comments and reviews both read from
+    # `/discussions`; the last word tells a line comment from an MR's general note.
+    @staticmethod
+    def _project(repo: str) -> str:
+        return f"projects/{_quote_all(repo)}"
+
+    def comments_path(self, repo: str, pr: int) -> str:
+        return f"{self._project(repo)}/merge_requests/{pr}/discussions"
+
+    def reviews_path(self, repo: str, pr: int) -> str:
+        return f"{self._project(repo)}/merge_requests/{pr}/notes"
+
+    def commit_comments_path(self, repo: str, sha: str) -> str:
+        return f"{self._project(repo)}/repository/commits/{sha}/discussions"
+
+    def comment_path(self, repo: str, comment_id) -> str:
+        return self.notes[int(comment_id)]
+
+    commit_comment_path = comment_path
+
+    def review_path(self, repo: str, pr: int, review_id) -> str:
+        return self.notes[int(review_id)]
+
+    @staticmethod
+    def shell(method: str, path: str, payload: dict) -> str:
+        """The call as a reader could paste it — what a dry run prints. A review is several
+        calls on GitLab, and says so."""
+        verb = "PUT" if method == "PATCH" else method
+        n = len(payload.get("comments") or [])
+        head = (f"# on GitLab: this note, then one discussion for each of the {n} comments\n"
+                if path.endswith("/notes") and n else "")
+        return (f"{head}glab api -X {verb} {path} --input - <<'JSON'\n"
+                + json.dumps(payload, indent=2, ensure_ascii=False) + "\nJSON")
+
+    def run(self, args: list[str], data: dict | None = None) -> str:
+        r = subprocess.run(["glab", *args], input=json.dumps(data) if data is not None else None,
+                           capture_output=True, text=True)
+        if r.returncode:
+            raise GhError(f"glab {' '.join(args[:4])}: {r.stderr.strip() or r.stdout.strip()}")
+        return r.stdout
+
+    def login(self) -> str | None:
+        try:
+            return self.forge.api("GET", "user").get("username") or None
+        except (RuntimeError, ValueError):
+            return None
+
+    def _web(self, container: str) -> str:
+        """The page a note's `#note_<id>` hangs off."""
+        import urllib.parse
+        m = re.match(r"projects/([^/]+)/(?:merge_requests/(\d+)|repository/commits/(\w+))",
+                     container)
+        forge = self.forge.of_slug(urllib.parse.unquote(m[1]))
+        return f"{forge.repo_url}/-/merge_requests/{m[2]}" if m[2] else forge.commit_url(m[3])
+
+    def list(self, path: str) -> list[dict]:
+        """The notes under `path`, in the shape GitHub lists them: the first note of each
+        discussion, its replies being no pipeline's. An MR's `/discussions` are its line
+        comments, its `/notes` the general ones; a commit's are all of its comments."""
+        container, _, kind = path.rpartition("/")
+        is_mr = "/merge_requests/" in container
+        web, out = self._web(container), []
+        head = None
+        for d in self.forge._pages(f"{container}/discussions"):
+            n = next((x for x in d.get("notes") or [] if not x.get("system")), None)
+            if n is None:
+                continue
+            pos = n.get("position") or {}
+            self.notes[n["id"]] = f"{container}/discussions/{d['id']}/notes/{n['id']}"
+            if is_mr and bool(pos) != (kind == "discussions"):
+                continue
+            shaped = {"id": n["id"], "body": n.get("body") or "",
+                      "html_url": f"{web}#note_{n['id']}",
+                      "user": {"login": (n.get("author") or {}).get("username")}}
+            if pos:
+                first = ((pos.get("line_range") or {}).get("start") or {}).get("new_line")
+                line = pos.get("new_line")
+                shaped.update(path=pos.get("new_path"), commit_id=pos.get("head_sha"),
+                              side="RIGHT")
+                if is_mr and head is None:
+                    head = self._diff_of(container)[0].get("head_sha") or ""
+                # GitLab carries a note along with the diff, its `head_sha` with it, and
+                # leaves one whose line a later commit changed at the old head and the old
+                # number. Outdated, then: GitHub says so by having no `line`, and the push
+                # reads that to post the comment again where it now belongs.
+                outdated = is_mr and head and pos.get("head_sha") != head
+                if pos.get("position_type") == "file":
+                    shaped["subject_type"] = "file"
+                elif not outdated:
+                    shaped["line"] = line
+                    if first and first != line:
+                        shaped["start_line"] = first
+                if not is_mr and line:
+                    _, files = self._diff_of(container)
+                    shaped["position"] = self._file(files, pos.get("new_path"))[1] \
+                        .positions.get(line)
+            out.append(shaped)
+        return out
+
+    def _diff_of(self, container: str) -> tuple[dict, dict]:
+        """`(the three refs, {new path: (old path, _GlDiff)})` of an MR or a commit."""
+        if container not in self.diffs:
+            got = self.forge.api("GET", container)
+            if "/merge_requests/" in container:
+                refs, files = got.get("diff_refs") or {}, f"{container}/diffs"
+            else:
+                parent = (got.get("parent_ids") or [None])[0]
+                refs = {"base_sha": parent, "start_sha": parent, "head_sha": got.get("id")}
+                files = f"{container}/diff"
+            self.diffs[container] = (refs, {
+                f.get("new_path"): (f.get("old_path"), _GlDiff(f.get("diff") or ""))
+                for f in self.forge._pages(files)})
+        return self.diffs[container]
+
+    @staticmethod
+    def _file(files: dict, path: str) -> tuple[str, _GlDiff]:
+        return files.get(path) or (path, _GlDiff(""))
+
+    def _position(self, container: str, c: dict) -> dict | None:
+        """Where comment `c` sits, for GitLab; None for one with no path, a plain note."""
+        path = c.get("path")
+        if not path:
+            return None
+        refs, files = self._diff_of(container)
+        old_path, diff = self._file(files, path)
+        pos = {**refs, "old_path": old_path, "new_path": path, "position_type": "text"}
+        line = c.get("line") or diff.line_at(c.get("position") or 0)
+        if c.get("subject_type") == "file" or not line:
+            return {**pos, "position_type": "file"}
+        pos["new_line"] = line
+        if line not in diff.added:
+            pos["old_line"] = diff.old_of(line)
+        start = c.get("start_line")
+        if start and start != line:
+            sha = hashlib.sha1(path.encode()).hexdigest()
+
+            def end(n: int) -> dict:
+                added = n in diff.added
+                return {"line_code": f"{sha}_{diff.old_of(n)}_{n}",
+                        "type": "new" if added else None,
+                        "old_line": None if added else diff.old_of(n), "new_line": n}
+            pos["line_range"] = {"start": end(start), "end": end(line)}
+        return pos
+
+    def _discussion(self, path: str, c: dict) -> dict:
+        container = path.rpartition("/")[0]
+        where = self._position(container, c)
+        return self.forge.api("POST", f"{container}/discussions",
+                              {"body": c["body"], **({"position": where} if where else {})},
+                              timeout=30)
+
+    def send(self, call) -> dict:
+        """`call`: anything with `method`, `path` and `payload` (push-pr-comments' `Call`)."""
+        path, data = call.path, call.payload
+        if call.method == "DELETE":
+            return self.forge.api("DELETE", path) or {}
+        if call.method in ("PATCH", "PUT"):
+            return self.forge.api("PUT", path, {"body": data["body"]}, timeout=30)
+        if not path.endswith("/notes"):
+            return self._discussion(path, data)
+        body = data.get("body") or ""
+        if body and "hr:review-more" not in body:
+            self.forge.api("POST", path, {"body": body}, timeout=30)
+        for c in data.get("comments") or []:
+            self._discussion(path, c)
+        return {}
+
+    def pr(self, root: Path, pr: int | None) -> dict:
+        forge = self.forge._here(root)
+        if not pr:
+            found = forge.current_pr(root)
+            if not found:
+                raise RuntimeError("no merge request for this branch")
+            pr = found["number"]
+        got = forge._mr_shape(forge.api("GET", f"{forge._project}/merge_requests/{int(pr)}"))
+        return {k: got[k] for k in ("number", "url", "headRefOid", "baseRefName", "headRefName")}
+
+    def repo(self, root: Path) -> str:
+        slug = self.forge._here(root).slug
+        if not slug:
+            raise RuntimeError("this checkout's origin is not on GitLab")
+        return slug
+
+
+class GitLabForge:
+    """GitLab, gitlab.com or self-managed: its web URLs, its URL spellings, and `glab`.
+
+    Every question goes through `glab api`, so the credentials are the reader's own
+    (`glab auth login`, or `GITLAB_TOKEN`) and no token is seen here. `repo_url` is the
+    project's web root; a project may sit in nested groups, so `slug` is `group/sub/repo`
+    and only a URL's `/-/` tells where it ends. A pipeline is the one CI run of a commit:
+    GitLab has no separate workflows, so `.gitlab-ci.yml` stands for all of them and a job
+    is what a GitHub step would be."""
+
+    name = "GitLab"
+    #: How a reader fixes a refused login, in the words of a sentence ending "your …".
+    auth_hint = "glab login (run `glab auth status`)"
+
+    def __init__(self, repo_url: str = ""):
+        self.repo_url = (repo_url or "").rstrip("/")
+
+    def __repr__(self) -> str:
+        return f"GitLabForge({self.repo_url!r})"
+
+    # ---- the project's coordinates -------------------------------------------------- #
+
+    @property
+    def base(self) -> str:
+        """The instance's web base. The configured one when this project is on it, since
+        only that can name a relative URL root (`https://acme.com/gitlab`)."""
+        configured = _gl_configured_base()
+        if configured and (not self.repo_url or self.repo_url.startswith(configured + "/")):
+            return configured
+        m = re.match(r"^https?://[^/]+", self.repo_url)
+        return m.group(0) if m else "https://gitlab.com"
+
+    @property
+    def slug(self) -> str:
+        """`group/sub/repo`, what `glab -R` and the REST API's project path both take."""
+        return self.repo_url[len(self.base):].strip("/") if self.repo_url else ""
+
+    @property
+    def _project(self) -> str:
+        return f"projects/{_quote_all(self.slug)}"
+
+    def of_slug(self, slug: str) -> "GitLabForge":
+        """The project `group/repo` on the same instance as this one."""
+        return GitLabForge(f"{self.base}/{(slug or '').strip('/')}")
+
+    # ---- recognising its URLs ------------------------------------------------------- #
+
+    @staticmethod
+    def from_remote(remote: str) -> str | None:
+        """The web root for an `origin` URL on a GitLab host (`_gl_is_host`), or None: https
+        (a user allowed), ssh, or scp-style, with any depth of groups. An ssh remote says
+        nothing of the web's scheme or port, so `GITLAB_HOST` wins for its host."""
+        m = _GL_REMOTE.match(remote.strip())
+        if not m or "/" not in m["path"]:
+            return None
+        host = m["web"] or m["ssh"] or m["scp"]
+        if not _gl_is_host(host):
+            return None
+        # A host's name is only a guess, and `/scm/` or Bitbucket's ssh port is a fact.
+        if not _gl_is_named(host) and BitbucketServerForge.from_remote(remote):
+            return None
+        configured = _gl_configured_base()
+        on_it = configured and _gl_host_of(configured) == _gl_host_of(host)
+        path = m["path"]
+        if on_it:
+            prefix = re.sub(r"^https?://[^/]+/?", "", configured)
+            if prefix and path.startswith(prefix + "/"):
+                path = path[len(prefix) + 1:]
+            return f"{configured}/{path}"
+        return f"{m['scheme']}://{m['web']}/{path}" if m["web"] else f"https://{host}/{path}"
+
+    from_any_remote = from_remote
+
+    @staticmethod
+    def project_of(url: str) -> str:
+        """`group/sub/repo` when `url` is a project's web root on a GitLab host, else ""."""
+        m = re.match(r"^https?://([^/\s?#]+)/([^\s?#]+?)(?:\.git)?/?$", url or "")
+        if not m or "/" not in m[2] or "/-/" in m[2] or not _gl_is_host(m[1]):
+            return ""
+        return GitLabForge(f"{url}".rstrip("/").removesuffix(".git")).slug
+
+    @staticmethod
+    def is_pull_url(url: str) -> bool:
+        return "/-/merge_requests/" in str(url or "")
+
+    @staticmethod
+    def pull_root(url: str) -> str | None:
+        m = re.match(r"^(" + _GL_ROOT + r"merge_requests/\d+)", url or "")
+        return m.group(1) if m else None
+
+    @staticmethod
+    def find_pull(text: str) -> tuple[str, int] | None:
+        """`(project web root, number)` of the first MR URL in `text`."""
+        m = re.search(_GL_ROOT + r"merge_requests/(\d+)", str(text or ""))
+        return (m["root"], int(m.groups()[-1])) if m else None
+
+    @classmethod
+    def pull_in(cls, text):
+        hit = cls.find_pull(text)
+        return (cls(hit[0]), hit[1]) if hit else None
+
+    @staticmethod
+    def is_comment_url(url: str) -> bool:
+        return bool(re.match(r"^" + _GL_ROOT + r"merge_requests/\d+([/?#]\S*)?\Z", url or ""))
+
+    @staticmethod
+    def is_commit_comment_url(url: str) -> bool:
+        return bool(re.match(r"^" + _GL_ROOT + r"commit/[0-9a-f]{7,40}#note_\d+\Z",
+                             str(url or "")))
+
+    @staticmethod
+    def find_issue(text: str) -> tuple[str, int] | None:
+        """`(project web root, number)` when `text` starts with an issue URL, in either of
+        the spellings GitLab has (`/-/issues/`, and `/-/work_items/` on recent versions)."""
+        m = re.match(_GL_ROOT + r"(?:issues|work_items)/(\d+)\b", str(text or ""), re.I)
+        return (m["root"], int(m.groups()[-1])) if m else None
+
+    @classmethod
+    def issue_in(cls, text):
+        hit = cls.find_issue(text)
+        return (cls(hit[0]), hit[1]) if hit else None
+
+    # ---- its web URLs --------------------------------------------------------------- #
+
+    def blob_prefix(self, ref: str) -> str:
+        """Every file at `ref` is this plus `/<path>`."""
+        return f"{self.repo_url}/-/blob/{ref}"
+
+    @staticmethod
+    def blob_query(ref: str) -> str:
+        return ""
+
+    #: How a line, or a range, is written after `#`: `#L57`, `#L57-59`.
+    line_anchor = staticmethod(lambda line, end=None:
+                               f"#L{line}" + (f"-{end}" if end and end > line else ""))
+
+    def blob_url(self, ref: str, path: str, line: int | None = None,
+                 end: int | None = None) -> str:
+        url = f"{self.repo_url}/-/blob/{ref}/{path}"
+        return url + (self.line_anchor(line, end) if line else "")
+
+    def tree_url(self, ref: str) -> str:
+        return f"{self.repo_url}/-/tree/{ref}"
+
+    def commit_url(self, sha: str) -> str:
+        return f"{self.repo_url}/-/commit/{sha}"
+
+    def compare_url(self, base: str, head: str) -> str:
+        """The diff between two refs, both already quoted for a URL."""
+        return f"{self.repo_url}/-/compare/{base}...{head}"
+
+    def issue_url(self, number) -> str:
+        return f"{self.repo_url}/-/issues/{number}"
+
+    def avatar_url(self, login: str) -> str:
+        """The URL GitLab gives for a user's avatar. It has no address that can be built
+        from a login alone, so it is asked for; "" when it does not say, and `_avatar`
+        draws an initial instead."""
+        try:
+            users = self._here().api("GET", f"users?username={_quote_all(login)}")
+        except (GhError, ValueError):
+            return ""
+        return ((users or [{}])[0].get("avatar_url") or "") if isinstance(users, list) else ""
+
+    # ---- asked over `glab api` ------------------------------------------------------ #
+
+    @staticmethod
+    def available() -> bool:
+        return bool(shutil.which("glab"))
+
+    def _glab_env(self) -> dict:
+        """The environment of a `glab` call. The instance goes in as `GITLAB_HOST`, relative
+        URL root included, because `--hostname` refuses a `host:port` and takes no path.
+
+        That variable is also what makes glab send a `GITLAB_TOKEN` to a host, and this one
+        comes from the checkout's `origin`: so a token in the environment stays out of the
+        call unless it is for gitlab.com or the reader named this instance. A token exported
+        for gitlab.com must not travel to whatever host a cloned repository points at. glab's
+        own stored login for that host, which is per host, still applies."""
+        import os
+        env = {**os.environ, "GITLAB_HOST": re.sub(r"^https?://", "", self.base)}
+        if not _gl_is_named(self.base):
+            for name in ("GITLAB_TOKEN", "GITLAB_ACCESS_TOKEN", "OAUTH_TOKEN"):
+                env.pop(name, None)
+        return env
+
+    def glab(self, method: str, path: str, data: dict | None = None,
+             timeout: float = 20) -> str:
+        """One REST call under `api/v4/`: the one network point. Raises `GhError` (its
+        `status` the HTTP one) on a refusal and on no answer."""
+        args = ["glab", "api", "-X", method, path]
+        if data is not None:
+            args += ["--input", "-"]
+        try:
+            r = subprocess.run(args, input=json.dumps(data) if data is not None else None,
+                               capture_output=True, text=True, timeout=timeout,
+                               env=self._glab_env())
+        except subprocess.TimeoutExpired:
+            raise GhError(f"GitLab {method} {path}: timed out") from None
+        except OSError as e:
+            raise GhError(f"GitLab {method} {path}: {e}") from None
+        if r.returncode:
+            raise GhError(f"GitLab {method} {path}: {r.stderr.strip() or r.stdout.strip()}")
+        return r.stdout
+
+    def api(self, method: str, path: str, data: dict | None = None, timeout: float = 20):
+        """`glab` with its JSON answer read; `{}` for an empty body."""
+        out = self.glab(method, path, data, timeout)
+        return json.loads(out) if out.strip() else {}
+
+    def _pages(self, path: str, limit: int = 2000) -> list[dict]:
+        """Every page of a list, by page number: `glab api --paginate` prints its pages as
+        separate documents, and only the page number works on all of GitLab's list routes."""
+        out: list[dict] = []
+        sep = "&" if "?" in path else "?"
+        page = 1
+        while len(out) < limit:
+            got = self.api("GET", f"{path}{sep}per_page=100&page={page}")
+            out += got if isinstance(got, list) else []
+            if not isinstance(got, list) or len(got) < 100:
+                break
+            page += 1
+        return out
+
+    def _here(self, root: Path | None = None, slug: str | None = None) -> "GitLabForge":
+        """The forge for this question: `slug` on this instance, else this one, else
+        `root`'s origin, else the working directory's."""
+        if slug:
+            return self.of_slug(slug)
+        if self.repo_url:
+            return self
+        found = forge_for(Path(root or ".").resolve())
+        return found if isinstance(found, GitLabForge) else self
+
+    @staticmethod
+    def _mr_shape(mr: dict) -> dict:
+        """A merge request in the words `gh pr view --json` uses, which every caller reads."""
+        return {"number": mr.get("iid"), "title": mr.get("title") or "",
+                "url": mr.get("web_url") or "", "body": mr.get("description") or "",
+                "headRefName": mr.get("source_branch") or "",
+                "baseRefName": mr.get("target_branch") or "",
+                "headRefOid": mr.get("sha") or ""}
+
+    def _branch_mrs(self, branch: str, state: str) -> list[dict]:
+        got = self.api("GET", f"{self._project}/merge_requests?source_branch="
+                              f"{_quote_all(branch)}&state={state}"
+                              "&order_by=created_at&sort=desc&per_page=1")
+        return got if isinstance(got, list) else []
+
+    def current_pr(self, root: Path) -> dict | None:
+        """The checkout's branch's open MR — number, title, url, head and base names."""
+        forge = self._here(root)
+        branch = subprocess.run(["git", "-C", str(root), "symbolic-ref", "--short", "-q", "HEAD"],
+                                capture_output=True, text=True).stdout.strip()
+        if not forge.slug or not branch or not self.available():
+            return None
+        try:
+            mrs = forge._branch_mrs(branch, "opened")
+        except (GhError, ValueError):
+            return None
+        if not mrs:
+            return None
+        shaped = self._mr_shape(mrs[0])
+        return {k: shaped[k] for k in ("number", "title", "url", "headRefName", "baseRefName")}
+
+    def repo_web_url(self, root: Path) -> str | None:
+        return self._here(root).repo_url or None
+
+    def pr_body(self, number, slug: str | None, root: Path | None) -> dict:
+        forge = self._here(root, slug)
+        got = self._mr_shape(forge.api("GET", f"{forge._project}/merge_requests/{int(number)}",
+                                       timeout=15))
+        return {k: got[k] for k in ("number", "body", "url")}
+
+    def update_pr_body(self, number, body: str, slug: str | None, root: Path | None) -> None:
+        forge = self._here(root, slug)
+        forge.api("PUT", f"{forge._project}/merge_requests/{int(number)}",
+                  {"description": body}, timeout=30)
+
+    def update_pr_body_shell(self, number, slug: str | None, path) -> str:
+        forge = self._here(None, slug)
+        return (f"glab api -X PUT {forge._project}/merge_requests/{int(number)} "
+                f"-F description=@{shlex.quote(str(path))}")
+
+    def pr_title_here(self) -> None:
+        pr = self.current_pr(Path(".").resolve())
+        if pr and pr.get("title"):
+            print(pr["title"])
+
+    def pr_api(self) -> GitLabPrApi:
+        return GitLabPrApi(self)
+
+    def issue(self, number: int, slug: str | None, fields: str) -> dict:
+        """Issue `number`'s `fields`, in `gh issue view --json`'s words, raising on any
+        failure."""
+        forge = self._here(None, slug)
+        it = forge.api("GET", f"{forge._project}/issues/{int(number)}")
+        got = {"number": it.get("iid"), "title": it.get("title") or "",
+               "body": it.get("description") or "", "url": it.get("web_url") or "",
+               "state": it.get("state") or "", "createdAt": it.get("created_at") or "",
+               "author": {"login": (it.get("author") or {}).get("username")},
+               "labels": [{"name": label} for label in it.get("labels") or []]}
+        return {k: got[k] for k in fields.split(",") if k in got}
+
+    def review_threads(self, slug: str, number: int) -> dict:
+        """`{"resolved": [first note id, …], "open": n}` over an MR's resolvable discussions,
+        or `{"error": …}` when GitLab did not answer."""
+        forge = self._here(None, slug)
+        try:
+            found = forge._pages(f"{forge._project}/merge_requests/{int(number)}/discussions")
+        except (GhError, ValueError):
+            return {"error": "GitLab did not answer"}
+        resolved, still_open = [], 0
+        for d in found:
+            first = (d.get("notes") or [{}])[0]
+            if not first.get("resolvable"):
+                continue
+            if first.get("resolved"):
+                resolved.append(first["id"])
+            else:
+                still_open += 1
+        return {"resolved": resolved, "open": still_open}
+
+    # CI: a commit's pipelines, in the shape `gh run list --json` prints, so `preflight.py`
+    # reads them unchanged. The workflow is always `.gitlab-ci.yml`.
+
+    WORKFLOW = ".gitlab-ci.yml"
+    WORKFLOW_NAME = "GitLab CI pipeline"
+
+    #: A pipeline's status as GitHub's (status, conclusion). `manual` is a pipeline stopped
+    #: at a blocking manual job: finished, and not green. `skipped` says nothing of the code.
+    _STATES = {"success": ("completed", "success"), "failed": ("completed", "failure"),
+               "canceled": ("completed", "cancelled"), "skipped": ("completed", "skipped"),
+               "manual": ("completed", "action_required"), "running": ("in_progress", ""),
+               "canceling": ("in_progress", "")}
+
+    @staticmethod
+    def _done(stdout: str = "", code: int = 0, stderr: str = "") -> subprocess.CompletedProcess:
+        return subprocess.CompletedProcess(["glab"], code, stdout, stderr)
+
+    def _as_run(self, p: dict, sha: str = "") -> dict:
+        status, conclusion = self._STATES.get(p.get("status") or "", ("queued", ""))
+        return {"databaseId": p.get("id"), "name": self.WORKFLOW_NAME,
+                "workflowName": self.WORKFLOW_NAME, "status": status, "conclusion": conclusion,
+                "headSha": p.get("sha") or sha,
+                "event": ("pull_request" if p.get("source") == "merge_request_event"
+                          else p.get("source") or "push"),
+                "createdAt": p.get("created_at") or "", "url": p.get("web_url") or "",
+                "headBranch": p.get("ref") or "", "attempt": 1}
+
+    def _runs(self, sha: str) -> list[dict]:
+        forge = self._here()
+        found = forge.api("GET", f"{forge._project}/pipelines?sha={sha}"
+                                 "&order_by=id&sort=desc&per_page=50")
+        return [forge._as_run(p, sha) for p in found] if isinstance(found, list) else []
+
+    def ci_workflows(self) -> subprocess.CompletedProcess:
+        """One workflow when the project has ever run a pipeline. None is "no CI", as an
+        empty `gh workflow list` is: a `.gitlab-ci.yml` in the tree proves less, since a
+        project may keep its CI configuration elsewhere."""
+        forge = self._here()
+        try:
+            seen = forge.api("GET", f"{forge._project}/pipelines?per_page=1")
+        except (GhError, ValueError) as e:
+            return self._done(code=1, stderr=str(e))
+        return self._done(json.dumps(
+            [{"id": self.WORKFLOW, "name": self.WORKFLOW_NAME, "path": self.WORKFLOW,
+              "state": "active"}] if seen else []))
+
+    def ci_runs(self, sha: str, workflow: str | None, fields: str) -> subprocess.CompletedProcess:
+        """The pipelines of `sha`. Any workflow but `.gitlab-ci.yml` is not found, in the
+        words `preflight.py` reads as a misconfigured gate, not as a wait."""
+        if workflow and workflow not in (self.WORKFLOW, self.WORKFLOW_NAME):
+            return self._done(code=1, stderr=f"workflow {workflow!r} not found: GitLab has one "
+                                             f"pipeline per commit, named {self.WORKFLOW}")
+        try:
+            return self._done(json.dumps(self._runs(sha)))
+        except (GhError, ValueError) as e:
+            return self._done(code=1, stderr=str(e))
+
+    def _jobs(self, run_id) -> list[dict]:
+        forge = self._here()
+        return forge._pages(f"{forge._project}/pipelines/{int(run_id)}/jobs")
+
+    def ci_run(self, run_id: int) -> subprocess.CompletedProcess:
+        """A pipeline as `gh run view --json jobs,event,headBranch` prints a run. A job has no
+        steps, so each stands as its own one step, which is where a Sonar job is looked for."""
+        forge = self._here()
+        try:
+            run = forge._as_run(forge.api("GET", f"{forge._project}/pipelines/{int(run_id)}"))
+            jobs = []
+            for j in self._jobs(run_id):
+                status, conclusion = self._STATES.get(j.get("status") or "", ("queued", ""))
+                jobs.append({"name": j.get("name"), "status": status, "conclusion": conclusion,
+                             "url": j.get("web_url"),
+                             "steps": [{"name": j.get("name"), "status": status,
+                                        "conclusion": conclusion}]})
+        except (GhError, ValueError) as e:
+            return self._done(code=1, stderr=str(e))
+        return self._done(json.dumps({"jobs": jobs, "event": run["event"],
+                                      "headBranch": run["headBranch"]}))
+
+    def ci_run_pr(self, run_id: int) -> str:
+        """The MR a merge-request pipeline was for, or "": its ref says so."""
+        forge = self._here()
+        try:
+            ref = forge.api("GET", f"{forge._project}/pipelines/{int(run_id)}").get("ref") or ""
+        except (GhError, ValueError):
+            return ""
+        m = re.match(r"refs/merge-requests/(\d+)/", ref)
+        return m.group(1) if m else ""
+
+    def pr_for_branch(self, branch: str) -> str:
+        try:
+            mrs = self._here()._branch_mrs(branch, "all")
+        except (GhError, ValueError):
+            return ""
+        return str(mrs[0]["iid"]) if mrs else ""
+
+    def ci_runs_of(self, sha: str) -> str:
+        try:
+            return json.dumps(self._runs(sha))
+        except (GhError, ValueError):
+            return ""
+
+    def ci_failed_log(self, run_id) -> str:
+        """The traces of a pipeline's failed jobs, each under its name."""
+        forge = self._here()
+        out = []
+        try:
+            for j in self._jobs(run_id):
+                if j.get("status") == "failed":
+                    trace = forge.glab("GET", f"{forge._project}/jobs/{j['id']}/trace", timeout=30)
+                    out.append(f"==> {j.get('name')}\n{trace}")
+        except (GhError, ValueError, KeyError):
+            pass
+        return "\n".join(out)
+
+
 # GitHub's half of the `(forge, number)` recognisers, beside Bitbucket's.
 GitHubForge.pull_in = classmethod(
     lambda cls, text: (lambda h: (cls.of_slug(h[0]), h[1]) if h else None)(cls.find_pull(text)))
@@ -924,9 +1662,10 @@ GitHubForge.line_anchor = staticmethod(
     lambda line, end=None: f"#L{line}" + (f"-L{end}" if end and end > line else ""))
 
 
-#: Every forge this skill knows, asked in order. GitHub first: its URLs are unambiguous,
-#: while Bitbucket's recognisers are shapes any self-hosted host could have.
-FORGES = (GitHubForge, BitbucketServerForge)
+#: Every forge this skill knows, asked in order. GitHub first: its URLs are unambiguous.
+#: GitLab before Bitbucket: its remotes go by the host's name, while Bitbucket's recognisers
+#: are shapes any self-hosted host could have.
+FORGES = (GitHubForge, GitLabForge, BitbucketServerForge)
 
 
 @functools.lru_cache(maxsize=None)
@@ -960,12 +1699,17 @@ def forge_at(repo_url: str | None):
     """The forge for a repository web root a content file names (`pr.repo`), or None for
     none. GitHub's URL layout for any host until a second forge claims one — which is what
     every such link has always been built with, GitHub Enterprise hosts included — except
-    a URL in Bitbucket's own shape (`…/projects/KEY/repos/r`, `…/users/u/repos/r`), which
-    no GitHub repository has."""
+    a URL on a GitLab host, and one in Bitbucket's own shape (`…/projects/KEY/repos/r`,
+    `…/users/u/repos/r`), which no GitHub repository has."""
     if not repo_url:
         return None
-    if re.match(_BB_ROOT, repo_url):
+    gitlab = re.match(_GL_ROOT, repo_url)
+    if gitlab:
+        return GitLabForge(gitlab["root"])
+    if re.match(_BB_ROOT, repo_url) and not _gl_is_named(repo_url):
         return BitbucketServerForge(re.match(_BB_ROOT, repo_url).group(0))
+    if GitLabForge.project_of(repo_url):
+        return GitLabForge(repo_url.rstrip("/").removesuffix(".git"))
     return GitHubForge(repo_url)
 
 
@@ -980,15 +1724,23 @@ def forge_from_any_remote(remote: str):
 
 
 def api_forge():
-    """The forge whose API is asked: Bitbucket when the working directory's `origin` is on
-    one, else `gh`, which resolves the repository from the working directory itself (so
-    GitHub's instance carries no URL). `forge_for` is cached: one `git` call per process."""
+    """The forge whose API is asked: GitLab or Bitbucket when the working directory's
+    `origin` is on one, else `gh`, which resolves the repository from the working directory
+    itself (so GitHub's instance carries no URL). `forge_for` is cached: one `git` call per
+    process."""
     found = forge_for(Path.cwd().resolve())
-    return found if isinstance(found, BitbucketServerForge) else GitHubForge()
+    return found if isinstance(found, (GitLabForge, BitbucketServerForge)) else GitHubForge()
 
 
 # Recognisers over a URL from anywhere: a content file, an API answer, a click. Each asks
 # every forge in turn.
+
+def same_forge(found, here) -> bool:
+    """Whether `here` can answer about `found`, a forge recognised in a URL: the same kind,
+    on the same instance. `of_slug` would otherwise re-root a project of one instance onto
+    another, where a project of that name may well be a different one."""
+    return type(found) is type(here) and here.of_slug(found.slug).repo_url == found.repo_url
+
 
 def is_pull_url(url) -> bool:
     return any(f.is_pull_url(url) for f in FORGES)

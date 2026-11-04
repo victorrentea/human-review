@@ -118,7 +118,7 @@ POSTED_SUFFIX = ".posted.json"
 REVIEW_MARKER = "<!-- hr:review -->"         # a summary from before rounds were told apart
 MARKER = re.compile(r"<!--\s*hr:([A-Za-z]:[a-z0-9-]+)\s*-->")
 ROUND_LEN = 12
-DISCUSSION = re.compile(r"discussion_r(\d+)")
+DISCUSSION = re.compile(r"(?:discussion_r|#note_)(\d+)")
 
 
 def review_marker(round_id: str | None) -> str:
@@ -840,7 +840,7 @@ def plan(payload: dict, diff: Diff, repo: str, pr: int,
 #: What a commit comment's lines are counted against: GitHub's diff of the commit with its
 #: first parent, three lines of context.
 NOTE_CONTEXT = 3
-COMMIT_COMMENT = re.compile(r"#commitcomment-(\d+)$")
+COMMIT_COMMENT = re.compile(r"#(?:commitcomment-|note_)(\d+)$")
 
 
 def is_fix(c: dict) -> bool:
@@ -1077,16 +1077,16 @@ def plain_reason(e: Exception) -> str:
     text = str(e)
     status = getattr(e, "status", None)
     if is_transient(e):
-        return "GitHub timed out"
-    if status == 422:
-        return "GitHub refused a comment (a line it does not show in the diff?)"
+        return f"{FORGE.name} timed out"
+    if status in (400, 422):
+        return f"{FORGE.name} refused a comment (a line it does not show in the diff?)"
     if status in (401, 403) and "rate limit" not in text.lower():
-        return "GitHub did not accept your gh login (run `gh auth status`)"
+        return f"{FORGE.name} did not accept your {FORGE.auth_hint}"
     if "rate limit" in text.lower() or status == 429:
-        return "GitHub asked us to slow down"
+        return f"{FORGE.name} asked us to slow down"
     if status == 404:
-        return "GitHub could not find the pull request"
-    return "GitHub refused the request"
+        return f"{FORGE.name} could not find the pull request"
+    return f"{FORGE.name} refused the request"
 
 
 def _markers(comments: list[dict]) -> dict[str, list[dict]]:
@@ -1152,7 +1152,7 @@ def execute(p: Plan, gh, repo: str, pr: int, posted_path: Path, meta: dict,
                 error = e
                 break
             replans += 1
-            print(f"  ! {call.why}: {plain_reason(e)} — checking what GitHub made anyway",
+            print(f"  ! {call.why}: {plain_reason(e)} — checking what {FORGE.name} made anyway",
                   file=sys.stderr)
             settle(gh, repo, pr, call, sleep)
             try:
@@ -1252,7 +1252,7 @@ def record_state(p: Plan, gh, repo: str, pr: int, posted_path: Path, meta: dict,
         if cid.startswith(PILES["fixed"] + ":") and (c or {}).get("mode") != "commit" \
                 and (c or {}).get("html_url"):
             retired[cid] = {**c, "why": "auto-fixes are notes on their fix commits now; "
-                                        "this PR comment was left on GitHub"}
+                                        f"this PR comment was left on {FORGE.name}"}
     if retired:
         record["retired"] = retired
     ours = {r.cid for r in p.resolved}
@@ -1266,17 +1266,17 @@ def record_state(p: Plan, gh, repo: str, pr: int, posted_path: Path, meta: dict,
         shas = sorted({n.sha[:8] for n in p.fixes if n.sha})
         on = (f" — {len(p.fixes)} of them notes on fix commit{'' if len(shas) == 1 else 's'} "
               + ", ".join(shas) if shas else "")
-        msg = (f"All {total} comments are on GitHub PR #{pr}{on}." if sent else
-               f"All {total} comments were already on GitHub PR #{pr}{on}.")
+        msg = (f"All {total} comments are on {FORGE.name} PR #{pr}{on}." if sent else
+               f"All {total} comments were already on {FORGE.name} PR #{pr}{on}.")
     else:
-        why = plain_reason(error) if error else "Not everything reached GitHub"
+        why = plain_reason(error) if error else f"Not everything reached {FORGE.name}"
         left = total - present
         msg = (f"{why} — {present} of {total} posted; click Retry to post the remaining "
-               f"{left}." if left else f"{why} — all {total} are on GitHub, but the last "
+               f"{left}." if left else f"{why} — all {total} are on {FORGE.name}, but the last "
                "step failed; click Retry.")
         record["error"] = str(error) if error else None
     if dups:
-        msg += (f" {len(dups)} appear more than once on GitHub — left as they are; "
+        msg += (f" {len(dups)} appear more than once on {FORGE.name} — left as they are; "
                 "delete the extra copies by hand.")
     record["message"] = msg
     posted_path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -1599,7 +1599,7 @@ def main(argv=None) -> int:
     local = git(root, "rev-parse", "HEAD").strip()
     if local != head:
         print(f"note: local HEAD {local[:8]} is not the PR head {head[:8]} — anchoring on the "
-              "PR head, which is what GitHub shows", file=sys.stderr)
+              f"PR head, which is what {FORGE.name} shows", file=sys.stderr)
     # The auto-fixes, as notes on their fix commits — which have to be on the PR to be
     # commented on.
     fixes = resolve_fixes(payload, root, repo, a.points)

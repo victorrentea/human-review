@@ -738,10 +738,11 @@ def test_without_a_github_remote_a_deleted_test_gets_no_guessed_url(tmp_path):
     ("https://github.com/acme/clinic.git", "https://github.com/acme/clinic"),
     ("https://github.com/acme/clinic", "https://github.com/acme/clinic"),
     ("ssh://git@github.com/acme/clinic.git\n", "https://github.com/acme/clinic"),
-    ("https://gitlab.com/acme/clinic.git", ""),
+    ("https://gitlab.com/acme/clinic.git", "https://gitlab.com/acme/clinic"),
+    ("https://code.example.org/acme/clinic.git", ""),
     ("", ""),
 ])
-def test_only_a_github_remote_becomes_a_blob_url(remote, repo):
+def test_only_a_known_forge_s_remote_becomes_a_blob_url(remote, repo):
     assert tc.forge_repo(remote) == repo
 
 

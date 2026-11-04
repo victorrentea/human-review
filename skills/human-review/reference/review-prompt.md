@@ -24,7 +24,7 @@ something is ambiguous, decide, and record the decision.
   only the ones since the last review. `git log --oneline @@MERGE_BASE@@..HEAD` lists them.
 - the feature's implementation commit is `@@IMPLEMENTATION@@`
 - the ticket: `@@TICKET@@` (read it with `gh issue view` when it is a GitHub issue and
-  `gh` answers; carry on without it when it does not)
+  `gh` answers, `glab issue view` on GitLab; carry on without it when it does not)
 - this session's id is `@@SESSION@@`
 
 **The previous record, as input — not as an answer.** The review this one replaces is in

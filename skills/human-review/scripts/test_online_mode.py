@@ -160,6 +160,19 @@ def test_online_greys_what_needs_the_mac_and_sends_references_to_github(browser)
         == "Copied — paste it in a terminal"
 
 
+def test_a_gitlab_page_sends_references_to_gitlab_in_its_own_spelling(browser, monkeypatch):
+    """`#L12-14`, not GitHub's `#L12-L14` nor Bitbucket's `#12-14`, stamped by `commit_stamp`."""
+    blob = "https://gitlab.com/g/s/p/-/blob/abc"
+    monkeypatch.setitem(globals(), "BODY", BODY.replace(
+        f'data-hr-blob="{BLOB}"',
+        f'data-hr-blob="{blob}" data-hr-blob-l="L-" data-hr-forge="GitLab"').replace(
+        ">A.java:12</a>", ">A.java:12-14</a>"))
+    page, errors, _ = _open(browser, "https://victorrentea.github.io/human-review/demo/review.html")
+    assert errors == []
+    s = page.evaluate(STATE)
+    assert s["src"] == f"{blob}/src/A.java#L12-14" and s["srcTip"] == "Open on GitLab: src/A.java"
+
+
 def test_served_nothing_is_greyed(browser):
     page, errors, probes = _open(browser, "http://127.0.0.1:9/review.html",
                                  probe='{"humanReview": 1, "token": "t"}')
