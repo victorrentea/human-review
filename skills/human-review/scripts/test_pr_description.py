@@ -116,6 +116,7 @@ def test_the_page_says_the_merge_risk_in_the_words_a_push_would_write():
     """Two copies of one sentence, in two scripts that do not import each other."""
     spec_ = importlib.util.spec_from_file_location("ppc_md", HERE / "push-pr-comments.py")
     ppc = importlib.util.module_from_spec(spec_)
+    sys.modules[spec_.name] = ppc               # its dataclasses look themselves up there
     spec_.loader.exec_module(ppc)
     for risk in ({"door": "two-way"}, {"door": "one-way", "why": "w"},
                  {"door": "two-way", "blast": "visits API"},
