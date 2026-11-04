@@ -1,1 +1,17 @@
-  = diagrams: unchanged, 34.6 s saved
+  * diagrams -> data,packages
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/puml-diff.sh 215038746359a252cf10e12c2f02bbab2a7f4286 .human-review/assets/diagrams
+[puml-diff] petclinic-backend/docs/generated/DB.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-backend_docs_generated_DB.diff.puml
+[puml-diff] petclinic-backend/docs/generated/DomainModel.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-backend_docs_generated_DomainModel.diff.puml
+[puml-diff] petclinic-frontend/docs/frontend-packages.puml (structural, modified) -> .human-review/assets/diagrams/petclinic-frontend_docs_frontend-packages.diff.puml
+[puml-diff] petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.diff.puml
+[puml-diff] petclinic-test/generated/VisitTest.java.create-with-unknown-vet-not-found.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_VisitTest.java.create-with-unknown-vet-not-found.genseq.diff.puml
+[puml-diff] petclinic-test/generated/VisitTest.java.create-without-vet.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_VisitTest.java.create-without-vet.genseq.diff.puml
+[puml-diff] petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.diff.puml
+[puml-diff] petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml (sequence, modified) -> .human-review/assets/diagrams/petclinic-test_generated_owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.diff.puml
+[puml-diff] petclinic-test/generated/visit-vet.feature.book-a-visit-attended-by-a-vet-and-see-the-vet-on-the-owner-page-and-on-all-visits.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_visit-vet.feature.book-a-visit-attended-by-a-vet-and-see-the-vet-on-the-owner-page-and-on-all-visits.genseq.diff.puml
+[puml-diff] petclinic-test/generated/visit-vet.feature.book-a-visit-with-nobody-yet-as-its-vet-and-see-it-read-no-vet-everywhere.genseq.puml (sequence, added) -> .human-review/assets/diagrams/petclinic-test_generated_visit-vet.feature.book-a-visit-with-nobody-yet-as-its-vet-and-see-it-read-no-vet-everywhere.genseq.diff.puml
+[puml-diff] 10 diagram(s) -> .human-review/assets/diagrams (see MANIFEST.tsv)
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base 215038746359a252cf10e12c2f02bbab2a7f4286 --diagram petclinic-backend/docs/ConceptualModel.drawio.png --concepts petclinic-backend/docs/generated/DomainModel.puml --out-dir .human-review/assets --name conceptual --redraw 'python3 petclinic-backend/docs/scripts/conceptual-model-patch.py' --tested-against 'Java Domain Model'
+.human-review/assets/conceptual-{original,new,diff}.svg  (added 0 boxes, 1 line · removed 0 boxes, 0 lines · 0 changed · 5 moved, rendered by drawio)
+  + edge Vet-Visit — green (new)
+  8 concept(s) linked to their class

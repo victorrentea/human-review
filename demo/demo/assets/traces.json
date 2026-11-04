@@ -16,11 +16,11 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 868,
+      "duration": 483,
       "steps": [],
       "error": "",
       "trace": "assets/traces/001-choose-the-vet-who-attends-a-visit-book-a-visit-attended-by.zip",
-      "bytes": 462253
+      "bytes": 374657
     },
     {
       "title": "Book a visit with nobody yet as its vet, and see it read \"No vet\" everywhere",
@@ -33,11 +33,11 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 1181,
+      "duration": 444,
       "steps": [],
       "error": "",
       "trace": "assets/traces/002-choose-the-vet-who-attends-a-visit-book-a-visit-with-nobody.zip",
-      "bytes": 416220
+      "bytes": 321406
     },
     {
       "title": "adds an owner from the New Owner form and finds them by last name",
@@ -48,59 +48,59 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 1498,
+      "duration": 873,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 426
+          "duration": 333
         },
         {
           "title": "Navigate to \"/owners/add\"",
-          "duration": 205
+          "duration": 167
         },
         {
           "title": "Wait for selector locator('h2:has-text(\"New Owner\")')",
-          "duration": 76
+          "duration": 12
         },
         {
           "title": "Fill \"Ada\" locator('#firstName')",
-          "duration": 40
+          "duration": 18
         },
         {
-          "title": "Fill \"Acceptancehyfyhujt\" locator('#lastName')",
-          "duration": 15
+          "title": "Fill \"Acceptancebjtcrkya\" locator('#lastName')",
+          "duration": 7
         },
         {
           "title": "Fill \"110 Analytical Engine Way\" locator('#address')",
-          "duration": 10
+          "duration": 5
         },
         {
           "title": "Fill \"London\" locator('#city')",
-          "duration": 10
+          "duration": 5
         },
         {
           "title": "Fill \"6085551023\" locator('#telephone')",
-          "duration": 13
+          "duration": 4
         },
         {
           "title": "Click locator('button:has-text(\"Add Owner\")')",
-          "duration": 60
-        },
-        {
-          "title": "Expect \"toHaveURL\"",
-          "duration": 361
-        },
-        {
-          "title": "Fill \"Acceptancehyfyhujt\" locator('#lastName')",
-          "duration": 8
-        },
-        {
-          "title": "Click locator('button:has-text(\"Find Owner\")')",
           "duration": 41
         },
         {
+          "title": "Expect \"toHaveURL\"",
+          "duration": 112
+        },
+        {
+          "title": "Fill \"Acceptancebjtcrkya\" locator('#lastName')",
+          "duration": 4
+        },
+        {
+          "title": "Click locator('button:has-text(\"Find Owner\")')",
+          "duration": 39
+        },
+        {
           "title": "Expect \"toHaveCount\" locator('td.ownerFullName')",
-          "duration": 12
+          "duration": 3
         },
         {
           "title": "Expect \"toContainText\" locator('td.ownerFullName').first()",
@@ -108,12 +108,12 @@
         },
         {
           "title": "After Hooks",
-          "duration": 384
+          "duration": 262
         }
       ],
       "error": "",
       "trace": "assets/traces/003-adds-an-owner-from-the-new-owner-form-and-finds-them-by-last.zip",
-      "bytes": 616894
+      "bytes": 495891
     },
     {
       "title": "edits an owner from their own page and the change sticks",
@@ -124,112 +124,112 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 1239,
+      "duration": 869,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 138
+          "duration": 97
         },
         {
           "title": "Navigate to \"/owners/add\"",
-          "duration": 165
+          "duration": 104
         },
         {
           "title": "Wait for selector locator('h2:has-text(\"New Owner\")')",
-          "duration": 14
+          "duration": 8
         },
         {
           "title": "Fill \"Ada\" locator('#firstName')",
-          "duration": 9
-        },
-        {
-          "title": "Fill \"Acceptancexectwamn\" locator('#lastName')",
           "duration": 6
         },
         {
-          "title": "Fill \"110 Analytical Engine Way\" locator('#address')",
-          "duration": 8
-        },
-        {
-          "title": "Fill \"London\" locator('#city')",
-          "duration": 6
-        },
-        {
-          "title": "Fill \"6085551023\" locator('#telephone')",
-          "duration": 6
-        },
-        {
-          "title": "Click locator('button:has-text(\"Add Owner\")')",
-          "duration": 40
-        },
-        {
-          "title": "Expect \"toHaveURL\"",
-          "duration": 128
-        },
-        {
-          "title": "Fill \"Acceptancexectwamn\" locator('#lastName')",
-          "duration": 7
-        },
-        {
-          "title": "Click locator('button:has-text(\"Find Owner\")')",
-          "duration": 40
-        },
-        {
-          "title": "Expect \"toHaveCount\" locator('td.ownerFullName')",
-          "duration": 4
-        },
-        {
-          "title": "Click locator('td.ownerFullName').first().locator('a')",
-          "duration": 81
-        },
-        {
-          "title": "Wait for selector locator('h2:has-text(\"Owner Information\")')",
+          "title": "Fill \"Acceptanceciswnpsk\" locator('#lastName')",
           "duration": 3
         },
         {
-          "title": "Click locator('button:has-text(\"Edit Owner\")')",
-          "duration": 50
+          "title": "Fill \"110 Analytical Engine Way\" locator('#address')",
+          "duration": 3
         },
         {
-          "title": "Wait for selector locator('h2:has-text(\"Owner\")').first()",
-          "duration": 6
+          "title": "Fill \"London\" locator('#city')",
+          "duration": 3
         },
         {
-          "title": "Expect \"toHaveValue\" locator('#city')",
-          "duration": 6
+          "title": "Fill \"6085551023\" locator('#telephone')",
+          "duration": 3
         },
         {
-          "title": "Fill \"Turin\" locator('#city')",
-          "duration": 8
-        },
-        {
-          "title": "Click locator('button:has-text(\"Update Owner\")')",
-          "duration": 42
-        },
-        {
-          "title": "Wait for selector locator('h2:has-text(\"Owner Information\")')",
+          "title": "Click locator('button:has-text(\"Add Owner\")')",
           "duration": 29
         },
         {
+          "title": "Expect \"toHaveURL\"",
+          "duration": 104
+        },
+        {
+          "title": "Fill \"Acceptanceciswnpsk\" locator('#lastName')",
+          "duration": 3
+        },
+        {
+          "title": "Click locator('button:has-text(\"Find Owner\")')",
+          "duration": 38
+        },
+        {
+          "title": "Expect \"toHaveCount\" locator('td.ownerFullName')",
+          "duration": 2
+        },
+        {
+          "title": "Click locator('td.ownerFullName').first().locator('a')",
+          "duration": 100
+        },
+        {
+          "title": "Wait for selector locator('h2:has-text(\"Owner Information\")')",
+          "duration": 2
+        },
+        {
+          "title": "Click locator('button:has-text(\"Edit Owner\")')",
+          "duration": 32
+        },
+        {
+          "title": "Wait for selector locator('h2:has-text(\"Owner\")').first()",
+          "duration": 2
+        },
+        {
+          "title": "Expect \"toHaveValue\" locator('#city')",
+          "duration": 105
+        },
+        {
+          "title": "Fill \"Turin\" locator('#city')",
+          "duration": 5
+        },
+        {
+          "title": "Click locator('button:has-text(\"Update Owner\")')",
+          "duration": 33
+        },
+        {
+          "title": "Wait for selector locator('h2:has-text(\"Owner Information\")')",
+          "duration": 22
+        },
+        {
           "title": "Expect \"toContainText\" locator('table.table').first()",
-          "duration": 7
+          "duration": 2
         },
         {
           "title": "Reload",
-          "duration": 85
+          "duration": 41
         },
         {
           "title": "Expect \"toContainText\" locator('table.table').first()",
-          "duration": 24
+          "duration": 6
         },
         {
           "title": "After Hooks",
-          "duration": 318
+          "duration": 111
         }
       ],
       "error": "",
       "trace": "assets/traces/004-edits-an-owner-from-their-own-page-and-the-change-sticks.zip",
-      "bytes": 573804
+      "bytes": 557456
     },
     {
       "title": "Add a visit to an existing pet from the owner detail page",
@@ -240,60 +240,60 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 11197,
+      "duration": 9524,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 239
+          "duration": 105
         },
         {
           "title": "Navigate to \"/owners/1\"",
-          "duration": 171
+          "duration": 85
         },
         {
           "title": "Wait for selector locator('h2:has-text(\"Owner Information\")')",
-          "duration": 45
+          "duration": 10
         },
         {
           "title": "Click locator('app-pet-list').first().locator('button:has-text(\"Add Visit\")')",
-          "duration": 305
+          "duration": 62
         },
         {
           "title": "Wait for selector locator('h2:has-text(\"New Visit\")')",
-          "duration": 101
+          "duration": 3
         },
         {
           "title": "Fill \"2026-05-12\" locator('input[name=\"date\"]')",
-          "duration": 153
+          "duration": 5
         },
         {
-          "title": "Fill \"Annual check-up 1792763686463\" locator('input#description')",
-          "duration": 51
+          "title": "Fill \"Annual check-up 1793808949823\" locator('input#description')",
+          "duration": 4
         },
         {
           "title": "Click locator('button[type=\"submit\"]:has-text(\"Add Visit\")')",
-          "duration": 272
+          "duration": 36
         },
         {
           "title": "Wait for navigation",
-          "duration": 25
+          "duration": 76
         },
         {
           "title": "Wait for selector locator('h2:has-text(\"Owner Information\")')",
-          "duration": 26
+          "duration": 2
         },
         {
-          "title": "Expect \"toBeVisible\" locator('app-pet-list').first().locator('app-visit-list tr').filter({ hasText: '2026-05-12' }).filter({ hasText: 'Annual check-up 1792763686463' })",
-          "duration": 123
+          "title": "Expect \"toBeVisible\" locator('app-pet-list').first().locator('app-visit-list tr').filter({ hasText: '2026-05-12' }).filter({ hasText: 'Annual check-up 1793808949823' })",
+          "duration": 107
         },
         {
           "title": "After Hooks",
-          "duration": 9532
+          "duration": 8997
         }
       ],
       "error": "",
       "trace": "assets/traces/005-add-a-visit-to-an-existing-pet-from-the-owner-detail-page.zip",
-      "bytes": 618134
+      "bytes": 400275
     },
     {
       "title": "starts on an empty database, the reference pet types still there",
@@ -306,15 +306,15 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 68,
+      "duration": 42,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 55
+          "duration": 34
         },
         {
           "title": "Expect \"toEqual\"",
-          "duration": 1
+          "duration": 0
         },
         {
           "title": "Expect \"toEqual\"",
@@ -322,12 +322,12 @@
         },
         {
           "title": "After Hooks",
-          "duration": 3
+          "duration": 2
         }
       ],
       "error": "",
       "trace": "assets/traces/006-a-test-that-declares-no-db-fixture-starts-on-an-empty-databa.zip",
-      "bytes": 4106
+      "bytes": 4098
     },
     {
       "title": "never sees what the test before it wrote",
@@ -340,11 +340,11 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 44,
+      "duration": 28,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 38
+          "duration": 24
         },
         {
           "title": "Expect \"toEqual\"",
@@ -352,12 +352,12 @@
         },
         {
           "title": "After Hooks",
-          "duration": 5
+          "duration": 1
         }
       ],
       "error": "",
       "trace": "assets/traces/007-a-test-that-declares-no-db-fixture-never-sees-what-the-test.zip",
-      "bytes": 3836
+      "bytes": 3837
     },
     {
       "title": "starts on the seed: owner 1 is Kevin McCallister",
@@ -370,11 +370,11 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 80,
+      "duration": 65,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 39
+          "duration": 33
         },
         {
           "title": "Expect \"toBe\"",
@@ -387,7 +387,7 @@
       ],
       "error": "",
       "trace": "assets/traces/008-a-test-that-declares-the-default-fixture-starts-on-the-seed.zip",
-      "bytes": 3855
+      "bytes": 3857
     },
     {
       "title": "POST /__reset is not a route this application serves",
@@ -400,24 +400,24 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 22,
+      "duration": 13,
       "steps": [
         {
           "title": "Before Hooks",
           "duration": 1
         },
         {
-          "title": "http://127.0.0.1:64471/__reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:64471 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
+          "title": "http://127.0.0.1:59612/__reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:59612 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
           "duration": 0
         },
         {
           "title": "After Hooks",
-          "duration": 3
+          "duration": 2
         }
       ],
       "error": "",
       "trace": "assets/traces/009-the-backend-offers-no-way-to-wipe-its-data-post-reset-is-not.zip",
-      "bytes": 2222
+      "bytes": 2221
     },
     {
       "title": "POST /api/__reset is not a route this application serves",
@@ -430,24 +430,24 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 8,
+      "duration": 4,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 2
+          "duration": 1
         },
         {
-          "title": "http://127.0.0.1:64471/api/__reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:64471 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
+          "title": "http://127.0.0.1:59612/api/__reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:59612 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
           "duration": 0
         },
         {
           "title": "After Hooks",
-          "duration": 2
+          "duration": 1
         }
       ],
       "error": "",
       "trace": "assets/traces/010-the-backend-offers-no-way-to-wipe-its-data-post-api-reset-is.zip",
-      "bytes": 2231
+      "bytes": 2223
     },
     {
       "title": "POST /reset is not a route this application serves",
@@ -460,14 +460,14 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 11,
+      "duration": 5,
       "steps": [
         {
           "title": "Before Hooks",
           "duration": 1
         },
         {
-          "title": "http://127.0.0.1:64471/reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:64471 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
+          "title": "http://127.0.0.1:59612/reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:59612 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
           "duration": 0
         },
         {
@@ -477,7 +477,7 @@
       ],
       "error": "",
       "trace": "assets/traces/011-the-backend-offers-no-way-to-wipe-its-data-post-reset-is-not.zip",
-      "bytes": 2222
+      "bytes": 2221
     },
     {
       "title": "POST /api/reset is not a route this application serves",
@@ -490,14 +490,14 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 7,
+      "duration": 4,
       "steps": [
         {
           "title": "Before Hooks",
           "duration": 1
         },
         {
-          "title": "http://127.0.0.1:64471/api/reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:64471 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
+          "title": "http://127.0.0.1:59612/api/reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:59612 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
           "duration": 0
         },
         {
@@ -507,7 +507,7 @@
       ],
       "error": "",
       "trace": "assets/traces/012-the-backend-offers-no-way-to-wipe-its-data-post-api-reset-is.zip",
-      "bytes": 2231
+      "bytes": 2223
     },
     {
       "title": "POST /actuator/reset is not a route this application serves",
@@ -520,24 +520,24 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 7,
+      "duration": 5,
       "steps": [
         {
           "title": "Before Hooks",
           "duration": 1
         },
         {
-          "title": "http://127.0.0.1:64471/actuator/reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:64471 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
+          "title": "http://127.0.0.1:59612/actuator/reset answered 404. A data-reset endpoint must never live in the backend \u2014 it belongs to the review environment's sidecar, which cannot be deployed with the app. (If http://127.0.0.1:59612 is the frontend rather than the backend, set BACKEND_URL: nginx routes /__reset there on purpose.)",
           "duration": 0
         },
         {
           "title": "After Hooks",
-          "duration": 3
+          "duration": 1
         }
       ],
       "error": "",
       "trace": "assets/traces/013-the-backend-offers-no-way-to-wipe-its-data-post-actuator-res.zip",
-      "bytes": 2228
+      "bytes": 2221
     },
     {
       "title": "Filter owners by a case-sensitive prefix of the last name",
@@ -550,11 +550,11 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 582,
+      "duration": 379,
       "steps": [],
       "error": "",
       "trace": "assets/traces/014-search-owners-by-last-name-filter-owners-by-a-case-sensitive.zip",
-      "bytes": 430843
+      "bytes": 389022
     },
     {
       "title": "Searching with an empty last name lists every owner",
@@ -567,11 +567,11 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 551,
+      "duration": 294,
       "steps": [],
       "error": "",
       "trace": "assets/traces/015-search-owners-by-last-name-searching-with-an-empty-last-name.zip",
-      "bytes": 400674
+      "bytes": 344476
     },
     {
       "title": "shows all visits on initial load",
@@ -584,40 +584,40 @@
       "status": "passed",
       "outcome": "expected",
       "retry": 0,
-      "duration": 1469,
+      "duration": 736,
       "steps": [
         {
           "title": "Before Hooks",
-          "duration": 140
+          "duration": 121
         },
         {
           "title": "Navigate to \"/visits\"",
-          "duration": 213
+          "duration": 109
         },
         {
           "title": "Wait for selector locator('h2:has-text(\"Visits\")')",
-          "duration": 29
+          "duration": 21
         },
         {
           "title": "Wait for function",
-          "duration": 16
+          "duration": 8
         },
         {
           "title": "Query count locator('#visitsTable tbody tr')",
-          "duration": 4
+          "duration": 2
         },
         {
           "title": "Expect \"toEqual\"",
-          "duration": 1
+          "duration": 0
         },
         {
           "title": "After Hooks",
-          "duration": 336
+          "duration": 225
         }
       ],
       "error": "",
       "trace": "assets/traces/016-visits-page-shows-all-visits-on-initial-load.zip",
-      "bytes": 264861
+      "bytes": 204172
     }
   ]
 }

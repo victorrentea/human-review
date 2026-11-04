@@ -380,6 +380,14 @@
       ]
     },
     "fields": {
+      "petclinic-backend/src/main/java/victor/training/petclinic/TransactionOutcomeTracing.java": [
+        {
+          "line": 24,
+          "name": "OUTCOME",
+          "type": "AttributeKey<String>",
+          "text": "static final AttributeKey<String> OUTCOME = AttributeKey.stringKey(\"transaction.outcome\");"
+        }
+      ],
       "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java": [
         {
           "line": 29,
@@ -1280,6 +1288,26 @@
           "text": "@Autowired\n    JdbcTemplate jdbc;"
         }
       ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/TransactionOutcomeTracingTest.java": [
+        {
+          "line": 30,
+          "name": "transactionManager",
+          "type": "PlatformTransactionManager",
+          "text": "@Autowired\n    PlatformTransactionManager transactionManager;"
+        },
+        {
+          "line": 32,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 35,
+          "name": "span",
+          "type": "Span",
+          "text": "final Span span = mock(Span.class);"
+        }
+      ],
       "petclinic-backend/src/test/java/victor/training/petclinic/functional/HttpContext.java": [
         {
           "line": 15,
@@ -1645,7 +1673,7 @@
           "line": 33,
           "name": "adheresToDiagram",
           "type": "ArchRule",
-          "text": "@ArchTest\n    static final ArchRule adheresToDiagram = classes().should(adhereToPlantUmlDiagram(\n            DIAGRAM,\n            consideringOnlyDependenciesInAnyPackage(\"..petclinic..\")));"
+          "text": "@ArchTest\n    static final ArchRule adheresToDiagram = classes()\n        .should(adhereToPlantUmlDiagram(\n            DIAGRAM,\n            consideringOnlyDependenciesInAnyPackage(\"..petclinic..\")));"
         }
       ],
       "petclinic-backend/src/test/java/victor/training/petclinic/mapper/MapperTest.java": [

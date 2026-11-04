@@ -1,20 +1,26 @@
 {
-  "base": "e27182cbe767ce1f44c6812cda555d5b11cd653a",
+  "base": "215038746359a252cf10e12c2f02bbab2a7f4286",
   "totals": {
     "added": 22,
     "modified": 0,
     "deleted": 0,
-    "unchanged": 26,
+    "unchanged": 27,
     "commented": 0,
     "disabled": 0,
     "reenabled": 0,
-    "runningBefore": 26,
-    "runningAfter": 48,
+    "runningBefore": 27,
+    "runningAfter": 49,
     "gained": 22,
     "lost": 0,
     "viaHelper": 0
   },
   "tests": [
+    {
+      "name": "diagramPackagesMatchCodePackages",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/PackagesArchTest.java",
+      "status": "unchanged",
+      "line": 40
+    },
     {
       "name": "lists_visits_of_authenticated_owner",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java",

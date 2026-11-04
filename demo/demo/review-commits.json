@@ -2,7 +2,7 @@
  "base": "215038746359a252cf10e12c2f02bbab2a7f4286",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 110,
+ "commits": 114,
  "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
@@ -51,7 +51,11 @@
   "ec9fac9037d7ef714362324e24bf5ed57e8f612f",
   "7ac6fd59aa81873b46749629cfcf7fe44abe28d1",
   "640816dd9a0b500de259348512d4762dfdba02bd",
-  "8373788e5da76160d0124ba621577154df0183dd"
+  "8373788e5da76160d0124ba621577154df0183dd",
+  "9e54ed7c4b8bbe18eee2452898a0cf6c3dc2f5ae",
+  "3bad25fb1cc5fb94466cb511ec45014918f3775c",
+  "085415a7b3bc8386051d0c92cbe50cde0e5c79f6",
+  "788c63dc91c60b1e5f57f17f0eee0360b9c4b447"
  ],
  "after_detail": [
   {
@@ -316,6 +320,30 @@
    "sha": "8373788e5da76160d0124ba621577154df0183dd",
    "when": "2026-10-27T16:26:20+02:00",
    "subject": "review-points: base moved past main's e27182cb (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "9e54ed7c4b8bbe18eee2452898a0cf6c3dc2f5ae",
+   "when": "2026-10-30T00:04:33+02:00",
+   "subject": "Merge main: tx frames say how they ended, Tempo without Docker",
+   "auto_fix": false
+  },
+  {
+   "sha": "3bad25fb1cc5fb94466cb511ec45014918f3775c",
+   "when": "2026-10-30T00:04:45+02:00",
+   "subject": "review-points: base moved past main's 6ebaae49 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "085415a7b3bc8386051d0c92cbe50cde0e5c79f6",
+   "when": "2026-10-30T00:12:04+02:00",
+   "subject": "Merge main: [committed] beside a tx frame is grey from the diagram header",
+   "auto_fix": false
+  },
+  {
+   "sha": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
+   "when": "2026-10-30T00:12:04+02:00",
+   "subject": "review-points: base moved past main's 21503874 (merged)",
    "auto_fix": false
   }
  ],
