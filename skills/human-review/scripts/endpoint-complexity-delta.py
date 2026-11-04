@@ -108,6 +108,22 @@ def entry_source(flow_method: str):
     return path, 1
 
 
+def class_source(member: str):
+    """Where the class of a flow method is declared, as (absolute path, 1-based line) — or
+    None if not resolvable. Looked up in the file `entry_source` found the method in, so a
+    nested class lands on its own line and every project layout that resolves a method
+    resolves its class."""
+    found = entry_source(member)
+    if found is None:
+        return None
+    name = member.partition("#")[0].rsplit(".", 1)[-1]
+    decl = re.compile(r"\b(?:class|interface|record|enum)\s+" + re.escape(name) + r"\b")
+    for n, line in enumerate(found[0].read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip().startswith(("//", "*", "/*")) and decl.search(line):
+            return found[0], n
+    return found[0], 1
+
+
 def load(path: Path):
     entries = json.loads(path.read_text(encoding="utf-8"))
     for e in entries:
@@ -248,12 +264,6 @@ def graph_nodes(cur, old):
 # this shows the costliest and folds the rest into "+N" — never one that leads to what the
 # branch changed, which is the one path the reader opened the row for.
 GRAPH_KIDS = 6
-# A class is one faded container, tinted in its class's colour, so the next mapper over
-# reads as another file at a glance. The tint is faint and the methods inside are solid
-# cards, so the hue frames a group and never competes with the scores. None of the hues is
-# green, red or the link blue, which already mean added, removed and open — and the method
-# frames keep those three to themselves.
-CLASS_HUES = 6
 
 
 def _split(key: str) -> tuple[str, str]:
@@ -276,11 +286,16 @@ def _graph(nodes, groups=()) -> tuple[str, set[str]]:
     A box used to be a method, with its class written on top — so a mapper whose three
     methods were all in the flow appeared three times, and the reader counted classes
     that were not there (Victor, 20 Oct 2026: "boxes mean classes, not methods — why does
-    PetMapper appear three times?"). Now the class is the container, named once — with no ↗:
-    the class as a whole is not where a reviewer goes (Victor, 20 Oct 2026: "it's not
-    interesting to navigate to the actual PetMapper class"), its methods are — and the method is the thing that stands out: the box is a faint tint, the methods
-    are cards. A call inside the class is an arrow between two blocks of the same box; a
-    call into another class crosses to that class's box.
+    PetMapper appear three times?"). Now the class is the container, named once, and the
+    method is the thing that stands out: the box is a faint neutral tint, the methods are
+    cards. Every box wears the same tint: a hue per class said nothing the name above it
+    did not, and made the page a rainbow (Victor, 4 Nov 2026). A call inside the class is an
+    arrow between two blocks of the same box; a call into another class crosses to that
+    class's box.
+
+    Both names are the way into the editor, the class's and the method's alike, and both
+    underline under the pointer (Victor, 4 Nov 2026, on the ↗ they used to wear: "no longer
+    needed").
 
     Each method appears once, under whoever reached it first — the same breadth-first
     order the score is summed in, so the graph and the number can never disagree about
@@ -362,15 +377,17 @@ def _graph(nodes, groups=()) -> tuple[str, set[str]]:
     ranks = sorted(set(col.values()))
     columns: list[list[str]] = [[c for c in classes if col[c] == r] for r in ranks]
     idx = {k: i for i, k in enumerate(order)}
-    hues = {c: i % CLASS_HUES for i, c in enumerate(classes)}
 
     def box(c) -> str:
         name = c.rsplit(".", 1)[-1]
         blocks = "".join(_node(by[k], lines_of.get(k), idx[k], folded.get(k), by)
                          for k in order if owner(k) == c)
-        return (f'<div class="cg-k cg-h{hues[c]}" data-k="{html.escape(name)}">'
-                f'<div class="cg-kh"><span class="cg-c"{_tip(c)}>{html.escape(name)}</span>'
-                f'</div><div class="cg-ms">{blocks}</div></div>')
+        found = class_source(next(k for k in order if owner(k) == c))
+        label = (f'<a class="cg-c" href="vscode://file/{found[0]}:{found[1]}:1"{_tip(c)}>'
+                 f'{html.escape(name)}</a>' if found else
+                 f'<span class="cg-c"{_tip(c)}>{html.escape(name)}</span>')
+        return (f'<div class="cg-k" data-k="{html.escape(name)}">'
+                f'<div class="cg-kh">{label}</div><div class="cg-ms">{blocks}</div></div>')
 
     cols = "".join(f'<div class="cg-col">{"".join(box(c) for c in column)}</div>'
                    for column in columns)
@@ -399,10 +416,10 @@ def _lines(hits) -> str:
 
 
 def _node(n, group=None, i=None, folded=None, by=None) -> str:
-    """A method as a block inside its class's box. The block itself is a toggle, not a
-    link: a click folds its lines open inside it. Navigation is the ↗ alone — a block
-    that sometimes opened the editor and sometimes did nothing was a block nobody dared
-    click. A method the branch raised starts open, on the lines that raised it."""
+    """A method as a block inside its class's box. The block itself is a toggle: a click
+    folds its lines open inside it. Its name alone is a link into the editor, and says so
+    by underlining under the pointer, so the two targets never read as one. A method the
+    branch raised starts open, on the lines that raised it."""
     cls, name = _split(n["method"])
     cog, d = n["cognitive"], n["delta"]
     mark = " cg-add" if d > 0 else " cg-cut" if d < 0 else ""
@@ -412,9 +429,9 @@ def _node(n, group=None, i=None, folded=None, by=None) -> str:
     tip = (f'complexity {cog}' + (f" (+{d})" if d > 0 else f" (−{-d})" if d < 0 else "")
            + (". Click for its lines" if hits else ""))
     found = entry_source(n["method"])
-    go = (f'<a class="cg-go" href="vscode://file/{found[0]}:{found[1]}:1"'
-          f'{_tip("Open " + n["display"] + " in VS Code")} aria-label="Open in VS Code">↗</a>'
-          if found else "")
+    face = html.escape(name if "(" in name else name + "()")
+    label = (f'<a class="cg-go-m" href="vscode://file/{found[0]}:{found[1]}:1"'
+             f'{_tip("Open " + n["display"] + " in VS Code")}>{face}</a>' if found else face)
     more = ""
     if folded:
         names = "\n".join((by or {}).get(c, {}).get("display", c) for c in folded)
@@ -430,8 +447,8 @@ def _node(n, group=None, i=None, folded=None, by=None) -> str:
     return (f'<div class="cg-n{mark}{zero}{has}{" cg-open" if opened else ""}"{at}'
             f' tabindex="0" role="button" aria-expanded="{"true" if opened else "false"}"'
             f'{_tip(tip)}><span class="cg-mh">'
-            f'<span class="cg-m">{tog}{html.escape(name if "(" in name else name + "()")}</span>'
-            f'{go}{more}</span><span class="cg-cog">{cog}</span>'
+            f'<span class="cg-m">{tog}{label}</span>'
+            f'{more}</span><span class="cg-cog">{cog}</span>'
             f'{delta}{lines}</div>')
 
 
@@ -471,14 +488,10 @@ def _why_panel(r) -> str:
 
 
 def _path_cell(r) -> str:
-    """The label, and beside it a ↗ into the method the flow starts at, so a reviewer
-    lands on the controller / tool / listener that owns it instead of going hunting.
-
-    The label itself is not a link. It is the word a reader clicks to see what is behind
-    the row, and a path that sometimes opened the editor and sometimes the fold was a
-    label nobody dared click — the same bargain the boxes of the call graph strike, with
-    the same ↗, so there is one way into the editor on this tab and it looks the same
-    everywhere.
+    """The label, a link into the method the flow starts at, so a reviewer lands on the
+    controller / tool / listener that owns it instead of going hunting. It underlines
+    under the pointer like the names in the call graph (Victor, 4 Nov 2026), and the
+    row's caret and the rest of its head still open the fold.
 
     The path leads the hover, on its own line, because this column is the one that runs
     out of room: the longest route in a REST tree is usually the one a branch is about
@@ -488,17 +501,13 @@ def _path_cell(r) -> str:
     as a second tooltip nested inside the first — two hover targets a pixel apart is how
     a reader learns to stop hovering.
     """
-    label = f'<code class="cx-path">{html.escape(r["path"])}</code>'
+    face = html.escape(r["path"])
     handler = (r.get("handler") or "").strip()
     found = entry_source(r.get("entry", ""))
-    go = ""
-    if found:
-        path, line = found
-        go = (f'<a class="cg-go" href="vscode://file/{path}:{line}:1"'
-              f'{_tip("Open " + (handler or r["path"]) + " in VS Code")}'
-              f' aria-label="Open in VS Code">↗</a>')
+    label = (f'<a class="cx-path" href="vscode://file/{found[0]}:{found[1]}:1">{face}</a>'
+             if found else f'<code class="cx-path">{face}</code>')
     tip = r["path"] + (f"\n{handler}" if handler else "")
-    return f'<span class="cx-cell"{_tip(tip)}>{label}{go}{_not_followed(r)}</span>'
+    return f'<span class="cx-cell"{_tip(tip)}>{label}{_not_followed(r)}</span>'
 
 
 def _not_followed(r) -> str:
@@ -525,27 +534,19 @@ NOT_FOLLOWED_TIP = ("{n} call(s) into this project that could not be bound to a 
                     "not followed, so not in this number:")
 
 
-# The bar is three facts drawn as two rectangles, and none of them is labelled: how big the
-# flow was, how big it is now, and which part of it this branch is responsible for. A
-# reviewer who hovers is asking exactly that, so each segment answers for itself — and says
-# where the baseline came from, because "12 on main" is a number people reasonably suspect
-# of being an estimate. It is not: the same extractor read it off the source at the
-# merge-base. `{base}` is the real base branch, never the word "main" hardcoded — half the
-# repositories this runs in do not have one.
-# Copy pass (3 Oct 2026): the numbers and nothing else. "Measured, not estimated — the
-# same extractor read the merge-base's own source" was the method, not the finding.
-TIP_BASELINE = "{baseline} on {base}"
-TIP_UP = "+{delta} by this branch"
-TIP_DOWN = "−{delta}: this branch made the flow simpler — {baseline} → {total}."
-TIP_BAR = "{baseline} on {base} → {total} here"
-TIP_SAME = "Unchanged ({total})"
-TIP_NEW = "New on this branch ({total})"
-TIP_GONE = "Removed by this branch (was {baseline})"
-# The two numbers at the row's end and their column heads. First line: what it counts.
+# One tooltip for the bar, the delta and the total, the same words on all three, since they
+# are three faces of one fact (Victor, 4 Nov 2026: "one single tooltip"). The first line says
+# what the value is. The base stays unnamed: it is a commit SHA on a pull request's page, and
+# "11 on 3f4a2c1" told a reader nothing "11 before" does not.
+TIP_ROW = "Total complexity of this flow: {total}\n{story}"
+TIP_UP = "{baseline} before, +{delta} by this branch"
+TIP_DOWN = "{baseline} before, −{delta} by this branch"
+TIP_SAME = "Unchanged by this branch"
+TIP_NEW = "New on this branch"
+TIP_GONE = "Removed by this branch, {baseline} before"
+# The two column heads. First line: what it counts.
 TIP_COL_ADDED = "Complexity this branch added to the flow"
 TIP_COL_TOTAL = "Complexity of the whole flow, on this branch"
-TIP_TOTAL = "Complexity of the whole flow: {total}"
-TIP_BADGE_UP = "Complexity this branch added ({baseline} → {total})"
 
 
 def _tip(attr: str) -> str:
@@ -555,7 +556,7 @@ def _tip(attr: str) -> str:
 def _row(cls, head: str, why: str, key: str = "") -> str:
     """A row, and — for every row that has a branch to explain — the fold under it.
 
-    The fold is a real `<details>`, opened by a click anywhere on its head but the ↗.
+    The fold is a real `<details>`, opened by a click anywhere on its head but the path.
     `key` is the row's name in the address bar (`GET /api/owners`): the script below
     lists every open row there, so a reload — or a colleague handed the link — opens the
     same rows again."""
@@ -568,12 +569,12 @@ def _row(cls, head: str, why: str, key: str = "") -> str:
             f"{why}</details>")
 
 
-def render_row(r, peak, base) -> str:
+def render_row(r, peak) -> str:
     if r.get("gone"):
         # The branch deleted this entry point. A ghost for the whole width it used to
         # occupy — the same "slate is what the branch removed" convention as everywhere else.
         was = r["was"] or 0
-        gone_tip = TIP_GONE.format(baseline=was, base=base)
+        gone_tip = TIP_ROW.format(total=0, story=TIP_GONE.format(baseline=was))
         # No fold: there is no branch code left to break down. A row whose flow the branch
         # deleted has nothing to open onto, and an empty fold under it would read as a bug.
         return _row(
@@ -583,7 +584,7 @@ def render_row(r, peak, base) -> str:
             f'<span class="cx-bar"{_tip(gone_tip)}>'
             f'<u style="width:{100.0 * was / peak:.1f}%"></u></span>'
             f'<span class="cx-badge"{_tip(gone_tip)}>gone</span>'
-            f'<span class="cx-n"{_tip(TIP_TOTAL.format(total=0))}>0</span>',
+            f'<span class="cx-n"{_tip(gone_tip)}>0</span>',
             "",
         )
     if r["delta"] is None:
@@ -607,50 +608,24 @@ def render_row(r, peak, base) -> str:
     else:
         delta_pct = 100.0 * abs(delta) / peak
         kept_pct = now_pct - (delta_pct if delta > 0 else 0)
-    # The baseline is `cx-n` minus `cx-badge` — the two numbers already on the row — so the
-    # tooltip can never disagree with what the reader can see next to it.
-    total, baseline = r["now"], r["was"]
     if r["delta"] is None:
-        bar_tip = TIP_NEW.format(total=total, base=base)
-        grey_tip, delta_tip = "", bar_tip
+        story = TIP_NEW
     elif delta:
-        bar_tip = TIP_BAR.format(baseline=baseline, base=base, total=total)
-        grey_tip = TIP_BASELINE.format(baseline=baseline, base=base)
-        delta_tip = (TIP_UP if delta > 0 else TIP_DOWN).format(
-            delta=abs(delta), baseline=baseline, total=total)
+        story = (TIP_UP if delta > 0 else TIP_DOWN).format(baseline=r["was"], delta=abs(delta))
     else:
-        # An unchanged row has nothing to attribute to anyone, so the segments say nothing
-        # and the whole bar answers with the one fact there is.
-        bar_tip = TIP_SAME.format(total=total, base=base)
-        grey_tip = delta_tip = ""
-    badge_tip = (TIP_BADGE_UP.format(baseline=baseline, total=total)
-                 if r["delta"] is not None and delta > 0 else delta_tip)
+        story = TIP_SAME
+    tip = _tip(TIP_ROW.format(total=r["now"], story=story))
     return _row(
         cls,
         f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
         f"{_path_cell(r)}"
-        f'<span class="cx-bar"{_tip(bar_tip)}>'
-        f'<i{_tip(grey_tip) if grey_tip else ""} style="width:{kept_pct:.1f}%"></i>'
-        f'<u{_tip(delta_tip) if delta_tip else ""} style="width:{delta_pct:.1f}%"></u></span>'
-        f'<span class="cx-badge"{_tip(badge_tip) if badge_tip else ""}>{badge}</span>'
-        f'<span class="cx-n"{_tip(TIP_TOTAL.format(total=total))}>{r["now"]}</span>',
+        f'<span class="cx-bar"{tip}>'
+        f'<i style="width:{kept_pct:.1f}%"></i><u style="width:{delta_pct:.1f}%"></u></span>'
+        f'<span class="cx-badge"{tip}>{badge}</span>'
+        f'<span class="cx-n"{tip}>{r["now"]}</span>',
         _why_panel(r),
         f'{r["method"]} {r["path"]}',
     )
-
-
-def base_branch() -> str:
-    """What to call the other side of the comparison, in the reader's own words.
-
-    Hardcoding "main" is wrong in every repository that calls it something else, and a
-    tooltip that names the wrong branch is worse than one that names none."""
-    for cmd in (["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
-                ["config", "--get", "init.defaultBranch"]):
-        out = subprocess.run(["git", *cmd], capture_output=True, text=True)
-        name = out.stdout.strip()
-        if out.returncode == 0 and name:
-            return name.rpartition("/")[2]
-    return "the base branch"
 
 
 LEDE_REGEX = ("from regular expressions over the Java sources (no parser, no syntax tree).")
@@ -669,11 +644,7 @@ def _lede_engine(engines) -> str:
             "so read the deltas with care.")
 
 
-def render(rows, base="main", engines=("regex", "regex")) -> str:
-    # A base handed in as a commit (eval run 10: the review's audited base) is named by
-    # its short sha in every hover, never by forty hex digits.
-    if re.fullmatch(r"[0-9a-f]{40}", base or ""):
-        base = base[:8]
+def render(rows, engines=("regex", "regex")) -> str:
     # A shrunk bar still draws what was removed past its current end, so the scale must fit
     # the taller of the two snapshots.
     peak = max((max(r["now"], r["was"] or 0) for r in rows), default=1) or 1
@@ -716,14 +687,14 @@ def render(rows, base="main", engines=("regex", "regex")) -> str:
             f'<span class="cx-colh cx-colh-total"{_tip(TIP_COL_TOTAL)}>total</span></div>'
         )
         out.append('<div class="cx-list">')
-        out.extend(render_row(r, peak, base) for r in of_kind)
+        out.extend(render_row(r, peak) for r in of_kind)
         out.append("</div></div>")
     out.append(TOGGLE_JS)
     return "\n".join(out)
 
 
-# The whole head is the handle: verb, path, bar and numbers all open the fold. The one
-# link on it — the ↗ beside the path — opens the file and puts the fold back the way it
+# The whole head is the handle: caret, verb, bar and numbers all open the fold. The one
+# link on it — the path — opens the file and puts the fold back the way it
 # found it: a `<summary>` is activated by a click anywhere in it, and a link inside one
 # would open the fold *instead of* the file in some browsers and *as well as* in others.
 #
@@ -747,7 +718,7 @@ TOGGLE_JS = """<script data-hr-swap="keep">
   document.addEventListener('click', function (e) {
     var head = e.target.closest && e.target.closest('summary.cx-head');
     if (!head || !e.target.closest('a')) return;        /* anywhere else: let it toggle */
-    var row = head.parentNode, was = row.open;          /* the ↗ opens the file, not the fold */
+    var row = head.parentNode, was = row.open;          /* the path opens the file, not the fold */
     setTimeout(function () { row.open = was; }, 0);
   });
   var P = 'cx';
@@ -771,7 +742,7 @@ TOGGLE_JS = """<script data-hr-swap="keep">
     if (wanted.indexOf(r.getAttribute('data-cx')) >= 0) r.open = true;
   });
   /* A box in the call graph is a toggle: it lights up and folds its own lines open. The
-     ↗ and every source line inside it are links and keep doing what links do. */
+     names and every source line inside it are links and keep doing what links do. */
   function flip(n) {
     var on = !n.classList.contains('cg-open');
     n.classList.toggle('cg-open', on);
@@ -977,7 +948,6 @@ details.cx-row.cx-same:hover { opacity:.9; }
     ellipsis and the ↗ stays whole. */
 .cx-cell { display:flex; align-items:center; gap:3px; min-width:0; overflow:hidden; }
 .cx-cell .cx-path { flex:0 1 auto; min-width:0; }
-.cx-cell a.cg-go { flex:none; }
 /* Calls the engine could not bind: not in the number, so the row says so, in amber — a
     caveat about the measurement, not about the code. */
 .cx-nf { flex:none; margin-left:4px; padding:1px 5px; border-radius:8px; white-space:nowrap;
@@ -1059,15 +1029,18 @@ a.cx-why-line:hover code { text-decoration:underline; }
 .cg-svg .cg-e.cg-hot { stroke:var(--cg-hot); stroke-width:1.6; }
 .cg-svg .cg-ah.cg-hot { fill:var(--cg-hot); }
 .cg-col { display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
-/* A class: a faint tint of its hue and a hairline of it, named once on top. The left
-    padding is the lane the same-class arrows run in. */
+/* A class: one faint neutral tint and a hairline of it, every class alike, named once on
+    top. The left padding is the lane the same-class arrows run in. */
 .cg-k { position:relative; padding:0 8px 8px 18px; border-radius:9px;
-        background:color-mix(in srgb, var(--cg-hue, var(--muted)) 7%, transparent);
-        border:1px solid color-mix(in srgb, var(--cg-hue, var(--muted)) 30%, transparent); }
-.cg-h0 { --cg-hue:#b45309; } .cg-h1 { --cg-hue:#be185d; } .cg-h2 { --cg-hue:#6d28d9; }
-.cg-h3 { --cg-hue:#0e7490; } .cg-h4 { --cg-hue:#c2410c; } .cg-h5 { --cg-hue:#a21caf; }
+        background:color-mix(in srgb, var(--muted) 7%, transparent);
+        border:1px solid color-mix(in srgb, var(--muted) 30%, transparent); }
 .cg-kh { display:flex; align-items:center; gap:3px; height:22px; margin-left:-10px; }
-.cg-c { font:500 10.5px/14px system-ui,sans-serif; color:var(--cg-hue, var(--muted)); }
+.cg-c { font:500 10.5px/14px system-ui,sans-serif; color:var(--muted); }
+/* A name is the way into the editor: it keeps its colour at rest, so the graph stays
+    quiet, and underlines under the pointer, class and method alike. */
+a.cg-c, a.cg-go-m, a.cx-path { color:inherit; text-decoration:none; }
+a.cg-c { color:var(--muted); }
+a.cg-c:hover, a.cg-go-m:hover, a.cx-path:hover { color:var(--link); text-decoration:underline; }
 .cg-ms { display:flex; flex-direction:column; align-items:stretch; gap:9px; }
 /* A method: a solid card on the faded box, its name bold, its score hard right. The
     names are set in the UI face, not monospace: the graph is as wide as its deepest chain
@@ -1084,15 +1057,6 @@ a.cx-why-line:hover code { text-decoration:underline; }
 .cg-m { display:flex; align-items:center; font:600 11.5px/14px system-ui,sans-serif; }
 .cg-cog { grid-column:2; grid-row:1; padding-right:7px; font:700 10px/1.3 ui-monospace,Menlo,monospace;
           text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
-/* ↗ is the only way into the editor from the graph, so it is a real target, not a glyph:
-    a small square that fills blue under the pointer. On a block it stays quiet until the
-    block is under the pointer — the method's name is what the block is for. */
-a.cg-go { display:inline-block; min-width:14px; text-align:center; border-radius:3px;
-          font:700 11px/14px system-ui,sans-serif; color:var(--link); text-decoration:none; }
-a.cg-go:hover { background:var(--link); color:var(--card); }
-.cg-mh a.cg-go { min-width:12px; font-size:10.5px; line-height:1; }
-.cg-mh a.cg-go { opacity:.45; }
-.cg-n:hover .cg-mh a.cg-go, .cg-n:focus-within .cg-mh a.cg-go { opacity:1; }
 /* Clicked open: a tint of the link blue, and its frame unless the branch's green holds it. */
 .cg-n.cg-open { background:color-mix(in srgb, var(--link) 8%, var(--card)); opacity:1; }
 .cg-n.cg-open:not(.cg-add):not(.cg-cut) { border-color:var(--link);
@@ -1131,8 +1095,6 @@ a.cx-why-new .cx-why-inc { color:var(--cx-added); }
 @media (prefers-color-scheme: dark) {
   .cx-lede, .cx-group { --cx-added:#4ec27f; --cx-removed:#9fb0d0; }
   .cx-colh-added { color:#4ec27f; }
-  .cg-h0 { --cg-hue:#fbbf24; } .cg-h1 { --cg-hue:#f472b6; } .cg-h2 { --cg-hue:#a78bfa; }
-  .cg-h3 { --cg-hue:#22d3ee; } .cg-h4 { --cg-hue:#fb923c; } .cg-h5 { --cg-hue:#e879f9; }
   .cx-bar i { background:#3d3d4a; }
   /* The verb is the only coloured *text* on the row, and the light palette was never
      re-themed for dark: #2e7d32 on --card is 3.3:1 and #1565c0 is 2.9:1, so forty-three
@@ -1158,8 +1120,6 @@ def main(argv=None) -> int:
     ap.add_argument("--out")
     ap.add_argument("--json", action="store_true", help="emit the rows as JSON instead of HTML")
     ap.add_argument("--css", action="store_true", help="print the stylesheet this fragment needs")
-    ap.add_argument("--base", help="name of the base branch, for the tooltips "
-                                  "(default: whatever origin/HEAD points at)")
     args = ap.parse_args(argv)
 
     if args.css:
@@ -1170,7 +1130,7 @@ def main(argv=None) -> int:
 
     rows = compare(*load_pair(Path(args.before), Path(args.after)))
     engines = (engine_of(Path(args.before)), engine_of(Path(args.after)))
-    body = json.dumps(rows, indent=1) if args.json else render(rows, args.base or base_branch(), engines)
+    body = json.dumps(rows, indent=1) if args.json else render(rows, engines)
     if args.out:
         Path(args.out).write_text(body, encoding="utf-8")
         print(f"[complexity-delta] wrote {args.out}", file=sys.stderr)

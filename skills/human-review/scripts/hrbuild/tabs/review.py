@@ -1747,9 +1747,9 @@ _PR_BODY_BOILERPLATE = re.compile(
 
 
 #: The merge risk a push wrote into the description (`push-pr-comments.py`'s `MR_BLOCK`):
-#: cut from the card, whose own MERGE RISK line says it, so the page says it once.
+#: lifted out of the body to close the card, wherever a later edit left it.
 _PR_BODY_MERGE_RISK = re.compile(
-    r"<!--\s*hr:merge-risk\s*-->.*?<!--\s*/hr:merge-risk\s*-->", re.S)
+    r"<!--\s*hr:merge-risk\s*-->(.*?)<!--\s*/hr:merge-risk\s*-->", re.S)
 
 
 def attach_pr_body(spec: dict, out_dir: Path, root: Path | None = None) -> None:
@@ -1910,7 +1910,7 @@ def grade_pill_with_risk(spec, pill: str) -> str:
             f'{html.escape("; ".join(l.split(" ", 1)[1] for l in lines), quote=True)}">'
             f'{"".join(marks)}</span>')
     if not pill:
-        tip = "<br>".join(html.escape(l) for l in lines + ["Click: the merge risk"])
+        tip = "<br>".join(html.escape(l) for l in lines)
         return (f'<span class="titlescore ts-alone" data-tip-html="{html.escape(tip, quote=True)}">'
                 f'{risk}</span>')
     m = re.match(r'<(?:a|span) class="titlescore[^>]*>', pill)
@@ -1922,25 +1922,25 @@ def grade_pill_with_risk(spec, pill: str) -> str:
     if said:
         tag = tag.replace(said.group(0), "")
     if grade:
-        lines.append(grade)
-    glyphs = " ".join(l.split(" ", 1)[0] for l in lines[:len(marks)])
-    lines.append(f"Click {glyphs}: the merge risk line")
+        lines.append(f"\U0001f50d {grade}")
     tip = "<br>".join(html.escape(l) for l in lines)
     return (f'{tag[:-1]} data-tip-html="{html.escape(tip, quote=True)}">{risk}'
             + pill[m.end():])
 
 
-#: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a circle
-#: that fills (Victor, 29 Oct 2026) — so a reader knows at a glance what to expect before
-#: reading the words. Index = the level; each with the words its hover says.
-BLAST_GLYPHS = ("\u25cb", "\u25d4", "\u25d1", "\u25d5", "\u25cf")
-BLAST_SIZES = ("barely anything", "about a quarter of the system", "about half the system",
-               "about three quarters of the system", "the whole system")
+#: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a moon that
+#: fills (Victor, 29 Oct 2026) — so a reader knows at a glance what to expect before
+#: reading the words. Moons, not ○◔◑◕●: an emoji is as wide as the door's ✅ beside it, in a
+#: tooltip's column too (Victor, 4 Nov 2026). Index = the level; each with its estimate,
+#: a percentage marked as one ("about a quarter" was too vague).
+BLAST_GLYPHS = ("\U0001f311", "\U0001f312", "\U0001f313", "\U0001f314", "\U0001f315")
+BLAST_SIZES = ("≈0% of the system", "≈25% of the system", "≈50% of the system",
+               "≈75% of the system", "≈100% of the system")
 
 
 def blast_size(spec) -> int | None:
     """`mergeRisk.blastSize` as 0–4, or None. No fallback from the words: "visits API" says
-    where, not how much of the system that is, and a guessed circle is worse than none."""
+    where, not how much of the system that is, and a guessed moon is worse than none."""
     raw = ((spec or {}).get("mergeRisk") or {}).get("blastSize")
     if isinstance(raw, bool):
         return None
@@ -1952,16 +1952,16 @@ def blast_size(spec) -> int | None:
 
 
 def blast_tip(spec) -> str:
-    """The glyph's hover, first line first: "Blast radius: visits API — about a quarter of
-    the system". Empty without a size."""
+    """The glyph's hover, first line first: "Blast radius ≈25%: visits API". Empty without a size."""
     n = blast_size(spec)
     if n is None:
         return ""
     blast = str((spec.get("mergeRisk") or {}).get("blast") or "").strip()
-    return f"Blast radius: {blast + ' — ' if blast else ''}{BLAST_SIZES[n]}"
+    return (f"Blast radius {BLAST_SIZES[n].split()[0]}: {blast}" if blast
+            else f"Blast radius: {BLAST_SIZES[n]}")
 
 
-def blast_glyph_html(spec, cls: str = "mr-size") -> str:
+def blast_glyph_html(spec, cls: str = "titleblast") -> str:
     """The circle, with its hover. Empty without a size."""
     n = blast_size(spec)
     if n is None:
@@ -1970,53 +1970,58 @@ def blast_glyph_html(spec, cls: str = "mr-size") -> str:
             f'aria-label="{html.escape(blast_tip(spec), quote=True)}">{BLAST_GLYPHS[n]}</span>')
 
 
-def merge_risk_html(spec) -> str:
-    """`mergeRisk` as one line under the PR description: is merging this a one-way or a
-    two-way door, and how far does it reach if it is wrong — Matt Pocock's "merge danger"
-    section (Victor, 29 Oct 2026). Empty without a known `door`: a guessed door is worse
-    than none."""
-    risk = spec.get("mergeRisk") or {}
+def merge_risk_md(spec) -> str:
+    """`mergeRisk` as the markdown a push writes into the PR's description (the same
+    function in `push-pr-comments.py`; `test_pr_description.py` holds the two together), so
+    a review not published yet reads as it will on GitHub. Empty without a known `door`: a
+    guessed door is worse than none."""
     key = merge_door(spec)
     if not key:
         return ""
-    oneway = key == "one-way"
-    # The mark in a span of its own, so it can be sized to the words' capitals like the
-    # circle: an emoji drawn at the text's size stands a head taller than its letters.
-    parts = [f'<b class="mr-door{" mr-oneway" if oneway else ""}">'
-             f'<span class="mr-mark">{MERGE_DOOR_MARKS[key]}</span> {MERGE_DOORS[key]}</b>']
-    blast = str(risk.get("blast") or "").strip()
-    # The size's circle in front of the words, whose hover says the size in words; with a
-    # size and no words, the size's words stand in for them.
-    glyph = blast_glyph_html(spec)
-    n = blast_size(spec)
-    if blast or glyph:
-        what = html.escape(blast) if blast else BLAST_SIZES[n]
-        parts.append(f'blast radius: {glyph + " " if glyph else ""}<b>{what}</b>')
+    risk = spec.get("mergeRisk") or {}
     why = str(risk.get("why") or "").strip()
-    line = " · ".join(parts) + (f" — {html.escape(why)}" if why else "")
-    # `id`: where the masthead's ✅ ◔ go (tabs.js, `.ts-risk`).
-    return (f'<p class="mergerisk" id="mergerisk"><span class="mr-h">Merge risk</span> '
-            f'{line}</p>')
+    lines = ["**Merge risk**",
+             f"- {MERGE_DOORS[key]}: {MERGE_DOOR_MARKS[key]}" + (f" {why}" if why else "")]
+    blast = str(risk.get("blast") or "").strip()
+    n = blast_size(spec)
+    if n is not None:
+        lines.append(f"- Blast radius: {BLAST_GLYPHS[n]} " + (
+            f"**{blast}** ({BLAST_SIZES[n]})" if blast else f"**{BLAST_SIZES[n]}**"))
+    elif blast:
+        lines.append(f"- Blast radius: **{blast}**")
+    return "\n".join(lines)
+
+
+def merge_risk_html(md: str, repo_url: str = "") -> str:
+    """The merge risk's markdown under the PR description: a title and a line per fact,
+    drawn like the rest of the description (Victor, 4 Nov 2026: "take it straight from the
+    PR", in place of a line of its own). `id`: where the masthead's ✅ ◔ go (tabs.js,
+    `.ts-risk`)."""
+    if not md:
+        return ""
+    return f'<div class="mergerisk" id="mergerisk">{pr_body_html(md, repo_url)}</div>'
 
 
 def pr_description_html(spec) -> str:
     """The PR's description, between the grade's reasons and the counts line. Empty when
     there is no PR, or its description is empty once the agent's attribution line is cut.
-    `mergeRisk` closes it; with no description, it stands alone."""
+    The merge risk closes it, as the PR itself says it once a push has written it there,
+    from `mergeRisk` until then; with no description, it stands alone."""
     got = spec.get("_prBody") or {}
-    body = _PR_BODY_BOILERPLATE.sub("", _PR_BODY_MERGE_RISK.sub(
-        "\n\n", str(got.get("body") or ""))).strip()
-    if not body:
-        return merge_risk_html(spec)
-    # No link to the PR here: the masthead's title already is one.
+    raw = str(got.get("body") or "")
     found = find_pull(got.get("url"))
     repo_url = found[0].repo_url if found else ""
+    block = _PR_BODY_MERGE_RISK.search(raw)
+    risk = merge_risk_html((block[1].strip() if block else "") or merge_risk_md(spec), repo_url)
+    body = _PR_BODY_BOILERPLATE.sub("", _PR_BODY_MERGE_RISK.sub("\n\n", raw)).strip()
+    if not body:
+        return risk
+    # No link to the PR here: the masthead's title already is one.
     # Folds away from its own heading, open by default; no inner scrollbar inside the
     # page's (Victor, 20 Oct 2026) — a description too long to read whole is one to fold.
     return (f'<details class="prdesc" open aria-label="Pull request description">'
             f'<summary class="prdesc-h">PR description</summary>'
-            f'<div class="prdesc-body">{pr_body_html(body, repo_url)}</div>'
-            f'{merge_risk_html(spec)}</details>')
+            f'<div class="prdesc-body">{pr_body_html(body, repo_url)}{risk}</div></details>')
 
 
 def grade_reasons_html(spec) -> str:
@@ -4184,7 +4189,7 @@ def vscode_pr_link(url: str | None, cls: str = "f-vsc") -> str:
     n = pull_root(url).rsplit("/", 1)[1]
     return (f' <a class="{cls}" href="{html.escape(uri, quote=True)}" '
             f'data-tip="Open PR #{n} in VS Code\'s GitHub Pull Requests view">'
-            f'{VSC_ICON}{IJ_ICON} in <span class="ide-word">VS Code</span></a>')
+            f'{VSC_ICON}{IJ_ICON} see in <span class="ide-word">VS Code</span></a>')
 
 
 def vscode_file_link(href: str | None, where: str) -> str:
@@ -4247,7 +4252,7 @@ PR_PUSH_JS = """<script data-hr-swap="rerun">
 // runs again, over the new button and dialog (below). *in VS Code* / *in IntelliJ* (`.pr-vsc`)
 // is only drawn and shown here: editor.js aims it at the picked IDE and takes its click.
 var HR_VSC_PR = '""" + VSCODE_PR_URI + """';
-var HR_PR_FACE = '""" + (VSC_ICON + IJ_ICON).replace("'", "\\'") + """ in <span class="ide-word">VS Code</span>';
+var HR_PR_FACE = '""" + (VSC_ICON + IJ_ICON).replace("'", "\\'") + """ see in <span class="ide-word">VS Code</span>';
 var HR_IDE_FACE = '""" + IDE_FACE.replace("'", "\\'") + """';
 var HR_GH_ICON = '""" + GH_ICON + """';
 function hrVscPr(url) {
@@ -4273,14 +4278,14 @@ function hrVscPr(url) {
   var msg = line.querySelector('.pr-push-msg');
   if (!msg) { msg = document.createElement('span'); msg.className = 'pr-push-msg';
     msg.setAttribute('role', 'status'); msg.hidden = true; b.after(msg); }
+  var vsc = line.querySelector('.pr-vsc');
+  if (!vsc) { vsc = vscLink('pr-vsc', HR_VSC_PR); vsc.hidden = true; b.after(vsc); }
   var rep = line.querySelector('.pr-repub');
   if (!rep) { rep = document.createElement('button'); rep.type = 'button';
     rep.className = 'pr-repub'; rep.textContent = 're-publish'; rep.hidden = true;
     rep.dataset.tip = 'The comments changed since they were published \\u2014 post the '
       + 'difference; nothing already there is posted twice';
     b.after(rep); }
-  var vsc = line.querySelector('.pr-vsc');
-  if (!vsc) { vsc = vscLink('pr-vsc', HR_VSC_PR); vsc.hidden = true; b.after(vsc); }
   var face = b.dataset.face || 'Publish on GitHub';
   var rec = null, changed = false;
   function tagged(out, tag) {
@@ -4551,11 +4556,11 @@ def push_pr_button(spec) -> str:
             f'data-face="{html.escape(face, quote=True)}" data-state="{state}" '
             + ('tabindex="-1" aria-disabled="true" ' if done else "")
             + f'data-tip="{html.escape(tip, quote=True)}">{html.escape(label)}</button>'
-            + vsc.replace("<a ", "<a hidden ", 1)
             + f'<button type="button" class="pr-repub"{"" if repub else " hidden"} '
             'data-tip="The comments changed since they were published — post the difference; '
             'nothing already there is posted twice">re-publish</button>'
-            f'<span class="pr-push-msg{" pp-err" if note else ""}" role="status"'
+            + vsc.replace("<a ", "<a hidden ", 1)
+            + f'<span class="pr-push-msg{" pp-err" if note else ""}" role="status"'
             f'{"" if note else " hidden"}>{html.escape(note or "")}</span>')
 
 

@@ -307,23 +307,15 @@ html.ide-none a.f-vsc, html.ide-none a.pr-vsc, html.hr-online ol.findings > li >
 .prdesc-body h4 { margin:.6rem 0 .2rem; font-size:1rem; }
 .prdesc-body ul { padding-left:1.3rem; }
 .prdesc-body blockquote { padding-left:.7rem; border-left:2px solid var(--line); color:var(--muted); }
-/* Merge risk: the door and its blast radius, the last line of the PR description. */
-.mergerisk { margin:.6rem 0 0; padding-top:.45rem; border-top:1px dashed var(--line); font-size:.95rem; }
-.prdesc ~ .mergerisk, .panel > .mergerisk { border-top:0; }
-.mr-h { margin-right:.35rem; font:700 .68rem/1.7 inherit; letter-spacing:.09em; text-transform:uppercase;
-  color:var(--muted); }
-.mr-door { color:#2e9e5b; }
+/* Merge risk: the door and its blast radius, the end of the PR description. */
+.mergerisk { margin:.6rem 0 0; padding-top:.45rem; border-top:1px dashed var(--line); }
+.panel > .mergerisk { border-top:0; }
+.mergerisk ul { margin:.25rem 0 0; padding-left:1.3rem; }
+.mergerisk p { margin:0; }
 /* Arrived at from the masthead's ✅ ◔ (tabs.js): a brief glow, then as it was. */
 .mergerisk.mr-flash { animation:mr-flash 1.6s ease-out; border-radius:4px; }
 @keyframes mr-flash { 0%, 35% { background:color-mix(in srgb, #f2c94c 45%, transparent); }
   100% { background:transparent; } }
-/* The door's mark and the blast radius's size, ○ to ●, each as tall as the line's capitals
-   and centred on them (11px of ink at 2x, measured headless at 1728px), like the masthead
-   pill's marks (Victor, 30 Oct 2026): the emoji, which fills its em and hangs below the
-   baseline, drawn smaller and lifted; the circle, two thirds of its em, larger. */
-.mr-mark { font-size:.64em; line-height:1; position:relative; top:-2px; }
-.mr-size { font-size:1.13em; line-height:1; position:relative; top:-.1em; cursor:help; }
-.mr-door.mr-oneway { color:#d7263d; }
 .prdesc-body pre { overflow:auto; padding:.4rem .6rem; border-radius:4px;
           background:color-mix(in srgb, var(--fg) 6%, transparent); font-size:.85rem; }
 
@@ -331,8 +323,13 @@ html.ide-none a.f-vsc, html.ide-none a.pr-vsc, html.hr-online ol.findings > li >
 .pilelede .lede-who { white-space:nowrap; }
 .pilelede .lede-who .angry-bot { height:1.05em; width:auto; vertical-align:-.15em; }
 /* A card whose PR thread is resolved on GitHub (server.js, polled): struck through and
-   faded, still on the page, still clickable. Its pile's count wears the struck number. */
+   faded, still on the page, still clickable. Its pile's count is the old total, slashed,
+   then what is left of it. */
 li.gh-resolved .f-title { text-decoration:line-through; }
 li.gh-resolved { opacity:.55; }
 .gh-res-n { font-weight:inherit; color:var(--muted); }
+.gh-res-was { display:inline-block; padding:0 .08em;
+  background:linear-gradient(to top right, transparent calc(50% - .05em),
+    currentColor calc(50% - .05em), currentColor calc(50% + .05em),
+    transparent calc(50% + .05em)); }
 .gh-res-n s { text-decoration-thickness:2px; }

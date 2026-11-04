@@ -104,7 +104,7 @@ def test_the_title_row_over_the_card_offers_all_tests_where_the_filters_stood(tm
     # means is its hover, not a line beside it: "🤖 matched to the ticket" wrapped into a
     # tall column that broke the row. The hover says first what the total counts, for
     # every option, and follows the choice.
-    assert "var MODES = [['cover', 'Tests covering \\uD83E\\uDD16 the change'," in js
+    assert "var MODES = [['cover', 'Tests covering \\uD83E\\uDD16 requirements'," in js
     assert "['run', 'Tests running through changed files'," in js
     assert "['all', 'All tests'," in js
     assert "who.hidden = true;" in js

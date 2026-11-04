@@ -132,10 +132,10 @@ def _lede(page: str) -> str:
 
 
 def test_the_lede_names_the_engine_that_produced_the_numbers():
-    assert "regular expressions" in _lede(delta.render([], "main", ("regex", "regex")))
-    jp = _lede(delta.render([], "main", ("javaparser", "javaparser")))
+    assert "regular expressions" in _lede(delta.render([], ("regex", "regex")))
+    jp = _lede(delta.render([], ("javaparser", "javaparser")))
     assert "JavaParser" in jp and "regular expressions" not in jp
-    mixed = _lede(delta.render([], "main", ("regex", "javaparser")))
+    mixed = _lede(delta.render([], ("regex", "javaparser")))
     assert "different engines" in mixed
 
 
@@ -153,10 +153,10 @@ def _jp_row(unresolved):
 def test_calls_not_followed_are_counted_on_the_row_and_named_on_hover():
     lost = [{"from": "p.A#h", "call": "t.process()", "file": "src/main/java/p/A.java",
              "line": 7, "reason": "receiver type unknown"}]
-    html_ = delta.render_row(_jp_row(lost), 10, "main")
+    html_ = delta.render_row(_jp_row(lost), 10)
     assert '<span class="cx-nf"' in html_ and ">1 not followed</span>" in html_
     assert "A.java:7  t.process()  (receiver type unknown)" in html_
-    assert "cx-nf" not in delta.render_row(_jp_row([]), 10, "main")
+    assert "cx-nf" not in delta.render_row(_jp_row([]), 10)
 
 
 def test_an_overload_keeps_its_parameters_in_the_graph_node():

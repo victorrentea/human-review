@@ -538,7 +538,7 @@ def cost_ledger_html(led: dict | None, tabs: list[dict], voices: dict | None = N
 
 
 #: The tab's title row.
-COST_TITLE = '<h2 class="tabtitle">PR Cost</h2>'
+COST_TITLE = '<h2 class="tabtitle">Total Cost</h2>'
 
 #: What building human-review ITSELF has cost — the tool, not the change on this page.
 #: A dated baseline, hardcoded on purpose: nothing recomputes it, because a figure that

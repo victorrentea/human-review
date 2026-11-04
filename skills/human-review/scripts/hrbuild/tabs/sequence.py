@@ -164,7 +164,7 @@ def _lang_label(test_rel: str, root: Path | None = None, line: int | None = None
                 mark: str = "", lead: str = "", views: str = "", puml: str = "") -> str:
     """The test's file name — `OwnerListTest.java`, `owner-search.feature`,
     `add-visit.spec.ts` — at the row's right end, as the way to the code, with the glyph for
-    what the branch did to it right beside.
+    what the branch did to it hard right, so those marks line up down the tab.
 
     It used to be the bare extension here and, inside the pair, a "Show Test" fold quoting
     the test under a bar that named the file again with its line range. The page does not
@@ -181,18 +181,16 @@ def _lang_label(test_rel: str, root: Path | None = None, line: int | None = None
     which reads better without a mark in its middle.
 
     One line, read left to right (Victor, 30 Oct 2026): `New/Old` (`views`, the card's
-    buttons, when it has both sides), then `📄 / 🗄 owner-search.feature ⇉ .puml` — what
-    the branch did to the file, the fixture it starts on, the file, and the diagram that
-    file's run writes (`puml`). That `.puml` link and the buttons used to be a second row
-    of their own inside the open pair, above the picture.
+    buttons, when it has both sides), then `🗄 owner-search.feature ⇉ .puml 📄` — the
+    fixture it starts on, the file, the diagram that file's run writes (`puml`), and what
+    the branch did to the file (Victor, 4 Nov 2026: the mark moved to the end, and the
+    slash that joined it to the fixture went with it). That `.puml` link and the buttons
+    used to be a second row of their own inside the open pair, above the picture.
     """
     name = Path(test_rel).name
     if not name:
         return lead
     face = html.escape(name)
-    # The slash separates the two marks, so it is only there when both are.
-    lead = (f'{mark}<span class="seqslash" aria-hidden="true">/</span>{lead}'
-            if mark and lead else mark + lead)
     tail = (f'<span class="seqgen" data-tip="The test\'s run writes this diagram">'
             f'\u21c9</span>{puml}' if puml else "")
     if root is not None and (root / test_rel).is_file():
@@ -200,7 +198,7 @@ def _lang_label(test_rel: str, root: Path | None = None, line: int | None = None
         face = (f'<a class="srcref seqfile" href="vscode://file/{(root / test_rel).resolve()}'
                 f':{at}:1" data-tip="Open in VS Code: {html.escape(name, quote=True)}'
                 f' (line {at})">{face}</a>')
-    return f'<span class="seqlang">{views}{lead}{face}{tail}</span>'
+    return f'<span class="seqlang">{views}{lead}{face}{tail}{mark}</span>'
 
 
 #: A JUnit scenario's title as the generator writes it: `AddVisitApiTest: adds a visit…`.

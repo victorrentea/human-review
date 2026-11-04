@@ -1732,7 +1732,7 @@ def _complexity(ctx: Ctx):
         before, after = f"{ART}/complexity-before.json", f"{ART}/complexity-after.json"
         sh(f"{HERE}/endpoint-complexity.py --base {ctx.base} --out {before}", ctx)
         sh(f"{HERE}/endpoint-complexity.py --out {after}", ctx)
-    sh(f"{HERE}/endpoint-complexity-delta.py {before} {after} --base {ctx.base} "
+    sh(f"{HERE}/endpoint-complexity-delta.py {before} {after} "
        f"--out {ART}/complexity-delta.html", ctx)
     sh(f"{HERE}/endpoint-complexity-delta.py --css > {ART}/complexity-delta.css", ctx)
 

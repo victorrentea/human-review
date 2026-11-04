@@ -461,7 +461,7 @@ def test_a_bar_folds_open_onto_its_own_lines():
                               {"file": "a/src/main/java/app/repo/OwnerRepository.java",
                                "line": 10, "code": "for (Owner o : all()) {",
                                "inc": 1, "why": "for", "new": True}]}])
-    out = delta.render_row(row, 12, "main")
+    out = delta.render_row(row, 12)
     assert out.startswith("<details"), "closed by default, and a <details> without JS"
     assert "<summary class=\"cx-head\">" in out
     assert '<span class="cx-why-inc">+1</span>' in out and "[+1]" not in out and "OwnerRepository.search(String)" in out
@@ -472,15 +472,15 @@ def test_a_bar_folds_open_onto_its_own_lines():
     assert re.search(r"details\.cx-row \.cx-bar[^{]*\{[^}]*cursor:pointer", delta.CSS), \
         "the bar opens the fold, so it must not wear tip.js's question mark"
     # A row with nothing to count still opens — onto the sentence that says why it is 0.
-    assert "cx-why-none" in delta.render_row(_row(now=0, was=0, delta=0, why=[]), 12, "main")
+    assert "cx-why-none" in delta.render_row(_row(now=0, was=0, delta=0, why=[]), 12)
     # And a deleted entry point does not pretend to have a breakdown.
-    assert delta.render_row(_row(gone=True, why=[]), 12, "main").startswith("<div")
+    assert delta.render_row(_row(gone=True, why=[]), 12).startswith("<div")
 
 
 def test_the_fold_needs_nothing_the_fragment_does_not_carry():
     """The page pastes this fragment into a tab whole. A stylesheet or a script it had to
     fetch from `hrbuild/assets` would be a tab that only works inside one builder."""
-    page = delta.render([_row(why=[])], "main")
+    page = delta.render([_row(why=[])])
     assert '<script data-hr-swap="keep">' in page and "cx-head" in page
     assert "src=" not in page and "hrbuild" not in page
     for name in ("cx-why", "cx-why-line", "cx-why-inc", "cx-head"):
@@ -505,10 +505,10 @@ def test_a_simpler_flow_says_so_in_words_and_is_never_drawn_in_alarm_red():
     """Green is what the branch added. A shrink drawn in `#c62828` read to every eval-run-10
     judge as an alarm: what it removed is a neutral slate ghost, and the badge says
     `simpler` beside a real minus sign."""
-    row = delta.render_row(_row(now=6, was=11, delta=-5, why=[]), 12, "main")
+    row = delta.render_row(_row(now=6, was=11, delta=-5, why=[]), 12)
     assert 'class="cx-row cx-down"' in row
     assert '>−5<small> simpler</small></span>' in row
-    assert "made the flow simpler" in row and "11 → 6" in row
+    assert "11 before, −5 by this branch" in row
     for block in re.findall(r"--cx-removed:(#[0-9a-fA-F]{6})", delta.CSS):
         r, g, b = (int(block[i:i + 2], 16) for i in (1, 3, 5))
         assert not (r > g + 60 and r > b + 60), f"{block} is a red; the removed colour is neutral"
@@ -633,22 +633,22 @@ def test_the_graph_draws_what_costs_and_leaves_the_getters_out():
     assert delta._graph([]) == ("", set())
 
 
-def test_a_node_folds_open_onto_its_own_lines_and_only_the_arrow_navigates():
+def test_a_node_folds_open_onto_its_own_lines():
     """The list under the graph repeated the boxes above it in another order. Each box now
-    holds its own lines, opened by a click on the box; ↗ is the one link to the editor."""
+    holds its own lines, opened by a click on the box."""
     nodes = [_gnode("a.Ctl#go", calls=["a.Map#toDto"]), _gnode("a.Map#toDto", cog=1)]
     hit = {"file": "a/src/main/java/a/Map.java", "line": 3, "code": "if (x) {",
            "inc": 1, "why": "if", "new": False}
     row = _row(graph=nodes, why=[{"method": "a.Map#toDto", "display": "Map.toDto()",
                                   "cognitive": 1, "hits": [hit]}])
-    out = delta.render_row(row, 12, "main")
+    out = delta.render_row(row, 12)
     node = re.search(r'<div class="cg-n[^"]*cg-has[^"]*".*?</div></div>', out, re.S)[0]
     assert "if (x) {" in node and 'class="cg-lines"' in node, "the line lives in its box"
     assert 'role="button"' in node and not node.startswith("<a"), "the box is a toggle"
     assert "cx-why-m" not in out, "no second list of the same methods under the graph"
     # The meaning of the score is linked once, from the tab's lede — not under every row.
     assert "Call graph, left to right" not in out and "cg-key" not in out
-    page = delta.render([row], "main")
+    page = delta.render([row])
     assert re.search(r'<h2 class="tabtitle cx-title"><a href="[^"]*sonarsource'
                      r'\.com/resources/cognitive-complexity[^"]*"[^>]*>Cognitive Complexity</a>'
                      r' per Entry Point</h2>', page)
@@ -668,29 +668,44 @@ def test_a_node_folds_open_onto_its_own_lines_and_only_the_arrow_navigates():
 
 
 
-def test_a_class_is_one_faded_box_tinted_in_its_hue_and_its_methods_are_plain_cards():
-    """Six frame colours around one graph were louder than the scores they frame (Victor,
-    9 Oct: "too colorful, distracting"). The hue now tints the class's box, faintly, and
-    names it; the method blocks inside keep a plain frame, so green on a frame still means
-    only "raised"."""
+def test_every_class_is_the_same_faded_box_and_its_methods_are_plain_cards():
+    """A hue per class said nothing the name above the box did not (Victor, 4 Nov 2026: "less
+    rainbow, one constant colour"). Every box is one neutral tint; the method blocks inside
+    keep a plain frame, so green on a frame still means only "raised"."""
     nodes = [_gnode("a.Ctl#go", calls=["a.Map#all"]), _gnode("a.Map#all", cog=1)]
     out, _ = delta._graph(nodes)
-    assert re.search(r'class="cg-k cg-h0"', out) and re.search(r'class="cg-k cg-h1"', out)
-    assert not re.search(r'class="cg-n[^"]*cg-h\d', out), "no hue on a method block"
+    assert out.count('class="cg-k"') == 2, "two classes, one look"
+    assert "cg-hue" not in delta.CSS and not re.search(r"\.cg-h\d", delta.CSS)
     k = re.search(r"\.cg-k \{([^}]*)\}", delta.CSS).group(1)
-    assert re.search(r"background:color-mix\(in srgb, var\(--cg-hue[^)]*\)\) [0-9]%", k), \
+    assert re.search(r"background:color-mix\(in srgb, var\(--muted\) [0-9]%", k), \
         "the box is a faint tint, under 10%"
     name = re.search(r"\.cg-c \{([^}]*)\}", delta.CSS).group(1)
-    assert "color:var(--cg-hue, var(--muted))" in name, "the hue names the class"
+    assert "color:var(--muted)" in name
     frame = re.search(r"\.cg-n \{([^}]*)\}", delta.CSS).group(1)
-    assert "cg-hue" not in frame and "background:var(--card)" in frame, "a method is a card"
+    assert "background:var(--card)" in frame, "a method is a card"
     assert re.search(r"\.cg-n\.cg-add \{[^}]*border-color:var\(--cx-added\)", delta.CSS), \
         "a raised method keeps its green frame"
 
 
+def test_class_and_method_names_are_the_links_and_the_graph_has_no_arrow(tmp_path, monkeypatch):
+    """Victor, 4 Nov 2026: the ↗ goes; both names underline under the pointer and open the
+    editor, the class at its declaration, the method at its own line."""
+    java = tmp_path / "Map.java"
+    java.write_text("package a;\n\n// class Map, in a comment\npublic class Map {\n"
+                    "  int toDto() { return 1; }\n}\n", encoding="utf-8")
+    monkeypatch.setattr(delta, "entry_source", lambda key: (java, 5))
+    out, _ = delta._graph([_gnode("a.Map#go", calls=["a.Map#toDto"]),
+                           _gnode("a.Map#toDto", cog=1)])
+    assert "↗" not in out and "cg-go\"" not in out
+    assert re.search(rf'<a class="cg-c" href="vscode://file/{java}:4:1"[^>]*>Map</a>', out)
+    assert re.search(rf'<a class="cg-go-m" href="vscode://file/{java}:5:1"[^>]*>toDto\(\)</a>', out)
+    assert re.search(r"a\.cg-c:hover, a\.cg-go-m:hover, a\.cx-path:hover \{"
+                     r"[^}]*text-decoration:underline", delta.CSS)
+
+
 def test_a_class_is_drawn_once_however_many_of_its_methods_are_in_the_flow():
     """`PetMapper` was three boxes in a row (Victor, 20 Oct 2026: "why does PetMapper
-    appear three times?"). One box per class, named once with its ↗, its methods inside in
+    appear three times?"). One box per class, named once, its methods inside in
     the order the flow met them; a call that stays in the class is an edge between two
     blocks of one box, a call into another class an edge to the next column."""
     nodes = [_gnode("a.Ctl#go", calls=["a.Map#all"]),
@@ -699,8 +714,8 @@ def test_a_class_is_drawn_once_however_many_of_its_methods_are_in_the_flow():
              _gnode("a.Map#type", cog=1)]
     out, drawn = delta._graph(nodes)
     assert len(re.findall(r'<span class="cg-c"[^>]*>Map</span>', out)) == 1, "Map, once"
-    assert out.count('class="cg-k ') == 3, "three classes, three boxes"
-    boxes = out.split('<div class="cg-k ')[1:]
+    assert out.count('class="cg-k"') == 3, "three classes, three boxes"
+    boxes = out.split('<div class="cg-k"')[1:]
     inside = {re.search(r'data-k="(\w+)"', b)[1]: re.findall(r'class="cg-m">(\w+)\(\)', b)
               for b in boxes}
     assert inside["Map"] == ["all", "one", "type"], inside
@@ -787,14 +802,14 @@ def test_a_graph_needs_edges_and_a_new_entry_point_marks_nothing():
 
 
 def test_the_row_offers_a_caret_and_the_group_is_not_titled_http_slash():
-    row = delta.render_row(_row(why=[], graph=[]), 12, "main")
+    row = delta.render_row(_row(why=[], graph=[]), 12)
     assert '<summary class="cx-head"><span class="cx-caret"' in row
     # The full-size ▼ (U+25BC), as text: the small ▾ stayed a speck at any font size.
     assert re.search(r"details\.cx-row\[open\][^{]*\.cx-caret::before\s*\{\s*content:\"\\25BC\\FE0E\"",
                      delta.CSS)
     size = re.search(r"\.cx-caret \{[^}]*font-size:(\d+)px", delta.CSS)[1]
     assert int(size) >= 13, "the caret is a handle, not punctuation"
-    assert "HTTP /" not in delta.render([_row(why=[])], "main")
+    assert "HTTP /" not in delta.render([_row(why=[])])
     cols = _head_columns()
     assert cols[1] == "2.45rem", "the verb column is as wide as DELETE and no wider"
 
@@ -819,7 +834,7 @@ def test_the_group_header_names_the_two_numbers_over_their_own_columns():
     """`+1` beside `12` had no names and was read as one number. The group's header line
     says which is "added" and which is the "total", and its last two tracks are the row's
     last two — the same variables, not a copy that drifts the day one is widened."""
-    page = delta.render([_row(why=[])], "main")
+    page = delta.render([_row(why=[])])
     assert ('<div class="cx-kind cx-kind-cols"><span>REST APIs <span class="cx-count">1</span>'
             '</span><span class="cx-colh cx-colh-added" data-tip="Complexity this branch added to '
             'the flow">added</span><span class="cx-colh cx-colh-total" data-tip="Complexity of the '
@@ -848,31 +863,27 @@ def test_the_straight_line_callees_are_not_listed_under_their_caller():
     assert ".cg-also" not in delta.CSS, "no rule left for a class nothing emits"
 
 
-def test_the_path_toggles_the_row_and_only_the_arrow_opens_the_editor():
-    """The path was a link into the editor, and the word a reader clicks to see what is
-    behind a row. Now it is a label — the click opens the fold — and the way into the
-    editor is a ↗ right after it, the same `cg-go` the boxes of the call graph wear."""
+def test_the_path_is_the_link_into_the_editor_and_the_rest_of_the_head_folds():
+    """Victor, 4 Nov 2026: the ↗ goes. The path underlines under the pointer like the names
+    in the call graph and opens the editor; the caret and the rest of the head fold."""
     found = ("/repo/a/src/main/java/app/VisitRestController.java", 42)
     orig = delta.entry_source
     delta.entry_source = lambda key: found
     try:
         row = delta.render_row(_row(entry="app.VisitRestController#addVisit",
-                                    why=[], graph=[]), 12, "main")
+                                    why=[], graph=[]), 12)
     finally:
         delta.entry_source = orig
     head = re.search(r"<summary.*?</summary>", row, re.S)[0]
-    links = re.findall(r"<a\b[^>]*>.*?</a>", head, re.S)
-    assert len(links) == 1, f"one link on the head, the arrow: {links}"
-    [a] = links
-    assert 'class="cg-go"' in a and a.endswith(">↗</a>"), a
-    assert f'href="vscode://file/{found[0]}:{found[1]}:1"' in a
-    assert "cx-link" not in row, "the path itself is not a link any more"
-    cell = re.search(r'<span class="cx-cell".*?</span>(?=<span class="cx-bar")', head, re.S)[0]
-    assert cell.index("cx-path") < cell.index("cg-go"), "the arrow comes after the path"
+    [a] = re.findall(r"<a\b[^>]*>.*?</a>", head, re.S)
+    assert 'class="cx-path"' in a and f'href="vscode://file/{found[0]}:{found[1]}:1"' in a
+    assert "↗" not in row and "cg-go\"" not in delta.CSS
+    assert 'class="cx-caret"' in head.split("<a ")[0], "the caret is no part of the link"
+    assert "a.cx-path:hover" in delta.CSS
     # The script no longer swallows clicks on the head: only a link keeps the fold still.
     assert "preventDefault(); " not in delta.TOGGLE_JS.split("cg-n")[0]
     assert "closest('a')" in delta.TOGGLE_JS
-    # An entry point this checkout cannot place has no arrow, and still no link.
+    # An entry point this checkout cannot place has no link.
     assert "<a " not in delta._path_cell(_row(entry="nothing::at::all"))
 
 
@@ -880,9 +891,9 @@ def test_the_open_rows_are_named_in_the_address_bar():
     """Open two rows, reload, and both are open again: every open row is one `cx` in the
     query string, beside the tab strip's `#complexity` rather than inside it — the tab
     strip rewrites the hash on every click, and would wipe anything riding in it."""
-    row = delta.render_row(_row(path="/api/owners", method="GET", why=[]), 12, "main")
+    row = delta.render_row(_row(path="/api/owners", method="GET", why=[]), 12)
     assert row.startswith('<details class="cx-row cx-up" data-cx="GET /api/owners">'), row[:90]
-    js = delta.render([_row(why=[])], "main")
+    js = delta.render([_row(why=[])])
     assert "history.replaceState" in js, "the page's one way of writing the address"
     assert "location.hash" in js and "location.search" in js, "the hash is left as it was"
     assert "getAll(P)" in js and "q.append(P" in js and "var P = 'cx'" in js
@@ -891,21 +902,24 @@ def test_the_open_rows_are_named_in_the_address_bar():
     assert "document.addEventListener('toggle'" in js, "closing one takes it out again"
     assert 'data-hr-swap="keep"' in js
     # A deleted entry point opens onto nothing, so it has nothing to remember.
-    assert "data-cx" not in delta.render_row(_row(gone=True, why=[]), 12, "main")
+    assert "data-cx" not in delta.render_row(_row(gone=True, why=[]), 12)
 
 
 
-def test_every_number_at_a_row_s_end_says_on_hover_what_it_counts():
-    """The bar and the path had a tip; `+1`, `12` and the two column heads did not, and a
-    reviewer left to guess what a bare number counts guesses wrong (CLAUDE.md: a tip that
-    shows numbers says in its first line what they mean)."""
-    up = delta.render_row(_row(now=12, was=11, delta=1, why=[]), 20, "main")
-    assert '<span class="cx-badge" data-tip="Complexity this branch added (11 → 12)">+1</span>' in up
-    assert '<span class="cx-n" data-tip="Complexity of the whole flow: 12">12</span>' in up
-    down = delta.render_row(_row(now=6, was=11, delta=-5, why=[]), 20, "main")
-    assert re.search(r'<span class="cx-badge" data-tip="−5: this branch made the flow simpler', down)
-    new = delta.render_row(_row(now=4, was=None, delta=None, why=[]), 20, "main")
-    assert '<span class="cx-badge" data-tip="New on this branch (4)">new</span>' in new
-    same = delta.render_row(_row(now=7, was=7, delta=0, why=[]), 20, "main")
-    assert '<span class="cx-badge"></span>' in same, "nothing to explain on an empty badge"
-    assert 'data-tip="Complexity of the whole flow: 7"' in same
+def test_the_bar_the_delta_and_the_total_share_one_tooltip():
+    """Three faces of one fact, so one text on all three (Victor, 4 Nov 2026), saying first
+    what the value is, and never naming the base: on a pull request that is a commit SHA."""
+    def tips(row):
+        return re.findall(r'class="cx-(?:bar|badge|n)" data-tip="([^"]*)"', row)
+    up = delta.render_row(_row(now=12, was=11, delta=1, why=[]), 20)
+    assert tips(up) == ["Total complexity of this flow: 12&#10;11 before, +1 by this branch"] * 3 \
+        or tips(up) == ["Total complexity of this flow: 12\n11 before, +1 by this branch"] * 3, tips(up)
+    assert "<i data-tip" not in up and "<u data-tip" not in up, "no tooltip inside the tooltip"
+    down = delta.render_row(_row(now=6, was=11, delta=-5, why=[]), 20)
+    assert len(set(tips(down))) == 1 and "11 before, −5 by this branch" in tips(down)[0]
+    new = delta.render_row(_row(now=4, was=None, delta=None, why=[]), 20)
+    assert len(set(tips(new))) == 1 and "New on this branch" in tips(new)[0]
+    same = delta.render_row(_row(now=7, was=7, delta=0, why=[]), 20)
+    assert len(set(tips(same))) == 1 and "Unchanged by this branch" in tips(same)[0]
+    gone = delta.render_row(_row(gone=True, why=[]), 20)
+    assert len(set(tips(gone))) == 1 and "Removed by this branch" in tips(gone)[0]

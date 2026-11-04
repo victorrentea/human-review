@@ -556,8 +556,8 @@ window.HR = (function () {
   });
 
   // A review card whose PR thread was resolved on GitHub — in the browser, or from an
-  // IDE's PR panel — is struck through here, and each pile's count gets the struck number
-  // in front of it: `~~2~~/9 open` (Victor, 20 Oct 2026). Asked every 5 s while the tab
+  // IDE's PR panel — is struck through here, and each pile's count becomes its old total,
+  // slashed, and what is left of it: `9̸ 8 open` (Victor, 4 Nov 2026). Asked every 5 s while the tab
   // is in front, so a thread resolved during a demo shows up while the audience watches.
   // Links are looked up on every pass: an in-place catch-up swaps the cards.
   onready(function (j) {
@@ -569,11 +569,23 @@ window.HR = (function () {
     function mark(el, n) {
       var old = el.querySelector(':scope > .gh-res-n');
       if (old) old.remove();
-      if (!n) return;
+      var txt = [].filter.call(el.childNodes, function (c) { return c.nodeType === 3; })[0];
+      var m = txt && txt.data.match(/^(\d+)(.*)$/);
+      if (!m) return;
+      // The face as built, kept on the element: every pass after the first reads a count
+      // this script wrote itself.
+      if (!el.hasAttribute('data-gh-total')) {
+        el.setAttribute('data-gh-total', m[1]);
+        el.setAttribute('data-gh-rest', m[2]);
+      }
+      var total = +el.getAttribute('data-gh-total'), rest = el.getAttribute('data-gh-rest');
+      if (!n) { txt.data = total + rest; return; }
+      var left = total - n;
+      txt.data = left + (left === 1 ? rest.replace(/s$/, '') : rest);
       var s = document.createElement('span');
       s.className = 'gh-res-n';
       s.setAttribute('data-tip', n + ' of these resolved on GitHub');
-      s.innerHTML = '<s>' + n + '</s>/';
+      s.innerHTML = '<span class="gh-res-was">' + total + '</span> ';
       el.insertBefore(s, el.firstChild);
     }
     function paint(ids) {

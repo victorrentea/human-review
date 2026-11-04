@@ -160,7 +160,7 @@
   // says "tests" itself, with no "Tests:" in front (Victor, 29 Oct 2026). "running
   // through changed files" is his label; the probe counts changed *lines* (tests.py
   // `coverage_join`), so the hover says that. The third field is the card title's hover.
-  var MODES = [['cover', 'Tests covering \uD83E\uDD16 the change',
+  var MODES = [['cover', 'Tests covering \uD83E\uDD16 requirements',
                 'Tests paired with a sentence of the ticket, the ones wearing the fork.'],
                ['run', 'Tests running through changed files',
                 'Tests that ran a changed line, as captured by a coverage probe.'],
