@@ -47,9 +47,16 @@ GENSEQ_OVERLAY = Path(".human-review") / "assets" / "genseq"
 
 
 @functools.lru_cache(maxsize=None)
-def committed_since(root: str, traced_at: str, head: str) -> frozenset[str] | None:
-    """Every path a commit changed between `traced_at` and `head`, or `None` when git cannot
-    say (`traced_at` is not a commit of this repository)."""
+def committed_since(root: str, traced_at: str) -> frozenset[str] | None:
+    """Every path a commit changed between `traced_at` and HEAD, or `None` when git cannot
+    say (`traced_at` is not a commit of this repository, or there is no HEAD).
+
+    Cached with the HEAD it asks for: every diagram on the page lands here, and it does not
+    move during a build, which is all the time this process lives."""
+    head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"],
+                          capture_output=True, text=True).stdout.strip()
+    if not head:
+        return None
     if traced_at == head:
         return frozenset()
     r = subprocess.run(["git", "-C", root, "diff", "--name-only", "--no-renames",
@@ -72,11 +79,9 @@ def _overlay_state(root: Path) -> tuple[Path, frozenset[str]] | None:
         traced_at = (d / ".head").read_text(encoding="utf-8").strip()
     except OSError:
         return None
-    head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
-                          capture_output=True, text=True).stdout.strip()
-    if not traced_at or not head:
+    if not traced_at:
         return None
-    since = committed_since(str(root), traced_at, head)
+    since = committed_since(str(root), traced_at)
     return None if since is None else (d, since)
 
 

@@ -15,6 +15,7 @@ publish-demo.sh — stage a /human-review snapshot for GitHub Pages
 
 Usage:
   publish-demo.sh [slug] [source-dir] [--card] [--push]
+  publish-demo.sh --push slug=source-dir slug=source-dir ...
   publish-demo.sh --help
 
 Arguments:
@@ -23,6 +24,10 @@ Arguments:
                 the project the snapshot belongs to — the source directory's parent.
   source-dir    The snapshot directory to copy (default: .human-review), the one
                 holding review.html, content.json and assets/.
+  slug=source-dir
+                Several snapshots, published in one commit and one push: every push
+                to main deploys Pages and rebuilds the zip, so two snapshots pushed
+                apart do all of that twice. Requires --push; takes no --feature.
 
 Options:
   --src DIR     The source directory, when you want the slug left to default.
@@ -33,6 +38,8 @@ Options:
                 per-tab pages under docs/tabs/ and the top of the Pages landing page show.
   --no-tour     Publish without retaking the tour's screenshots, even for the featured
                 snapshot.
+  --stage       Stage what --push would commit, and stop. What the slug=source-dir form
+                runs once per snapshot.
 
 The featured snapshot (the README's `featured-demo` marker names it; `demo` today) is
 screenshotted tab by tab on every publish — with --card or --push — and the README, the
@@ -54,6 +61,8 @@ card=""
 push=""
 feature=""
 tour=1
+stage=""
+pairs=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -63,7 +72,9 @@ while [ $# -gt 0 ]; do
     --push) push=1; card=1; shift ;;
     --feature) feature=1; shift ;;
     --no-tour) tour=""; shift ;;
+    --stage) stage=1; card=1; shift ;;
     -*) echo "publish-demo: unknown option: $1" >&2; usage >&2; exit 2 ;;
+    *=*) pairs+=("$1"); shift ;;
     *)
       if [ -z "$slug" ]; then slug="$1"
       elif [ -z "$src" ]; then src="$1"
@@ -73,8 +84,31 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-src="${src:-$DEFAULT_SRC}"
 repo="${HUMAN_REVIEW_REPO:-$DEFAULT_REPO}"
+
+if [ "${#pairs[@]}" -gt 0 ]; then
+  if [ -z "$push" ] || [ -n "$feature$slug$src$stage" ]; then
+    echo "publish-demo: slug=source-dir goes with --push, and with no slug, --src or --feature" >&2
+    exit 2
+  fi
+  slugs=()
+  retake=""
+  [ -n "$tour" ] || retake="--no-tour"
+  for pair in "${pairs[@]}"; do
+    "${BASH_SOURCE[0]}" "${pair%%=*}" "${pair#*=}" --stage $retake
+    slugs+=("${pair%%=*}")
+  done
+  if git -C "$repo" diff --cached --quiet; then
+    echo "publish-demo: nothing changed; no commit made"
+  else
+    git -C "$repo" commit --quiet -m "demo: publish ${slugs[*]} snapshots"
+    git -C "$repo" push --quiet
+    echo "publish-demo: committed and pushed ${slugs[*]}"
+  fi
+  exit 0
+fi
+
+src="${src:-$DEFAULT_SRC}"
 
 # The slug defaults to the project the snapshot belongs to — the source directory's parent
 # — since that is the name a reader recognises, not "human-review". Same rule as
@@ -324,11 +358,17 @@ if [ -n "$tour" ] && { [ -n "$card" ] || [ -n "$feature" ]; }; then
   fi
 fi
 
-if [ -n "$push" ]; then
+if [ -n "$push$stage" ]; then
   git -C "$repo" add "demo/$slug" demo/index.html
   if [ -n "$toured" ]; then
     git -C "$repo" add README.md docs/tabs
   fi
+fi
+
+if [ -n "$stage" ]; then
+  echo "publish-demo: $slug staged"
+  exit 0
+elif [ -n "$push" ]; then
   if git -C "$repo" diff --cached --quiet; then
     echo "publish-demo: nothing changed; no commit made"
   else

@@ -22,7 +22,9 @@ done
 - a source directory other than `.human-review` — pass `--src DIR`;
 - "don't push yet" / "let me look first" — drop `--push` and pass `--card` instead;
 - "make this the featured demo" / "put this one in the README" — add `--feature`;
-- "skip the screenshots" — add `--no-tour`.
+- "skip the screenshots" — add `--no-tour`;
+- several snapshots, "both demos" — pass `slug=DIR` per snapshot instead of a slug and
+  `--src`, and keep `--push`: one commit and one push, so the three workflows fire once.
 
 The script derives the slug from the project directory, copies the snapshot, leaves
 behind the run's own dot-prefixed bookkeeping and `*.raw.webm`, refuses any file over

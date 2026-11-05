@@ -55,11 +55,13 @@ it instead of the bare line, so the PR says what its commits' trailers say.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -296,6 +298,25 @@ def sibling_branch(name: str, cache: dict) -> bool:
     return cache[name]
 
 
+#: Below this many transcripts the workers cost more than they save.
+PARALLEL_FROM = 64
+PARALLEL_WORKERS = 8
+
+
+def scan_all(paths: list[Path], wanted: set[str], repo: Path,
+             since: datetime | None = None) -> dict[Path, tuple[dict[str, int], list[str]]]:
+    """`scan` over every transcript, on several cores once there are enough of them.
+
+    The scan is all CPU and reads two thousand files, seven seconds in one process, and the
+    build's cost tab asks for it twice. Each scan shares nothing, so this is the one place
+    in a build where spreading out is free. Processes and not threads: nothing here waits."""
+    one = functools.partial(scan, wanted=wanted, repo=repo, since=since)
+    if len(paths) < PARALLEL_FROM:
+        return {p: one(p) for p in paths}
+    with ProcessPoolExecutor(max_workers=min(PARALLEL_WORKERS, os.cpu_count() or 1)) as pool:
+        return dict(zip(paths, pool.map(one, paths, chunksize=32)))
+
+
 def authors(base: str, repo: Path) -> tuple[list[dict], list[str]]:
     wanted = set(changed_files(base))
     if not wanted:
@@ -305,13 +326,15 @@ def authors(base: str, repo: Path) -> tuple[list[dict], list[str]]:
     claimed = set(claimed_sessions(base))
     siblings: dict = {}
     rows = []
-    for sid, jsonl, subs in transcripts(repo):
+    found = transcripts(repo)
+    scanned = scan_all([p for _, jsonl, subs in found for p in (jsonl, *subs)], wanted, repo, since)
+    for sid, jsonl, subs in found:
         edits = bash = 0
         files: set[str] = set()
         stamps: list[str] = []
         branches: set[str] = set()
         for source in [jsonl, *subs]:
-            hits, ts = scan(source, wanted, repo, since)
+            hits, ts = scanned[source]
             edits += hits.get("edits", 0)
             bash += hits.get("bash", 0)
             files.update(hits.get("files", []))

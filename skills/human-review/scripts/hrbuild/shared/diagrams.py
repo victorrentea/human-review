@@ -442,7 +442,9 @@ _PROV_SOURCES = (
     (re.compile(r"openapi", re.I), "OpenAPI"),
     # A schema dumped from a database the migrations built: the diagram follows the
     # incremental scripts, not a hand-kept DDL file — say so (Victor, 20 Oct 2026).
-    (re.compile(r"(?s)(?=.*(?:flyway|liquibase|db/migration))"
+    # `\A`: a search retries the lookahead from every character, which on a file naming none
+    # of these scanned it once per character: 2 of a page's 6.5 seconds.
+    (re.compile(r"(?s)\A(?=.*(?:flyway|liquibase|db/migration))"
                 r".*(?:information_schema|DatabaseMetaData|pg_dump|\bDB\.sql\b|schema\.sql)",
                 re.I), "DB schema built from incremental scripts"),
     (re.compile(r"information_schema|DatabaseMetaData|pg_dump|\bDB\.sql\b|schema\.sql",

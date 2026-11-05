@@ -49,6 +49,18 @@ without it the suite still runs, one core, eleven minutes.
 CI skips a push that only touches `demo/`, `docs/tabs/` or `README.md`, so a `/publish-demo`
 leaves no `tests` run to watch.
 
+## Republish both demos in one push
+
+```sh
+scripts/publish-demo.sh --push \
+  demo2=$HOME/workspace/petclinic-visits-paginated/.human-review \
+  demo=$HOME/workspace/petclinic-pr-visit-has-vet/.human-review
+```
+
+Two separate publishes deploy Pages and rebuild the zip twice. Rebuild each page first, in its
+own checkout and with `--out .human-review/review.html`: written anywhere else, `demo`'s build
+stopped on a review anchor that the same build in place reads fine (5 Nov 2026).
+
 ## Every change to `intellij-plugin/` ships, in the same turn
 
 Victor, 16 Oct 2026: "you do that every time from now on". After any change under
