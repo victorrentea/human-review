@@ -47,10 +47,13 @@ button.tab { border:0; background:color-mix(in srgb, var(--fg) 7%, var(--bg)); c
              display:inline-flex; align-items:center; gap:.42rem;
              transition:background .18s, color .18s,
                         padding .22s ease; }
-/* Hover and selected are one look, the accent wash and the full text colour: what the
-   pointer shows on the tab it is about to open is what that tab wears once open, so the
-   click changes nothing on it but the page below. */
-button.tab:hover, button.tab[aria-selected="true"] { color:var(--fg); background:var(--accent-soft); }
+/* Hover and selected are one look, a stronger wash of the text colour and the full text
+   colour: what the pointer shows on the tab it is about to open is what that tab wears once
+   open, so the click changes nothing on it but the page below. Never the accent: the glowing
+   line below already says which tab is open, a red tab on top of it said so twice (Victor,
+   5 Nov 2026: "este suficientă linia"). */
+button.tab:hover, button.tab[aria-selected="true"] { color:var(--fg);
+  background:color-mix(in srgb, var(--fg) 15%, var(--bg)); }
 /* The strip's edge glows up towards the tabs and turns up around the current tab, so that
    tab reads as open onto the page below (Victor, 4 Nov 2026). The tab sits over the line
    and clips its shadow at its own foot, which is the gap in the line. */
