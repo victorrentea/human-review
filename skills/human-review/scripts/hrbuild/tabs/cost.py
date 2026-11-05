@@ -575,6 +575,14 @@ def tooling_investment_html(t: dict = TOOLING_INVESTMENT) -> str:
         return ""
     money = lambda n: f"${n:,.0f}"
     hours = lambda s: f"{s / 3600:,.0f} h"
+    workday = 8  # the hours in one "day" of the tiles: a working day, not 24 hours
+
+    def hours_and_days(s: float) -> str:
+        """The hours with their 8-hour working days beside them (Victor, 5 Nov 2026): a
+        pile of hours means little until it reads as days of someone's calendar."""
+        days = round(s / 3600 / workday)
+        return f"{hours(s)} ({days:,} day{'' if days == 1 else 's'})"
+
     tip = ("By bucket: " + " · ".join(f"{k} {money(v)}" for k, v in t["buckets"])
            + ". By model: " + " · ".join(f"{k} {money(v)}" for k, v in t["models"])
            + f". Not counted: {t['borderline']['sessions']} mixed sessions where human-review"
@@ -590,12 +598,14 @@ def tooling_investment_html(t: dict = TOOLING_INVESTMENT) -> str:
               "tokens would cost on an API key; a Claude subscription bills a flat monthly "
               "fee instead. " + tip)]
     if t.get("humanSeconds"):
-        tiles.append((hours(t["humanSeconds"]), "Victor&rsquo;s time, estimated",
+        tiles.append((hours_and_days(t["humanSeconds"]), "Victor&rsquo;s time, estimated",
+                      f"Hours, and in brackets the {workday}-hour working days they make. "
                       "Speaking each prompt (Wispr Flow's own duration where it logged the "
                       "dictation), typing the rest, reading the agent's replies. A floor: "
                       "reviewing, testing by hand and thinking leave no trace."))
     if t.get("wallSeconds"):
-        tiles.append((hours(t["wallSeconds"]), "agent time",
+        tiles.append((hours_and_days(t["wallSeconds"]), "agent time",
+                      f"Hours, and in brackets the {workday}-hour working days they make. "
                       "Hours in which at least one agent was working on it — each prompt to "
                       "its turn's last record, overlapping sessions counted once. Added up "
                       f"session by session it is {hours(t.get('agentSeconds') or 0)}."))

@@ -24,6 +24,14 @@ def test_the_note_is_not_a_row_of_the_bill():
     assert "not this change" in note and '<p class="costtooling-foot">' in note
 
 
+def test_the_hours_also_read_as_eight_hour_working_days():
+    note = build.tooling_investment_html(
+        {**build.TOOLING_INVESTMENT, "humanSeconds": 34 * 3600, "wallSeconds": 8 * 3600})
+    assert "<b>34 h (4 days)</b>" in note
+    assert "<b>8 h (1 day)</b>" in note
+    assert note.count("8-hour working days") == 2  # each tile says what its brackets are
+
+
 def test_the_breakdown_sums_to_the_headline():
     t = build.TOOLING_INVESTMENT
     assert abs(sum(v for _, v in t["buckets"]) - t["usd"]) <= len(t["buckets"])

@@ -423,6 +423,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             '$ at API list price, not your subscription.',
             'Time = model thinking + tools (builds, tests).',
             'Under each price: the model, with the effort it ran at in brackets.',
+            'Building the tool itself: hours, with their 8-hour working days in brackets.',
         ],
         "ex": 'e.g. on one PR: implementation $15 · review $5 · auto-fixes $9 · this guide $0.30.',
     },
