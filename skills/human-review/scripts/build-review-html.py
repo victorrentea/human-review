@@ -902,15 +902,15 @@ def _main(argv=None) -> int:
             f'data-tip="Why {n}/10? Open the {html.escape(target_label, quote=True)} tab">'
             f'{face}</a>'
             if target else f'<span class="titlescore {band}">{face}</span>')
+    # The merge's door, ✅ or ⚠️, and the blast radius's circle, inside the grade pill in
+    # front of the number (Victor, 29 Oct 2026): door, reach, grade, read as one before
+    # anything else. Nothing without a `mergeRisk`.
+    title_score = grade_pill_with_risk(spec, title_score)
 
     extra_css = "".join((out_dir / c).read_text(encoding="utf-8")
                         for c in page_stylesheets(spec, out_dir))
     # The snippet extractor owns its own token colours, so the page asks it for them
     # rather than keeping a second copy that would drift from the highlighter.
-    # The merge's door, ✅ or ⚠️, and the blast radius's circle, inside the grade pill in
-    # front of the number (Victor, 29 Oct 2026): door, reach, grade, read as one before
-    # anything else. Nothing without a `mergeRisk`.
-    title_score = grade_pill_with_risk(spec, title_score)
     extra_css += subprocess.run(
         [sys.executable, str(EXTRACT), "--css"],
         capture_output=True,
