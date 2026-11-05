@@ -38,6 +38,17 @@ git push origin HEAD:test-pr         # NEVER a bare `git push`: test-pr may trac
 `~/workspace/petclinic` is a third checkout on whatever branch it happens to be on — ask
 before touching it, and never assume it is `main`.
 
+## The whole suite takes a minute: run it
+
+`python3 -m pytest -q` from `skills/human-review/scripts`. `conftest.py` spreads it over every
+core on its own, so there is no flag to remember and no reason to run only the tests near a
+change. A run aimed at one test (`file::test`) or a `-k` stays in-process, and so does `-n 0`,
+which is what `print` debugging wants. It needs `pytest-xdist` (`requirements-dev.txt`);
+without it the suite still runs, one core, eleven minutes.
+
+CI skips a push that only touches `demo/`, `docs/tabs/` or `README.md`, so a `/publish-demo`
+leaves no `tests` run to watch.
+
 ## Every change to `intellij-plugin/` ships, in the same turn
 
 Victor, 16 Oct 2026: "you do that every time from now on". After any change under

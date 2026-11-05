@@ -5,9 +5,21 @@ name: tests
 # invariants as prose a reader was trusted to follow, and those invariants are code here
 # (the gate refuses before it wipes; a step whose prerequisite fails is never stamped; a
 # step that raises is still closed), so the tests are the only thing holding them.
+#
+# Not on a push that only publishes a demo: `publish-demo.sh` touches demo/, the README's
+# tour and docs/tabs/, and no script changes, so the suite would answer the question the
+# previous push already answered, once per snapshot.
 on:
   push:
+    paths-ignore:
+      - "demo/**"
+      - "docs/tabs/**"
+      - "README.md"
   pull_request:
+    paths-ignore:
+      - "demo/**"
+      - "docs/tabs/**"
+      - "README.md"
 
 jobs:
   pytest:
@@ -17,6 +29,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
       - name: Install what the scripts import at module level
         run: python -m pip install --quiet -r requirements-dev.txt
 

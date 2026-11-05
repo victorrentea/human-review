@@ -17,9 +17,16 @@ import os
 import site
 from pathlib import Path
 
+import pytest
+
 # A build reads the PR's description from GitHub (`attach_pr_body`); the suite's fixtures
 # name real PR URLs, and a test must not depend on the network or on what a PR says today.
 os.environ.setdefault("HR_NO_GITHUB", "1")
+
+# A build also fetches the base (`fetch_base`) when the checkout it runs in has a network
+# remote, and this suite runs in one: every page a test built paid a round trip to GitHub,
+# about two thirds of the time a small page takes.
+os.environ.setdefault("HUMAN_REVIEW_NO_FETCH", "1")
 
 # Several tests point `HOME` at an empty folder so no real transcript leaks into a cost
 # number. Python finds its user site (`~/Library/Python/3.x`) through `HOME`, and that is
@@ -29,6 +36,28 @@ os.environ.setdefault("HR_NO_GITHUB", "1")
 os.environ.setdefault("PYTHONUSERBASE", site.getuserbase())
 
 HERE = Path(__file__).resolve().parent
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config):
+    """The whole suite takes eleven minutes on one core and a minute and a half on all of
+    them, so it spreads itself out with no flag to remember, however it was started: here
+    and not in `addopts`, which would make `-n` an unknown option wherever pytest-xdist is
+    not installed (`uv run --with pytest …`).
+
+    A run aimed at one test or a `-k` stays in this process: starting the workers costs more
+    than such a run does, and `print` and `--pdb` work. `-n 0` asks for the same by hand;
+    `PYTEST_XDIST_AUTO_NUM_WORKERS` caps the workers when the machine is busy."""
+    # A worker runs this hook too, with `-n` unset: without this line each one starts its own
+    # workers, and they theirs, until the user's process limit is gone (5 Nov 2026).
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        return
+    if (config.pluginmanager.hasplugin("xdist")
+            and config.getoption("numprocesses", None) is None
+            and not config.getoption("keyword", "")
+            and not config.getoption("usepdb", False)
+            and not any("::" in str(a) for a in config.args)):
+        config.option.numprocesses = "auto"
 
 
 def page_source() -> str:

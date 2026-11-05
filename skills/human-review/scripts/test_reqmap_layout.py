@@ -496,11 +496,16 @@ def test_the_resolved_ticket_is_written_down_so_the_next_build_needs_no_network(
     calls = []
 
     class _Done:
+        returncode = 0
+        stderr = ""
         stdout = json.dumps({"number": 37, "title": "Link Visit with Vet",
                              "url": "https://github.com/victorrentea/petclinic/issues/37"})
 
     def fake_run(args, **kw):
-        calls.append(args)
+        # Only `gh`: the forge is looked up with a `git remote` first, unless an earlier test
+        # in this process left it cached, and the count below is about GitHub.
+        if args[0] == "gh":
+            calls.append(args)
         return _Done()
 
     monkeypatch.setattr(T.subprocess, "run", fake_run)

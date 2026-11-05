@@ -922,6 +922,10 @@ def test_the_rerun_holds_the_reload_until_it_is_finished(server, watched, tmp_pa
 
     srv.RUNS[run_id]._kill()
     _finish(server, run_id)
+    # The run reads as finished a moment before its `on_done` lets go of the hold.
+    until = time.time() + 5
+    while watched._holds and time.time() < until:
+        time.sleep(0.01)
     # Released on every path out, including the one where the command died — and then it
     # is one reload, at the end, which is the one the reader wanted.
     watched.tick(now=600)

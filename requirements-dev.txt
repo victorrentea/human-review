@@ -4,6 +4,7 @@
 # `ast-grep` binary (logextract's entire structural scan) were never in it, and CI had
 # been red on them for weeks.
 pytest
+pytest-xdist
 pygments
 pyyaml
 pillow
