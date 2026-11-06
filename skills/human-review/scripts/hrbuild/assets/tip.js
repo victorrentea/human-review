@@ -114,9 +114,13 @@
     bubble.classList.remove('visible');
     // One row when the row fits the screen; otherwise back to the wrapping box. Measured,
     // not guessed from the character count: a path and a sentence of the same length are
-    // very different widths. Markup tips (lists) always wrap.
-    bubble.classList.toggle('oneline', !html);
-    if (!html && bubble.scrollWidth > window.innerWidth - 16) bubble.classList.remove('oneline');
+    // very different widths. A markup tip whose rows are set by hand with <br> keeps each
+    // of them whole too, growing leftwards from the screen's edge rather than dropping one
+    // word onto a row of its own (the grade pill's "visits / API", Victor, 6 Nov 2026).
+    // Lists and paragraphs always wrap.
+    var rows = !html || (/<br\b/i.test(html) && !/<(?:ul|ol|p)\b/i.test(html));
+    bubble.classList.toggle('oneline', rows);
+    if (rows && bubble.scrollWidth > window.innerWidth - 16) bubble.classList.remove('oneline');
     place(el);
     timer = setTimeout(function () {
       if (current !== el) return;

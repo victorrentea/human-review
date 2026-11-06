@@ -3788,8 +3788,10 @@ def test_a_text_tooltip_stays_on_one_row_and_wraps_only_when_the_row_would_not_f
     falls back to the wrapping box, and markup tips (lists) always wrap."""
     js = build.TIP_JS
     assert ".tip.oneline{white-space:nowrap;max-width:calc(100vw - 16px)}" in js
-    assert "bubble.classList.toggle('oneline', !html)" in js
+    assert "bubble.classList.toggle('oneline', rows)" in js
     assert "bubble.scrollWidth > window.innerWidth - 16) bubble.classList.remove('oneline')" in js
+    # Rows set by hand with <br> stay whole too; lists and paragraphs keep wrapping.
+    assert r"/<br\b/i.test(html) && !/<(?:ul|ol|p)\b/i.test(html)" in js
 
 
 def test_a_file_at_the_repo_root_gets_no_tooltip_repeating_its_own_name(tmp_path):
