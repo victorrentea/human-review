@@ -254,6 +254,21 @@ object Git {
     // the Command Line Tools is always at its absolute path, though.
     private val BINARIES = listOf("git", "/usr/bin/git")
 
+    /**
+     * Why this process cannot start git at all, or null when it can. The other two calls answer
+     * null for that too, which reads as "not a repository"; so an IDE that Toolbox updated on
+     * disk while it ran, whose every process start now fails jspawnhelper's version check, said
+     * no window was on the commit (6 Nov 2026). Asked only once a refusal is about to go out.
+     */
+    fun startFailure(): String? = try {
+        val proc = ProcessBuilder(BINARIES.last(), "--version").redirectErrorStream(true).start()
+        proc.inputStream.use { it.readAllBytes() }
+        proc.waitFor(10, TimeUnit.SECONDS)
+        null
+    } catch (e: java.io.IOException) {
+        e.message ?: "$e"
+    }
+
     /** stdout, trimmed, or null when git failed in that directory. */
     fun run(cwd: String, vararg args: String): String? = bytes(cwd, *args)?.toString(Charsets.UTF_8)?.trim()
 

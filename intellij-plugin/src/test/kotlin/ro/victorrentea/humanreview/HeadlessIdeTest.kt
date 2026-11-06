@@ -209,6 +209,17 @@ class HeadlessIdeTest : HeavyPlatformTestCase() {
         assertEquals(400, post("/review-open", mapOf("file" to path("src/Owner.java"), "sha" to "", "root" to repo.dir.toString())).first)
     }
 
+    fun `test review-open that cannot start git says so instead of no window`() {
+        repo.write("src/Owner.java", "moved on\n")
+        repo.commit("two")
+        val (code, body) = ReviewOpen.open(
+            ReviewRef(path("src/Owner.java"), 3, null, base, repo.dir.toString(), "feature"),
+            gitFailure = { "Failed to exec spawn helper" })
+        assertEquals(503, code)
+        assertEquals("cannot-run-git", body["error"])
+        assertEquals(ReviewLocate.CANNOT_RUN_GIT, body["message"])
+    }
+
     fun `test review-open hands over to the bridge whose checkout has the reviewed blob`() {
         // Another checkout at the reviewed content, open in a "VS Code window" that is only a stub
         // on loopback, registered in the test's own registry.

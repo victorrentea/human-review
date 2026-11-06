@@ -42,6 +42,10 @@ object ReviewLocate {
 
     fun editedText(short: String) = "⚠ Edited since the reviewed commit $short: lines may have moved"
 
+    /** Instead of the refusal when the search could not run: it found nothing because it saw nothing. */
+    const val CANNOT_RUN_GIT = "IntelliJ cannot start git, so it cannot look for this commit. " +
+        "Updated on disk while it was running? Restart IntelliJ"
+
     private fun inside(p: String, dir: String) = Folders.inside(p, dir)
 
     /**
@@ -166,17 +170,20 @@ object ReviewOpen {
     /**
      * Locate, then open in the window that qualified. Never throws; the answer is
      * `(status, body)` with the words a caller can show as they are — 200, 400 `bad-request`,
-     * 409 `no-window` (with `message` and `prompt`) or `open-failed`.
+     * 409 `no-window` (with `message` and `prompt`) or `open-failed`, 503 `cannot-run-git`.
      */
-    fun open(ref: ReviewRef, registry: Path = Registry.DIR): Pair<Int, Map<String, Any?>> {
+    fun open(ref: ReviewRef, registry: Path = Registry.DIR,
+             gitFailure: () -> String? = Git::startFailure): Pair<Int, Map<String, Any?>> {
         val line = maxOf(1, (RangeSpan.num(ref.line) ?: 1.0).toInt())
         // Passed on as given: RangeFocus decides whether it is a range worth focusing.
         val endLine = ref.endLine?.takeIf { it != "" }
         val found = ReviewLocate.locate(ref.file, ref.sha, ref.root, ref.branch, windows(registry))
         when (found) {
             is Located.BadRequest -> return 400 to mapOf("ok" to false, "error" to "bad-request")
-            is Located.NoWindow -> return 409 to linkedMapOf(
-                "ok" to false, "error" to "no-window", "message" to found.message, "prompt" to found.prompt)
+            is Located.NoWindow -> return gitFailure()?.let {
+                503 to linkedMapOf("ok" to false, "error" to "cannot-run-git", "message" to ReviewLocate.CANNOT_RUN_GIT, "detail" to it)
+            } ?: (409 to linkedMapOf(
+                "ok" to false, "error" to "no-window", "message" to found.message, "prompt" to found.prompt))
             is Located.Found -> Unit
         }
         val hit = found.hit
