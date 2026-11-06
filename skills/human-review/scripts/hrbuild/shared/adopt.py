@@ -570,8 +570,8 @@ def explain_button(piece: str, title: str = "") -> str:
     if not key:
         return ""
     return (f'<button type="button" class="hrx-i" aria-pressed="false" '
-            f'data-explain="{html.escape(key, quote=True)}" aria-label="What am I looking at?" '
-            'data-tip="What am I looking at?"></button>')
+            f'data-explain="{html.escape(key, quote=True)}" aria-label="What am I looking at?">'
+            '</button>')
 
 
 def explain_data() -> str:
