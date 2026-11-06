@@ -26,7 +26,7 @@ review-points.md: 21 item(s) in 4 fixed, 11 ignored, 6 assumptions
       · Ties within a sorted column fall back to latest first, then id   [1 ref, 1 snippet, confidence 0.6]
       · No index added for the date sort   [1 ref, 1 snippet, confidence 0.5]
   fixed in     HEAD
-  base: c70d6642e77f61a54c8e018ad14b88f14f9545bd · implementation: 6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9 · reviewers: 4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit · session: 498ee103-9160-4f7a-be05-c641ebd16920
+  base: 78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9 · implementation: 6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9 · reviewers: 4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit · session: 498ee103-9160-4f7a-be05-c641ebd16920
   wrote  .human-review/review-points.json
-    $ git merge-base c70d6642e77f61a54c8e018ad14b88f14f9545bd HEAD
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-commits.py --base c70d6642e77f61a54c8e018ad14b88f14f9545bd --json
+    $ git merge-base 78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9 HEAD
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-commits.py --base 78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9 --json

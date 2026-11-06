@@ -1,8 +1,8 @@
 {
- "base": "c70d6642e77f61a54c8e018ad14b88f14f9545bd",
+ "base": "78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 22,
+ "commits": 24,
  "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
  "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
  "session": "498ee103-9160-4f7a-be05-c641ebd16920",
@@ -26,7 +26,9 @@
   "180dbebcbce16f76ef4762b12321d64c05fffe93",
   "3680a314c00c82aef36198f12f44fc8611004487",
   "ff12002a902c6e6497a9158294e74b235bf5dfbe",
-  "273460ab0793faf449b0e127d2b2275f287abe51"
+  "273460ab0793faf449b0e127d2b2275f287abe51",
+  "498760430fee38bfe7c8ece353f40fa402803e1b",
+  "ca7f0e721744e2ed53b405cbe4faa210df1a90da"
  ],
  "after_detail": [
   {
@@ -141,6 +143,18 @@
    "sha": "273460ab0793faf449b0e127d2b2275f287abe51",
    "when": "2026-11-06T09:54:13+02:00",
    "subject": "Regenerate the browser sequence diagrams: request arrows link to this branch's lines",
+   "auto_fix": false
+  },
+  {
+   "sha": "498760430fee38bfe7c8ece353f40fa402803e1b",
+   "when": "2026-11-06T18:37:45+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
+   "auto_fix": false
+  },
+  {
+   "sha": "ca7f0e721744e2ed53b405cbe4faa210df1a90da",
+   "when": "2026-11-06T18:37:59+02:00",
+   "subject": "review-points: base moved past main's 78f54394 (merged)",
    "auto_fix": false
   }
  ],

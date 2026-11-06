@@ -20,3 +20,5 @@
     $ git show --numstat --format= 3680a314c00c82aef36198f12f44fc8611004487
     $ git show --numstat --format= ff12002a902c6e6497a9158294e74b235bf5dfbe
     $ git show --numstat --format= 273460ab0793faf449b0e127d2b2275f287abe51
+    $ git show --numstat --format= 498760430fee38bfe7c8ece353f40fa402803e1b
+    $ git show --numstat --format= ca7f0e721744e2ed53b405cbe4faa210df1a90da

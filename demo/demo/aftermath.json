@@ -1,7 +1,7 @@
 {
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "review_short": "be762955",
- "head": "521a3f0420ecef93173a3b96135fcf031c317ffb",
+ "head": "80ce4c81ce4b50e040e6d569d8a71d4d33226769",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -2650,17 +2650,66 @@
    "measured": true,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "d5ff445c5261a085c9fd49c8352c30532b9dc02b",
+   "short": "d5ff445c",
+   "when": "2026-11-06T18:37:43+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "files": [
+    {
+     "path": ".github/CODEOWNERS",
+     "added": 11,
+     "deleted": 11,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-frontend/docs/frontend-packages.puml",
+     "added": 0,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 11,
+   "deleted": 13,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "80ce4c81ce4b50e040e6d569d8a71d4d33226769",
+   "short": "80ce4c81",
+   "when": "2026-11-06T18:37:57+02:00",
+   "subject": "review-points: base moved past main's 78f54394 (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 57,
-  "files": 156,
-  "added": 3582,
-  "deleted": 1087,
+  "commits": 59,
+  "files": 157,
+  "added": 3591,
+  "deleted": 1098,
   "code": {
-   "files": 123,
-   "added": 3190,
-   "deleted": 652
+   "files": 124,
+   "added": 3199,
+   "deleted": 663
   },
   "generated": {
    "files": 33,
