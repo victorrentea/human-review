@@ -45,9 +45,10 @@ import json
 import os
 import re
 import sqlite3
-import subprocess
 from pathlib import Path
 from urllib.parse import unquote, urlparse
+
+from hrbuild.shared.util import _git
 
 HERE = Path(__file__).resolve().parent
 
@@ -143,8 +144,7 @@ def normalize_harness(raw) -> str:
 # ----------------------------------------------------------------------------- git
 
 def git(root: Path, *args: str) -> str:
-    p = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-    return p.stdout.strip() if p.returncode == 0 else ""
+    return _git(root, *args) or ""
 
 
 def restart_point(root: Path, base: str) -> "tuple[str, dt.datetime] | None":

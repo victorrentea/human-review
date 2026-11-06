@@ -6,7 +6,6 @@ import html
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
 
 from ..shared.diagrams import (_context_svg, _source_link, render_diagrams, select_rows,
@@ -17,7 +16,7 @@ from ..shared.genseq import (GENSEQ_HANDLE, GENSEQ_OVERLAY, genseq_by_test, gens
                              genseq_file, pair_anchor, test_of_genseq)
 from ..shared.snippets import SNIPPET_BASE, snippet_html
 from ..shared.svg import inline_svg
-from ..shared.util import TEST_KIND_ORDER
+from ..shared.util import TEST_KIND_ORDER, _git, _git_run
 
 #: The three kinds of test the page names, and what each one is — the Tests tab's own
 #: vocabulary, word for word, because a reader who learnt `UI` over there must not have to
@@ -341,13 +340,10 @@ def ledger_status(test_rel: str, scenarios, tests) -> str | None:
 def _branch_changed(root: str, base: str) -> frozenset[str]:
     """Every path the branch changed since its merge-base with `base`, work tree included —
     the same comparison `_moved_since_base` makes. Empty when git cannot say."""
-    def git(*args):
-        return subprocess.run(["git", "-C", root, *args], capture_output=True, text=True)
-    mb = git("merge-base", base, "HEAD").stdout.strip()
+    mb = _git(root, "merge-base", base, "HEAD")
     if not mb:
         return frozenset()
-    r = git("diff", "--name-only", "--no-renames", mb)
-    return frozenset(r.stdout.split()) if r.returncode == 0 else frozenset()
+    return frozenset((_git(root, "diff", "--name-only", "--no-renames", mb) or "").split())
 
 
 _TS_IMPORT = re.compile(r"""(?:\bfrom\s+|\bimport\s+|\brequire\()['"](\.{1,2}/[^'"]+)['"]""")
@@ -767,11 +763,10 @@ def _tagged_decl(lines: list[str], at: int, kind: str) -> int | None:
 def tagged_scenarios(root: Path) -> dict[str, list[int]]:
     """`{test: [declaration line, …]}` of every scenario tagged for tracing in the index."""
     found: dict[str, list[int]] = {}
-    got = subprocess.run(["git", "-C", str(root), "grep", "-n", "-I", "-E",
-                          "@generate_sequence|@GenerateSequence|GENERATE_SEQUENCE_TAG"],
-                         capture_output=True, text=True)
+    got = _git(root, "grep", "-n", "-I", "-E",
+               "@generate_sequence|@GenerateSequence|GENERATE_SEQUENCE_TAG") or ""
     hits: dict[str, list[int]] = {}
-    for row in got.stdout.splitlines() if got.returncode == 0 else []:
+    for row in got.splitlines():
         rel, _, rest = row.partition(":")
         num, _, text = rest.partition(":")
         if num.isdigit() and _test_kind(rel) and GENSEQ_TAG.search(text) \
@@ -841,17 +836,14 @@ def undrawn_reason(test_rel: str, root: Path) -> str:
     import datetime as dt
 
     def _git_time(*args: str) -> float | None:
-        got = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%ct", *args],
-                             capture_output=True, text=True)
-        out = got.stdout.strip()
-        return float(out) if got.returncode == 0 and out.isdigit() else None
+        out = _git(root, "log", "-1", "--format=%ct", *args) or ""
+        return float(out) if out.isdigit() else None
 
     try:
         traced = (root / GENSEQ_OVERLAY / ".head").stat().st_mtime
     except OSError:
         traced = _git_time("--", ":(glob)**/*.genseq.puml")
-    dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", test_rel],
-                           capture_output=True, text=True).stdout.strip()
+    dirty = _git(root, "status", "--porcelain", "--", test_rel)
     try:
         changed = (root / test_rel).stat().st_mtime if dirty \
             else _git_time("--", test_rel)
@@ -908,22 +900,17 @@ def _moved_since_base(rel: str, root: str, base: str) -> bool:
     exactly the ones where "unchanged" was never a claim about a base to begin with, and
     turning them into a warning would be inventing a problem.
     """
-    def git(*args):
-        return subprocess.run(["git", "-C", root, *args],
-                              capture_output=True, text=True)
-    mb = git("merge-base", base, "HEAD").stdout.strip()
+    mb = _git(root, "merge-base", base, "HEAD")
     if not mb:
         return False
     # This run's copy, when the Sequence step drew one: the work tree holds the committed
     # bytes again, and it is the re-traced picture the tab is showing.
     traced = genseq_file(rel, Path(root))
     if traced != Path(root) / rel:
-        was = git("show", f"{mb}:{rel}")
-        return was.returncode != 0 or was.stdout != traced.read_text(encoding="utf-8")
+        return _git(root, "show", f"{mb}:{rel}", strip=False) != traced.read_text(encoding="utf-8")
     # `--quiet` exits 1 on a difference, 0 on none — and 128 when git could not look,
     # which must not be read as "it moved".
-    r = git("diff", "--quiet", mb, "--", rel)
-    return r.returncode == 1
+    return _git_run(root, "diff", "--quiet", mb, "--", rel).returncode == 1
 
 
 def _stale_sequence(puml_rel: str, test_rel: str, root: Path, out_dir: Path) -> str:

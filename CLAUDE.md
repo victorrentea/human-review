@@ -160,6 +160,16 @@ GitHub-shaped question. A GitHub-shaped comment call stays in that shape: `GitLa
 translates it, so `push-pr-comments.py` keeps planning in GitHub's words. Links to the
 skill's own home (`victorrentea/human-review`) are not the forge and stay where they are.
 
+## Everything a build asks git goes through `hrbuild/shared/util.py`
+
+`_git(root, …)` answers with stdout, or None; `_git_run(root, …)` with the whole result, for a
+caller that needs the exit code or a file's bytes. `main` wraps the build in
+`git_answers_held()`, so a question asked from every card reaches git once. That holds only
+because a build moves nothing: anything it does that moves a ref has to call
+`forget_git_answers()`, as `fetch_base` does. `test_git_seam.py` fails a `subprocess.run(["git"`
+anywhere else in the build's code; `forge.py` keeps its own, and `run-steps.py` is another
+program, whose answers must not outlive a step.
+
 ## Memoria lui Claude
 
 Memoria generală (cine e Victor, cum vrea să lucrezi) e în repo-ul privat `victorrentea/assistant`.

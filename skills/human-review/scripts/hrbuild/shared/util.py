@@ -1,6 +1,8 @@
 """Small facts and helpers every other module leans on."""
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import re
 import subprocess
 from pathlib import Path
@@ -41,12 +43,73 @@ def _pretty(name: str) -> str:
     return SPELLED_OUT.get(name) or re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
 
 
-def _git(root: Path, *args: str) -> str | None:
+#: What git has answered during this build, or None outside one.
+_GIT_ANSWERS: contextvars.ContextVar[dict | None] = contextvars.ContextVar("git_answers",
+                                                                           default=None)
+
+
+@contextlib.contextmanager
+def git_answers_held():
+    """Ask git each question once for as long as this runs.
+
+    A page asks the same few things from every card: 93 of the 237 git processes of a build
+    were repeats. The tree and the refs hold still for the length of a build, and only for
+    that, so this wraps `main` and nothing else: a test or a tool that commits between two
+    calls gets two answers."""
+    token = _GIT_ANSWERS.set({})
+    try:
+        yield
+    finally:
+        _GIT_ANSWERS.reset(token)
+
+
+def forget_git_answers() -> None:
+    """The one thing a build does that moves a ref is fetching the base."""
+    held = _GIT_ANSWERS.get()
+    if held is not None:
+        held.clear()
+
+
+def _git_run(root: Path, *args: str, binary: bool = False,
+             timeout: float | None = None) -> subprocess.CompletedProcess:
+    """A read-only git command, whole: for a caller that needs the exit code itself or the
+    file's bytes. Git that cannot start reads as a failed command (127)."""
+    held = _GIT_ANSWERS.get()
+    key = (str(root), args, binary)
+    if held is not None and key in held:
+        return held[key]
+    decoding = {} if binary else {"text": True, "errors": "replace"}
+    try:
+        got = subprocess.run(["git", "-C", str(root), *args], capture_output=True,
+                             timeout=timeout, **decoding)
+    except (OSError, subprocess.SubprocessError):
+        nothing = b"" if binary else ""
+        got = subprocess.CompletedProcess(args, 127, nothing, nothing)
+    if held is not None:
+        held[key] = got
+    return got
+
+
+def _git(root: Path | None, *args: str, strip: bool = True,
+         timeout: float | None = None) -> str | None:
     """A git command whose failure is an answer, not an exception.
 
     Every caller here is asking a question that can legitimately have no answer -- a ref
     that does not exist locally, a range that cannot be walked -- and each of them turns
-    `None` into a dropped chip or a dropped warning rather than a wrong one.
+    `None` into a dropped chip or a dropped warning rather than a wrong one. `strip=False`
+    keeps a file's own leading lines, and with them its line numbers.
     """
-    p = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
-    return p.stdout.strip() if p.returncode == 0 else None
+    if root is None:
+        return None
+    got = _git_run(root, *args, timeout=timeout)
+    if got.returncode != 0:
+        return None
+    return got.stdout.strip() if strip else got.stdout
+
+
+def repo_root() -> Path:
+    """The checkout the current directory sits in. There is nothing to do outside one."""
+    top = _git(Path.cwd(), "rev-parse", "--show-toplevel")
+    if top is None:
+        raise SystemExit("[review] not inside a git repository")
+    return Path(top)

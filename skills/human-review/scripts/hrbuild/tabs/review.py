@@ -18,6 +18,7 @@ from ..shared.chips import reviewer_names, _angry_bot
 from ..shared.commands import command_html
 from ..shared.forge import (api_forge, find_pull, forge_at, forge_for, GitHubForge,
                             is_commit_comment_url, is_pull_url, pull_root)
+from ..shared.util import _git
 from ..shared.snippets import DIFF_CONTEXT, diff_html, diff_uri_handler
 
 # The report's contract lives next to the scripts, beside the parser that writes it: the
@@ -984,16 +985,8 @@ def _read_json(path: Path):
         return None
 
 
-def _git_out(root: Path | None, *args: str) -> str | None:
-    """`git <args>` in `root`, stdout stripped — or None when it fails or there is no root."""
-    if root is None:
-        return None
-    r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else None
-
-
 def _git_root(out_dir: Path) -> Path | None:
-    top = _git_out(Path(out_dir), "rev-parse", "--show-toplevel") if Path(out_dir).is_dir() \
+    top = _git(Path(out_dir), "rev-parse", "--show-toplevel") if Path(out_dir).is_dir() \
         else None
     return Path(top) if top else None
 
@@ -1216,7 +1209,7 @@ def _base_ref(spec, root: Path | None) -> str | None:
     """The branch the PR merges into, as a ref this clone can resolve."""
     base = str((spec.get("pr") or {}).get("base") or "main")
     for ref in (base if base.startswith("origin/") else f"origin/{base}", base):
-        if _git_out(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"):
+        if _git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"):
             return ref
     return None
 
@@ -1232,7 +1225,7 @@ def commits_after_review(out_dir: Path, root: Path | None) -> dict | None:
     review = doc.get("review") if isinstance(doc, dict) else None
     if not review or root is None:
         return None
-    out = _git_out(root, "log", "--first-parent", "--no-merges", "--date=format:%d %b %H:%M",
+    out = _git(root, "log", "--first-parent", "--no-merges", "--date=format:%d %b %H:%M",
                    "--format=%h%x09%ad%x09%s", f"{review}..HEAD")
     rows = [ln.split("\t", 2) for ln in (out or "").splitlines() if ln.count("\t") >= 2]
     if not rows:
@@ -1285,10 +1278,10 @@ def _before_range_commits(spec, root: Path | None, base_ref: str | None) -> list
     audited = prov.get("auditedBase") or prov.get("base")
     if not (root and base_ref and audited):
         return []
-    mb = _git_out(root, "merge-base", base_ref, "HEAD")
-    if not mb or not _git_out(root, "merge-base", "--is-ancestor", mb, audited) == "":
+    mb = _git(root, "merge-base", base_ref, "HEAD")
+    if not mb or not _git(root, "merge-base", "--is-ancestor", mb, audited) == "":
         return []
-    listed = _git_out(root, "log", "--no-merges", "--format=%H%x1f%s", f"{mb}..{audited}")
+    listed = _git(root, "log", "--no-merges", "--format=%H%x1f%s", f"{mb}..{audited}")
     change = _spec_change_dir(root, spec)
     # Eval run 11: 5 of "7 commits never reviewed" were already on origin/main, cherry-
     # picked under other shas. A merge brings none of them, so none of them is counted.
@@ -1299,7 +1292,7 @@ def _before_range_commits(spec, root: Path | None, base_ref: str | None) -> list
         sha, _, subject = line.partition("\x1f")
         if not sha.strip() or sha in picked:
             continue
-        touched = _git_out(root, "diff-tree", "--no-commit-id", "--name-only", "-r",
+        touched = _git(root, "diff-tree", "--no-commit-id", "--name-only", "-r",
                            "--root", sha, "--", f"{change}/") if change else ""
         out.append({"sha": sha, "subject": subject, "spec": change if touched else None})
     return out
@@ -1371,7 +1364,7 @@ def _decision_link(entry: dict, root: Path | None) -> tuple[str, str, str] | Non
         return None
     href = ref.get("href") or ""
     forge = forge_for(Path(root)) if (root is not None and path) else None
-    head = _git_out(root, "rev-parse", "HEAD") if forge else None
+    head = _git(root, "rev-parse", "HEAD") if forge else None
     if forge and head:
         href = forge.blob_url(head, path, line)
     elif path and root is not None and not href:
@@ -2500,7 +2493,7 @@ def generated_in(root: Path, base: str, head: str | None) -> list[str]:
     3,000 px whose only change was a random step id. A fix is what a person changed."""
     from ..shared.chips import _project_cfg, generated_globs
     globs = generated_globs(_project_cfg(Path(root)))
-    listed = _git_out(root, "diff", "--name-only", "--no-renames", base,
+    listed = _git(root, "diff", "--name-only", "--no-renames", base,
                       *([head] if head else []), "--", *[f":(glob){g}" for g in globs])
     return [p for p in (listed or "").splitlines() if p]
 
@@ -2519,14 +2512,14 @@ def fix_commits(points: dict, root: Path | None, fixed_by: str | None = None) ->
     head = fixed_by or fix_commit(points, root)
     if not (root and impl and head):
         return []
-    listed = _git_out(root, "log", "--reverse", "--format=%H%x1f%s", f"{impl}..{head}") or ""
+    listed = _git(root, "log", "--reverse", "--format=%H%x1f%s", f"{impl}..{head}") or ""
     src = points.get("source") or "review-points.md"
     out = []
     for line in listed.splitlines():
         sha, _, subject = line.partition("\x1f")
         if not sha:
             continue
-        files = [p for p in (_git_out(root, "diff-tree", "--no-commit-id", "--name-only",
+        files = [p for p in (_git(root, "diff-tree", "--no-commit-id", "--name-only",
                                       "-r", "--root", sha) or "").splitlines() if p]
         out.append({"sha": sha, "subject": subject, "files": files,
                     "bookkeeping": bool(files) and all(
@@ -2596,13 +2589,9 @@ def fix_hunks(rel: str, base: str, head: str | None, root: Path) -> list[tuple[i
 
     Context lines are not counted: a hunk reaches as far as what it changed. A pure deletion
     sits at the new-side line it was cut before."""
-    proc = subprocess.run(
-        ["git", "-C", str(root), "diff", f"-U{DIFF_CONTEXT}", "--no-color", base]
-        + ([head] if head else []) + ["--", rel], capture_output=True, text=True)
-    if proc.returncode != 0:
-        return []
+    diff = _context_diff(rel, base, head, root)
     out = []
-    for part in re.split(r"(?m)^(?=@@ )", proc.stdout)[1:]:
+    for part in re.split(r"(?m)^(?=@@ )", diff)[1:]:
         m = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)", part)
         new_no = int(m.group(1)) if m else 0
         touched = []
@@ -2623,16 +2612,18 @@ def fix_hunks(rel: str, base: str, head: str | None, root: Path) -> list[tuple[i
     return out
 
 
+def _context_diff(rel: str, base: str, head: str | None, root: Path) -> str:
+    """The diff `diff_html` draws, so that a hunk index here is a hunk index there."""
+    return _git(root, "diff", f"-U{DIFF_CONTEXT}", "--no-color", base,
+                *([head] if head else []), "--", rel, strip=False) or ""
+
+
 def hunk_bodies(rel: str, base: str, head: str | None,
                 root: Path) -> list[tuple[list[str], list[str]]]:
     """`[(removed, added), …]` — each hunk's `-` and `+` lines, in `fix_hunks` order."""
-    proc = subprocess.run(
-        ["git", "-C", str(root), "diff", f"-U{DIFF_CONTEXT}", "--no-color", base]
-        + ([head] if head else []) + ["--", rel], capture_output=True, text=True)
-    if proc.returncode != 0:
-        return []
+    diff = _context_diff(rel, base, head, root)
     out = []
-    for part in re.split(r"(?m)^(?=@@ )", proc.stdout)[1:]:
+    for part in re.split(r"(?m)^(?=@@ )", diff)[1:]:
         lines = part.split("\n")[1:]
         out.append(([ln[1:] for ln in lines if ln.startswith("-")],
                     [ln[1:] for ln in lines if ln.startswith("+")]))
@@ -2730,20 +2721,20 @@ def fix_commit(points: dict, root: Path | None) -> str | None:
     impl = prov.get("implementation") or prov.get("auditedHead")
     if not (root and impl):
         return None
-    impl_sha = _git_out(root, "rev-parse", "--verify", "--quiet", f"{impl}^{{commit}}")
+    impl_sha = _git(root, "rev-parse", "--verify", "--quiet", f"{impl}^{{commit}}")
     if not impl_sha:
         return None
 
     def after(rev: str | None) -> str | None:
-        sha = rev and _git_out(root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+        sha = rev and _git(root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
         if not sha or sha == impl_sha:
             return None
-        return sha if _git_out(root, "merge-base", "--is-ancestor", impl_sha, sha) == "" \
+        return sha if _git(root, "merge-base", "--is-ancestor", impl_sha, sha) == "" \
             else None
     found = after(prov.get("reviewCommit"))
     if found:
         return found
-    listed = _git_out(root, "log", "--format=%H", r"--grep=^\[auto-fix\]",
+    listed = _git(root, "log", "--format=%H", r"--grep=^\[auto-fix\]",
                       "--grep=^Review-Points:", f"{impl_sha}..HEAD") or ""
     return next((line for line in listed.splitlines() if line.strip()), None)
 
@@ -2778,7 +2769,7 @@ def stamp_fix_commits(spec: dict, points: dict, root: Path, fixed_by: str | None
     for f in spec.get("autofixes") or []:
         if not isinstance(f, dict):
             continue
-        sha = _git_out(root, "rev-parse", "--verify", "--quiet",
+        sha = _git(root, "rev-parse", "--verify", "--quiet",
                        f"{f.get('fixCommit')}^{{commit}}") if f.get("fixCommit") else None
         # A report from before `fixCommit` was recorded: the same rule, asked here.
         sha = sha or rp.fix_commit_of(root, f.get("refs") or [], prov, None,
@@ -2786,10 +2777,10 @@ def stamp_fix_commits(spec: dict, points: dict, root: Path, fixed_by: str | None
         if not sha:
             continue
         if sha not in seen:
-            changed = set((_git_out(root, "diff-tree", "--no-commit-id", "--name-only", "-r",
+            changed = set((_git(root, "diff-tree", "--no-commit-id", "--name-only", "-r",
                                     "--root", sha) or "").splitlines())
-            seen[sha] = (_git_out(root, "rev-parse", "--verify", "--quiet", f"{sha}^1") or "",
-                         _git_out(root, "log", "-1", "--format=%s", sha) or "", changed)
+            seen[sha] = (_git(root, "rev-parse", "--verify", "--quiet", f"{sha}^1") or "",
+                         _git(root, "log", "-1", "--format=%s", sha) or "", changed)
         parent, subject, changed = seen[sha]
         f["_fixSha"], f["_fixSubject"] = sha, subject
         if forge:
@@ -2885,13 +2876,13 @@ def attribute_fix_hunks(spec: dict, out_dir: Path, root: Path | None = None) -> 
     groups: dict[tuple, list[dict]] = {}
     for f in fixes:
         base, head = _fix_range(f, points, fixed_by)
-        if base and _git_out(root, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}") \
-                and (not head or _git_out(root, "rev-parse", "--verify", "--quiet",
+        if base and _git(root, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}") \
+                and (not head or _git(root, "rev-parse", "--verify", "--quiet",
                                           f"{head}^{{commit}}")):
             groups.setdefault((base, head), []).append(f)
     other_html = []
     for (base, head), items in groups.items():
-        listed = _git_out(root, "diff", "--name-only", "--no-renames", base,
+        listed = _git(root, "diff", "--name-only", "--no-renames", base,
                           *([head] if head else [])) or ""
         generated = set(generated_in(root, base, head))
         files = [p for p in listed.splitlines()
@@ -3075,7 +3066,7 @@ def reanchor_refs(spec: dict, out_dir: Path, root: Path | None = None) -> None:
     fixed_by = fix_commit(points, root)
     for kind in POINTS_PILES:
         written = [w for w in _written_at(kind, points, fixed_by)
-                   if w and _git_out(root, "rev-parse", "--verify", "--quiet",
+                   if w and _git(root, "rev-parse", "--verify", "--quiet",
                                      f"{w}^{{commit}}")]
         if not written:
             continue
@@ -3159,8 +3150,8 @@ def _spec_change_dir(root: Path, spec) -> str | None:
     if len(dirs) <= 1:
         return f"openspec/changes/{dirs[0].name}" if dirs else None
     base_ref = _base_ref(spec, root)
-    mb = _git_out(root, "merge-base", base_ref, "HEAD") if base_ref else None
-    touched = _git_out(root, "diff", "--name-only", f"{mb}..HEAD", "--",
+    mb = _git(root, "merge-base", base_ref, "HEAD") if base_ref else None
+    touched = _git(root, "diff", "--name-only", f"{mb}..HEAD", "--",
                        "openspec/changes") if mb else ""
     hit = [d for d in dirs if f"openspec/changes/{d.name}/" in (touched or "")]
     return f"openspec/changes/{hit[0].name}" if len(hit) == 1 else None
@@ -3268,7 +3259,7 @@ def link_spec_citations(spec: dict, out_dir: Path, root: Path | None = None) -> 
     if not change and not qa:
         return 0
     forge = forge_for(Path(root))
-    head = _git_out(root, "rev-parse", "HEAD") if forge else None
+    head = _git(root, "rev-parse", "HEAD") if forge else None
     linked = 0
 
     def link(m: re.Match) -> str:
@@ -3443,21 +3434,16 @@ def _tooling_commit_shas(root: Path, base_ref: str | None, shas: list[str]) -> s
         return set()
     tooling: set[str] = set()
     for sha in shas:
-        cherry = subprocess.run(["git", "cherry", base_ref, sha], cwd=root,
-                                capture_output=True, text=True)
-        if cherry.returncode == 0:
-            for line in cherry.stdout.splitlines():
-                marker, _, listed = line.strip().partition(" ")
-                # Its own line, not the whole range: `base..sha` ends at `sha` but also
-                # holds every branch commit before it, and those are answered by their
-                # own pass with their own window.
-                if listed == sha and marker == "-":
-                    tooling.add(sha)
+        for line in (_git(root, "cherry", base_ref, sha) or "").splitlines():
+            marker, _, listed = line.strip().partition(" ")
+            # Its own line, not the whole range: `base..sha` ends at `sha` but also
+            # holds every branch commit before it, and those are answered by their
+            # own pass with their own window.
+            if listed == sha and marker == "-":
+                tooling.add(sha)
         if sha in tooling:
             continue
-        anc = subprocess.run(["git", "merge-base", "--is-ancestor", sha, base_ref],
-                              cwd=root, capture_output=True)
-        if anc.returncode == 0:
+        if _git(root, "merge-base", "--is-ancestor", sha, base_ref) is not None:
             tooling.add(sha)
     return tooling
 
@@ -3477,11 +3463,8 @@ def _merge_seam_shas(root: Path, shas: list[str]) -> set[str]:
     person having committed nothing, which is worth seeing."""
     if not shas:
         return set()
-    out = subprocess.run(["git", "rev-list", "--merges", "--no-walk", *shas],
-                         cwd=root, capture_output=True, text=True)
-    if out.returncode != 0:
-        return set()
-    return {line.strip() for line in out.stdout.splitlines() if line.strip()}
+    return {line.strip() for line in (_git(root, "rev-list", "--merges", "--no-walk", *shas)
+                                      or "").splitlines() if line.strip()}
 
 
 def _code_totals(commits: list[dict]) -> dict:

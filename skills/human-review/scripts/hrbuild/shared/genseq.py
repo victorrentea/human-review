@@ -5,8 +5,9 @@ import functools
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
+
+from .util import _git
 
 # `Browser → Backend: POST /api/owners/{ownerId}/pets/{petId}/visits` — a call arrow's
 # title, as the generator writes it. The route is the contract; the method that answers it
@@ -47,21 +48,13 @@ GENSEQ_OVERLAY = Path(".human-review") / "assets" / "genseq"
 
 
 @functools.lru_cache(maxsize=None)
-def committed_since(root: str, traced_at: str) -> frozenset[str] | None:
-    """Every path a commit changed between `traced_at` and HEAD, or `None` when git cannot
-    say (`traced_at` is not a commit of this repository, or there is no HEAD).
-
-    Cached with the HEAD it asks for: every diagram on the page lands here, and it does not
-    move during a build, which is all the time this process lives."""
-    head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"],
-                          capture_output=True, text=True).stdout.strip()
-    if not head:
-        return None
+def committed_since(root: str, traced_at: str, head: str) -> frozenset[str] | None:
+    """Every path a commit changed between `traced_at` and `head`, or `None` when git cannot
+    say (`traced_at` is not a commit of this repository)."""
     if traced_at == head:
         return frozenset()
-    r = subprocess.run(["git", "-C", root, "diff", "--name-only", "--no-renames",
-                        traced_at, head], capture_output=True, text=True)
-    return frozenset(r.stdout.split("\n")) - {""} if r.returncode == 0 else None
+    out = _git(root, "diff", "--name-only", "--no-renames", traced_at, head)
+    return None if out is None else frozenset(out.split("\n")) - {""}
 
 
 def _overlay_state(root: Path) -> tuple[Path, frozenset[str]] | None:
@@ -79,9 +72,10 @@ def _overlay_state(root: Path) -> tuple[Path, frozenset[str]] | None:
         traced_at = (d / ".head").read_text(encoding="utf-8").strip()
     except OSError:
         return None
-    if not traced_at:
+    head = _git(root, "rev-parse", "HEAD")
+    if not traced_at or not head:
         return None
-    since = committed_since(str(root), traced_at)
+    since = committed_since(str(root), traced_at, head)
     return None if since is None else (d, since)
 
 

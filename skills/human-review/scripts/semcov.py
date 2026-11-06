@@ -43,7 +43,6 @@ import html
 import json
 import math
 import re
-import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -52,6 +51,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
+from hrbuild.shared.util import _git  # noqa: E402
 from hrbuild.shared.forge import api_forge, find_issue, forge_at, same_forge  # noqa: E402
 
 SKILL = HERE.parent
@@ -220,12 +220,7 @@ def branch_name(spec: dict, root: Path) -> str:
     b = ((spec.get("pr") or {}).get("branch") or "").strip()
     if b:
         return b
-    try:
-        out = subprocess.run(["git", "-C", str(root), "rev-parse", "--abbrev-ref", "HEAD"],
-                             capture_output=True, text=True, timeout=10)
-    except Exception:                             # noqa: BLE001 - no git is no branch
-        return ""
-    b = out.stdout.strip() if out.returncode == 0 else ""
+    b = _git(root, "rev-parse", "--abbrev-ref", "HEAD", timeout=10) or ""
     return "" if b == "HEAD" else b
 
 
@@ -1137,11 +1132,7 @@ def step_definitions(root: Path, feature: str) -> list[tuple["re.Pattern[str]", 
     key = (str(root), top)
     if key in _GLUE_CACHE:
         return _GLUE_CACHE[key]
-    try:
-        listed = subprocess.run(["git", "-C", str(root), "ls-files", "--", top or "."],
-                                capture_output=True, text=True, timeout=20).stdout.split("\n")
-    except (OSError, subprocess.SubprocessError):
-        listed = []
+    listed = (_git(root, "ls-files", "--", top or ".", timeout=20) or "").split("\n")
     defs = []
     for f in listed:
         if not f.endswith(_STEP_SOURCES):
@@ -2337,9 +2328,7 @@ def base_part(root: Path, r: dict, cache: dict) -> dict | None:
         return None
     key = (ref, file)
     if key not in cache:
-        got = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{file}"],
-                             capture_output=True, text=True)
-        cache[key] = got.stdout if got.returncode == 0 else None
+        cache[key] = _git(root, "show", f"{ref}:{file}", strip=False)
     if cache[key] is None:
         return None
     part = _tests_tab()._cov_part(root, file, r["line"], text=cache[key],

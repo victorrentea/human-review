@@ -5,12 +5,12 @@ import html
 import json
 import re
 import shlex
-import subprocess
 from pathlib import Path
 
 from ..shared.adopt import adopt_html
 from ..shared.commands import _app_anchor, fixtures_row_html, runtime_html
 from ..shared.fixtures import demo_fixtures
+from ..shared.util import _git
 from dataset_view import dataset_html, fixtures_panel_html
 
 def _link_captions(cues, links, drive=False):
@@ -230,8 +230,7 @@ def _project_root(out_dir: Path) -> Path | None:
             return d
     # A page written outside the repository (`--out` elsewhere) is still built from inside
     # it: the build runs at the repository's top level.
-    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True,
-                         text=True).stdout.strip()
+    top = _git(Path.cwd(), "rev-parse", "--show-toplevel")
     return Path(top) if top and (Path(top) / "human-review.json").is_file() else None
 
 
@@ -253,8 +252,7 @@ def derived_runtime(out_dir: Path) -> dict:
         return {}
 
     def git(*args):
-        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-        return r.stdout.strip() if r.returncode == 0 else ""
+        return _git(root, *args) or ""
     sha = git("rev-parse", "HEAD")
     if not sha:
         return {}

@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 from ..shared.snippets import snippet_html
-from ..shared.util import HERE
+from ..shared.util import HERE, _git
 
 LOGEXTRACT = HERE / "logextract.py"
 
@@ -380,8 +380,7 @@ def logging_fragment(block, root: Path, base: str | None = None):
     mode from a real, rendered zero."""
     paths = block.get("paths") or ["."]
     # `base` is the page's one base (`chips.page_base`); the block's own still wins.
-    base = subprocess.run(["git", "merge-base", block.get("base") or base or "origin/main",
-                           "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+    base = _git(root, "merge-base", block.get("base") or base or "origin/main", "HEAD") or ""
     with tempfile.TemporaryDirectory() as td:
         report = Path(td) / "logging.json"
         proc = subprocess.run(

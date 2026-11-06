@@ -54,7 +54,8 @@ import code_xref  # noqa: E402 - resolved from next to this file, not from site-
 # --------------------------------------------------------------------------- #
 
 from hrbuild.shared.util import (
-    CODEOWNERS, EXTRACT, PENCIL, SPELLED_OUT, TEST_KIND_ORDER, TESTCHANGES, _git, _pretty   # HERE: defined above, same value
+    CODEOWNERS, EXTRACT, PENCIL, SPELLED_OUT, TEST_KIND_ORDER, TESTCHANGES, _GIT_ANSWERS, _git,
+    _git_run, _pretty, forget_git_answers, git_answers_held, repo_root   # HERE: defined above, same value
 )
 from hrbuild.shared.actions import (
     ACTIONS, ACTIONS_FILE, declare_action, declare_rerun_actions, declare_rerun_tests_action,
@@ -260,7 +261,7 @@ from hrbuild.tabs.review import (
     _taken_fold_html, _tooling_fold_html,
     API_VERDICT_HTML, FILM_VERDICT_JSON, GATE_JSON, GRADE_CAPS, MODEL_GRADE_LINES, PILE_SIGNALS,
     SEQUENCE_VERDICT_JSON, _after_review_signal, _api_signal, _base_ref, _ci_signal,
-    _evidence_signal, _git_out, _git_root, _out_of_range_signal, _pile_signals, _plain_text,
+    _context_diff, _evidence_signal, _git_root, _out_of_range_signal, _pile_signals, _plain_text,
     _read_json, _signal, _sonar, _sonar_signal, _head, _head_signal, _HEAD_UNPROVEN,
     cap_grade, grade_signals,
     FIX_BOOKKEEPING, FIX_HUNK_REACH, _fix_range, _gap, _ref_spans, attribute_fix_hunks,
@@ -389,7 +390,8 @@ def main(argv=None) -> int:
     import hrbuild.shared.snippets as snippets_mod
     held, env = snippets_mod.SNIPPET_BASE, os.environ.get("HUMAN_REVIEW_DIFF_BASE")
     try:
-        return _main(argv)
+        with git_answers_held():
+            return _main(argv)
     finally:
         set_diff_base(held)
         if env is None:
@@ -409,11 +411,7 @@ def _main(argv=None) -> int:
                     help="no effect: nothing in a build calls a model any more")
     args = ap.parse_args(argv)
 
-    root = Path(
-        subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True
-        ).stdout.strip()
-    )
+    root = repo_root()
     spec = json.loads(Path(args.content).read_text(encoding="utf-8"))
     out_path = Path(args.out).resolve()
     out_dir = out_path.parent
@@ -1418,9 +1416,7 @@ def _main(argv=None) -> int:
         # The repository and branch this page reviews, for the published copy's Serve tip.
         pr = spec.get("pr") or {}
         pr_repo = pr.get("repo") or repo_web_root(root) or ""
-        pr_branch = pr.get("branch") or subprocess.run(
-            ["git", "-C", str(root), "branch", "--show-current"],
-            capture_output=True, text=True).stdout.strip()
+        pr_branch = pr.get("branch") or _git(root, "branch", "--show-current") or ""
         mode_html = (
             IDE_CHIPS +
             '<button type="button" class="chip chip-mode chip-serve copycmd" id="hr-serve" '

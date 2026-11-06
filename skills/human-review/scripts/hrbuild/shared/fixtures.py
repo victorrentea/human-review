@@ -50,8 +50,9 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 from pathlib import Path
+
+from .util import _git
 
 FIXTURE_SEED = "#8b929c"
 # Seven, readable on the dark and the light theme alike, and far enough apart in hue that
@@ -65,9 +66,9 @@ _FX_SPEC = re.compile(r"\.(?:spec|test|e2e)\.[cm]?[jt]sx?$")
 
 
 def _fx_ls(root: Path) -> list[str]:
-    r = subprocess.run(["git", "-C", str(root), "ls-files"], capture_output=True, text=True)
-    if r.returncode == 0 and r.stdout.strip():
-        return r.stdout.splitlines()
+    listed = _git(root, "ls-files")
+    if listed:
+        return listed.splitlines()
     return [str(p.relative_to(root)) for p in root.rglob("*")
             if p.is_file() and "node_modules" not in p.parts and ".git" not in p.parts]
 

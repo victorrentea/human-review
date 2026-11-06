@@ -20,7 +20,6 @@ import functools
 import hashlib
 import html
 import re
-import subprocess
 import urllib.parse
 import xml.etree.ElementTree as ET
 from collections import Counter
@@ -28,6 +27,7 @@ from pathlib import Path, PurePosixPath
 
 from .changes import changed_files, files_pop
 from .forge import forge_for
+from .util import _git
 
 #: A component declaration, in the spellings PlantUML accepts: `[Label]`, `[Label] as a`,
 #: `component "Label" as a`, `component a as "Label"`, `component Name`, and the same with
@@ -48,9 +48,7 @@ _SOURCE_DIR = re.compile(r'^(?P<src>(?:.*/)?src/main/(?:java|kotlin))/(?P<pkg>.+
 
 
 def _ls_files(root: Path, *spec: str) -> list[str]:
-    out = subprocess.run(["git", "-C", str(root), "ls-files", "--", *spec],
-                         capture_output=True, text=True)
-    return out.stdout.splitlines() if out.returncode == 0 else []
+    return (_git(root, "ls-files", "--", *spec) or "").splitlines()
 
 
 def puml_boxes(text: str) -> list[dict]:
@@ -194,8 +192,7 @@ def _tree_base(root: Path) -> str | None:
     """The repository's tree at HEAD on its forge (`…/tree/<HEAD>`) — the folder as the
     reviewed commit has it — or None without a forge remote."""
     forge = forge_for(root)
-    head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
-                          capture_output=True, text=True).stdout.strip()
+    head = _git(root, "rev-parse", "HEAD")
     return forge.tree_url(head) if forge and head else None
 
 

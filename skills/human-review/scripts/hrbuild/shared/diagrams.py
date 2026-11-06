@@ -16,7 +16,7 @@ from .folders import link_folders, only_impacted
 from .genseq import (genseq_details_at_base, genseq_details_at_render, genseq_file,
                      test_of_genseq)
 from .svg import inline_svg
-from .util import _pretty
+from .util import _git_run, _pretty
 
 def read_manifest(path: Path):
     rows = []
@@ -480,13 +480,8 @@ def prov_badge(text: str, tip: str, href: str = "", warn: bool = False) -> str:
 def _mentions(root: Path, rel: str) -> list[tuple[str, str]]:
     """`(path, text)` of every source file in the checkout that names the diagram file."""
     name = Path(rel).name
-    try:
-        out = subprocess.run(["git", "-C", str(root), "grep", "-l", "-F", "-e", name],
-                             capture_output=True, text=True, timeout=15).stdout
-    except (OSError, subprocess.SubprocessError):
-        return []
     found = []
-    for p in sorted(out.splitlines()):
+    for p in sorted(_git_run(root, "grep", "-l", "-F", "-e", name, timeout=15).stdout.splitlines()):
         if p == rel or not p.endswith(_PROV_CODE) or p.startswith(".human-review/"):
             continue
         try:
@@ -804,8 +799,7 @@ def find_diagram_source(name: str, root: Path) -> str | None:
     not change it is shown as it stands, with the UNCHANGED badge. Looked up by file
     name, outside the review directory; an ambiguous name takes the shallowest path and
     says so."""
-    out = subprocess.run(["git", "ls-files", "--", f"{name}.puml", f"*/{name}.puml"],
-                         cwd=root, capture_output=True, text=True)
+    out = _git_run(root, "ls-files", "--", f"{name}.puml", f"*/{name}.puml")
     hits = sorted((p for p in out.stdout.splitlines()
                    if p and not p.startswith(".human-review/")),
                   key=lambda p: (p.count("/"), p))

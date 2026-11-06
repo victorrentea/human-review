@@ -6,13 +6,12 @@ import html
 import json
 import os
 import re
-import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
 
 from .forge import forge_for
-from .util import EXTRACT
+from .util import EXTRACT, _git, _git_run
 
 # The caption is prose, and prose about this project says things like `{{ visit | vetName }}`.
 # Stopping it at the first `}` cut the directive in half there and spilled the rest onto the
@@ -128,23 +127,18 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
     if not src.is_file():
         print(f"[review] diff: no file at {rel} — block dropped", file=sys.stderr)
         return ""
-    show = subprocess.run(["git", "-C", str(root), "show", f"{base}:{rel}"], capture_output=True)
+    show = _git_run(root, "show", f"{base}:{rel}", binary=True)
     # A file added since `base` has an empty before-state — all additions, still a diff.
-    if show.returncode != 0 and subprocess.run(
-            ["git", "-C", str(root), "cat-file", "-e", f"{base}^{{commit}}"],
-            capture_output=True).returncode != 0:
+    if show.returncode != 0 and _git(root, "cat-file", "-e", f"{base}^{{commit}}") is None:
         print(f"[review] diff: {rel} does not exist at {base} — block dropped, because a "
               "diff needs a before-state that was actually recorded", file=sys.stderr)
         return ""
-    proc = subprocess.run(
-        ["git", "-C", str(root), "diff", f"-U{DIFF_CONTEXT}", "--no-color", base]
-        + ([head] if head else []) + ["--", rel],
-        capture_output=True, text=True)
-    if proc.returncode != 0 or not proc.stdout.strip():
+    text = _git(root, "diff", f"-U{DIFF_CONTEXT}", "--no-color", base,
+                *([head] if head else []), "--", rel, strip=False)
+    if not (text or "").strip():
         print(f"[review] diff: {rel} is unchanged since {base} — block dropped rather than "
               "rendering an empty diff", file=sys.stderr)
         return ""
-    text = proc.stdout
     if hunks is not None:
         # Split on the `@@` headers, not on parsed rows: a `\ No newline` line parses to
         # the same row kind as a header and would shift every index after it.
@@ -243,8 +237,7 @@ def commit_stamp(root: Path, out_dir: Path | None = None) -> str:
     wrong file. With the commit on the page, the editor bridge opens it only where the file
     is the one reviewed, and says so when nowhere is."""
     def git(*args):
-        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-        return r.stdout.strip() if r.returncode == 0 else ""
+        return _git(root, *args) or ""
     head = git("rev-parse", "HEAD")
     if not head:
         return ""
@@ -303,16 +296,13 @@ def diff_link_html(rel: str, base: str, root: Path, face: str | None = None,
     if not src.is_file():
         print(f"[review] difflink: no file at {rel} — link dropped", file=sys.stderr)
         return ""
-    show = subprocess.run(["git", "-C", str(root), "show", f"{base}:{rel}"],
-                          capture_output=True)
+    show = _git_run(root, "show", f"{base}:{rel}", binary=True)
     added = False
     if show.returncode != 0:
         # A file the branch ADDED has a recorded before-state too: nothing. Its diff is all
         # additions, and that is what the reviewer needs for a new OwnerListPaging.java —
         # eval run 12 dropped every such link. Only a base that is not a commit is unknown.
-        known = subprocess.run(["git", "-C", str(root), "cat-file", "-e", f"{base}^{{commit}}"],
-                               capture_output=True).returncode == 0
-        if not known:
+        if _git(root, "cat-file", "-e", f"{base}^{{commit}}") is None:
             print(f"[review] difflink: {rel} does not exist at {base} "
                   f"({show.stderr.decode(errors='replace').strip()}) — link dropped, because "
                   "a diff needs a before-state that was actually recorded", file=sys.stderr)

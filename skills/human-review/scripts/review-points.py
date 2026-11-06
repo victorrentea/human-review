@@ -44,7 +44,6 @@ import argparse
 import html
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -52,6 +51,7 @@ from pathlib import Path
 # necessarily on sys.path yet.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import review_points_schema  # noqa: E402
+from hrbuild.shared.util import _git, _git_run  # noqa: E402
 
 DEFAULT_FILE = "review-points.md"
 CONFIG = "human-review.json"
@@ -671,13 +671,10 @@ def recorded_in(root: Path, rel: str) -> str | None:
     quoted `@WithSpan` for a finding about `visit.setVet(…)`, and called the seven retouch
     commits between the review and that one "fix commits"."""
     def git(*args: str) -> str:
-        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-        return r.stdout.strip() if r.returncode == 0 else ""
+        return _git(root, *args) or ""
 
     def show(rev: str) -> str | None:
-        r = subprocess.run(["git", "-C", str(root), "show", f"{rev}:{rel}"],
-                           capture_output=True, text=True)
-        return r.stdout if r.returncode == 0 else None
+        return _git(root, "show", f"{rev}:{rel}", strip=False)
     if git("status", "--porcelain", "--", rel):
         return None
     shas = git("log", f"-{RECORDED_SCAN}", "--format=%H", "--", rel).split()
@@ -721,15 +718,11 @@ WORKTREE = "@worktree"
 REF_LINES = re.compile(r"^(?P<path>.*?):(?P<spans>\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$")
 
 
-def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-
-
 def file_hunks(root: Path, rel: str, frm: str, to: str | None = None) -> list[dict] | None:
     """`git diff -U0 frm [to] -- rel` as `[{a, b, c, d, old, new}]` (old start/count, new
     start/count, the removed and added lines); `to=None` is the working tree. None when
     git cannot diff it."""
-    r = _run_git(root, "diff", "-U0", "--no-color", "--no-ext-diff", frm,
+    r = _git_run(root, "diff", "-U0", "--no-color", "--no-ext-diff", frm,
                  *([to] if to else []), "--", rel)
     if r.returncode != 0:
         return None
@@ -821,7 +814,7 @@ def remap_ref(root: Path, ref: str, frm: str, to: str | None = None) -> str | No
     if frm == WORKTREE and to is None:
         return ref
     if spans is None or frm == WORKTREE \
-            or _run_git(root, "cat-file", "-e", f"{frm}:{path}").returncode != 0:
+            or _git_run(root, "cat-file", "-e", f"{frm}:{path}").returncode != 0:
         return ref
     hunks = file_hunks(root, path, frm, to)
     if not hunks:                        # git could not say, or the file did not move
@@ -839,7 +832,7 @@ def ref_lines(root: Path, ref: str, at: str | None = None) -> list[str] | None:
     there or the ref starts past its end."""
     path, spans = ref_spans(ref)
     if at:
-        r = _run_git(root, "show", f"{at}:{path}")
+        r = _git_run(root, "show", f"{at}:{path}")
         if r.returncode != 0:
             return None
         text = r.stdout
@@ -898,12 +891,12 @@ FIX_GREP = (r"--grep=^\[auto-fix\]", "--grep=^Review-Points:")
 def _sha_of(root: Path, rev: str | None) -> str | None:
     if not rev or rev == WORKTREE:
         return None
-    r = _run_git(root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+    r = _git_run(root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
     return r.stdout.strip() or None if r.returncode == 0 else None
 
 
 def _is_ancestor(root: Path, a: str, b: str) -> bool:
-    return _run_git(root, "merge-base", "--is-ancestor", a, b).returncode == 0
+    return _git_run(root, "merge-base", "--is-ancestor", a, b).returncode == 0
 
 
 def round_fix_commit(root: Path | None, prov: dict) -> str | None:
@@ -918,7 +911,7 @@ def round_fix_commit(root: Path | None, prov: dict) -> str | None:
     review = _sha_of(root, (prov or {}).get("reviewCommit"))
     if review and review != impl_sha and _is_ancestor(root, impl_sha, review):
         return review
-    r = _run_git(root, "log", "--format=%H", *FIX_GREP, f"{impl_sha}..HEAD")
+    r = _git_run(root, "log", "--format=%H", *FIX_GREP, f"{impl_sha}..HEAD")
     return next((ln.strip() for ln in r.stdout.splitlines() if ln.strip()), None)
 
 
@@ -927,7 +920,7 @@ def _blamed(root: Path, ref: str, at: str) -> list[str]:
     path, spans = ref_spans(ref)
     out: list[str] = []
     for lo, hi in spans or []:
-        r = _run_git(root, "blame", "--porcelain", "-L", f"{lo},{hi}", at, "--", path)
+        r = _git_run(root, "blame", "--porcelain", "-L", f"{lo},{hi}", at, "--", path)
         out += [ln.split()[0] for ln in r.stdout.splitlines()
                 if re.match(r"^[0-9a-f]{40} \d+ \d+", ln)]
     return out
@@ -952,7 +945,7 @@ def item_fix_commit(root: Path | None, refs: list[str], impl: str | None, head: 
     if not (impl_sha and head_sha) or impl_sha == head_sha:
         return None
     files = sorted({ref_spans(r)[0] for r in refs or [] if r})
-    touched = _run_git(root, "log", "--format=%H", f"{impl_sha}..{head_sha}", "--",
+    touched = _git_run(root, "log", "--format=%H", f"{impl_sha}..{head_sha}", "--",
                        *files).stdout.split() if files else []
     if len(touched) <= 1:
         return touched[0] if touched else head_sha

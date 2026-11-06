@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .changes import changed_files, files_pop
 from .forge import forge_at
-from .util import PENCIL, _git
+from .util import PENCIL, _git, forget_git_answers
 
 # What a diffstat must never count. Every path below is written by a generator -- a
 # sequence diagram redrawn from a trace, an API client regenerated from a spec, a lock
@@ -140,6 +140,7 @@ def fetch_base(root: Path, named: str, timeout: float = 20) -> bool:
                            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
     except (subprocess.TimeoutExpired, OSError):
         return False
+    forget_git_answers()
     return p.returncode == 0
 
 

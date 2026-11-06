@@ -21,8 +21,9 @@ import html
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
+
+from .util import _git
 
 from .diagrams import (CHANGED_BADGE, UNCHANGED, UNCHANGED_BADGE, _source_link,
                        dgm_views_html, prov_badge, read_manifest, shorten_dgm_src)
@@ -156,12 +157,8 @@ _CHECKED_NOTE = re.compile(r"^Its (?:components|containers)(?: and their arrows)
 
 
 def _test_file(root: Path, name: str) -> Path | None:
-    try:
-        out = subprocess.run(["git", "-C", str(root), "ls-files", "--", name, f"*/{name}"],
-                             capture_output=True, text=True, timeout=10).stdout
-    except (OSError, subprocess.SubprocessError):
-        return None
-    hits = [p for p in out.splitlines() if p]
+    hits = [p for p in (_git(root, "ls-files", "--", name, f"*/{name}", timeout=10) or "").splitlines()
+            if p]
     return root / hits[0] if hits else None
 
 
