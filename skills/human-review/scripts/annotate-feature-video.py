@@ -33,13 +33,8 @@ these scripts break. The frames go through the concat demuxer into one transpare
 track rather than becoming one ffmpeg input each — a word-level caption is a few hundred
 states, and a few hundred open inputs hits the open-file limit before it hits ffmpeg's.
 
-The footage may open on a title card that `record-feature-video.sh` filmed inside the take —
-the card is on the same clock as the cues, so nothing here needs shifting. What it does need
-is `--lead`: how long that card holds. The first cue is otherwise drawn (and spoken) from the
-very first frame, which would put the opening caption on top of the title.
-
 Usage:
-    annotate-feature-video.py <raw.webm> <cues.json> <out.webm> [--offset S] [--lead S]
+    annotate-feature-video.py <raw.webm> <cues.json> <out.webm> [--offset S]
 """
 from __future__ import annotations
 import argparse
@@ -95,11 +90,6 @@ READ_FILL = 0.88
 # padded rect — so even the fattest step sits in the gutter rather than over the widget.
 BOX_PAD = 6
 # (duration, dim alpha of the surround, outline thickness, outline alpha)
-# How far the first caption may reach back from its own timestamp to cover the opening shot.
-# Long enough that a film opening on a ready page is never silent; short enough that a slow
-# first page load cannot drag the opening sentence out over a blank screen.
-OPENING_GRACE = 2.5
-
 PHASES = [
   (0.90, 0.24, 5, 1.00),
   (0.30, 0.17, 4, 0.78),
@@ -371,44 +361,24 @@ def audio_args(cues: list[dict], windows: list[tuple[float, float]], base: Path,
   return inputs, graph, "[aout]"
 
 
-def cue_windows(cues: list[dict], duration: float, offset: float = 0.0,
-    lead: float = 0.0) -> list[tuple[float, float]]:
+def cue_windows(cues: list[dict], duration: float, offset: float = 0.0) -> list[tuple[float, float]]:
   """When each cue owns the screen: its caption, its spotlight and its spoken .wav.
 
-  The first caption is deliberately up from the first frame it is *allowed* on rather than
-  from its own timestamp — a cue is spoken about what is already on screen, so waiting for
-  `t` would leave the opening shot silent and unlabelled.
-
-  `lead` is what "allowed" means. The recorder films a title card at the head of the take,
-  and that generosity is exactly where it would turn into the film narrating the wrong
-  picture: the opening sentence spoken and printed over the title. Every other window is
-  clamped to it too, so no `offset` can drag a cue in front of the card — and every window
-  is clamped to the footage at the other end, so a run cut short cannot ask ffmpeg to
+  The recorder cuts the take down to its first cue, so the first window opens on the first
+  frame. Every window is clamped to the footage, so a run cut short cannot ask ffmpeg to
   `enable` a spotlight at a timestamp the clip never reaches.
   """
-  lead = min(max(0.0, lead), duration)
   windows = []
   for i, cue in enumerate(cues):
-    # The opening cue reaches BACK from its own timestamp, but only so far. Reaching all the way
-    # to `lead` was right while the first shot arrived a beat after the title; it stops being
-    # right the moment it does not. A cold lazy-route compile once put the first cue 10s in, and
-    # the rule dutifully spoke the opening sentence over ten seconds of empty loading screen —
-    # the exact desync this file exists to prevent, produced by the fix for the last one.
-    # So: open early, by at most OPENING_GRACE.
-    if i == 0:
-      earliest = max(lead, cue["t"] + offset - OPENING_GRACE)
-      start = min(duration, max(lead, min(earliest, cue["t"] + offset)))
-    else:
-      start = min(duration, max(lead, cue["t"] + offset))
+    start = min(duration, max(0.0, cue["t"] + offset))
     end = cues[i + 1]["t"] + offset if i + 1 < len(cues) else duration
     windows.append((start, max(start, min(end, duration))))
   return windows
 
 
-def build(raw: Path, cues: list[dict], out: Path, tmp: Path, offset: float,
-    lead: float = 0.0) -> None:
+def build(raw: Path, cues: list[dict], out: Path, tmp: Path, offset: float) -> None:
   w, h, duration = probe_video(raw)
-  windows = cue_windows(cues, duration, offset, lead)
+  windows = cue_windows(cues, duration, offset)
 
   emphasis = []
   for cue, (start, end) in zip(cues, windows):
@@ -444,9 +414,6 @@ def main() -> int:
   ap.add_argument("out")
   ap.add_argument("--offset", type=float, default=0.0,
       help="shift every cue against the video clock, in seconds")
-  ap.add_argument("--lead", type=float, default=0.0,
-      help="seconds of title card at the head of the footage: no caption, spotlight or "
-           "narration is placed before it (default 0 — footage that opens on the app)")
   args = ap.parse_args()
 
   cues = json.loads(Path(args.cues).read_text(encoding="utf-8"))
@@ -454,7 +421,7 @@ def main() -> int:
     print("[annotate] no cues — nothing to burn in", file=sys.stderr)
     return 1
   with tempfile.TemporaryDirectory() as td:
-    build(Path(args.raw), cues, Path(args.out), Path(td), args.offset, args.lead)
+    build(Path(args.raw), cues, Path(args.out), Path(td), args.offset)
   boxed = sum(1 for c in cues if c.get("box"))
   spoken = sum(1 for c in cues if c.get("audio"))
   print(f"[annotate] {len(cues)} captions, {boxed} spotlights, {spoken} spoken -> {args.out}",

@@ -136,7 +136,8 @@ If `.human-review/review.html` already exists, ask what changed first — see *I
 `.human-review/feature-script.js`, `human-review-feature.js` at the repo root, or
 `$HUMAN_REVIEW_FEATURE_SCRIPT` exists, write `.human-review/feature-script.js` now, before
 the producers run, following `reference/feature-script.md`: derive the screens from the diff,
-drive the app through every one the change touched, `say()` what is new on each. Fork it to a
+drive the app through every one the change touched, `say()` what is new on each, and open cold
+on the payoff before explaining how it got there. Fork it to a
 `model: sonnet` subagent, like the matrix. Without it the video step exits 2, "no feature
 script", and the Demo tab says *nothing was filmed* — the reference run had a film because a
 model wrote this file; the Copilot run of 2 Oct had none because nothing asked it to. Outside a

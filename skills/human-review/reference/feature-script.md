@@ -29,6 +29,25 @@ each, never a second sentence about the same screen state: **ten `say()` calls a
 short sentences. The reference film says 7 lines in 36 s; eval run 16 wrote 22 and filmed
 almost two minutes. Pauses are cut to half a second in the film anyway — do not pad.
 
+## Open cold: the payoff first, then how we got there
+
+The Netflix opening (Victor, 6 Nov 2026): **the first line is the climax, and the context comes
+after it.** The film has no title card and no silence: the recorder cuts everything before the
+first `say()`, so that line is on the first frame, over a screen that is already showing the
+result. A reviewer who opens on "this is the Owners page" has already started to skim.
+
+1. **Beat one, the payoff.** Land on the end state, the screen the whole change exists for, and
+   say what it means to someone: "This visit finally says who treated the animal." Use the
+   strongest moment of the feature, not the first screen of the flow.
+2. **Beat two, the stakes and the rewind.** One line on what was missing, then turn back:
+   "Yesterday, nobody could tell. So how did it get there?"
+3. **Then the walk**, in order, each step tied back to the opening: "This field was not here
+   yesterday." The last line closes the loop with the first.
+
+Both opening beats obey every rule below: the payoff is really on screen and waited for, and
+the "before" is what the diff shows, never a drama the ticket does not support. Reach the
+opening screen by URL or by setup done before the first `say()`, because that part is cut.
+
 ## Which screens the film must visit — derive them, never write them down
 
 A rule about *your* script: the harness films whatever you drive it through and has no
@@ -91,18 +110,10 @@ the two labels — they are the handle between the script and the page.
 
 ## Environment
 
-`TITLE_CARD=off` films without a card; `$HUMAN_REVIEW_VIDEO_TITLE` and
-`$HUMAN_REVIEW_VIDEO_SUBTITLE` override the two lines. `NARRATION=off` films silently and
+`NARRATION=off` films silently and
 spreads the words across the cue at a reading rate; `NARRATION_VOICE` (any name from
 `say -v '?'`) and `NARRATION_RATE` (0..1, default 0.5) pick the voice and its speed. All of
 it is local: nothing about the change is sent to a TTS service.
-
-The title card is **filmed, not spliced**, because the cue clock *is* the video clock —
-prepend N seconds of picture and the captions, the mixed narration and the transcript's seek
-targets are each wrong by N, each a separate place to forget one. The one number the footage
-cannot reveal to a later pass is how long the card holds; the recorder measures it into
-`<out>.narration/lead` and hands it to `annotate-feature-video.py --lead`, so a re-annotation
-gets it right without re-filming.
 
 Both halves are plain programs — `narrate-cue.py` over `tts-cue.swift`, then
 `annotate-feature-video.py` over ffmpeg — so re-cutting the film costs CPU, not tokens. The

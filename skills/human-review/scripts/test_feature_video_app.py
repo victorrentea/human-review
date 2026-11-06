@@ -283,7 +283,6 @@ def test_say_holds_the_shot_until_its_sentence_is_spoken():
 # ── the verdict nobody can lose ───────────────────────────────────────────────────
 
 EXIT3_LOG = """\
-[video] title card: "Demo" / "Link Visit with Vet", 3.40s
 [video] feature-script.js: 1/4 changed screens filmed | FAILED to reach: \
 visits (locator.waitFor: Timeout); visits/:id/edit (no such element); owners/:id (nope)
 [video] narration: 6/6 cues, 24.1s of speech, voice "Samantha"

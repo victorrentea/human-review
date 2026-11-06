@@ -36,13 +36,21 @@ module.exports = async ({page, say, pause, get, app, apiUrl}) => {
 
 **The rules that make this film worth paying for:**
 
+- **Open cold.** The first `say()` is the climax: land on the end state of the feature (by URL,
+  or with setup before that line, which the recorder cuts) and say what it means to someone,
+  over a screen already showing it. The second line gives the stakes and turns back: what was
+  missing, then "So how did it get there?". Only then walk through the steps, tied back to the
+  opening, and let the last line close the loop. No "This is the X page", no introduction: the
+  film has no title card and starts on that first line. The payoff must really be on screen
+  and the "before" must be what the diff shows, never drama the ticket does not support.
+
 - **Short.** At most ten `say()` calls, one per behaviour the ticket names, short
   sentences, about a minute of film. The reviewer is busy; a second line about the same
   screen state is a line too many.
 
 - **Start from the script that is there.** If `.human-review/feature-script.js` exists,
-  read it first and keep what still holds — its handlers, its narrative order, its
-  selectors. The previous copy is kept under `.human-review/.model-prev/`, made seconds
+  read it first and keep what still holds — its handlers, its selectors, and its narrative
+  order if it opens cold. The previous copy is kept under `.human-review/.model-prev/`, made seconds
   ago, so "my file equals `.model-prev/`" is true before you have done anything and is
   never evidence that nothing needed doing. The comparison that means something is the
   script against the *diff*.

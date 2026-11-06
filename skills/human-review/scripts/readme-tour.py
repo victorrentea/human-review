@@ -247,7 +247,7 @@ def _shoot_module():
 class _Quiet(http.server.SimpleHTTPRequestHandler):
     """Static files, plus the one thing `SimpleHTTPRequestHandler` lacks and Pages has:
     byte ranges. Without them Chromium cannot seek the feature video, and the Demo tab was
-    shot on its title card with a spinner over it."""
+    shot on its first frame with a spinner over it."""
 
     def log_message(self, *args):  # noqa: D401 — a request log per image is only noise
         pass
