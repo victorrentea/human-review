@@ -1,5 +1,5 @@
 @startuml
-caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — <back:#F2CF8E><color:#000000>impacted</color></back> + <back:#F4DCB4><color:#000000>neighbours</color></back> + <back:#F2EBDB><color:#000000>neighbours</color></back>, shaded by distance from the change
+caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color> — <back:#F2CF8E><color:#000000>impacted</color></back> + their <back:#F4DCB4><color:#000000>neighbours</color></back> + their <back:#F2EBDB><color:#000000>neighbours</color></back>
 
 title Domain Model - Diff
 footer domain/*.java -> DomainModel.puml — Diagram generated from code using Java reflection
