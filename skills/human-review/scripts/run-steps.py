@@ -49,6 +49,7 @@ import subprocess
 import threading
 import sys
 import time
+import http.client
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -178,7 +179,9 @@ def answers(url: str, timeout: float = 3.0) -> bool:
         return True
     except urllib.error.HTTPError:
         return True
-    except (urllib.error.URLError, OSError, ValueError):
+    # `HTTPException`: something answered that is not HTTP. A probe of a free port in the
+    # ephemeral range can even connect to itself and read its own request back.
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
         return False
 
 

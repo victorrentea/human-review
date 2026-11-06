@@ -264,3 +264,12 @@ def test_each_step_gets_its_own_handle_file():
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+def test_something_that_answers_in_no_http_at_all_is_not_a_build(monkeypatch):
+    """A probe of a free port in the ephemeral range can connect to itself and read its own
+    request back: `BadStatusLine`, which is neither a URLError nor an OSError."""
+    def not_http(*a, **k):
+        raise rs.http.client.BadStatusLine("GET / HTTP/1.1")
+    monkeypatch.setattr(rs.urllib.request, "urlopen", not_http)
+    assert rs.answers("http://127.0.0.1:51999/") is False
