@@ -35,7 +35,7 @@
 .diagram .svgbox svg { max-width:100%; height:auto !important; display:block; margin:0 auto; }
 .diagram .svgbox[hidden] { display:none; }
 /* draw.io's own 1px box borders and edges look thin at page scale: thicken only the
-   default-width strokes, never one the drawing set on purpose (the traced arrows are 2-3). */
+   default-width strokes, never one the drawing set on purpose (`drawio-diff.py` traced arrows: 4 walked, 1.4 not). */
 .diagram .svgbox svg [data-cell-id] :is(path,rect,ellipse,polygon):not([stroke-width]):not([stroke="none"]),
 .diagram .svgbox svg [data-cell-id] :is(path,rect,ellipse,polygon)[stroke-width="1"] { stroke-width:2px; }
 /* A class name that opens the source looks exactly like one that does not. PlantUML's
@@ -136,7 +136,7 @@
 .cmlegend .walked { color:var(--fg); }
 .cmlegend .walked i { border-top-width:5px; }
 .cmlegend .unwalked { color:var(--fg); }
-.cmlegend .unwalked i { border-top-width:1px; }
+.cmlegend .unwalked i { border-top-width:1.4px; }
 .cmlegend .undrawn { color:#d7263d; }
 .cmlegend .undrawn i { border-top-style:dashed; }
 @media (prefers-color-scheme:dark) { .cmlegend .undrawn { color:#ff9090; } }

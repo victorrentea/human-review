@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import importlib.util
 import json
+import re
 import struct
 import subprocess
 import sys
@@ -921,10 +922,29 @@ def test_an_arrow_no_test_walked_is_thin_not_removed():
     xml, report = dd.overlay_traces(DEPLOYMENT, {("Browser", "Backend"), ("Backend", "DB")})
     st = _styles(xml)
     for cid in ("e-owner-fe", "e-be-ns"):
-        assert st[cid]["strokeColor"] == "default" and st[cid]["strokeWidth"] == "1"
+        assert st[cid]["strokeColor"] == "default" and st[cid]["strokeWidth"] == "1.4"
         assert "opacity" not in st[cid]
     assert set(report["unwalked"]) == {"Pet Owner → Frontend", "Backend → Notification Service"}
     assert report["undrawn"] == []
+
+
+def test_the_unwalked_width_is_30_percent_under_what_the_page_drew():
+    """The page draws a default-width stroke at 2px (`diagrams.css`), so a style of 1 was
+    a 2 on screen, and 0.7 would have been 65% thinner, not 30%. The rule must not start
+    matching the new width either, or the line goes back to 2."""
+    css = (Path(__file__).parent / "hrbuild/assets/css/diagrams.css").read_text(encoding="utf-8")
+    assert re.search(r':not\(\[stroke-width\]\)[^{]*\[stroke-width="1"\] \{ stroke-width:2px; \}',
+                     css), "the rule this width was measured against moved: measure it again"
+    assert dd.UNWALKED_WIDTH == pytest.approx(2 * 0.7)
+    assert f'[stroke-width="{dd.UNWALKED_WIDTH:g}"]' not in css
+    assert f".cmlegend .unwalked i {{ border-top-width:{dd.UNWALKED_WIDTH:g}px; }}" in css
+
+
+def test_the_builtin_renderer_keeps_a_fractional_width(tmp_path):
+    xml, _ = dd.overlay_traces(DEPLOYMENT, {("Browser", "Backend")})
+    out = tmp_path / "pic.svg"
+    assert dd.render(xml, out, "builtin") == "builtin"
+    assert 'stroke-width="1.4"' in out.read_text(encoding="utf-8")
 
 
 def test_a_call_drawn_the_other_way_round_is_not_walked():
@@ -992,7 +1012,7 @@ def test_an_added_arrow_no_test_walks_keeps_its_green_faded():
     painted = DEPLOYMENT.replace(arrow("e-be-ns", "be", "ns"), arrow("e-be-ns", "be", "ns")
                                  .replace("#82b366", dd.ADDED_COLOR))
     st = _styles(dd.overlay_traces(painted, set())[0])["e-be-ns"]
-    assert st["strokeColor"] == dd.ADDED_COLOR and st["strokeWidth"] == "1"
+    assert st["strokeColor"] == dd.ADDED_COLOR and st["strokeWidth"] == "1.4"
 
 
 def test_traces_end_to_end_take_each_side_from_its_own_graph(tmp_path):

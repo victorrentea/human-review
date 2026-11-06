@@ -276,14 +276,14 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'What runs where, drawn by hand in draw.io.',
             'A test fails on any call the e2e tests made that the drawing lacks.',
-            '<b>✓ Tested vs traces</b> after the title names that test; click to open it.',
+            '<b>✓ Tested vs test traces</b> after the title names that test; click to open it.',
             '<b>✏️ Edit in app / on web</b> opens the drawing; after a save, ↺ redraws the card.',
         ],
         "ex": 'e.g. red dashed: called in the tests, missing from the drawing.',
     },
     'diagram.packages': {
         "li": [
-            'The Java packages and who depends on whom.',
+            'The packages and their dependencies.',
             '<a href="https://www.archunit.org/" target="_blank" rel="noopener noreferrer">'
             'ArchUnit</a>, a test library, fails the build on an import the drawing lacks.',
             'A new arrow is new coupling: ask why.',
@@ -306,7 +306,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'diagram.modules': {
         "li": [
-            'The Maven modules and who depends on whom, from <code>mvn dependency:tree</code>.',
+            'The Maven modules and their dependencies, from <code>mvn dependency:tree</code>.',
             'A new arrow or a cycle between modules: ask why.',
             '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
             '<b>Dimmed box</b>: nothing in it changed; <b>Impacted</b> hides those and their arrows.',
@@ -530,7 +530,9 @@ def adopt_prompt(piece: str, title: str = "") -> str | None:
 
 #: What the blue fill in a package/module box means, left of the pill on a card that has one
 #: (Victor, 18 Oct 2026: "it's not clear what the progress bar means"). The swatch is a
-#: box drawn like the diagram's own, a third filled, so the legend looks like the thing.
+#: box drawn like the diagram's own, a third filled, so the legend looks like the thing, and
+#: no words name it (Victor, 6 Nov 2026: the label was not even understood): the swatch, "=",
+#: and what it means. The ⓘ panel does say "Blue fill", it needs a name to refer to.
 IMPACT_LEGEND = (
     '<span class="impact-legend" data-tip="Hover a box for its changed files">'
     '<svg viewBox="0 0 30 14" aria-hidden="true">'
@@ -538,7 +540,7 @@ IMPACT_LEGEND = (
     'stroke="var(--dgm-line-accent)"/>'
     '<rect x=".5" y=".5" width="11" height="13" rx="2" fill="var(--dgm-impact)" '
     'fill-opacity=".45"/></svg>'
-    '<span><b>blue fill</b> = the box\'s share of the lines this PR added</span></span>')
+    '<span>= the box\'s share of the lines this PR added</span></span>')
 
 
 def adopt_html(piece: str, title: str = "", how: str = "in", page: bool = False,

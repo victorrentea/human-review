@@ -1696,6 +1696,30 @@ def test_a_js_guardrail_that_reads_the_diagram_is_its_tested_badge(tmp_path):
     assert diagrams.diagram_provenance("web/docs/frontend-packages.puml", tmp_path) == ""
 
 
+def test_a_generator_on_maven_s_tree_says_so_after_the_pom():
+    """The Maven module graph lost its caption: the chip is what says how it was made."""
+    from hrbuild.shared.diagrams import _prov_source
+    assert _prov_source("reads pom.xml, runs mvn -f <pom> dependency:tree -Dincludes=…") == \
+        "pom.xml using `mvn dependency:tree`"
+    assert _prov_source("reads every pom.xml") == "pom.xml"
+
+
+def test_a_drawing_tested_vs_traces_says_whose_while_a_generated_one_keeps_the_short_word(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs/Deployment.drawio.png").write_bytes(b"png")
+    test = tmp_path / "src/test/java/DeploymentDiagramTest.java"
+    test.parent.mkdir(parents=True)
+    test.write_text('class T { String d = "docs/Deployment.drawio.png"; // genseq traces\n}\n',
+                    encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    diagrams = importlib.import_module("hrbuild.shared.diagrams")
+    out = diagrams.diagram_provenance("docs/Deployment.drawio.png", tmp_path)
+    assert ">Tested vs test traces</a>" in out
+    assert "checks this drawing against the test traces:" in out
+    assert diagrams._prov_source("a genseq trace") == "traces"
+
+
 def test_a_schema_dumped_from_a_migrated_database_says_it_follows_the_scripts():
     """`Generated from DB schema` hid where the schema comes from: when the generator
     builds it with Flyway/Liquibase migrations, the badge says the incremental scripts

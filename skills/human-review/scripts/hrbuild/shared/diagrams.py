@@ -437,6 +437,10 @@ _PROV_CODE = (".java", ".kt", ".kts", ".groovy", ".scala", ".py", ".sh", ".js", 
 #: Ordered: a script that dumps the schema out of a container also names Maven, and one
 #: that walks the classes also names `.puml`.
 _PROV_SOURCES = (
+    # Before `pom.xml`, which such a generator also names: the graph is Maven's resolved
+    # tree, not the poms as written. The chip says so now that the diagram's own caption,
+    # which did, is gone (Victor, 6 Nov 2026).
+    (re.compile(r"dependency:tree"), "pom.xml using `mvn dependency:tree`"),
     (re.compile(r"pom\.xml|<modules?>", re.I), "pom.xml"),
     (re.compile(r"genseq|opentelemetry|\btraces?\b", re.I), "traces"),
     (re.compile(r"openapi", re.I), "OpenAPI"),
@@ -452,6 +456,8 @@ _PROV_SOURCES = (
     (re.compile(r"com\.tngtech\.archunit|ClassFileImporter|src/main/java|getDeclaredFields"),
      "code"),
 )
+#: `_PROV_SOURCES`' word as it reads after *Tested vs*, where that differs.
+_TESTED_VS = {"traces": "test traces"}
 _WRITES = re.compile(r"\bwrite\w*\s*\(|newBufferedWriter|FileWriter|FileOutputStream"
                      r"|open\([^)]*['\"]w|>\s*\"?\$")
 _TEST_PATH = re.compile(r"(^|/)(src/test|tests?|__tests__|spec)/|(Test|Tests|Spec|_test|\.spec"
@@ -534,6 +540,9 @@ def diagram_provenance(rel: str, root: Path, against: str = "") -> str:
     stem = Path(path).stem
     test = stem if "." not in stem else Path(path).name
     source = "code" if archunit else (_prov_source(text) or "code")
+    # A drawing is checked against what the tests recorded: bare, *traces* could be anyone's
+    # (Victor, 6 Nov 2026). *Generated from traces* keeps the short word.
+    source = _TESTED_VS.get(source, source)
     # Undeclared, the hover still says which test and what a mismatch costs — what it is
     # checked against is then the badge's own word (*code*, *traces*).
     tip = tested_tip(test, "" if against else source)

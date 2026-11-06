@@ -109,7 +109,6 @@ button.adopt:focus-visible { outline:2px solid var(--adopt); outline-offset:1px;
 .impact-legend{display:inline-flex;align-items:center;gap:.4rem;margin-right:auto;
   color:var(--muted);font-size:.78rem;line-height:1.6}
 .impact-legend svg{width:1.9rem;height:.9rem;flex:none}
-.impact-legend b{color:var(--fg);font-weight:600}
 .impact-legend:has(+ .dgm-only){margin-right:.9rem}
 button.hrx-i{--hrx-i:#1d4ed8;--hrx-i-on:#3b82f6;--hrx-ring:rgba(59,130,246,.35);
   display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none;

@@ -332,6 +332,8 @@ def test_a_card_with_green_fill_bars_explains_them_left_of_its_pill():
     foot = out[out.index('<div class="adoptline'):]
     assert foot.index('class="impact-legend"') < foot.index("Prompt to get this")
     assert "share of the lines this PR added" in foot
+    # Victor, 6 Nov 2026: the swatch needs no name; the "=" follows it directly.
+    assert '</svg><span>= the box\'s share' in foot and "blue fill" not in foot.lower()
     plain = place_prompts("packages", _card("Java packages", "packages.puml"))
     assert "impact-legend" not in plain
 

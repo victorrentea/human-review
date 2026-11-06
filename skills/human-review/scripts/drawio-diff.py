@@ -476,6 +476,12 @@ TRACE_ATTR = "traceParticipant"
 #: draw.io's own name for the theme's line colour, which it exports as a `light-dark()` pair.
 LINE_COLOR = "default"
 UNDRAWN_COLOR = "#FF0000"
+#: The weight of an arrow no test walked: 30% thinner than the 2 it was drawn at, so walked
+#: and unwalked differ at a glance (Victor, 6 Nov 2026). Not 1 x 0.7. A style of 1 never
+#: reached the reader as 1: draw.io writes no width for it, and `diagrams.css` draws every
+#: default-width stroke at 2px. Any other number passes through that rule as written, so
+#: this one is the width on the page, in the drawing's own units.
+UNWALKED_WIDTH = 1.4
 
 
 def _restyle(style: str, updates: dict) -> str:
@@ -533,7 +539,7 @@ def overlay_traces(xml: str, observed: set, attr: str = TRACE_ATTR) -> tuple[str
             upd["strokeWidth"] = f"{max(width * 2, 3):g}"
         else:
             unwalked.append(what)
-            upd["strokeWidth"] = "1"
+            upd["strokeWidth"] = f"{UNWALKED_WIDTH:g}"
         styles[c.id] = upd
 
     for node in root.iter():
