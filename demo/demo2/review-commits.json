@@ -1,8 +1,8 @@
 {
- "base": "b2bcb84875f4faa4c359e9c17304cc3b1d4d1d4c",
+ "base": "c70d6642e77f61a54c8e018ad14b88f14f9545bd",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 17,
+ "commits": 22,
  "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
  "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
  "session": "498ee103-9160-4f7a-be05-c641ebd16920",
@@ -21,7 +21,12 @@
   "8c9671cc13121aef3aaf48f256b4f4701a17ec3c",
   "aa5457fae334095a6129c2af9cef5453f661ffdb",
   "cdbe640f8215c931b7d7ddaa9702d6c25b6f9db4",
-  "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847"
+  "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847",
+  "dd83fb2574e21ca0fa56e2aefc48eb83e6366f0f",
+  "180dbebcbce16f76ef4762b12321d64c05fffe93",
+  "3680a314c00c82aef36198f12f44fc8611004487",
+  "ff12002a902c6e6497a9158294e74b235bf5dfbe",
+  "273460ab0793faf449b0e127d2b2275f287abe51"
  ],
  "after_detail": [
   {
@@ -106,6 +111,36 @@
    "sha": "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847",
    "when": "2026-11-06T09:11:47+02:00",
    "subject": "review-points: base moved past main's b2bcb848 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "dd83fb2574e21ca0fa56e2aefc48eb83e6366f0f",
+   "when": "2026-11-06T09:41:53+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
+   "auto_fix": false
+  },
+  {
+   "sha": "180dbebcbce16f76ef4762b12321d64c05fffe93",
+   "when": "2026-11-06T09:42:01+02:00",
+   "subject": "review-points: base moved past main's 7e688e70 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "3680a314c00c82aef36198f12f44fc8611004487",
+   "when": "2026-11-06T09:51:33+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
+   "auto_fix": false
+  },
+  {
+   "sha": "ff12002a902c6e6497a9158294e74b235bf5dfbe",
+   "when": "2026-11-06T09:51:33+02:00",
+   "subject": "review-points: base moved past main's c70d6642 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "273460ab0793faf449b0e127d2b2275f287abe51",
+   "when": "2026-11-06T09:54:13+02:00",
+   "subject": "Regenerate the browser sequence diagrams: request arrows link to this branch's lines",
    "auto_fix": false
   }
  ],

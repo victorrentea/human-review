@@ -17,7 +17,7 @@ activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:19{Click to open VetRepository.findByIdOrNull} VetRepository.findByIdOrNull ↗]]
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:14{Click to open VisitRepository.save} VisitRepository.save ↗]]
 activate Backend
-Backend -> DB: [[genseq://1oyjmep{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
+Backend -> DB: [[genseq://0eap25x{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
 deactivate Backend
 deactivate Backend
 Backend --> Test: 201

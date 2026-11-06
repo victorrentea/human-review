@@ -89,17 +89,17 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 10
+            "calls": 9
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 89
+            "calls": 88
           },
           {
             "name": "select visits",
             "path": "",
-            "calls": 103
+            "calls": 105
           }
         ],
         "toKind": "db"
@@ -128,7 +128,7 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 0,
-        "calls": 11,
+        "calls": 10,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -138,7 +138,7 @@
           {
             "name": "Get an owner by ID",
             "path": "GET /api/owners/{ownerId}",
-            "calls": 4
+            "calls": 3
           },
           {
             "name": "List owners",
@@ -233,7 +233,7 @@
         "protocol": "SQL",
         "operations": 5,
         "operationsDelta": 0,
-        "calls": 214,
+        "calls": 202,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -253,7 +253,7 @@
           {
             "name": "select pets",
             "path": "",
-            "calls": 98
+            "calls": 86
           },
           {
             "name": "select visits",
@@ -417,17 +417,17 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 10
+            "calls": 9
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 89
+            "calls": 88
           },
           {
             "name": "select visits",
             "path": "",
-            "calls": 103
+            "calls": 105
           }
         ],
         "toKind": "db"
@@ -456,7 +456,7 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 1,
-        "calls": 11,
+        "calls": 10,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -466,7 +466,7 @@
           {
             "name": "Get an owner by ID",
             "path": "GET /api/owners/{ownerId}",
-            "calls": 4
+            "calls": 3
           },
           {
             "name": "List owners",
@@ -524,5 +524,5 @@
       "onlyOld": []
     }
   },
-  "base": "215038746359a252cf10e12c2f02bbab2a7f4286"
+  "base": "c70d6642e77f61a54c8e018ad14b88f14f9545bd"
 }

@@ -55,7 +55,7 @@
         "protocol": "SQL",
         "operations": 11,
         "operationsDelta": 0,
-        "calls": 260,
+        "calls": 263,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -110,7 +110,7 @@
           {
             "name": "select visits",
             "path": "",
-            "calls": 102
+            "calls": 105
           }
         ],
         "toKind": "db"
@@ -239,7 +239,7 @@
         "protocol": "SQL",
         "operations": 5,
         "operationsDelta": 0,
-        "calls": 214,
+        "calls": 202,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -259,7 +259,7 @@
           {
             "name": "select pets",
             "path": "",
-            "calls": 98
+            "calls": 86
           },
           {
             "name": "select visits",
@@ -388,7 +388,7 @@
         "protocol": "SQL",
         "operations": 11,
         "operationsDelta": 0,
-        "calls": 260,
+        "calls": 263,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -443,7 +443,7 @@
           {
             "name": "select visits",
             "path": "",
-            "calls": 102
+            "calls": 105
           }
         ],
         "toKind": "db"
@@ -536,5 +536,5 @@
       "onlyOld": []
     }
   },
-  "base": "215038746359a252cf10e12c2f02bbab2a7f4286"
+  "base": "c70d6642e77f61a54c8e018ad14b88f14f9545bd"
 }

@@ -1,8 +1,8 @@
 {
- "base": "b2bcb84875f4faa4c359e9c17304cc3b1d4d1d4c",
+ "base": "c70d6642e77f61a54c8e018ad14b88f14f9545bd",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 118,
+ "commits": 123,
  "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
@@ -59,7 +59,12 @@
   "0f36e282eae5859073f45446ca7424a4f16f5fee",
   "96fbcbb243e7efe7b48ba8648ea454ff575129df",
   "fe937ab27e813709b2e28835fbecbca9c03bdf4b",
-  "6c3efe014c7e29bd5a5f4b370f1546db2e15353a"
+  "6c3efe014c7e29bd5a5f4b370f1546db2e15353a",
+  "3b8f5ee2cbe168f14660314f6073b9cd1efa682e",
+  "94621c915e9357a6d0df861522d067c2bdf54526",
+  "07a310ba4e2ad9bb7f636935a6b0acc39ae5f984",
+  "01041dae8792f26948753b3744f824ff92b4b791",
+  "521a3f0420ecef93173a3b96135fcf031c317ffb"
  ],
  "after_detail": [
   {
@@ -372,6 +377,36 @@
    "sha": "6c3efe014c7e29bd5a5f4b370f1546db2e15353a",
    "when": "2026-11-06T09:11:44+02:00",
    "subject": "review-points: base moved past main's b2bcb848 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "3b8f5ee2cbe168f14660314f6073b9cd1efa682e",
+   "when": "2026-11-06T09:41:52+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "94621c915e9357a6d0df861522d067c2bdf54526",
+   "when": "2026-11-06T09:42:01+02:00",
+   "subject": "review-points: base moved past main's 7e688e70 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "07a310ba4e2ad9bb7f636935a6b0acc39ae5f984",
+   "when": "2026-11-06T09:44:29+02:00",
+   "subject": "Regenerate the browser sequence diagrams: request arrows link to this branch's lines",
+   "auto_fix": false
+  },
+  {
+   "sha": "01041dae8792f26948753b3744f824ff92b4b791",
+   "when": "2026-11-06T09:51:34+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "521a3f0420ecef93173a3b96135fcf031c317ffb",
+   "when": "2026-11-06T09:51:34+02:00",
+   "subject": "review-points: base moved past main's c70d6642 (merged)",
    "auto_fix": false
   }
  ],

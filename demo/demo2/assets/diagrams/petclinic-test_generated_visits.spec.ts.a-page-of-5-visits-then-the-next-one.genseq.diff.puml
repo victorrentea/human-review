@@ -10,7 +10,7 @@ footer traced because this branch wrote it in src/visits.spec.ts — generated f
 participant Browser
 participant Backend
 participant DB
-Browser -> Backend: listVisits\nGET /api/visits
+Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:50{Click to open the line that sent this request: visits-page.component.ts:50} listVisits\nGET /api/visits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend
@@ -24,7 +24,7 @@ Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELE
 deactivate Backend
 Backend --> Browser: [[genseq://1gl89nl{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
-Browser -> Backend: listVisits\nGET /api/visits
+Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:59{Click to open the line that sent this request: visits-page.component.ts:86 ← visits-page.component.ts:59 ← visits-page.component.html:38} listVisits\nGET /api/visits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend
@@ -36,7 +36,7 @@ Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELE
 deactivate Backend
 Backend --> Browser: [[genseq://0xfw4pf{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
-Browser -> Backend: listVisits\nGET /api/visits
+Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:59{Click to open the line that sent this request: visits-page.component.ts:86 ← visits-page.component.ts:59 ← visits-page.component.html:38} listVisits\nGET /api/visits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend

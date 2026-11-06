@@ -13,25 +13,13 @@ participant DB
 participant NotificationService
 participant "«module»\nCommons" as Commons
 participant "SMS gateway"
-Browser -> Backend: Get an owner by ID\nGET /api/owners/{ownerId}
-activate Backend
-Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:14{Click to open OwnerRepository.findById} OwnerRepository.findById ↗]]
-activate Backend
-group tx [committed]
-Backend -> DB: [[genseq://0x8aana{Click for the statement behind this call} select owners ⊕]]
-end
-deactivate Backend
-Backend -> DB: [[genseq://18567ho{Click for the statement behind this call} select pets ⊕]]
-Backend -> DB: [[genseq://1eq1h2q{Click for the statement behind this call} select visits ⊕]]
-Backend --> Browser: [[genseq://1bhasc1{Click for this call’s JSON body} 200 ⊕]]
-deactivate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:193{Click to open OwnerRestController.bookVisit} book-visit ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:19{Click to open VetRepository.findByIdOrNull} VetRepository.findByIdOrNull ↗]]
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:14{Click to open VisitRepository.save} VisitRepository.save ↗]]
 activate Backend
 group tx [committed]
-Backend -> DB: [[genseq://11g0pot{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
+Backend -> DB: [[genseq://1hc65b8{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
 end
 deactivate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:14{Click to open OwnerRepository.findById} OwnerRepository.findById ↗]]
@@ -52,7 +40,7 @@ NotificationService -> "SMS gateway": [[src://notification-service/src/main/java
 NotificationService --> Backend: 202
 deactivate NotificationService
 deactivate Backend
-Browser -> Backend: listVisits\nGET /api/visits
+Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:21{Click to open the line that sent this request: visits-page.component.ts:21} listVisits\nGET /api/visits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:19{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend

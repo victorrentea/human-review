@@ -10,7 +10,7 @@ footer traced because this branch wrote it in src/visits.spec.ts — generated f
 participant Browser
 participant Backend
 participant DB
-Browser -> Backend: listVisits\nGET /api/visits
+Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:50{Click to open the line that sent this request: visits-page.component.ts:50} listVisits\nGET /api/visits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend

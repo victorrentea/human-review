@@ -1,0 +1,71 @@
+{
+  "slug": "demo",
+  "title": "Link Visit with Vet (issue #37)",
+  "shots": [
+    {
+      "panel": "review",
+      "title": "Review",
+      "file": "review.jpg"
+    },
+    {
+      "panel": "behaviour",
+      "title": "Demo",
+      "file": "behaviour.jpg"
+    },
+    {
+      "panel": "api",
+      "title": "API",
+      "file": "api.jpg"
+    },
+    {
+      "panel": "data",
+      "title": "Data",
+      "file": "data.jpg"
+    },
+    {
+      "panel": "requirements",
+      "title": "Tests",
+      "file": "requirements.jpg"
+    },
+    {
+      "panel": "sequence",
+      "title": "Sequence",
+      "file": "sequence.jpg"
+    },
+    {
+      "panel": "packages",
+      "title": "Structure",
+      "file": "packages.jpg"
+    },
+    {
+      "panel": "city",
+      "title": "City",
+      "file": "city.jpg"
+    },
+    {
+      "panel": "complexity",
+      "title": "Complexity",
+      "file": "complexity.jpg"
+    },
+    {
+      "panel": "dsaudit",
+      "title": "UX",
+      "file": "dsaudit.jpg"
+    },
+    {
+      "panel": "logging",
+      "title": "Logs",
+      "file": "logging.jpg"
+    },
+    {
+      "panel": "owners",
+      "title": "Codeowners",
+      "file": "owners.jpg"
+    },
+    {
+      "panel": "cost",
+      "title": "$9",
+      "file": "cost.jpg"
+    }
+  ]
+}

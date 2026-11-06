@@ -677,7 +677,10 @@
   .swagger-ui .try-out, .swagger-ui .execute-wrapper, .swagger-ui .btn.try-out__btn {
     display: none !important;
   }
-  .swagger-ui .opblock-body .opblock-section:has(> .parameters-container > .opblock-description-wrapper) {
+  /* Its header and its "No parameters", not the whole section: Swagger UI nests the request
+     body inside it, so a POST without parameters had no request body on the page at all. */
+  .swagger-ui .opblock-body .opblock-section:has(> .parameters-container > .opblock-description-wrapper)
+    > :is(.opblock-section-header, .parameters-container) {
     display: none;
   }
   .swagger-ui .parameters-container .table-container { padding: 2px 20px 4px !important; }

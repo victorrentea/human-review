@@ -10,7 +10,7 @@ footer @generate_sequence in src/owner-search.feature — generated from real tr
 participant Browser
 participant Backend
 participant DB
-Browser -> Backend: List owners\nGET /api/owners
+Browser -> Backend: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:30{Click to open the line that sent this request: owner-list.component.ts:30} List owners\nGET /api/owners ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:12{Click to open OwnerRepository.findByLastNameStartingWith} OwnerRepository.findByLastNameStartingWith ↗]]
 activate Backend
@@ -28,6 +28,7 @@ Backend -> DB: [[genseq://1e02kqw{Click for the statement behind this call} sele
 Backend -[#2E7D32]> DB: [[genseq://1k944l8{Click for the statement behind this call} select visits ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://15hw4kh{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://1afgvsf{Click for the statement behind this call} select pets ⊕]]
+Backend -[#2E7D32]> DB: [[genseq://0uo8zw3{Click for the statement behind this call} select visits ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://19jw8ly{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://05qnn6q{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1uai9tz{Click for the statement behind this call} select visits ⊕]]
@@ -72,18 +73,11 @@ Backend -> DB: [[genseq://1o34u8l{Click for the statement behind this call} sele
 Backend -[#2E7D32]> DB: [[genseq://18twor0{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://14lgvhs{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1ksbt81{Click for the statement behind this call} select visits ⊕]]
-Backend -[#C62828]> DB: <color:#C62828><s>select visits</s></color>
 Backend -> DB: [[genseq://0ccg4wn{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1obsoh2{Click for the statement behind this call} select visits ⊕]]
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#2E7D32]-> Browser: [[genseq://1mpkvkm{Click for this call’s JSON body} 200 ⊕]]
+Backend -[#2E7D32]-> Browser: [[genseq://1sp2sda{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
-Browser -> Backend: List owners\nGET /api/owners
+Browser -> Backend: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:48{Click to open the line that sent this request: owner-list.component.ts:48 ← owner-list.component.html:18} List owners\nGET /api/owners ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:12{Click to open OwnerRepository.findByLastNameStartingWith} OwnerRepository.findByLastNameStartingWith ↗]]
 activate Backend
@@ -101,6 +95,7 @@ Backend -> DB: [[genseq://1e02kqw{Click for the statement behind this call} sele
 Backend -[#2E7D32]> DB: [[genseq://1k944l8{Click for the statement behind this call} select visits ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://15hw4kh{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://1afgvsf{Click for the statement behind this call} select pets ⊕]]
+Backend -[#2E7D32]> DB: [[genseq://0uo8zw3{Click for the statement behind this call} select visits ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://19jw8ly{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://05qnn6q{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1uai9tz{Click for the statement behind this call} select visits ⊕]]
@@ -145,15 +140,8 @@ Backend -> DB: [[genseq://1o34u8l{Click for the statement behind this call} sele
 Backend -[#2E7D32]> DB: [[genseq://18twor0{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://14lgvhs{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1ksbt81{Click for the statement behind this call} select visits ⊕]]
-Backend -[#C62828]> DB: <color:#C62828><s>select visits</s></color>
 Backend -> DB: [[genseq://0ccg4wn{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1obsoh2{Click for the statement behind this call} select visits ⊕]]
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#C62828]> DB: <color:#C62828><s>select pets</s></color>
-Backend -[#2E7D32]-> Browser: [[genseq://1mpkvkm{Click for this call’s JSON body} 200 ⊕]]
+Backend -[#2E7D32]-> Browser: [[genseq://1sp2sda{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 @enduml

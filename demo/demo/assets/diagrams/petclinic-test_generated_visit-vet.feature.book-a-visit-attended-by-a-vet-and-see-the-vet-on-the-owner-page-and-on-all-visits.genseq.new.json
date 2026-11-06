@@ -14,7 +14,7 @@
         }
       ]
     },
-    "032ydb6": {
+    "0kdd00e": {
       "title": "insert for victor.training.petclinic.domain.Visit",
       "steps": [
         {
@@ -22,7 +22,7 @@
           "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES (?, ?, ?, ?, ?)",
           "alternate": {
             "label": "",
-            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1792763472535', 1, 4, ?)"
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1793951881463', 1, 4, ?)"
           }
         }
       ]

@@ -1,6 +1,19 @@
 {
   "version": 2,
   "details": {
+    "1hc65b8": {
+      "title": "insert for victor.training.petclinic.domain.Visit",
+      "steps": [
+        {
+          "label": "",
+          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES (?, ?, ?, ?, ?)",
+          "alternate": {
+            "label": "",
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1793951882946', 1, ?, ?)"
+          }
+        }
+      ]
+    },
     "0x8aana": {
       "title": "select owners",
       "steps": [
@@ -23,41 +36,6 @@
           "alternate": {
             "label": "",
             "text": "SELECT p1_0.owner_id, p1_0.id, p1_0.birth_date, p1_0.name, t1_0.id, t1_0.name\nFROM pets p1_0\nLEFT JOIN types t1_0\nON t1_0.id=p1_0.type_id\nWHERE p1_0.owner_id=1"
-          }
-        }
-      ]
-    },
-    "1eq1h2q": {
-      "title": "select visits",
-      "steps": [
-        {
-          "label": "",
-          "text": "SELECT v1_0.pet_id, v1_0.id, v1_0.visit_date, v1_0.description, v1_0.visit_time, v2_0.id, v2_0.first_name, v2_0.last_name\nFROM visits v1_0\nLEFT JOIN vets v2_0\nON v2_0.id=v1_0.vet_id\nWHERE v1_0.pet_id=?",
-          "alternate": {
-            "label": "",
-            "text": "SELECT v1_0.pet_id, v1_0.id, v1_0.visit_date, v1_0.description, v1_0.visit_time, v2_0.id, v2_0.first_name, v2_0.last_name\nFROM visits v1_0\nLEFT JOIN vets v2_0\nON v2_0.id=v1_0.vet_id\nWHERE v1_0.pet_id=1"
-          }
-        }
-      ]
-    },
-    "1bhasc1": {
-      "title": "Backend → Browser: 200",
-      "steps": [
-        {
-          "label": "response body",
-          "text": "{\n  \"firstName\": \"Kevin\",\n  \"lastName\": \"McCallister\",\n  \"address\": \"671 Lincoln Boulevard\",\n  \"city\": \"Winnetka\",\n  \"telephone\": \"8474461990\",\n  \"id\": 1,\n  \"pets\": [\n    {\n      \"name\": \"Axel\",\n      \"birthDate\": \"2018-12-24\",\n      \"type\": {\n        \"name\": \"hamster\",\n        \"id\": 6\n      },\n      \"id\": 1,\n      \"ownerId\": 1,\n      \"visits\": [\n        {\n          \"date\": \"2025-12-27\",\n          \"description\": \"ate the Christmas tinsel; kept under observation\",\n          \"id\": 1,\n          \"petId\": 1,\n          \"petName\": \"Axel\",\n          \"ownerId\": 1,\n          \"ownerFirstName\": \"Kevin\",\n          \"ownerLastName\": \"McCallister\",\n          \"vetId\": null,\n          \"vetFirstName\": null,\n          \"vetLastName\": null\n        }\n      ]\n    }\n  ]\n}"
-        }
-      ]
-    },
-    "11g0pot": {
-      "title": "insert for victor.training.petclinic.domain.Visit",
-      "steps": [
-        {
-          "label": "",
-          "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES (?, ?, ?, ?, ?)",
-          "alternate": {
-            "label": "",
-            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1792763474407', 1, ?, ?)"
           }
         }
       ]
