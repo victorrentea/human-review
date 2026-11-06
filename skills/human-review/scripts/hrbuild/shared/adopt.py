@@ -438,7 +438,7 @@ DIAGRAM_KINDS = (
     ("diagram.db", re.compile(r"\bDB\b|\bERD\b|\bschema\b", re.I)),
     ("diagram.c2", re.compile(r"\bC2\b", re.I)),
     ("diagram.frontend", re.compile(r"\bfrontend\b", re.I)),
-    ("diagram.modules", re.compile(r"\bmodules?\b", re.I)),
+    ("diagram.modules", re.compile(r"modules?\b", re.I)),  # also MavenModules.puml, any title
     ("diagram.packages", re.compile(r"\bpackages?\b", re.I)),
 )
 

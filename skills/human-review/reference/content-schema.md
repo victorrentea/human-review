@@ -732,12 +732,12 @@ takes them, so the page is a **tab strip over panels**, driven by a `tabs` array
   {"id":"sequence","label":"Sequence",
    "blocks":[{"type":"testpairs","id":"sequences","kind":"sequence"}]},
   {"id":"packages","label":"Structure",
-   "blocks":[{"type":"diagrams","only":["Java packages"],
-              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Java packages","note":"…"}},
-             {"type":"diagrams","only":["Frontend packages"],
-              "context":{"src":"petclinic-frontend/docs/frontend-packages.puml","name":"Frontend packages"}},
+   "blocks":[{"type":"diagrams","only":["Backend Java packages"],
+              "context":{"src":"petclinic-backend/docs/packages.puml","name":"Backend Java packages","note":"…"}},
              {"type":"puml","src":"petclinic-backend/docs/generated/MavenModules.puml",
-              "name":"Maven modules","status":"unchanged"},
+              "name":"Backend Build Units","status":"unchanged"},
+             {"type":"diagrams","only":["Frontend TypeScript packages"],
+              "context":{"src":"petclinic-frontend/docs/frontend-packages.puml","name":"Frontend TypeScript packages"}},
              {"type":"diagrams","manifest":"assets/c2/MANIFEST.tsv","only":["C2-Containers"],
               "id":"c2-containers"}]},
   {"id":"city","label":"Code City","blocks":[{"type":"codecity"}]},
@@ -841,7 +841,7 @@ call to a service nobody documented shows up here the first time a test makes it
 caption links out to **c4model.com**, because "C2" is jargon the page has no room to teach
 and Simon Brown's own site explains the four levels in a paragraph.
 
-It sits **last on Structure, after the Java and Frontend packages and the Maven modules**, and not on a tab of its
+It sits **last on Structure, after the Java packages, the build units and the Frontend packages**, and not on a tab of its
 own. Structure is already the question *what shape is this thing*, asked at two altitudes —
 packages inside one module, then the modules themselves — and the containers are the third
 and widest. A pill of its own put one question in two places on the strip and made the

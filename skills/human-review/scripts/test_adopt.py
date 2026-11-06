@@ -109,6 +109,14 @@ def test_a_drawio_card_whose_head_holds_its_action_buttons_is_still_a_drawio_pie
     assert 'data-piece="diagram.drawio' in out, out
 
 
+def test_a_renamed_modules_card_is_still_the_modules_piece():
+    """Victor renamed "Maven modules" to "Backend Build Units" (6 Nov 2026): only the source
+    file still says modules, and the card fell back to the generic prompt and no (i)."""
+    out = place_prompts("packages", _card("Backend Build Units", "MavenModules.puml"))
+    assert 'data-piece="diagram.modules' in out, out
+    assert 'data-explain="diagram.modules"' in out, out
+
+
 def test_a_diagram_inside_a_test_pair_is_part_of_the_pair_not_a_piece_of_its_own():
     body = '<div class="diagram dgm-bare"><div class="head"></div></div>'
     assert place_prompts("packages", body) == body
