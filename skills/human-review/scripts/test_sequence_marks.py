@@ -31,9 +31,9 @@ def test_the_open_arrow_is_in_the_diagrams_own_ink_and_not_bold():
 
 def test_the_values_badge_and_the_marks_share_one_colour_rule():
     assert 'class="genseq-toggle genseq-value"' in GENSEQ_JS
-    toggle = re.search(r"#genseq-panel \.genseq-toggle \{([^}]*)\}", GENSEQ_CSS)[1]
+    toggle = re.search(r"\.genseq-panel \.genseq-toggle \{([^}]*)\}", GENSEQ_CSS)[1]
     assert "background" not in toggle and "color" not in toggle, "no second copy of it"
-    colours = [c.strip() for c in re.findall(r"#genseq-panel \.genseq-value \{([^}]*)\}", GENSEQ_CSS)]
+    colours = [c.strip() for c in re.findall(r"\.genseq-panel \.genseq-value \{([^}]*)\}", GENSEQ_CSS)]
     assert colours == ["background:var(--link); color:var(--card); font-weight:700;"]
 
 
@@ -236,6 +236,149 @@ COLOUR_PAGE = """<!doctype html><html><head><style>{css}</style></head><body>
 <script type="application/json" class="genseq-details">{details}</script></div>
 <script>window.HR = {{onready: function (fn) {{ fn(null); }}}};</script>
 <script>{js}</script></body></html>"""
+
+
+HOVER_DETAILS = {"details": {
+    "sql": {"title": "select pets", "steps": [{"text": "SELECT 1"}]},
+    "json": {"title": "200", "steps": [{"text": '{"id": 1}'}]}}}
+
+#: A label wrapped in two lines is two links with one address, in one arrow.
+TWO_LINES = ('<g class="message"><a href="genseq://sql"><text font-size="13" x="10" y="30">select</text></a>'
+             '<a href="genseq://sql"><text font-size="13" x="10" y="44">pets</text></a></g>'
+             '<g class="message"><a href="genseq://json" data-tip="Click for this call" '
+             'xlink:title="Click for this call"><text font-size="13" x="10" y="80">200</text></a></g>')
+
+
+def _hover_page(browser, tmp_path, **viewport):
+    import json
+    src = COLOUR_PAGE.format(css=GENSEQ_CSS, js=GENSEQ_JS, details=json.dumps(HOVER_DETAILS))
+    src = re.sub(r'<g class="message">.*</g>', TWO_LINES, src, flags=re.S)
+    src = src.replace('xmlns="http://www.w3.org/2000/svg"', 'xmlns="http://www.w3.org/2000/svg" '
+                      'xmlns:xlink="http://www.w3.org/1999/xlink"')
+    page_file = tmp_path / "h.html"
+    page_file.write_text(src, encoding="utf-8")
+    page = browser.new_page(viewport=viewport or {"width": 900, "height": 500})
+    page.goto(page_file.as_uri())
+    return page
+
+
+def _open(page, sel):
+    """The text of a panel on screen, or None."""
+    return page.evaluate("""s => { const p = document.querySelector(s);
+        return p && !p.hidden ? p.querySelector('pre').textContent : null; }""", sel)
+
+
+def _kept(page, href):
+    return page.evaluate("""h => document.querySelector(`a[href="genseq://${h}"]`)
+        .closest('g').classList.contains('genseq-open')""", href)
+
+
+SQL, JSON_LABEL = 'a[href="genseq://sql"] text', 'a[href="genseq://json"] text'
+
+
+def test_a_resting_pointer_previews_and_only_a_click_keeps(browser, tmp_path):
+    """Victor, 6 Nov 2026: "When I just hover over these labels, it should appear too, but not
+    persistently … If I want it to stay, I click it, and then it turns white."."""
+    page = _hover_page(browser, tmp_path)
+    try:
+        page.hover(SQL)
+        assert _open(page, "#genseq-peek") is None, "not until the pointer rests, as tip.js"
+        page.wait_for_timeout(200)
+        assert _open(page, "#genseq-peek") == "SELECT 1"
+        assert _open(page, "#genseq-panel") is None and not _kept(page, "sql"), "not white"
+        page.mouse.move(600, 400)
+        assert _open(page, "#genseq-peek") is None, "volatile: gone with the pointer"
+
+        page.hover(SQL)
+        page.wait_for_timeout(200)
+        page.click(SQL)
+        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql")
+        assert _open(page, "#genseq-peek") is None, "one panel for one arrow"
+        page.mouse.move(600, 400)
+        page.wait_for_timeout(200)
+        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql"), "it stays"
+        page.click(SQL)
+        assert _open(page, "#genseq-panel") is None and not _kept(page, "sql")
+        page.wait_for_timeout(200)
+        assert _open(page, "#genseq-peek") is None, "closing it does not preview it again"
+    finally:
+        page.close()
+
+
+def test_a_preview_leaves_the_kept_panel_alone(browser, tmp_path):
+    page = _hover_page(browser, tmp_path)
+    try:
+        page.click(SQL)
+        kept = page.evaluate("document.querySelector('#genseq-panel').getBoundingClientRect().toJSON()")
+        page.hover(JSON_LABEL)
+        page.wait_for_timeout(200)
+        assert _open(page, "#genseq-peek") == '{"id": 1}' and not _kept(page, "json")
+        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql")
+        page.mouse.move(600, 400)
+        assert _open(page, "#genseq-peek") is None
+        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql")
+        assert kept == page.evaluate("document.querySelector('#genseq-panel').getBoundingClientRect().toJSON()")
+    finally:
+        page.close()
+
+
+def test_a_preview_moves_nothing_and_never_flickers(browser, tmp_path):
+    """Short window, label by its foot: the kept panel scrolls the page to show itself, which
+    under a resting pointer would move the label away and close the preview, in a loop."""
+    page = _hover_page(browser, tmp_path, width=300, height=130)
+    try:
+        page.evaluate("document.body.style.paddingBottom = '40px'")
+        box = page.locator(JSON_LABEL).bounding_box()
+        x, y = box["x"] + 5, box["y"] + 5
+        page.mouse.move(x, y)
+        page.wait_for_timeout(200)
+        page.evaluate("""() => { window.flips = 0;
+            new MutationObserver(l => { window.flips += l.length; })
+                .observe(document.querySelector('#genseq-peek'), {attributes: true}); }""")
+        panel = page.evaluate("document.querySelector('#genseq-peek').getBoundingClientRect().toJSON()")
+        assert panel["top"] >= 0 and panel["bottom"] <= 130, "inside the window, not below the fold"
+        for i in range(10):
+            page.mouse.move(x + i % 2, y)
+            page.wait_for_timeout(50)
+        assert page.evaluate("window.flips") == 0 and page.evaluate("scrollY") == 0
+        assert page.locator(JSON_LABEL).bounding_box() == box, "the label stays under the pointer"
+        assert _open(page, "#genseq-peek") == '{"id": 1}'
+    finally:
+        page.close()
+
+
+def test_the_two_lines_of_a_wrapped_label_are_one_label(browser, tmp_path):
+    """A click handler per link meant the second click closed the panel and reopened it."""
+    page = _hover_page(browser, tmp_path)
+    second = 'a[href="genseq://sql"]:nth-of-type(2) text'
+    try:
+        page.hover(SQL)
+        page.wait_for_timeout(200)
+        page.hover(second)
+        assert _open(page, "#genseq-peek") == "SELECT 1", "no closing between the lines"
+        page.click(second)
+        assert _open(page, "#genseq-panel") == "SELECT 1"
+        page.click(second)
+        assert _open(page, "#genseq-panel") is None
+    finally:
+        page.close()
+
+
+def test_the_preview_replaces_the_click_tip_and_reaches_the_keyboard(browser, tmp_path):
+    page = _hover_page(browser, tmp_path)
+    try:
+        link = page.locator('a[href="genseq://json"]')
+        assert link.get_attribute("data-tip") is None, "two bubbles would open over one label"
+        assert link.evaluate("a => a.hasAttributeNS('http://www.w3.org/1999/xlink', 'title')") is False
+        page.keyboard.press("Tab")
+        page.wait_for_timeout(200)
+        assert _open(page, "#genseq-peek") == "SELECT 1"
+        page.keyboard.press("Enter")
+        assert _open(page, "#genseq-panel") == "SELECT 1" and _open(page, "#genseq-peek") is None
+        page.keyboard.press("Escape")
+        assert _open(page, "#genseq-panel") is None
+    finally:
+        page.close()
 
 
 def test_the_panel_colours_sql_and_json_and_keeps_the_value_marks(browser, tmp_path):

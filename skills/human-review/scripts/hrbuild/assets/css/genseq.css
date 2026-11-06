@@ -24,57 +24,64 @@
   { fill:var(--dgm-diff-add); }
 .diagram svg g.message:not(.genseq-open):has(> polygon[fill="var(--dgm-diff-del)"]) a text
   { fill:var(--dgm-diff-del); }
-#genseq-panel { position:absolute; z-index:40; max-width:min(52rem,94vw); min-width:16rem;
+.genseq-panel { position:absolute; z-index:40; max-width:min(52rem,94vw); min-width:16rem;
                 background:var(--card); color:var(--fg); border:1px solid var(--line);
                 border-left:3px solid var(--link); border-radius:8px;
                 box-shadow:0 8px 28px rgba(0,0,0,.22); padding:.55rem .7rem .7rem; }
-#genseq-panel[hidden] { display:none; }
-#genseq-panel .genseq-head { display:flex; align-items:baseline; gap:.5rem; }
+.genseq-panel[hidden] { display:none; }
+/* The preview a resting pointer opens (see peekPanel in genseq.js): the same panel in the same
+   place, above a kept one, and the pointer passes through it. Its × could never be reached, so
+   the promise of a click sits there instead. */
+#genseq-peek { z-index:41; pointer-events:none; }
+#genseq-peek .genseq-close { display:none; }
+.genseq-panel .genseq-keep { display:none; }
+#genseq-peek .genseq-keep { display:inline; color:var(--muted); font-size:.76rem; white-space:nowrap; }
+.genseq-panel .genseq-head { display:flex; align-items:baseline; gap:.5rem; }
 /* The head is the drag handle (see enableDrag in genseq.js). touch-action keeps a finger
    drag from scrolling the page; buttons keep their own cursor. */
-#genseq-panel .genseq-head { cursor:move; user-select:none; -webkit-user-select:none; touch-action:none; }
-#genseq-panel .genseq-head button { cursor:pointer; }
+.genseq-panel .genseq-head { cursor:move; user-select:none; -webkit-user-select:none; touch-action:none; }
+.genseq-panel .genseq-head button { cursor:pointer; }
 /* The title takes only the room it needs, and the spacer after the toggle is what
    pushes the step counter and the close button to the far edge. The toggle used to ride
    out there with them, a hand's width from the statement it switches — it belongs
    against the end of the title, where the eye already is. */
-#genseq-panel .genseq-title { font:600 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+.genseq-panel .genseq-title { font:600 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
                               flex:0 1 auto; min-width:0; word-break:break-all; }
-#genseq-panel .genseq-grow { flex:1 1 auto; }
-#genseq-panel .genseq-head { gap:.6rem; }
-#genseq-panel .genseq-step { color:var(--muted); font-size:.76rem; white-space:nowrap; }
-#genseq-panel .genseq-close { border:0; background:none; color:var(--muted); cursor:pointer;
+.genseq-panel .genseq-grow { flex:1 1 auto; }
+.genseq-panel .genseq-head { gap:.6rem; }
+.genseq-panel .genseq-step { color:var(--muted); font-size:.76rem; white-space:nowrap; }
+.genseq-panel .genseq-close { border:0; background:none; color:var(--muted); cursor:pointer;
                         font-size:1.1rem; line-height:1; padding:0 .1rem; }
-#genseq-panel .genseq-close:hover { color:var(--fg); }
-#genseq-panel .genseq-label { color:var(--link); font-size:.8rem; margin:.15rem 0 .4rem; }
-#genseq-panel .genseq-label[hidden] { display:none; }
+.genseq-panel .genseq-close:hover { color:var(--fg); }
+.genseq-panel .genseq-label { color:var(--link); font-size:.8rem; margin:.15rem 0 .4rem; }
+.genseq-panel .genseq-label[hidden] { display:none; }
 /* The method that answers the route, in the head where the route used to be repeated:
    `Backend → NotificationService: NotificationController.visitBooked()`. Title-sized, and
    a link — the head is the drag handle, but a press on a link is left to the link. */
-#genseq-panel .genseq-head .genseq-handler { font-size:12.5px; margin:0; flex:0 1 auto;
+.genseq-panel .genseq-head .genseq-handler { font-size:12.5px; margin:0; flex:0 1 auto;
                                              min-width:0; word-break:break-all; cursor:pointer; }
-#genseq-panel .genseq-handler[hidden] { display:none; }
+.genseq-panel .genseq-handler[hidden] { display:none; }
 /* The `?` / `values` badge wears `.genseq-value`, the marks' own colours (below): it names
    what those marks will show, so it looks like them. Only its shape is its own. */
-#genseq-panel .genseq-toggle { border:0; cursor:pointer; border-radius:999px;
+.genseq-panel .genseq-toggle { border:0; cursor:pointer; border-radius:999px;
                         font:600 .7rem/1.6 inherit; padding:0 .55rem; white-space:nowrap; }
-#genseq-panel .genseq-toggle:hover { filter:brightness(1.15); }
-#genseq-panel .genseq-toggle[hidden] { display:none; }
+.genseq-panel .genseq-toggle:hover { filter:brightness(1.15); }
+.genseq-panel .genseq-toggle[hidden] { display:none; }
 /* pre, not pre-wrap: a wrapped JSON string came back at the left margin, under the keys,
    and broke the indentation that is the whole shape of a payload (Victor, 16 Oct 2026).
    A long line scrolls sideways instead — Shift+wheel works (hscroll.js) — and the
    scrollbar is drawn, because the Mac's overlay one stayed hidden and a cut-off SELECT
    looked like the whole statement. */
-#genseq-panel pre { margin:0; max-height:24rem; overflow:auto; background:var(--code-bg);
+.genseq-panel pre.code { margin:0; max-height:24rem; overflow:auto; background:var(--code-bg);
                     border-radius:6px; padding:.5rem .6rem; white-space:pre;
                     font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
-#genseq-panel pre::-webkit-scrollbar { width:8px; height:8px; }
-#genseq-panel pre::-webkit-scrollbar-thumb { background:var(--muted); border-radius:4px; }
-#genseq-panel pre::-webkit-scrollbar-corner { background:transparent; }
+.genseq-panel pre::-webkit-scrollbar { width:8px; height:8px; }
+.genseq-panel pre::-webkit-scrollbar-thumb { background:var(--muted); border-radius:4px; }
+.genseq-panel pre::-webkit-scrollbar-corner { background:transparent; }
 /* A `?` as sent, or the bound value put back in its place. Solid, in the panel's own blue
    with the card colour for the text, so it reads in both themes: a 24% tint vanished
    against the dark code background. Not a yellow marker or the accent: red on this page
    means "removed", and these are neither a warning nor a change — only the holes in the
    statement, and what filled them. */
-#genseq-panel .genseq-value { background:var(--link); color:var(--card); font-weight:700; }
-#genseq-panel pre .genseq-value { border-radius:3px; padding:0 .2em; }
+.genseq-panel .genseq-value { background:var(--link); color:var(--card); font-weight:700; }
+.genseq-panel pre .genseq-value { border-radius:3px; padding:0 .2em; }
