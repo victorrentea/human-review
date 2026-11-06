@@ -912,16 +912,17 @@ def test_an_arrow_a_test_walked_is_drawn_at_double_weight():
     xml, report = dd.overlay_traces(DEPLOYMENT, {("Browser", "Backend"), ("Backend", "DB")})
     st = _styles(xml)
     assert st["e-fe-be"]["strokeWidth"] == "4" and st["e-be-db"]["strokeWidth"] == "4"
-    assert st["e-fe-be"]["strokeColor"] == "#82b366", "the drawing keeps its own colour"
+    assert st["e-fe-be"]["strokeColor"] == "default", "weight says it, not the drawing's colour"
     # by what the reader sees on the box, not by the lifeline it maps to
     assert report["walked"] == ["Backend → Database", "Frontend → Backend"]
 
 
-def test_an_arrow_no_test_walked_is_greyed_not_removed():
+def test_an_arrow_no_test_walked_is_thin_not_removed():
     xml, report = dd.overlay_traces(DEPLOYMENT, {("Browser", "Backend"), ("Backend", "DB")})
     st = _styles(xml)
     for cid in ("e-owner-fe", "e-be-ns"):
-        assert st[cid]["strokeColor"] == dd.UNWALKED_COLOR and st[cid]["opacity"] == "55"
+        assert st[cid]["strokeColor"] == "default" and st[cid]["strokeWidth"] == "1"
+        assert "opacity" not in st[cid]
     assert set(report["unwalked"]) == {"Pet Owner → Frontend", "Backend → Notification Service"}
     assert report["undrawn"] == []
 
@@ -991,7 +992,7 @@ def test_an_added_arrow_no_test_walks_keeps_its_green_faded():
     painted = DEPLOYMENT.replace(arrow("e-be-ns", "be", "ns"), arrow("e-be-ns", "be", "ns")
                                  .replace("#82b366", dd.ADDED_COLOR))
     st = _styles(dd.overlay_traces(painted, set())[0])["e-be-ns"]
-    assert st["strokeColor"] == dd.ADDED_COLOR and st["opacity"] == "55"
+    assert st["strokeColor"] == dd.ADDED_COLOR and st["strokeWidth"] == "1"
 
 
 def test_traces_end_to_end_take_each_side_from_its_own_graph(tmp_path):

@@ -100,7 +100,7 @@ details.testpair > summary:hover > .testcat { color:var(--tc); }
 .seqlang a.seqfile { margin:0; font:inherit; color:var(--link); text-decoration:none; }
 .seqlang a.seqfile:hover { border-bottom-style:solid; }
 /* The rest of the row's right end, one line (Victor, 30 Oct 2026): `New/Old`, then
-   `📄 / 🗄 file ⇉ .puml`. The buttons are the card's own (diagrams.css paints them), set
+   `📄 / 🗄 file ⇒ .puml`. The buttons are the card's own (diagrams.css paints them), set
    smaller to sit in a row of text, and only while the pair is open: shut, there is no
    picture for them to switch. The `.puml` is the card's file link, as grey as it was. */
 .seqlang .seqviews { margin:0 .35rem 0 0; flex-wrap:nowrap; }

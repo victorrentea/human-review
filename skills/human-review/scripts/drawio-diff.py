@@ -458,17 +458,23 @@ def paint_added(xml: str, verdict: dict) -> str:
 #               double weight: weight is the drawing's own language for emphasis, and
 #               this is the emphasis a reviewer wants — where the real traffic is.
 #   * not walked — every other arrow: a human using the frontend, a hop with no agent on
-#               it, or a call no test exercises any more. Greyed, never removed: the
+#               it, or a call no test exercises any more. Thin, never removed: the
 #               drawing may well be right, and the tests silent.
 #   * not drawn — a call the traces recorded that no arrow carries. Added, dashed and red,
 #               between the two boxes (a box no lifeline maps onto is added too, in a lane
 #               right of the drawing): it is a to-do for whoever owns the picture, and red
 #               is this page's colour for a hand-drawn diagram's to-do.
 #
+# So weight is the only thing an arrow says here, and the drawing's own line colours and
+# dashes go: every arrow is the theme's default line, black on white and white on black. A
+# reader took a green, an orange, a grey and a dotted arrow for four meanings, and none of
+# them meant anything to do with the tests (Victor, 6 Nov 2026).
+#
 # Green stays "added by this branch" and is never spent here: an arrow can be both new and
 # walked, and it keeps its green at double weight.
 TRACE_ATTR = "traceParticipant"
-UNWALKED_COLOR = "#A0A0A0"
+#: draw.io's own name for the theme's line colour, which it exports as a `light-dark()` pair.
+LINE_COLOR = "default"
 UNDRAWN_COLOR = "#FF0000"
 
 
@@ -516,19 +522,19 @@ def overlay_traces(xml: str, observed: set, attr: str = TRACE_ATTR) -> tuple[str
             continue
         ends = (participant.get(c.source), participant.get(c.target))
         what = f"{name(c.source)} → {name(c.target)}"
+        st = style_dict(c.style)
+        upd = {"dashed": "0"}
+        if (st.get("strokeColor") or "").lower() != ADDED_COLOR.lower():
+            upd["strokeColor"] = LINE_COLOR
         if all(ends) and ends in observed:
             drawn.add(ends)
             walked.append(what)
-            width = float(style_dict(c.style).get("strokeWidth", 1) or 1)
-            styles[c.id] = {"strokeWidth": f"{max(width * 2, 3):g}"}
+            width = float(st.get("strokeWidth", 1) or 1)
+            upd["strokeWidth"] = f"{max(width * 2, 3):g}"
         else:
             unwalked.append(what)
-            st = style_dict(c.style)
-            upd = {"opacity": "55", "textOpacity": "55"}
-            if (st.get("strokeColor") or "").lower() != ADDED_COLOR.lower():
-                upd["strokeColor"] = UNWALKED_COLOR
             upd["strokeWidth"] = "1"
-            styles[c.id] = upd
+        styles[c.id] = upd
 
     for node in root.iter():
         if node.tag in ("object", "UserObject") and node.get("id") in styles:
@@ -1054,7 +1060,8 @@ def render_builtin(xml: str, out: Path) -> None:
 
     # the two colours that carry meaning get a dark half of their own, like draw.io's
     themed = {ADDED_COLOR.lower(): f"light-dark({ADDED_COLOR}, {ADDED_COLOR_DARK})",
-              "#ff0000": "light-dark(#FF0000, #ff9090)"}
+              "#ff0000": "light-dark(#FF0000, #ff9090)",
+              LINE_COLOR: "light-dark(#000000, #ffffff)"}
 
     def stroke_of(cell, default="light-dark(#333333, #c8c8d2)"):
         c = style_dict(cell.style).get("strokeColor")
@@ -1289,7 +1296,7 @@ def main():
     ap.add_argument("--traces", metavar="C2_JSON",
                     help="the container graph c2-from-sequence.py projected from the "
                          "traced sequence diagrams: each pane is drawn with the arrows a "
-                         "test walked at double weight, the others greyed, and the calls "
+                         "test walked at double weight, the others thin, and the calls "
                          "no arrow carries added in red. Replaces --concepts for a diagram "
                          "of containers rather than of concepts")
     ap.add_argument("--trace-attr", default=TRACE_ATTR,

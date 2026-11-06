@@ -896,10 +896,10 @@ def _main(argv=None) -> int:
         # not a decoration with a link bolted on: the tab it opens is found by *content* —
         # whichever tab renders the findings — so a page that arranges its tabs
         # differently still sends the score where its reasons actually are.
-        target, target_label = _score_target(spec)
+        target, _ = _score_target(spec)
         title_score = (
             f'<a class="titlescore {band}" href="#{html.escape(target, quote=True)}" '
-            f'data-tip="Why {n}/10? Open the {html.escape(target_label, quote=True)} tab">'
+            f'data-tip="Overall quality: {n}/10">'
             f'{face}</a>'
             if target else f'<span class="titlescore {band}">{face}</span>')
     # The merge's door, ✅ or ⚠️, and the blast radius's circle, inside the grade pill in

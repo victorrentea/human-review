@@ -1868,7 +1868,7 @@ MERGE_DOORS = {"one-way": "One-way door", "two-way": "Two-way door"}
 MERGE_DOOR_MARKS = {"one-way": "\u26a0\ufe0f", "two-way": "\u2705"}
 #: What each door means, for the masthead mark's hover.
 MERGE_DOOR_TIPS = {"one-way": "One-way door: a revert does not undo it",
-                   "two-way": "Two-way door: a revert simply undoes it"}
+                   "two-way": "Two-way door: revertable"}
 
 
 def merge_door(spec) -> str | None:

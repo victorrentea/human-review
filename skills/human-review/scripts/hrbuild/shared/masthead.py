@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import html
+import re
 import urllib.parse
 
 from .chips import base_warning
@@ -57,6 +58,11 @@ def page_title(spec: dict) -> str:
     `PR#37 <the PR’s own title>`. So when the content file names a PR, that wins, and
     the number is the link to it. With no `pr` block nothing changes.
 
+    The PR's title goes up without the ticket it ends on, `(issue #37)` or `(#37)`: the
+    headline names the change, and the number was the one thing on it nobody reads it for
+    (Victor, 6 Nov 2026). The title itself stays whole in the content file, where
+    `ticket_ref` reads the number off it.
+
     `PR#37` is the only link on this page a reader cannot recognise as one by where it
     sits: it is the first word of the `<h1>`, so it wears the page's heading weight, not
     a link's. The hover says where it goes, and only that — the number is already the word
@@ -70,7 +76,8 @@ def page_title(spec: dict) -> str:
             num = (f'<a class="prref" href="{html.escape(pr["url"])}" '
                    f'data-tip="Open on {forge_at(pr["url"]).name}">'
                    f'{num}</a>')
-        return f'{num} {html.escape(pr["title"])}' + title_ticket_ref(pr, pr["title"])
+        title = re.sub(r"\s*\((?:issue\s+)?#\d+\)\s*$", "", pr["title"], flags=re.I)
+        return f'{num} {html.escape(title)}'
     title = spec.get("title", "Review guide")
     # Where `PR#37` would stand, two muted words: every judge of eval runs 13-18 read the
     # missing publish button and GitHub links as a silent omission — the hover on the

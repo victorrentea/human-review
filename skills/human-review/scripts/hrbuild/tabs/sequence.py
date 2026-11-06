@@ -181,7 +181,7 @@ def _lang_label(test_rel: str, root: Path | None = None, line: int | None = None
     which reads better without a mark in its middle.
 
     One line, read left to right (Victor, 30 Oct 2026): `New/Old` (`views`, the card's
-    buttons, when it has both sides), then `🗄 owner-search.feature ⇉ .puml 📄` — the
+    buttons, when it has both sides), then `🗄 owner-search.feature ⇒ .puml 📄` — the
     fixture it starts on, the file, the diagram that file's run writes (`puml`), and what
     the branch did to the file (Victor, 4 Nov 2026: the mark moved to the end, and the
     slash that joined it to the fixture went with it). That `.puml` link and the buttons
@@ -192,7 +192,7 @@ def _lang_label(test_rel: str, root: Path | None = None, line: int | None = None
         return lead
     face = html.escape(name)
     tail = (f'<span class="seqgen" data-tip="The test\'s run writes this diagram">'
-            f'\u21c9</span>{puml}' if puml else "")
+            f'\u21d2</span>{puml}' if puml else "")
     if root is not None and (root / test_rel).is_file():
         at = line or 1
         face = (f'<a class="srcref seqfile" href="vscode://file/{(root / test_rel).resolve()}'

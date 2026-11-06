@@ -150,7 +150,7 @@ def test_the_masthead_draws_the_circle_beside_the_grade_with_its_meaning_on_hove
 def test_the_masthead_shows_the_doors_mark_before_the_circle_with_its_meaning_on_hover():
     """Victor, 29 Oct 2026: the green check beside the grade too — one table for both."""
     two = review.door_mark_html({"mergeRisk": {"door": "Two-way", "why": "a revert stops it"}})
-    assert 'data-tip="Two-way door: a revert simply undoes it"' in two
+    assert 'data-tip="Two-way door: revertable"' in two
     assert two.endswith(f"{review.MERGE_DOOR_MARKS['two-way']}</span>") and "✅" in two
     assert "⚠️</span>" in review.door_mark_html({"mergeRisk": {"door": "one-way"}})
     assert review.door_mark_html({}) == "" == review.door_mark_html({"mergeRisk": {"door": "?"}})
@@ -162,12 +162,12 @@ def test_the_masthead_shows_the_doors_mark_before_the_circle_with_its_meaning_on
 def test_the_door_and_the_circle_ride_inside_the_grade_pill_with_one_hover_for_all_three():
     """Victor, 29 Oct 2026: one pill, `✅ 🌒 7/10`; the marks go to the MERGE RISK line."""
     spec = {"mergeRisk": {"door": "two-way", "blast": "visits API", "blastSize": 1}}
-    pill = ('<a class="titlescore v-mid" href="#review" data-tip="Why 7/10? Open the Review '
-            'tab"><b>7</b><small>/10</small><i></i></a>')
+    pill = ('<a class="titlescore v-mid" href="#review" data-tip="Overall quality: 7/10">'
+            '<b>7</b><small>/10</small><i></i></a>')
     out = review.grade_pill_with_risk(spec, pill)
     assert out.startswith('<a class="titlescore v-mid" href="#review" data-tip-html="✅ Two-way '
-                          'door: a revert simply undoes it&lt;br&gt;🌒 Blast radius ≈25%: visits '
-                          'API&lt;br&gt;🔍 Why 7/10? Open the Review tab"')
+                          'door: revertable&lt;br&gt;🌒 Blast radius ≈25%: visits '
+                          'API&lt;br&gt;🔍 Overall quality: 7/10"')
     assert 'data-tip="' not in out, "one hover, not the grade's alone"
     assert ('<span class="titledoor">✅</span><span class="titleblast">🌒</span></span>'
             '<b>7</b><small>/10</small>') in out and out.count('class="ts-risk"') == 1

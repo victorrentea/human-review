@@ -1318,7 +1318,7 @@ def test_the_score_opens_the_tab_that_holds_the_findings_behind_it(tmp_path):
                "blocks": [{"type": "findings"}]}]))
     row = page[page.index('<div class="titlerow'):page.index("</div>")]
     assert '<a class="titlescore v-mid" href="#verdicts"' in row
-    assert 'data-tip="Why 5/10? Open the Review tab"' in row, "the hover says where the click goes"
+    assert 'data-tip="Overall quality: 5/10"' in row, "the hover says what the number is"
     assert "🤖" not in row.split("data-tip=")[1][:40], "and says it without the emoji"
 
 
@@ -3056,9 +3056,17 @@ def test_codeowners_asks_the_page_base_not_origin_main(tmp_path):
         "VetPicker.java changed before the audited base: not this review's to approve"
 
 
+def test_a_pull_request_headline_is_its_title_without_the_ticket():
+    ticket = {"number": 37, "title": "Link Visit with Vet", "url": "https://x/issues/37"}
+    for title in ("Link Visit with Vet (issue #37)", "Link Visit with Vet (#37)",
+                  "Link Visit with Vet"):
+        pr = {"number": 49, "title": title, "ticket": ticket}
+        assert build.page_title({"pr": pr}) == "PR#49 Link Visit with Vet", title
+
+
 def test_without_a_pr_number_the_title_names_the_ticket():
-    """The reference reads `PR#49 Link Visit with Vet (#37)`; with no PR yet, the
-    ticket is the only number that says which request this answers."""
+    """With no PR yet, the ticket is the only number that says which request this
+    answers."""
     ticket = {"number": 25, "title": "Add pagination", "url": "https://x/issues/25"}
     out = build.page_title({"title": "Owners grid", "pr": {"ticket": ticket}})
     nopr = out[:out.index("Owners grid")]

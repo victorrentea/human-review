@@ -47,22 +47,28 @@ button.tab { border:0; background:color-mix(in srgb, var(--fg) 7%, var(--bg)); c
              display:inline-flex; align-items:center; gap:.42rem;
              transition:background .18s, color .18s,
                         padding .22s ease; }
-/* Hover and selected are one look, a stronger wash of the text colour and the full text
-   colour: what the pointer shows on the tab it is about to open is what that tab wears once
-   open, so the click changes nothing on it but the page below. Never the accent: the glowing
-   line below already says which tab is open, a red tab on top of it said so twice (Victor,
-   5 Nov 2026: "este suficientă linia"). */
-button.tab:hover, button.tab[aria-selected="true"] { color:var(--fg);
-  background:color-mix(in srgb, var(--fg) 15%, var(--bg)); }
+/* Hovered, a stronger wash of the text colour and the full text colour. Selected, the tab is
+   the page's own ground with no line under it: the panel below comes up through it, so the
+   open tab is one piece with the page (Victor, 6 Nov 2026). Never the accent: a red tab said
+   twice what the open tab already says (Victor, 5 Nov 2026: "este suficientă linia"). */
+button.tab:hover, button.tab[aria-selected="true"] { color:var(--fg); }
+button.tab:hover { background:color-mix(in srgb, var(--fg) 15%, var(--bg)); }
+button.tab[aria-selected="true"] { background:var(--bg); }
 /* The strip's edge glows up towards the tabs and turns up around the current tab, so that
    tab reads as open onto the page below (Victor, 4 Nov 2026). The tab sits over the line
-   and clips its shadow at its own foot, which is the gap in the line. */
+   and clips its shadow at its own foot, which is the gap in the line. One more pixel of the
+   page's ground under its width closes that gap on a fractional row, where the box stops short
+   of the line (the masthead's height is not whole). The line's own glow is clipped at the
+   line too: spilling down, it lit the page under the tab and left a band of lighter ground
+   between the open tab and the panel. */
 .tabstrip { --tab-glow:color-mix(in srgb, var(--fg) 46%, transparent); }
 .tabstrip::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
-  background:var(--tab-glow); box-shadow:0 -2px 12px 1px var(--tab-glow); pointer-events:none; }
+  background:var(--tab-glow); box-shadow:0 -2px 12px 1px var(--tab-glow);
+  clip-path:inset(-16px 0 0 0); pointer-events:none; }
 button.tab[aria-selected="true"] { z-index:1; margin-bottom:-1px; height:20.75px;
-  box-shadow:0 0 0 1px var(--tab-glow), 0 -2px 12px 1px var(--tab-glow);
-  clip-path:inset(-14px -14px 0 -14px); }
+  box-shadow:0 3px 0 var(--bg), 0 0 0 1px var(--tab-glow), 0 -2px 12px 1px var(--tab-glow);
+  clip-path:polygon(-14px -14px, calc(100% + 14px) -14px, calc(100% + 14px) 100%, 100% 100%,
+    100% calc(100% + 1px), 0 calc(100% + 1px), 0 100%, -14px 100%); }
 button.tab:focus { outline:none; }
 button.tab:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
 button.tab .n { font:700 .7rem/1 ui-monospace,Menlo,monospace; opacity:.6;

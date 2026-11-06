@@ -131,11 +131,11 @@
 .diagram p.sub.dgm-stale { font-size:.78rem; line-height:1.6; }
 @media (prefers-color-scheme:dark) { .cmlegend .todo { color:#ff9090; } }
 /* A drawing laid over the traces (`drawio-diff.py --traces`): weight is "a test walked
-   it", grey "none did", red dashes "the traces called it and nobody drew it". The swatch
+   it", a thin line "none did", red dashes "the traces called it and nobody drew it". The swatch
    draws the line the way the picture does, so the legend is read by matching shapes. */
 .cmlegend .walked { color:var(--fg); }
 .cmlegend .walked i { border-top-width:5px; }
-.cmlegend .unwalked { color:#a0a0a0; }
+.cmlegend .unwalked { color:var(--fg); }
 .cmlegend .unwalked i { border-top-width:1px; }
 .cmlegend .undrawn { color:#d7263d; }
 .cmlegend .undrawn i { border-top-style:dashed; }
