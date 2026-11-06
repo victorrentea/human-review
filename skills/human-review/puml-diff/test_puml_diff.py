@@ -245,7 +245,7 @@ def test_a_focused_package_diagram_names_its_scope_in_plain_words():
     """No wash, so no washed word: the scope is still said, as plain text."""
     before, after = m.parse(_PKG_BEFORE), m.parse(_PKG_AFTER)
     assert "<back:" not in m.diff(before, after, "1")
-    assert "impacted + neighbours" in m.diff(before, after, "1")
+    assert "impacted + their neighbours" in m.diff(before, after, "1")
     assert "the impacted elements only" in m.diff(before, after, "0")
 
 
@@ -321,8 +321,8 @@ def test_the_caption_says_what_is_being_shown():
     names the scope is the same phrase that keys the colours, instead of a hop count in
     prose followed by a swatch block saying the same three things again."""
     assert "the impacted elements only (6 of 9 shown)" in _focused("0")
-    assert "impacted + neighbours" in _plain_caption(_focused("1"))
-    assert "impacted + neighbours + neighbours" in _plain_caption(_focused("2"))
+    assert "impacted + their neighbours" in _plain_caption(_focused("1"))
+    assert "impacted + their neighbours + their neighbours" in _plain_caption(_focused("2"))
     assert "shown)" not in _diff()          # the whole diagram needs no qualifier
 
 
@@ -411,12 +411,10 @@ def test_an_element_no_relationship_reaches_is_not_on_the_ladder():
     assert _back(m.diff(before, after), "Island") is None
 
 
-def test_the_caption_says_the_shading_means_distance():
-    """A colour is only a legend once something says so in words — the same rule the two
-    hues above it already answer to."""
-    assert "shaded by distance from the change" in _diff()
-    assert "impacted + neighbours, shaded by distance" in _plain_caption(_focused("1"))
-    assert "shaded" not in _focused("0")     # nothing but hop zero is on screen
+def test_the_caption_leaves_the_shading_to_the_washed_words():
+    """Each word wears its ring's wash, so the shade explains itself in the phrase."""
+    for out in (_diff(), _focused("1"), _focused("0")):
+        assert "shaded" not in out
 
 
 def _washed(word_index, out):

@@ -72,7 +72,7 @@
   });
 })();
 
-// "Show only impacted" (`folders.ONLY_IMPACTED`), in a card's bottom row: hides the boxes the build
+// All / Impacted (`folders.ONLY_IMPACTED`), in a card's bottom row. Impacted hides the boxes the build
 // drew quiet (`data-quiet`: nothing of the branch in them) and every arrow to or from one,
 // in each view of the card at once. A quiet box a green or red arrow still points at stays,
 // and so does that arrow: the filter hides context, never the change itself. Static page
@@ -107,9 +107,10 @@
     var box = ev.target.closest && ev.target.closest('.dgm-only input');
     var card = box && box.closest('.diagram');
     if (!card) return;
-    if (box.checked) card.querySelectorAll('.svgbox svg').forEach(function (svg) {
+    var on = box.value === 'impacted';
+    if (on) card.querySelectorAll('.svgbox svg').forEach(function (svg) {
       if (!svg.hasAttribute('data-only-marked')) { mark(svg); svg.setAttribute('data-only-marked', ''); }
     });
-    card.classList.toggle('dgm-only-on', box.checked);
+    card.classList.toggle('dgm-only-on', on);
   });
 })();

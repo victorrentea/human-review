@@ -288,7 +288,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'ArchUnit</a>, a test library, fails the build on an import the drawing lacks.',
             'A new arrow is new coupling: ask why.',
             '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
-            '<b>Dimmed box</b>: nothing in it changed; <b>Show only impacted</b> hides those and their arrows.',
+            '<b>Dimmed box</b>: nothing in it changed; <b>Impacted</b> hides those and their arrows.',
             '<b>✓ ArchUnit-tested vs code</b> after the title: click it to open that test.',
         ],
         "ex": 'e.g. <code>..domain</code> → <code>..rest</code>: not drawn, so a test fails.',
@@ -299,7 +299,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'A test reads every <code>import</code> and fails on one the drawing lacks.',
             'A new arrow is new coupling: ask why.',
             '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
-            '<b>Dimmed box</b>: nothing in it changed; <b>Show only impacted</b> hides those and their arrows.',
+            '<b>Dimmed box</b>: nothing in it changed; <b>Impacted</b> hides those and their arrows.',
             '<b>✓ Tested vs code</b> after the title names that test; click to open it.',
         ],
         "ex": 'e.g. <code>parts</code> → <code>owners</code>: not drawn, so a test fails.',
@@ -309,7 +309,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'The Maven modules and who depends on whom, from <code>mvn dependency:tree</code>.',
             'A new arrow or a cycle between modules: ask why.',
             '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
-            '<b>Dimmed box</b>: nothing in it changed; <b>Show only impacted</b> hides those and their arrows.',
+            '<b>Dimmed box</b>: nothing in it changed; <b>Impacted</b> hides those and their arrows.',
             '<b>✓ Generated from …</b>: the source it is redrawn from; click for the generator.',
         ],
     },
@@ -616,9 +616,9 @@ def place_prompts(tid: str, body: str) -> str:
                 # a card's height away from the button it explains.
             lead = (IMPACT_LEGEND if piece is None and 'class="pkg-impact"' in card
                     else "")
-            # "Show only impacted" leaves the head for this row, right after the legend
+            # The All / Impacted filter leaves the head for this row, right after the legend
             # (Victor, 29 Oct 2026): it filters by the blue-fill measure the legend names.
-            only = (re.compile(r'<label class="dgm-only"[^>]*>.*?</label>', re.S)
+            only = (re.compile(r'<span class="dgm-only"[^>]*>.*?</span>', re.S)
                     .search(card, h0, h1[0]) if piece is None and h1 else None)
             if only:
                 edits.append((hit.start() + only.start(), hit.start() + only.end(), ""))

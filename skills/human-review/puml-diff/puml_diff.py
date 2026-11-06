@@ -110,7 +110,7 @@ RIPPLE = ("#F2CF8E", "#F4DCB4", "#F2EBDB")
 # The words used to be hop counts ("touched · 1 hop · 2 hops") beside a swatch block. That
 # made the reader translate twice — swatch to number, number to box — to answer a question
 # they were already asking in words: how much of the picture am I looking at? The caption
-# now says the scope itself ("impacted + neighbours + neighbours") and lets each word carry
+# now says the scope itself ("impacted + their neighbours + their neighbours") and lets each word carry
 # its own ring's wash, so naming the scope and keying the colours is one phrase, not two.
 # Hence "neighbours" twice: one word per ring, the nearer ring in the stronger amber.
 RIPPLE_LABELS = ("impacted", "neighbours", "neighbours")
@@ -185,8 +185,9 @@ def legend() -> str:
 def ripple_legend(rungs=RIPPLE) -> str:
     """The distance ladder written as the scope it describes, each word in its own wash.
 
-    `impacted + neighbours + neighbours` — the word for each ring, wearing that ring's
-    amber as a text background, strongest first. Printed as real washes rather than named
+    `impacted + their neighbours + their neighbours` — the word for each ring, wearing that
+    ring's amber as a text background, strongest first, the washes saying by themselves
+    that the shade is the distance (Victor, 6 Nov 2026: no ", shaded by distance"). Printed as real washes rather than named
     in prose, because the thing being explained is a colour and the reader has to match
     one to the other by eye; printed *as the scope wording* rather than beside it, because
     the caption would otherwise say the same thing twice, once in words and once in
@@ -205,8 +206,8 @@ def ripple_legend(rungs=RIPPLE) -> str:
     words = []
     for i, c in enumerate(rungs):
         word = labels[c] if c else RIPPLE_LABELS[min(i, len(RIPPLE_LABELS) - 1)]
-        words.append(
-            f"<back:{c}><color:{LEGEND_INK}>{word}</color></back>" if c else word)
+        word = f"<back:{c}><color:{LEGEND_INK}>{word}</color></back>" if c else word
+        words.append(f"their {word}" if i else word)
     return " + ".join(words)
 
 
@@ -649,23 +650,20 @@ def diff(old: Diagram, new: Diagram, focus=ALL) -> str:
     # all one shade.
     tints = {ripple(n) for n in keep}
     rungs = [c for c in RIPPLE if c in tints]
-    shaded = len(rungs) > 1
-    # The scope and the colour key are one phrase, not two: `impacted + neighbours +
-    # neighbours`, each word wearing the wash of the ring it names. Said separately — a
+    # The scope and the colour key are one phrase, not two: `impacted + their neighbours +
+    # their neighbours`, each word wearing the wash of the ring it names. Said separately — a
     # hop count in prose and a swatch block after it — the caption named the same three
     # rings twice and asked the reader to line the two lists up themselves.
     if focus != ALL:
         hops = int(focus)
-        # One word per ring the focus level asked for — `impacted + neighbours +
-        # neighbours` at hops 2 — washed where that ring actually has a wash on screen.
+        # One word per ring the focus level asked for — `impacted + their neighbours +
+        # their neighbours` at hops 2 — washed where that ring actually has a wash on screen.
         ladder = [RIPPLE[i] if i < len(RIPPLE) and RIPPLE[i] in tints else None
                   for i in range(hops + 1)]
         scope = "the impacted elements only" if hops == 0 else ripple_legend(ladder)
-        if shaded:
-            scope += ", shaded by distance"
         caption += f" — {scope} ({len(keep)} of {len(names)} shown)"
-    elif shaded:
-        caption += f" — {ripple_legend(rungs)}, shaded by distance from the change"
+    elif len(rungs) > 1:
+        caption += f" — {ripple_legend(rungs)}"
 
     # The caption goes FIRST, not after the preamble. A source that opens a `<style>` block
     # ends its preamble on the `<style>` line itself — the block's body arrives later — so

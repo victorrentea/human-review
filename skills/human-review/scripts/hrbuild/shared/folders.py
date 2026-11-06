@@ -17,6 +17,7 @@ name. A box neither explains gets no link, rather than a guessed one.
 from __future__ import annotations
 
 import functools
+import hashlib
 import html
 import re
 import subprocess
@@ -305,18 +306,25 @@ def _impact_pop(label: str, box: dict, base: str, root: Path, folder: str) -> st
 #: A box the diff itself paints: added (green) or removed (red), themed or not yet.
 _PAINTED = re.compile(r'--dgm-diff-(?:add|del)\b|#(?:2E7D32|C62828)\b', re.I)
 
-#: The card's "Show only impacted" filter, on a card that has a quiet box. Emitted in the
+#: The card's All / Impacted filter, on a card that has a quiet box. Emitted in the
 #: card's head; `adopt.place_prompts` moves it to the card's bottom row, right after the
-#: blue-fill legend (Victor, 29 Oct 2026). Off by default; `folders.js` hides the
-#: quiet boxes and every arrow to one, but keeps a quiet box that a green or red arrow
-#: still points at, so the change never dangles.
-ONLY_IMPACTED = ('<label class="dgm-only" data-tip="Hide the boxes this PR left alone, '
-                 'and their arrows"><input type="checkbox">Show only impacted</label>')
+#: blue-fill legend (Victor, 29 Oct 2026). All by default; on Impacted `folders.js` hides
+#: the quiet boxes and every arrow to one, but keeps a quiet box that a green or red arrow
+#: still points at, so the change never dangles. Two radios and not a checkbox (Victor,
+#: 6 Nov 2026): a choice between two views says both of them.
+ONLY_IMPACTED = ('<span class="dgm-only" role="radiogroup" aria-label="Boxes shown">'
+                 '<label><input type="radio" name="{name}" value="all" checked>All</label>'
+                 '<label data-tip="Hide the boxes this PR left alone, and their arrows">'
+                 '<input type="radio" name="{name}" value="impacted">Impacted</label></span>')
 
 
 def only_impacted(markup: str) -> str:
-    """The filter for a card whose `markup` has a quiet box, else ""."""
-    return ONLY_IMPACTED if 'data-quiet=""' in markup else ""
+    """The filter for a card whose `markup` has a quiet box, else "". Radios of one `name`
+    are one group across the whole page, so each card names its own, off its own picture:
+    the same page builds to the same bytes."""
+    if 'data-quiet=""' not in markup:
+        return ""
+    return ONLY_IMPACTED.format(name="only-" + hashlib.sha1(markup.encode()).hexdigest()[:8])
 
 
 def link_folders(markup: str, rel: str, root: Path) -> str:

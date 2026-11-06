@@ -60,9 +60,9 @@
     }
     // The header, but never a link, a button or a checkbox inside it: the source path opens
     // an editor, and the card's action buttons (Edit, Revert) live in the header too, as
-    // does its "Show only impacted" filter on a card with no pill row to move it to.
+    // does its All / Impacted filter on a card with no pill row to move it to.
     var head = ev.target.closest('.diagram.dgm-toggles > .head');
-    if (head && !ev.target.closest('a, button, label, input')) flip(head.parentElement.querySelector('.dgmviews'));
+    if (head && !ev.target.closest('a, button, label, input, .dgm-only')) flip(head.parentElement.querySelector('.dgmviews'));
     // Same bargain for the button row: its empty middle is a larger hit area than the
     // pills, and a click on a link in it still opens the link rather than swapping the
     // picture out from under it.

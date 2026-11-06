@@ -337,7 +337,7 @@ def test_a_box_is_shaded_by_its_share_of_the_lines_added_and_lists_its_files(rep
 def test_a_box_the_branch_left_alone_is_drawn_quiet_and_can_be_filtered(repo, monkeypatch):
     """Victor, 29 Oct 2026: the eye should go to the boxes that carry the change. A box with
     no file changed in its folder is stamped `data-quiet`, unless the diff paints it green
-    or red; a card with such a box gets the "Show only impacted" filter, a card without none."""
+    or red; a card with such a box gets the All / Impacted filter, a card without none."""
     from hrbuild.shared import snippets
     base = _git(repo, "rev-parse", "HEAD")
     _write(repo, "shop-api/src/main/java/com/acme/shop/web/A.java", "class X {}\nint a;\n")
@@ -352,7 +352,10 @@ def test_a_box_the_branch_left_alone_is_drawn_quiet_and_can_be_filtered(repo, mo
     assert "data-quiet" not in web, "the branch changed a file in it"
     assert "data-quiet" not in dto, "the diff paints it: it is the change"
     assert 'data-quiet=""' in dom
-    assert folders.only_impacted(out) == folders.ONLY_IMPACTED
+    radios = folders.only_impacted(out)
+    assert radios.count('type="radio"') == 2 and 'value="all" checked' in radios
+    assert radios == folders.only_impacted(out), "the same page builds to the same bytes"
+    assert radios != folders.only_impacted(out + " "), "and each card is its own radio group"
     assert folders.only_impacted(web + "</g>") == ""
 
 

@@ -342,4 +342,4 @@ def test_show_only_impacted_moves_from_the_head_to_the_bottom_row_left_of_the_pi
     assert out.count('class="dgm-only"') == 1
     assert (foot.index('class="impact-legend"') < foot.index('class="dgm-only"')
             < foot.index("Prompt to get this"))
-    assert ">Show only impacted</label>" in foot
+    assert ">All</label>" in foot and ">Impacted</label></span>" in foot
