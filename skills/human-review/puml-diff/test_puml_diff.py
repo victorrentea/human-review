@@ -20,6 +20,13 @@ def _diff():
 
 # ── Parsing ─────────────────────────────────────────────────────────────────
 
+def test_a_member_named_like_a_directive_stays_a_member():
+    """An OpenAPI ProblemDetail has a `title`; it used to leave its class for the preamble."""
+    d = m.parse("@startuml\nclass Problem {\n  title : string\n  header : string\n}\n@enduml\n")
+    assert d.elements["Problem"].members == ["title : string", "header : string"]
+    assert not d.preamble
+
+
 def test_parse_elements_and_members():
     d = _parse(BEFORE)
     assert set(d.elements) == {

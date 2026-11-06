@@ -644,7 +644,7 @@ def change_total(entries: dict, global_changes: list) -> int:
                 for e in entries.values()) + len(global_changes))
 
 
-def render(model, entries, global_changes, tags, old_label, new_label) -> str:
+def render(model, entries, global_changes, tags, old_label, new_label, diagrams=None) -> str:
     counts = {}
     for e in entries.values():
         counts[e["state"]] = counts.get(e["state"], 0) + 1
@@ -660,6 +660,8 @@ def render(model, entries, global_changes, tags, old_label, new_label) -> str:
             ],
             "tags": tags,
             "counts": counts,
+            # {id: inline svg}, read only when the reader asks for a Diagram.
+            "diagrams": diagrams or None,
             "old": old_label,
             "new": new_label,
         },
@@ -675,6 +677,25 @@ def render(model, entries, global_changes, tags, old_label, new_label) -> str:
     return (TEMPLATE.replace("__EXPAND_LABEL__", label)
             .replace("__TIP_JS__", _tip_js())
             .replace("__PAYLOAD__", payload))
+
+
+def attach_diagrams(old_spec: dict, new_spec: dict, entries: dict) -> dict:
+    """Each body's class diagram: `{id: svg}` for the page, `entries[…]["diagrams"]` for the
+    block that shows it. Empty when there is no PlantUML, or no `schema_puml` beside this
+    script: that is the tab as it was, the switch not offered, and the build goes on."""
+    try:
+        import schema_puml
+    except ImportError:
+        return {}
+    keyed = lambda spec: {f"{m} {p}": op for m, p, op in operations(spec)}  # noqa: E731
+    wanted, per_op, changed = schema_puml.plan(old_spec, new_spec, keyed(old_spec), keyed(new_spec))
+    svgs, per_op = schema_puml.allocate(wanted, per_op, changed)
+    for key, slots in per_op.items():
+        if key in entries:
+            entries[key]["diagrams"] = slots
+    print(f"[openapi-visual-diff] {len(svgs)} of {len(wanted)} distinct class diagrams drawn, "
+          f"{sum(map(len, svgs.values())) // 1024} KB", file=sys.stderr)
+    return svgs
 
 
 def _tip_js() -> str:
@@ -744,6 +765,30 @@ TEMPLATE = r"""<!doctype html>
     --dv-dim: #82828e; --dv-attr: #97a9ee; --dv-collapsed: #8b8f99;
     --dv-bar-bg: #1b1b1f; --dv-bar-fg: #eaeaea; --dv-bar-chip: rgba(255,255,255,.08);
     --dv-bar-chip-hover: rgba(255,255,255,.16); --dv-lvl1: #4ade80; --dv-lvl2: #e0a44a;
+  }
+  /* The diagrams' colours (`Tree | Diagram`). Embedded, the page's own `--dgm-*` inherit
+     through the host, so these are for the copy opened alone, and `:root` is the right
+     selector: inside the shadow root it matches nothing. Same values as core.css, and
+     test_schema_puml.py holds them to it. */
+  :root {
+    --dgm-bg: #ffffff; --dgm-box: #f1f1f1; --dgm-frame: #eeeeee; --dgm-legend: #dddddd;
+    --dgm-line: #181818; --dgm-fg: #000000; --dgm-icon: #add1b2; --dgm-muted: #888888;
+    --dgm-diff-add: #2e7d32; --dgm-diff-del: #c62828;
+    --dgm-ripple-1: #f2cf8e; --dgm-ripple-2: #f4dcb4; --dgm-ripple-3: #f2ebdb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --dgm-bg: #1d1d24; --dgm-box: #26262e; --dgm-frame: #202028; --dgm-legend: #2c2c36;
+      --dgm-line: #8f8fa0; --dgm-fg: #e8e8ef; --dgm-muted: #9a9aa8;
+      --dgm-diff-add: #8fd39c; --dgm-diff-del: #f08a8a;
+      --dgm-ripple-1: #4a3a1e; --dgm-ripple-2: #3a3126; --dgm-ripple-3: #2e2b27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --dgm-bg: #1d1d24; --dgm-box: #26262e; --dgm-frame: #202028; --dgm-legend: #2c2c36;
+    --dgm-line: #8f8fa0; --dgm-fg: #e8e8ef; --dgm-muted: #9a9aa8;
+    --dgm-diff-add: #8fd39c; --dgm-diff-del: #f08a8a;
+    --dgm-ripple-1: #4a3a1e; --dgm-ripple-2: #3a3126; --dgm-ripple-3: #2e2b27;
   }
   body { margin: 0; background: var(--dv-bg); color: var(--dv-fg);
          color-scheme: light dark; }
@@ -1366,8 +1411,8 @@ TEMPLATE = r"""<!doctype html>
   }
   .swagger-ui table.parameters .parameter__default { display: inline-block; margin: 0; font-size: 12px; }
   .swagger-ui table.parameters .parameter__default i { font-style: normal; }
-  /* Responses: a list of status lines that fold (see foldResponses), the Schema/Example
-     switch first, the media type under it, and none of the console chatter -- the green
+  /* Responses: a list of status lines that fold (see foldResponses), one row holding the
+     Schema/Example switch and the media type, and none of the console chatter -- the green
      "Controls Accept header.", the Code/Description/Links header, "No links", the
      "Example Description" block. Swagger UI sizes this table with a 1px max-width cell;
      as a grid, the description column takes the room it is given. */
@@ -1401,18 +1446,44 @@ TEMPLATE = r"""<!doctype html>
   .swagger-ui .responses-table tr.response.dv-folded .response-col_description__inner .renderedMarkdown p {
     color: var(--dv-muted) !important;
   }
+  /* One row, radios on the left and the media type pinned right (Victor, 6 Nov 2026: the
+     block took too much height). Swagger UI draws those controls in two different boxes, so
+     the row is this grid with `display: contents` on the boxes in between: nothing of its
+     DOM moves, and a React re-render has nothing to undo. Requests below read the same. */
+  .swagger-ui .responses-table td.response-col_description,
+  .swagger-ui .opblock-section-request-body {
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto;
+    column-gap: 14px; align-items: center;
+  }
   .swagger-ui .responses-table td.response-col_description {
-    display: flex; flex-direction: column; gap: 4px;
     min-width: 0 !important; width: auto !important; max-width: none !important;
   }
-  .swagger-ui .responses-table td.response-col_description > * { order: 9; min-width: 0; max-width: 100%; }
-  .swagger-ui .responses-table td.response-col_description > .response-col_description__inner { order: 1; }
-  .swagger-ui .responses-table td.response-col_description > .model-example { display: contents; }
-  .swagger-ui .responses-table td.response-col_description > .model-example > ul.tab { order: 2; margin: 2px 0 0; }
-  .swagger-ui .responses-table td.response-col_description > .response-controls { order: 3; padding: 0; margin: 0; }
-  .swagger-ui .responses-table td.response-col_description > .model-example > [role=tabpanel] { order: 4; }
+  .swagger-ui .responses-table td.response-col_description > * { grid-column: 1 / -1; min-width: 0; max-width: 100%; }
+  .swagger-ui .responses-table td.response-col_description > .response-col_description__inner { grid-row: 1; }
+  .swagger-ui .responses-table td.response-col_description > :is(.model-example, .response-controls) { display: contents; }
+  .swagger-ui .responses-table td.response-col_description > .model-example > ul.tab { grid-column: 1; grid-row: 2; margin: 4px 0; }
+  .swagger-ui .responses-table td.response-col_description .response-control-examples { grid-column: 2; grid-row: 2; }
+  .swagger-ui .responses-table td.response-col_description .response-control-media-type { grid-column: 4; grid-row: 2; }
+  .swagger-ui .responses-table td.response-col_description > .model-example > [role=tabpanel] { grid-column: 1 / -1; grid-row: 3; min-width: 0; }
   .swagger-ui .responses-table td.response-col_description > .example { display: none !important; }
-  .swagger-ui .response-control-media-type { display: flex; align-items: center; gap: 8px; margin: 0 !important; }
+  /* A request's title rides above, and the rest is the same row. */
+  .swagger-ui .opblock-section-request-body { padding: 8px 20px 4px; }
+  .swagger-ui .opblock-section-request-body > .opblock-section-header,
+  .swagger-ui .opblock-section-request-body > .opblock-description-wrapper,
+  .swagger-ui .opblock-section-request-body > .opblock-description-wrapper > div,
+  .swagger-ui .opblock-section-request-body > .opblock-description-wrapper > div > .model-example { display: contents; }
+  .swagger-ui .opblock-section-request-body > .opblock-description-wrapper > div > * { grid-column: 1 / -1; min-width: 0; }
+  .swagger-ui .opblock-section-request-body > .opblock-section-header h4 { grid-column: 1 / -1; grid-row: 1; }
+  .swagger-ui .opblock-section-request-body > .opblock-section-header > label {
+    grid-column: 4; grid-row: 3; margin: 0; display: flex; align-items: baseline; gap: 8px;
+  }
+  .swagger-ui .opblock-section-request-body > .opblock-section-header > label::before {
+    content: "Media type"; font-size: 11px; font-weight: 400; color: var(--dv-muted);
+  }
+  .swagger-ui .opblock-section-request-body > .opblock-description-wrapper > div > .model-example > ul.tab { grid-column: 1; grid-row: 3; margin: 4px 0; }
+  .swagger-ui .opblock-section-request-body .examples-select { grid-column: 2; grid-row: 3; margin: 0; }
+  .swagger-ui .opblock-section-request-body > .opblock-description-wrapper > div > .model-example > [role=tabpanel] { grid-column: 1 / -1; grid-row: 4; min-width: 0; }
+  .swagger-ui .response-control-media-type { display: flex; align-items: baseline; gap: 8px; margin: 0 !important; }
   /* --- API tab: status tints, one font size, carets at the left start (live-patch-api-status) --- */
   .swagger-ui .responses-table td.response-col_status,
   .swagger-ui .responses-table .response-col_description__inner .renderedMarkdown p {
@@ -1446,16 +1517,24 @@ TEMPLATE = r"""<!doctype html>
   .swagger-ui table.parameters .parameter__default.dv-empty { display: none !important; }
   .swagger-ui .response-control-media-type__title { display: inline !important; font-size: 11px; color: var(--dv-muted); }
   .swagger-ui .response-control-media-type__accept-message { display: none !important; }
-  .swagger-ui .response-controls select {
+  .swagger-ui :is(.response-controls, .body-param-content-type, .examples-select) select {
     font-size: 12px !important; padding: 2px 26px 2px 8px !important; min-width: 0 !important;
     border: 1px solid var(--dv-line) !important; box-shadow: none !important;
-    background-color: transparent;
+    background-color: transparent; margin: 0;
+  }
+  /* One value is not a choice: no box to open to find out what is in it (Victor, 6 Nov
+     2026). It stays Swagger UI's <select>, so React keeps owning it, drawn as plain text;
+     dressSelects() takes the same ones out of the tab order. A second value brings the
+     box back by itself. */
+  .swagger-ui :is(.response-controls, .body-param-content-type, .examples-select) select:has(> option:only-child) {
+    appearance: none; -webkit-appearance: none; padding: 0 !important; border: 0 !important;
+    background: none !important; color: var(--dv-fg); pointer-events: none; font-weight: 400;
   }
   .swagger-ui .response-control-media-type--accept-controller select {
     outline: none !important; border-color: var(--dv-line) !important;
   }
-  .swagger-ui td.response-col_description:has(ul.tab li:last-child.active) .response-control-examples { display: none; }
-  .swagger-ui .response-control-examples { display: flex; align-items: center; gap: 8px; }
+  .swagger-ui :is(td.response-col_description, .opblock-section-request-body):has(ul.tab li:last-child.active) :is(.response-control-examples, .examples-select) { display: none; }
+  .swagger-ui .response-control-examples { display: flex; align-items: baseline; gap: 8px; }
   .swagger-ui .response-control-examples__title { font-size: 11px; color: var(--dv-muted); }
   /* "Schema" and "Example Value" read as the choice they are: a radio before each, Schema
      first (the page opens on it). Order only: the DOM keeps Swagger's, so `li:last-child`
@@ -1472,6 +1551,25 @@ TEMPLATE = r"""<!doctype html>
   .swagger-ui ul.tab li.active button.tablinks::before {
     border-color: var(--dv-fg); background: radial-gradient(circle, var(--dv-fg) 0 2.5px, transparent 3px);
   }
+  /* Tree | Diagram: the review page's Diff | New/Old pills, copied because no stylesheet
+     crosses into this shadow root; the colours come through as inherited variables, with
+     this file's own for a copy opened alone. */
+  .swagger-ui .dv-views { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+  .swagger-ui .dv-views button {
+    border: 2px solid var(--dv-line); background: var(--dv-card); color: var(--dv-muted);
+    border-radius: 999px; cursor: pointer; padding: 0 10px;
+    font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.75;
+  }
+  .swagger-ui .dv-views button:hover { border-color: currentColor; color: var(--dv-fg); }
+  .swagger-ui .dv-views button[aria-pressed="true"] {
+    background: var(--view-new, var(--dv-side-out)); border-color: var(--view-new, var(--dv-side-out));
+    color: var(--on-fill, var(--dv-card));
+  }
+  .swagger-ui [data-name="modelPanel"][data-dv-view="diagram"] > :not(.dv-views, .dv-dgm),
+  .swagger-ui [data-name="modelPanel"][data-dv-view="tree"] > .dv-dgm { display: none !important; }
+  /* The Data tab's `.svgbox`. */
+  .swagger-ui .dv-dgm { background: var(--dgm-bg); border-radius: 6px; padding: 8px; overflow-x: auto; }
+  .swagger-ui .dv-dgm svg { max-width: 100%; height: auto !important; display: block; margin: 0 auto; }
 </style>
 </head>
 <body>
@@ -1687,9 +1785,91 @@ function decorate() {
   autoCollapse();
   foldResponses();
   hideEmptyDefaults();
+  dressSelects();
+  dressSchemas();
   markVisible();
   layoutDescriptions();
 }
+
+// A one-option select is drawn as plain text (see the CSS); nothing to reach by Tab either.
+function dressSelects() {
+  root.querySelectorAll('.swagger-ui .opblock.is-open select').forEach(s => {
+    if (s.options.length === 1) s.tabIndex = -1;
+    else s.removeAttribute('tabindex');
+  });
+}
+
+// ---- Tree | Diagram, under Schema ----
+// Each body's class diagram was drawn at build time (schema_puml.py): `DATA.diagrams` holds
+// each distinct picture once, and `info.diagrams` says which one a body shows, under the
+// key `<request or status> <media type>`. A body with no entry there (no object in it, no
+// PlantUML on the build machine) gets no switch, and its tree is all it ever had. The
+// picture enters the DOM only when asked for, so a page of forty operations stays light.
+//
+// One choice for the whole tab, because a reader comparing two responses wants them in the
+// same view, and an operation opened later opens the way the last one was left.
+let schemaView = 'tree';
+
+function schemaBodies(op) {
+  return op.querySelectorAll('.opblock-section-request-body, .responses-table tr.response[data-code]');
+}
+
+function diagramFor(info, body) {
+  const slot = body.matches('tr.response') ? body.dataset.code : 'request';
+  return info.diagrams[`${slot} ${body.querySelector('select.content-type')?.value}`];
+}
+
+function paintSchema(panel, id) {
+  panel.dataset.dvView = schemaView;
+  panel.querySelectorAll(':scope > .dv-views button').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.view === schemaView)));
+  const pane = panel.querySelector(':scope > .dv-dgm');
+  if (schemaView === 'diagram' && pane.dataset.id !== id) {
+    pane.innerHTML = DATA.diagrams[id];
+    pane.dataset.id = id;
+  }
+}
+
+function dressSchemas() {
+  if (!DATA.diagrams) return;
+  root.querySelectorAll('.swagger-ui .opblock.is-open').forEach(op => {
+    const info = DATA.ops[keyOf(op)];
+    if (!info || !info.diagrams) return;
+    schemaBodies(op).forEach(body => {
+      const panel = body.querySelector('[data-name="modelPanel"]');
+      if (!panel) return;                // on Example Value: nothing to switch
+      const id = diagramFor(info, body);
+      let bar = panel.querySelector(':scope > .dv-views');
+      if (!id) {                         // another media type, with no picture of its own
+        bar?.remove();
+        panel.querySelector(':scope > .dv-dgm')?.remove();
+        delete panel.dataset.dvView;
+        return;
+      }
+      if (!bar) {
+        panel.insertAdjacentHTML('afterbegin', '<div class="dv-views">'
+          + '<button type="button" data-view="tree" aria-pressed="true">Tree</button>'
+          + '<button type="button" data-view="diagram" aria-pressed="false">Diagram</button>'
+          + '</div>');
+        panel.insertAdjacentHTML('beforeend', '<div class="dv-dgm"></div>');
+      }
+      paintSchema(panel, id);
+    });
+  });
+}
+
+// Every open block flips, so the blocks above the click change height: the one under the
+// pointer is held where it was.
+root.addEventListener('click', e => {
+  const button = e.target.closest && e.target.closest('.dv-views button');
+  if (!button) return;
+  const top = button.getBoundingClientRect().top;
+  schemaView = button.dataset.view;
+  dressSchemas();
+  layoutDescriptions();
+  drawRoads();
+  scrollBy({ top: button.getBoundingClientRect().top - top, behavior: 'instant' });
+});
 
 // Swagger prints "Default value :" even when the parameter has none.
 function hideEmptyDefaults() {
@@ -2549,11 +2729,12 @@ def main():
     else:
         ap.error("give two spec files, or --base REF")
     changes = run_oasdiff(old, new)
-    merged, entries, global_changes, tags = build_model(
-        load_spec(old), load_spec(new), changes)
+    old_spec, new_spec = load_spec(old), load_spec(new)
+    merged, entries, global_changes, tags = build_model(old_spec, new_spec, changes)
+    diagrams = attach_diagrams(old_spec, new_spec, entries)
     out = Path(args.out)
     out.write_text(render(merged, entries, global_changes, tags,
-                          args.label_old or old.name, args.label_new or new.name))
+                          args.label_old or old.name, args.label_new or new.name, diagrams))
 
     counts = {}
     for e in entries.values():

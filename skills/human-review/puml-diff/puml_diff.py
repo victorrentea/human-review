@@ -473,16 +473,19 @@ def parse(puml: str) -> Diagram:
             in_legend = not LEGEND_CLOSE_RE.match(clean)
             continue
 
-        if DIRECTIVE_RE.match(clean):
-            d.preamble.append(raw.rstrip())
-            in_legend = bool(LEGEND_OPEN_RE.match(clean)) and not LEGEND_CLOSE_RE.match(clean)
-            continue
-
+        # Before the directives: nothing inside a class body is one. A field called `title`
+        # or `header` reads exactly like the directive of that name, and an OpenAPI schema
+        # has both (a ProblemDetail's `title`): it left its class for the preamble.
         if current is not None:
             if clean == "}":
                 current = None
             else:
                 d.elements[current].members.append(clean)
+            continue
+
+        if DIRECTIVE_RE.match(clean):
+            d.preamble.append(raw.rstrip())
+            in_legend = bool(LEGEND_OPEN_RE.match(clean)) and not LEGEND_CLOSE_RE.match(clean)
             continue
 
         if clean.endswith("{"):                      # element opening a body
