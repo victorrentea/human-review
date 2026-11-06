@@ -112,6 +112,8 @@
   // is no server to route, but the pick still holds: IntelliJ gets
   // `jetbrains://idea/human-review/…` links (`ideaLink`), which its plugin routes itself;
   // VS Code keeps `vscode://`.
+  // The key is also read by code-city's page, served from this origin: renaming it sends
+  // the city's clicks back to VS Code.
   var IDE_KEY = 'hr-ide', IDE_NAME = {vscode: 'VS Code', idea: 'IntelliJ'};
   var connected = [];
   // Read once and kept here too, so a browser that refuses storage still keeps the pick
