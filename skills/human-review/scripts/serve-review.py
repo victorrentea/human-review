@@ -586,6 +586,34 @@ def review_open(path, line, sha, root, branch, end_line=None, comment=False, com
     return None
 
 
+def refused_blind(answer, path, sha, root, app="vscode") -> bool:
+    """Whether a bridge's "no window is on this commit" is contradicted by the facts: `app`
+    has a window owning `path`, and the file at `root`'s HEAD is the blob at `sha`.
+
+    A bridge decides by running git, and an IntelliJ can lose that without a word. Toolbox
+    updated one on disk while it ran (5 Nov 2026): its JVM still spawns through
+    `lib/jspawnhelper`, now a newer JDK's, so every process start failed the version check,
+    every git answer came back empty, and each click read "No open IntelliJ window is on this
+    commit" with that window open on that commit. This process can still run git, and opening
+    a file needs none, so the click goes through here; a refusal that is true stays one."""
+    status, body = answer
+    if status != 409 and status != 503:
+        return False
+    try:
+        said = json.loads(body or b"{}")
+    except ValueError:
+        return False
+    if not isinstance(said, dict) or said.get("error") not in ("no-window", "cannot-run-git"):
+        return False
+    try:
+        rel = Path(path).resolve().relative_to(Path(root).resolve()).as_posix()
+    except (OSError, ValueError):
+        return False
+    want = _git(root, "rev-parse", "--verify", "--quiet", f"{sha}:{rel}")
+    return bool(want) and want == _git(root, "rev-parse", "--verify", "--quiet", f"HEAD:{rel}") \
+        and bool(windows_of(app, Path(path)) or windows_of(app, Path(path).resolve()))
+
+
 def _git(cwd, *args) -> str:
     try:
         r = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True,
@@ -2775,6 +2803,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             sha = q.get("sha", [""])[0]
             answer = ok and sha and review_open(target, line, sha, q.get("root", [""])[0],
                                                 q.get("branch", [""])[0], **span, **via)
+            if answer and refused_blind(answer, target, sha, q.get("root", [""])[0], app):
+                open_in_editor(target, line, **span, **via)
+                root = q.get("root", [""])[0]
+                answer = 200, json.dumps({"ok": True, "path": str(target), "edited": bool(
+                    _git(root, "status", "--porcelain", "--", str(target)))}).encode()
             if answer:
                 status, body = answer
                 if status == 200:

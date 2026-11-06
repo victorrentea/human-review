@@ -516,6 +516,49 @@ def test_intellijs_no_window_refusal_reaches_the_page_with_its_prompt(
     assert [p for p, _ in I.asked] == ["/review-open"]
 
 
+def test_a_refusal_from_a_bridge_that_lost_git_is_overruled_and_the_file_opens(
+        server, repo, tmp_path, monkeypatch, stop):
+    """An IntelliJ updated on disk under its own feet cannot start git, so its plugin says no
+    window is on this commit with that very window open on it: the server checks for itself."""
+    r, _, _ = repo
+    f = _src(r)
+    _git(r, "add", "-A")
+    _git(r, "commit", "-qm", "src")
+    head = _git(r, "rev-parse", "HEAD")
+    said = {"ok": False, "error": "no-window", "message": "No open IntelliJ window is on this commit",
+            "prompt": "Find a local checkout"}
+    ij, I = _ide(tmp_path, monkeypatch, "idea", r, answers={"/review-open": (said, 409)})
+    stop(ij)
+    monkeypatch.setattr(srv, "ROOT", r)
+    status, payload = _call(server, "GET", f"{srv.OPEN}?path={f}&line=3&sha={head}&root={r}"
+                                           "&branch=feature&ide=idea&comment=1")
+    assert status == 200
+    assert json.loads(payload) == {"ok": True, "path": str(f), "edited": False,
+                                   "ide": "idea", "fallback": False}
+    assert [p for p, _ in I.asked] == ["/review-open", "/open-file"]
+    assert I.asked[1][1]["comment"] is True
+
+
+def test_a_true_refusal_stands_when_the_file_changed_since_the_reviewed_commit(
+        server, repo, tmp_path, monkeypatch, stop):
+    r, _, _ = repo
+    f = _src(r)
+    _git(r, "add", "-A")
+    _git(r, "commit", "-qm", "src")
+    reviewed = _git(r, "rev-parse", "HEAD")
+    f.write_text("class Moved {}\n")
+    _git(r, "commit", "-qam", "moved")
+    said = {"ok": False, "error": "no-window", "message": "No open IntelliJ window is on this commit",
+            "prompt": "Find a local checkout"}
+    ij, I = _ide(tmp_path, monkeypatch, "idea", r, answers={"/review-open": (said, 409)})
+    stop(ij)
+    monkeypatch.setattr(srv, "ROOT", r)
+    status, _ = _call(server, "GET", f"{srv.OPEN}?path={f}&line=3&sha={reviewed}&root={r}"
+                                     "&branch=feature&ide=idea")
+    assert status == 409
+    assert [p for p, _ in I.asked] == ["/review-open"]
+
+
 def test_the_badge_poll_lists_the_ides_on_this_checkout_only(repo, tmp_path, monkeypatch, stop):
     r, _, head = repo
     other = tmp_path / "other"
