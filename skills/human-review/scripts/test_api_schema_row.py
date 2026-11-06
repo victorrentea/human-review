@@ -73,6 +73,10 @@ FAKE = ('<div class="swagger-ui"><div class="opblock-tag-section">'
                     response("202", ("application/json",), ("sample",), example=True) +
                     response("203", ("application/json",), ("one", "two"), example=True) +
                     response("204", ("application/json",), ("sample",)))
+        + '<div class="opblock-body dv-noparams"><div class="opblock-section">'
+        '<div class="opblock-section-header"><h4>Parameters</h4></div>'
+        '<div class="parameters-container"><div class="opblock-description-wrapper">'
+        '<p>No parameters</p></div></div>' + REQUEST + '</div></div>'
         + "</div></div>")
 
 ENTRIES = {"POST /a": {"state": "untouched", "changes": [], "ghosts": [], "deepSkipped": 0,
@@ -139,6 +143,12 @@ def test_the_request_reads_the_same(page):
     assert label == '"Media type"'
 
 
+def test_a_request_without_parameters_still_shows_its_body(page):
+    """Swagger UI nests the body in the section that says "No parameters"."""
+    assert page.locator(".dv-noparams .opblock-section-request-body ul.tab").is_visible()
+    assert page.locator(".dv-noparams .parameters-container").is_hidden()
+
+
 def test_the_sample_follows_example_value_and_only_then(page):
     assert page.locator(f"{row('204')} .response-control-examples").is_hidden()
     examples = box(page, f"{row('202')} .response-control-examples")
@@ -188,7 +198,7 @@ def test_it_sits_under_the_row_and_only_under_schema(page):
 def test_diagram_replaces_the_tree_in_every_open_block(page):
     page.click(f"{row('200')} .dv-views button[data-view=diagram]")
     for where, word in ((row("200"), "response"), (row("201"), "response"),
-                        (".opblock-section-request-body", "request")):
+                        (".opblock-body > .opblock-section-request-body", "request")):
         assert page.locator(f"{where} article").is_hidden()
         assert page.locator(f"{where} .dv-dgm svg").text_content() == word
     assert page.get_attribute(f"{row('201')} .dv-views button[data-view=diagram]",
