@@ -122,15 +122,17 @@ def _paint(text: str, removed: bool):
     this diagram's sidecar, so the handle is dead either way — and strikes the words
     instead.
     """
-    m = LINK.match(text.strip())
-    if not m:
+    if not LINK.match(text.strip()):
         return _struck(text) if removed else _added(text)
     if removed:
-        return _struck(m.group("label").rstrip().removesuffix(MARKER_GLYPH).rstrip())
+        # Every link of the label: a browser request's words link to the line that sent it,
+        # and the `⊕` beside them is a link of its own.
+        return _struck(ANY_LINK.sub(_link_label, text.strip()).removesuffix(MARKER_GLYPH).rstrip())
     return text
 
 
 MARKER_GLYPH = "⊕"
+METHOD_GLYPH = "↗"
 
 
 def _colorize_arrow(arrow: str, colour: str) -> str:
@@ -334,8 +336,12 @@ SRC_LINK = re.compile(r"\[\[(?P<target>src://[^\s{\]]*)(?:\{[^}]*\})?(?:\s+(?P<l
 
 
 def _link_label(m: "re.Match[str]") -> str:
-    """What a `[[…]]` puts on the picture — the words, never the handle behind them."""
-    return m.group("label") or ""
+    """What a `[[…]]` puts on the picture — the words, never the handle behind them.
+
+    The `↗` is the handle's glyph, not one of the words: an arrow that learned where it
+    leads in the code has not changed, and one that lost it (a run with no call site for
+    that request) has not either."""
+    return (m.group("label") or "").removesuffix(METHOD_GLYPH).rstrip()
 
 
 def _as_read(line: str) -> str:

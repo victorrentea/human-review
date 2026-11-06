@@ -354,7 +354,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             '<b>tx</b>: committed/rolled back.',
             '<b>New</b>/<b>Old</b>: this branch\'s run, or the base\'s; <b>⇒ .puml</b>: the file the test writes.',
             'Hover <b>⊕</b> for the SQL or JSON, click to keep it; <b>values</b> fills in each <b>?</b>.',
-            'An IDE logo on a call opens that method in the IDE whose logo is green, top right.',
+            'A blue call opens its method; a browser request opens the line that sent it, in that run.',
             'Dot before the file name: the DB fixture the test starts on; grey = Default; none = empty.',
         ],
         "code": (

@@ -393,6 +393,10 @@
     group.classList.add('genseq-hot');
     addHitArea(group);
     group.addEventListener('click', function (ev) {
+      // A browser request's words open the line that sent it and its ⊕ the body, in one
+      // arrow: that other link keeps its click, for editor.js to take on `document`.
+      var hit = ev.target.closest && ev.target.closest('a');
+      if (hit && (hit.getAttribute('href') || '').indexOf(PREFIX) !== 0) return;
       ev.preventDefault();
       ev.stopPropagation();
       unpeek();
@@ -464,7 +468,8 @@
       // not leaving it.
       function leave(ev) {
         var to = ev.relatedTarget && ev.relatedTarget.closest && ev.relatedTarget.closest('a');
-        if (peeking === state && !(to && group.contains(to))) unpeek();
+        var same = to && group.contains(to) && to.getAttribute('href') === link.getAttribute('href');
+        if (peeking === state && !same) unpeek();
       }
       // On the label, not on the arrow's whole band: a pointer resting on a line is not
       // asking for anything, and an edge's band on the Structure tab is its whole bounding box.

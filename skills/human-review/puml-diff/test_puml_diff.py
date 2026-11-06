@@ -938,3 +938,29 @@ def test_a_participant_declared_with_a_colour_still_reports_its_alias():
     assert sq._participant_name('"Notification module" as Notif #EAF6EC') == "Notif"
     assert sq._participant_name('"Notification module"') == "Notification module"
     assert sq._participant_name("Backend") == "Backend"
+
+
+# A browser request's arrow carries two links: its words open the line that sent it, the
+# `⊕` beside them reveals the body (petclinic-test's genseq/call-site.ts).
+SENT_FROM = "[[src://f/a.component.ts:22{Click to open the line} Add a visit\\nPOST /api/visits ↗]]"
+BODY = "[[genseq://abc{Click for the body} ⊕]]"
+
+
+def test_a_removed_arrow_with_two_links_strikes_its_words_and_no_markup():
+    old = f"@startuml\nA -> B: {SENT_FROM} {BODY}\nA -> B: stays\n@enduml\n"
+    new = "@startuml\nA -> B: stays\n@enduml\n"
+    out = sq.diff(old, new)
+    assert "Add a visit</s>" in out and "POST /api/visits</s>" in out
+    assert "[[" not in out and "⊕" not in out and "↗" not in out
+
+
+def test_an_added_arrow_keeps_both_links():
+    old = "@startuml\nA -> B: stays\n@enduml\n"
+    new = f"@startuml\nA -> B: stays\nA -> B: {SENT_FROM} {BODY}\n@enduml\n"
+    assert f"{SENT_FROM} {BODY}" in sq.diff(old, new)
+
+
+def test_an_arrow_that_learned_the_line_that_sent_it_is_not_a_change():
+    linked = "A -> B: [[src://f/a.ts:22{t} Get an owner\\nGET /api/owners ↗]]"
+    assert sq._as_read(linked) == "A -> B: Get an owner\\nGET /api/owners"
+    assert sq._as_meant(linked) == "A -> B: Get an owner\\nGET /api/owners"

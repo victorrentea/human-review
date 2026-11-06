@@ -249,10 +249,17 @@ TWO_LINES = ('<g class="message"><a href="genseq://sql"><text font-size="13" x="
              'xlink:title="Click for this call"><text font-size="13" x="10" y="80">200</text></a></g>')
 
 
-def _hover_page(browser, tmp_path, **viewport):
+#: A browser request: its words open the line that sent it, the ⊕ beside them the body.
+TWO_LINKS = ('<g class="message"><a href="vscode://file/a.component.ts:22:1">'
+             '<text font-size="13" x="10" y="30">POST /api/visits</text></a>'
+             '<a href="genseq://sql"><text font-size="13" x="150" y="30">⊕</text></a>'
+             '<line x1="10" x2="300" y1="40" y2="40" stroke="#000"/></g>')
+
+
+def _hover_page(browser, tmp_path, messages=TWO_LINES, **viewport):
     import json
     src = COLOUR_PAGE.format(css=GENSEQ_CSS, js=GENSEQ_JS, details=json.dumps(HOVER_DETAILS))
-    src = re.sub(r'<g class="message">.*</g>', TWO_LINES, src, flags=re.S)
+    src = re.sub(r'<g class="message">.*</g>', messages, src, flags=re.S)
     src = src.replace('xmlns="http://www.w3.org/2000/svg"', 'xmlns="http://www.w3.org/2000/svg" '
                       'xmlns:xlink="http://www.w3.org/1999/xlink"')
     page_file = tmp_path / "h.html"
@@ -301,6 +308,41 @@ def test_a_resting_pointer_previews_and_only_a_click_keeps(browser, tmp_path):
         assert _open(page, "#genseq-panel") is None and not _kept(page, "sql")
         page.wait_for_timeout(200)
         assert _open(page, "#genseq-peek") is None, "closing it does not preview it again"
+    finally:
+        page.close()
+
+
+CODE = 'a[href^="vscode:"] text'
+
+
+def test_the_words_of_a_browser_request_open_its_code_and_only_the_marker_opens_the_body(
+        browser, tmp_path):
+    page = _hover_page(browser, tmp_path, messages=TWO_LINKS)
+    try:
+        page.evaluate("""document.addEventListener('click', ev => {
+            window.reached = ev.target.closest('a')?.getAttribute('href');
+            window.prevented = ev.defaultPrevented;
+            ev.preventDefault(); })""")
+        page.click(CODE)
+        assert page.evaluate("window.reached") == "vscode://file/a.component.ts:22:1"
+        assert not page.evaluate("window.prevented"), "editor.js must see an untouched click"
+        assert _open(page, "#genseq-panel") is None
+
+        page.click('a[href="genseq://sql"] text')
+        assert _open(page, "#genseq-panel") == "SELECT 1"
+    finally:
+        page.close()
+
+
+def test_a_preview_does_not_outlive_the_marker_when_the_pointer_slides_onto_the_code_link(
+        browser, tmp_path):
+    page = _hover_page(browser, tmp_path, messages=TWO_LINKS)
+    try:
+        page.hover('a[href="genseq://sql"] text')
+        page.wait_for_timeout(200)
+        assert _open(page, "#genseq-peek") == "SELECT 1"
+        page.hover(CODE)
+        assert _open(page, "#genseq-peek") is None
     finally:
         page.close()
 
