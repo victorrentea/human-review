@@ -62,7 +62,7 @@ PIECES: dict[str, tuple[str, str]] = {
     "api": (
         "the REST contract at the merge-base against the branch, as a visual OpenAPI diff "
         "with a breaking-change verdict", "scripts/openapi-visual-diff.py, "
-        "scripts/openapi-compat.py, scripts/schema_tree.py"),
+        "scripts/openapi-compat.py, scripts/schema_tree.py, scripts/schema_puml.py"),
     "diagram.domain": (
         "the domain-model class diagram generated from your domain classes by Java "
         "reflection, committed as PlantUML and diffed base against branch",
@@ -231,9 +231,9 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'api': {
         "li": [
-            'The OpenAPI contract, main vs this branch, diffed by oasdiff.',
+            'The OpenAPI contract, main vs this branch, by oasdiff; <b>breaking</b>: a client can fail.',
             '<b>Generated from code</b>: a test writes the spec from the controllers.',
-            '<b>Breaking</b>: a client of main can fail.',
+            '<b>Diagram</b> draws a body as classes: green added, red struck removed, amber impacted.',
             'One DTO change breaks many endpoints: for each, ask who calls it and if they were updated.',
             '<b>→</b> a change to the request, <b>←</b> to the response; no badge means not breaking.',
             '<b>changes: expand</b> opens every endpoint and field the branch changed.',
@@ -310,7 +310,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'A new arrow or a cycle between modules: ask why.',
             '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
             '<b>Dimmed box</b>: nothing in it changed; <b>Impacted</b> hides those and their arrows.',
-            '<b>✓ Generated from …</b>: the source it is redrawn from; click for the generator.',
+            '<b>✓ Generated using …</b>: the command it is redrawn with; click for the generator.',
         ],
     },
     'diagram.c2': {
@@ -353,7 +353,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'HTTP, SQL with parameters, calls across services and modules; '
             '<b>tx</b>: committed/rolled back.',
             '<b>New</b>/<b>Old</b>: this branch\'s run, or the base\'s; <b>⇒ .puml</b>: the file the test writes.',
-            'Click <b>⊕</b> for the SQL or JSON; <b>values</b> fills in each <b>?</b>.',
+            'Hover <b>⊕</b> for the SQL or JSON, click to keep it; <b>values</b> fills in each <b>?</b>.',
             'An IDE logo on a call opens that method in the IDE whose logo is green, top right.',
             'Dot before the file name: the DB fixture the test starts on; grey = Default; none = empty.',
         ],
