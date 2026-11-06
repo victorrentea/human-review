@@ -1,17 +1,16 @@
-[video] the app cannot say which commit it is; this run started it itself, from ec9fac9037d7ef714362324e24bf5ed57e8f612f
-[video] title card: "Demo" / "Link Visit with Vet (#37), reimplemented unguided by Opus", 3.44s
-[video] feature-script.js: 5/5 screens filmed, 13 cues (13 with a box) -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.raw.webm
+[video] the app cannot say which commit it is; this run started it itself, from 521a3f0420ecef93173a3b96135fcf031c317ffb
+[video] feature-script.js: 5/5 screens filmed, 9 cues (9 with a box) -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.raw.webm
 [video] viewport 1280x800 @ dpr 1
-[video] narration: 13/13 cues, 28.1s of speech, voice "Samantha"
-[video] cut 70.6s of still footage (28 stretches): 117.2s -> 46.6s
-[annotate] 181 caption states from 181 frames
-[annotate] 13 captions, 13 spotlights, 13 spoken -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.webm
-[video] cut 53.9s of still footage (23 stretches): 117.2s -> 63.2s
-[annotate] 201 caption states from 201 frames
-[annotate] 13 captions, 13 spotlights, 13 spoken -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.voice-trump.webm
+[video] narration: 9/9 cues, 25.4s of speech, voice "Samantha"
+[video] cut 71.9s of still footage (18 stretches): 108.7s -> 36.8s
+[annotate] 151 caption states from 151 frames
+[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.webm
+[video] cut 59.8s of still footage (14 stretches): 108.7s -> 48.8s
+[annotate] 172 caption states from 172 frames
+[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.voice-trump.webm
 [video] 🐘 voice -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.voice-trump.webm
-[video] cut 51.5s of still footage (18 stretches): 117.2s -> 65.7s
-[annotate] 201 caption states from 201 frames
-[annotate] 13 captions, 13 spotlights, 13 spoken -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.voice-discovery.webm
+[video] cut 56.1s of still footage (10 stretches): 108.7s -> 52.6s
+[annotate] 173 caption states from 173 frames
+[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.voice-discovery.webm
 [video] Discovery voice -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/feature.voice-discovery.webm
-[video] 46.640000s, 2.3M
+[video] 36.880000s, 2.3M

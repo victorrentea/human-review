@@ -70,5 +70,113 @@
   "bytes": 40,
   "voice": "5860c08729ef4623a05addbf5fa543ec",
   "at": "2026-10-22T09:30:03+0300"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 47,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:37:21+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 47,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:37:23+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 61,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:37:31+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 61,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:37:35+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 60,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:37:46+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 60,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:37:49+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 50,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:37:59+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 50,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:38:01+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 33,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:38:10+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 33,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:38:12+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 43,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:38:18+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 43,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:38:22+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 40,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:38:31+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 40,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:38:33+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 51,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:38:44+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 51,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:38:47+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 61,
+  "voice": "e58b0d7efca34eb38d5c4985e378abcb",
+  "at": "2026-11-06T15:38:57+0200"
+ },
+ {
+  "model": "s2.1-pro-free",
+  "bytes": 61,
+  "voice": "5860c08729ef4623a05addbf5fa543ec",
+  "at": "2026-11-06T15:39:00+0200"
  }
 ]

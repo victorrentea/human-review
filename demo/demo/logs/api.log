@@ -1,9 +1,10 @@
   * api -> api
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base 215038746359a252cf10e12c2f02bbab2a7f4286 --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base c70d6642e77f61a54c8e018ad14b88f14f9545bd --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
 [openapi-compat] wrote .human-review/assets/openapi-compat-report.html — standalone
 [openapi-compat] wrote .human-review/assets/openapi-compat.html — compatible
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --css  >  .human-review/assets/openapi-compat.css
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base 215038746359a252cf10e12c2f02bbab2a7f4286 --spec openapi.yaml --panel --out .human-review/assets/openapi-verdict.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base c70d6642e77f61a54c8e018ad14b88f14f9545bd --spec openapi.yaml --panel --out .human-review/assets/openapi-verdict.html
 [openapi-compat] wrote .human-review/assets/openapi-verdict.html — compatible
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-visual-diff.py --base 215038746359a252cf10e12c2f02bbab2a7f4286 --spec openapi.yaml --out .human-review/assets/openapi-visual-diff.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-visual-diff.py --base c70d6642e77f61a54c8e018ad14b88f14f9545bd --spec openapi.yaml --out .human-review/assets/openapi-visual-diff.html
+[openapi-visual-diff] 25 of 25 distinct class diagrams drawn, 127 KB
 .human-review/assets/openapi-visual-diff.html  (0 breaking  11 modified  0 added  0 removed  32 untouched)
