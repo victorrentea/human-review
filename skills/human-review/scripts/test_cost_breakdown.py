@@ -997,6 +997,23 @@ def test_the_ledger_is_read_for_the_pinned_session_not_the_one_running_the_build
     assert cost.cost_session(out) == "another-live-conversation"
 
 
+def test_a_blank_pin_keeps_the_builders_session_out_of_the_bill(tmp_path, monkeypatch):
+    """`.session` blank means the run had no Claude session: `run-review.py` from a terminal,
+    or Copilot. `cost_session` said so and `_cost_env` then did nothing about it, so
+    `review-cost.py` inherited `$CLAUDE_CODE_SESSION_ID` and billed whichever conversation
+    ran the build: both demos' Cost tabs moved with it. Only `refresh-report.py` popped it."""
+    out = tmp_path / ".human-review"
+    out.mkdir()
+    (out / ".session").write_text("\n", encoding="utf-8")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "whoever-runs-the-build")
+    from hrbuild.tabs import cost
+    assert cost.cost_session(out) == ""
+    assert "CLAUDE_CODE_SESSION_ID" not in cost._cost_env(out)
+    # No file is another matter: nothing is pinned, and the environment is the answer.
+    (out / ".session").unlink()
+    assert cost._cost_env(out)["CLAUDE_CODE_SESSION_ID"] == "whoever-runs-the-build"
+
+
 # --------------------------------------------------------------------------- #
 # eval run 6: under the four components, the fold breaks down "this guide" — and sums to it
 # --------------------------------------------------------------------------- #

@@ -39,11 +39,17 @@ def cost_session(out_dir: Path | None) -> str:
 
 
 def _cost_env(out_dir: Path | None) -> dict:
-    """The environment `review-cost.py` is asked in, with `cost_session`'s answer in it."""
+    """The environment `review-cost.py` is asked in, with `cost_session`'s answer in it.
+
+    A blank answer has to take the variable out: left in, `review-cost.py` reads the
+    conversation running this build, the stranger the blank pin exists to keep out.
+    `refresh-report.py` does the same."""
     env = dict(os.environ)
     sid = cost_session(out_dir)
     if sid:
         env["CLAUDE_CODE_SESSION_ID"] = sid
+    else:
+        env.pop("CLAUDE_CODE_SESSION_ID", None)
     return env
 
 
