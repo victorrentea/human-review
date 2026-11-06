@@ -120,28 +120,28 @@
         {
           "type": "diagrams",
           "only": [
-            "Java packages"
+            "Backend Java packages"
           ],
           "context": {
             "src": "petclinic-backend/docs/packages.puml",
-            "name": "Java packages"
-          }
-        },
-        {
-          "type": "diagrams",
-          "only": [
-            "Frontend packages"
-          ],
-          "context": {
-            "src": "petclinic-frontend/docs/frontend-packages.puml",
-            "name": "Frontend packages"
+            "name": "Backend Java packages"
           }
         },
         {
           "type": "puml",
           "src": "petclinic-backend/docs/generated/MavenModules.puml",
-          "name": "Maven modules",
+          "name": "Backend Build Units",
           "status": "unchanged"
+        },
+        {
+          "type": "diagrams",
+          "only": [
+            "Frontend TypeScript packages"
+          ],
+          "context": {
+            "src": "petclinic-frontend/docs/frontend-packages.puml",
+            "name": "Frontend TypeScript packages"
+          }
         },
         {
           "type": "diagrams",
