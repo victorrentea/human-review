@@ -37,13 +37,13 @@
   "tested_against": "traced sequence diagrams",
   "rerun": {
     "cwd": "/Users/victorrentea/workspace/petclinic-visits-paginated",
-    "command": "/Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base 051b601ff648014d36bafa2dd3a8227433cd7a74 --diagram petclinic-backend/docs/Deployment.drawio.png --out-dir .human-review/assets --name deployment --traces .human-review/assets/c2/C2-Containers.json --tested-against 'traced sequence diagrams'"
+    "command": "/Users/victorrentea/workspace/human-review/skills/human-review/scripts/drawio-diff.py --base origin/main --diagram petclinic-backend/docs/Deployment.drawio.png --out-dir .human-review/assets --name deployment --traces .human-review/assets/c2/C2-Containers.json --tested-against 'traced sequence diagrams'"
   },
   "redraw": {
     "cwd": "/Users/victorrentea/workspace/petclinic-visits-paginated",
-    "command": "git checkout 051b601ff648014d36bafa2dd3a8227433cd7a74 -- petclinic-backend/docs/Deployment.drawio.png",
+    "command": "git checkout origin/main -- petclinic-backend/docs/Deployment.drawio.png",
     "diagram": "petclinic-backend/docs/Deployment.drawio.png",
-    "base": "051b601ff648014d36bafa2dd3a8227433cd7a74"
+    "base": "origin/main"
   },
   "revert": {
     "cwd": "/Users/victorrentea/workspace/petclinic-visits-paginated",

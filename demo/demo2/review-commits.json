@@ -1,8 +1,8 @@
 {
- "base": "051b601ff648014d36bafa2dd3a8227433cd7a74",
+ "base": "b2bcb84875f4faa4c359e9c17304cc3b1d4d1d4c",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 13,
+ "commits": 17,
  "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
  "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
  "session": "498ee103-9160-4f7a-be05-c641ebd16920",
@@ -17,7 +17,11 @@
   "a3845d7dd4d3eb0c84da1d83cad7b91c750700d8",
   "642db15fc139a4f4542ab08934910ba325df8e80",
   "6691753d002f66bf0253be30a4504c4532ef78d6",
-  "7c30589ed5661fe2abe635ade560b53189c46ad6"
+  "7c30589ed5661fe2abe635ade560b53189c46ad6",
+  "8c9671cc13121aef3aaf48f256b4f4701a17ec3c",
+  "aa5457fae334095a6129c2af9cef5453f661ffdb",
+  "cdbe640f8215c931b7d7ddaa9702d6c25b6f9db4",
+  "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847"
  ],
  "after_detail": [
   {
@@ -78,6 +82,30 @@
    "sha": "7c30589ed5661fe2abe635ade560b53189c46ad6",
    "when": "2026-10-30T00:12:06+02:00",
    "subject": "review-points: base moved past main's 21503874 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "8c9671cc13121aef3aaf48f256b4f4701a17ec3c",
+   "when": "2026-11-06T07:04:58+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
+   "auto_fix": false
+  },
+  {
+   "sha": "aa5457fae334095a6129c2af9cef5453f661ffdb",
+   "when": "2026-11-06T07:05:59+02:00",
+   "subject": "review-points: base moved past main's 051b601f (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "cdbe640f8215c931b7d7ddaa9702d6c25b6f9db4",
+   "when": "2026-11-06T09:11:07+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
+   "auto_fix": false
+  },
+  {
+   "sha": "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847",
+   "when": "2026-11-06T09:11:47+02:00",
+   "subject": "review-points: base moved past main's b2bcb848 (merged)",
    "auto_fix": false
   }
  ],

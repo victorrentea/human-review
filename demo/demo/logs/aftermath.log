@@ -49,3 +49,7 @@
     $ git show --numstat --format= 3bad25fb1cc5fb94466cb511ec45014918f3775c
     $ git show --numstat --format= 085415a7b3bc8386051d0c92cbe50cde0e5c79f6
     $ git show --numstat --format= 788c63dc91c60b1e5f57f17f0eee0360b9c4b447
+    $ git show --numstat --format= 0f36e282eae5859073f45446ca7424a4f16f5fee
+    $ git show --numstat --format= 96fbcbb243e7efe7b48ba8648ea454ff575129df
+    $ git show --numstat --format= fe937ab27e813709b2e28835fbecbca9c03bdf4b
+    $ git show --numstat --format= 6c3efe014c7e29bd5a5f4b370f1546db2e15353a

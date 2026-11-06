@@ -1,7 +1,7 @@
 {
  "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
  "review_short": "4321c5bc",
- "head": "7c30589ed5661fe2abe635ade560b53189c46ad6",
+ "head": "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -931,22 +931,323 @@
    "measured": true,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "8c9671cc13121aef3aaf48f256b4f4701a17ec3c",
+   "short": "8c9671cc",
+   "when": "2026-11-06T07:04:58+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
+   "files": [
+    {
+     "path": ".claude/commands/regen-user-manual.md",
+     "added": 8,
+     "deleted": 8,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/db-cli/db-cli.env",
+     "added": 1,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/skills/db-cli/db-cli.py",
+     "added": 14,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".claude/templates/manual-template.md",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": ".gitignore",
+     "added": 1,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "README.md",
+     "added": 11,
+     "deleted": 10,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/installation-guide.docx",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": false
+    },
+    {
+     "path": "docs/superpowers/plans/2026-10-26-java-code-style-skill.md",
+     "added": 0,
+     "deleted": 63,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/superpowers/specs/2026-10-26-java-code-style-skill-design.md",
+     "added": 0,
+     "deleted": 19,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/manual.md",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/.gitkeep",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/nav-owners-menu.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/owners-create.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/owners-detail.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/owners-edit.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/owners-list.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/pets-add.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/pets-edit.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/pettypes-add.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/pettypes-list.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/specialties-add.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/specialties-list.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/vets-add.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/vets-edit.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/vets-list.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/visits-add.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/visits-edit.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/visits-list.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "{user-manual => docs/user-manual}/screenshots/welcome.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    },
+    {
+     "path": "petclinic-backend/docs/Deployment.drawio.png",
+     "added": 0,
+     "deleted": 0,
+     "binary": true,
+     "generated": true
+    }
+   ],
+   "added": 36,
+   "deleted": 103,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "aa5457fae334095a6129c2af9cef5453f661ffdb",
+   "short": "aa5457fa",
+   "when": "2026-11-06T07:05:59+02:00",
+   "subject": "review-points: base moved past main's 051b601f (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "cdbe640f8215c931b7d7ddaa9702d6c25b6f9db4",
+   "short": "cdbe640f",
+   "when": "2026-11-06T09:11:07+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
+   "files": [
+    {
+     "path": "petclinic-backend/docs/generated/MavenModules.puml",
+     "added": 0,
+     "deleted": 2,
+     "binary": false,
+     "generated": true
+    },
+    {
+     "path": "petclinic-backend/docs/packages.puml",
+     "added": 1,
+     "deleted": 5,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/docs/scripts/mavenmodules/maven_modules_to_puml.py",
+     "added": 0,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 1,
+   "deleted": 11,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847",
+   "short": "a4e22e13",
+   "when": "2026-11-06T09:11:47+02:00",
+   "subject": "review-points: base moved past main's b2bcb848 (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 10,
-  "files": 83,
-  "added": 1564,
-  "deleted": 390,
+  "commits": 14,
+  "files": 108,
+  "added": 1515,
+  "deleted": 418,
   "code": {
-   "files": 79,
-   "added": 1545,
-   "deleted": 377
+   "files": 85,
+   "added": 1496,
+   "deleted": 403
   },
   "generated": {
-   "files": 4,
+   "files": 23,
    "added": 19,
-   "deleted": 13
+   "deleted": 15
   }
  },
  "clean": false
