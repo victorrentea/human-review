@@ -4,8 +4,9 @@
 The API tab's schema tree answers "what is in this field?", one level at a time. It cannot
 answer "what is the shape of this payload?": on `GET /api/pets` the three new vet fields sit
 two levels down a tree that has to be opened by hand. This module draws that shape, from the
-two specs, for each request and response body: one class per object schema, its plain fields
-as members, and every nested or referenced object (array items too) as an association.
+two specs, for each request and response body: an arrow in from a small Response or Request
+box, then one class per object schema, its plain fields as members, and every nested or
+referenced object (array items too) as an association.
 
 **No second differ.** The two sides are written as plain `.puml` text, and from there it is
 the Data tab's machinery, `puml-diff/puml_diff.py`, unchanged: same green, same struck red,
@@ -204,10 +205,21 @@ EMPTY = Model({}).puml()
 
 
 def schema_puml(spec: dict, schema, root: str) -> str | None:
-    """One payload as PlantUML, or None when it holds no object at all (a bare string)."""
+    """One payload as PlantUML, or None when it holds no object at all (a bare string).
+
+    A small `root` box (Response, Request) points at where the payload starts, with the
+    arrow's end saying one or many. It is what makes a change of the payload's own shape
+    visible: a list that became a page object is that arrow, red to the old class and green
+    to the new one, and no class in between has a field to mark it. An inline payload is
+    already named `root`, so it needs no box."""
     model = Model(spec)
-    model.reach(schema, root)
-    return model.puml() if model.classes else None
+    _, classes, many = model.reach(schema, root)
+    if not model.classes:
+        return None
+    if root not in model.classes:
+        model.classes = {root: {"kind": "class", "members": []}, **model.classes}
+        model.links[:0] = [(root, target, "~*" if many else "1") for target in classes]
+    return model.puml()
 
 
 def delta(old: str | None, new: str | None, absent: bool = False) -> tuple:

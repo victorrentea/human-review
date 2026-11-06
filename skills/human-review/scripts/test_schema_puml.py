@@ -141,6 +141,27 @@ def sides(before: dict, after: dict, root=None):
     return puml(before, root), puml(after, root)
 
 
+def test_an_arrow_enters_the_payload_saying_one_or_many():
+    one = puml(SCHEMAS, ref("Pet"))
+    assert 'class Response {' in one and 'Response --> "1" Pet' in one
+    assert 'Response --> "~*" Pet' in puml(SCHEMAS, {"type": "array", "items": ref("Pet")})
+
+
+def test_an_inline_payload_is_the_entry_itself():
+    text = puml({}, {"type": "object", "properties": {"id": {"type": "integer"}}})
+    assert text.count("class Response {") == 1 and "Response -->" not in text
+
+
+def test_a_list_that_became_a_page_object_shows_on_the_arrow():
+    page = {"type": "object", "properties": {"content": {"type": "array", "items": ref("Pet")}}}
+    schemas = {**SCHEMAS, "PetPage": page}
+    old = puml(schemas, {"type": "array", "items": ref("Pet")})
+    text, changed = sp.delta(old, puml(schemas, ref("PetPage")))
+    assert changed
+    assert re.search(r'Response -\[#2E7D32[^\]]*\]-> "1" PetPage', text), text
+    assert re.search(r'Response -\[#C62828[^\]]*\]-> "~\*" Pet : ', text), text
+
+
 def test_a_new_field_is_green_and_the_rest_of_the_class_is_not():
     after = {**SCHEMAS, "Visit": {"type": "object", "properties": {
         "id": {"type": "integer"}, "vetId": {"type": "integer"}}}}
@@ -200,11 +221,12 @@ def op(status_schema: dict, media: str = "application/json", request=None) -> di
 
 def test_identical_diagrams_are_one_picture():
     s = spec(**SCHEMAS)
-    ops = {"GET /a": op(ref("Pet")), "GET /b": op({"type": "array", "items": ref("Pet")}),
+    ops = {"GET /a": op(ref("Pet")), "GET /b": op(ref("Pet")),
            "POST /a": op(ref("Pet"), request=ref("Pet"))}
     diagrams, per_op, changed = sp.plan(s, s, ops, ops)
-    assert len(diagrams) == 1 and not changed
+    assert len(diagrams) == 2 and not changed, "the same Pet, as a response and as a request"
     assert set(per_op["POST /a"]) == {"request application/json", "200 application/json"}
+    assert per_op["GET /a"] == per_op["GET /b"]
 
 
 def test_a_body_reached_through_a_ref_is_found():
