@@ -823,11 +823,11 @@ on this tab reaches into `hrbuild/assets`, because the fragment is also produced
 outside the page builder. The annotated *snippets* are still gone and are not coming back —
 the question a bar raises is "which lines", and a list answers it in a third of the height.
 
-Default order, worth departing from only with a reason — **Review, Demo, API, Data,
-Tests, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
-order a review actually goes: what the passes raised, then the feature as a user meets it
-(the film, then the contract and the shape behind it), then what pins it — the tests, then
-the traces those runs recorded — then the code's own shape, where *Structure* and *Code
+Default order, worth departing from only with a reason — **Review, Demo, Tests,
+API, Data, Sequence, Structure, Code City, UX, Complexity, Logging, CODEOWNERS**. It is the
+order a review actually goes: what the passes raised, then the feature as a user meets it —
+the film, and right after it the tests that pin what the film showed (Victor, 10 Nov 2026)
+— then the contract and the shape behind it, the traces the test runs recorded, then the code's own shape, where *Structure* and *Code
 City* are one question asked twice and stay adjacent, and CODEOWNERS last, because it is
 the one thing no amount of reading changes.
 

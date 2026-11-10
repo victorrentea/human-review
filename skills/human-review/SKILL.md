@@ -297,8 +297,8 @@ Review tab opens on the grade's computed reasons, and a `summary` is dropped the
 open piles, a breaking API change, tabs without evidence and commits outside the review
 are computed, and they cap your score.
 
-**Every tab after Review is the scripts', not yours — write nothing on it.** Demo, API,
-Data, Tests, Sequence, Structure, Code City, UX, Complexity, Logging and CODEOWNERS show
+**Every tab after Review is the scripts', not yours — write nothing on it.** Demo, Tests,
+API, Data, Sequence, Structure, Code City, UX, Complexity, Logging and CODEOWNERS show
 what a step produced. List them in `tabs` with the blocks in the reference strip
 (`reference/content-schema.md`, *The tab strip*) and stop: no section of your own, no
 `intro`, no snippet, no `html` block, no re-pointing of `swaggerdiff`, `video`,

@@ -79,12 +79,14 @@ SHORT_TAB_LABELS = {"city": "City", "logging": "Logs", "owners": "Codeowners"}
 LAYOUT_TABS: dict[str, dict] = {
     "behaviour":    {"label": "Demo", "blocks": (), "sections": ("video",),
                      "required": ("video",)},
+    # Tests right after Demo (Victor, 10 Nov 2026: "always logical to present it after the
+    # demo") — the film shows what it does, the ledger proves it.
+    "requirements": {"label": "Tests", "blocks": ("tests", "traces"),
+                     "sections": ("requirements-map",), "required": (), "first": True},
     "api":          {"label": "API", "blocks": (), "sections": ("swaggerdiff",),
                      "required": ("swaggerdiff",)},
     "data":         {"label": "Data", "blocks": ("diagrams", "puml"),
                      "sections": ("conceptual",), "required": ()},
-    "requirements": {"label": "Tests", "blocks": ("tests", "traces"),
-                     "sections": ("requirements-map",), "required": (), "first": True},
     "sequence":     {"label": "Sequence", "blocks": ("testpairs", "diagrams", "puml"),
                      "sections": (), "required": ()},
     "packages":     {"label": "Structure", "blocks": ("diagrams", "puml", "c4"),
