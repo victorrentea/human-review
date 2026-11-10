@@ -10,7 +10,7 @@ footer traced because this branch wrote it in petclinic-backend/src/test/java/vi
 participant Test
 participant Backend
 participant DB
-Test -> Backend: addVisit\nPOST /api/visits
+Test -> Backend: [[genseq://0rymiqj{Click for the request as it was sent} addVisit\nPOST /api/visits ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:59{Click to open VisitRestController.addVisit} → VisitRestController.addVisit ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:72{Click to open VisitRestController.bookVisit} book-visit ↗]]
 activate Backend

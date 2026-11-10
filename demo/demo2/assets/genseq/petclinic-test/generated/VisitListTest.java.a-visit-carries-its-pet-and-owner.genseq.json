@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "details": {
     "1x3fmx0": {
       "title": "insert for victor.training.petclinic.domain.Owner",
@@ -61,6 +61,19 @@
           }
         }
       ]
+    },
+    "06pr5p7": {
+      "title": "Test → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET /api/visits"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "/api/visits"
+      }
     }
   }
 }

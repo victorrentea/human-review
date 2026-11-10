@@ -7220,7 +7220,7 @@
     ],
     "hits": [],
     "file": "notification-service/src/main/java/victor/training/notification/NotificationController.java",
-    "line": 20
+    "line": 19
    },
    {
     "method": "victor.training.commons.PhoneNumbers#normalize(String)",

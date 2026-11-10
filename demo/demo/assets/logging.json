@@ -1673,7 +1673,21 @@
           "line": 33,
           "name": "adheresToDiagram",
           "type": "ArchRule",
-          "text": "@ArchTest\n    static final ArchRule adheresToDiagram = classes()\n        .should(adhereToPlantUmlDiagram(\n            DIAGRAM,\n            consideringOnlyDependenciesInAnyPackage(\"..petclinic..\")));"
+          "text": "@ArchTest\n    static final ArchRule adheresToDiagram = classes().should(adhereToPlantUmlDiagram(\n            DIAGRAM,\n            consideringOnlyDependenciesInAnyPackage(\"..petclinic..\")));"
+        }
+      ],
+      "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/PackagesPlainArchTest.java": [
+        {
+          "line": 13,
+          "name": "ROOT",
+          "type": "String",
+          "text": "private static final String ROOT = \"victor.training.petclinic\";"
+        },
+        {
+          "line": 15,
+          "name": "packageDependencies",
+          "type": "ArchRule",
+          "text": "@ArchTest\n    static final ArchRule packageDependencies = layeredArchitecture()\n        .consideringOnlyDependenciesInLayers()\n        .ensureAllClassesAreContainedInArchitectureIgnoring(ROOT) // no new package sneaks in\n\n        .layer(\"rest\").definedBy(ROOT + \".rest\")\n        .layer(\"mcp\").definedBy(ROOT + \".mcp\")\n        .layer(\"rest.error\").definedBy(ROOT + \".rest.error\")\n        .layer(\"security\").definedBy(ROOT + \".security\")\n        .layer(\"mapper\").definedBy(ROOT + \".mapper\")\n        .layer(\"repository\").definedBy(ROOT + \".repository\")\n        .layer(\"notification\").definedBy(ROOT + \".notification\")\n        .layer(\"rest.dto\").definedBy(ROOT + \".rest.dto\")\n        .layer(\"domain\").definedBy(ROOT + \".domain\")\n\n        .whereLayer(\"rest\").mayOnlyAccessLayers(\"domain\", \"repository\", \"mapper\", \"rest.dto\", \"notification\")\n        .whereLayer(\"mcp\").mayOnlyAccessLayers(\"domain\", \"repository\")\n        .whereLayer(\"mapper\").mayOnlyAccessLayers(\"domain\", \"rest.dto\")\n        .whereLayer(\"repository\").mayOnlyAccessLayers(\"domain\")\n        .whereLayer(\"rest.error\").mayNotAccessAnyLayer()\n        .whereLayer(\"security\").mayNotAccessAnyLayer()\n        .whereLayer(\"notification\").mayNotAccessAnyLayer()\n        .whereLayer(\"rest.dto\").mayNotAccessAnyLayer()\n        .whereLayer(\"domain\").mayNotAccessAnyLayer();"
         }
       ],
       "petclinic-backend/src/test/java/victor/training/petclinic/mapper/MapperTest.java": [

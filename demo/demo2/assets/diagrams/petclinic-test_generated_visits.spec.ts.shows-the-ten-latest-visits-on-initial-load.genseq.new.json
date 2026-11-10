@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "details": {
     "114roce": {
       "title": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by …",
@@ -87,6 +87,22 @@
           "text": "SELECT count(v1_0.id)\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id"
         }
       ]
+    },
+    "09jss6p": {
+      "title": "Browser → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET http://127.0.0.1:55450/api/visits?page=0&size=10&sort=date,desc\nAccept: application/json, text/plain, */*"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "http://127.0.0.1:55450/api/visits?page=0&size=10&sort=date,desc",
+        "headers": {
+          "Accept": "application/json, text/plain, */*"
+        }
+      }
     },
     "1gl89nl": {
       "title": "Backend → Browser: 200",

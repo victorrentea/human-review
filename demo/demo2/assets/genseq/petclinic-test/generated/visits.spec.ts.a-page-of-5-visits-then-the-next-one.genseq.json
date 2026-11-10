@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "details": {
     "114roce": {
       "title": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by …",
@@ -88,6 +88,22 @@
         }
       ]
     },
+    "09jss6p": {
+      "title": "Browser → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET http://127.0.0.1:55450/api/visits?page=0&size=10&sort=date,desc\nAccept: application/json, text/plain, */*"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "http://127.0.0.1:55450/api/visits?page=0&size=10&sort=date,desc",
+        "headers": {
+          "Accept": "application/json, text/plain, */*"
+        }
+      }
+    },
     "1gl89nl": {
       "title": "Backend → Browser: 200",
       "steps": [
@@ -110,6 +126,22 @@
         }
       ]
     },
+    "16lw5x1": {
+      "title": "Browser → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET http://127.0.0.1:55450/api/visits?page=0&size=5&sort=date,desc\nAccept: application/json, text/plain, */*"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "http://127.0.0.1:55450/api/visits?page=0&size=5&sort=date,desc",
+        "headers": {
+          "Accept": "application/json, text/plain, */*"
+        }
+      }
+    },
     "0xfw4pf": {
       "title": "Backend → Browser: 200",
       "steps": [
@@ -131,6 +163,22 @@
           }
         }
       ]
+    },
+    "1kd3t99": {
+      "title": "Browser → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET http://127.0.0.1:55450/api/visits?page=1&size=5&sort=date,desc\nAccept: application/json, text/plain, */*"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "http://127.0.0.1:55450/api/visits?page=1&size=5&sort=date,desc",
+        "headers": {
+          "Accept": "application/json, text/plain, */*"
+        }
+      }
     },
     "1su7rdl": {
       "title": "Backend → Browser: 200",

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "details": {
     "1imt0as": {
       "title": "SELECT v FROM Vet v LEFT JOIN FETCH v.specialties WHERE v.id = :id",
@@ -13,6 +13,19 @@
           }
         }
       ]
+    },
+    "0rymiqj": {
+      "title": "Test → Backend: POST /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "POST /api/visits"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "/api/visits"
+      }
     }
   }
 }

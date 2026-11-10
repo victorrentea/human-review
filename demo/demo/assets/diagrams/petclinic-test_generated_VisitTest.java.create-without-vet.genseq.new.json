@@ -1,7 +1,7 @@
 {
-  "version": 2,
+  "version": 3,
   "details": {
-    "0eap25x": {
+    "1k65kuu": {
       "title": "insert for victor.training.petclinic.domain.Visit",
       "steps": [
         {
@@ -9,10 +9,36 @@
           "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES (?, ?, ?, ?, ?)",
           "alternate": {
             "label": "",
-            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-11-06', 'annual checkup', 1, ?, ?)"
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-11-10', 'annual checkup', 1, ?, ?)"
           }
         }
       ]
+    },
+    "0rymiqj": {
+      "title": "Test → Backend: POST /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "POST /api/visits"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "/api/visits"
+      }
+    },
+    "1bi9ngw": {
+      "title": "Test → Backend: GET /api/visits/{visitId}",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET /api/visits/2"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "/api/visits/2"
+      }
     }
   }
 }

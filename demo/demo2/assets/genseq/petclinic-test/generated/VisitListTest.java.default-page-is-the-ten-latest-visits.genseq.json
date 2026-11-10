@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "details": {
     "1x3fmx0": {
       "title": "insert for victor.training.petclinic.domain.Owner",
@@ -213,6 +213,19 @@
           "text": "SELECT count(v1_0.id)\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id"
         }
       ]
+    },
+    "06pr5p7": {
+      "title": "Test → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET /api/visits"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "/api/visits"
+      }
     }
   }
 }

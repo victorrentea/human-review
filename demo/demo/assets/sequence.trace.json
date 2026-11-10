@@ -1,7 +1,7 @@
 {
  "diagram": "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
  "test": "AddVisitApiTest.java",
- "trace": "a3528fbbb6581d468a853ea5a3932365",
+ "trace": "134211d20346d4980dd5d4f4e952fc26",
  "traces": 1,
  "spans": 104,
  "services": [
@@ -9,5 +9,5 @@
   "notification-service"
  ],
  "root": "test: adds a visit to an existing pet",
- "at": "2026-11-06T07:58:38+00:00"
+ "at": "2026-11-10T15:03:26+00:00"
 }

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "details": {
     "0zykq1t": {
       "title": "SELECT v FROM Vet v LEFT JOIN FETCH v.specialties WHERE v.id = :id",
@@ -14,7 +14,7 @@
         }
       ]
     },
-    "0kdd00e": {
+    "05jtn76": {
       "title": "insert for victor.training.petclinic.domain.Visit",
       "steps": [
         {
@@ -22,7 +22,7 @@
           "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES (?, ?, ?, ?, ?)",
           "alternate": {
             "label": "",
-            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1793951881463', 1, 4, ?)"
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1794322958135', 1, 4, ?)"
           }
         }
       ]
@@ -53,14 +53,19 @@
         }
       ]
     },
-    "1p4ogm5": {
+    "00gfug0": {
       "title": "Backend → NotificationService: POST /api/notifications/visit-booked",
       "steps": [
         {
-          "label": "request body",
-          "text": "{\n  \"ownerPhone\": \"+18474461990\",\n  \"petName\": \"Axel\",\n  \"visitDate\": \"2026-05-12\"\n}"
+          "label": "request",
+          "text": "POST http://notification:8090/api/notifications/visit-booked\n\n{\n  \"ownerPhone\": \"+18474461990\",\n  \"petName\": \"Axel\",\n  \"visitDate\": \"2026-05-12\"\n}"
         }
-      ]
+      ],
+      "request": {
+        "method": "POST",
+        "url": "http://notification:8090/api/notifications/visit-booked",
+        "body": "{\"ownerPhone\":\"+18474461990\",\"petName\":\"Axel\",\"visitDate\":\"2026-05-12\"}"
+      }
     },
     "1706k1o": {
       "title": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner LEFT JOIN …",
@@ -161,6 +166,22 @@
           }
         }
       ]
+    },
+    "01wssvh": {
+      "title": "Browser → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET http://127.0.0.1:53290/api/visits\nAccept: application/json, text/plain, */*"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "http://127.0.0.1:53290/api/visits",
+        "headers": {
+          "Accept": "application/json, text/plain, */*"
+        }
+      }
     },
     "0p8wewa": {
       "title": "Backend → Browser: 200",

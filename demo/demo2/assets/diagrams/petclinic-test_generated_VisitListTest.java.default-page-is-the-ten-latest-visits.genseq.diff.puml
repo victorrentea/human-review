@@ -70,12 +70,15 @@ Test -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclin
 activate Backend
 Backend -> DB: [[genseq://0dprkyo{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
 deactivate Backend
-Test -> Backend: listVisits\nGET /api/visits
+Test -> Backend: [[genseq://06pr5p7{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:54{Click to open VisitRestController.listVisits} VisitRestController.listVisits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend
 Backend -> DB: [[genseq://114roce{Click for the statement behind this call} SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by … ⊕]]
 Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner ⊕]]
+deactivate Backend
 deactivate Backend
 Backend --> Test: 200
 deactivate Backend

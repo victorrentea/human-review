@@ -10,7 +10,11 @@ footer traced because this branch wrote it in src/visits.spec.ts — generated f
 participant Browser
 participant Backend
 participant DB
-Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:50{Click to open the line that sent this request: visits-page.component.ts:50} listVisits\nGET /api/visits ↗]]
+[-> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:50{Click to open the line that sent this request: visits-page.component.ts:50} VisitService.getVisitsPage ↗]]
+activate Browser
+Browser -> Backend: [[genseq://09jss6p{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:54{Click to open VisitRestController.listVisits} VisitRestController.listVisits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend
@@ -22,9 +26,15 @@ Backend -> DB: [[genseq://094wceq{Click for the statement behind this call} Visi
 Backend -> DB: [[genseq://0cvbten{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
 Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner ⊕]]
 deactivate Backend
+deactivate Backend
 Backend --> Browser: [[genseq://1gl89nl{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
-Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:59{Click to open the line that sent this request: visits-page.component.ts:86 ← visits-page.component.ts:59 ← visits-page.component.html:38} listVisits\nGET /api/visits ↗]]
+deactivate Browser
+[-> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:59{Click to open the line that sent this request: visits-page.component.ts:86 ← visits-page.component.ts:59 ← visits-page.component.html:38} VisitsPageComponent.onPage ↗]]
+activate Browser
+Browser -> Backend: [[genseq://16lw5x1{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:54{Click to open VisitRestController.listVisits} VisitRestController.listVisits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend
@@ -34,9 +44,15 @@ Backend -> DB: [[genseq://0xm9qzg{Click for the statement behind this call} Visi
 Backend -> DB: [[genseq://1heb9yw{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
 Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner ⊕]]
 deactivate Backend
+deactivate Backend
 Backend --> Browser: [[genseq://0xfw4pf{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
-Browser -> Backend: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:59{Click to open the line that sent this request: visits-page.component.ts:86 ← visits-page.component.ts:59 ← visits-page.component.html:38} listVisits\nGET /api/visits ↗]]
+deactivate Browser
+[-> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:59{Click to open the line that sent this request: visits-page.component.ts:86 ← visits-page.component.ts:59 ← visits-page.component.html:38} VisitsPageComponent.onPage ↗]]
+activate Browser
+Browser -> Backend: [[genseq://1kd3t99{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:54{Click to open VisitRestController.listVisits} VisitRestController.listVisits ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:22{Click to open VisitRepository.findAllWithPetAndOwner} VisitRepository.findAllWithPetAndOwner ↗]]
 activate Backend
@@ -47,6 +63,8 @@ Backend -> DB: [[genseq://0cvbten{Click for the statement behind this call} Visi
 Backend -> DB: [[genseq://070fg5f{Click for the statement behind this call} VisitRepository.findAllWithPetAndOwner ⊕]]
 Backend -> DB: [[genseq://0gohwr7{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner ⊕]]
 deactivate Backend
+deactivate Backend
 Backend --> Browser: [[genseq://1su7rdl{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
+deactivate Browser
 @enduml
