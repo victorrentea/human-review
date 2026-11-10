@@ -235,8 +235,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
             '<b>Generated from code</b>: a test writes the spec from the controllers.',
             '<b>Diagram</b>: a body as classes, entered by an arrow; green added, red struck removed.',
             'One DTO change breaks many endpoints: for each, ask who calls it and if they were updated.',
-            '<b>→</b> a change to the request, <b>←</b> to the response; no badge means not breaking.',
-            '<b>changes: expand</b> opens every endpoint and field the branch changed.',
+            '<b>→</b> request, <b>←</b> response; a red row is what breaks a client, no badge: nothing.',
+            '<b>changes: expand</b> opens what changed; only a field with fields inside has a <b>▶</b>.',
         ],
         "code": (
             '<span class="c">e.g. GET /api/owners/1</span>\n'

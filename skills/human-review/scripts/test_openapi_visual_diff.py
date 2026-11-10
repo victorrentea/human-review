@@ -656,6 +656,47 @@ def test_swagger_ui_is_one_whose_array_trees_open():
     assert "if (retried) { plainList(); return; }" in t
 
 
+def test_a_leaf_field_shows_its_description_without_a_fold():
+    """Victor, 10 Nov 2026: `ownerLastName  read-only string` sat behind a ▶ and an
+    "Expand all" with only its one-line description under them. A field that would not
+    fold without its description or example is a leaf: no toggle, no "Expand all", the
+    description on its own row. Objects and arrays keep their fold."""
+    t = ovd.TEMPLATE
+    assert "plugins: [LeafFields]," in t, "the plugin is handed to Swagger UI"
+    assert "const LEAF_NOISE = ['description', 'example', 'examples'];" in t
+    # foldable = Swagger UI's own test minus the keywords a leaf may still carry
+    assert "Object.assign(fn, { isExpandable: s => !isLeaf(s) && foldable(s) });" in t
+    # one predicate for every plugin call: afterLoad and the components share it
+    assert t.index("let isLeaf = () => false;") < t.index("function LeafFields(system)")
+    assert "JSONSchema202012KeywordType: (Original, sys) => props =>" in t
+    assert "h('div', { className: 'dv-leaf-desc' }, h(Description, { schema: s }))" in t
+    # laid out like an opened node's description, measured past the field-change chip
+    assert "' .swagger-ui .json-schema-2020-12-head > .dv-leaf-desc'" in t
+    assert "[...head.children].filter(c => c !== d).pop()" in t
+    assert ".json-schema-2020-12-head > .dv-leaf-desc.dv-desc-inline {" in t
+
+
+def test_no_example_value_is_drawn_on_a_field():
+    """Victor, 10 Nov 2026: the italic "Example=1" under a field says nothing a reviewer
+    checks. Both keywords Swagger UI draws it from render nothing; "Example Value" (the
+    sample body) is generated from the schema and stays."""
+    t = ovd.TEMPLATE
+    assert "JSONSchema202012KeywordExample: drop," in t
+    assert "JSONSchema202012KeywordExamples: drop," in t
+    assert "const drop = () => () => null;" in t
+
+
+def test_a_breaking_change_row_is_red_as_a_whole():
+    """Victor, 10 Nov 2026 (demo2, GET /api/visits): only the BREAKING badge was red, the
+    sentence after it as grey as the harmless "added the new optional query parameter"
+    rows, so he read past the one line that was the reason. Warn and info rows stay."""
+    t = ovd.TEMPLATE
+    row = t.split("  .dv-change.l3 {", 1)[1].split("}", 1)[0]
+    assert "color: var(--dv-breaking);" in row and "var(--dv-breaking) 8%" in row
+    assert "  .dv-change.l2 {" not in t and "  .dv-change.l1 {" not in t
+    assert "`<div class=\"dv-change l${c.level}\">" in t
+
+
 def test_the_skill_copy_and_the_public_repo_copy_have_not_drifted():
     """`openapi-visual-diff.py` lives twice: here, and as its own public repo. A fix in
     one and not the other is a trap for whoever reads the other one."""

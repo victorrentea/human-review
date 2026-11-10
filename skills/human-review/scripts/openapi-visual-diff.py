@@ -937,6 +937,10 @@ TEMPLATE = r"""<!doctype html>
     text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-top: 1px;
   }
   .dv-change.l3 .lvl { background: rgba(215,38,61,.12); color: var(--dv-breaking); }
+  /* The row that makes an endpoint breaking is red as a whole, not only its badge: in
+     grey among "added the new optional query parameter" rows, Victor read past the one
+     line that was the reason (10 Nov 2026, GET /api/visits). Warn and info rows stay. */
+  .dv-change.l3 { color: var(--dv-breaking); background: color-mix(in srgb, var(--dv-breaking) 8%, transparent); }
   .dv-change.l2 .lvl { background: rgba(217,130,24,.14); color: var(--dv-lvl2); }
   .dv-change.l1 .lvl { background: rgba(46,158,91,.12); color: var(--dv-lvl1); }
 
@@ -1348,6 +1352,13 @@ TEMPLATE = r"""<!doctype html>
     left: var(--dv-desc-left); height: var(--dv-desc-h); line-height: var(--dv-desc-h);
     text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .swagger-ui .json-schema-2020-12-head > .dv-leaf-desc.dv-desc-inline {
+    position: absolute; top: 0; right: 8px; margin: 0; padding: 0;
+    left: var(--dv-desc-left); height: var(--dv-desc-h); line-height: var(--dv-desc-h);
+    text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .swagger-ui .json-schema-2020-12-head > .dv-leaf-desc:not(.dv-desc-inline) { margin-left: 20px; }
+  .swagger-ui .dv-leaf-desc > .json-schema-2020-12-keyword--description { margin: 0; display: inline; }
   .swagger-ui .dv-desc-inline * { display: inline; margin: 0; padding: 0; }
   .swagger-ui .dv-desc-inline p + p::before { content: " "; }
   .swagger-ui .opblock.opblock-deprecated { opacity: .7; }
@@ -1724,13 +1735,18 @@ function keyOf(op) {
 // Measured, not guessed: the head's last chip ends wherever its name, flags and
 // constraints happen to end, and the field-change chip lands there too. Re-run with
 // decorate(), so a node opened by hand or by the walk is laid out once it renders.
+// A leaf's description (see LeafFields) sits in the head itself among the chips: it is
+// measured against the last chip that is not itself (a field-change chip lands after
+// it), and when there is no room it drops to a line of
+// its own under the head, where an opened node's description would be.
 function layoutDescriptions() {
   root.querySelectorAll(
-    '.swagger-ui .json-schema-2020-12-body > .json-schema-2020-12-keyword--description'
+    '.swagger-ui .json-schema-2020-12-body > .json-schema-2020-12-keyword--description,'
+    + ' .swagger-ui .json-schema-2020-12-head > .dv-leaf-desc'
   ).forEach(d => {
     const art = d.parentElement.parentElement;
     const head = art.querySelector(':scope > .json-schema-2020-12-head');
-    const last = head?.lastElementChild;
+    const last = head && [...head.children].filter(c => c !== d).pop();
     if (!last) return;
     const a = art.getBoundingClientRect();
     const left = Math.ceil(last.getBoundingClientRect().right - a.left + 24);
@@ -2617,6 +2633,48 @@ root.getElementById('dv-expand').onchange = async e => {
 // left asking where the rows went (Victor, 9 Oct 2026 — "I see there are no rows"). So a
 // missing bundle is fetched once more from a second CDN, and if that fails too the
 // changed endpoints are listed plainly from DATA, with the reason on top.
+// ---- a field with nothing under it does not fold (Victor, 10 Nov 2026) ----
+// Swagger UI makes a node foldable as soon as it has a description (or an example), so
+// `ownerLastName  read-only string` sat behind a ▶ and an "Expand all" with one sentence
+// under them — the reader clicked to learn what it is, or that nothing was there. A leaf
+// is a field that would not be foldable without those: it gets no ▶ and no "Expand all",
+// and its description is drawn on its own head row (`dv-leaf-desc`, laid out by
+// layoutDescriptions like an opened node's). Objects, arrays, enums keep their fold.
+// The example is dropped everywhere: a made-up value says nothing about the contract.
+// "Example Value" is generated from the schema, not drawn by these keywords, and stays.
+// `isLeaf` lives out here: Swagger UI calls a plugin function more than once, and the
+// afterLoad of one call must set the predicate the components of another call read.
+const LEAF_NOISE = ['description', 'example', 'examples'];
+let isLeaf = () => false;
+function LeafFields(system) {
+  const h = system.React.createElement;
+  const drop = () => () => null;
+  return {
+    afterLoad(sys) {
+      const fn = sys.fn && sys.fn.jsonSchema202012;
+      if (!fn || typeof fn.isExpandable !== 'function') return;
+      const foldable = fn.isExpandable;
+      isLeaf = s => !!s && typeof s === 'object'
+        && !foldable(Object.fromEntries(Object.entries(s).filter(([k]) => !LEAF_NOISE.includes(k))));
+      Object.assign(fn, { isExpandable: s => !isLeaf(s) && foldable(s) });
+    },
+    wrapComponents: {
+      JSONSchema202012KeywordExample: drop,
+      JSONSchema202012KeywordExamples: drop,
+      // The type chip is the last thing every head draws before its constraints, so a
+      // leaf's description goes in right behind the head's chips.
+      JSONSchema202012KeywordType: (Original, sys) => props => {
+        const s = props.schema;
+        const own = h(Original, props);
+        if (!isLeaf(s) || !s.description) return own;
+        const Description = sys.getComponent('JSONSchema202012KeywordDescription');
+        return h(system.React.Fragment, null, own,
+          h('div', { className: 'dv-leaf-desc' }, h(Description, { schema: s })));
+      },
+    },
+  };
+}
+
 const FALLBACK = 'https://unpkg.com/swagger-ui-dist@5.33.1/swagger-ui-bundle.js';
 const FALLBACK_CSS = 'https://unpkg.com/swagger-ui-dist@5.33.1/swagger-ui.css';
 let booted = false, retried = false;
@@ -2638,6 +2696,7 @@ function boot() {
     tryItOutEnabled: false,
     supportedSubmitMethods: [],
     deepLinking: false,
+    plugins: [LeafFields],
     onComplete: decorate,
   });
 }
