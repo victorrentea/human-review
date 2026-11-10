@@ -491,8 +491,10 @@
     }).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { say(t || 'the review server refused'); });
       return r.json().then(function (j) {
-        say('Opened in Bruno \u2014 pick ' + j.name + ' in the sidebar' +
-            (j.environment ? ', environment ' + j.environment : '') +
+        say((j.selected
+            ? 'Opened in Bruno on ' + j.name + (j.environment ? ', environment ' + j.environment : '')
+            : 'Opened in Bruno \u2014 it had unsaved edits, so pick ' + j.name + ' in the sidebar' +
+              (j.environment ? ', environment ' + j.environment : '')) +
             (j.variable && !j.value ? ' (set ' + j.variable + ' there first)' : ''));
       });
     }).catch(function () { copyCurl(entry, 'The review server is gone: '); });

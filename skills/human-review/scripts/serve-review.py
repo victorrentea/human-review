@@ -1287,6 +1287,94 @@ def open_in_bruno(folder: Path) -> None:
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+# Where Bruno keeps what it had open — every collection's tabs, its active tab, its
+# environment — and restores it from when it starts. Nothing reaches a running Bruno from
+# outside (no deep link, no IPC), so the one way to hand it a request *selected* is to have
+# it start with that request as its active tab: quit it, say so in this file, start it again
+# (Victor, 10 Nov 2026: "poți să și selectezi request-ul nou adăugat?").
+BRUNO_SNAPSHOT = Path.home() / "Library" / "Application Support" / "bruno" / "ui-state-snapshot.json"
+BRUNO_QUIT_SECONDS = 8.0
+
+
+def _osascript(script: str) -> str:
+    """An Apple Event to Bruno itself — `is running`, `quit` — never input to the screen."""
+    try:
+        done = subprocess.run(["osascript", "-e", script], capture_output=True, text=True,
+                              timeout=BRUNO_QUIT_SECONDS + 2)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return done.stdout.strip()
+
+
+def bruno_running() -> bool:
+    return _osascript('application "Bruno" is running') == "true"
+
+
+def quit_bruno() -> bool:
+    """Ask Bruno to quit and wait for it to be gone. False when it stays: a request with
+    unsaved edits makes it ask first, and that question is the reader's to answer."""
+    _osascript('tell application "Bruno" to quit')
+    deadline = time.time() + BRUNO_QUIT_SECONDS
+    while time.time() < deadline:
+        if not bruno_running():
+            time.sleep(0.3)  # its last write of the snapshot lands as it exits
+            return True
+        time.sleep(0.25)
+    return False
+
+
+def select_in_bruno_snapshot(snapshot: Path, folder: Path, target: Path, name: str) -> bool:
+    """Make `target` the active tab of the collection in `folder`, with the `local`
+    environment selected, in Bruno's saved UI state. Only for a Bruno that is not running:
+    a running one writes over this file from its own memory. False when there is no file
+    to edit, or one this does not recognise — Bruno then opens as it would have anyway."""
+    try:
+        state = json.loads(snapshot.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(state, dict) or not isinstance(state.get("collections"), list):
+        return False
+    folder_s, target_s = str(folder), str(target)
+    env = str(folder / "environments" / f"{BRUNO_ENV}.bru")
+    workspace = state.get("activeWorkspacePath") or ""
+    for ws in state.get("workspaces") or []:
+        if isinstance(ws, dict) and ws.get("pathname") == workspace:
+            if folder_s not in (ws.get("collections") or []):
+                ws["collections"] = [*(ws.get("collections") or []), folder_s]
+            ws["lastActiveCollectionPathname"] = folder_s
+    entry = next((c for c in state["collections"]
+                  if isinstance(c, dict) and c.get("pathname") == folder_s), None)
+    if entry is None:
+        entry = {"pathname": folder_s, "workspacePathname": workspace, "tabs": []}
+        state["collections"].append(entry)
+    entry.update({"isOpen": True, "isMounted": True,
+                  "environment": {"collection": env, "global": ""},
+                  "environmentPath": env, "selectedEnvironment": BRUNO_ENV,
+                  "activeTab": {"accessor": "pathname", "value": target_s}})
+    tabs = [t for t in entry.get("tabs") or [] if isinstance(t, dict)]
+    if not any(t.get("pathname") == target_s for t in tabs):
+        tabs.append({"type": "http-request", "accessor": "pathname", "permanent": True,
+                     "pathname": target_s, "name": name,
+                     "request": {"tab": "params", "width": None, "height": None},
+                     "response": {"tab": "response", "format": None, "viewTab": None}})
+    entry["tabs"] = tabs
+    tmp = snapshot.with_name(snapshot.name + ".human-review.tmp")
+    tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    os.replace(tmp, snapshot)
+    return True
+
+
+def open_selected_in_bruno(folder: Path, target: Path, name: str) -> bool:
+    """Bruno, started on the collection with `target` selected. True when it was selected;
+    False when Bruno would not quit (it is then only brought forward, as before)."""
+    if bruno_running() and not quit_bruno():
+        open_in_bruno(folder)
+        return False
+    selected = select_in_bruno_snapshot(BRUNO_SNAPSHOT, folder, target, name)
+    open_in_bruno(folder)
+    return selected
+
+
 def _field(raw: bytes, key: str):
     """One field of a POST's JSON body, None when the body is not a JSON object."""
     try:
@@ -2729,8 +2817,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
             folder = bruno_folder()
             target = write_bruno_request(folder, req)
-            open_in_bruno(folder)
+            selected = open_selected_in_bruno(folder, target, bruno_name(req))
             self.reply_json({"collection": str(folder), "file": target.name,
+                             "selected": selected,
                              "name": bruno_name(req), "environment": BRUNO_ENV,
                              "variable": req["var"], "value": req["default"]})
             return

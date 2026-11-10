@@ -141,6 +141,10 @@ def bruno(monkeypatch, tmp_path):
     monkeypatch.setattr(srv, "bruno_app", lambda: Path("/Applications/Bruno.app"))
     monkeypatch.setattr(srv, "open_in_bruno", opened.append)
     monkeypatch.setattr(srv, "ROOT", tmp_path)
+    # Never the real one: a test that asked the Mac would quit the reader's own Bruno.
+    monkeypatch.setattr(srv, "bruno_running", lambda: False)
+    monkeypatch.setattr(srv, "quit_bruno", lambda: pytest.fail("quit"))
+    monkeypatch.setattr(srv, "BRUNO_SNAPSHOT", tmp_path / "ui-state-snapshot.json")
     return opened
 
 
@@ -151,6 +155,7 @@ def test_the_endpoint_writes_the_request_and_opens_the_collection_in_bruno(serve
     got = json.loads(payload)
     folder = tmp_path / ".human-review" / "bruno"
     assert got == {"collection": str(folder), "file": got["file"], "name": "GET /api/owners/1",
+                   "selected": False,
                    "environment": "local", "variable": "baseUrl",
                    "value": "http://localhost:8080"}
     text = (folder / got["file"]).read_text()
@@ -235,7 +240,7 @@ def _page(browser, caps="null"):
             sent.append((route.request.headers, json.loads(route.request.post_data)))
             route.fulfill(status=200, content_type="application/json", body=json.dumps(
                 {"name": "GET /api/owners/1", "environment": "local", "variable": "baseUrl",
-                 "value": "http://localhost:8080"}))
+                 "value": "http://localhost:8080", "selected": True}))
         else:
             route.fulfill(status=200, content_type="text/html", body=html)
     page.route("http://hr.test/**", fulfil)
@@ -291,7 +296,7 @@ def test_served_the_button_hands_the_request_to_the_server_and_says_where_it_wen
         assert headers["content-type"] == "application/json"
         assert body == {"request": DETAILS["details"]["req"]["request"], "title": "Browser → Backend"}
         assert page.evaluate("window.flashed") == [
-            "Opened in Bruno \u2014 pick GET /api/owners/1 in the sidebar, environment local"]
+            "Opened in Bruno on GET /api/owners/1, environment local"]
         assert page.evaluate("window.copied") == []
         assert page.evaluate("!document.querySelector('#genseq-panel').hidden"), "panel stays"
     finally:
@@ -329,3 +334,65 @@ def test_a_request_step_reads_as_an_http_message(browser):
                          ["genseq-verb", "GET"]]
     assert [t for c, t in parts if c == "genseq-hname"] == ["Accept:", "traceparent:"]
     assert ["nt", '"id"'] in parts and ["mi", "1"] in parts, "the body as every JSON payload"
+
+
+# ---- the request comes up selected ----------------------------------------------------------
+
+SNAPSHOT = {"version": "0.0.1", "activeWorkspacePath": "/ws",
+            "workspaces": [{"pathname": "/ws", "collections": ["/other"],
+                            "lastActiveCollectionPathname": "/other"}],
+            "collections": [{"pathname": "/other", "isOpen": True, "tabs": [{"pathname": "/other/a.yml"}],
+                             "activeTab": {"accessor": "pathname", "value": "/other/a.yml"}}]}
+
+
+def test_bruno_starts_on_the_request_it_was_handed(tmp_path):
+    snapshot = tmp_path / "ui-state-snapshot.json"
+    snapshot.write_text(json.dumps(SNAPSHOT))
+    folder, target = tmp_path / "bruno", tmp_path / "bruno" / "get-api-owners-1-abc.bru"
+    assert srv.select_in_bruno_snapshot(snapshot, folder, target, "GET /api/owners/1")
+    state = json.loads(snapshot.read_text())
+    ws = state["workspaces"][0]
+    assert ws["collections"] == ["/other", str(folder)]
+    assert ws["lastActiveCollectionPathname"] == str(folder)
+    mine = next(c for c in state["collections"] if c["pathname"] == str(folder))
+    assert mine["activeTab"] == {"accessor": "pathname", "value": str(target)}
+    assert [t["pathname"] for t in mine["tabs"]] == [str(target)]
+    assert mine["selectedEnvironment"] == "local"
+    assert mine["environmentPath"] == str(folder / "environments" / "local.bru")
+    assert state["collections"][0]["activeTab"]["value"] == "/other/a.yml", "others untouched"
+    # pressed again: the tab is not doubled
+    assert srv.select_in_bruno_snapshot(snapshot, folder, target, "GET /api/owners/1")
+    mine = next(c for c in json.loads(snapshot.read_text())["collections"]
+                if c["pathname"] == str(folder))
+    assert len(mine["tabs"]) == 1
+
+
+def test_a_snapshot_it_does_not_recognise_is_left_alone(tmp_path):
+    snapshot = tmp_path / "ui-state-snapshot.json"
+    assert not srv.select_in_bruno_snapshot(snapshot, tmp_path, tmp_path / "x.bru", "x")
+    snapshot.write_text("[1, 2]")
+    assert not srv.select_in_bruno_snapshot(snapshot, tmp_path, tmp_path / "x.bru", "x")
+    assert snapshot.read_text() == "[1, 2]"
+
+
+def test_a_running_bruno_is_restarted_on_the_request(server, bruno, monkeypatch, tmp_path):
+    (tmp_path / "ui-state-snapshot.json").write_text(json.dumps(SNAPSHOT))
+    quits = []
+    monkeypatch.setattr(srv, "bruno_running", lambda: not quits)
+    monkeypatch.setattr(srv, "quit_bruno", lambda: quits.append(1) or True)
+    status, payload = _call(server, "POST", srv.OPEN_BRUNO, {"request": GET, "title": "Browser → Backend"})
+    got = json.loads(payload)
+    assert status == 200 and got["selected"] is True and quits == [1]
+    state = json.loads((tmp_path / "ui-state-snapshot.json").read_text())
+    assert any(c.get("activeTab", {}).get("value", "").endswith(got["file"]) for c in state["collections"])
+    assert bruno == [tmp_path / ".human-review" / "bruno"]
+
+
+def test_a_bruno_that_will_not_quit_is_only_brought_forward(server, bruno, monkeypatch, tmp_path):
+    (tmp_path / "ui-state-snapshot.json").write_text(json.dumps(SNAPSHOT))
+    monkeypatch.setattr(srv, "bruno_running", lambda: True)
+    monkeypatch.setattr(srv, "quit_bruno", lambda: False)
+    status, payload = _call(server, "POST", srv.OPEN_BRUNO, {"request": GET})
+    assert status == 200 and json.loads(payload)["selected"] is False
+    assert json.loads((tmp_path / "ui-state-snapshot.json").read_text()) == SNAPSHOT
+    assert bruno == [tmp_path / ".human-review" / "bruno"]
