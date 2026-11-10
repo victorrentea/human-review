@@ -1,10 +1,12 @@
-// "human-review" in the status bar: is a Human Review of this window's checkout being served?
+// The review page's favicon in the status bar: is a Human Review of this window's checkout
+// being served? The same two faces the browser tab shows, so the IDE and the tab strip agree
+// at a glance (Victor, 10 Nov 2026: the icon, no "human-review" text):
 //
-//   grey   — `.human-review/review.html` exists, but no serve-review.py is serving it
-//   green  — a live server serves `<folder>/.human-review`, and the checkout's HEAD is the
+//   👱🏻‍♂️      — `.human-review/review.html` exists, but no serve-review.py is serving it
+//   🧑‍💻      — a live server serves `<folder>/.human-review`, and the checkout's HEAD is the
 //            reviewed commit (`data-hr-head` on the <html> of review.html)
-//   amber  — served, but the checkout is on another commit: links in the page open only the
-//            files unchanged since
+//   🧑‍💻 ●   — served, but the checkout is on another commit (amber dot): links in the page
+//            open only the files unchanged since
 //   hidden — the window has no review on disk (a grey item in every window is noise)
 //
 // How it is detected, and why exactly so:
@@ -145,6 +147,10 @@ async function probeFolders(folders, memo) {
 
 // --------------------------------------------------------------------------- UI
 
+// The page's favicons (hrbuild/shared/masthead.py): static, and served.
+const FACE_STATIC = '\u{1F471}\u{1F3FB}\u200D\u2642\uFE0F';
+const FACE_SERVED = '\u{1F9D1}\u200D\u{1F4BB}';
+
 const short = (sha) => (sha || '').slice(0, 8);
 const where = (b, sha) => `${b ? b + ' @ ' : ''}${short(sha) || '?'}`;
 
@@ -221,13 +227,14 @@ function register(context) {
     const title = s.title ? `**${s.title.replace(/[\\`*_[\]<>]/g, '\\$&')}**\n\n` : '';
     const reviewed = where(s.reviewed && s.reviewed.branch, s.reviewed && s.reviewed.sha);
     if (s.state === 'off') {
-      item.text = starting ? 'human-review $(sync~spin)' : 'human-review';
+      item.text = starting ? `${FACE_STATIC} $(sync~spin)` : FACE_STATIC;
       item.color = new vscode.ThemeColor('disabledForeground');
       md.appendMarkdown(`$(circle-outline) Human Review — not served\n\n${title}`
         + `${name}/${DIR}/${PAGE} reviews ${reviewed}, but no review server is serving it.\n\n`
         + (starting ? '$(sync~spin) Starting the review server…' : 'Click to serve it.'));
     } else {
-      item.text = 'human-review $(circle-filled)';
+      // An emoji takes no colour: green is the face alone, amber adds a dot that does.
+      item.text = s.state === 'on' ? FACE_SERVED : `${FACE_SERVED} $(circle-filled)`;
       const co = s.checkout ? where(s.checkout.branch, s.checkout.head) : 'unknown';
       if (s.state === 'on') {
         item.color = new vscode.ThemeColor('testing.iconPassed');

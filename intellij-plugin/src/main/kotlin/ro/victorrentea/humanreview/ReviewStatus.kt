@@ -9,6 +9,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
@@ -166,18 +167,25 @@ class ReviewStatusWidgetFactory : StatusBarWidgetFactory {
     override fun createWidget(project: Project): StatusBarWidget = ReviewStatusWidget(project)
 }
 
-/** A label, not a `TextPresentation`: the state is a colour, and a text presentation has none.
- *  Hidden (not removed) while the project has no review on disk. */
+/** A label, not a `TextPresentation`: the state is an icon (and a colour), and a text
+ *  presentation has neither. Hidden (not removed) while the project has no review on disk.
+ *
+ *  The icon is the review page's favicon, rendered from `hrbuild/shared/masthead.py` to PNG
+ *  (an SVG of an emoji would draw in whatever font the IDE finds): the face at the laptop while
+ *  served, the plain face while the page is only on disk — the same two the browser tab shows,
+ *  so the IDE and the tab strip agree at a glance (Victor, 10 Nov 2026: the icon, no text). */
 class ReviewStatusWidget(private val project: Project) : CustomStatusBarWidget {
     companion object {
         const val ID = "HumanReview.Status"
         private val GREEN = JBColor(Color(0x2E7D32), Color(0x5FB865))
         private val AMBER = JBColor(Color(0xB26B00), Color(0xE0A030))
+        private val SERVED = IconLoader.getIcon("/icons/review-served.png", ReviewStatusWidget::class.java)
+        private val STATIC = IconLoader.getIcon("/icons/review-static.png", ReviewStatusWidget::class.java)
     }
 
-    private val label = JBLabel("human-review").apply {
+    private val label = JBLabel(STATIC).apply {
         border = JBUI.Borders.empty(0, 6)
-        horizontalTextPosition = SwingConstants.LEFT
+        horizontalTextPosition = SwingConstants.RIGHT
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         isVisible = false
         addMouseListener(object : MouseAdapter() {
@@ -219,15 +227,16 @@ class ReviewStatusWidget(private val project: Project) : CustomStatusBarWidget {
         val reviewed = esc(where(s.reviewed?.branch, s.reviewed?.sha))
         val tip: String
         if (s.state == ReviewState.OFF) {
-            label.text = "human-review"
-            label.icon = if (status.starting) AnimatedIcon.Default.INSTANCE else null
+            label.text = ""
+            label.icon = if (status.starting) AnimatedIcon.Default.INSTANCE else STATIC
             label.foreground = UIUtil.getInactiveTextColor()
             tip = "Human Review — not served<br><br>$title" +
                 "${esc(name)}/${ReviewProbe.DIR}/${ReviewProbe.PAGE} reviews $reviewed, but no review server is serving it.<br><br>" +
                 (if (status.starting) "Starting the review server…" else "Click to serve it.")
         } else {
-            label.text = "human-review ●"
-            label.icon = null
+            // Green is the face alone; amber adds a dot, the one part of the item a colour reaches.
+            label.text = if (s.state == ReviewState.ON) "" else "●"
+            label.icon = SERVED
             val co = s.checkout?.let { esc(where(it.branch, it.head)) } ?: "unknown"
             tip = if (s.state == ReviewState.ON) {
                 label.foreground = GREEN
