@@ -17,6 +17,10 @@
 /* The arrow whose panel is open: in the diagram's strongest ink (near-white on the dark
    page, black on the light one), not bold — bold reflowed the label (Victor, 19 Oct 2026). */
 .genseq-hot.genseq-open a[href^="genseq:"] text { fill:var(--dgm-fg); font-weight:400; }
+/* A click focuses the SVG link, and Chrome rings it in its own two-tone focus ring, a thick
+   black-and-blue pill around `200 ⊕` that outlasts the click (Victor, 10 Nov 2026). The
+   band and the ink above already say which arrow is open; the keyboard keeps its ring. */
+.diagram svg a:focus:not(:focus-visible) { outline:none; }
 /* On the Diff pane an added or removed call's arrow is green or red, and its label was still
    link blue, so the change showed only in a thin line. The label takes the arrow's colour;
    the ⊕ and the IDE logo still say it is a link. The open one keeps its own ink, above. */
