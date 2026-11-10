@@ -508,7 +508,6 @@ def test_a_simpler_flow_says_so_in_words_and_is_never_drawn_in_alarm_red():
     row = delta.render_row(_row(now=6, was=11, delta=-5, why=[]), 12)
     assert 'class="cx-row cx-down"' in row
     assert '>−5<small> simpler</small></span>' in row
-    assert "11 before, −5 by this branch" in row
     for block in re.findall(r"--cx-removed:(#[0-9a-fA-F]{6})", delta.CSS):
         r, g, b = (int(block[i:i + 2], 16) for i in (1, 3, 5))
         assert not (r > g + 60 and r > b + 60), f"{block} is a red; the removed colour is neutral"
@@ -906,20 +905,12 @@ def test_the_open_rows_are_named_in_the_address_bar():
 
 
 
-def test_the_bar_the_delta_and_the_total_share_one_tooltip():
-    """Three faces of one fact, so one text on all three (Victor, 4 Nov 2026), saying first
-    what the value is, and never naming the base: on a pull request that is a commit SHA."""
-    def tips(row):
-        return re.findall(r'class="cx-(?:bar|badge|n)" data-tip="([^"]*)"', row)
-    up = delta.render_row(_row(now=12, was=11, delta=1, why=[]), 20)
-    assert tips(up) == ["Total complexity of this flow: 12&#10;11 before, +1 by this branch"] * 3 \
-        or tips(up) == ["Total complexity of this flow: 12\n11 before, +1 by this branch"] * 3, tips(up)
-    assert "<i data-tip" not in up and "<u data-tip" not in up, "no tooltip inside the tooltip"
-    down = delta.render_row(_row(now=6, was=11, delta=-5, why=[]), 20)
-    assert len(set(tips(down))) == 1 and "11 before, −5 by this branch" in tips(down)[0]
-    new = delta.render_row(_row(now=4, was=None, delta=None, why=[]), 20)
-    assert len(set(tips(new))) == 1 and "New on this branch" in tips(new)[0]
-    same = delta.render_row(_row(now=7, was=7, delta=0, why=[]), 20)
-    assert len(set(tips(same))) == 1 and "Unchanged by this branch" in tips(same)[0]
-    gone = delta.render_row(_row(gone=True, why=[]), 20)
-    assert len(set(tips(gone))) == 1 and "Removed by this branch" in tips(gone)[0]
+def test_the_bar_the_delta_and_the_total_carry_no_tooltip():
+    """The row already shows the total, the green part and the +1; a tooltip repeating them
+    was noise (Victor, 10 Nov 2026)."""
+    for row in (_row(now=12, was=11, delta=1, why=[]), _row(now=6, was=11, delta=-5, why=[]),
+                _row(now=4, was=None, delta=None, why=[]), _row(now=7, was=7, delta=0, why=[]),
+                _row(gone=True, why=[])):
+        html = delta.render_row(row, 20)
+        assert not re.search(r'class="cx-(?:bar|badge|n)" data-tip', html), html
+        assert "Total complexity of this flow" not in html

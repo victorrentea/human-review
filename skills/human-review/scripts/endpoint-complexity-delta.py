@@ -534,16 +534,10 @@ NOT_FOLLOWED_TIP = ("{n} call(s) into this project that could not be bound to a 
                     "not followed, so not in this number:")
 
 
-# One tooltip for the bar, the delta and the total, the same words on all three, since they
-# are three faces of one fact (Victor, 4 Nov 2026: "one single tooltip"). The first line says
-# what the value is. The base stays unnamed: it is a commit SHA on a pull request's page, and
-# "11 on 3f4a2c1" told a reader nothing "11 before" does not.
-TIP_ROW = "Total complexity of this flow: {total}\n{story}"
-TIP_UP = "{baseline} before, +{delta} by this branch"
-TIP_DOWN = "{baseline} before, −{delta} by this branch"
-TIP_SAME = "Unchanged by this branch"
-TIP_NEW = "New on this branch"
-TIP_GONE = "Removed by this branch, {baseline} before"
+# The bar, the delta and the total carry no tooltip. They had one, the same on all three
+# ("Total complexity of this flow: 12 / 11 before, +1 by this branch"), and it only said
+# again what the row already shows: the total at the end, the green part of the bar, the
+# +1 beside it (Victor, 10 Nov 2026: "e evident acest tooltip, scoate-l").
 # The two column heads. First line: what it counts.
 TIP_COL_ADDED = "Complexity this branch added to the flow"
 TIP_COL_TOTAL = "Complexity of the whole flow, on this branch"
@@ -574,17 +568,16 @@ def render_row(r, peak) -> str:
         # The branch deleted this entry point. A ghost for the whole width it used to
         # occupy — the same "slate is what the branch removed" convention as everywhere else.
         was = r["was"] or 0
-        gone_tip = TIP_ROW.format(total=0, story=TIP_GONE.format(baseline=was))
         # No fold: there is no branch code left to break down. A row whose flow the branch
         # deleted has nothing to open onto, and an empty fold under it would read as a bug.
         return _row(
             "cx-down cx-gone",
             f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
             f'<s>{_path_cell(r)}</s>'
-            f'<span class="cx-bar"{_tip(gone_tip)}>'
+            f'<span class="cx-bar">'
             f'<u style="width:{100.0 * was / peak:.1f}%"></u></span>'
-            f'<span class="cx-badge"{_tip(gone_tip)}>gone</span>'
-            f'<span class="cx-n"{_tip(gone_tip)}>0</span>',
+            f'<span class="cx-badge">gone</span>'
+            f'<span class="cx-n">0</span>',
             "",
         )
     if r["delta"] is None:
@@ -608,21 +601,14 @@ def render_row(r, peak) -> str:
     else:
         delta_pct = 100.0 * abs(delta) / peak
         kept_pct = now_pct - (delta_pct if delta > 0 else 0)
-    if r["delta"] is None:
-        story = TIP_NEW
-    elif delta:
-        story = (TIP_UP if delta > 0 else TIP_DOWN).format(baseline=r["was"], delta=abs(delta))
-    else:
-        story = TIP_SAME
-    tip = _tip(TIP_ROW.format(total=r["now"], story=story))
     return _row(
         cls,
         f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
         f"{_path_cell(r)}"
-        f'<span class="cx-bar"{tip}>'
+        f'<span class="cx-bar">'
         f'<i style="width:{kept_pct:.1f}%"></i><u style="width:{delta_pct:.1f}%"></u></span>'
-        f'<span class="cx-badge"{tip}>{badge}</span>'
-        f'<span class="cx-n"{tip}>{r["now"]}</span>',
+        f'<span class="cx-badge">{badge}</span>'
+        f'<span class="cx-n">{r["now"]}</span>',
         _why_panel(r),
         f'{r["method"]} {r["path"]}',
     )

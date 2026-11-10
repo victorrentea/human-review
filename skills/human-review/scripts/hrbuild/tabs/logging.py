@@ -422,7 +422,11 @@ def logging_fragment(block, root: Path, base: str | None = None):
             f'<span class="dfn" data-tip-side="right"'
             f' data-tip-html="{html.escape(logging_libraries_tip(), quote=True)}">'
             f'common Java logging libraries</span></h2>'
-            '<p class="tabsub">Found by syntax-aware search over Java sources</p>')
+            '<p class="tabsub">Found by syntax-aware search over Java sources: '
+            '<a href="https://ast-grep.github.io" target="_blank" rel="noopener">ast-grep</a> '
+            '(open source, built on tree-sitter) parses each file, and this skill&#39;s own rules '
+            '(<code>logextract.py</code>) first find which fields are loggers, then every '
+            'log-level call made on one.</p>')
     body = ""
     # No header bar and no surrounding card any more: no heading repeating "logging", no
     # count pill, no `path, base…HEAD` provenance line — the tab's own title already says

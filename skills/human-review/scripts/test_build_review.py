@@ -853,7 +853,8 @@ def test_the_logging_tab_opens_on_one_computed_heading(tmp_path, monkeypatch):
     # the authored "Logging added/updated", which is the tab's label said twice.
     assert frag.count("<h2") == 1 and '<h2 class="tabtitle" id="logging-added">Uses of <span' in frag
     # Under it, how the uses were found, and no underline between the two.
-    assert ('</h2><p class="tabsub">Found by syntax-aware search over Java sources</p>') in frag
+    assert '</h2><p class="tabsub">Found by syntax-aware search over Java sources: ' in frag
+    assert 'href="https://ast-grep.github.io"' in frag and "<code>logextract.py</code>" in frag
     assert "Logging added/updated" not in frag and "not by grepping" not in frag, \
         "title and body on the logging block are the renderer's now, not the author's"
     assert 'id="logging-added"' in frag, "the deep link the heading carried still lands"
