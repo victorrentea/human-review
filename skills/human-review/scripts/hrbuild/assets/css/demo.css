@@ -214,3 +214,5 @@
 .vidintro { margin:.2rem 0 .9rem; max-width:62rem; font-size:1.02rem; line-height:1.55; }
 .vidintro p { margin:0; }
 .vidintro p + p { margin-top:.25rem; color:var(--muted); }
+.vidintro a.eli5 { color:var(--link); font-weight:600; text-decoration:none; }
+.vidintro a.eli5:hover { text-decoration:underline; }

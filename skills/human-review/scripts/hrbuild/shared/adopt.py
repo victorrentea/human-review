@@ -212,7 +212,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'behaviour': {
         "li": [
             'A short film of the feature on the real app: start here on a PR you never saw.',
-            'Its script, narration and the plain-words intro above it are written by an AI.',
+            'Its script, narration and the ELI5 intro above it are written by an AI.',
             'Check it does what the ticket asked.',
             'Click a transcript line to jump there.',
             '<b>Running app</b>: this build in Docker, to try yourself; Start says which step it is on.',

@@ -383,14 +383,22 @@ def video_html(s, out_dir: Path) -> str:
     # What the film is about, in two plain sentences, right above the player (Victor, 3 Nov
     # 2026): a gentle way in for a reader who has not read the ticket. Model-written, so
     # it is escaped; one sentence per paragraph keeps it short on the page.
-    intro = "".join(f"<p>{html.escape(p)}</p>"
-                    for p in (s.get("intro") or "").split("\n") if p.strip())
+    # The first sentence is said to a five-year-old, and says so (Victor, 10 Nov 2026):
+    # `ELI5:` names the register before the reader wonders why it is so simple.
+    paragraphs = [p for p in (s.get("intro") or "").split("\n") if p.strip()]
+    intro = "".join(f"<p>{_ELI5 if i == 0 else ''}{html.escape(p)}</p>"
+                    for i, p in enumerate(paragraphs))
     if intro:
         head += f'<div class="vidintro">{intro}</div>'
     return (head + video_verdict_html(rel, out_dir)
             + f'<div class="vidwrap">{player}<div class="vidside">'
             f'<div class="vidhead"><h2 class="tabtitle">&#127916; Intro</h2>{switch}</div>'
             f'<ol class="transcript">{items}</ol></div></div>')
+
+
+_ELI5 = ('<a class="eli5" href="https://en.wikipedia.org/wiki/ELI5" target="_blank" '
+        'rel="noopener" title="Explain Like I\'m Five: the change, in the plainest words">'
+        'ELI5</a>: ')
 
 
 def embed_html(s, out_dir: Path) -> str:
