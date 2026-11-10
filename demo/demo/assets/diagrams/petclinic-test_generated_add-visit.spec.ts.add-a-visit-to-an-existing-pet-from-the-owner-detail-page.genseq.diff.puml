@@ -16,7 +16,7 @@ participant "SMS gateway"
 Browser -[#C62828]> Backend: <color:#C62828><s>Get an owner by ID</s></color>\n<color:#C62828><s>GET /api/owners/{ownerId}</s></color>
 [-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-detail/owner-detail.component.ts:22{Click to open the line that sent this request: owner-detail.component.ts:22} OwnerService.getOwnerById ↗]]
 activate Browser #EAF6EC
-Browser -[#2E7D32]> Backend: [[genseq://18jo62a{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:113{Click to open OwnerRestController.getOwner} → OwnerRestController.getOwner ↗]]
+Browser -[#2E7D32]> Backend: [[genseq://0m8scc6{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:14{Click to open OwnerRepository.findById} OwnerRepository.findById ↗]]
 activate Backend
@@ -30,9 +30,22 @@ Backend -[#2E7D32]-> Browser: [[genseq://1bhasc1{Click for this call’s JSON bo
 deactivate Backend
 Browser -[#C62828]> Backend: <color:#C62828><s>getPet</s></color>\n<color:#C62828><s>GET /api/pets/{petId}</s></color>
 deactivate Browser
+[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:46{Click to open the line that sent this request: visit-add.component.ts:46} VetService.getVets ↗]]
+activate Browser #EAF6EC
+Browser -[#2E7D32]> Backend: [[genseq://1ce7aux{Click for the request as it was sent} listVets\nGET /api/vets ⊕]]
+activate Backend #EAF6EC
+Backend -[#2E7D32]> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:13{Click to open VetRepository.findAll} VetRepository.findAll ↗]]
+activate Backend #EAF6EC
+group #EAF6EC <color:#2E7D32>tx</color> [<color:#2E7D32>committed</color>]
+Backend -[#2E7D32]> DB: [[genseq://0p6yxbc{Click for the statement behind this call} SELECT DISTINCT v FROM Vet v LEFT JOIN FETCH v.specialties ⊕]]
+end
+deactivate Backend
+Backend -[#2E7D32]-> Browser: [[genseq://1nmg2oo{Click for this call’s JSON body} 200 ⊕]]
+deactivate Backend
+deactivate Browser
 [-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:48{Click to open the line that sent this request: visit-add.component.ts:48} PetService.getPetById ↗]]
 activate Browser #EAF6EC
-Browser -[#2E7D32]> Backend: [[genseq://05e03mm{Click for the request as it was sent} getPet\nGET /api/pets/{petId} ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/PetRestController.java:33{Click to open PetRestController.getPet} → PetRestController.getPet ↗]]
+Browser -[#2E7D32]> Backend: [[genseq://0ranhxm{Click for the request as it was sent} getPet\nGET /api/pets/{petId} ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/PetRepository.java:16{Click to open PetRepository.findById} PetRepository.findById ↗]]
 activate Backend
@@ -45,22 +58,9 @@ Backend -[#2E7D32]-> Browser: [[genseq://0n1gsl8{Click for this call’s JSON bo
 deactivate Backend
 Browser -[#C62828]> Backend: <color:#C62828><s>Get an owner by ID</s></color>\n<color:#C62828><s>GET /api/owners/{ownerId}</s></color>
 deactivate Browser
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:46{Click to open the line that sent this request: visit-add.component.ts:46} VetService.getVets ↗]]
-activate Browser #EAF6EC
-Browser -[#2E7D32]> Backend: [[genseq://18kpp45{Click for the request as it was sent} listVets\nGET /api/vets ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java:53{Click to open VetRestController.listVets} → VetRestController.listVets ↗]]
-activate Backend #EAF6EC
-Backend -[#2E7D32]> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:13{Click to open VetRepository.findAll} VetRepository.findAll ↗]]
-activate Backend #EAF6EC
-group #EAF6EC <color:#2E7D32>tx</color> [<color:#2E7D32>committed</color>]
-Backend -[#2E7D32]> DB: [[genseq://0p6yxbc{Click for the statement behind this call} SELECT DISTINCT v FROM Vet v LEFT JOIN FETCH v.specialties ⊕]]
-end
-deactivate Backend
-Backend -[#2E7D32]-> Browser: [[genseq://1nmg2oo{Click for this call’s JSON body} 200 ⊕]]
-deactivate Backend
-deactivate Browser
 [-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:53{Click to open the line that sent this request: visit-add.component.ts:53} OwnerService.getOwnerById ↗]]
 activate Browser #EAF6EC
-Browser -[#2E7D32]> Backend: [[genseq://18jo62a{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:113{Click to open OwnerRestController.getOwner} → OwnerRestController.getOwner ↗]]
+Browser -[#2E7D32]> Backend: [[genseq://0m8scc6{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:14{Click to open OwnerRepository.findById} OwnerRepository.findById ↗]]
 activate Backend
@@ -72,11 +72,10 @@ Backend -> DB: [[genseq://18567ho{Click for the statement behind this call} sele
 Backend -[#2E7D32]> DB: [[genseq://1eq1h2q{Click for the statement behind this call} select visits ⊕]]
 Backend -[#2E7D32]-> Browser: [[genseq://1bhasc1{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
-Browser -[#C62828]> Backend: <color:#C62828><s>Add a visit for an owner's pet</s></color>\n<color:#C62828><s>POST /api/owners/{ownerId}/pets/{petId}/visits</s></color>
 deactivate Browser
 [-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:69{Click to open the line that sent this request: visit-add.component.ts:69 ← visit-add.component.html:25} VisitService.addVisit ↗]]
 activate Browser #EAF6EC
-Browser -[#2E7D32]> Backend: [[genseq://0jfza5n{Click for the request as it was sent} Add a visit for an owner's pet\nPOST /api/owners/{ownerId}/pets/{petId}/visits ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:177{Click to open OwnerRestController.addVisitToOwner} → OwnerRestController.addVisitToOwner ↗]]
+Browser -[#2E7D32]> Backend: [[genseq://0nhf3d3{Click for the request as it was sent} Add a visit for an owner's pet\nPOST /api/owners/{ownerId}/pets/{petId}/visits ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:193{Click to open OwnerRestController.bookVisit} book-visit ↗]]
 activate Backend
@@ -84,7 +83,7 @@ Backend -[#2E7D32]> Backend: [[src://petclinic-backend/src/main/java/victor/trai
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:14{Click to open VisitRepository.save} VisitRepository.save ↗]]
 activate Backend
 group tx [committed]
-Backend -[#2E7D32]> DB: [[genseq://14g6ded{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
+Backend -[#2E7D32]> DB: [[genseq://0v1528l{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
 end
 deactivate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:14{Click to open OwnerRepository.findById} OwnerRepository.findById ↗]]
@@ -98,8 +97,7 @@ Backend -> Commons: [[src://petclinic-commons/src/main/java/victor/training/comm
 activate Commons
 Commons -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java:45{Click to open NotificationServiceClient.homeDialCode} NotificationServiceClient.homeDialCode ↗]]
 deactivate Commons
-Backend -[#C62828]> NotificationService: <color:#C62828><s>POST /api/notifications/visit-booked</s></color>
-Backend -[#2E7D32]> NotificationService: [[genseq://00gfug0{Click for the request as it was sent} POST /api/notifications/visit-booked ⊕]]\n[[src://notification-service/src/main/java/victor/training/notification/NotificationController.java:21{Click to open NotificationController.visitBooked} → NotificationController.visitBooked ↗]]
+Backend -[#2E7D32]> NotificationService: [[genseq://00gfug0{Click for the request as it was sent} POST /api/notifications/visit-booked ⊕]]
 activate NotificationService
 NotificationService -> Commons: [[src://petclinic-commons/src/main/java/victor/training/commons/PhoneNumbers.java:8{Click to open PhoneNumbers.normalize} PhoneNumbers.normalize ↗]]
 NotificationService -> "SMS gateway": [[src://notification-service/src/main/java/victor/training/notification/SmsGateway.java:23{Click to open SmsGateway.send} send-sms ↗]]
@@ -112,7 +110,7 @@ Browser -[#C62828]> Backend: <color:#C62828><s>Get an owner by ID</s></color>\n<
 deactivate Browser
 [-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-detail/owner-detail.component.ts:22{Click to open the line that sent this request: owner-detail.component.ts:22} OwnerService.getOwnerById ↗]]
 activate Browser #EAF6EC
-Browser -[#2E7D32]> Backend: [[genseq://18jo62a{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:113{Click to open OwnerRestController.getOwner} → OwnerRestController.getOwner ↗]]
+Browser -[#2E7D32]> Backend: [[genseq://0m8scc6{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:14{Click to open OwnerRepository.findById} OwnerRepository.findById ↗]]
 activate Backend
@@ -122,7 +120,7 @@ end
 deactivate Backend
 Backend -> DB: [[genseq://18567ho{Click for the statement behind this call} select pets ⊕]]
 Backend -[#2E7D32]> DB: [[genseq://1eq1h2q{Click for the statement behind this call} select visits ⊕]]
-Backend -[#2E7D32]-> Browser: [[genseq://11tdoe4{Click for this call’s JSON body} 200 ⊕]]
+Backend -[#2E7D32]-> Browser: [[genseq://18ymh90{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Browser
 @enduml

@@ -1,7 +1,7 @@
 {
   "version": 3,
   "details": {
-    "15tbf39": {
+    "1ck57bi": {
       "title": "insert for victor.training.petclinic.domain.Visit",
       "steps": [
         {
@@ -9,7 +9,7 @@
           "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES (?, ?, ?, ?, ?)",
           "alternate": {
             "label": "",
-            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1794322959833', 1, ?, ?)"
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-05-12', 'Annual check-up 1794335895538', 1, ?, ?)"
           }
         }
       ]
@@ -154,17 +154,17 @@
         }
       ]
     },
-    "01wssvh": {
+    "1myr631": {
       "title": "Browser → Backend: GET /api/visits",
       "steps": [
         {
           "label": "request",
-          "text": "GET http://127.0.0.1:53290/api/visits\nAccept: application/json, text/plain, */*"
+          "text": "GET http://127.0.0.1:53649/api/visits\nAccept: application/json, text/plain, */*"
         }
       ],
       "request": {
         "method": "GET",
-        "url": "http://127.0.0.1:53290/api/visits",
+        "url": "http://127.0.0.1:53649/api/visits",
         "headers": {
           "Accept": "application/json, text/plain, */*"
         }

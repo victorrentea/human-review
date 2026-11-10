@@ -10,7 +10,7 @@ footer traced because this branch wrote it in petclinic-backend/src/test/java/vi
 participant Test
 participant Backend
 participant DB
-Test -> Backend: [[genseq://0rymiqj{Click for the request as it was sent} addVisit\nPOST /api/visits ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:59{Click to open VisitRestController.addVisit} → VisitRestController.addVisit ↗]]
+Test -> Backend: [[genseq://0rymiqj{Click for the request as it was sent} addVisit\nPOST /api/visits ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:72{Click to open VisitRestController.bookVisit} book-visit ↗]]
 activate Backend
@@ -22,7 +22,7 @@ deactivate Backend
 deactivate Backend
 Backend --> Test: 201
 deactivate Backend
-Test -> Backend: [[genseq://1bi9ngw{Click for the request as it was sent} getVisit\nGET /api/visits/{visitId} ⊕]]\n[[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:53{Click to open VisitRestController.getVisit} → VisitRestController.getVisit ↗]]
+Test -> Backend: [[genseq://1bi9ngw{Click for the request as it was sent} getVisit\nGET /api/visits/{visitId} ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:12{Click to open VisitRepository.findById} VisitRepository.findById ↗]]
 Backend --> Test: 200
