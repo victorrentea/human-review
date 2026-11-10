@@ -132,7 +132,7 @@
    "route": "/welcome",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/welcome",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-welcome-new.png",
@@ -408,14 +408,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Owners",
    "route": "/owners",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/owners",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-owners-new.png",
@@ -1908,14 +1909,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Add an owner",
    "route": "/owners/add",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/owners/add",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-add-an-owner-new.png",
@@ -2642,14 +2644,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Owner details",
    "route": "/owners/8",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/owners/8",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-owner-details-new.png",
@@ -3529,14 +3532,15 @@
       ]
      }
     }
-   }
+   },
+   "pixels_differ": 36182
   },
   {
    "screen": "Edit an owner",
    "route": "/owners/8/edit",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/owners/8/edit",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-edit-an-owner-new.png",
@@ -4268,14 +4272,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Add a pet",
    "route": "/owners/8/pets/add",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/owners/8/pets/add",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-add-a-pet-new.png",
@@ -5055,14 +5060,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Pets",
    "route": "/pets",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/pets",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-pets-new.png",
@@ -5471,14 +5477,15 @@
       ]
      }
     }
-   }
+   },
+   "pixels_differ": 3925
   },
   {
    "screen": "Edit a pet",
    "route": "/pets/11/edit",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/pets/11/edit",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-edit-a-pet-new.png",
@@ -6344,14 +6351,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Book a visit",
    "route": "/pets/11/visits/add",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/pets/11/visits/add",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-book-a-visit-new.png",
@@ -7235,14 +7243,15 @@
       ]
      }
     }
-   }
+   },
+   "pixels_differ": 116893
   },
   {
    "screen": "Visits",
    "route": "/visits",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/visits",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-visits-new.png",
@@ -9036,14 +9045,15 @@
       ]
      }
     }
-   }
+   },
+   "pixels_differ": 1484005
   },
   {
    "screen": "Edit a visit",
    "route": "/visits/1/edit",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/visits/1/edit",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-edit-a-visit-new.png",
@@ -9777,14 +9787,15 @@
       ]
      }
     }
-   }
+   },
+   "pixels_differ": 42638
   },
   {
    "screen": "Pet types",
    "route": "/pettypes",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/pettypes",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-pet-types-new.png",
@@ -10758,14 +10769,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Add a pet type",
    "route": "/pettypes/add",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/pettypes/add",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-add-a-pet-type-new.png",
@@ -11118,14 +11130,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Edit a pet type",
    "route": "/pettypes/1/edit",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/pettypes/1/edit",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-edit-a-pet-type-new.png",
@@ -11488,14 +11501,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Specialties",
    "route": "/specialties",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/specialties",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-specialties-new.png",
@@ -12085,14 +12099,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Edit a specialty",
    "route": "/specialties/1/edit",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/specialties/1/edit",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-edit-a-specialty-new.png",
@@ -12536,14 +12551,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Vets",
    "route": "/vets",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/vets",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-vets-new.png",
@@ -13054,14 +13070,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Add a vet",
    "route": "/vets/add",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/vets/add",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-add-a-vet-new.png",
@@ -13715,14 +13732,15 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   },
   {
    "screen": "Edit a vet",
    "route": "/vets/1/edit",
    "sides": {
     "new": {
-     "label": "test-pr",
+     "label": "788c63dc",
      "url": "http://localhost:49638/petclinic/vets/1/edit",
      "commit": "788c63dc91c60b1e5f57f17f0eee0360b9c4b447",
      "png": "assets/ds-audit-edit-a-vet-new.png",
@@ -14339,7 +14357,8 @@
     "regressions": [],
     "pre_existing": [],
     "improvements": []
-   }
+   },
+   "pixels_differ": 0
   }
  ],
  "summary": {
