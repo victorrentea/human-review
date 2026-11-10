@@ -445,14 +445,13 @@ def logging_fragment(block, root: Path, base: str | None = None):
         + _logging_aside(block.get("console"), len(payload["all"]["antipattern"]),
                          "console-output", root, payload["all"]["antipattern"])
     )
-    # Weight is 1 whenever the scan actually ran — never tied to the header bar or the
-    # card that used to wrap the snippets, both gone now, and never computed from `n`
-    # either. The zero is not "we looked at unrelated context and nothing moved" — the
-    # tab that gets struck through — it is a statement *about this diff*: twelve touched
-    # Java files, five hundred added lines, and not one of them will say anything at 3
-    # a.m. Striking that through would file the finding as a non-event, and dropping the
-    # tab (weight 0) would be worse: that reading is reserved for the one case that is
-    # not a real answer — `ast-grep` missing or the scan crashing outright, handled above
-    # by returning `("", 0, 0)` before any of this runs.
+    # Weight is 1 whenever the scan actually ran, so a zero keeps its tab: the "None."
+    # sentence is an answer about this diff, and dropping the tab (weight 0) is reserved
+    # for the one case that is not a real answer — `ast-grep` missing or the scan crashing
+    # outright, handled above by returning `("", 0, 0)` before any of this runs. A zero
+    # does fade the pill, though, the way Data fades when no migration moved: a reviewer
+    # scanning the strip for where to look should not be sent to a tab whose whole content
+    # is "nothing was added" (Victor, 10 Nov 2026 — this reverses the earlier call that
+    # striking it would file the finding as a non-event).
     assert listing, "logging_fragment must always have content: a real listing or the zero sentence"
-    return frag, 1, 1
+    return frag, 1, 1 if added else 0

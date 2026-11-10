@@ -933,12 +933,13 @@ def test_a_logging_box_does_not_badge_what_its_own_gutter_already_marks(tmp_path
 def test_logging_fragment_keeps_its_weight_on_a_genuine_zero_too(tmp_path, monkeypatch):
     """Same guarantee on the other real path through the pipeline: a change set that adds
     no logging statement still has to render with weight 1 — the "None." sentence, not a
-    dropped tab — once the header/card it used to lean on for that no longer exists."""
+    dropped tab — once the header/card it used to lean on for that no longer exists. No
+    change, though: the pill fades, the way Data's does when no migration moved."""
     repo, src = _tiny_java_repo(tmp_path, FOO_BASE)
     src.write_text(FOO_BASE.replace("int x = 1;", "int x = 2;"), encoding="utf-8")
     block = {"paths": ["."], "base": "base"}
     frag, weight, changes = build.logging_fragment(block, repo)
-    assert (weight, changes) == (1, 1)
+    assert (weight, changes) == (1, 0)
     assert 'class="diagram"' not in frag
     assert "On the lines this change set touches" not in frag
     assert "None." in frag and "Not one logging statement" in frag
@@ -1059,6 +1060,11 @@ def test_a_breaking_contract_turns_the_api_pill_red(tmp_path):
     green = page_with('<div class="apiverdict green"><span class="v">Backwards compatible'
                       '</span></div>')
     assert "alarm" not in green and "warn" not in green, green
+    assert "quiet" not in green, "a compatible change is still a change"
+    none = page_with('<div class="apiverdict none"><span class="v">No API changes'
+                     '</span></div>')
+    assert 'class="tab quiet"' in none, \
+        "no endpoint changed: the pill fades, the way Data's does (Victor, 10 Nov 2026)"
 
 
 def test_the_tab_count_token_is_filled_in_from_the_tabs_that_were_emitted(tmp_path):
@@ -3094,6 +3100,38 @@ def test_codeowners_asks_the_page_base_not_origin_main(tmp_path):
     _, narrow = build.codeowners_fragment({}, r, review, plan)
     assert narrow["state"] != "approval_required", \
         "VetPicker.java changed before the audited base: not this review's to approve"
+
+
+def test_the_codeowners_pill_fades_unless_someone_has_to_approve(tmp_path):
+    """Victor, 10 Nov 2026: grey when no owner's help is needed — a file claimed only by an
+    optional section asks nothing of the reviewer. Lit when an approval is required."""
+    import os
+    import subprocess as sp
+    r, review, plan = _reviewed_repo(tmp_path)
+    (r / ".github").mkdir()
+
+    def pill(owners):
+        (r / ".github" / "CODEOWNERS").write_text(owners)
+        content = {**BARE, "tabs": [BARE["tabs"][0], {"id": "owners", "label": "Codeowners",
+                                                      "blocks": [{"type": "codeowners"}]}]}
+        page_dir = tmp_path / "page"
+        page_dir.mkdir(exist_ok=True)
+        src = page_dir / "content.json"
+        src.write_text(json.dumps(content), encoding="utf-8")
+        home = tmp_path / "home"
+        home.mkdir(exist_ok=True)
+        env = {**_sessionless_env(), "HOME": str(home)}
+        out = page_dir / "review.html"
+        proc = sp.run([sys.executable, str(HERE / "build-review-html.py"), str(src),
+                       "--out", str(out)], capture_output=True, text=True, env=env, cwd=r)
+        assert proc.returncode == 0, proc.stderr
+        page = out.read_text(encoding="utf-8")
+        return re.search(r'<button[^>]*id="tabbtn-owners"[^>]*>', page).group(0)
+
+    assert "quiet" not in pill("/src/ @acme/elders\n"), "an approval is required: lit"
+    assert "quiet" in pill("/nothing-here/ @acme/elders\n"), "no file claimed: faded"
+    assert "quiet" in pill("^[Docs]\n/src/ @acme/elders\n"), \
+        "claimed only by an optional section: a suggestion, not a gate — faded"
 
 
 def test_a_pull_request_headline_is_its_title_without_the_ticket():

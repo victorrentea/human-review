@@ -1089,8 +1089,11 @@ def _main(argv=None) -> int:
             # CODEOWNERS, its badge says "Code owners approval required", and the seal
             # under it says APPROVAL REQUIRED. A fourth `Code owners` above the first
             # filename is the label said again. An explicit `title` still renders.
+            # Faded on the strip unless someone's approval is needed: a file claimed only
+            # by an optional section, or no file claimed at all, asks nothing of the
+            # reviewer (Victor, 10 Nov 2026: grey "dacă n-am nevoie de ajutor pe el").
             return (heading(block, "codeowners", "") + frag,
-                    1, len(owned))
+                    1, 1 if state == "approval_required" else 0)
         if kind == "tests":
             frag, moved = render_test_ledger(test_doc.get("tests", []), root)
             placed_ledger.append(True)
@@ -1131,6 +1134,10 @@ def _main(argv=None) -> int:
             if block["id"] == "swaggerdiff" and 'class="apiverdict red"' in body:
                 auto_badge["tabClass"] = "alarm"
                 auto_badge["label"] = "breaking contract change"
+            # No endpoint changed for a caller: the band says so, the pill fades with it,
+            # the way Data does when no migration moved (Victor, 10 Nov 2026).
+            if block["id"] == "swaggerdiff" and 'class="apiverdict none"' in body:
+                return body, 1, 0
             # The UX audit's header names the gaps this branch added (`⚠ +N gap`, the one
             # warning on that line): the pill goes amber with it, the CODEOWNERS way. A gap
             # the base already had is not this branch's and leaves the pill alone.
@@ -1142,6 +1149,12 @@ def _main(argv=None) -> int:
                     n = int(gap.group(1))
                     auto_badge["tabClass"] = "warn"
                     auto_badge["label"] = f"{n} new design-system gap{'' if n == 1 else 's'}"
+                # `0 of N screens changed`, and no changed screen the catalogue missed:
+                # the branch left every screen pixel-identical, so the pill fades.
+                if (hdr and re.search(r'class="dsa-count"[^>]*>0 of \d+ screens? changed',
+                                      hdr.group(0))
+                        and 'class="dsa-unlisted"' not in body):
+                    return body, 1, 0
             # A section is prose we wrote about the change, so it counts as a change
             # unless it declares itself context.
             return body, 1, 0 if unchanged_ids.get(block["id"]) else 1

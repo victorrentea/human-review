@@ -135,6 +135,29 @@ def test_a_gap_the_base_already_had_leaves_the_pill_alone(tmp_path):
     assert 'class="tab"' in btn and "warn" not in btn
 
 
+def test_no_screen_changed_fades_the_ux_pill(tmp_path):
+    """Victor, 10 Nov 2026: no change on any screen, the UX tab goes grey like Data."""
+    frag = ('<div class="dsa-run"><h2 class="tabtitle">UX design system</h2>'
+            '<p class="dsa-hdr"><span class="dsa-count" role="button">0 of 19 screens '
+            'changed</span></p></div>')
+    assert 'class="tab quiet"' in _ux_button(_build(tmp_path, frag))
+
+
+def test_a_changed_screen_the_catalogue_missed_keeps_the_ux_pill_lit(tmp_path):
+    frag = ('<div class="dsa-run"><h2 class="tabtitle">UX design system</h2>'
+            '<p class="dsa-unlisted">⚠ <b>Not audited:</b> <code>/x</code></p>'
+            '<p class="dsa-hdr"><span class="dsa-count" role="button">0 of 19 screens '
+            'changed</span></p></div>')
+    assert "quiet" not in _ux_button(_build(tmp_path, frag))
+
+
+def test_a_changed_screen_keeps_the_ux_pill_lit(tmp_path):
+    frag = ('<div class="dsa-run"><h2 class="tabtitle">UX design system</h2>'
+            '<p class="dsa-hdr"><span class="dsa-count" role="button">10 of 19 screens '
+            'changed</span></p></div>')
+    assert "quiet" not in _ux_button(_build(tmp_path, frag))
+
+
 def test_the_ux_stylesheet_comes_with_the_fragment_without_an_extracss_line(tmp_path):
     """demo2 (20 Oct 2026): the content file listed no `assets/ds-audit.css`, so the tab
     shipped unstyled — legend chips run together, the screenshot out of its frame, and
