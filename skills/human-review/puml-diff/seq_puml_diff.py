@@ -60,13 +60,26 @@ from puml_diff import ADDED, REMOVED, legend, _mark_title
 ADDED_TINT = "#EAF6EC"
 REMOVED_TINT = "#FFEBEB"
 
-# `Browser -> Backend: GET /api/vets`, `Backend --> Browser: 200`, `A <- B: x`.
+# `Browser -> Backend: GET /api/vets`, `Backend --> Browser: 200`, `A <- B: x`, and the
+# messages from or to the diagram's edge: `[-> Browser: …` (a *found* message — the
+# frontend method a browser arrow starts in), `[<- Browser`, `Browser ->]`. The `[` and `]`
+# are the edge, not a participant, and PlantUML takes them only touching the arrow:
+# `[ -> Browser` and `Browser -> ]` are syntax errors, so `_arrow_line` writes them tight.
 ARROW_RE = re.compile(
-    r"^(?P<src>[^-<>:]+?)\s*"
+    r'^(?P<src>\[|"[^"]*"|[^-<>:\[\]]+?)\s*'
     r"(?P<arrow>-{1,2}>>?|<<?-{1,2})\s*"
-    r"(?P<dst>[^-<>:]+?)\s*:\s*"
+    r'(?P<dst>\]|"[^"]*"|[^-<>:\[\]]+?)\s*:\s*'
     r"(?P<text>.*)$"
 )
+
+
+def _arrow_line(src: str, arrow: str, dst: str, text: str) -> str:
+    """One message line, spaced as the source spaces it, but tight against an edge."""
+    left = "[" if src == "[" else f"{src} "
+    right = "]" if dst == "]" else f" {dst}"
+    return f"{left}{arrow}{right}: {text}"
+
+
 SEPARATOR_RE = re.compile(r"^==\s*(?P<text>.*?)\s*==$")
 NOTE_RE = re.compile(r"^(?P<head>note\s+(?:over|left|right)[^:]*):\s*(?P<text>.*)$", re.I)
 PARTICIPANT_RE = re.compile(
@@ -127,7 +140,11 @@ def _paint(text: str, removed: bool):
     if removed:
         # Every link of the label: a browser request's words link to the line that sent it,
         # and the `⊕` beside them is a link of its own.
-        return _struck(ANY_LINK.sub(_link_label, text.strip()).removesuffix(MARKER_GLYPH).rstrip())
+        # The `⊕` closes the payload's link, which is no longer the last one once the arrow
+        # names its controller on a line of its own below it.
+        read = ANY_LINK.sub(_link_label, text.strip())
+        return _struck(NEWLINE.join(part.rstrip().removesuffix(MARKER_GLYPH).rstrip()
+                                    for part in read.split(NEWLINE)))
     return text
 
 
@@ -231,10 +248,8 @@ def _mark_line(line: str, removed: bool, balanced: bool = False) -> str | None:
 
     m = ARROW_RE.match(stripped)
     if m:
-        return (
-            f"{m['src'].strip()} {_colorize_arrow(m['arrow'], colour)} "
-            f"{m['dst'].strip()}: {_paint(m['text'], removed)}"
-        )
+        return _arrow_line(m["src"].strip(), _colorize_arrow(m["arrow"], colour),
+                           m["dst"].strip(), _paint(m["text"], removed))
 
     m = SEPARATOR_RE.match(stripped)
     if m:
@@ -322,8 +337,8 @@ def _rename_participants(line: str, renames: dict) -> str:
         return f'{head}: {m["text"]}'
     m = ARROW_RE.match(stripped)
     if m:
-        return (f"{_rename_endpoint(m['src'], renames)} {m['arrow']} "
-                f"{_rename_endpoint(m['dst'], renames)}: {m['text']}")
+        return _arrow_line(_rename_endpoint(m["src"], renames), m["arrow"],
+                           _rename_endpoint(m["dst"], renames), m["text"])
     return line
 
 

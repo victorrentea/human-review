@@ -810,6 +810,22 @@ def test_a_retrace_that_matches_the_committed_diagram_loses_nothing():
     assert not any("202" in c for c in calls), "a response is not a call"
 
 
+def test_a_found_message_and_a_controller_line_are_not_calls_a_retrace_can_lose():
+    """The generator's version-3 shapes: `[-> Browser` is where the frontend method starts
+    (no lifeline `[`), and a request arrow may name its controller on a third line — where
+    the call lands, which a picture drawn without that option has not lost."""
+    v3 = (Path(__file__).resolve().parent.parent / "puml-diff" / "testdata"
+          / "seq_v3_before.puml").read_text(encoding="utf-8")
+    parts, calls = steps.seq_inventory(v3)
+    assert parts == ["Browser", "Backend", "DB"]
+    assert calls == ["Browser → Backend: Get an owner by ID GET /api/owners/{ownerId}",
+                     "Backend → DB: select owners"]
+    plain = v3.replace(
+        "\\n[[src://be/src/main/java/x/OwnerRestController.java:41{Click to open "
+        "OwnerRestController.getOwner} → OwnerRestController.getOwner ↗]]", "")
+    assert plain != v3 and steps.seq_inventory(plain) == (parts, calls)
+
+
 def test_the_delta_is_drawn_from_this_runs_copy_while_the_tree_holds_the_committed_one(
         tmp_path):
     """`puml-diff.sh` used to read the work tree, which is exactly what the step no longer

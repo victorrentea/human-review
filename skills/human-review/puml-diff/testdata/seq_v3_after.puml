@@ -1,0 +1,23 @@
+@startuml
+' The generator's sidecar-version-3 shapes: the frontend method as a found message from the
+' left edge, a request whose label names its controller on a third line, and (option `call`)
+' the controller as a self-call on Backend with the request's work nested in it.
+hide footbox
+title [[src://e2e/src/owner.spec.ts:12{Click to open the test} Test: Show an owner]]
+participant Browser
+participant Backend
+participant DB
+[-> Browser: [[src://fe/src/app/owner.service.ts:31{Click to open OwnerService.getOwnerById} OwnerService.getOwnerById ↗]]
+activate Browser
+Browser -> Backend: [[genseq://0req111{Click for the request} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]\n[[src://be/src/main/java/x/OwnerRestController.java:41{Click to open OwnerRestController.getOwner} → OwnerRestController.getOwner ↗]]
+activate Backend
+Backend -> Backend: [[src://be/src/main/java/x/OwnerRestController.java:41{Click to open OwnerRestController.getOwner} OwnerRestController.getOwner ↗]]
+activate Backend
+Backend -> DB: [[genseq://0sql111{Click for the statement behind this call} select owners ⊕]]
+Backend -> DB: [[genseq://0sql222{Click for the statement behind this call} select pets ⊕]]
+deactivate Backend
+Backend --> Browser: [[genseq://0res111{Click for this call’s JSON body} 200 ⊕]]
+deactivate Backend
+[<- Browser: shown
+deactivate Browser
+@enduml

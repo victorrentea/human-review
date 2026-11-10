@@ -349,11 +349,11 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'sequence': {
         "move": 'details.seqhow',
         "li": [
-            'One per test with the tracing tag, or that this branch wrote or edited.',
-            'HTTP, SQL with parameters, calls across services and modules; '
+            'One per tagged or touched test: HTTP, SQL, cross-module calls; '
             '<b>tx</b>: committed/rolled back.',
             '<b>New</b>/<b>Old</b>: this branch\'s run, or the base\'s; <b>⇒ .puml</b>: the file the test writes.',
-            'Hover <b>⊕</b> for the SQL or JSON, click to keep it; <b>values</b> fills in each <b>?</b>.',
+            'Hover <b>⊕</b> for the SQL, JSON or request, click to keep it; <b>values</b> fills in each <b>?</b>.',
+            'A request\'s Bruno dog opens it in Bruno; off the server it copies it as cURL instead.',
             'A blue call opens its method; a browser request opens the line that sent it, in that run.',
             'Dot before the file name: the DB fixture the test starts on; grey = Default; none = empty.',
         ],

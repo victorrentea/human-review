@@ -5,6 +5,7 @@ import functools
 import json
 import os
 import re
+import urllib.parse
 from pathlib import Path
 
 from .util import _git
@@ -223,23 +224,67 @@ def spring_handlers(root: Path) -> dict:
     return found
 
 
+def _template_match(template: str, path: str) -> int | None:
+    """How many literal segments `template` (`/api/owners/{ownerId}`) shares with the
+    concrete `path` (`/api/owners/1`), or None when it does not match it at all."""
+    want, got = template.strip("/").split("/"), path.strip("/").split("/")
+    if len(want) != len(got):
+        return None
+    literal = 0
+    for w, g in zip(want, got):
+        if w.startswith("{") and w.endswith("}") and g:
+            continue
+        if w != g:
+            return None
+        literal += 1
+    return literal
+
+
+def handler_for(handlers: dict, verb: str, route: str):
+    """The handler of `VERB route`: the route as the arrow spells it, or — for a request the
+    sidecar records concretely, `GET /api/owners/1?x=y` — the mapping whose template it
+    fills, the most literal one first, as Spring itself prefers `/owners/new` to `/{id}`."""
+    hit = handlers.get(f"{verb} {route}")
+    if hit:
+        return hit
+    path = route.split("?", 1)[0].split("#", 1)[0]
+    best = None
+    for key, value in handlers.items():
+        v, _, template = key.partition(" ")
+        score = _template_match(template, path) if v == verb else None
+        if score is not None and (best is None or score > best[0]):
+            best = (score, value)
+    return best[1] if best else None
+
+
 def _with_handlers(index: dict, root: Path) -> dict:
     """Hang the entry point on every call arrow whose route this checkout still serves.
 
     A route the branch deleted simply gets no row — the base-ref sidecar is resolved
     against the work tree too, and a link into a method that is no longer there would be
-    worse than the route alone."""
+    worse than the route alone.
+
+    Every HTTP request arrow has an entry since sidecar version 3, the browser's own among
+    them, and one whose title names no route is still a request when it carries a
+    structured `request`: its method and URL say what the title would have."""
     handlers = None
     for entry in (index.get("details") or {}).values():
         called = GENSEQ_CALL_TITLE.search(entry.get("title", ""))
-        if not called:
+        request = entry.get("request") if isinstance(entry.get("request"), dict) else {}
+        if called:
+            verb, route = called["verb"], called["route"]
+        elif str(request.get("method", "")).upper() in HTTP_VERBS and request.get("url"):
+            verb = str(request["method"]).upper()
+            route = urllib.parse.urlsplit(str(request["url"])).path or "/"
+        else:
             continue
         if handlers is None:
             handlers = spring_handlers(root)
-        hit = handlers.get(f'{called["verb"]} {called["route"]}')
+        hit = handler_for(handlers, verb, route)
         # The route is on the arrow the reader just clicked: the head says who called whom,
         # and the handler takes the place the route was repeated in.
-        entry["title"] = entry["title"][: called.start("verb")].rstrip().rstrip(":").rstrip()
+        if called:
+            entry["title"] = entry["title"][: called.start("verb")].rstrip().rstrip(":").rstrip()
         if hit:
             rel, line, name = hit
             entry["handler"] = {"name": name,

@@ -995,8 +995,13 @@ def keep_drawn_and_restore(held: dict) -> tuple[list[str], list[str]]:
 #: between two participants, and are left out of what a re-trace can be said to have lost.
 _SEQ_DECL = re.compile(r'^(?:participant|actor|database|queue|collections|boundary|control'
                        r'|entity)\s+("[^"]*"|\S+)(?:\s+as\s+("[^"]*"|\S+))?\s*$')
-_SEQ_CALL = re.compile(r'^("[^"]*"|[^\s"<>-]+)\s*->>?\s*("[^"]*"|[^\s"<>:-]+)\s*:\s*(.*)$')
+#: `[` and `]` are the diagram's edges, not lifelines: `[-> Browser: OwnerService.getOwnerById`
+#: is the frontend method a browser request starts in, a found message with no sender.
+_SEQ_CALL = re.compile(r'^("[^"]*"|[^\s"<>\[\]-]+)\s*->>?\s*("[^"]*"|[^\s"<>:\[\]-]+)\s*:\s*(.*)$')
 _SEQ_LINK = re.compile(r"\[\[\S+?(?:\{[^}]*\})?\s+([^\]]*?)\s*\]\]")
+#: The controller a request arrow may name on a third line, after its payload link: where the
+#: call lands in the code, which a run that did not draw it has not lost.
+_SEQ_HANDLER_LINE = re.compile(r"(?<=\]\])\s*\\n\s*\[\[src://[^\]]*\]\]")
 
 
 def seq_inventory(text: str) -> tuple[list[str], list[str]]:
@@ -1017,7 +1022,7 @@ def seq_inventory(text: str) -> tuple[list[str], list[str]]:
         m = _SEQ_CALL.match(line)
         if not m or unq(m.group(1)) == unq(m.group(2)):
             continue
-        label = _SEQ_LINK.sub(lambda x: x.group(1), m.group(3))
+        label = _SEQ_LINK.sub(lambda x: x.group(1), _SEQ_HANDLER_LINE.sub("", m.group(3)))
         label = re.sub(r"\s+", " ", label.replace("\\n", " ").replace("⊕", "")
                        .replace("↗", "")).strip()
         calls[f"{unq(m.group(1))} → {unq(m.group(2))}: {label}"] = None

@@ -57,6 +57,15 @@
 .genseq-panel .genseq-close { border:0; background:none; color:var(--muted); cursor:pointer;
                         font-size:1.1rem; line-height:1; padding:0 .1rem; }
 .genseq-panel .genseq-close:hover { color:var(--fg); }
+/* Bruno's dog, left of the ×, on a request arrow's panel (see toBruno in genseq.js). The logo
+   is drawn in its own colours, black outline included, so it sits on a light disc that keeps
+   it readable on the dark page. Hidden in the preview, like the ×: it could not be pressed. */
+.genseq-panel .genseq-bruno { border:0; padding:1px; margin:0; width:20px; height:20px;
+                              align-self:center; border-radius:50%; background:#fff6e5;
+                              box-shadow:0 0 0 1px var(--line); line-height:0; }
+.genseq-panel .genseq-bruno svg { width:100%; height:100%; display:block; }
+.genseq-panel .genseq-bruno:hover { box-shadow:0 0 0 2px var(--link); }
+.genseq-panel .genseq-bruno[hidden], #genseq-peek .genseq-bruno { display:none; }
 .genseq-panel .genseq-label { color:var(--link); font-size:.8rem; margin:.15rem 0 .4rem; }
 .genseq-panel .genseq-label[hidden] { display:none; }
 /* The method that answers the route, in the head where the route used to be repeated:
@@ -89,3 +98,8 @@
    statement, and what filled them. */
 .genseq-panel .genseq-value { background:var(--link); color:var(--card); font-weight:700; }
 .genseq-panel pre .genseq-value { border-radius:3px; padding:0 .2em; }
+/* A request step is an HTTP message (renderHttp in genseq.js): the request line in the
+   title's weight with its verb in link blue, header names muted beside their values. */
+.genseq-panel pre .genseq-reqline { font-weight:700; }
+.genseq-panel pre .genseq-verb { color:var(--link); }
+.genseq-panel pre .genseq-hname { color:var(--muted); }

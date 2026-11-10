@@ -169,7 +169,8 @@ from hrbuild.shared.genseq import (
     MAPPING_NAMED_CONSTANT, MAPPING_POSITIONAL_CONSTANT, STRING_CONSTANT, _string_constants,
     MAPPING_POSITIONAL_PATH, METHOD_NAME, pair_anchor, REQUEST_METHOD, SKIP_DIRS,
     spring_handlers, test_of_genseq, TYPE_DECL, _annotation_span, _controller_routes,
-    _declared_test, _details_carrier, _join_route, _mapping_path, _with_handlers
+    _declared_test, _details_carrier, _join_route, _mapping_path, _with_handlers,
+    handler_for, _template_match
 )
 from hrbuild.shared.folders import (
     folder_targets, link_folders, maven_modules, package_folders, puml_boxes, _artifact_id,

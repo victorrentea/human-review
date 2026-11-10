@@ -98,6 +98,11 @@ OPEN_DB = "/__open_db__"
 # GitHub "Pull Requests" tool window, in the IntelliJ window that has this checkout. The page
 # names the PR, a github.com pull URL and nothing else; the window comes from ROOT.
 OPEN_PR = "/__open_pr__"
+# The Sequence tab's Bruno button on a request arrow's panel: that request written into a
+# Bruno collection under the checkout's `.human-review/bruno/`, and Bruno asked to open the
+# collection. Bruno has no deep link to a request (its `bruno://` scheme only takes OAuth2
+# callbacks), but on macOS it answers `open-file` on a folder by opening it as a collection.
+OPEN_BRUNO = "/__open_bruno__"
 # The red ■ beside `Served`: shut this server down now instead of waiting out
 # `--idle-minutes`. The page that pressed it stays on screen, and falls back to static.
 STOP = "/__stop__"
@@ -1063,6 +1068,222 @@ def reveal_in_finder(path: Path) -> None:
     """`open -R`: a Finder window on the folder with the file selected — the answer to
     "where is this?" that a path read off the screen leaves the reader to type."""
     subprocess.Popen(["open", "-R", str(path)],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+#: Where Bruno is when it is installed the usual way. Asked, not assumed: a page that offered
+#: "open in Bruno" on a Mac without it would answer the press with `open`'s error dialog.
+BRUNO_APPS = (Path("/Applications/Bruno.app"), Path.home() / "Applications" / "Bruno.app")
+BRUNO_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
+#: What a trace put on the request to follow it, never what the caller meant to send:
+#: replayed from Bruno it would stitch a hand-made request into the test run's trace.
+TRACE_HEADERS = re.compile(r"^(?:traceparent|tracestate|baggage|b3|x-b3-[\w-]+|uber-trace-id|"
+                           r"sentry-trace)$", re.I)
+#: What the HTTP client sets for itself, which Bruno computes again — a stale
+#: `content-length` on an edited body is a request the server refuses — and the two headers
+#: that name the test run's own frontend, on a port that died with the run.
+RUN_HEADERS = {"host", "content-length", "connection", "transfer-encoding", "origin", "referer"}
+BRUNO_COLLECTION = {"version": "1", "name": "human-review", "type": "collection"}
+#: The one environment the collection has. The requests name their server by a variable,
+#: never by the address the trace saw: that was the run's ephemeral port, or a Docker
+#: hostname (`http://notification:8090`) nothing outside the compose network resolves.
+BRUNO_ENV = "local"
+#: Where a browser's requests go when the app runs on this Mac.
+BROWSER_BASE = "http://localhost:8080"
+#: `Backend → NotificationService`, the panel's title once the build cut the route off it.
+CALL_PARTIES = re.compile(r"^\s*(?P<src>[^:→>-]+?)\s*(?:→|->)\s*(?P<dst>[^:]+?)\s*(?::|$)")
+COMPOSE_NAME = re.compile(r"(?:^|[-.])compose[\w.-]*\.ya?ml$|^docker-compose[\w.-]*\.ya?ml$")
+COMPOSE_PORT = re.compile(r'^\s*-\s*["\']?(?:[\d.]+:)?(?P<host>\d+):(?P<target>\d+)(?:/\w+)?["\']?\s*(?:#.*)?$')
+
+
+def bruno_app() -> Path | None:
+    return next((app for app in BRUNO_APPS if app.is_dir()), None)
+
+
+def _camel(words: str) -> str:
+    parts = re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+", words)
+    return (parts[0].lower() + "".join(w.capitalize() for w in parts[1:])) if parts else ""
+
+
+def compose_port(root, service: str, port: int | None) -> int | None:
+    """The host port a compose file in `root` publishes `service`'s `port` on, if one does:
+    `notification: … ports: - "8090:8090"`. A port left for Docker to pick (`127.0.0.1::8080`)
+    is no answer, nor is a service that publishes nothing."""
+    if root is None or not service or port is None:
+        return None
+    for folder, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in (".git", "node_modules", "target", "build",
+                                                "dist", ".human-review", ".idea")]
+        for name in names:
+            if not COMPOSE_NAME.search(name):
+                continue
+            try:
+                lines = (Path(folder) / name).read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+            current = None
+            for line in lines:
+                svc = re.match(r"^  (?P<name>[\w.-]+):\s*$", line)
+                if svc:
+                    current = svc["name"]
+                    continue
+                m = COMPOSE_PORT.match(line) if current == service else None
+                if m and int(m["target"]) == port:
+                    return int(m["host"])
+    return None
+
+
+def bruno_variable(title: str, url: urllib.parse.SplitResult, root=None) -> tuple[str, str]:
+    """The variable a request names its server by, and that variable's value in `local`.
+
+    A browser's request goes to `{{baseUrl}}`, the app on this Mac. Any other caller's is
+    named after the service it calls — `{{notificationServiceUrl}}` — on whichever host port
+    the checkout's compose files publish that service on, or empty for the reader to fill."""
+    parties = CALL_PARTIES.match(title or "")
+    if not parties or parties["src"].strip().lower() == "browser":
+        return "baseUrl", BROWSER_BASE
+    name = (_camel(parties["dst"]) or "service") + "Url"
+    published = compose_port(root, url.hostname or "", url.port)
+    return name, f"http://localhost:{published}" if published else ""
+
+
+def bruno_request(raw, title: str = "", root=None) -> dict | None:
+    """The panel's `request` ({method, url, headers?, body?}) checked and made replayable, or
+    None. The URL must be absolute http(s), as the sidecar writes it; what is kept of it is
+    its path and query, behind the variable `bruno_variable` names."""
+    if not isinstance(raw, dict):
+        return None
+    method, url = raw.get("method"), raw.get("url")
+    if not isinstance(method, str) or method.upper() not in BRUNO_METHODS:
+        return None
+    if not isinstance(url, str) or len(url) > 8192 or any(c in url for c in "\r\n "):
+        return None
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        return None
+    headers = raw.get("headers") or {}
+    body = raw.get("body")
+    if not isinstance(headers, dict) or not (body is None or isinstance(body, str)):
+        return None
+    kept = []
+    for name, value in headers.items():
+        if not isinstance(name, str) or not isinstance(value, (str, int, float)):
+            return None
+        name = name.strip()
+        if not name or TRACE_HEADERS.match(name) or name.lower() in RUN_HEADERS:
+            continue
+        kept.append((name, " ".join(str(value).split())))
+    var, default = bruno_variable(title if isinstance(title, str) else "", parts, root)
+    path = parts.path or "/"
+    target = path + (f"?{parts.query}" if parts.query else "")
+    return {"method": method.upper(), "url": "{{" + var + "}}" + target, "path": path,
+            "query": parts.query, "headers": kept, "body": body or "",
+            "var": var, "default": default}
+
+
+def _bru_key(key: str) -> str:
+    """A key as bruno-lang writes it (`getKeyString`): quoted once it holds `: " { }` or a
+    space, which would otherwise end the key early."""
+    if not any(c in key for c in ':"{} '):
+        return key
+    return '"' + key.replace('"', '\\"') + '"'
+
+
+def _bru_block(name: str, text: str) -> str:
+    """`name {` + the text indented two spaces + `}` — the indent is what lets a body line
+    that starts with `}` stay inside the block: the parser ends it at a `}` in column one."""
+    inner = "\n".join(f"  {line}" if line else "" for line in text.split("\n"))
+    return f"{name} {{\n{inner}\n}}\n"
+
+
+def bruno_name(req: dict) -> str:
+    """What Bruno lists the request as in its sidebar: the verb and the path, as the arrow."""
+    return f'{req["method"]} {req["path"]}'
+
+
+def bruno_slug(req: dict) -> str:
+    """`get-api-owners-1-3fa2c1`: verb, route and a hash of the request as written, so the
+    same request pressed twice — or traced again on another port — is one file, and two
+    bodies sent to one route are two."""
+    words = re.sub(r"[^a-z0-9]+", "-", f'{req["method"]} {req["path"]}'.lower()).strip("-")[:60]
+    same = {k: req[k] for k in ("method", "url", "headers", "body")}
+    digest = hashlib.sha1(json.dumps(same, sort_keys=True).encode()).hexdigest()[:6]
+    return f"{words}-{digest}"
+
+
+def bru_text(req: dict, seq: int) -> str:
+    """One request in Bruno's `.bru` format, as bruno-lang's `jsonToBru` writes it: `meta`,
+    the verb block, the query parameters the URL carries, the headers, the body."""
+    body = req["body"]
+    try:
+        pretty = json.dumps(json.loads(body), indent=2, ensure_ascii=False) if body.strip() else None
+        mode = "json" if pretty is not None else "none"
+    except ValueError:
+        pretty, mode = body, "text"
+    out = [_bru_block("meta", f"name: {bruno_name(req)}\ntype: http\nseq: {seq}"),
+           _bru_block(req["method"].lower(), f'url: {req["url"]}\nbody: {mode}\nauth: none')]
+    query = urllib.parse.parse_qsl(req["query"], keep_blank_values=True)
+    if query:
+        out.append(_bru_block("params:query", "\n".join(
+            f"{_bru_key(k)}: {' '.join(v.split())}".rstrip() for k, v in query)))
+    if req["headers"]:
+        out.append(_bru_block("headers", "\n".join(
+            f"{_bru_key(k)}: {v}".rstrip() for k, v in req["headers"])))
+    if mode != "none":
+        out.append(_bru_block(f"body:{mode}", pretty))
+    return "\n".join(out)
+
+
+def bruno_folder() -> Path:
+    """The collection: the checkout's `.human-review/bruno/`, beside the page it serves."""
+    return (Path(ROOT) / ".human-review" if ROOT is not None else Path(Handler.root)) / "bruno"
+
+
+def write_bruno_env(folder: Path, var: str, default: str) -> Path:
+    """`environments/local.bru`, with `var` in it. A value already there is the reader's —
+    set by hand in Bruno, or by an earlier press — and stays as it is."""
+    env = folder / "environments" / f"{BRUNO_ENV}.bru"
+    env.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        text = env.read_text(encoding="utf-8")
+    except OSError:
+        text = ""
+    block = re.search(r"(?ms)^vars \{\n(?P<body>.*?)^\}", text)
+    have = re.findall(r"^\s*~?([^\s:]+)\s*:", block["body"], re.M) if block else []
+    if var in have:
+        return env
+    line = f"  {var}: {default}".rstrip()
+    if block:
+        text = text[:block.end("body")] + line + "\n" + text[block.end("body"):]
+    else:
+        text = (text.rstrip("\n") + "\n\n" if text.strip() else "") + f"vars {{\n{line}\n}}\n"
+    env.write_text(text, encoding="utf-8")
+    return env
+
+
+def write_bruno_request(folder: Path, req: dict) -> Path:
+    """Add `req` to the collection in `folder`, creating it on first use. A request already
+    in it keeps its file and its place in the sidebar."""
+    folder.mkdir(parents=True, exist_ok=True)
+    manifest = folder / "bruno.json"
+    if not manifest.is_file():
+        manifest.write_text(json.dumps(BRUNO_COLLECTION, indent=2) + "\n", encoding="utf-8")
+    # The collection is scratch, like the rest of `.human-review/`, and a PR branch may
+    # commit that folder: it must not turn up in the reviewed checkout's `git status`.
+    ignore = folder / ".gitignore"
+    if not ignore.is_file():
+        ignore.write_text("*\n", encoding="utf-8")
+    write_bruno_env(folder, req["var"], req["default"])
+    target = folder / f"{bruno_slug(req)}.bru"
+    if not target.is_file():
+        target.write_text(bru_text(req, len(list(folder.glob("*.bru"))) + 1), encoding="utf-8")
+    return target
+
+
+def open_in_bruno(folder: Path) -> None:
+    """`open -a Bruno <folder>`: Bruno opens the folder as a collection (or brings forward
+    the one it already has open), where the request just written is in the sidebar."""
+    subprocess.Popen(["open", "-a", "Bruno", str(folder)],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -2407,7 +2628,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         Handler.last_seen = time.time()
         route = self.path.split("?")[0]
         if route not in (RUN, RERUN, RERUN_AI, EDITOR_OPEN, REVEAL, REVEAL_FOLDER, STOP,
-                         OPEN_DB, OPEN_PR):
+                         OPEN_DB, OPEN_PR, OPEN_BRUNO):
             self.reply_text("no", 404)
             return
         problem = refuse_reason(self.headers)
@@ -2495,6 +2716,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                 "IntelliJ logo in the header to connect it, then click again", 409)
                 return
             self.reply_json(done)
+            return
+        if route == OPEN_BRUNO:
+            # The page names the request; what is written is a `.bru` built from it here,
+            # into a folder of the server's own, and what is launched is Bruno on that folder.
+            req = bruno_request(_field(raw, "request"), _field(raw, "title") or "", ROOT)
+            if req is None:
+                self.reply_text("that is not an HTTP request Bruno can be handed", 400)
+                return
+            if bruno_app() is None:
+                self.reply_text("Bruno is not installed in /Applications", 409)
+                return
+            folder = bruno_folder()
+            target = write_bruno_request(folder, req)
+            open_in_bruno(folder)
+            self.reply_json({"collection": str(folder), "file": target.name,
+                             "name": bruno_name(req), "environment": BRUNO_ENV,
+                             "variable": req["var"], "value": req["default"]})
             return
         if route == REVEAL_FOLDER:
             rel = _field(raw, "path")
@@ -2646,6 +2884,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              "openDb": ROOT is not None,
                              # And the PR line's *in IntelliJ* into its Pull Requests view.
                              "openPr": ROOT is not None,
+                             # And a request arrow's Bruno button into Bruno itself; without
+                             # it the button copies the request as cURL.
+                             "openBruno": bruno_app() is not None,
                              # The baseline the page was served against. Empty when
                              # nothing is watching, which is how the page knows not to
                              # poll — a build that stopped watching takes the reload

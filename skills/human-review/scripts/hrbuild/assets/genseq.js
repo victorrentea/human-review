@@ -63,6 +63,15 @@
     if (href) window.HR.openCode(href);
   }
 
+  // Bruno's own mascot, from usebruno/bruno (packages/bruno-app/src/components/Bruno), as
+  // its app draws it: the reader is being sent to that app, so the button looks like it.
+  // Flat, no group element: the outline's attributes sit on the root element.
+  var BRUNO_LOGO = '<svg viewBox="4 8 64 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path fill="#F4AA41" d="M23.5,14.5855l-4.5,1.75l-7.25,8.5l-4.5,10.75l2,5.25c1.2554,3.7911,3.5231,7.1832,7.25,10l2.5-3.3333 c0,0,3.8218,7.7098,10.7384,8.9598c0,0,10.2616,1.936,15.5949-0.8765c3.4203-1.8037,4.4167-4.4167,4.4167-4.4167l3.4167-3.4167 l1.5833,2.3333l2.0833-0.0833l5.4167-7.25L64,37.3355l-0.1667-4.5l-2.3333-5.5l-4.8333-7.4167c0,0-2.6667-4.9167-8.1667-3.9167 c0,0-6.5-4.8333-11.8333-4.0833S32.0833,10.6688,23.5,14.5855z"/><polygon fill="#EA5A47" points="36,47.2521 32.9167,49.6688 30.4167,49.6688 30.3333,53.5021 31.0833,57.0021 32.1667,58.9188 35,60.4188 39.5833,59.8355 41.1667,58.0855 42.1667,53.8355 41.9167,49.8355 39.9167,50.0855"/><polygon fill="#3F3F3F" points="32.5,36.9188 30.9167,40.6688 33.0833,41.9188 34.3333,42.4188 38.6667,42.5855 41.5833,40.3355 39.8333,37.0855"/><path fill="#000" d="M29.5059,30.1088c0,0-1.8051,1.2424-2.7484,0.6679c-0.9434-0.5745-1.2424-1.8051-0.6679-2.7484 s1.805-1.2424,2.7484-0.6679S29.5059,30.1088,29.5059,30.1088z"/><path fill="#000" d="M44.2636,30.1088c0,0,1.805,1.2424,2.7484,0.6679c0.9434-0.5745,1.2424-1.8051,0.6679-2.7484 c-0.5745-0.9434-1.805-1.2424-2.7484-0.6679C43.9881,27.9349,44.2636,30.1088,44.2636,30.1088z"/><path stroke="#000" d="M33.1089,37.006h6.1457c0.4011,0,0.7634,0.2397,0.9203,0.6089l1.1579,2.7245l-2.1792,1.1456 c-0.6156,0.3236-1.3654-0.0645-1.4567-0.754"/><path stroke="#000" d="M34.7606,40.763c-0.1132,0.6268-0.7757,0.9895-1.3647,0.7471l-2.3132-0.952l1.0899-2.9035 c0.1465-0.3901,0.5195-0.6486,0.9362-0.6486"/><path stroke="#000" d="M30.4364,50.0268c0,0-0.7187,8.7934,3.0072,9.9375c2.6459,0.8125,5.1497,0.5324,6.0625-0.25 c0.875-0.75,2.6323-4.4741,1.8267-9.6875"/><path stroke="#000" d="M25.6245,42.8393c-0.475,3.6024,2.2343,5.7505,4.2847,6.8414c1.1968,0.6367,2.6508,0.5182,3.7176-0.3181l2.581-2.0233l2.581,2.0233 c1.0669,0.8363,2.5209,0.9548,3.7176,0.3181c2.0504-1.0909,4.7597-3.239,4.2847-6.8414"/><path stroke="#000" d="M19.9509,28.3572c-2.3166,5.1597-0.5084,13.0249,0.119,15.3759c0.122,0.4571,0.0755,0.9355-0.1271,1.3631l-1.9874,4.1937 c-0.623,1.3146-2.3934,1.5533-3.331,0.4409c-3.1921-3.7871-8.5584-11.3899-6.5486-16.686 c7.0625-18.6104,15.8677-18.1429,15.8677-18.1429c2.8453-1.9336,13.1042-6.9375,24.8125,0.875c0,0,8.6323-1.7175,14.9375,16.9375 c1.8036,5.3362-3.4297,12.8668-6.5506,16.6442c-0.9312,1.127-2.7162,0.8939-3.3423-0.4272l-1.9741-4.1656 c-0.2026-0.4275-0.2491-0.906-0.1271-1.3631c0.6275-2.3509,2.4356-10.2161,0.119-15.3759"/><path stroke="#000" d="M52.6309,46.4628c0,0-3.0781,6.7216-7.8049,8.2712"/><path stroke="#000" d="M19.437,46.969c0,0,3.0781,6.0823,7.8049,7.632"/><line stroke="#000" x1="36.2078" x2="36.2078" y1="47.3393" y2="44.3093"/></svg>';
+  // What the review server answered when asked what it can do (server.js): `openBruno` and
+  // the token say whether the button writes the request into Bruno or copies it as cURL.
+  var caps = null;
+  if (window.HR && window.HR.onready) window.HR.onready(function (j) { caps = j; });
+
   function buildPanel(id) {
     var panel = document.createElement('div');
     panel.id = id;
@@ -77,6 +86,8 @@
       '<button type="button" class="genseq-toggle genseq-value" hidden></button>' +
       '<span class="genseq-grow"></span><span class="genseq-step"></span>' +
       '<span class="genseq-keep">click to keep it open</span>' +
+      // Left of the ×, on a request arrow only: the request this panel shows, sent to Bruno.
+      '<button type="button" class="genseq-bruno" hidden>' + BRUNO_LOGO + '</button>' +
       '<button type="button" class="genseq-close" data-tip="close (Esc)" aria-label="close">&times;</button></div>' +
       // `code`: the page's Pygments token colours are scoped to `pre.code` (tokenize, below).
       '<div class="genseq-label"></div><pre class="code"></pre>';
@@ -89,6 +100,7 @@
       handler: panel.querySelector('.genseq-handler'),
       label: panel.querySelector('.genseq-label'),
       toggle: panel.querySelector('.genseq-toggle'),
+      bruno: panel.querySelector('.genseq-bruno'),
       body: panel.querySelector('pre'),
     };
   }
@@ -102,6 +114,7 @@
     // — a door with no handle, opening what the section header above the picture opens on
     // a plain click, and at the right line rather than at line 1.
     held.toggle.addEventListener('click', function () { showValues = !showValues; render(held); });
+    held.bruno.addEventListener('click', function () { toBruno(held.entry); });
     // A click inside the panel is not a click outside it, so it does not close it — said in
     // the closing listener (`outside`, below) rather than by stopping the click here: the
     // handler link's click has to reach editor.js's listener on `document`, which opens it
@@ -305,7 +318,54 @@
   // for what changed. Only a statement that lines up with its values is marked, which is
   // also what tells a placeholder from a `?` that is just text. Inside a mark the text is
   // plain: the mark's own solid colours are what say "this is the hole", in either view.
+  // A request step is an HTTP message, the way it went over the wire: the request line,
+  // `Name: value` headers, a blank line, the body. Drawn that way too — the request line in
+  // the title's weight, header names muted so the values are what the eye lands on, and
+  // the body coloured as every other JSON payload in the panel is.
+  var REQUEST_LINE = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) (?:https?:\/\/|\/)\S*$/;
+
+  function isHttp(step, text) {
+    var first = text.split('\n', 1)[0];
+    return REQUEST_LINE.test(first) && (step.label === 'request' || /\n\n|\n[\w-]+: /.test(text));
+  }
+
+  function el(parent, cls, text) {
+    var span = document.createElement('span');
+    span.className = cls;
+    span.textContent = text;
+    parent.appendChild(span);
+  }
+
+  function renderHttp(pre, text) {
+    var lines = text.split('\n'), blank = lines.indexOf('');
+    var head = blank < 0 ? lines : lines.slice(0, blank);
+    var body = blank < 0 ? '' : lines.slice(blank + 1).join('\n');
+    var line = document.createElement('span');
+    line.className = 'genseq-reqline';
+    var verb = head[0].indexOf(' ');
+    el(line, 'genseq-verb', head[0].slice(0, verb));
+    line.appendChild(document.createTextNode(head[0].slice(verb)));
+    pre.appendChild(line);
+    head.slice(1).forEach(function (header) {
+      pre.appendChild(document.createTextNode('\n'));
+      var colon = header.indexOf(':');
+      if (colon < 0) { pre.appendChild(document.createTextNode(header)); return; }
+      el(pre, 'genseq-hname', header.slice(0, colon + 1));
+      pre.appendChild(document.createTextNode(header.slice(colon + 1)));
+    });
+    if (blank < 0) return;
+    pre.appendChild(document.createTextNode('\n\n'));
+    // JSON is coloured; any other body (a form, plain text) is shown as sent.
+    var tokens = /^\s*[\[{]/.test(body) ? tokenize(body) : [];
+    appendColoured(pre, body, tokens, 0, body.length);
+  }
+
   function renderBody(view, text, on) {
+    if (isHttp(view.step, text)) {
+      view.body.textContent = '';
+      renderHttp(view.body, text);
+      return;
+    }
     var step = view.step, bound = step.alternate && valueSpans(step.text, step.alternate.text);
     var spans = !bound ? [] : on ? bound : placeholderSpans(text);
     var tokens = tokenize(text);
@@ -358,10 +418,92 @@
     view.handler.href = handler.href;
   }
 
+  // Bruno can be handed a request two ways, and the page picks the one it can do. Served by
+  // a review server on a Mac with Bruno, the server writes the request into a collection
+  // under `.human-review/bruno/` and opens that in Bruno (`/__open_bruno__`): Bruno has no
+  // deep link to one request, only `open-file` on a collection folder. Anywhere else — off
+  // disk, on the published demo — the request goes to the clipboard as cURL, which Bruno
+  // imports from New Request ▸ from cURL.
+  function served() { return !!(caps && caps.openBruno && caps.token); }
+
+  function renderBruno(view, entry) {
+    var on = !!(entry.request && entry.request.method && entry.request.url);
+    view.bruno.hidden = !on;
+    if (!on) return;
+    var tip = served() ? 'Open this request in Bruno'
+      : 'Copy this request as cURL, to paste into Bruno (New Request \u25B8 from cURL)';
+    view.bruno.setAttribute('data-tip', tip);
+    view.bruno.setAttribute('aria-label', tip);
+  }
+
+  function say(message) {
+    if (window.HR && window.HR.flash) window.HR.flash(message);
+  }
+
+  // A trace stamps every request it follows; replayed by hand, those headers would stitch
+  // the replay into the test run's trace. Transport headers the client recomputes itself, and
+  // `origin`/`referer` name the run's own frontend, on a port that died with the run.
+  var DROPPED = /^(?:traceparent|tracestate|baggage|b3|x-b3-[\w-]+|uber-trace-id|sentry-trace|host|content-length|connection|transfer-encoding|origin|referer)$/i;
+  // Where a browser's requests go when the app runs on this Mac — the URL the trace saw was
+  // the run's ephemeral port. Any other caller's is left as traced: the server it names
+  // (`http://notification:8090`) is the reader's to map, as the Bruno collection asks too.
+  var BROWSER_BASE = 'http://localhost:8080';
+
+  function replayUrl(entry) {
+    var url = entry.request.url;
+    if (!/^\s*Browser\s*(?:\u2192|->)/.test(entry.title || '')) return url;
+    var m = /^https?:\/\/[^\/?#]+(.*)$/.exec(url);
+    return BROWSER_BASE + (m ? (m[1] || '/') : url);
+  }
+
+  function shellQuote(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'"; }
+
+  function curlOf(entry) {
+    var req = entry.request, method = String(req.method).toUpperCase(), out = ['curl'];
+    if (method === 'HEAD') out.push('--head');
+    else if (method !== 'GET') out.push('-X', method);
+    out.push(shellQuote(replayUrl(entry)));
+    var headers = req.headers || {};
+    Object.keys(headers).forEach(function (name) {
+      if (!DROPPED.test(name.trim())) out.push('-H', shellQuote(name + ': ' + headers[name]));
+    });
+    if (req.body) out.push('--data-raw', shellQuote(req.body));
+    return out.join(' ');
+  }
+
+  function copyCurl(entry, why) {
+    var text = curlOf(entry);
+    var copy = window.HR && window.HR.copy ? window.HR.copy(text) : navigator.clipboard.writeText(text);
+    return Promise.resolve(copy).then(function () {
+      say((why || '') + 'cURL copied \u2014 in Bruno: New Request \u25B8 from cURL');
+    });
+  }
+
+  // The title goes along: who calls whom is what names the server's variable in Bruno —
+  // `{{baseUrl}}` for the browser, `{{notificationServiceUrl}}` for a call to that service.
+  function toBruno(entry) {
+    if (!entry || !entry.request) return;
+    if (!served()) { copyCurl(entry); return; }
+    fetch('/__open_bruno__', {
+      method: 'POST', cache: 'no-store',
+      headers: {'Content-Type': 'application/json', 'X-Human-Review-Token': caps.token},
+      body: JSON.stringify({request: entry.request, title: entry.title || ''})
+    }).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { say(t || 'the review server refused'); });
+      return r.json().then(function (j) {
+        say('Opened in Bruno \u2014 pick ' + j.name + ' in the sidebar' +
+            (j.environment ? ', environment ' + j.environment : '') +
+            (j.variable && !j.value ? ' (set ' + j.variable + ' there first)' : ''));
+      });
+    }).catch(function () { copyCurl(entry, 'The review server is gone: '); });
+  }
+
   function show(view, entry, index, target, volatile) {
+    view.entry = entry;
     view.step = entry.steps[index];
     view.counter.textContent = entry.steps.length > 1 ? (index + 1) + ' / ' + entry.steps.length : '';
     renderHandler(view, entry);
+    renderBruno(view, entry);
     render(view);
     place(view, target, volatile);
   }

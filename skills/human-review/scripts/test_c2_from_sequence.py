@@ -101,6 +101,27 @@ def test_a_backwards_arrow_is_the_same_call_written_the_other_way():
     assert edges(a) == edges(b) == {("Browser", "Backend")}
 
 
+#: The generator's version-3 shapes, shared with the sequence differ's tests: a found message
+#: from the left edge into Browser, a request arrow that names its controller on a third line,
+#: a controller self-call wrapping the request's work, and a message out to the right edge.
+V3 = HERE.parent / "puml-diff" / "testdata" / "seq_v3_before.puml"
+
+
+def test_a_message_from_or_to_the_diagrams_edge_is_no_container_and_no_call():
+    """`[-> Browser` is where the frontend method starts, not a lifeline called `[`."""
+    g = graph(V3.read_text(encoding="utf-8"))
+    assert set(g.nodes) == {"Browser", "Backend", "DB"}
+    assert edges(g) == {("Browser", "Backend"), ("Backend", "DB")}
+
+
+def test_the_controller_line_under_a_request_is_not_part_of_its_name():
+    g = graph(V3.read_text(encoding="utf-8"))
+    assert c2.operations(g.edges[("Browser", "Backend")]) == [
+        {"name": "Get an owner by ID", "path": "GET /api/owners/{ownerId}", "calls": 1}]
+    assert c2.clean_label("[[src://f/a.ts:22{t} Get an owner\\nGET /api/owners ↗]]") == \
+        "Get an owner\nGET /api/owners", "a request's own words link is still its words"
+
+
 def test_the_same_call_many_times_is_one_line_with_a_count():
     g = graph("""
         @startuml

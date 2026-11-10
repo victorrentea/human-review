@@ -64,8 +64,9 @@ SEQ_DECL = re.compile(
 #: The first arrow, for a diagram that declares no lifelines at all — PlantUML lets a
 #: sender spring into existence on its first message, and a generator that leans on that
 #: still has a driver; it is just never announced.
-SEQ_ARROW = re.compile(r'^(?P<from>"[^"]*"|[^\s"<>-]+)\s*-+>+\s*'
-                       r'(?P<to>"[^"]*"|[^\s"<>:-]+)\s*:')
+#: `[` and `]` are the diagram's edges (`[-> Browser: …`, a found message), never a lifeline.
+SEQ_ARROW = re.compile(r'^(?P<from>"[^"]*"|[^\s"<>\[\]-]+)\s*-+>+\s*'
+                       r'(?P<to>"[^"]*"|[^\s"<>:\[\]-]+)\s*:')
 
 #: What a driver lifeline is called when the run went through the screens. The generators
 #: name their own driver — Playwright's is `Browser`, a `@SpringBootTest`'s is `Client` —

@@ -1919,6 +1919,45 @@ def test_a_call_title_drops_the_route_even_without_a_handler(tmp_path):
     assert index["details"]["bbb"]["title"] == "Backend → Browser: 200"
 
 
+def test_a_browser_request_entry_gets_its_controller_in_the_head_too(tmp_path):
+    """Sidecar version 3 gives every HTTP request arrow an entry, the browser's own among
+    them: `Browser → Backend: GET /api/owners/{ownerId}` names its handler exactly as a
+    service-to-service call does."""
+    _spring_repo(tmp_path)
+    index = build._with_handlers({"version": 3, "details": {
+        "req": {"title": "Browser → Backend: POST /api/owners/{ownerId}/pets/{petId}/visits",
+                "steps": [{"label": "request",
+                           "text": "POST http://127.0.0.1:63285/api/owners/1/pets/1/visits"}],
+                "request": {"method": "POST",
+                            "url": "http://127.0.0.1:63285/api/owners/1/pets/1/visits"}},
+    }}, tmp_path)
+    entry = index["details"]["req"]
+    assert entry["title"] == "Browser → Backend"
+    assert entry["handler"]["name"] == "OwnerRestController.addVisitToOwner"
+    assert entry["request"]["url"].endswith("/api/owners/1/pets/1/visits"), "carried as is"
+
+
+def test_a_concrete_route_finds_the_mapping_whose_template_it_fills(tmp_path):
+    """A title or a `request` spelt as sent — `/api/owners/1`, a query string — still lands on
+    `/api/owners/{ownerId}`; the most literal template wins, as in Spring."""
+    handlers = {"GET /api/owners/{ownerId}": ("a", 1, "C.byId"),
+                "GET /api/owners/new": ("a", 2, "C.form"),
+                "GET /api/owners": ("a", 3, "C.list")}
+    assert build.handler_for(handlers, "GET", "/api/owners/1")[2] == "C.byId"
+    assert build.handler_for(handlers, "GET", "/api/owners/new")[2] == "C.form"
+    assert build.handler_for(handlers, "GET", "/api/owners?lastName=D")[2] == "C.list"
+    assert build.handler_for(handlers, "POST", "/api/owners/1") is None
+    assert build.handler_for(handlers, "GET", "/api/owners/1/pets") is None
+    _spring_repo(tmp_path)
+    index = build._with_handlers({"details": {
+        "req": {"title": "Browser → Backend", "steps": [],
+                "request": {"method": "post",
+                            "url": "http://127.0.0.1:1/api/owners/7/pets/3/visits?x=1"}}}},
+        tmp_path)
+    assert index["details"]["req"]["handler"]["name"] == "OwnerRestController.addVisitToOwner"
+    assert index["details"]["req"]["title"] == "Browser → Backend", "nothing to cut"
+
+
 # --------------------------------------------------------------------------- #
 # requirements, and the tests nested under them
 # --------------------------------------------------------------------------- #
@@ -4246,6 +4285,9 @@ def test_the_kind_is_read_off_the_diagram_not_guessed_from_the_path(tmp_path):
     # Declared nothing: PlantUML lets a sender exist from its first message.
     bare = puml("Browser -> Backend: x", "e")
     assert build._pair_cat(bare, tmp_path) == "e2e"
+    # A found message from the diagram's edge has no sender: `[` is not the driver.
+    found = puml("[-> Browser: OwnerService.getOwnerById\nBrowser -> Backend: x", "f")
+    assert build._pair_cat(found, tmp_path) == "e2e"
     # Nothing to read at all is no chip, never a guessed one.
     assert build._pair_cat("test/gone.genseq.puml", tmp_path) is None
     assert build._cat_chip(None) == ""

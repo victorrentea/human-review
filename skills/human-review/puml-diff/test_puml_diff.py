@@ -964,3 +964,73 @@ def test_an_arrow_that_learned_the_line_that_sent_it_is_not_a_change():
     linked = "A -> B: [[src://f/a.ts:22{t} Get an owner\\nGET /api/owners ↗]]"
     assert sq._as_read(linked) == "A -> B: Get an owner\\nGET /api/owners"
     assert sq._as_meant(linked) == "A -> B: Get an owner\\nGET /api/owners"
+
+
+# The generator's version-3 shapes (testdata/seq_v3_*.puml): the frontend method arrives as a
+# found message from the left edge, a request arrow names its controller on a third line of
+# its own, and the controller can be a self-call on Backend with the request's work inside.
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _v3(name):
+    with open(os.path.join(HERE, "testdata", f"seq_v3_{name}.puml"), encoding="utf-8") as f:
+        return f.read()
+
+
+def test_a_message_from_or_to_the_edge_names_no_participant():
+    for line, src, dst in (("[-> Browser: x", "[", "Browser"), ("[<- Browser: x", "[", "Browser"),
+                           ("Browser ->]: x", "Browser", "]"), ("Browser -->] : x", "Browser", "]")):
+        m = sq.ARROW_RE.match(line)
+        assert m and (m["src"].strip(), m["dst"].strip()) == (src, dst), line
+
+
+def test_an_edge_message_is_written_back_touching_its_arrow():
+    """PlantUML refuses `[ -> Browser` and `Browser -> ]`: the edge has to touch the arrow."""
+    assert sq._mark_line("[-> Browser: go", removed=False) == \
+        f"[-[{sq.ADDED}]> Browser: <color:{sq.ADDED}>go</color>"
+    assert sq._mark_line("Browser ->]: out", removed=True) == \
+        f"Browser -[{sq.REMOVED}]>]: <color:{sq.REMOVED}><s>out</s></color>"
+    assert sq._rename_participants("[-> Notif: x", {"Notif": "N"}) == "[-> N: x"
+
+
+def test_the_v3_shapes_diff_like_any_other_message():
+    out = sq.diff(_v3("before"), _v3("after"))
+    body = out.splitlines()
+    # The found message only moved its source line: not a change, and still tight.
+    assert any(l.startswith("[-> Browser: [[src://fe/src/app/owner.service.ts:31") for l in body)
+    assert f"Backend -[{sq.ADDED}]> DB: [[genseq://0sql222" in out, "the added query is green"
+    assert f"Browser -[{sq.REMOVED}]>]: <color:{sq.REMOVED}><s>GET /assets/logo.svg</s>" in out
+    assert "[<- Browser: shown" in out
+    # The controller's self-call and its third-line link come through untouched.
+    assert "Backend -> Backend: [[src://be/src/main/java/x/OwnerRestController.java:41" in out
+    assert "\\n[[src://be/src/main/java/x/OwnerRestController.java:41{" in out
+    assert not any(l.startswith(("[ ", "participant [", "participant ]")) for l in body)
+    assert " ]:" not in out and "[ -" not in out
+
+
+def test_a_removed_request_with_its_controller_line_strikes_every_line_and_no_marker():
+    old = _v3("before")
+    new = "\n".join(l for l in old.splitlines() if not l.startswith("Browser -> Backend:"))
+    out = sq.diff(old, new)
+    struck = next(l for l in out.splitlines() if l.startswith("Browser -[#"))
+    assert "<s>Get an owner by ID</s>" in struck
+    assert "<s>GET /api/owners/{ownerId}</s>" in struck
+    assert "<s>→ OwnerRestController.getOwner</s>" in struck
+    assert "⊕" not in struck and "[[" not in struck and "↗" not in struck
+
+
+def test_the_v3_shapes_render(tmp_path):
+    """Both sides and both deltas are diagrams PlantUML draws, not its error page."""
+    import shutil
+    import subprocess
+    if not shutil.which("plantuml"):
+        import pytest
+        pytest.skip("plantuml not on PATH")
+    files = {"before": _v3("before"), "after": _v3("after"),
+             "delta": sq.diff(_v3("before"), _v3("after")),
+             "reverse": sq.diff(_v3("after"), _v3("before"))}
+    for name, text in files.items():
+        (tmp_path / f"{name}.puml").write_text(text, encoding="utf-8")
+    got = subprocess.run(["plantuml", "-tsvg", *(str(tmp_path / f"{n}.puml") for n in files)],
+                         capture_output=True, text=True)
+    assert got.returncode == 0, got.stdout + got.stderr

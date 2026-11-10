@@ -203,6 +203,13 @@ MSG_TIGHT = re.compile(
 # instructions for clicking it. Both would poison the protocol sniffing below.
 LINK = re.compile(r'\[\[[^\]\s{]*(?:\{[^}]*\})?\s*([^\]]*?)\s*\]\]')
 
+#: The controller a request arrow names on a line of its own below its payload link —
+#: `[[genseq://…{…} Get an owner\nGET /api/owners/{id} ⊕]]\n[[src://…{…} → OwnerRestController.getOwner ↗]]`.
+#: It says where in the code the call lands, not what the call is, so it is no part of the
+#: operation the popup lists: left in, `Get an owner → OwnerRestController.getOwner` would
+#: be one name for a call that its committed picture names `Get an owner`.
+HANDLER_LINE = re.compile(r'(?<=\]\])\s*\\n\s*\[\[src://[^\]]*\]\]')
+
 #: An HTTP request line: a verb, a space, and a path. It does double duty — `split_operation`
 #: uses it to tell the route apart from the prose above it, and `sniff_protocol` treats
 #: having found one as the answer. That is the whole reason the two are the same regex: a
@@ -286,6 +293,7 @@ def clean_label(text: str) -> str:
     STAYS: the generator writes an HTTP call as `Get an owner by ID\\nGET /api/owners/{id}`,
     two facts on two lines, and flattening them into one string is what made the popup's
     inventory unreadable — a bullet list has to be able to put the name above the route."""
+    text = HANDLER_LINE.sub("", text)
     text = LINK.sub(r"\1", text)
     text = text.replace("\\n", "\n")
     text = re.sub(r"[⊕↗]", "", text)
