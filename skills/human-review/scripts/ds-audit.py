@@ -1238,6 +1238,26 @@ def churn(mask, box: dict) -> float:
     return float(region.mean()) if region.size else 0.0
 
 
+def pixels_differing(old_png: Path, new_png: Path) -> int:
+    """How many pixels of the two shots are not the same, counted raw: no YIQ weighting,
+    no threshold, no erosion — none of the forgiveness `_yiq_mask` grants. Any area only
+    one side has (the page grew or shrank) counts whole.
+
+    It is what lets the tab say of a screen the DOM diff left out "every pixel is the same"
+    instead of "nothing we measure moved": the reader asked, of "5 of 19 screens changed",
+    how anyone knows the other 14 did not, and an exact zero is the one answer that does
+    not need the rest of this file to be believed."""
+    import numpy as np
+    from PIL import Image
+
+    a = np.asarray(Image.open(old_png).convert("RGBA"))
+    b = np.asarray(Image.open(new_png).convert("RGBA"))
+    h, w = min(a.shape[0], b.shape[0]), min(a.shape[1], b.shape[1])
+    same_area = int((a[:h, :w] != b[:h, :w]).any(-1).sum())
+    union = max(a.shape[0], b.shape[0]) * max(a.shape[1], b.shape[1])
+    return same_area + union - h * w
+
+
 # ── framing the changes ───────────────────────────────────────────────────────────
 #
 # Two changes closer than FRAME_VGAP px vertically share a frame; within one band of
@@ -2653,6 +2673,36 @@ def _side_name(meta: dict) -> str:
 COUNT_TIP = "Base and branch, opened side by side. Click: how \u201cchanged\u201d is decided."
 
 
+def unchanged_pixels(result: dict) -> tuple[list[dict], list[dict]] | None:
+    """The screens the count leaves out, split into the pixel-identical ones and the rest.
+    None when there are none, or when a screen carries no raw count (a JSON older than
+    `pixels_differ`): then the page claims nothing it did not measure."""
+    rest = [sc for sc in result["screens"] if not screen_touched(sc)]
+    if not rest or any(sc.get("pixels_differ") is None for sc in rest):
+        return None
+    return ([sc for sc in rest if sc["pixels_differ"] == 0],
+            [sc for sc in rest if sc["pixels_differ"]])
+
+
+def count_tip(result: dict) -> str:
+    """The count's tooltip opens on what it leaves out: "5 of 19 changed" says nothing
+    about the other 14 until it says how they were found unchanged."""
+    split = unchanged_pixels(result)
+    if split is None:
+        return COUNT_TIP
+    same, differ = split
+    k = len(same) + len(differ)
+    if not differ:
+        head = (f"The other {k}: every pixel identical on base and branch, compared raw "
+                "\u2014 no blur, no tolerance.")
+    else:
+        head = (f"The other {k}: {len(same)} pixel-identical; "
+                + ", ".join(sc["screen"] for sc in differ)
+                + (" differs" if len(differ) == 1 else " differ")
+                + " by a few pixels, with no element changed.")
+    return f"{head} Click: how \u201cchanged\u201d is decided."
+
+
 def how_box(result: dict) -> str:
     """The box the count opens: how the screens were compared, and what makes one
     "changed" (`screen_touched` and `combine`, in words)."""
@@ -2671,7 +2721,25 @@ def how_box(result: dict) -> str:
         "<li>an element was added, removed or changed (moving alone doesn\u2019t count)</li>"
         "<li>the DOM is identical, but an element repainted more than "
         f"{RESTYLE_CHURN:.0%} of its own box</li>"
-        "<li>the branch added or removed a gap or a design-system component</li></ul></div>")
+        "<li>the branch added or removed a gap or a design-system component</li></ul>"
+        + unchanged_box(result) + "</div>")
+
+
+def unchanged_box(result: dict) -> str:
+    """The how-box's last word: the screens the count left out, and the proof they are."""
+    split = unchanged_pixels(result)
+    if split is None:
+        return ""
+    same, differ = split
+    k = len(same) + len(differ)
+    rows = []
+    if same:
+        rows.append(f"<li>{'all ' if not differ else ''}{len(same)} pixel-identical: same "
+                    "size, every pixel equal, compared raw \u2014 no blur, no anti-alias "
+                    "filter, no threshold</li>")
+    rows += [f'<li>{html.escape(sc["screen"])}: {sc["pixels_differ"]:,} pixels differ, but '
+             "no element was added, removed, changed or repainted</li>" for sc in differ]
+    return f"<p><b>The other {k} screen{'' if k == 1 else 's'}</b></p><ul>{''.join(rows)}</ul>"
 
 
 def regression_tip(result: dict) -> str:
@@ -2734,7 +2802,7 @@ def render(result: dict, assets_prefix: str, *, root: Path | None = None,
                   "removed</span>"]
     verdict_line = " \u00b7 ".join(
         [f'<span class="dsa-count" role="button" tabindex="0" aria-expanded="false" '
-         f'aria-controls="dsa-howbox" data-tip="{html.escape(COUNT_TIP, quote=True)}">'
+         f'aria-controls="dsa-howbox" data-tip="{html.escape(count_tip(result), quote=True)}">'
          f'{len(touched)} of {n} screens changed</span>'] + deltas)
 
     # The embedded copy drops the per-element table. It is keyed on every signature on
@@ -3446,6 +3514,7 @@ def main():
                               delta={"dom": dom, "elements": elements},
                               route=routes.get(name))
         attach_sources(screen, templates, repo_root, changed)
+        screen["pixels_differ"] = pixels_differing(pngs["old"], pngs["new"])
         if screen_touched(screen):
             screen["frames"] = change_frames(pngs["old"], pngs["new"])
         screens.append(screen)
@@ -3594,8 +3663,10 @@ def rerender(json_path: Path, assets: Path, prefix: str, out: Path,
             stamp_sides(sc["sides"], commits)
         stem = assets / f'ds-audit-{slug(sc["screen"])}'
         old, new = Path(f"{stem}-old.png"), Path(f"{stem}-new.png")
-        if screen_touched(sc) and old.is_file() and new.is_file():
-            sc["frames"] = change_frames(old, new)
+        if old.is_file() and new.is_file():
+            sc["pixels_differ"] = pixels_differing(old, new)
+            if screen_touched(sc):
+                sc["frames"] = change_frames(old, new)
         if templates:
             for f in sc["findings"]:
                 if f["verdict"] in DRAWN and not f.get("source"):

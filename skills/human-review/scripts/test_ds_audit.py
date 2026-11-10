@@ -1501,3 +1501,40 @@ def test_the_count_opens_a_box_that_names_each_side_once():
     assert '.dsa-count[aria-expanded="true"] { text-decoration-style: solid; }' in ds.CSS
     assert "padding: .6rem .9rem; margin: .4rem 0 .9rem;" in ds.CSS
     assert ".dsa-howbox ul:last-child" not in ds.CSS, "the last list keeps its .5rem, as tuned"
+
+
+def test_the_count_says_how_the_screens_it_leaves_out_are_known_unchanged(tmp_path):
+    """Victor, 10 Nov 2026, on "5 of 19 screens changed": say the other 14 are pixel-perfect
+    identical, or say how it was checked. The proof is a raw count — no YIQ, no erosion, no
+    threshold — and the tooltip and the box only make the claim the count supports."""
+    from PIL import Image
+
+    a, b, c = tmp_path / "a.png", tmp_path / "b.png", tmp_path / "c.png"
+    Image.new("RGB", (40, 30), (250, 250, 250)).save(a)
+    Image.new("RGB", (40, 30), (250, 250, 250)).save(b)
+    assert ds.pixels_differing(a, b) == 0
+    img = Image.new("RGB", (40, 30), (250, 250, 250))
+    img.putpixel((3, 4), (251, 250, 250))       # one unit, below any perceptual threshold
+    img.save(c)
+    assert ds.pixels_differing(a, c) == 1
+    Image.new("RGB", (40, 35), (250, 250, 250)).save(c)
+    assert ds.pixels_differing(a, c) == 40 * 5, "the area only one side has counts whole"
+
+    reg, screen = _screen_from_capture()
+    quiet = [dict(copy.deepcopy(_untouched(screen)), screen=n, pixels_differ=0)
+             for n in ("Owners", "Vets")]
+    result = ds.build_result(quiet, reg)
+    tip = html.unescape(re.search(r'data-tip="([^"]*)"', ds.render(result, "")).group(1))
+    assert tip.startswith("The other 2: every pixel identical on base and branch")
+    assert "no blur" in tip
+    assert "2 pixel-identical: same size, every pixel equal" in ds.how_box(result)
+
+    quiet[1]["pixels_differ"] = 1234
+    result = ds.build_result(quiet, reg)
+    assert ds.count_tip(result).startswith("The other 2: 1 pixel-identical; Vets differs ")
+    assert "Vets: 1,234 pixels differ" in ds.how_box(result)
+
+    del quiet[1]["pixels_differ"]                  # a JSON from before the raw count
+    result = ds.build_result(quiet, reg)
+    assert ds.count_tip(result) == ds.COUNT_TIP
+    assert "The other" not in ds.how_box(result)
