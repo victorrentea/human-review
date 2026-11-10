@@ -135,6 +135,22 @@ def prune(spec: dict, root: Path) -> list[str]:
     return dropped
 
 
+def prune_css(spec: dict, review: Path) -> list[str]:
+    """Drop, in place, every `extraCss` sheet that no producer writes any more. A layout
+    copied from an older page keeps the sheets of producers that were retired since — the
+    page of 7 Oct 2026 named `assets/openapi-diff.css` after `openapi-diff.py` was deleted,
+    and the build refused the whole page over it. A sheet the example still lists is kept
+    even when absent (at `--skeleton-only` time the producers have not run yet); any other
+    sheet stays only while it is on disk."""
+    sheets = spec.get("extraCss")
+    if not isinstance(sheets, list):
+        return []
+    known = set(json.loads(EXAMPLE.read_text(encoding="utf-8")).get("extraCss") or [])
+    kept = [s for s in sheets if s in known or (review / s).exists()]
+    spec["extraCss"] = kept
+    return [f"extraCss {s}" for s in sheets if s not in kept]
+
+
 # ----------------------------------------------------------------------------- the facts
 
 def facts(root: Path, review: Path) -> dict:
@@ -290,6 +306,8 @@ def main(argv=None) -> int:
     print(f"[content] layout from {source}")
     for d in prune(spec, root):
         print(f"[content] dropped {d} — not in this repository")
+    for d in prune_css(spec, review):
+        print(f"[content] dropped {d} — no producer writes it")
     f = facts(root, review)
     asked = verdict_input(root, review, f)
 

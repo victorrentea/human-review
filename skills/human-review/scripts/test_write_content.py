@@ -45,6 +45,16 @@ def test_prune_drops_blocks_naming_files_the_repository_lacks(tmp_path):
     assert len(dropped) == 3
 
 
+def test_prune_css_drops_sheets_of_retired_producers_and_keeps_the_known_ones(tmp_path):
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "custom.css").write_text("")
+    spec = {"extraCss": ["assets/openapi-diff.css", "assets/openapi-compat.css",
+                         "assets/custom.css"]}
+    dropped = wc.prune_css(spec, tmp_path)
+    assert spec["extraCss"] == ["assets/openapi-compat.css", "assets/custom.css"]
+    assert dropped == ["extraCss assets/openapi-diff.css"]
+
+
 def test_facts_fill_the_masthead_and_the_piles_are_always_the_branchs():
     spec = {"findings": [{"title": "typed by hand", "body": "x"}], "summary": "prose"}
     f = {"branch": "visits-paginated", "ticket": {"number": 52, "title": "Add pagination"},
