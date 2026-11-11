@@ -223,7 +223,9 @@ RR = $HR/skills/record-review/record-review.py
 One more rule for this run: Q&A.md holds the human's decisions. A finding against one of \
 them is declined: it goes under Ignored, with a why: that cites the line it rests on \
 (Q&A.md:<line>). A Q&A.md decision no reviewer attacked goes under Assumptions with \
-source: human, anchored on the code that carries it."
+source: human, anchored on the code that carries it. The ticket is \
+victorrentea/petclinic#$ISSUE: review-points.md's front-matter names it, \
+\`ticket: victorrentea/petclinic#$ISSUE\` (no PR carries the number in its title)."
 echo "+ (cd $CO && claude -p --resume $SID '<record-review prompt + Q&A.md decline rule>') > $LOG/record-review.json"
 if [[ -z $DRY && $FROM != human-review ]]; then
   call record-review "$RR" --resume "$SID"
