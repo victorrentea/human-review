@@ -90,8 +90,8 @@ def test_each_data_card_gets_its_own_button_inside_its_border_with_its_own_promp
     assert first == [
         "Get the domain-model class diagram generated from your domain classes by Java "
         "reflection, committed as PlantUML and diffed base against branch",
-        "Get the ERD generated from your DB migration scripts, committed as PlantUML and "
-        "diffed base against branch",
+        "Get the ER diagram written from the SQLAlchemy models at the merge-base and on the "
+        "branch, diffed base against branch",
         "Get the hand-drawn draw.io Conceptual Model diagram, checked against the code by a "
         "test and diffed base against branch"]
 

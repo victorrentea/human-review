@@ -79,10 +79,6 @@
       "DomainModel",
       "DB"
      ]
-    },
-    {
-     "type": "section",
-     "id": "conceptual"
     }
    ]
   },
@@ -201,5 +197,6 @@
     }
    ]
   }
- ]
+ ],
+ "sections": []
 }

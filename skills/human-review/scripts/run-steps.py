@@ -462,11 +462,38 @@ def _aftermath(ctx: Ctx):
                          "generated files only — the band is grey, which is correct")
 
 
+#: Diagrams a step generates for both sides, fed to puml-diff.sh beside the committed
+#: ones (`PUML_GENERATED`): `<name>.puml` for the branch, `<name>.base.puml` for the base.
+GENERATED_PUML = ".human-review/generated-puml"
+
+
+def generated_diagrams(ctx: "Ctx") -> list[str]:
+    """The `DB` ER diagram, from the SQLAlchemy models, at the merge-base and now — the
+    Data tab's `DB` delta for a service that commits no diagram. Names what it wrote."""
+    out = Path(GENERATED_PUML)
+    shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True, exist_ok=True)
+    made = []
+    head = subprocess.run([sys.executable, str(HERE / "sqlalchemy-erd.py"), "--out",
+                           str(out / "DB.puml")], capture_output=True, text=True)
+    if head.returncode == 0:
+        subprocess.run([sys.executable, str(HERE / "sqlalchemy-erd.py"), "--base", ctx.base,
+                        "--out", str(out / "DB.base.puml")], capture_output=True, text=True)
+        made.append("DB (from the SQLAlchemy models)")
+    else:
+        (out / "DB.puml").unlink(missing_ok=True)
+    return made
+
+
 def _diagrams(ctx: Ctx):
-    sh(f"{HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
+    made = generated_diagrams(ctx)
+    sh(f"PUML_GENERATED={GENERATED_PUML} {HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
+    if made:
+        ctx.notes.append("generated for both sides: " + ", ".join(made))
     d = ctx.step_cfg("diagrams").get("drawio")
     if not d:
-        ctx.notes.append("no drawio diagram configured")
+        if not made:
+            ctx.notes.append("no drawio diagram configured")
         return
     # `redraw` is the repository's own patch script — the thing that draws what the code
     # has and the map lacks, in red, as a to-do. Passed through rather than guessed: the
@@ -2251,8 +2278,8 @@ STEP_INPUTS = {
                      "reads": ("review-commits.json",),
                      "tools": (),
                      "outputs": ("aftermath.json",)},
-    "diagrams":     {"paths": ("*.puml", "*.drawio", "*.drawio.png", "*.drawio.svg"),
-                     "tools": ("puml-diff.sh", "drawio-diff.py",
+    "diagrams":     {"paths": ("*.puml", "*.drawio", "*.drawio.png", "*.drawio.svg", "*.py"),
+                     "tools": ("puml-diff.sh", "drawio-diff.py", "sqlalchemy-erd.py",
                                "../puml-diff/puml_diff.py", "../puml-diff/seq_puml_diff.py"),
                      "outputs": ("assets/diagrams",)},
     "c2":           {"paths": ("*.genseq.puml", "*.drawio", "*.drawio.png", "*.drawio.svg"),

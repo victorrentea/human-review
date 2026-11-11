@@ -50,7 +50,7 @@ from pathlib import Path
 #: Folders whose Python is the service's own code. Tests, migrations and infrastructure
 #: code are not on any request's path.
 SKIP_PARTS = {"tests", "test", "alembic", "cdk", "initial-stack", "node_modules", ".venv",
-              "venv", "__pycache__", ".serverless", "scripts", "migrations", "snippets"}
+              "venv", "__pycache__", ".serverless", ".human-review", "scripts", "migrations", "snippets"}
 
 #: Serverless event -> (kind, the verb column's word)
 EVENT_KIND = {"sqs": ("listener", "SQS"), "sns": ("listener", "SNS"),

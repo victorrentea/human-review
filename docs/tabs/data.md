@@ -23,7 +23,13 @@
 
 ## What it needs
 
-- `plantuml`, and the `.puml` diagrams your project already generates and commits.
+- `plantuml` (a Java runtime; without Graphviz it lays out with its built-in Smetana engine).
+- For a Python service, nothing else: the **DB** diagram is written by
+  [`sqlalchemy-erd.py`](../../skills/human-review/scripts/sqlalchemy-erd.py) from the
+  SQLAlchemy models — every `__tablename__` class and `Table(...)`, its columns, primary and
+  foreign keys, nullability — at the merge-base and on the branch, and the two go through the
+  same differ as a committed diagram. A schema the branch did not touch is drawn as context.
+- Any `.puml` diagram the project commits is diffed as well.
 
 ## Deeper
 

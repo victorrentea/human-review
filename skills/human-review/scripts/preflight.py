@@ -104,6 +104,27 @@ RUN_FIELDS = "databaseId,status,conclusion,workflowName,headSha,event,createdAt,
 NOT_STARTED = {"queued", "waiting", "requested", "pending"}
 
 
+def keep_review_out_of_git() -> None:
+    """`.human-review/` in this checkout's own `.git/info/exclude` when nothing ignores it.
+
+    Ludvig's repositories do not list it in `.gitignore`, so every artifact of a review —
+    generated diagrams, specs, coverage — showed as untracked work, and a step that asks
+    git for untracked files (puml-diff.sh) read the review's own output as the branch's.
+    The exclude file is local and never committed: the repository is not touched."""
+    if run("git check-ignore -q .human-review/x").returncode == 0:
+        return
+    info = run("git rev-parse --git-path info/exclude").stdout.strip()
+    if not info:
+        return
+    path = Path(info)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    path.write_text(text + ("" if text.endswith("\n") or not text else "\n")
+                    + "# human-review's output, never part of the branch\n.human-review/\n",
+                    encoding="utf-8")
+    print("[preflight] .human-review/ added to .git/info/exclude (local, not committed)")
+
+
 def configured_push(config: str) -> bool:
     """`"ci": {"push": true}` lets the gate push the branch first. Off by default: at Ludvig
     the branch is pushed by its author, when they decide to, and never by a review tool."""
@@ -772,6 +793,7 @@ def main(argv=None) -> int:
 
     if args.ci_only:
         return refresh_ci()
+    keep_review_out_of_git()
 
     caveat = ""
     if args.no_gate:

@@ -71,10 +71,10 @@ PIECES: dict[str, tuple[str, str]] = {
         "petclinic/guardrail/DomainModelExtractor.java, scripts/puml-diff.sh, "
         "puml-diff/puml_diff.py"),
     "diagram.db": (
-        "the ERD generated from your DB migration scripts, committed as PlantUML and "
+        "the ER diagram written from the SQLAlchemy models at the merge-base and on the branch, "
         "diffed base against branch",
-        PETCLINIC + "docs/scripts/db/db_schema_to_puml.py, scripts/puml-diff.sh, "
-        "puml-diff/puml_diff.py, scripts/hrbuild/shared/diagrams.py"),
+        "scripts/sqlalchemy-erd.py, scripts/puml-diff.sh, puml-diff/puml_diff.py, "
+        "scripts/hrbuild/shared/diagrams.py"),
     "diagram.drawio": (
         "the hand-drawn draw.io {title} diagram, checked against the code by a test and "
         "diffed base against branch",
@@ -256,7 +256,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'diagram.db': {
         "li": [
-            'The real tables: the migrations run on an empty DB, then read back.',
+            'The mapped tables, read off the SQLAlchemy models at the base and on this branch.',
             'Green = added by this PR.',
             'Look for a new FK without an index, or NOT NULL on a table that has rows.',
             '<b>✓ Generated from …</b> beside <b>changed</b>: its source; click for the generator.',

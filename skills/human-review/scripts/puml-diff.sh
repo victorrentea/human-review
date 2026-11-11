@@ -79,6 +79,12 @@ MERGE_BASE="$(git merge-base "$BASE_REF" HEAD)"
 # step traces them untagged and leaves nothing in the work tree). Same rule as
 # `hrbuild/shared/genseq.py` `_overlay_state`.
 OVERLAY="${PUML_OVERLAY:-.human-review/assets/genseq}"
+# Diagrams a step generated for BOTH sides because the repository commits none (the Data
+# tab's ER diagram, from a Python service's SQLAlchemy models): `<name>.puml` is the branch,
+# `<name>.base.puml` the merge-base. They go through the same differ, renders and manifest
+# as a committed diagram, and an unchanged one still gets its row — drawn as context.
+GENERATED="${PUML_GENERATED:-}"
+[ -n "$GENERATED" ] && [ -d "$GENERATED" ] || GENERATED=""
 SUPERSEDED=""
 # `|| true`: under `set -e` a failed substitution fails the assignment, and no overlay at
 # all (a project whose Sequence step never ran) is the common case, not an error.
@@ -109,9 +115,11 @@ while IFS= read -r line; do
 done < <(
   {
     git diff --name-only "$MERGE_BASE" -- '*.puml'
-    git ls-files --others --exclude-standard -- '*.puml'
+    git ls-files --others --exclude-standard -- '*.puml' ':(exclude).human-review/**'
     [ -z "$OVERLAY" ] || (cd "$OVERLAY" && find . -type f -name '*.puml' | sed 's|^\./||') \
       | while IFS= read -r f; do if overlay_copy "$f" >/dev/null; then printf '%s\n' "$f"; fi; done
+    [ -z "$GENERATED" ] || (cd "$GENERATED" && find . -type f -name '*.puml' ! -name '*.base.puml' \
+      | sed 's|^\./|generated:|')
   } | sort -u
 )
 
@@ -188,6 +196,8 @@ count=0
 # `${a[@]+…}`: bash 3.2 calls an empty array unbound under `set -u`.
 for rel in ${CHANGED[@]+"${CHANGED[@]}"}; do
   [ -n "$rel" ] || continue
+  gen=""
+  case "$rel" in generated:*) rel="${rel#generated:}"; gen="$GENERATED/$rel" ;; esac
   label="$(basename "${rel%.puml}")"
   # Key every output on the repo-relative PATH, not the basename: two diagrams called
   # packages.puml in different modules used to overwrite each other's SVG and emit two
@@ -196,12 +206,16 @@ for rel in ${CHANGED[@]+"${CHANGED[@]}"}; do
 
   old="$TMP/$name.base.puml"
   status=modified
-  if ! git show "$MERGE_BASE:$rel" >"$old" 2>/dev/null; then
+  if [ -n "$gen" ]; then
+    cp "${gen%.puml}.base.puml" "$old" 2>/dev/null || : >"$old"
+    [ -s "$old" ] || status=added
+  elif ! git show "$MERGE_BASE:$rel" >"$old" 2>/dev/null; then
     : >"$old"
     status=added
   fi
 
   new="$ROOT/$rel"
+  [ -n "$gen" ] && new="$gen"
   copy="$(overlay_copy "$rel")" && new="$copy"
   if [ ! -f "$new" ]; then
     new="$TMP/$name.empty.puml"
@@ -220,7 +234,10 @@ for rel in ${CHANGED[@]+"${CHANGED[@]}"}; do
   fi
 
   if cmp -s "$old" "$new"; then
-    continue
+    # A committed diagram nobody touched is found in the repository by the page itself; a
+    # generated one exists nowhere else, so it is filed here, unchanged, as context.
+    [ -n "$gen" ] || continue
+    status=unchanged
   fi
 
   # Classify on whichever side actually has content, so a brand-new sequence
@@ -345,7 +362,7 @@ for rel in ${CHANGED[@]+"${CHANGED[@]}"}; do
   esac
 
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$label" "$rel" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" \
+    "$label" "${gen:-$rel}" "$kind" "$status" "$(basename "$diff_puml")" "$svg" "$focus" \
     "$new_svg" "$old_svg" "$old_details" "$new_details" >> "$MANIFEST"
   echo "[puml-diff] $rel ($kind, $status) -> $diff_puml" >&2
   count=$((count + 1))
