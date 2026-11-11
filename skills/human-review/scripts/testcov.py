@@ -58,6 +58,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -534,6 +535,81 @@ def pytest_suites(cfg: list[dict], repo: Repo, init: dict, reuse: bool = False,
     return tests, suites, executable
 
 
+#: The project's own Vite/Vitest config, with this skill's per-test hook added to its
+#: setupFiles. Written under the project's node_modules so `vitest/config` resolves from it
+#: and nothing tracked changes.
+VITEST_WRAPPER = """import base from {config};
+import {{defineConfig, mergeConfig}} from 'vitest/config';
+export default defineConfig(async (env) => {{
+  const b = typeof base === 'function' ? await base(env) : base;
+  const own = (b.test && b.test.setupFiles) || [];
+  return mergeConfig({{...b, root: {root}, test: {{...(b.test || {{}}), setupFiles: []}}}}, {{test: {{
+    setupFiles: [...(Array.isArray(own) ? own : [own]).map(f => {root} + '/' + f.replace(/^\\.\\//, '')), {setup}],
+    includeTaskLocation: true, sequence: {{concurrent: false}}, reporters: ['default'],
+  }}}});
+}});
+"""
+
+
+def vitest_suites(cfg: list[dict], repo: Repo, reuse: bool = False) -> tuple[list[dict], list[dict], dict]:
+    """Each configured Vitest run (`steps.testcov.vitest`: `{label, cwd, command, config}`),
+    with `vitest-percov.mjs` taking V8's coverage around every test, joined to source lines
+    by `v8-join.js` through the inline source maps Vite writes."""
+    tests, suites, executable = [], [], {}
+    for i, run in enumerate(cfg):
+        label = run.get("label", "Vitest")
+        cwd = (repo.root / run.get("cwd", ".")).resolve()
+        prefix = run.get("cwd", "").strip("/")
+        out = (WORK / f"vitest-{i}").resolve()
+        t0 = time.monotonic()
+        rc = 0
+        if not reuse:
+            shutil.rmtree(out, ignore_errors=True)
+            out.mkdir(parents=True)
+            hook = cwd / "node_modules" / ".cache" / "hr"
+            hook.mkdir(parents=True, exist_ok=True)
+            shutil.copy(TOOLS / "vitest-percov.mjs", hook / "vitest-percov.mjs")
+            config = cwd / run.get("config", next((c for c in ("vitest.config.ts", "vitest.config.mts",
+                                                               "vite.config.ts", "vite.config.mts",
+                                                               "vite.config.js") if (cwd / c).is_file()),
+                                                  "vite.config.ts"))
+            (hook / "vitest.config.mjs").write_text(VITEST_WRAPPER.format(
+                config=json.dumps(str(config)), root=json.dumps(str(cwd)),
+                setup=json.dumps(str(hook / "vitest-percov.mjs"))), encoding="utf-8")
+            rc = run_logged(f"{run.get('command', 'npx vitest run')} --config "
+                            f"{shlex.quote(str(hook / 'vitest.config.mjs'))}",
+                            cwd, WORK / f"vitest-{i}.log",
+                            env={"CI": "true", "HR_TESTCOV_VITEST_OUT": str(out),
+                                 "HR_TESTCOV_VITEST_ROOT": str(cwd), **(run.get("env") or {})})
+        files = sorted(f for f in out.glob("*.json")) if out.is_dir() else []
+        if not files:
+            suites.append({"name": label, "source": "vitest", "status": "failed", "tests": 0,
+                           "seconds": round(time.monotonic() - t0, 1),
+                           "note": f"exit {rc} and no per-test coverage — see {WORK}/vitest-{i}.log"})
+            continue
+        r = subprocess.run(["node", str(TOOLS / "v8-join.js"), str(out), prefix,
+                            str(cwd / "node_modules")], capture_output=True, text=True)
+        joined = json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else \
+            {"tests": {}, "executable": {}}
+        if r.returncode:
+            log(f"v8-join failed for {label}: {r.stderr[-800:]}")
+        for p, lines in joined.get("executable", {}).items():
+            executable.setdefault(p, set()).update(lines)
+        for f in files:
+            t = json.loads(f.read_text(encoding="utf-8"))
+            file = f"{prefix}/{t['file']}" if prefix and t.get("file") else t.get("file")
+            tests.append({"id": f"{label}:{t.get('id')}", "suite": label, "title": t.get("title", ""),
+                          "file": file, "line": t.get("line"), "status": t.get("status", ""),
+                          "source": "vitest", "hits": joined.get("tests", {}).get(f.name, {})})
+        failed = sum(1 for t in tests if t["suite"] == label and t["status"] == "failed")
+        suites.append({"name": label, "source": "vitest", "status": "ran",
+                       "tests": sum(1 for t in tests if t["suite"] == label),
+                       "seconds": round(time.monotonic() - t0, 1),
+                       "note": (f"{failed} failed — " if failed else "")
+                       + (f"exit {rc}, see {WORK}/vitest-{i}.log" if rc else "")})
+    return tests, suites, executable
+
+
 def e2e_suites(cfg: dict, repo: Repo, tools: dict | None, head: str,
                node_modules: list[str], init: dict) -> tuple[list[dict], list[dict], dict]:
     tests, suites, executable = [], [], {}
@@ -617,7 +693,7 @@ def main(argv=None) -> int:
     ap.add_argument("--base", default="origin/main")
     ap.add_argument("--config", default="human-review.json")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
-    ap.add_argument("--only", help="comma-separated: pytest,karma,e2e")
+    ap.add_argument("--only", help="comma-separated: pytest,vitest,karma,e2e")
     ap.add_argument("--reuse", action="store_true",
                     help="run no suite; re-read what the last run left in .human-review/coverage")
     args = ap.parse_args(argv)
@@ -632,7 +708,7 @@ def main(argv=None) -> int:
     if not cfg:
         log("steps.testcov is not configured in human-review.json — nothing to measure")
         return 3
-    only = set(args.only.split(",")) if args.only else {"pytest", "junit", "karma", "e2e"}
+    only = set(args.only.split(",")) if args.only else {"pytest", "vitest", "junit", "karma", "e2e"}
     repo = Repo(root)
     head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     mb = subprocess.run(["git", "merge-base", args.base, "HEAD"], capture_output=True,
@@ -669,6 +745,9 @@ def main(argv=None) -> int:
         suites.append({"name": "JUnit", "source": "jacoco", "status": "skipped", "tests": 0,
                        "note": "JUnit/JaCoCo is not measured in the Ludvig fork — "
                                "configure steps.testcov.pytest"})
+    if cfg.get("vitest") and "vitest" in only:
+        WORK.mkdir(parents=True, exist_ok=True)
+        merge(vitest_suites(cfg["vitest"], repo, args.reuse))
     if cfg.get("karma") and "karma" in only:
         merge(karma_suites(cfg["karma"], repo, args.reuse))
     if cfg.get("e2e") and "e2e" in only:

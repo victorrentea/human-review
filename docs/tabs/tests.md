@@ -40,6 +40,21 @@
   A test that hands a handler an API Gateway event counts as **API**, one under
   `tests/e2e/` as **E2E**, the rest as **Unit**. A changed `def` line counts as run when
   its body runs; a line run only at import is charged to no test, and says so.
+- **Per-test coverage of a Vite/React front end** (`steps.testcov.vitest`, mitt-ludvig):
+  the project's own Vitest run, with a setup file of this skill's added through a wrapper
+  config under `node_modules/.cache/hr/` (nothing tracked changes). It takes V8's coverage
+  around every test and maps it to source lines through the inline source maps Vite
+  writes — no coverage provider needs installing:
+
+  ```json
+  "testcov": {
+    "sources": ["frontend/src/**"], "exclude": ["frontend/src/**/*.test.*"],
+    "vitest": [{"label": "Vitest", "cwd": "frontend",
+                "command": "VITE_STAGE=jest VITE_USE_MOCK_AUTH=true npx vitest run"}]
+  }
+  ```
+
+  Tests run one at a time within a file (`CI=true`), so each test's lines are its own.
 
 ## Deeper
 

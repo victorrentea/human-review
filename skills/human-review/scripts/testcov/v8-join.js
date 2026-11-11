@@ -21,7 +21,28 @@ const path = require('path');
 
 const [dir, prefix, ...modules] = process.argv.slice(2);
 if (!dir) { console.error('usage: v8-join.js <suite dir> <prefix> <node_modules>...'); process.exit(2); }
-const {SourceMapConsumer} = require(require.resolve('source-map', {paths: modules.length ? modules : [process.cwd()]}));
+// `source-map` when the project has it; else `@jridgewell/sourcemap-codec`, which every Vite
+// project carries — the mappings decoded by hand into the same eachMapping callback.
+const paths = modules.length ? modules : [process.cwd()];
+let SourceMapConsumer;
+try {
+  ({SourceMapConsumer} = require(require.resolve('source-map', {paths})));
+} catch (e) {
+  const {decode} = require(require.resolve('@jridgewell/sourcemap-codec', {paths}));
+  SourceMapConsumer = class {
+    constructor(map) { this.map = typeof map === 'string' ? JSON.parse(map) : map; }
+    eachMapping(cb) {
+      const sources = this.map.sources || [];
+      decode(this.map.mappings || '').forEach((segs, line) => {
+        for (const s of segs) {
+          if (s.length < 4) continue;
+          cb({generatedLine: line + 1, generatedColumn: s[0], source: sources[s[1]],
+              originalLine: s[2] + 1, originalColumn: s[3]});
+        }
+      });
+    }
+  };
+}
 
 function normalise(src, sourceRoot) {
   let s = (sourceRoot && !/^webpack:/.test(src) ? sourceRoot.replace(/\/?$/, '/') : '') + src;

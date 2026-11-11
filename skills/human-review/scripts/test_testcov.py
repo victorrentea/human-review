@@ -506,3 +506,47 @@ def test_a_pytest_suite_is_measured_per_test_and_joined_to_the_change(tmp_path, 
 def test_a_python_header_line_runs_as_its_body_runs():
     src = ["@cache", "def f(a,", "      b):", '    """doc."""', "    return a"]
     assert tc.python_owners(src) == {1: 5, 2: 5, 3: 5, 4: 5}
+
+
+# ---------------------------------------------------------------- vitest (the Ludvig fork)
+
+def test_a_vitest_run_s_per_test_dumps_become_rows_joined_through_the_source_maps(
+        tmp_path, monkeypatch):
+    """What `vitest-percov.mjs` leaves (one JSON per test) and what `v8-join.js` makes of it
+    (lines per test, through the inline source maps) become the Tests tab's rows."""
+    import subprocess as sp
+    root = tmp_path / "repo"
+    (root / "frontend").mkdir(parents=True)
+    out = tmp_path / "work" / "vitest-0"
+    out.mkdir(parents=True)
+    (out / "1-1.json").write_text(json.dumps({
+        "id": "src/a.test.tsx::Card > renders", "title": "renders",
+        "file": "src/a.test.tsx", "line": 7, "status": "passed", "v8": []}))
+    monkeypatch.setattr(tc, "WORK", tmp_path / "work")
+    joined = {"executable": {"frontend/src/a.tsx": [1, 2, 3]},
+              "tests": {"1-1.json": {"frontend/src/a.tsx": [2, 3]}}}
+    seen = []
+
+    def fake_run(cmd, **kw):
+        seen.append(cmd)
+        return sp.CompletedProcess(cmd, 0, json.dumps(joined), "")
+    monkeypatch.setattr(tc.subprocess, "run", fake_run)
+    repo = tc.Repo.__new__(tc.Repo)
+    repo.root = root
+    tests, suites, executable = tc.vitest_suites(
+        [{"label": "Vitest", "cwd": "frontend"}], repo, reuse=True)
+    assert seen[0][1].endswith("v8-join.js") and seen[0][3] == "frontend"
+    assert tests == [{"id": "Vitest:src/a.test.tsx::Card > renders", "suite": "Vitest",
+                      "title": "renders", "file": "frontend/src/a.test.tsx", "line": 7,
+                      "status": "passed", "source": "vitest",
+                      "hits": {"frontend/src/a.tsx": [2, 3]}}]
+    assert executable == {"frontend/src/a.tsx": {1, 2, 3}}
+    assert suites[0]["status"] == "ran" and suites[0]["tests"] == 1
+
+
+def test_the_vitest_wrapper_keeps_the_project_s_setup_files_and_adds_the_hook():
+    text = tc.VITEST_WRAPPER.format(config='"/r/fe/vite.config.ts"', root='"/r/fe"',
+                                    setup='"/r/fe/node_modules/.cache/hr/vitest-percov.mjs"')
+    assert 'import base from "/r/fe/vite.config.ts";' in text
+    assert 'root: "/r/fe"' in text and "concurrent: false" in text
+    assert "f.replace(/^\\.\\//, '')" in text
