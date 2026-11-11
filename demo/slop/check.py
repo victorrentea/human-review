@@ -74,7 +74,7 @@ def a_repo_dto(c):
 def b_gherkin_outline(c):
     f = c / "petclinic-test/src/visits-sort.feature"
     text = f.read_text() if f.is_file() else ""
-    rows = len(re.findall(r"^\s*\|.*\b(asc|desc)\b.*\|\s*$", text, re.M | re.I))
+    rows = len(re.findall(r"^\s*\|.*\b(asc|desc)(ending)?\b.*\|\s*$", text, re.M | re.I))
     outline = "Scenario Outline" in text and "Examples" in text
     listed = any(t["path"].endswith("visits-sort.feature") for t in tests(c))
     return (outline and rows >= 8 and listed,
