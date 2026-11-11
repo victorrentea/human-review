@@ -1238,10 +1238,12 @@ def ticket_head(ref: dict | None) -> str:
     elif ref and ref.get("number") is not None:
         # "Issue" first, so the heading says what it names before it names it: over the
         # ticket's own frame, a bare title read as the PR's.
-        num = (f'<a class="rm-num" href="{html.escape(ref["url"])}">#{ref["number"]}</a>'
-               if ref.get("url") else f'<span class="rm-num">#{ref["number"]}</span>')
-        title = (f'<span class="rm-title" data-tip="{html.escape(ref.get("title") or "", quote=True)}">'
-                 f'<span class="rm-ref">Issue {num}</span>: '
+        # The whole "Issue #52" is the link (Victor, 11 Nov 2026), and the title carries no
+        # hover: it only repeated the line it sat on.
+        num = f'#{ref["number"]}'
+        ref_html = (f'<a class="rm-ref rm-num" href="{html.escape(ref["url"])}">Issue {num}</a>'
+                    if ref.get("url") else f'<span class="rm-ref">Issue {num}</span>')
+        title = (f'<span class="rm-title">{ref_html}: '
                  f'{html.escape(ref.get("title") or "")}</span>')
     else:
         title = ""
@@ -1389,7 +1391,7 @@ REQMAP_CSS = """
 /* The switch keeps to the far end of the ticket's header strip, and reads in the muted
    weight of a control rather than the weight of the login beside it. */
 .reqmap .rm-semcov{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;
-  gap:6px;font-size:.85em;font-weight:500;color:var(--muted,#6b6b6b);cursor:pointer;
+  gap:6px;font:inherit;font-size:13px;font-weight:600;color:var(--muted,#6b6b6b);cursor:pointer;
   user-select:none;white-space:nowrap}
 .reqmap .rm-semcov input{margin:0;cursor:pointer}
 .reqmap .rm-semcov:hover{color:var(--fg,#1c1c1c)}
@@ -1403,8 +1405,8 @@ REQMAP_CSS = """
 .reqmap .rm-head .rm-title{color:var(--fg,#1c1c1c);flex:0 1 auto;min-width:0;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .reqmap .rm-head .rm-num{color:var(--muted,#6b6b6b);font-weight:400}
-.reqmap .rm-head .rm-title .rm-ref .rm-num{color:var(--link);font-weight:inherit;text-decoration:none}
-.reqmap .rm-head .rm-title a.rm-num:hover{text-decoration:underline}
+.reqmap .rm-head .rm-title a.rm-ref{color:var(--link);font-weight:inherit;text-decoration:none}
+.reqmap .rm-head .rm-title a.rm-ref:hover{text-decoration:underline}
 /* Both keys now sit under what they explain, so the margin that lifted them off it moves
    to the other side. The shared `--rm-key-h` band goes with them: above the frames it
    kept two unequal rows on one line, and under them there is nothing to keep level. */
@@ -1519,6 +1521,8 @@ REQMAP_CSS = """
   background:transparent;border:1px solid var(--border,#d0d7de);border-radius:6px;
   cursor:pointer;text-overflow:ellipsis}
 .reqmap .rm-code > .rm-tkhead > .rm-mode:hover{border-color:var(--link)}
+.reqmap .rm-code > .rm-tkhead > .rm-showlbl{flex:0 0 auto;align-self:center;font-weight:600;
+  color:var(--muted,#6b6b6b);margin-right:4px;white-space:nowrap}
 /* The choice starts where the rows' content does, level with the chapters' carets: the
    strip's 16px padding, the emptied title before it and its own margin had set it 24px in
    (Victor, 29 Oct 2026: "move it to the left"). What it means is its hover, not a line

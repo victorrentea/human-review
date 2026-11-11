@@ -338,11 +338,11 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'requirements': {
         "li": [
-            'Tests covering the ticket (fork), running changed code (shield), or all; hover the choice.',
+            '<b>Show:</b> tests covering the ticket (fork), running changed code (shield), or all.',
             '<b>green</b> = proven · <b>orange</b> = partly · <b>red</b> = no test; AI-matched, may be wrong.',
             'Name colour = kind: E2E and API weigh most, they prove the feature, not one method.',
             'Click a sentence: lines to its tests (greyed = never runs); <b>▲ ▼</b> = more scrolled away.',
-            '<b>− ✏️ +</b> before a total: deleted, edited, new; hover <b>−</b>: the deleted ones, in the IDE.',
+            '<b>− ✏️ +</b> before a total: deleted, edited, new, of the tests shown; hover <b>−</b>: in the IDE.',
             'Dot: the DB fixture a test declares it starts on; grey = Default; none = empty DB.',
         ],
     },

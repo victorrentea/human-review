@@ -683,7 +683,7 @@ def test_the_build_relays_a_scripted_matrix_without_rewording_its_card(tmp_path)
     S.write_fragment(S._spec(review), review, root)
     T = importlib.import_module("hrbuild.tabs.tests")
     out = T.reqmap_layout((review / S.FRAGMENT).read_text(), S._spec(review), review, root)
-    assert 'class="tabtitle rm-head"' in out and ">#7</a></span>" in out
+    assert 'class="tabtitle rm-head"' in out and ">Issue #7</a>" in out
     assert T.COVCARD_WHO in out and T.CARD_WHO not in out
 
 

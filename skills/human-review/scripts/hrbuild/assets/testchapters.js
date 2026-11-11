@@ -187,7 +187,14 @@
     pick.innerHTML = MODES.map(function (m, i) {
       return '<option value="' + m[0] + '"' + (i ? '' : ' selected') + '>' + esc(m[1]) + '</option>';
     }).join('');
+    var lbl = document.createElement('label');
+    lbl.className = 'rm-showlbl';
+    lbl.textContent = 'Show: ';
+    lbl.appendChild(document.createTextNode(''));
     head.insertBefore(pick, who.closest('.cov-head').nextSibling);
+    head.insertBefore(lbl, pick);
+    pick.id = pick.id || 'rm-mode-pick';
+    lbl.htmlFor = pick.id;
   }
   // The grand total, on the card's title row in the chapters' own four columns: the sum of
   // their `−`, ✏️ and `+` and of the tests listed (Victor, 19 Oct 2026: the masthead's
@@ -308,10 +315,13 @@
       distinguish(sec, shown);
       sec.hidden = !n;
       // What the branch did to this kind's tests: the card title's three counts, for one
-      // chapter, off the stamps its rows already wear. Every row is counted, folded or not.
+      // chapter, off the stamps its rows already wear. Only the rows the choice lists are
+      // counted (Victor, 11 Nov 2026: filtering part of the tests left the old numbers):
+      // a deleted test covers nothing, so under "covering" the `\u2212` column is empty.
       var st = {new: 0, deleted: 0, edited: 0};
-      Array.prototype.forEach.call(sec.querySelectorAll('.rm-t .rm-st[data-st]'), function (s) {
-        if (s.dataset.st in st) st[s.dataset.st]++;
+      shown.forEach(function (r) {
+        var s = r.querySelector('.rm-st[data-st]');
+        if (s && s.dataset.st in st) st[s.dataset.st]++;
       });
       // The `+N` sits right in front of the total, as the Complexity tab writes `+1 12`.
       var K = esc(LABEL[c[0]] || c[0].toUpperCase());

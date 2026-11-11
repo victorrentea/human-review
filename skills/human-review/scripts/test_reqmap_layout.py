@@ -165,7 +165,7 @@ def test_a_chapter_heading_is_caret_badge_subtitle_then_its_own_counts():
                                    'rm-chsub', '<span class="rm-chhit"', 'rm-chled')]
     assert order == sorted(order)
     assert "rm-chpad" not in js and "rm-chpad" not in css
-    assert "sec.querySelectorAll('.rm-t .rm-st[data-st]')" in js
+    assert "shown.forEach(function (r) {" in js and "r.querySelector('.rm-st[data-st]')" in js
     for cls in ('class="added"', 'class="removed"', 'class="changed"'):
         assert cls in js
     assert "linear-gradient(rgba(127,127,127,.12),rgba(127,127,127,.12)),var(--card,#fff)" in css
@@ -371,8 +371,8 @@ def test_the_ticket_title_is_a_link_over_the_ticket(tmp_path):
     this branch is not the issue's, and the frame opened straight into `opened on Jun 13,
     2026` with nothing saying what was opened."""
     out = _laid_out(tmp_path)
-    assert ('<span class="rm-title" data-tip="Link Visit with Vet"><span class="rm-ref">Issue <a class="rm-num" '
-            'href="https://github.com/victorrentea/petclinic/issues/37">#37</a></span>: '
+    assert ('<span class="rm-title"><a class="rm-ref rm-num" '
+            'href="https://github.com/victorrentea/petclinic/issues/37">Issue #37</a>: '
             'Link Visit with Vet</span>') in out
     head, ticket = _order(out, 'class="tabtitle rm-head"', 'class="rm-ticket"')
     assert head < ticket
@@ -833,3 +833,18 @@ def test_a_traced_test_is_never_folded_out_of_the_covering_card():
     assert (d["fold"]["from"], d["foldOwn"]["from"], d["foldOwn"]["to"],
             d["foldGone"]["from"], d["foldGone"]["to"]) == (5, 3, 4, 4, 5)
     assert T.promote_traced(out) == out, "idempotent"
+
+
+def test_a_chapters_counts_follow_the_filter_not_the_whole_branch():
+    """Victor, 11 Nov 2026: under "covering" the UNIT chapter said `-5 +17 3` over three
+    listed tests. The `-`, pencil and `+` are counted off the rows the choice lists
+    (`shown`), so a deleted test (never listed under covering) leaves the `-` empty."""
+    js = (HERE / "hrbuild" / "assets" / "testchapters.js").read_text(encoding="utf-8")
+    assert "shown.forEach(function (r) {\n        var s = r.querySelector('.rm-st[data-st]');" in js
+    assert "sec.querySelectorAll('.rm-t .rm-st[data-st]')" not in js
+
+
+def test_the_choice_wears_a_show_label_and_semcov_the_authors_type():
+    js = (HERE / "hrbuild" / "assets" / "testchapters.js").read_text(encoding="utf-8")
+    assert "lbl.textContent = 'Show: ';" in js
+    assert "font:inherit;font-size:13px;font-weight:600" in (HERE / "hrbuild" / "tabs" / "tests.py").read_text(encoding="utf-8")
