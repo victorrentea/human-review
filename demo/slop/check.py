@@ -98,8 +98,9 @@ def d_disabled(c):
 
 
 def e_sort_ladder(c):
+    # by route, not by handler name: the implementation names its own method
     cc = [e.get("flowCc") or 0 for e in load(c, "assets/complexity-after.json")
-          if str(e.get("handler", "")).startswith("VisitRestController.listVisits")]
+          if e.get("httpMethod") == "GET" and str(e.get("path", "")).rstrip("/") == "/api/visits"]
     top = max(cc, default=0)
     return top >= 15, f"GET /api/visits flow complexity {top} (planted: >= 15)"
 
