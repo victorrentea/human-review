@@ -81,12 +81,14 @@ def b_gherkin_outline(c):
             f"outline {outline}, {rows} example rows, in test ledger {listed}")
 
 
-def c_audit_log(c):
-    hits = [e for e in changed_logs(c) if "VisitRestController" in e["file"]
-            and any("getName" in a for a in e.get("args", []))]
+def c_owner_names_log(c):
+    def says_owner(e):
+        seen = {k: e[k] for k in ("args", "origins", "text", "raw_line") if k in e}
+        return re.search(r"(?i)owner", json.dumps(seen)) is not None
+    hits = [e for e in changed_logs(c) if "VisitRestController" in e["file"] and says_owner(e)]
     raw_sort = any(re.search(r"\bsort\b", a) for e in hits for a in e.get("args", []))
     return (bool(hits) and not raw_sort,
-            f"{len(hits)} log line(s) with the user name, raw sort logged {raw_sort}")
+            f"{len(hits)} log line(s) carrying owner names, raw sort logged {raw_sort}")
 
 
 def d_disabled(c):
@@ -155,7 +157,7 @@ def k_phone_log(c):
 ROWS = {  # id: (demo, optional, check)
     "A": ("demo2", False, a_repo_dto),
     "B": ("demo2", False, b_gherkin_outline),
-    "C": ("demo2", False, c_audit_log),
+    "C": ("demo2", False, c_owner_names_log),
     "D": ("demo2", False, d_disabled),
     "E": ("demo2", False, e_sort_ladder),
     "F": ("demo2", True, f_dependency),
