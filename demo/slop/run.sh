@@ -5,6 +5,7 @@
 # nothing under skills/ knows this folder exists (test_demo_slop_guard.py).
 #
 #   run.sh <demo> --checkout DIR --branch NAME [--replace] [--model M] [--dry-run]
+#          [--stop-after implement|record-review] [--from record-review|human-review --log LOGDIR]
 #       1. DIR: cloned when missing, else it must be clean
 #       2. NAME: cut fresh from origin/main. An existing NAME (local or on origin) is
 #          refused, unless --replace: then its tip(s) are tagged slop-backup/NAME-<stamp>
@@ -20,6 +21,11 @@
 #       slop-backup/TARGET-<stamp> and pushed first, then --force-with-lease onto it.
 #
 # --dry-run prints every command and runs only read-only ones (ls-remote, status).
+# --stop-after implement   stop after step 4, to check the code for the planted items before
+#                          paying for the review; then go on with
+# --from record-review --log LOGDIR   skip steps 1-4 and resume the implementing session of
+#                          LOGDIR/implement.json (the checkout must be on NAME already);
+#                          --from human-review skips step 5 too.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -27,7 +33,7 @@ HR=$(cd "$HERE/../.." && pwd)
 REMOTE=https://github.com/victorrentea/petclinic.git
 STAMP=$(date +%Y%m%d-%H%M)
 MODEL=opus
-DRY= REPLACE= CO= BRANCH= TO= MODE=run
+DRY= REPLACE= CO= BRANCH= TO= MODE=run STOP= FROM= LOGDIR=
 
 die() { echo "run.sh: $*" >&2; exit 2; }
 x() { printf '+ %s\n' "$*"; [[ -n $DRY ]] || "$@"; }
@@ -50,11 +56,17 @@ while (($#)); do
     --model) MODEL=$2; shift 2 ;;
     --replace) REPLACE=1; shift ;;
     --dry-run) DRY=1; shift ;;
+    --stop-after) STOP=$2; shift 2 ;;
+    --from) FROM=$2; shift 2 ;;
+    --log) LOGDIR=$2; shift 2 ;;
     *) die "unknown argument $1" ;;
   esac
 done
 [[ -n $CO && -n $BRANCH ]] || die "--checkout and --branch are required"
 CO=${CO/#\~/$HOME}
+[[ -z $STOP || $STOP == implement || $STOP == record-review ]] || die "--stop-after implement|record-review"
+[[ -z $FROM || $FROM == record-review || $FROM == human-review ]] || die "--from record-review|human-review"
+[[ -z $FROM || -f $LOGDIR/implement.json ]] || die "--from needs --log LOGDIR holding implement.json"
 for b in "$BRANCH" "$TO"; do
   [[ $b == main || $b == master ]] && die "refusing to touch $b"
 done
@@ -79,8 +91,14 @@ fi
 command -v claude >/dev/null || die "claude is not on PATH"
 command -v jq >/dev/null || die "jq is not on PATH"
 LOG="${XDG_STATE_HOME:-$HOME/.local/state}/human-review-slop/$DEMO-$STAMP"
+[[ -n $FROM ]] && LOG=$(cd "$LOGDIR" && pwd)
 echo "demo $DEMO (#$ISSUE) -> $CO on $BRANCH, model $MODEL, logs $LOG${DRY:+ (dry run)}"
 
+if [[ -n $FROM ]]; then
+  [[ $(git -C "$CO" branch --show-current) == "$BRANCH" ]] || die "$CO is not on $BRANCH"
+  SID=$(jq -r .session_id "$LOG/implement.json")
+  echo "resuming from $FROM: session $SID, logs $LOG"
+else
 # 1. the checkout
 if [[ ! -d $CO ]]; then
   x git clone "$REMOTE" "$CO"
@@ -139,7 +157,8 @@ ALLOWED=(Read Grep Glob Edit Write Skill Agent Task TodoWrite
   "Bash(git ls-files:*)" "Bash(git blame:*)" "Bash(git restore:*)" "Bash(git mv:*)" "Bash(git rm:*)"
   "Bash(mvn:*)" "Bash(./mvnw:*)" "Bash(npm:*)" "Bash(npx:*)" "Bash(node:*)"
   "Bash(docker ps:*)" "Bash(docker logs:*)" "Bash(docker compose:*)"
-  "Bash(./start-docker.sh:*)" "Bash(./test-on-own-db.sh:*)" "Bash(./run-tests-with-tracing.sh:*)"
+  "Bash(./start-docker.sh:*)" "Bash(../start-docker.sh:*)" "Bash(./test-on-own-db.sh:*)"
+  "Bash(./test-on-own-stack.sh:*)" "Bash(./run-tests-with-tracing.sh:*)"
   "Bash(python3:*)" "Bash(gh issue view:*)" "Bash(gh run:*)" "Bash(gh pr view:*)"
   "Bash(curl -s http://localhost:*)" "Bash(curl -s http://127.0.0.1:*)"
   "Bash(ls:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(wc:*)" "Bash(grep:*)"
@@ -153,14 +172,23 @@ BUDGET=${SLOP_BUDGET_USD:-15}
 claude_p() { local prompt=$1; shift
   printf '%s' "$prompt" | env -u CLAUDE_CODE_SESSION_ID claude -p --model "$MODEL" \
     --permission-mode acceptEdits --output-format json --max-budget-usd "$BUDGET" \
-    --add-dir "$CO" "$@" --allowedTools "${ALLOWED[@]}" --disallowedTools "${DENIED[@]}"; }
+    --add-dir "$CO" "$@" --allowedTools "${ALLOWED[@]}" --disallowedTools "${DENIED[@]}" \
+    || echo "run.sh: claude -p exited $?" >&2; }
+# what a call spent, from its own result JSON
+spent() { jq -r '"\(input_filename): $\(.total_cost_usd // "?") in \((.duration_ms // 0) / 60000 | floor) min, \(.num_turns // "?") turns, \(.subtype // "?")"' "$1" || true; }
 echo "+ (cd $CO && claude -p '<implement #$ISSUE, Q&A.md final>') > $LOG/implement.json"
 if [[ -n $DRY ]]; then SID=DRY-RUN; else
   (cd "$CO" && claude_p "$IMPL") > "$LOG/implement.json"
+  spent "$LOG/implement.json"
   SID=$(jq -r .session_id "$LOG/implement.json")
   [[ -n $SID && $SID != null ]] || die "the implementation run left no session id ($LOG/implement.json)"
   [[ $(git -C "$CO" rev-list --count "origin/main..HEAD") -ge 2 ]] \
     || die "the implementation run committed nothing ($LOG/implement.json)"
+fi
+fi  # --from
+if [[ $STOP == implement ]]; then
+  echo "stopped after the implementation; go on with: $0 $DEMO --checkout $CO --branch $BRANCH --from record-review --log $LOG"
+  exit 0
 fi
 
 # 5. record the review, in the same conversation
@@ -173,10 +201,15 @@ them is declined: it goes under Ignored, with a why: that cites the line it rest
 (Q&A.md:<line>). A Q&A.md decision no reviewer attacked goes under Assumptions with \
 source: human, anchored on the code that carries it."
 echo "+ (cd $CO && claude -p --resume $SID '<record-review prompt + Q&A.md decline rule>') > $LOG/record-review.json"
-if [[ -z $DRY ]]; then
+if [[ -z $DRY && $FROM != human-review ]]; then
   (cd "$CO" && claude_p "$RR" --resume "$SID") > "$LOG/record-review.json"
-  git -C "$CO" log -1 --format=%s --grep='\[auto-fix\]' | grep -q . \
+  spent "$LOG/record-review.json"
+  git -C "$CO" log --format=%s --grep='\[auto-fix\]' origin/main..HEAD | grep -q . \
     || die "no [auto-fix] commit: the review was not recorded ($LOG/record-review.json)"
+fi
+if [[ $STOP == record-review ]]; then
+  echo "stopped after the review record; go on with: $0 $DEMO --checkout $CO --branch $BRANCH --from human-review --log $LOG"
+  exit 0
 fi
 
 # 6. /human-review
