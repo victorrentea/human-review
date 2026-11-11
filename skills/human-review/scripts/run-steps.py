@@ -965,8 +965,11 @@ def _trace_shot(ctx: Ctx, cfg: dict, app: AppInstance, drawn: list[str],
     grafana = expand_vars(str(tcfg.get("grafana") or ""), app.vars) if tcfg.get("grafana") \
         else app.vars.get("GRAFANA_URL") or os.environ.get("GRAFANA_URL", "")
     if not grafana or "{" in grafana:
-        ctx.notes.append("no trace shot for the Sequence tab: no Grafana to take it from "
-                         "(steps.sequence.trace.grafana, or GRAFANA_URL in app.vars)")
+        # Said only when a trace store was asked for: a suite traced by the pytest plugin
+        # (the Ludvig fork) has no Grafana to miss, and a note about one would be noise.
+        if tcfg:
+            ctx.notes.append("no trace shot for the Sequence tab: no Grafana to take it from "
+                             "(steps.sequence.trace.grafana, or GRAFANA_URL in app.vars)")
         return
     python = _playwright_python(ctx)
     if not python:

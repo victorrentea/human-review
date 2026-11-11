@@ -180,8 +180,13 @@ def test_no_grafana_is_a_note_and_never_a_browser(tmp_path, monkeypatch):
     sh = Recorder()
     monkeypatch.setattr(steps, "sh", sh)
     ctx = steps.Ctx("origin/main", {"steps": {}}, dry=False)
-    steps._trace_shot(ctx, {}, _app(), [API], [], 0)
+    steps._trace_shot(ctx, {"trace": {"attribute": "span.test.name"}}, _app(), [API], [], 0)
     assert sh.ran == [] and "no Grafana" in ctx.notes[0]
+
+    # No trace store asked for (the pytest plugin's suites): nothing to miss, no note.
+    ctx = steps.Ctx("origin/main", {"steps": {}}, dry=False)
+    steps._trace_shot(ctx, {}, _app(), [API], [], 0)
+    assert sh.ran == [] and ctx.notes == []
 
     # Turned off, or nothing drawn: not even a note.
     ctx = steps.Ctx("origin/main", {"steps": {}}, dry=False)
