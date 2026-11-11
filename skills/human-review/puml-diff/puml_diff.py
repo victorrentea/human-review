@@ -359,6 +359,8 @@ def _split_relationship(clean: str):
     for i, tok in enumerate(tokens):
         if tok.startswith('"'):           # cardinality, not the connector
             continue
+        if tok.startswith("[") and tok.endswith("]"):
+            continue                      # `[..domain]`: a component's name, dots and all
         if _CONNECTOR.search(tok):
             conn_idx = i
             break

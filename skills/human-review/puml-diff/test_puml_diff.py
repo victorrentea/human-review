@@ -227,6 +227,28 @@ def _pkg_diff():
     return m.diff(m.parse(_PKG_BEFORE), m.parse(_PKG_AFTER))
 
 
+def test_a_dotted_bracket_name_is_a_component_not_a_connector():
+    """petclinic's packages.puml names its components by package pattern, `[..domain]`.
+    The `..` in a name read as a dotted connector at the line's first token, so every
+    arrow was taken for a component declaration and overwrote it: the added
+    `[..repository] --> [..rest.dto]` came out unpainted and the diagram `unchanged`."""
+    before = """@startuml
+[..repository] <<..repository>>
+[..rest.dto] <<..rest.dto>>
+[..domain] <<..domain>>
+[..repository] --> [..domain]
+@enduml
+"""
+    after = before.replace("@enduml", "[..repository] --> [..rest.dto]\n@enduml")
+    old, new = m.parse(before), m.parse(after)
+    assert set(new.elements) == {"[..repository]", "[..rest.dto]", "[..domain]"}
+    assert [(r[0], r[2]) for r in new.relationships] == [
+        ("[..repository]", "[..domain]"), ("[..repository]", "[..rest.dto]")]
+    out = m.diff(old, new)
+    assert "[..repository] --> [..domain]\n" in out
+    assert f"#{HEX_ADD}" in next(ln for ln in out.splitlines() if "[..rest.dto]" in ln and "-" in ln)
+
+
 def test_bracket_component_parsed_as_element_not_preamble():
     d = m.parse(_PKG_BEFORE)
     assert set(d.elements) == {"[Domain]", "[Repository]"}
