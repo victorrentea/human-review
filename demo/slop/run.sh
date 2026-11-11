@@ -137,6 +137,9 @@ exactly where you left off (git status first: some edits may already be on disk)
 # A call whose API connection dropped (network, DNS) is resumed in the same session, at most
 # three times. Every try keeps its own JSON (<name>-N.json, for the cost); the last one is
 # copied to <name>.json, whose session_id the next step resumes.
+# wait (30 min at most) until the API host resolves and answers at all, any HTTP status
+api_up() { local end=$((SECONDS + 1800))
+  until curl -s -o /dev/null --max-time 10 https://api.anthropic.com || ((SECONDS > end)); do sleep 20; done; }
 call() { local name=$1 prompt=$2; shift 2; local n=1 sid
   while [[ -e $LOG/$name-$n.json ]]; do n=$((n+1)); done
   local out="$LOG/$name-$n.json" first=$n
@@ -144,8 +147,8 @@ call() { local name=$1 prompt=$2; shift 2; local n=1 sid
   while jq -e '.is_error == true and (.result // "" | test("^API Error"))' "$out" >/dev/null 2>&1 \
       && ((n - first < 3)); do
     sid=$(jq -r .session_id "$out"); n=$((n+1)); out="$LOG/$name-$n.json"
-    echo "run.sh: $name: the API connection dropped; resuming $sid in a minute"
-    sleep 60
+    echo "run.sh: $name: the API connection dropped; resuming $sid once api.anthropic.com answers"
+    api_up
     (cd "$CO" && claude_p "$CONTINUE" --resume "$sid") > "$out"; spent "$out"
   done
   cp "$out" "$LOG/$name.json"; }
