@@ -26,6 +26,7 @@ Run with:  python3 -m pytest test_action_server.py
 from __future__ import annotations
 
 import functools
+import hashlib
 import html
 import http.client
 import importlib.util
@@ -494,6 +495,116 @@ def test_the_data_source_is_upserted_and_the_others_are_kept(tmp_path):
     [mine] = local.findall("component[@name='dataSourceStorageLocal']/data-source")
     assert mine.get("uuid") == sources[1].get("uuid")
     assert mine.findtext("auth-provider") == "no-auth"
+
+
+RUNNING = "jdbc:postgresql://localhost:55433/petclinic?user=petclinic&password=pet|clinic"
+
+
+def test_dbeaver_finds_the_data_source_by_name_and_carries_the_port_as_a_property():
+    spec = srv.dbeaver_con(RUNNING)
+    pairs = dict(re.split(r"(?<!\\)=", p, maxsplit=1) for p in re.split(r"(?<!\\)\|", spec))
+    # By name, never `id=`: an id only matches one DBeaver generated, so every press made
+    # another "Running DB (human-review)".
+    assert pairs["name"] == srv.DB_SOURCE_NAME and "id" not in pairs
+    # `-con` never updates the URL of a data source it found, but does update its driver
+    # properties: so the URL names only the database, and pgjdbc reads host and port there.
+    assert pairs["url"] == "jdbc:postgresql:petclinic"
+    assert (pairs["prop.PGHOST"], pairs["prop.PGPORT"]) == ("localhost", "55433")
+    assert pairs["password"] == "pet\\|clinic"          # `|` escaped the way DBeaver splits
+    assert pairs["connect"] == pairs["openConsole"] == pairs["save"] == "true"
+
+
+def test_dbeaver_resolves_its_postgres_driver_to_the_local_jar_and_keeps_the_rest():
+    import xml.etree.ElementTree as ET
+    jar = Path("/x/postgresql-42.7.10.jar")
+    mine = ('<?xml version="1.0" encoding="UTF-8"?>\n<drivers>\n\t<provider id="mysql">'
+            '<driver id="mysql8"><library type="jar" path="/my.jar" custom="true"/></driver>'
+            '</provider>\n</drivers>\n')
+    out = srv.dbeaver_drivers_xml(mine, jar)
+    root = ET.fromstring(out)
+    assert root.find("provider[@id='mysql']/driver[@id='mysql8']/library").get("path") == "/my.jar"
+    drv = root.find("provider[@id='postgresql']/driver[@id='postgres-jdbc']")
+    [main] = [lib for lib in drv.findall("library") if lib.get("path") == srv.DBEAVER_PG_LIB]
+    # What DBeaver records after its own download: the Maven library, with its file. No
+    # `version` on it — a lower one than the plugin's makes DBeaver drop the file again.
+    assert main.get("version") is None and main.find("file").get("path") == str(jar)
+    assert sorted(lib.get("path") for lib in drv.findall("library[@disabled='true']")) == \
+        sorted(srv.DBEAVER_PG_EXTRAS)
+    assert srv.dbeaver_drivers_xml(out, jar) == out and srv._same_driver(mine, out) is False
+    assert srv.dbeaver_drivers_xml("<drivers/>", jar).count("<library") == 4
+
+
+def test_dbeaver_writes_its_driver_once(tmp_path):
+    jar = Path("/x/pg.jar")
+    assert srv.dbeaver_use_driver(tmp_path, jar) is True
+    assert srv.dbeaver_use_driver(tmp_path, jar) is False
+    assert srv.dbeaver_use_driver(tmp_path, Path("/y/pg.jar")) is True
+
+
+def test_dbeaver_keeps_one_running_db_and_moves_it_to_the_new_port(tmp_path):
+    store = tmp_path / "General" / ".dbeaver" / "data-sources.json"
+    store.parent.mkdir(parents=True)
+    old = {"url": "jdbc:postgresql://localhost:1/petclinic", "configurationType": "MANUAL"}
+    store.write_text(json.dumps({"folders": {}, "connections": {
+        "a": {"name": srv.DB_SOURCE_NAME, "configuration": old},
+        "sample": {"name": "DBeaver Sample Database (SQLite)", "configuration": {"url": "s"}},
+        "b": {"name": srv.DB_SOURCE_NAME, "configuration": old}}}))
+    assert srv.dbeaver_write_sources(tmp_path, RUNNING) is True
+    conns = json.loads(store.read_text())["connections"]
+    assert list(conns) == ["a", "sample"]
+    assert conns["a"]["configuration"] == {
+        "url": "jdbc:postgresql:petclinic", "configurationType": "MANUAL",
+        "properties": {"PGHOST": "localhost", "PGPORT": "55433"}}
+    assert srv.dbeaver_write_sources(tmp_path, RUNNING) is False   # nothing left to fix
+
+
+def test_sql_developer_stores_the_password_the_way_it_decrypts_it():
+    pytest.importorskip("cryptography")
+    import base64
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    sid = "04a4ff5e-d32b-4723-a6da-09757f2cd9ee"
+    # Checked against SQL Developer 26.2's own ReferenceWorker.decrypt, which reads it back
+    # as "petclinic" (11 Nov 2026).
+    assert srv.sqldev_encrypt("petclinic", sid, bytes(12)) == "AAAAAAAAAAAAAAAAOvyHOEvWx+AcmAyjeYLPY67+l5DGWO2kjg=="
+    raw = base64.b64decode(srv.sqldev_encrypt("petclinic", sid))
+    key = hashlib.pbkdf2_hmac("sha256", sid.encode(),
+                              bytes([6, 182, 97, 35, 61, 104, 50, 184]), 5000, 32)
+    assert AESGCM(key).decrypt(raw[:12], raw[12:], b"password") == b"petclinic"
+
+
+def test_sql_developer_connection_is_upserted_by_name(tmp_path):
+    system = tmp_path / "system26.2.0.1"
+    (system / "o.sqldeveloper").mkdir(parents=True)
+    (system / "o.sqldeveloper" / "product-preferences.xml").write_text(
+        '<ide:preferences><value n="db.system.id" v="abc-123"/></ide:preferences>')
+    assert srv.sqldev_system_id(system) == "abc-123"
+    store = system / "o.jdeveloper.db.connection" / "connections.json"
+    store.parent.mkdir()
+    store.write_text(json.dumps({"connections": [
+        {"name": "mine", "type": "jdbc", "info": {}},
+        {"name": srv.DB_SOURCE_NAME, "type": "jdbc", "info": {"port": "1"}}]}))
+    srv.sqldev_write_connection(tmp_path, RUNNING)
+    srv.sqldev_write_connection(tmp_path, RUNNING.replace("55433", "55434"))
+    conns = json.loads(store.read_text())["connections"]
+    assert [c["name"] for c in conns] == ["mine", srv.DB_SOURCE_NAME]
+    info = conns[1]["info"]
+    assert conns[1]["type"] == "jdbc"
+    assert {k: info[k] for k in ("RaptorConnectionType", "hostname", "port", "customUrl",
+                                 "user")} == {
+        "RaptorConnectionType": "SDPostgreSQL", "hostname": "localhost", "port": "55434",
+        "customUrl": "jdbc:postgresql://localhost:55434/petclinic", "user": "petclinic"}
+    if srv.sqldev_encrypt("x", "y") is not None:
+        assert info["password"] and info["SavePassword"] == "true"
+
+
+def test_sql_developer_gets_the_driver_line_once(tmp_path):
+    conf = tmp_path / "26.2.0" / "product.conf"
+    conf.parent.mkdir()
+    conf.write_text("# AddVMOption -Xmx2g\n")
+    jar = Path("/x/postgresql-42.7.10.jar")
+    assert srv.sqldev_add_driver(tmp_path, jar) == [conf]
+    assert srv.sqldev_add_driver(tmp_path, jar) == []
+    assert conf.read_text().splitlines().count("AddJavaLibFile /x/postgresql-42.7.10.jar") == 1
 
 
 def test_no_intellij_window_on_the_checkout_opens_it_there_then_shows_the_db(tmp_path, monkeypatch):

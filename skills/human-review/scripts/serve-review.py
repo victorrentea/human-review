@@ -1002,14 +1002,26 @@ def open_db_in_idea(root: Path, url: str) -> dict | None:
 DBEAVER_APPS = (Path("/Applications/DBeaver.app"), Path.home() / "Applications" / "DBeaver.app")
 SQLDEV_APPS = (Path("/Applications/SQLDeveloper.app"),
                Path.home() / "Applications" / "SQLDeveloper.app")
-#: SQL Developer ships no PostgreSQL driver: a connection of that type only appears once
-#: `org.postgresql.Driver` is on its classpath. This one is put there, once, by an
-#: `AddJavaLibFile` line in the user's own `product.conf` (never in the app bundle).
+#: Neither client gets its PostgreSQL driver from us by itself: SQL Developer ships none, and
+#: DBeaver's own download (Maven `RELEASE` resolution) failed on this Mac with an
+#: UnknownHostException while `curl` reached Maven Central fine. So the server downloads the
+#: jar once and points both at that file.
 PG_DRIVER_VERSION = "42.7.10"
 PG_DRIVER_URL = ("https://repo1.maven.org/maven2/org/postgresql/postgresql/"
                  f"{PG_DRIVER_VERSION}/postgresql-{PG_DRIVER_VERSION}.jar")
 SQLDEV_HOME = Path.home() / ".sqldeveloper"
 SQLDEV_QUIT_SECONDS = 15.0
+DBEAVER_DATA = Path.home() / "Library" / "DBeaverData" / "workspace6"
+#: The URL the Running DB row pointed DBeaver at last, to tell a new port from a second press.
+DBEAVER_LAST = Path.home() / ".human-review" / "dbeaver-running-db.json"
+DBEAVER_QUIT_SECONDS = 15.0
+#: The libraries of DBeaver's `postgres-jdbc` driver (its plugin.xml). The first is the
+#: driver itself; the others are optional extras (PostGIS types, Windows SSPI login) that
+#: DBeaver would otherwise still try to download before every first connect.
+DBEAVER_PG_LIB = "maven:/org.postgresql:postgresql:RELEASE"
+DBEAVER_PG_EXTRAS = ("maven:/net.postgis:postgis-jdbc:RELEASE",
+                     "maven:/net.postgis:postgis-geometry:RELEASE",
+                     "maven:/com.github.waffle:waffle-jna:RELEASE")
 
 
 def _app(candidates) -> Path | None:
@@ -1039,26 +1051,208 @@ def jdbc_parts(url: str) -> dict:
             "password": query.get("password", "")}
 
 
-def dbeaver_con(url: str) -> str:
-    """DBeaver's `-con` argument (its command-line *connection* parameters): the data source,
-    saved under one name so a second press updates it, connected, with an SQL editor open."""
+def _con_escape(value: str) -> str:
+    """A `-con` value as DBeaver splits the spec: `|` separates, `\\` escapes `|` and `\\`."""
+    return value.replace("\\", "\\\\").replace("|", "\\|")
+
+
+def dbeaver_target(url: str) -> dict:
+    """What the Running DB data source holds in DBeaver: its URL and driver properties.
+
+    DBeaver's `-con` finds an existing data source by name and then updates its login and
+    driver properties, but never its URL (`DataSourceUtils.getDataSourceSupplierBySpec`). So
+    for PostgreSQL the URL names only the database (`jdbc:postgresql:petclinic`) and the
+    host and port travel as pgjdbc's own `PGHOST`/`PGPORT` properties, which that URL form
+    reads — and a new port after a restart lands in the one data source there is."""
     p = jdbc_parts(url)
+    if p.get("driver") == "postgresql":
+        return {"url": f"jdbc:postgresql:{p['database']}",
+                "properties": {"PGHOST": p["host"], "PGPORT": p["port"]}}
+    return {"url": p.get("url", url), "properties": {}}
+
+
+def dbeaver_con(url: str) -> str:
+    """DBeaver's `-con` argument (its documented command-line connection spec): the data
+    source looked up *by name* — `id=` only matches an id DBeaver generated itself, so it
+    made a new data source on every press — created on the first press (`save=true`),
+    connected, with an SQL console open."""
+    p, target = jdbc_parts(url), dbeaver_target(url)
     driver = {"postgresql": "postgresql", "oracle": "oracle", "mysql": "mysql"}.get(
         p.get("driver", ""), p.get("driver", ""))
-    pairs = [("driver", driver), ("url", p.get("url", url)), ("user", p.get("user", "")),
-             ("password", p.get("password", "")), ("savePassword", "true"),
-             ("name", DB_SOURCE_NAME), ("id", "human-review-running-db"),
+    pairs = [("name", DB_SOURCE_NAME), ("driver", driver), ("url", target["url"]),
+             ("user", p.get("user", "")), ("password", p.get("password", "")),
+             ("savePassword", "true"),
+             *((f"prop.{k}", v) for k, v in target["properties"].items()),
              ("connect", "true"), ("openConsole", "true"), ("save", "true")]
-    return "|".join(f"{k}={v}" for k, v in pairs if v)
+    return "|".join(f"{k}={_con_escape(v)}" for k, v in pairs if v)
 
 
-def open_db_in_dbeaver(url: str) -> dict:
-    """`open -n -a DBeaver --args -con …`. A DBeaver already running takes the arguments
-    from the second launch and that one exits, so the click works either way; `-n` because
-    `open` without it only raises a running app and drops the arguments."""
-    app = dbeaver_app()
-    subprocess.Popen(["open", "-n", "-a", str(app), "--args", "-con", dbeaver_con(url)],
+def dbeaver_drivers_xml(text: str, jar: Path) -> str:
+    """DBeaver's `drivers.xml` (`DriverDescriptorSerializerLegacy`) with its `postgres-jdbc`
+    driver resolved to `jar`: the Maven library keeps its path and gets a `<file>` — what
+    DBeaver itself records after a download — and the optional extras are `disabled`, so
+    nothing is left to download. Every other provider, driver and library is kept."""
+    import xml.etree.ElementTree as ET
+    try:
+        root = ET.fromstring(text) if text.strip() else ET.Element("drivers")
+    except ET.ParseError:
+        root = ET.Element("drivers")
+    if root.tag != "drivers":
+        root = ET.Element("drivers")
+    provider = root.find("provider[@id='postgresql']")
+    if provider is None:
+        provider = ET.SubElement(root, "provider", id="postgresql")
+    driver = provider.find("driver[@id='postgres-jdbc']")
+    if driver is None:
+        driver = ET.SubElement(provider, "driver", id="postgres-jdbc")
+    ours = (DBEAVER_PG_LIB, *DBEAVER_PG_EXTRAS)
+    for lib in [lib for lib in driver.findall("library") if lib.get("path") in ours]:
+        driver.remove(lib)
+    # No `version` on the library: a version below the plugin's preferred one makes DBeaver
+    # drop the recorded files and download again ("ui.drivers.version.update").
+    lib = ET.SubElement(driver, "library", type="jar", path=DBEAVER_PG_LIB, custom="false")
+    ET.SubElement(lib, "file", id="org.postgresql:postgresql", version=PG_DRIVER_VERSION,
+                  path=str(jar))
+    for path in DBEAVER_PG_EXTRAS:
+        ET.SubElement(driver, "library", type="jar", path=path, custom="false",
+                      disabled="true")
+    ET.indent(root, "\t")
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, "unicode") + "\n"
+
+
+def dbeaver_use_driver(data: Path, jar: Path) -> bool:
+    """Write the driver into `<workspace>/.metadata/.config/drivers.xml` when it is not
+    there yet. True when the file changed — a DBeaver already running will not see it: it
+    reads that file only when it starts."""
+    import xml.etree.ElementTree as ET
+    conf = data / ".metadata" / ".config" / "drivers.xml"
+    for attempt in range(5):
+        # DBeaver rewrites this file whenever it resolves a driver; a read that lands in
+        # the middle of that must not pass for "our driver is missing" and restart it.
+        try:
+            old = conf.read_text(encoding="utf-8")
+        except OSError:
+            old = ""
+        try:
+            if old.strip():
+                ET.fromstring(old)
+            break
+        except ET.ParseError:
+            time.sleep(0.2)
+    new = dbeaver_drivers_xml(old, jar)
+    if _same_driver(old, new):
+        return False
+    conf.parent.mkdir(parents=True, exist_ok=True)
+    tmp = conf.with_name(conf.name + ".human-review.tmp")
+    tmp.write_text(new, encoding="utf-8")
+    os.replace(tmp, conf)
+    return True
+
+
+def _same_driver(a: str, b: str) -> bool:
+    import xml.etree.ElementTree as ET
+
+    def libs(text):
+        try:
+            d = ET.fromstring(text).find("provider[@id='postgresql']/driver[@id='postgres-jdbc']")
+        except ET.ParseError:
+            return None
+        if d is None:
+            return None
+        return sorted((lib.get("path"), lib.get("disabled"),
+                       tuple(f.get("path") for f in lib.findall("file")))
+                      for lib in d.findall("library"))
+    return libs(a) is not None and libs(a) == libs(b)
+
+
+def dbeaver_sources(data: dict, url: str) -> dict:
+    """DBeaver's `data-sources.json` with exactly one Running DB data source: the first one
+    of that name kept and pointed at `url`, any others (left by earlier presses) dropped.
+    None of that name: unchanged — the press's `-con` creates it."""
+    conns = data.get("connections") if isinstance(data, dict) else None
+    if not isinstance(conns, dict):
+        return data
+    named = [k for k, v in conns.items()
+             if isinstance(v, dict) and v.get("name") == DB_SOURCE_NAME]
+    if not named:
+        return data
+    keep, target = named[0], dbeaver_target(url)
+    out = {k: v for k, v in conns.items() if k == keep or k not in named}
+    cfg = dict(out[keep].get("configuration") or {})
+    cfg["url"] = target["url"]
+    props = {k: v for k, v in (cfg.get("properties") or {}).items()
+             if k not in ("PGHOST", "PGPORT")}
+    props.update(target["properties"])
+    if props:
+        cfg["properties"] = props
+    else:
+        cfg.pop("properties", None)
+    out[keep] = {**out[keep], "configuration": cfg}
+    return {**data, "connections": out}
+
+
+def dbeaver_write_sources(data_dir: Path, url: str) -> bool:
+    """Apply `dbeaver_sources` to the workspace's `General` project — only while DBeaver is
+    not running, which keeps that file in memory and writes it back whole."""
+    store = data_dir / "General" / ".dbeaver" / "data-sources.json"
+    try:
+        old = json.loads(store.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    new = dbeaver_sources(old, url)
+    if new == old:
+        return False
+    tmp = store.with_name(store.name + ".human-review.tmp")
+    tmp.write_text(json.dumps(new, indent=1), encoding="utf-8")
+    os.replace(tmp, store)
+    return True
+
+
+def dbeaver_running() -> bool:
+    return _apple_event('application "DBeaver" is running', 5) == "true"
+
+
+def _dbeaver_args(app: Path, *args: str) -> None:
+    """Hand DBeaver command-line arguments. `-n`: `open` without it only raises a running
+    app and drops them; a second DBeaver started this way passes them to the running one
+    over its instance server and exits."""
+    subprocess.Popen(["open", "-n", "-a", str(app), "--args", *args],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def open_db_in_dbeaver(url: str) -> dict | None:
+    """Show the Running DB in DBeaver: one data source, connected, with a console open.
+
+    PostgreSQL first gets its driver (`dbeaver_use_driver`). A DBeaver that was running
+    before that file existed has to start again to read it: it is quit (its own `-quit`)
+    and None returned when it would not quit. With DBeaver not running, the data source in
+    `data-sources.json` is fixed in place (one of them, this URL). Running, the `-con`
+    updates it in memory; when the URL changed since the last press, DBeaver's connections
+    are dropped first (`-disconnectAll`), since a connected data source keeps the host and
+    port it connected with even after its properties change."""
+    app = dbeaver_app()
+    if url.startswith("jdbc:postgresql:") and dbeaver_use_driver(DBEAVER_DATA, pg_driver_jar()):
+        if dbeaver_running():
+            # Its own `-quit`: an Apple Event quit waits on DBeaver's exit confirmation.
+            _dbeaver_args(app, "-quit")
+            deadline = time.time() + DBEAVER_QUIT_SECONDS
+            while dbeaver_running():
+                if time.time() > deadline:
+                    return None
+                time.sleep(0.3)
+    try:
+        last = json.loads(DBEAVER_LAST.read_text(encoding="utf-8")).get("url")
+    except (OSError, ValueError, AttributeError):
+        last = None
+    if dbeaver_running():
+        if last and last != url:
+            _dbeaver_args(app, "-disconnectAll")
+            time.sleep(3)
+    else:
+        dbeaver_write_sources(DBEAVER_DATA, url)
+    _dbeaver_args(app, "-con", dbeaver_con(url))
+    DBEAVER_LAST.parent.mkdir(parents=True, exist_ok=True)
+    DBEAVER_LAST.write_text(json.dumps({"url": url}), encoding="utf-8")
     return {"how": "dbeaver", "name": DB_SOURCE_NAME}
 
 
@@ -1074,14 +1268,19 @@ def pg_driver_jar() -> Path:
     return jar
 
 
+def sqldev_driver_line(jar: Path) -> str:
+    """The `product.conf` line that puts `jar` on SQL Developer's classpath."""
+    return f"AddJavaLibFile {jar}"
+
+
 def sqldev_add_driver(home: Path, jar: Path) -> list[Path]:
     """`AddJavaLibFile <jar>` in every `~/.sqldeveloper/<version>/product.conf` that lacks
     it. Returns the files changed."""
     changed = []
     for conf in sorted(home.glob("[0-9]*/product.conf")):
         text = conf.read_text(encoding="utf-8", errors="replace")
-        line = f"AddJavaLibFile {jar}"
-        if line in text:
+        line = sqldev_driver_line(jar)
+        if line in text.splitlines():
             continue
         conf.write_text(text.rstrip("\n") + f"\n\n# human-review: PostgreSQL driver for the "
                         f"Running DB connection\n{line}\n", encoding="utf-8")
@@ -1089,37 +1288,77 @@ def sqldev_add_driver(home: Path, jar: Path) -> list[Path]:
     return changed
 
 
-def sqldev_connection(url: str) -> dict:
-    """One entry of SQL Developer's `connections.json`, as its PostgreSQL panel writes one
-    (`PostgreSQLConnectionPanel`: `RaptorConnectionType` SDPostgreSQL, `hostname`, `port`,
-    `customUrl`). No `password`: SQL Developer keeps it encrypted with a per-install key, so
-    the login rides in the URL the driver reads, and no password is asked for."""
+#: `oracle.dbtools.connections.security.ReferenceWorker`: the stored password is AES-GCM
+#: under a key derived (PBKDF2-SHA256, this salt, 5000 rounds) from the install's
+#: `db.system.id`, with the property name as associated data; Base64 of IV + ciphertext.
+SQLDEV_SALT = bytes(b & 0xFF for b in (6, -74, 97, 35, 61, 104, 50, -72))
+
+
+def sqldev_encrypt(secret: str, system_id: str, iv: bytes | None = None) -> str | None:
+    """`secret` as SQL Developer stores a connection's `password`, or None when the
+    `cryptography` package is not there to do AES-GCM (the password is then asked for)."""
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    except ImportError:
+        return None
+    import base64
+    key = hashlib.pbkdf2_hmac("sha256", system_id.encode(), SQLDEV_SALT, 5000, 32)
+    iv = iv or secrets.token_bytes(12)
+    return base64.b64encode(iv + AESGCM(key).encrypt(iv, secret.encode(), b"password")).decode()
+
+
+def sqldev_system_id(system: Path) -> str | None:
+    """The install's `db.system.id` (`o.sqldeveloper/product-preferences.xml`), which SQL
+    Developer creates on its first start and keeps."""
+    try:
+        text = (system / "o.sqldeveloper" / "product-preferences.xml").read_text(
+            encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    m = re.search(r'<value\s+n="db\.system\.id"\s+v="([^"]+)"', text)
+    return m[1] if m else None
+
+
+def sqldev_connection(url: str, system_id: str | None = None) -> dict:
+    """One entry of SQL Developer's `connections.json` (`oracle.dbtools.connections.impl.
+    ConnectionsList`), as its PostgreSQL panel fills one (`PostgreSQLConnectionPanel`:
+    RaptorConnectionType/subtype SDPostgreSQL, `hostname`, `port`, `customUrl`). Its
+    PostgreSQL connector asks for a password whenever `password` is empty, so the password
+    is stored the way SQL Developer stores it (`sqldev_encrypt`) when it can be."""
     p = jdbc_parts(url)
-    custom = f"jdbc:postgresql://{p['host']}:{p['port']}/{p['database']}"
-    login = urllib.parse.urlencode([(k, p[k]) for k in ("user", "password") if p.get(k)])
-    return {"name": DB_SOURCE_NAME, "type": "jdbc",
-            "info": {"RaptorConnectionType": "SDPostgreSQL", "driver": "org.postgresql.Driver",
-                     "hostname": p["host"], "port": p["port"],
-                     "customUrl": custom + (f"?{login}" if login else ""),
-                     "user": p.get("user", ""), "NoPasswordConnection": "TRUE",
-                     "SavePassword": "false", "ConnName": DB_SOURCE_NAME}}
+    info = {"RaptorConnectionType": "SDPostgreSQL", "subtype": "SDPostgreSQL",
+            "driver": "org.postgresql.Driver", "hostname": p["host"], "port": p["port"],
+            "customUrl": f"jdbc:postgresql://{p['host']}:{p['port']}/{p['database']}",
+            "user": p.get("user", ""), "ConnName": DB_SOURCE_NAME}
+    secret = (sqldev_encrypt(p["password"], system_id)
+              if system_id and p.get("password") else None)
+    if secret:
+        info.update(password=secret, SavePassword="true")
+    return {"name": DB_SOURCE_NAME, "type": "jdbc", "info": info}
+
+
+def sqldev_upsert(data, entry: dict) -> dict:
+    """`connections.json` content with `entry` in place of any connection of its name."""
+    if not isinstance(data, dict) or not isinstance(data.get("connections"), list):
+        data = {"connections": []}
+    conns = [c for c in data["connections"]
+             if not (isinstance(c, dict) and c.get("name") == entry["name"])]
+    return {**data, "connections": [*conns, entry]}
 
 
 def sqldev_write_connection(home: Path, url: str) -> list[Path]:
     """Upsert the Running DB connection into every SQL Developer system folder's
-    `connections.json` (creating the store when SQL Developer has never saved one)."""
+    `connections.json` (`StorageWrapper`: `<system>/o.jdeveloper.db.connection/`)."""
     written = []
     for system in sorted(home.glob("system*")):
         store = system / "o.jdeveloper.db.connection" / "connections.json"
+        if store.is_dir():
+            continue
         try:
             data = json.loads(store.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             data = {}
-        if not isinstance(data, dict) or not isinstance(data.get("connections"), list):
-            data = {"connections": []}
-        data["connections"] = [c for c in data["connections"]
-                               if not (isinstance(c, dict) and c.get("name") == DB_SOURCE_NAME)]
-        data["connections"].append(sqldev_connection(url))
+        data = sqldev_upsert(data, sqldev_connection(url, sqldev_system_id(system)))
         store.parent.mkdir(parents=True, exist_ok=True)
         tmp = store.with_name(store.name + ".human-review.tmp")
         tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -2958,7 +3197,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 if dbeaver_app() is None:
                     self.reply_text("DBeaver is not installed", 404)
                     return
-                self.reply_json({"url": url, **open_db_in_dbeaver(url)})
+                try:
+                    done = open_db_in_dbeaver(url)
+                except OSError as e:
+                    self.reply_text(f"DBeaver: {e}", 502)
+                    return
+                if done is None:
+                    self.reply_text("DBeaver has to restart once to load the PostgreSQL "
+                                    "driver, and would not quit — close it, then click again",
+                                    409)
+                    return
+                self.reply_json({"url": url, **done})
                 return
             if tool == "sqldeveloper":
                 if sqldeveloper_app() is None:
