@@ -226,7 +226,7 @@ from hrbuild.shared.postprocess import (
     ANCHOR, check_baked_excerpts, one_tooltip_only, open_links_in_new_tabs, TARGET_ATTR
 )
 from hrbuild.shared.validate import (
-    REQUIRED, validate
+    REQUIRED, STEPS_STATUS, drop_unproduced, validate
 )
 from hrbuild.shared.layout import (
     _layout_overridden, _layout_section, _video_step_ran, LAYOUT_ALWAYS, LAYOUT_MODEL_KEYS, LAYOUT_PRODUCER,
@@ -460,6 +460,9 @@ def _main(argv=None) -> int:
     # and named — the same treatment an unanchored assumption gets further down.
     for warning in own_layout(spec, out_dir):
         print(f"[review] WARNING: {warning}", file=sys.stderr)
+
+    for gone in drop_unproduced(spec, out_dir):
+        print(f"[review] dropped {gone} — this run's producers did not write it", file=sys.stderr)
 
     problems = validate(spec, out_dir)
     if problems:

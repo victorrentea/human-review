@@ -558,16 +558,11 @@ COST_TITLE = '<h2 class="tabtitle">Total Cost</h2>'
 #: (measured 20 Oct 2026, 11:28) are `harness_cost.claude_human_time` and
 #: `claude_busy_spans` over the same sessions: the human's, the agents' added up, and the
 #: agents' union — the hours in which something was being built.
-TOOLING_INVESTMENT = {
-    "usd": 3986, "sessions": 227, "first": "27 Aug 2026", "asof": "20 Oct 2026",
-    "buckets": [("human-review repo", 1120), ("workspace sessions", 795),
-                ("subagents", 1809), ("eval runs (claude -p)", 226),
-                ("petclinic checkouts, after the move", 33), ("other projects", 3)],
-    "models": [("Opus 5.5", 1883), ("Opus 5", 1782), ("Fable 5.1", 170),
-               ("Sonnet 5", 101), ("Sonnet 5.5", 49)],
-    "borderline": {"sessions": 29, "usd": 1360, "prorated": 583},
-    "humanSeconds": 122285, "agentSeconds": 1587010, "wallSeconds": 795131,
-}
+#: Ludvig fork: empty. The figures upstream carried were what building the tool cost its
+#: author, on his machine — nothing a Ludvig reviewer can read anything into. The renderer
+#: draws no box for an empty dict; measure Ludvig's own with `tools/tooling-cost.py` if it
+#: is ever wanted.
+TOOLING_INVESTMENT: dict = {}
 
 
 def tooling_investment_html(t: dict = TOOLING_INVESTMENT) -> str:

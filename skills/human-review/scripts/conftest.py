@@ -28,6 +28,11 @@ os.environ.setdefault("HR_NO_GITHUB", "1")
 # about two thirds of the time a small page takes.
 os.environ.setdefault("HUMAN_REVIEW_NO_FETCH", "1")
 
+# The server's desktop calls (`desktop.py`) differ per OS — `open` on macOS, `wslview` on
+# WSL, `xdg-open` on Linux. The tests were written against macOS's; pin it so they read the
+# same on every machine, and let `test_desktop.py` cover the other two on purpose.
+os.environ.setdefault("HUMAN_REVIEW_DESKTOP", "mac")
+
 # Several tests point `HOME` at an empty folder so no real transcript leaks into a cost
 # number. Python finds its user site (`~/Library/Python/3.x`) through `HOME`, and that is
 # where Pygments and PyYAML live on a Homebrew Python, so such a build failed with "needs

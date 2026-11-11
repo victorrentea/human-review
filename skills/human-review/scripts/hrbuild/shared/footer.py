@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import re
 
-HOME_URL = "https://github.com/victorrentea/human-review"
+#: The Ludvig fork of the skill (branch `ludvig`): where its pages say they came from and
+#: where a reader files an issue. Upstream is victorrentea/human-review.
+HOME_URL = "https://github.com/stojanpeshov/human-review"
 
 # Where a finished page lives once the projector is off. `.github/workflows/pages.yml`
 # publishes every snapshot under `demo/` to GitHub Pages on each push to main, so a reader
@@ -89,16 +91,13 @@ ISSUES_URL = f"{HOME_URL}/issues/new/choose"
 # a phone in the back of a room. And a closing invitation after both links, not between the
 # provenance sentence and them: by the time the reader has been told where to find this
 # page and how to run it, the only thing left to say is that it is theirs to change.
+# Ludvig: no public demo or talk links. Ludvig's pages are read on the machine that built
+# them and never published, so the footer only says where the tool lives and where its
+# bugs go.
 TAKEAWAY = (
     '<span class="takeaway">'
     f'Built by <a href="{HOME_URL}" target="_blank" rel="noopener">{HOME_URL}</a> '
-    f'(<a href="{TALK_URL}" target="_blank" rel="noopener" '
-    'data-tip="Walk-through of this guide: my talk at Devoxx Belgium 2026">guide</a>). '
-    # Its own span: server.js hides the sentence on the page it links to.
-    f'<span class="takeaway-online">Browse: <a href="{DEMO_PAGES_URL}" target="_blank" '
-    'rel="noopener">demo 1</a> · '
-    f'<a href="{DEMO2_PAGES_URL}" target="_blank" rel="noopener">demo 2</a>. </span>'
-    'Adopt what you like. Bug/idea → '
+    '(Ludvig fork). Bug/idea → '
     f'<a href="{ISSUES_URL}" target="_blank" rel="noopener" data-tip="Open an issue">+ issue</a>.'
     '</span>'
 )

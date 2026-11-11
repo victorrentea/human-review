@@ -181,7 +181,9 @@ def _stub_gh(tmp_path: Path, view: dict | None, head_runs: list | None = None,
         "else: print('')\n")
     (bindir / "gh").chmod(0o755)
     (bindir / "git").write_text(
-        '#!/bin/sh\nif [ "$1" = push ]; then exit 0; fi\nexec /usr/bin/git "$@"\n')
+        '#!/bin/sh\nif [ "$1" = push ]; then exit 0; fi\n'
+        'if [ "$1" = branch ] && [ "$2" = -r ]; then echo "  origin/main"; exit 0; fi\n'
+        'exec /usr/bin/git "$@"\n')
     (bindir / "git").chmod(0o755)
     return dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}",
                 **{preflight.SONAR_API_ENV: "0"})

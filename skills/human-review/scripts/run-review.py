@@ -99,6 +99,17 @@ def default_base() -> str:
         return "origin/main"
 
 
+def video_configured() -> bool:
+    """Whether `human-review.json` sets up the film (`steps.video`). The Ludvig fork has
+    postponed the Demo tab: without that block nothing pays a model for a script nobody
+    will film."""
+    try:
+        cfg = json.loads(Path("human-review.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return bool(isinstance(cfg, dict) and (cfg.get("steps") or {}).get("video"))
+
+
 def has_feature_script() -> bool:
     env = os.environ.get("HUMAN_REVIEW_FEATURE_SCRIPT")
     return any(p.is_file() for p in FEATURE_SCRIPTS) or bool(env and Path(env).is_file())
@@ -148,7 +159,9 @@ def main(argv=None) -> int:
         run([script("preflight.py"), "--base", base, "--session", session], dry=dry)
         run([script("write-content.py"), "--skeleton-only"], dry=dry)
 
-        if has_feature_script():
+        if not video_configured():
+            say("steps.video not configured — no film, and no film script asked for")
+        elif has_feature_script():
             say("the branch has a film script; not asking for a new one")
         else:
             film = run([script("rerun-film.py")], ok=(0, 1, 4), dry=dry)

@@ -94,10 +94,30 @@ CI_LIKE = re.compile(r"(?<![a-z0-9])(ci|build)(?![a-z0-9])", re.I)
 #: …unless it is plainly a deployment. `pages-build-deployment` has "build" in it and proves
 #: nothing about the application, which is the exact confusion this gate exists to prevent.
 NOT_CI = re.compile(r"deploy|pages|release|publish", re.I)
+#: In "every run must be green" mode, the runs that prove nothing about the code and may
+#: never finish: deployments, and CircleCI's manual approval jobs (`hold`, `approve-…`),
+#: which sit pending until a human presses the button.
+NOT_A_BUILD = re.compile(r"deploy|pages|release|publish|approv|\bhold\b", re.I)
 RUN_FIELDS = "databaseId,status,conclusion,workflowName,headSha,event,createdAt,url"
 #: Statuses in which no runner has picked the job up yet. Still one of these at the deadline
 #: means a runner outage, not a red build — and the report has to say which it was.
 NOT_STARTED = {"queued", "waiting", "requested", "pending"}
+
+
+def configured_push(config: str) -> bool:
+    """`"ci": {"push": true}` lets the gate push the branch first. Off by default: at Ludvig
+    the branch is pushed by its author, when they decide to, and never by a review tool."""
+    try:
+        data = json.loads(Path(config).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    ci = data.get("ci") if isinstance(data, dict) else None
+    return bool(isinstance(ci, dict) and ci.get("push"))
+
+
+def pushed(sha: str) -> bool:
+    """Whether some remote branch already has `sha` — the only commits CI can have built."""
+    return bool(run(f"git branch -r --contains {shlex.quote(sha)}").stdout.strip())
 
 
 def configured_workflows(cli: list[str], config: str) -> list[str]:
@@ -478,7 +498,7 @@ def refresh_ci() -> int:
 
 
 def gate(wait_minutes: float, workflows: list[str] | None = None,
-         poll: float = 15.0) -> tuple[bool, str, dict]:
+         poll: float = 15.0, push: bool = True) -> tuple[bool, str, dict]:
     """True when the pushed commit is proven green by **every** authoritative workflow (or
     the repo has no CI at all). The third value is the machine-readable evidence."""
     evidence: dict = {"sha": None, "selection": None, "workflows": []}
@@ -487,9 +507,10 @@ def gate(wait_minutes: float, workflows: list[str] | None = None,
         print("[preflight] working tree is not clean. Decide, deliberately, what belongs "
               "in the branch before the gate runs:\n" + dirty, file=sys.stderr)
 
-    print("[preflight] git push")
-    push = run("git push", capture=True)
-    if push.returncode != 0 and "up-to-date" not in (push.stderr or "").lower():
+    if push:
+        print("[preflight] git push")
+        push = run("git push", capture=True)
+    if push and push.returncode != 0 and "up-to-date" not in (push.stderr or "").lower():
         # A push that fails is not a gate failure yet — it may need -u on a new branch.
         up = run("git push -u origin HEAD")
         if up.returncode != 0:
@@ -501,6 +522,11 @@ def gate(wait_minutes: float, workflows: list[str] | None = None,
     if not sha:
         return False, "cannot resolve HEAD", dict(evidence, verdict="no-head")
     evidence["sha"] = sha
+
+    if not push and not pushed(sha):
+        return True, (f"{sha[:12]} is not pushed, so no build proved it — say so in the guide "
+                      "(set `ci.push` in human-review.json to let the gate push it)"), \
+            dict(evidence, verdict="unproven-not-pushed")
 
     if not api_forge().available():
         return True, (f"no `gh` — no build proved this commit ({sha[:12]}); say so in the "
@@ -516,11 +542,11 @@ def gate(wait_minutes: float, workflows: list[str] | None = None,
             return False, ("could not list this repository's workflows (`gh workflow list` "
                            "failed) — a discovery failure, not a build failure; configure "
                            "`ci.workflows` or check `gh auth status`"), evidence
-        if not known:
+        if not known and not latest_runs(sha, None)[0]:
             return True, ("no build proved this — the repository has no CI configured. "
                           "Put that in the guide; it must not read as a pass"), \
                 dict(evidence, selection="none", verdict="unproven-no-ci")
-        workflows = auto_detect(known)
+        workflows = auto_detect(known) if known else []
         selection = "auto-detected" if workflows else "all-runs"
     evidence["selection"] = selection
     label = ", ".join(workflows) if workflows else "every workflow that ran"
@@ -574,7 +600,8 @@ def gate(wait_minutes: float, workflows: list[str] | None = None,
             else:
                 newest: dict[str, dict] = {}
                 for x in runs:
-                    newest.setdefault(x.get("workflowName") or "?", x)
+                    if not NOT_A_BUILD.search(x.get("workflowName") or ""):
+                        newest.setdefault(x.get("workflowName") or "?", x)
                 for name, one in newest.items():
                     if one.get("status") != "completed":
                         if expired:
@@ -755,7 +782,8 @@ def main(argv=None) -> int:
                         "caveat": caveat})
     else:
         ok, caveat, evidence = gate(args.wait_minutes,
-                                    configured_workflows(args.workflow, args.config))
+                                    configured_workflows(args.workflow, args.config),
+                                    push=configured_push(args.config))
         # What the run's Sonar steps said, when it has any: the page asks "CI *and* Sonar?".
         sonar = sonar_evidence(evidence)
         if sonar:

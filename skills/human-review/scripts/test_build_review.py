@@ -1458,19 +1458,16 @@ def test_the_footer_is_one_centred_line_ending_on_its_control_then_the_path(tmp_
 
 
 def test_the_footer_says_where_the_page_came_from_and_where_to_see_it(tmp_path):
-    """A review page is nearly always read on someone else's screen. The reader who reaches
-    the bottom gets, in Victor's words (2 Oct 2026): the repo it was built by, the online
-    demo, an invitation to take what they like, and the way back to the author."""
+    """The bottom of the page says where the tool lives and where its bugs go. Ludvig's
+    pages are never published, so the upstream demo and talk links are gone."""
     page, _ = _build(tmp_path, BARE)
     foot = page[page.index("<footer>"):page.index("</footer>")]
     text = re.sub(r"<[^>]+>", "", foot)
-    assert ("Built by https://github.com/victorrentea/human-review (guide). Browse: demo 1 · "
-            "demo 2. Adopt what you like. Bug/idea → + issue.") in text
-    assert 'href="https://github.com/victorrentea/human-review"' in foot
-    assert 'href="https://victorrentea.ro/talk/architecture-observability-devoxx-26/"' in foot
-    assert ">demo 1</a>" in foot and ">demo 2</a>" in foot and "/demo2/review.html" in foot
-    assert "https://victorrentea.github.io/human-review/" in foot
-    assert 'href="https://github.com/victorrentea/human-review/issues/new/choose"' in foot
+    assert ("Built by https://github.com/stojanpeshov/human-review (Ludvig fork). "
+            "Bug/idea → + issue.") in text
+    assert 'href="https://github.com/stojanpeshov/human-review"' in foot
+    assert 'href="https://github.com/stojanpeshov/human-review/issues/new/choose"' in foot
+    assert "victorrentea" not in foot and ">demo 1</a>" not in foot
     # The docker offer and the old closing line are gone.
     assert "run it locally" not in foot and "pkgs/container/human-review" not in foot
     assert "adapt it to your liking" not in foot
@@ -1496,7 +1493,7 @@ def test_the_offer_does_not_depend_on_what_the_content_file_says(tmp_path):
     spec = {k: v for k, v in BARE.items() if k != "footer"}
     page, _ = _build(tmp_path, spec)
     foot = page[page.index("<footer>"):page.index("</footer>")]
-    assert "Built by" in foot and "Browse: <a" in foot and ">demo 2</a>." in foot
+    assert "Built by" in foot and "+ issue</a>" in foot
 
 
 def test_the_show_all_button_says_what_it_does_next(tmp_path):
@@ -1651,7 +1648,7 @@ def test_an_authors_other_sentence_survives_and_its_mention_is_linked():
     out = build._link_home("Report built by /human-review from db27oct. "
                            "Reviewed live with /human-review in the room.")
     assert out.startswith("Reviewed live with")
-    assert 'href="https://github.com/victorrentea/human-review"' in out
+    assert 'href="https://github.com/stojanpeshov/human-review"' in out
 
 
 def test_only_the_first_mention_is_linked():

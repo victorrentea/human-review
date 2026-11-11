@@ -97,3 +97,44 @@ def validate(spec: dict, out_dir: Path) -> list[str]:
                 problems.append(f"tabs[{t_.get('id')}] references section {b.get('id')!r}, "
                                 "which is not in 'sections'")
     return problems
+
+
+#: Where run-steps.py records what each step did on the last run.
+STEPS_STATUS = ".steps-status.json"
+
+
+def drop_unproduced(spec: dict, out_dir: Path) -> list[str]:
+    """Drop, in place, every reference to an artifact this run's producers did not write,
+    and say which. Only once a run has happened (`.steps-status.json` is there): before
+    that a missing artifact is still the mistake `validate` names.
+
+    On the project the skill was born on every producer ran on every review. At Ludvig
+    several tabs have nothing to read yet (no OpenAPI file, no traced suite, no Code City),
+    their steps are *skipped* with a reason, and the strip names them — a page refused over
+    a stylesheet a skipped step never wrote would say less than a page without that tab."""
+    if not (out_dir / STEPS_STATUS).is_file():
+        return []
+    gone = lambda rel: bool(rel) and not (out_dir / rel).is_file()
+    dropped = []
+    city = spec.get("codecity")
+    if isinstance(city, dict) and gone(city.get("png")):
+        spec.pop("codecity")
+        dropped.append(f"codecity ({city.get('png')})")
+    for key in ("playwrightTraces", "testChanges"):
+        if gone(spec.get(key)):
+            dropped.append(f"{key} ({spec.pop(key)})")
+    if not spec.get("playwrightTraces"):
+        for tab in spec.get("tabs") or []:
+            blocks = tab.get("blocks") or []
+            kept = [b for b in blocks if b.get("type") != "traces"]
+            if len(kept) != len(blocks):
+                tab["blocks"] = kept
+                dropped.append(f"tabs[{tab.get('id')}] traces block")
+    sheets = spec.get("extraCss")
+    if isinstance(sheets, list):
+        spec["extraCss"] = [c for c in sheets if not gone(c)]
+        dropped += [f"extraCss {c}" for c in sheets if gone(c)]
+    for s in spec.get("sections") or []:
+        if gone(s.get("includeHtml")):
+            dropped.append(f"section {s.get('id')} ({s.pop('includeHtml')})")
+    return dropped

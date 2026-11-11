@@ -172,12 +172,24 @@ function serveScript(configured) {
       .map((f) => { try { return { f, t: fs.statSync(f).mtimeMs }; } catch { return null; } })
       .filter(Boolean).sort((a, b) => b.t - a.t).map((x) => x.f);
   } catch { /* no plugin installed */ }
-  cands.push(...cached, path.join(home, 'workspace/human-review', rel));
+  // The checkouts: upstream's ~/workspace, and the Ludvig fork's ~/dev/sources (or wherever
+  // HUMAN_REVIEW_HOME points — the skill directory itself, as the skill resolves it).
+  if (process.env.HUMAN_REVIEW_HOME) cands.push(path.join(process.env.HUMAN_REVIEW_HOME, 'scripts', 'serve-review.py'));
+  cands.push(...cached, path.join(home, 'workspace/human-review', rel),
+    path.join(home, 'dev/sources/human-review', rel));
   return cands.find((f) => fs.existsSync(f)) || null;
 }
 
-// python3 from the extension host's PATH, with fallbacks for a thin PATH (started from the Dock).
-function python() {
+// The interpreter for the server: HUMAN_REVIEW_PYTHON if set, else the `.venv` at the root of
+// the checkout that holds `script` (the scripts need Python ≥ 3.12, which a WSL distro's
+// python3 often is not), else python3 from the extension host's PATH, with fallbacks for a
+// thin PATH (started from the Dock).
+function python(script) {
+  if (process.env.HUMAN_REVIEW_PYTHON) return process.env.HUMAN_REVIEW_PYTHON;
+  if (script) {
+    const venv = path.join(path.dirname(script), '..', '..', '..', '.venv', 'bin', 'python3');
+    try { fs.accessSync(venv, fs.constants.X_OK); return venv; } catch { /* next */ }
+  }
   const dirs = (process.env.PATH || '').split(path.delimiter).filter(Boolean)
     .concat(['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin']);
   for (const d of dirs) {
@@ -197,7 +209,7 @@ function startServer(folder, script = serveScript()) {
   if (!script) return Promise.reject(new Error('serve-review.py not found — is the human-review plugin installed?'));
   const args = [script, path.join(folder, DIR), '--idle-minutes', '240', '--no-open'];
   return new Promise((resolve, reject) => {
-    execFile(python(), args, { timeout: 30000 }, (err, stdout, stderr) => {
+    execFile(python(script), args, { timeout: 30000 }, (err, stdout, stderr) => {
       const url = String(stdout || '').trim().split('\n').pop().trim();
       if (!err && /^http:\/\/127\.0\.0\.1:\d+\//.test(url)) return resolve(url);
       const tail = String(stderr || '').trim().split('\n').slice(-5).join('\n')

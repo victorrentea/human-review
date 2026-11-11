@@ -85,7 +85,10 @@ def _stub_gh(tmp_path: Path, runs: list, workflows=(CI,), fail_workflow_list=Fal
     gh.chmod(0o755)
     # `git push` must succeed without a remote, and must not be the thing under test here.
     git = bindir / "git"
-    git.write_text('#!/bin/sh\nif [ "$1" = push ]; then exit 0; fi\nexec /usr/bin/git "$@"\n')
+    # And the commit is on a remote already: the gate reads CI only for a pushed commit.
+    git.write_text('#!/bin/sh\nif [ "$1" = push ]; then exit 0; fi\n'
+                   'if [ "$1" = branch ] && [ "$2" = -r ]; then echo "  origin/main"; exit 0; fi\n'
+                   'exec /usr/bin/git "$@"\n')
     git.chmod(0o755)
     env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", CLAUDE_CODE_SESSION_ID="s1")
     return env
@@ -157,7 +160,10 @@ def test_the_wait_is_bound_to_the_commit_never_to_the_branch(tmp_path):
                   "\"success\",\"workflowName\":\"ci\"}]' if a[:2] == ['run','list'] else '')\n")
     gh.chmod(0o755)
     git = bindir / "git"
-    git.write_text('#!/bin/sh\nif [ "$1" = push ]; then exit 0; fi\nexec /usr/bin/git "$@"\n')
+    # And the commit is on a remote already: the gate reads CI only for a pushed commit.
+    git.write_text('#!/bin/sh\nif [ "$1" = push ]; then exit 0; fi\n'
+                   'if [ "$1" = branch ] && [ "$2" = -r ]; then echo "  origin/main"; exit 0; fi\n'
+                   'exec /usr/bin/git "$@"\n')
     git.chmod(0o755)
     env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", CLAUDE_CODE_SESSION_ID="s1")
     assert _run(repo, env, "--workflow", "ci.yml").returncode == 0
@@ -411,3 +417,81 @@ def test_a_branch_switch_clears_another_branchs_coverage(tmp_path, monkeypatch):
     gone = pf.clear_foreign_model_state("HEAD")
     assert not (hr / "coverage").exists()
     assert any("coverage" in g for g in gone)
+
+
+# --- Ludvig: the gate never pushes unless told to, and reads CircleCI's commit statuses ---
+
+def _stub_status_gh(tmp_path: Path, statuses: list, checks: list = ()) -> dict:
+    """A `gh` for a repository with no Actions workflows, whose CI (CircleCI) reports as
+    commit statuses and check runs; `git branch -r` says the commit is pushed."""
+    env = _stub_gh(tmp_path, [], workflows=())
+    gh = tmp_path / "bin" / "gh"
+    gh.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys, json\n"
+        "a = sys.argv[1:]\n"
+        "if a[:2] == ['workflow', 'list'] or a[:2] == ['run', 'list']: print('[]')\n"
+        "elif a[0] == 'api' and a[1].endswith('/status'):\n"
+        f"    print(json.dumps({{'statuses': {json.dumps(statuses)}}}))\n"
+        "elif a[0] == 'api' and '/check-runs' in a[1]:\n"
+        f"    print(json.dumps({{'check_runs': {json.dumps(list(checks))}}}))\n"
+        "else: print('')\n")
+    return env
+
+
+def test_a_commit_that_is_not_pushed_is_unproven_and_nothing_is_pushed(tmp_path):
+    repo = _repo(tmp_path)
+    env = _stub_gh(tmp_path, [])
+    (tmp_path / "bin" / "git").write_text(
+        '#!/bin/sh\nif [ "$1" = push ]; then echo pushed >> "$0.log"; exit 0; fi\n'
+        'exec /usr/bin/git "$@"\n')
+    p = _run(repo, env)
+    assert p.returncode == 0, p.stderr
+    gate = json.loads((repo / ".human-review" / ".gate.json").read_text())
+    assert gate["verdict"] == "unproven-not-pushed"
+    assert not (tmp_path / "bin" / "git.log").exists()
+
+
+def test_ci_push_lets_the_gate_push(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / "human-review.json").write_text(json.dumps({"ci": {"push": True}}))
+    env = _stub_gh(tmp_path, [{"databaseId": 1, "status": "completed",
+                               "conclusion": "success", "workflowName": "ci"}])
+    git = tmp_path / "bin" / "git"
+    git.write_text(git.read_text().replace(
+        'if [ "$1" = push ]; then exit 0; fi', 'if [ "$1" = push ]; then echo p >> "$0.log"; exit 0; fi'))
+    assert _run(repo, env).returncode == 0
+    assert (tmp_path / "bin" / "git.log").read_text().strip() == "p"
+
+
+def test_circleci_statuses_prove_the_commit_and_its_approval_job_is_not_waited_for(tmp_path):
+    repo = _repo(tmp_path)
+    env = _stub_status_gh(tmp_path, [
+        {"id": 1, "context": "ci/circleci: lint", "state": "success"},
+        {"id": 2, "context": "ci/circleci: test", "state": "success"},
+        {"id": 3, "context": "ci/circleci: approve-deploy-test", "state": "pending"}])
+    p = _run(repo, env)
+    assert p.returncode == 0, p.stderr
+    gate = json.loads((repo / ".human-review" / ".gate.json").read_text())
+    assert gate["verdict"] == "green"
+    assert {w["name"] for w in gate["workflows"]} == {"ci/circleci: lint", "ci/circleci: test"}
+
+
+def test_a_red_circleci_job_refuses(tmp_path):
+    repo = _repo(tmp_path)
+    env = _stub_status_gh(tmp_path, [], checks=[
+        {"id": 7, "name": "test", "status": "completed", "conclusion": "failure",
+         "app": {"slug": "circleci-checks"}}])
+    p = _run(repo, env)
+    assert p.returncode == 1
+    assert "test" in p.stdout + p.stderr
+
+
+def test_a_configured_name_matches_the_circleci_job(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / "human-review.json").write_text(json.dumps({"ci": {"workflows": ["test"]}}))
+    env = _stub_status_gh(tmp_path, [
+        {"id": 2, "context": "ci/circleci: test", "state": "success"},
+        {"id": 4, "context": "ci/circleci: lint", "state": "failure"}])
+    p = _run(repo, env)
+    assert p.returncode == 0, p.stderr

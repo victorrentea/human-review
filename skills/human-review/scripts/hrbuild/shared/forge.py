@@ -381,6 +381,53 @@ class GitHubForge:
 
     # CI: GitHub Actions, through `gh run`. Shell lines, run as `preflight.py` always ran
     # them; each returns the finished process and the caller reads it.
+    #
+    # A repository built elsewhere (CircleCI at Ludvig) has no Actions workflows at all: its
+    # CI reports to GitHub as commit statuses (`ci/circleci: test`, the OAuth integration)
+    # or as check runs (the CircleCI GitHub App). Those are read in the same run shape, so
+    # the gate asks one question whichever CI built the commit — as Bitbucket's build
+    # statuses already are.
+
+    #: A commit status's `state` → (`status`, `conclusion`), in `gh run`'s words.
+    _STATUS_STATES = {"success": ("completed", "success"), "failure": ("completed", "failure"),
+                      "error": ("completed", "failure"), "pending": ("in_progress", "")}
+
+    @staticmethod
+    def _status_runs(sha: str) -> list[dict] | None:
+        """Commit statuses and non-Actions check runs on `sha`, as `gh run list` rows. None
+        when GitHub could not be asked (or does not know the commit: it is not pushed)."""
+        st = _sh(f'gh api "repos/{{owner}}/{{repo}}/commits/{sha}/status"')
+        ck = _sh(f'gh api "repos/{{owner}}/{{repo}}/commits/{sha}/check-runs?per_page=100"')
+        if st.returncode != 0 and ck.returncode != 0:
+            return None
+        runs: list[dict] = []
+        try:
+            statuses = json.loads(st.stdout).get("statuses") or [] if st.returncode == 0 else []
+            checks = json.loads(ck.stdout).get("check_runs") or [] if ck.returncode == 0 else []
+        except (ValueError, AttributeError):
+            return None
+        for x in statuses:
+            status, conclusion = GitHubForge._STATUS_STATES.get(x.get("state") or "",
+                                                                ("in_progress", ""))
+            runs.append({"databaseId": x.get("id"), "workflowName": x.get("context") or "?",
+                         "status": status, "conclusion": conclusion, "headSha": sha,
+                         "event": "push", "createdAt": x.get("created_at") or "",
+                         "url": x.get("target_url") or ""})
+        for x in checks:
+            if ((x.get("app") or {}).get("slug") or "") == "github-actions":
+                continue                 # an Actions job: `gh run list` already has it
+            runs.append({"databaseId": x.get("id"), "workflowName": x.get("name") or "?",
+                         "status": x.get("status") or "", "conclusion": x.get("conclusion") or "",
+                         "headSha": sha, "event": "push",
+                         "createdAt": x.get("started_at") or "", "url": x.get("html_url") or ""})
+        return runs
+
+    @staticmethod
+    def _named(run: dict, workflow: str) -> bool:
+        """A configured name matches a status by its whole context, or by the job after
+        `ci/circleci: ` — so `"test"` names CircleCI's `ci/circleci: test`."""
+        name = run.get("workflowName") or ""
+        return name == workflow or name.endswith(": " + workflow)
 
     @staticmethod
     def ci_workflows() -> subprocess.CompletedProcess:
@@ -388,8 +435,16 @@ class GitHubForge:
 
     @staticmethod
     def ci_runs(sha: str, workflow: str | None, fields: str) -> subprocess.CompletedProcess:
+        if workflow:
+            mine = [r for r in GitHubForge._status_runs(sha) or [] if GitHubForge._named(r, workflow)]
+            if mine:
+                return subprocess.CompletedProcess(["gh"], 0, json.dumps(mine), "")
         sel = f' --workflow "{workflow}"' if workflow else ""
-        return _sh(f'gh run list --commit "{sha}"{sel} --limit 50 --json {fields}')
+        actions = _sh(f'gh run list --commit "{sha}"{sel} --limit 50 --json {fields}')
+        if workflow or actions.returncode != 0 or (actions.stdout or "").strip() not in ("", "[]"):
+            return actions
+        statuses = GitHubForge._status_runs(sha)
+        return subprocess.CompletedProcess(["gh"], 0, json.dumps(statuses or []), "")
 
     @staticmethod
     def ci_run(run_id: int) -> subprocess.CompletedProcess:

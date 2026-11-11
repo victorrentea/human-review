@@ -27,7 +27,7 @@ SEAM = HERE / "hrbuild" / "shared" / "forge.py"
 #: (footer, adopt panel, "clone victorrentea/human-review" tips, the extractor's source),
 #: the demo projects the adopt panel quotes (petclinic, code-city), and the third-party
 #: tools the API tab cites. Where the tool lives, not where the reviewed code is pushed.
-FOREIGN_OWNERS = ("victorrentea/", "oasdiff/", "OpenAPITools/")
+FOREIGN_OWNERS = ("victorrentea/", "stojanpeshov/", "oasdiff/", "OpenAPITools/")
 
 #: `(file under skills/, text the flagged string contains)`: the deliberate exceptions.
 ALLOWED = {

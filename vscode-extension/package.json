@@ -3,7 +3,7 @@
   "publisher": "victor-rentea",
   "displayName": "Human Review",
   "description": "The VS Code end of a /human-review page: every code reference in the review opens in the window that has the reviewed checkout — as a highlighted range, a before/after diff, or the PR comment thread on it.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "license": "MIT",
   "icon": "icon.png",
   "repository": {
@@ -29,8 +29,8 @@
   ],
   "main": "./extension.js",
   "extensionKind": [
-    "ui",
-    "workspace"
+    "workspace",
+    "ui"
   ],
   "activationEvents": [
     "onStartupFinished",

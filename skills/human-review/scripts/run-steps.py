@@ -2230,7 +2230,7 @@ STEP_INPUTS = {
     "c4":           {"paths": ("*.dsl", "*Test.java", "*Tests.java", "*Test.kt", "*Tests.kt"),
                      "tools": ("structurizr-views.py",),
                      "outputs": ("assets/c4",)},
-    "complexity":   {"paths": ("*.java",),
+    "complexity":   {"paths": ("*.java", "*.py", "serverless*.yml"),
                      "tools": ("endpoint-complexity.py", "endpoint-complexity-delta.py",
                                "complexity/ComplexityEngine.java"),
                      "outputs": ("assets/complexity-delta.html",
@@ -2245,7 +2245,7 @@ STEP_INPUTS = {
     "specchanges":  {"paths": ("*.yaml", "*.yml"),
                      "tools": (),
                      "outputs": ("assets/openapi-changes.html",)},
-    "logging":      {"paths": ("*.java", "*.ts", "*.js", "*.kt"),
+    "logging":      {"paths": ("*.java", "*.ts", "*.js", "*.kt", "*.py", "*.tsx"),
                      "tools": ("logextract.py", "ast-grep-rules"),
                      "outputs": ("assets/logging.json",)},
     "owners":       {"paths": ("*",),
@@ -2545,7 +2545,8 @@ STEPS = [
     # After `testcov`, and never before: the city is coloured by the coverage that step
     # measured (line coverage, and what the end-to-end tests alone reach).
     ("city",        "city",          "Code City capture",
-     lambda c: have("google-chrome") or have("chromium") or True, _city),
+     lambda c: bool(c.step_cfg("city"))
+     or "city not configured — Code City is postponed in the Ludvig fork", _city),
 ]
 
 

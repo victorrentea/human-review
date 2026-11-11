@@ -1,77 +1,47 @@
-# human-review — how to work in this repo
+# human-review (Ludvig fork) — how to work in this repo
 
-## Infrastructure changes are made on `main` first, then pulled into the PR branch
+This is the **Ludvig fork** of `/human-review` (upstream: victorrentea/human-review). Its
+branch `ludvig` ports the skill from the Java/Spring/Maven project it was born on to
+Ludvig's stack: Python 3.11 on AWS Lambda (Serverless Framework v3, CDK), SQLAlchemy +
+Alembic on Aurora Postgres, pytest, aws-lambda-powertools, CircleCI, GitHub
+(`LRFKonsult`), and the React/Vite/TypeScript frontend in `mitt-ludvig`. The pilot target
+is `activities-backend`. The Ludvig repos are checked out next to this one
+(`~/dev/sources/<repo>`).
 
-Anything that feeds the machinery collecting code-quality data and metadata around a
-review — a guardrail test, a living diagram or its generator, a script under
-`skills/human-review/scripts/`, `human-review.json`, a git hook, CI, CODEOWNERS, the
-diagram/genseq pipeline — is changed **on `main` first**, pushed, and only then **merged
-back** into the PR branch being worked on (`test-pr`, `hr-claude-N`, any of them). Never the
-other way round, and never on the PR branch alone — including when the need shows up while
-improving this page against one PR.
+Decisions that hold on this branch:
 
-**Merged back, not only cherry-picked:** a cherry-pick lands *after* the review's base, so
-the page reports the infra change as the PR's own (a guardrail test once showed up as
-"APPROVAL REQUIRED @victorrentea/elders" on CODEOWNERS). What has to move is the base: merge
-`origin/main` into the PR branch, then move the review's recorded base to the new merge base
-— `review-points.md` (`base:`, `audited-base:`) and `.human-review/{review-points.json,
-review-commits.json,review/state.json}` — and re-run the steps the change feeds.
+- **Java support is removed, not kept beside Python.** Staying mergeable with upstream is
+  not a goal. When a tab is ported, its Java reader goes.
+- **Pages are local only.** Ludvig code is private: never run `publish-demo.sh`, never push
+  a page or a screenshot of one anywhere public.
+- **The review tool never pushes a Ludvig branch.** `preflight.py` reads CI (CircleCI
+  commit statuses / check runs) for a commit that is already on the remote and calls an
+  unpushed one unproven; `"ci": {"push": true}` is the only way to let it push.
+- **Kept:** the VS Code extension. **Postponed:** the IntelliJ plugin, Code City, the Demo
+  film and the UX audit — their tabs fade when they have nothing.
 
-The PR branch is an exhibit: it must differ from `main` by the feature it demonstrates and
-by nothing else. A guardrail or a script that exists only on `test-pr` makes every review
-run measure something `main` cannot reproduce, and the branch quietly drifts from the base
-it is being compared against — which is exactly the thing this whole page is built to show.
+## The suite: Python ≥ 3.12, in `.venv`
 
-In practice, in this workspace:
-
-```sh
-cd ~/workspace/petclinic-main        # always checked out on main
-# …make the change, commit…
-git push                             # that checkout is on main, a bare push is right
-
-cd ~/workspace/petclinic-pr-visit-has-vet   # or petclinic-pr-owner-grid-paginated (hr-claude-N)
-git fetch origin && git merge origin/main   # the base moves past the change
-# …move the review's recorded base to `git merge-base HEAD origin/main`, re-run the steps…
-git push origin HEAD:test-pr         # NEVER a bare `git push`: test-pr may track main
-```
-
-`~/workspace/petclinic` is a third checkout on whatever branch it happens to be on — ask
-before touching it, and never assume it is `main`.
-
-## The whole suite takes a minute: run it
-
-`python3 -m pytest -q` from `skills/human-review/scripts`. `conftest.py` spreads it over every
-core on its own, so there is no flag to remember and no reason to run only the tests near a
-change. A run aimed at one test (`file::test`) or a `-k` stays in-process, and so does `-n 0`,
-which is what `print` debugging wants. It needs `pytest-xdist` (`requirements-dev.txt`);
-without it the suite still runs, one core, eleven minutes.
-
-CI skips a push that only touches `demo/`, `docs/tabs/` or `README.md`, so a `/publish-demo`
-leaves no `tests` run to watch.
-
-## Republish both demos in one push
+The scripts use PEP 701 f-strings, so they need Python 3.12+ (the Ludvig services run 3.11;
+the tool does not run inside them). One venv at the repo root, gitignored:
 
 ```sh
-scripts/publish-demo.sh --push \
-  demo2=$HOME/workspace/petclinic-visits-paginated/.human-review \
-  demo=$HOME/workspace/petclinic-pr-visit-has-vet/.human-review
+uv venv -p 3.13 .venv && VIRTUAL_ENV=.venv uv pip install -r requirements-dev.txt
+export PATH=$PWD/.venv/bin:$PATH        # python3, pytest and ast-grep come from here
+cd skills/human-review/scripts && python3 -m pytest -q
 ```
 
-Two separate publishes deploy Pages and rebuild the zip twice. Rebuild each page first, in its
-own checkout and with `--out .human-review/review.html`: written anywhere else, `demo`'s build
-stopped on a review anchor that the same build in place reads fine (5 Nov 2026).
+`conftest.py` spreads the suite over every core; the whole run is under a minute. Run it
+all, not only the tests near a change. On this machine `sg` is shadow-utils, not ast-grep —
+the venv's `ast-grep` is the one the logging scan calls.
 
-## Every change to `intellij-plugin/` ships, in the same turn
+## Desktop calls go through `scripts/desktop.py`
 
-Victor, 16 Oct 2026: "you do that every time from now on". After any change under
-`intellij-plugin/` is committed and pushed: bump the patch `pluginVersion` in
-`gradle.properties` (the Marketplace refuses a version it has seen), then run
-`intellij-plugin/publish.sh`. It hot-reloads the build into his running IntelliJ
-(`deploy-local.sh`, no restart) and uploads that version to the JetBrains Marketplace
-(`publishPlugin`, token from `~/.claude/jetbrains-marketplace.env`). The reload only
-lands once IntelliJ rescans its files, which happens when its window gets focus. So
-when it waits, ask him to click into IntelliJ, and never bring the window forward
-yourself. Verify everything else headless: no `runIde`, no sandbox IDE windows.
+The server opens URLs, starts the editor and reveals files through `desktop.py`, which knows
+macOS (`open`), WSL (`wslview`, `explorer.exe`, `vscode://vscode-remote/wsl+<distro>/…`) and
+Linux (`xdg-open`). Never call `open`/`osascript` directly. The suite pins
+`HUMAN_REVIEW_DESKTOP=mac` so the server's tests read the same everywhere; `test_desktop.py`
+covers WSL and Linux.
 
 ## Every visible change is explained in its card's ⓘ panel
 
@@ -169,8 +139,3 @@ because a build moves nothing: anything it does that moves a ref has to call
 `forget_git_answers()`, as `fetch_base` does. `test_git_seam.py` fails a `subprocess.run(["git"`
 anywhere else in the build's code; `forge.py` keeps its own, and `run-steps.py` is another
 program, whose answers must not outlive a step.
-
-## Memoria lui Claude
-
-Memoria generală (cine e Victor, cum vrea să lucrezi) e în repo-ul privat `victorrentea/assistant`.
-Într-o sesiune din cloud, atașează-l la sesiune și urmează-i `CLAUDE.md`-ul. Pe Mac se încarcă singură.

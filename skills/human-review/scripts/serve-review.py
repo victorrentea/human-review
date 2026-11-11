@@ -61,6 +61,7 @@ from pathlib import Path, PurePosixPath
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 from hrbuild.shared.forge import api_forge, is_comment_url, pull_root  # noqa: E402
+import desktop  # noqa: E402
 
 MARKER = "/__human_review__"
 OPEN = "/__open__"
@@ -549,7 +550,7 @@ def open_in_editor(path, line, end_line=None, comment=False, comment_line=None, 
     # this is a good fallback, not a bad one. It degrades to the last-active window only
     # when no window owns the path at all, which is also the one case nothing better
     # exists. IntelliJ's `idea://open` does the same for a project it has.
-    subprocess.run(["open", os_open_url(app, path, line)], capture_output=True)
+    desktop.open_url(os_open_url(app, path, line))
     return "os"
 
 
@@ -799,8 +800,7 @@ def _launch(folder, app="vscode") -> None:
     """`open -a`, not `code`: without VSCODE_IPC_HOOK_CLI the CLI can start a second VS Code
     instead of a window in the running one. IntelliJ takes a folder the same way, as a
     project — the one it has open already if it has, a new one if not."""
-    subprocess.Popen(["open", "-a", LAUNCH_AS[app], str(folder)],
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    desktop.launch_editor(folder, app)
 
 
 #: The application `open -a` starts for each editor.
@@ -1067,8 +1067,7 @@ def launch_idea_for_db(root: Path, url: str, wait=IDEA_OPEN_WAIT_S, poll=2.0) ->
 def reveal_in_finder(path: Path) -> None:
     """`open -R`: a Finder window on the folder with the file selected — the answer to
     "where is this?" that a path read off the screen leaves the reader to type."""
-    subprocess.Popen(["open", "-R", str(path)],
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    desktop.reveal(path)
 
 
 #: Where Bruno is when it is installed the usual way. Asked, not assumed: a page that offered
@@ -1431,11 +1430,7 @@ def bridge_diff(target: Path, sha: str, line: int, app="vscode", head: str | Non
 
 def code_cli():
     """The `code` launcher, which is not on PATH in a GUI-launched terminal on macOS."""
-    found = shutil.which("code")
-    if found:
-        return found
-    mac = Path("/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code")
-    return str(mac) if mac.is_file() else None
+    return desktop.code_cli()
 
 
 def open_diff(rel, base, served_root, line=None, app="vscode", head=None):
@@ -1522,7 +1517,7 @@ def open_diff(rel, base, served_root, line=None, app="vscode", head=None):
     if not cli:
         # No VS Code launcher: fall back to what every other reference on the page does
         # rather than leaving the click silent. The reader loses the diff, not the file.
-        subprocess.run(["open", f"vscode://file/{target}:{line or 1}:1"], capture_output=True)
+        desktop.open_url(f"vscode://file/{target}:{line or 1}:1")
         return None
     # Measured across four windows on three checkouts: with a *different* window raised
     # first, `--diff` still opened in the one owning this checkout and brought it to the
@@ -3428,8 +3423,9 @@ def open_page(url: str, root=None) -> None:
         r = subprocess.run([sys.executable, str(VSC_OPENER), url], capture_output=True)
         if r.returncode == 0:
             return
-    import webbrowser
-    webbrowser.open(url)
+    if desktop.kind() == "mac" or not desktop.open_url(url):
+        import webbrowser
+        webbrowser.open(url)
 
 
 if __name__ == "__main__":

@@ -471,7 +471,7 @@ COPY_TIP = "Copy command to paste in terminal"
 LOCAL_HINT = "Works on a local copy \u2014 see Serve"
 
 #: Where the skill comes from, for a reader of the published copy who wants it working.
-SKILL_REPO = "victorrentea/human-review"
+SKILL_REPO = "stojanpeshov/human-review"
 
 
 def serve_online_tip(repo_url: str, branch: str) -> str:
