@@ -5,7 +5,7 @@
 # nothing under skills/ knows this folder exists (test_demo_slop_guard.py).
 #
 #   run.sh <demo> --checkout DIR --branch NAME [--replace] [--model M] [--dry-run]
-#          [--stop-after implement|record-review] [--from record-review|human-review --log LOGDIR]
+#          [--stop-after implement|record-review] [--from implement|record-review|human-review --log LOGDIR]
 #       1. DIR: cloned when missing, else it must be clean
 #       2. NAME: cut fresh from origin/main. An existing NAME (local or on origin) is
 #          refused, unless --replace: then its tip(s) are tagged slop-backup/NAME-<stamp>
@@ -25,7 +25,8 @@
 #                          paying for the review; then go on with
 # --from record-review --log LOGDIR   skip steps 1-4 and resume the implementing session of
 #                          LOGDIR/implement.json (the checkout must be on NAME already);
-#                          --from human-review skips step 5 too.
+#                          --from human-review skips step 5 too; --from implement carries on
+#                          an implementing session that died before it committed.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -65,7 +66,7 @@ done
 [[ -n $CO && -n $BRANCH ]] || die "--checkout and --branch are required"
 CO=${CO/#\~/$HOME}
 [[ -z $STOP || $STOP == implement || $STOP == record-review ]] || die "--stop-after implement|record-review"
-[[ -z $FROM || $FROM == record-review || $FROM == human-review ]] || die "--from record-review|human-review"
+[[ -z $FROM || $FROM == implement || $FROM == record-review || $FROM == human-review ]] || die "--from implement|record-review|human-review"
 [[ -z $FROM || -f $LOGDIR/implement.json ]] || die "--from needs --log LOGDIR holding implement.json"
 for b in "$BRANCH" "$TO"; do
   [[ $b == main || $b == master ]] && die "refusing to touch $b"
@@ -93,6 +94,61 @@ command -v jq >/dev/null || die "jq is not on PATH"
 LOG="${XDG_STATE_HOME:-$HOME/.local/state}/human-review-slop/$DEMO-$STAMP"
 [[ -n $FROM ]] && LOG=$(cd "$LOGDIR" && pwd)
 echo "demo $DEMO (#$ISSUE) -> $CO on $BRANCH, model $MODEL, logs $LOG${DRY:+ (dry run)}"
+
+# the calls
+IMPL="Implement victorrentea/petclinic#$ISSUE (gh issue view $ISSUE). The human's answers \
+to your open questions are in Q&A.md at the repository root: they are final, build to them \
+exactly and do not reopen them. This run is unattended: run every command in the \
+foreground and never end your turn waiting for anything. Commit the implementation; do \
+not push and do not open a pull request."
+# Unattended, so nobody answers a permission prompt — but not --dangerously-skip-permissions:
+# edits are accepted, and Bash is held to the commands an implementation and its review need
+# in this checkout (build, test, the stacks, git, the issue), with the outward-reaching and
+# destructive ones denied outright. The same shape as rerun-review.py's `claude_argv`.
+# A budget cap per call. The prompt goes on stdin: the tool lists are variadic and would
+# swallow a positional prompt.
+ALLOWED=(Read Grep Glob Edit Write Skill Agent Task TodoWrite
+  "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)"
+  "Bash(git add:*)" "Bash(git commit:*)" "Bash(git rev-parse:*)" "Bash(git merge-base:*)"
+  "Bash(git ls-files:*)" "Bash(git blame:*)" "Bash(git restore:*)" "Bash(git mv:*)" "Bash(git rm:*)"
+  "Bash(mvn:*)" "Bash(./mvnw:*)" "Bash(npm:*)" "Bash(npx:*)" "Bash(node:*)"
+  "Bash(docker ps:*)" "Bash(docker logs:*)" "Bash(docker compose:*)"
+  "Bash(./start-docker.sh:*)" "Bash(../start-docker.sh:*)" "Bash(./test-on-own-db.sh:*)"
+  "Bash(./test-on-own-stack.sh:*)" "Bash(./run-tests-with-tracing.sh:*)"
+  "Bash(python3:*)" "Bash(gh issue view:*)" "Bash(gh run:*)" "Bash(gh pr view:*)"
+  "Bash(curl -s http://localhost:*)" "Bash(curl -s http://127.0.0.1:*)"
+  "Bash(ls:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(wc:*)" "Bash(grep:*)"
+  "Bash(rg:*)" "Bash(find:*)" "Bash(sed -n:*)" "Bash(jq:*)" "Bash(sleep:*)" "Bash(cd:*)"
+  "Bash(mkdir:*)" "Bash(cp:*)" "Bash(mv:*)" "Bash(echo:*)" "Bash(test:*)" "Bash(diff:*)")
+DENIED=("Bash(git push:*)" "Bash(git reset:*)" "Bash(git checkout:*)" "Bash(git switch:*)"
+  "Bash(git stash:*)" "Bash(git rebase:*)" "Bash(git clean:*)" "Bash(gh pr create:*)"
+  "Bash(gh pr merge:*)" "Bash(rm -rf:*)" "Bash(sudo:*)" "Bash(pkill:*)" "Bash(killall:*)"
+  "Bash(docker rm:*)" "Bash(docker system:*)" "Bash(docker volume rm:*)")
+BUDGET=${SLOP_BUDGET_USD:-15}
+claude_p() { local prompt=$1; shift
+  printf '%s' "$prompt" | env -u CLAUDE_CODE_SESSION_ID claude -p --model "$MODEL" \
+    --permission-mode acceptEdits --output-format json --max-budget-usd "$BUDGET" \
+    --add-dir "$CO" "$@" --allowedTools "${ALLOWED[@]}" --disallowedTools "${DENIED[@]}" \
+    || echo "run.sh: claude -p exited $?" >&2; }
+# what a call spent, from its own result JSON
+spent() { jq -r '"\(input_filename): $\(.total_cost_usd // "?") in \((.duration_ms // 0) / 60000 | floor) min, \(.num_turns // "?") turns, \(.subtype // "?")"' "$1" || true; }
+CONTINUE="The API connection dropped in the middle of your turn. Carry on with the task \
+exactly where you left off (git status first: some edits may already be on disk)."
+# A call whose API connection dropped (network, DNS) is resumed in the same session, at most
+# three times. Every try keeps its own JSON (<name>-N.json, for the cost); the last one is
+# copied to <name>.json, whose session_id the next step resumes.
+call() { local name=$1 prompt=$2; shift 2; local n=1 sid
+  while [[ -e $LOG/$name-$n.json ]]; do n=$((n+1)); done
+  local out="$LOG/$name-$n.json" first=$n
+  (cd "$CO" && claude_p "$prompt" "$@") > "$out"; spent "$out"
+  while jq -e '.is_error == true and (.result // "" | test("^API Error"))' "$out" >/dev/null 2>&1 \
+      && ((n - first < 3)); do
+    sid=$(jq -r .session_id "$out"); n=$((n+1)); out="$LOG/$name-$n.json"
+    echo "run.sh: $name: the API connection dropped; resuming $sid in a minute"
+    sleep 60
+    (cd "$CO" && claude_p "$CONTINUE" --resume "$sid") > "$out"; spent "$out"
+  done
+  cp "$out" "$LOG/$name.json"; }
 
 if [[ -n $FROM ]]; then
   [[ $(git -C "$CO" branch --show-current) == "$BRANCH" ]] || die "$CO is not on $BRANCH"
@@ -140,52 +196,17 @@ fi
 x mkdir -p "$LOG"
 
 # 4. implement
-IMPL="Implement victorrentea/petclinic#$ISSUE (gh issue view $ISSUE). The human's answers \
-to your open questions are in Q&A.md at the repository root: they are final, build to them \
-exactly and do not reopen them. This run is unattended: run every command in the \
-foreground and never end your turn waiting for anything. Commit the implementation; do \
-not push and do not open a pull request."
-# Unattended, so nobody answers a permission prompt — but not --dangerously-skip-permissions:
-# edits are accepted, and Bash is held to the commands an implementation and its review need
-# in this checkout (build, test, the stacks, git, the issue), with the outward-reaching and
-# destructive ones denied outright. The same shape as rerun-review.py's `claude_argv`.
-# A budget cap per call. The prompt goes on stdin: the tool lists are variadic and would
-# swallow a positional prompt.
-ALLOWED=(Read Grep Glob Edit Write Skill Agent Task TodoWrite
-  "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)"
-  "Bash(git add:*)" "Bash(git commit:*)" "Bash(git rev-parse:*)" "Bash(git merge-base:*)"
-  "Bash(git ls-files:*)" "Bash(git blame:*)" "Bash(git restore:*)" "Bash(git mv:*)" "Bash(git rm:*)"
-  "Bash(mvn:*)" "Bash(./mvnw:*)" "Bash(npm:*)" "Bash(npx:*)" "Bash(node:*)"
-  "Bash(docker ps:*)" "Bash(docker logs:*)" "Bash(docker compose:*)"
-  "Bash(./start-docker.sh:*)" "Bash(../start-docker.sh:*)" "Bash(./test-on-own-db.sh:*)"
-  "Bash(./test-on-own-stack.sh:*)" "Bash(./run-tests-with-tracing.sh:*)"
-  "Bash(python3:*)" "Bash(gh issue view:*)" "Bash(gh run:*)" "Bash(gh pr view:*)"
-  "Bash(curl -s http://localhost:*)" "Bash(curl -s http://127.0.0.1:*)"
-  "Bash(ls:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(wc:*)" "Bash(grep:*)"
-  "Bash(rg:*)" "Bash(find:*)" "Bash(sed -n:*)" "Bash(jq:*)" "Bash(sleep:*)" "Bash(cd:*)"
-  "Bash(mkdir:*)" "Bash(cp:*)" "Bash(mv:*)" "Bash(echo:*)" "Bash(test:*)" "Bash(diff:*)")
-DENIED=("Bash(git push:*)" "Bash(git reset:*)" "Bash(git checkout:*)" "Bash(git switch:*)"
-  "Bash(git stash:*)" "Bash(git rebase:*)" "Bash(git clean:*)" "Bash(gh pr create:*)"
-  "Bash(gh pr merge:*)" "Bash(rm -rf:*)" "Bash(sudo:*)" "Bash(pkill:*)" "Bash(killall:*)"
-  "Bash(docker rm:*)" "Bash(docker system:*)" "Bash(docker volume rm:*)")
-BUDGET=${SLOP_BUDGET_USD:-15}
-claude_p() { local prompt=$1; shift
-  printf '%s' "$prompt" | env -u CLAUDE_CODE_SESSION_ID claude -p --model "$MODEL" \
-    --permission-mode acceptEdits --output-format json --max-budget-usd "$BUDGET" \
-    --add-dir "$CO" "$@" --allowedTools "${ALLOWED[@]}" --disallowedTools "${DENIED[@]}" \
-    || echo "run.sh: claude -p exited $?" >&2; }
-# what a call spent, from its own result JSON
-spent() { jq -r '"\(input_filename): $\(.total_cost_usd // "?") in \((.duration_ms // 0) / 60000 | floor) min, \(.num_turns // "?") turns, \(.subtype // "?")"' "$1" || true; }
 echo "+ (cd $CO && claude -p '<implement #$ISSUE, Q&A.md final>') > $LOG/implement.json"
-if [[ -n $DRY ]]; then SID=DRY-RUN; else
-  (cd "$CO" && claude_p "$IMPL") > "$LOG/implement.json"
-  spent "$LOG/implement.json"
+if [[ -n $DRY ]]; then SID=DRY-RUN; else call implement "$IMPL"; fi
+fi  # --from
+# 4b. --from implement: the implementing session died before it committed; carry it on
+if [[ $FROM == implement && -z $DRY ]]; then call implement "$CONTINUE" --resume "$SID"; fi
+if [[ -z $DRY && ( -z $FROM || $FROM == implement ) ]]; then
   SID=$(jq -r .session_id "$LOG/implement.json")
   [[ -n $SID && $SID != null ]] || die "the implementation run left no session id ($LOG/implement.json)"
   [[ $(git -C "$CO" rev-list --count "origin/main..HEAD") -ge 2 ]] \
     || die "the implementation run committed nothing ($LOG/implement.json)"
 fi
-fi  # --from
 if [[ $STOP == implement ]]; then
   echo "stopped after the implementation; go on with: $0 $DEMO --checkout $CO --branch $BRANCH --from record-review --log $LOG"
   exit 0
@@ -202,8 +223,7 @@ them is declined: it goes under Ignored, with a why: that cites the line it rest
 source: human, anchored on the code that carries it."
 echo "+ (cd $CO && claude -p --resume $SID '<record-review prompt + Q&A.md decline rule>') > $LOG/record-review.json"
 if [[ -z $DRY && $FROM != human-review ]]; then
-  (cd "$CO" && claude_p "$RR" --resume "$SID") > "$LOG/record-review.json"
-  spent "$LOG/record-review.json"
+  call record-review "$RR" --resume "$SID"
   git -C "$CO" log --format=%s --grep='\[auto-fix\]' origin/main..HEAD | grep -q . \
     || die "no [auto-fix] commit: the review was not recorded ($LOG/record-review.json)"
 fi
