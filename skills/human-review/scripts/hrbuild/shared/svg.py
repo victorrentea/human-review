@@ -125,6 +125,9 @@ DIAGRAM_COLOR_VARS = {
     # component border, arrow. Same treatment, different source — see the CSS.
     "#ECEFF1": "--dgm-box-accent", "#546E7A": "--dgm-line-accent",
     "#78909C": "--dgm-arrow-accent",
+    # seq_arrow_colors.NETWORK / .SQL — a sequence arrow that crossed a wire, and one that
+    # went to the database (the New/Old renders only; the delta keeps green and red).
+    "#6A1B9A": "--dgm-arrow-net", "#E65100": "--dgm-arrow-sql",
 }
 # PlantUML 1.2026.9 shortens its defaults to three digits (`#FFF`, `#000`, `#EEE`), so
 # both spellings are matched and the short one is widened before the lookup. Missing

@@ -349,9 +349,11 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'sequence': {
         "move": 'details.seqhow',
         "li": [
-            'One per tagged or touched test: HTTP, SQL, cross-module calls; '
+            'Arrows: <b style="color:var(--dgm-arrow-net)">violet</b> between systems, '
+            '<b style="color:var(--dgm-arrow-sql)">orange</b> SQL, plain in-process; '
             '<b>tx</b>: committed/rolled back.',
-            '<b>New</b>/<b>Old</b>: this branch\'s run, or the base\'s; <b>⇒ .puml</b>: the file the test writes.',
+            'One per tagged/touched test; <b>New</b>/<b>Old</b>: this branch\'s run or the base\'s; '
+            '<b>⇒ .puml</b>: its file.',
             'Hover <b>⊕</b> for the SQL, JSON or request, click to keep it; <b>values</b> fills in each <b>?</b>.',
             'A request\'s Bruno dog opens it in Bruno; off the server it copies it as cURL instead.',
             'A blue call opens its method; a browser request opens the line that sent it, in that run.',

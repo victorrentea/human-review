@@ -28,6 +28,9 @@
      A fill left un-themed there is not merely off-palette, it is the box that
      swallows its own label. */
   --dgm-box-accent:#eceff1; --dgm-line-accent:#546e7a; --dgm-arrow-accent:#78909c;
+  /* A sequence arrow between two systems, and one to the database (seq_arrow_colors.py):
+     neither the link blue nor either diff hue, so none of the three reads as another. */
+  --dgm-arrow-net:#6a1b9a; --dgm-arrow-sql:#e65100;
   /* The diff renderers' two hues — both puml_diff.py and seq_puml_diff.py paint an
      addition ADDED and a removal REMOVED, one palette across both deltas. They equal the
      page's own `.added`/`.removed` pair on purpose: a diagram and a code hunk on the same
@@ -87,6 +90,7 @@
              ~11:1 against --dgm-fg; both strokes clear 3:1 on --dgm-bg. */
           --dgm-box-accent:#29323a; --dgm-line-accent:#93a9b5;
           --dgm-arrow-accent:#7f97a6;
+          --dgm-arrow-net:#c792ea; --dgm-arrow-sql:#ffa057;
           --dgm-diff-add:#8fd39c; --dgm-diff-del:#f08a8a;
           --dgm-diff-add-bg:#1f3329; --dgm-diff-del-bg:#3a1f1f;
           --dgm-impact:#38bdf8;

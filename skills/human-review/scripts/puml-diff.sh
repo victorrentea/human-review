@@ -56,6 +56,7 @@ OUT_DIR="${2:-.human-review/assets/diagrams}"
 # sequence diagram and know nothing about the project being reviewed.
 STRUCT_DIFF="$SCRIPT_DIR/../puml-diff/puml_diff.py"
 SEQ_DIFF="$SCRIPT_DIR/../puml-diff/seq_puml_diff.py"
+SEQ_COLORS="$SCRIPT_DIR/../puml-diff/seq_arrow_colors.py"
 
 for tool in "$STRUCT_DIFF" "$SEQ_DIFF"; do
   [ -f "$tool" ] || { echo "[puml-diff] missing $tool" >&2; exit 2; }
@@ -123,9 +124,15 @@ printf 'name\tsource\tkind\tstatus\tdiff_puml\tsvg\tfocus\tnew_svg\told_svg\told
 # and the copy removed again — the .puml itself is either the work tree's or a git blob,
 # and a second copy of it in the output directory would be one more thing to go stale.
 render_plain() {
+  # $3 = the diagram's kind: a sequence gets its arrows painted by what they cross —
+  # between systems, to the database, inside one process (puml-diff/seq_arrow_colors.py).
   [ -s "$1" ] || return 1
   command -v plantuml >/dev/null 2>&1 || return 1
-  cp "$1" "$2.puml"
+  if [ "${3:-}" = sequence ]; then
+    python3 "$SEQ_COLORS" "$1" "$2.puml" 2>/dev/null || cp "$1" "$2.puml"
+  else
+    cp "$1" "$2.puml"
+  fi
   plantuml -tsvg "$2.puml" >/dev/null 2>&1 || true
   rm -f "$2.puml"
   # PlantUML emits a valid .svg reading "Syntax Error?" rather than failing. Embedding
@@ -306,8 +313,8 @@ for rel in ${CHANGED[@]+"${CHANGED[@]}"}; do
 
   # The undiffed pair. An added diagram has no "old" and a deleted one has no "new",
   # and both are normal: the control simply offers one word instead of two.
-  new_svg="$(render_plain "$new" "$OUT_DIR/$name.new" || true)"
-  old_svg="$(render_plain "$old" "$OUT_DIR/$name.old" || true)"
+  new_svg="$(render_plain "$new" "$OUT_DIR/$name.new" "$kind" || true)"
+  old_svg="$(render_plain "$old" "$OUT_DIR/$name.old" "$kind" || true)"
 
   # And the OLD side's payloads. A generated sequence diagram carries its SQL and its JSON
   # bodies in a sidecar next to it, keyed by a generation-time id; the page inlines that
