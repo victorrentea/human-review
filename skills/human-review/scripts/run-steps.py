@@ -1775,10 +1775,18 @@ def _specchanges(ctx: Ctx):
        f"--report-file {ART}/openapi-changes.html '{base}:{spec}' ./{spec}", ctx)
 
 
+def _logextract_default_paths() -> list[str]:
+    """`logextract.default_paths` for this checkout: the service's own code folders."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("logextract", str(HERE / "logextract.py"))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("logextract", mod)
+    spec.loader.exec_module(mod)
+    return mod.default_paths(Path.cwd())
+
+
 def _logging(ctx: Ctx):
-    paths = ctx.step_cfg("logging").get("paths") or []
-    if not paths:
-        raise LookupError("logging.paths not configured")
+    paths = ctx.step_cfg("logging").get("paths") or _logextract_default_paths()
     base = merge_base(ctx)
     sh(f"{HERE}/logextract.py {' '.join(paths)} --repo . --since {base} "
        f"--json {ART}/logging.json", ctx)
@@ -2246,7 +2254,7 @@ STEP_INPUTS = {
                      "tools": (),
                      "outputs": ("assets/openapi-changes.html",)},
     "logging":      {"paths": ("*.java", "*.ts", "*.js", "*.kt", "*.py", "*.tsx"),
-                     "tools": ("logextract.py", "ast-grep-rules"),
+                     "tools": ("logextract.py",),
                      "outputs": ("assets/logging.json",)},
     "owners":       {"paths": ("*",),
                      "tools": ("codeowners-check.py",),
@@ -2528,7 +2536,7 @@ STEPS = [
     ("specchanges", "api",           "pb33f report",
      lambda c: have("openapi-changes") or "openapi-changes not installed", _specchanges),
     ("logging",     "logging",       "structural logging scan",
-     lambda c: have("ast-grep") or "ast-grep not installed", _logging),
+     None, _logging),
     ("dsaudit",     "dsaudit",       "design-system audit",      _dsaudit_prereq,   _dsaudit),
     ("owners",      "owners",        "codeowners check",          None,              _owners),
     ("tests",       "requirements",  "test change manifest",      None,              _tests),

@@ -107,31 +107,16 @@ def _logextract():
     return mod
 
 
-# The alternation inside `log-import`'s constraint: `(org\.slf4j|org\.apache…|ch\.qos\.logback)`.
-# Two or more dotted, lower-case package roots between one pair of parentheses is the only
-# group in that rule shaped like this — the `(static\s+)?` before it is neither dotted nor
-# an alternation — so the rule can be rewritten freely without this having to be told.
+# Kept for the import surface: upstream read the Java rule's package alternation with it.
 _LOG_PKGS_RE = re.compile(r"\(([a-z][\w\\.]*(?:\|[a-z][\w\\.]*)+)\)")
 
 
 @functools.lru_cache(maxsize=1)
 def logging_libraries() -> tuple[str, ...]:
-    """The packages the scan actually searches for, in the rule's own order.
-
-    Read out of `logextract.py`'s own `log-import` rule rather than typed here. A list of
-    library names on a page is a claim about what a scan looked for, and the only version
-    of that claim worth showing is the one that cannot go stale: add a logging API to the
-    rule and this list gains it on the next build; nobody has to remember the page.
-
-    The escaping is undone (`org\\.slf4j` is a regex, not a package). Returns empty when
-    the regex cannot be found at all — the caller says where to look instead, because
-    naming the rule beats inventing a list."""
-    rule = _logextract().RULES.get("log-import", "")
-    for alt in _LOG_PKGS_RE.findall(rule):
-        pkgs = [p.replace("\\", "") for p in alt.split("|")]
-        if any("." in p for p in pkgs):
-            return tuple(pkgs)
-    return ()
+    """The libraries the scan recognises, read off `logextract.py`'s own `LIBRARIES` rather
+    than typed here: a list on a page is a claim about what a scan looked for, and the only
+    version of it worth showing is the one that cannot go stale."""
+    return tuple(getattr(_logextract(), "LIBRARIES", ()))
 
 
 def logging_libraries_tip() -> str:
@@ -144,10 +129,11 @@ def logging_libraries_tip() -> str:
     prose: a logger reached without an import still counts."""
     pkgs = logging_libraries()
     if not pkgs:
-        return "<p class=\"tipfoot\">The packages named by logextract.py's log-import rule.</p>"
+        return "<p class=\"tipfoot\">The libraries named by logextract.py's LIBRARIES.</p>"
     items = "".join(f"<li>{html.escape(p)}</li>" for p in pkgs)
     return (f'<ul class="tiplist">{items}</ul>'
-            f'<p class="tipfoot">&hellip;plus loggers reached by type, factory or Lombok.</p>')
+            f'<p class="tipfoot">&hellip;plus a logger imported from another module of the '
+            f'service, or a <code>self.logger</code>.</p>')
 
 
 # --------------------------------------------------------------------------- #
@@ -260,6 +246,27 @@ def _hint_arguments(snippet: str, h: dict) -> str:
     return (snippet[:pre.start("rows")] + "\n".join(lines) + snippet[pre.end("rows"):])
 
 
+#: A concern's chip: its label and the class that colours it.
+_CONCERN = {"pii": ("personal data?", "lg-pii"),
+            "org-number": ("org number", "lg-org"),
+            "whole-object": ("logged whole", "lg-whole"),
+            "f-string": ("f-string message", "lg-fstr")}
+
+
+def _concerns_line(h: dict) -> str:
+    """One chip per thing Ludvig's logging standard asks to look at twice (`logextract.py`
+    `concerns_for`): a value named like personal data, an organisation number, a payload
+    logged whole, a message built by an f-string. Each says on hover why it is there."""
+    chips = []
+    for c in h.get("concerns") or []:
+        label, cls = _CONCERN.get(c.get("kind"), (c.get("kind") or "?", "lg-pii"))
+        name = f' <code>{html.escape(c["name"])}</code>' if c.get("name") else ""
+        chips.append(f'<span class="lg-concern {cls}" tabindex="0" '
+                     f'data-tip="{html.escape(c.get("why") or "", quote=True)}">'
+                     f'⚠ {label}{name}</span>')
+    return f'<span class="lg-concerns">{"".join(chips)}</span>' if chips else ""
+
+
 def _change_line(h: dict) -> str:
     """The snippet's caption: new logging, or an old statement rewritten — and, when
     rewritten, the call it replaced. Nothing when the scan ran without a base.
@@ -353,7 +360,8 @@ def _logging_listing(added: list, root: Path) -> str:
     for h in added:
         # The bar's link is aimed at the hit's own line and column: that is where a reader
         # clicking a logging box expects to land, not column 1 of its indent.
-        snippet = snippet_html(_logging_ref(h), _change_line(h) or None, root, exact=True,
+        caption = " ".join(x for x in (_change_line(h), _concerns_line(h)) if x)
+        snippet = snippet_html(_logging_ref(h), caption or None, root, exact=True,
                                link_at=(h["line"], h.get("column", 1)))
         snippet = BADGE_RE.sub("", snippet, count=1)
         boxes.append(_inlay_file(_hint_arguments(_mark_rewritten(snippet, h), h)))
@@ -378,7 +386,7 @@ def logging_fragment(block, root: Path, base: str | None = None):
     must never be confused with — that path returns `("", 0, 0)` below and the tab
     disappears with a loud line in the build log, which is a different, visible failure
     mode from a real, rendered zero."""
-    paths = block.get("paths") or ["."]
+    paths = block.get("paths") or _logextract().default_paths(root)
     # `base` is the page's one base (`chips.page_base`); the block's own still wins.
     base = _git(root, "merge-base", block.get("base") or base or "origin/main", "HEAD") or ""
     with tempfile.TemporaryDirectory() as td:
@@ -388,9 +396,8 @@ def logging_fragment(block, root: Path, base: str | None = None):
              "--since", base, "--json", str(report)],
             cwd=root, capture_output=True, text=True)
         if proc.returncode != 0 or not report.is_file():
-            # ast-grep is a binary, not a Python dependency, so a machine without it is a
-            # real case. Say which tool is missing rather than quietly reporting "no
-            # logging" — a false all-clear is the one answer this tab must never give.
+            # Say the scan failed rather than quietly reporting "no logging" — a false
+            # all-clear is the one answer this tab must never give.
             print("[review] logextract.py failed — dropping the logging tab:\n"
                   + proc.stderr.strip()[-500:], file=sys.stderr)
             return "", 0, 0
@@ -421,12 +428,11 @@ def logging_fragment(block, root: Path, base: str | None = None):
             f'Uses of '
             f'<span class="dfn" data-tip-side="right"'
             f' data-tip-html="{html.escape(logging_libraries_tip(), quote=True)}">'
-            f'common Java logging libraries</span></h2>'
-            '<p class="tabsub">Found by syntax-aware search over Java sources: '
-            '<a href="https://ast-grep.github.io" target="_blank" rel="noopener">ast-grep</a> '
-            '(open source, built on tree-sitter) parses each file, and this skill&#39;s own rules '
-            '(<code>logextract.py</code>) first find which fields are loggers, then every '
-            'log-level call made on one.</p>')
+            f'common Python logging libraries</span></h2>'
+            '<p class="tabsub">Found by syntax-aware search over Python sources: '
+            '<code>logextract.py</code> parses each file with Python&#39;s own '
+            '<code>ast</code>, first finds which names are loggers, then every log-level call '
+            'made on one, and flags what Ludvig&#39;s logging standard asks to look at twice.</p>')
     body = ""
     # No header bar and no surrounding card any more: no heading repeating "logging", no
     # count pill, no `path, base…HEAD` provenance line — the tab's own title already says

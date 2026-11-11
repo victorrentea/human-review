@@ -497,7 +497,7 @@ def test_no_embed_declared_emits_nothing(tmp_path):
 REPO_ROOT = Path(subprocess.run(
     ["git", "rev-parse", "--show-toplevel"], cwd=HERE, capture_output=True, text=True, check=True
 ).stdout.strip())
-FIXTURE_REL = str((HERE.relative_to(REPO_ROOT) / "testdata" / "logextract" / "Slf4jExplicit.java"))
+FIXTURE_REL = str((HERE.relative_to(REPO_ROOT) / "testdata" / "logextract" / "powertools_explicit.py"))
 
 
 def test_a_quoted_window_is_aimed_at_the_statement_inside_it():
@@ -638,9 +638,9 @@ def test_the_quoted_origin_keeps_its_real_line_number_behind_a_gap_marker(tmp_pa
 
 INFO_HIT = {"file": FIXTURE_REL, "abs_file": str(REPO_ROOT / FIXTURE_REL), "line": 8,
             "column": 9, "end_line": 8, "level": "INFO", "method": "info",
-            "format": '"Booking visit for owner {} pet {}"',
-            "text": 'LOG.info("Booking visit for owner {} pet {}", owner, petId)',
-            "args": ["owner", "petId"], "arg_types": ["String", "int"],
+            "format": '"Booking visit for owner %s pet %s"',
+            "text": 'LOG.info("Booking visit for owner %s pet %s", owner, pet_id)',
+            "args": ["owner", "pet_id"], "arg_types": ["str", "int"],
             "origins": [{"line": 7, "name": "owner", "kind": "param", "text": ""}]}
 
 
@@ -650,7 +650,7 @@ def test_each_statement_renders_as_the_page_s_one_snippet_style():
     out = build._logging_listing([INFO_HIT], REPO_ROOT)
     assert out.count('<figure class="snippet lg-snip">') == 1
     assert out.count('<div class="srcbar">') == 1
-    assert '>Slf4jExplicit.java</a>' in out
+    assert '>powertools_explicit.py</a>' in out
     assert "Booking visit for owner" in out
     assert "<figcaption" not in out and "<table" not in out
 
@@ -711,20 +711,20 @@ def test_every_resolved_value_wears_an_intellij_style_type_hint_in_front_of_it()
     row = next(r for r in out.split("\n") if '<span class="ln">8</span>' in r)
     assert row.count('class="typehint"') == 2
     # In argument order, each right in front of its own value — not inside the message.
-    s = row.index('<span class="typehint" data-type="String"')
+    s = row.index('<span class="typehint" data-type="str"')
     i = row.index('<span class="typehint" data-type="int"')
     assert s < i
     assert build.code_xref.plain(row[s:]).lstrip().startswith("owner")
-    assert build.code_xref.plain(row[i:]).lstrip().startswith("petId")
-    assert build.code_xref.plain(row[:s]).rstrip().endswith('pet {}",')
+    assert build.code_xref.plain(row[i:]).lstrip().startswith("pet_id")
+    assert build.code_xref.plain(row[:s]).rstrip().endswith('pet %s",')
 
 
 def test_the_hint_is_not_part_of_the_line_s_text():
-    """Drawn by CSS from `data-type`: copying the line copies the Java, and `code_xref`,
+    """Drawn by CSS from `data-type`: copying the line copies the code, and `code_xref`,
     which reads every quoted line back as plain text, never sees a type name there."""
     out = build._logging_listing([INFO_HIT], REPO_ROOT)
     row = next(r for r in out.split("\n") if '<span class="ln">8</span>' in r)
-    assert "String" not in build.code_xref.plain(row)
+    assert "str" not in build.code_xref.plain(row).replace("str(", "")
 
 
 def test_an_unresolved_type_gets_no_hint_rather_than_a_guess():
@@ -736,8 +736,8 @@ def test_a_name_that_also_appears_in_the_message_is_not_mistaken_for_the_argumen
     """`owner` is a word of the format string too; the hint goes on the argument."""
     out = build._logging_listing([INFO_HIT], REPO_ROOT)
     row = next(r for r in out.split("\n") if '<span class="ln">8</span>' in r)
-    before = build.code_xref.plain(row[:row.index('<span class="typehint" data-type="String"')])
-    assert "Booking visit for owner {} pet {}" in before
+    before = build.code_xref.plain(row[:row.index('<span class="typehint" data-type="str"')])
+    assert "Booking visit for owner %s pet %s" in before
 
 
 def test_the_hint_is_placed_before_the_token_not_inside_its_colour():
@@ -770,33 +770,31 @@ def test_two_statements_yield_two_boxes_and_nothing_else():
 # --------------------------------------------------------------------------- #
 
 FOO_BASE = (
-    "package fx;\n"
-    "import org.slf4j.Logger;\n"
-    "import org.slf4j.LoggerFactory;\n"
-    "public class Foo {\n"
-    "    private static final Logger log = LoggerFactory.getLogger(Foo.class);\n"
-    "    void run(int id) {\n"
-    "        int x = 1;\n"
-    "    }\n"
-    "}\n"
+    "from aws_lambda_powertools import Logger\n"
+    "\n"
+    "logger = Logger()\n"
+    "\n"
+    "\n"
+    "def run(order_id: int):\n"
+    "    x = 1\n"
+    "    return x\n"
 )
 FOO_WITH_WARN = (
-    "package fx;\n"
-    "import org.slf4j.Logger;\n"
-    "import org.slf4j.LoggerFactory;\n"
-    "public class Foo {\n"
-    "    private static final Logger log = LoggerFactory.getLogger(Foo.class);\n"
-    "    void run(int id) {\n"
-    '        log.warn("bad id {}", id);\n'
-    "    }\n"
-    "}\n"
+    "from aws_lambda_powertools import Logger\n"
+    "\n"
+    "logger = Logger()\n"
+    "\n"
+    "\n"
+    "def run(order_id: int):\n"
+    '    logger.warning("bad id %s", order_id)\n'
+    "    return 1\n"
 )
 
 
 def _tiny_java_repo(tmp_path, base_src: str):
-    """A real, throwaway git repo with one Java file at `base_src` on a tagged commit
+    """A real, throwaway git repo with one Python module at `base_src` on a tagged commit
     `base` — enough for `logging_fragment` to run its real `git merge-base` / `git diff`
-    / `logextract.py` / `ast-grep` pipeline end to end."""
+    / `logextract.py` pipeline end to end. (The name is upstream's; the fork scans Python.)"""
     repo = tmp_path / "repo"
     repo.mkdir()
 
@@ -807,9 +805,9 @@ def _tiny_java_repo(tmp_path, base_src: str):
     git("init", "-q")
     git("config", "user.email", "t@example.com")
     git("config", "user.name", "t")
-    src = repo / "Foo.java"
+    src = repo / "foo.py"
     src.write_text(base_src, encoding="utf-8")
-    git("add", "Foo.java")
+    git("add", "foo.py")
     git("commit", "-q", "-m", "base")
     git("tag", "base")
     return repo, src
@@ -832,9 +830,9 @@ def test_logging_fragment_keeps_its_weight_with_no_header_or_card(tmp_path, monk
     assert "On the lines this change set touches" not in frag  # the header heading is gone
     assert "logging statement" not in frag           # the count pill is gone
     assert '<figure class="snippet lg-snip">' in frag
-    assert "Foo.java:7" in frag      # the location, in the bar every quoted block wears
+    assert "foo.py:7" in frag        # the location, in the bar every quoted block wears
     assert "bad id" in frag          # the statement's own text, verbatim in the snippet
-    assert 'data-type="int"' in frag  # the logged value's declared type, as a hint
+    assert 'data-type="int"' in frag  # the parameter's annotation, as a hint
 
 
 def test_the_logging_tab_opens_on_one_computed_heading(tmp_path, monkeypatch):
@@ -853,16 +851,16 @@ def test_the_logging_tab_opens_on_one_computed_heading(tmp_path, monkeypatch):
     # the authored "Logging added/updated", which is the tab's label said twice.
     assert frag.count("<h2") == 1 and '<h2 class="tabtitle" id="logging-added">Uses of <span' in frag
     # Under it, how the uses were found, and no underline between the two.
-    assert '</h2><p class="tabsub">Found by syntax-aware search over Java sources: ' in frag
-    assert 'href="https://ast-grep.github.io"' in frag and "<code>logextract.py</code>" in frag
+    assert '</h2><p class="tabsub">Found by syntax-aware search over Python sources: ' in frag
+    assert "<code>ast</code>" in frag and "<code>logextract.py</code>" in frag
     assert "Logging added/updated" not in frag and "not by grepping" not in frag, \
         "title and body on the logging block are the renderer's now, not the author's"
     assert 'id="logging-added"' in frag, "the deep link the heading carried still lands"
     assert "Uses of <span" in frag
-    assert ">common Java logging libraries</span></h2>" in frag
+    assert ">common Python logging libraries</span></h2>" in frag
     # The hover, and the fact that it is read rather than typed.
-    assert "org.slf4j" in frag and "ch.qos.logback" in frag
-    assert r"org\.slf4j" in build._logextract().RULES["log-import"]  # escaped there
+    assert "aws_lambda_powertools" in frag and "structlog" in frag
+    assert "aws_lambda_powertools" in build._logextract().LIBRARIES
     # A panel of bullets floated over the line would cover the sentence being read.
     assert 'data-tip-side="right"' in frag
 
@@ -878,9 +876,9 @@ def test_the_library_hover_is_a_list_beside_the_line_not_a_sentence_over_it():
     tip = build.logging_libraries_tip()
     assert tip.startswith('<ul class="tiplist">')
     assert tip.count("<li>") == len(build.logging_libraries()) >= 2
-    assert "<li>org.slf4j</li>" in tip
+    assert "<li>aws_lambda_powertools</li>" in tip
     assert ", " not in tip.split("</ul>")[0], "the packages are bullets, never a run-on"
-    assert '<p class="tipfoot">' in tip and "Lombok" in tip
+    assert '<p class="tipfoot">' in tip and "self.logger" in tip
 
 
 def test_an_inlay_type_hint_paints_where_it_sits_not_over_the_code(tmp_path):
@@ -936,7 +934,7 @@ def test_logging_fragment_keeps_its_weight_on_a_genuine_zero_too(tmp_path, monke
     dropped tab — once the header/card it used to lean on for that no longer exists. No
     change, though: the pill fades, the way Data's does when no migration moved."""
     repo, src = _tiny_java_repo(tmp_path, FOO_BASE)
-    src.write_text(FOO_BASE.replace("int x = 1;", "int x = 2;"), encoding="utf-8")
+    src.write_text(FOO_BASE.replace("x = 1", "x = 2"), encoding="utf-8")
     block = {"paths": ["."], "base": "base"}
     frag, weight, changes = build.logging_fragment(block, repo)
     assert (weight, changes) == (1, 0)
@@ -3194,7 +3192,9 @@ def test_the_review_chip_names_the_model_instead_of_a_second_chip_beside_it(tmp_
         "the face counts, the hover names the role"
     # The model has one home, the hover.
     assert "Reviewed by Opus 5." in page
-    assert page.count("Opus 5") == 1
+    # "Opus 5" as a whole name: "Coded by Opus 5.5" is read off this repository's own commit
+    # trailers, and is a different model, not the reviewer said twice.
+    assert len(re.findall(r"Opus 5(?!\.\d)", page)) == 1
 
 
 def test_a_page_rebuilt_with_no_idea_who_reviewed_it_says_exactly_that_much(tmp_path):

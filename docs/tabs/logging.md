@@ -12,16 +12,22 @@
 
 ## What you see
 
-- **Every new or changed log line**, cut from the working tree with the lines its values
-  came from, each a click into your editor or onto GitHub.
-- **A verdict per statement** — SAFE, DOUBT, PRIVACY, or NOT EVALUATED — with the value that
-  earned it: `vet.getLastName()` is a surname on its way to a log aggregator kept for months.
-- An unresolved case reads DOUBT on purpose, never a guessed SAFE.
+- **Every new or changed log line**, cut from the working tree, each a click into your editor
+  or onto GitHub. A rewritten line says what it was, and whether it still logs the same text.
+- **⚠ chips** where Ludvig's logging standard asks to look twice, each saying why on hover:
+  a value named like personal data (`email`, `personnummer`…), an organisation number (it can
+  be a personal number), a payload or event logged whole, an f-string message instead of
+  values in `extra=`.
+- A chip is a question for the reviewer, read off names in the code — never a verdict.
 
 ## What it needs
 
-- **`ast-grep`** — the only way to tell `log.info(x)` from `Math.log(x)`. The privacy verdicts
-  are the one model call on this tab, and they are cached.
+- Nothing to install: [`logextract.py`](../../skills/human-review/scripts/logextract.py)
+  parses Python with the standard library's `ast`. It recognises `aws_lambda_powertools`'
+  `Logger`, `logging`, `structlog` and `loguru`, and a logger imported from another module
+  of the service.
+- It scans `src`, `lambdas`, `backend` and `src_py` when they exist (tests are left out);
+  `steps.logging.paths` in `human-review.json` overrides that.
 
 ## Deeper
 

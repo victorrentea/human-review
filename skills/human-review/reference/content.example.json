@@ -188,10 +188,6 @@
    "blocks": [
     {
      "type": "logging",
-     "base": "origin/main",
-     "paths": [
-      "petclinic-backend"
-     ],
      "id": "logging-added"
     }
    ]

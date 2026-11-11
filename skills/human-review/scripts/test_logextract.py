@@ -1,490 +1,196 @@
-#!/usr/bin/env python3
-"""Unit tests for logextract.py — run with `python3 -m unittest test_logextract -v`."""
+"""logextract.py: the Logging tab's scan, over Python.
+
+Fixtures in testdata/logextract/ — one module per thing a logger can be, and one of
+things that only look like one."""
+from __future__ import annotations
 
 import os
-import unittest
+import subprocess
 from collections import defaultdict
+from pathlib import Path
 
 import logextract
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-FIX = os.path.join(HERE, "testdata", "logextract")
-RULE_DIR = os.path.join(HERE, "ast-grep-rules")
+HERE = Path(__file__).resolve().parent
+FIX = HERE / "testdata" / "logextract"
 
 
 def scan(*names, inherited=True):
-    paths = [os.path.join(FIX, n) for n in names]
-    hits, antis, stats = logextract.extract(paths, root=FIX, allow_inherited=inherited)
+    hits, antis, stats = logextract.extract([str(FIX / n) for n in names], root=str(FIX),
+                                            allow_inherited=inherited)
     by_file = defaultdict(list)
     for h in hits:
         by_file[h.file].append(h)
     return by_file, antis, stats
 
 
-class Slf4jExplicitTest(unittest.TestCase):
-    def test_explicit_loggerfactory_field(self):
-        by, _, _ = scan("Slf4jExplicit.java")
-        hits = by["Slf4jExplicit.java"]
-        self.assertEqual(4, len(hits), [h.text for h in hits])
-        self.assertEqual({"INFO", "DEBUG", "TRACE", "ERROR"}, {h.level for h in hits})
-        self.assertTrue(all(h.flavour == "SLF4J" for h in hits))
-        self.assertTrue(all(h.receiver == "LOG" for h in hits))
-        self.assertTrue(all(h.confidence == "declared" for h in hits))
-
-    def test_isTraceEnabled_is_not_a_hit(self):
-        by, _, _ = scan("Slf4jExplicit.java")
-        self.assertNotIn("isTraceEnabled", {h.method for h in by["Slf4jExplicit.java"]})
-
-    def test_args_after_the_format_string_are_captured(self):
-        by, _, _ = scan("Slf4jExplicit.java")
-        h = next(h for h in by["Slf4jExplicit.java"] if h.method == "info")
-        self.assertEqual('"Booking visit for owner {} pet {}"', h.format)
-        self.assertEqual(["owner", "petId"], h.args)
-
-    def test_raw_line_and_position(self):
-        by, _, _ = scan("Slf4jExplicit.java")
-        h = next(h for h in by["Slf4jExplicit.java"] if h.method == "info")
-        self.assertEqual(8, h.line)
-        self.assertEqual(9, h.column)
-        self.assertIn("Booking visit for owner", h.raw_line)
-
-
-class LombokTest(unittest.TestCase):
-    def test_slf4j_annotation_injects_log(self):
-        by, _, _ = scan("LombokSlf4j.java")
-        hits = by["LombokSlf4j.java"]
-        self.assertEqual(3, len(hits), [h.text for h in hits])
-        self.assertTrue(all(h.flavour == "Lombok @Slf4j" for h in hits))
-        self.assertTrue(all(h.confidence == "lombok" for h in hits))
-
-    def test_this_log_qualified_receiver(self):
-        by, _, _ = scan("LombokSlf4j.java")
-        h = next(h for h in by["LombokSlf4j.java"] if h.method == "info")
-        self.assertEqual("log", h.receiver)
-
-    def test_error_with_trailing_throwable_argument(self):
-        by, _, _ = scan("LombokSlf4j.java")
-        h = next(h for h in by["LombokSlf4j.java"] if h.method == "error")
-        self.assertEqual(["e.getMessage()", "e"], h.args)
-
-    def test_every_lombok_flavour(self):
-        by, _, _ = scan("LombokFlavours.java")
-        hits = by["LombokFlavours.java"]
-        self.assertEqual({"Lombok @Log4j2", "Lombok @CommonsLog", "Lombok @Log (JUL)",
-                          "Lombok @Flogger", "Lombok @XSlf4j"},
-                         {h.flavour for h in hits})
-        self.assertEqual(5, len(hits), [(h.flavour, h.text) for h in hits])
-
-    def test_flogger_fluent_chain_resolves_to_info(self):
-        by, _, _ = scan("LombokFlavours.java")
-        h = next(h for h in by["LombokFlavours.java"] if h.receiver == "logger")
-        self.assertEqual("INFO", h.level)
-        self.assertEqual('logger.atInfo().log("flogger %s", "x")', h.text)
-
-
-class OtherFlavoursTest(unittest.TestCase):
-    def test_log4j2(self):
-        by, _, _ = scan("Log4j2Explicit.java")
-        hits = by["Log4j2Explicit.java"]
-        self.assertEqual(2, len(hits))
-        self.assertTrue(all(h.flavour == "Log4j2" for h in hits))
-        self.assertEqual({"FATAL", "DEBUG"}, {h.level for h in hits})
-
-    def test_commons_logging(self):
-        by, _, _ = scan("CommonsLogging.java")
-        hits = by["CommonsLogging.java"]
-        self.assertEqual(2, len(hits))
-        self.assertTrue(all(h.flavour == "Commons Logging" for h in hits))
-
-    def test_jul(self):
-        by, _, _ = scan("JulExplicit.java")
-        hits = by["JulExplicit.java"]
-        self.assertEqual(3, len(hits))
-        self.assertTrue(all(h.flavour == "JUL" for h in hits))
-        self.assertEqual({"INFO", "ERROR", "LOG"}, {h.level for h in hits})
-
-
-class InheritedTest(unittest.TestCase):
-    def test_heuristic_tier_via_imports_when_the_base_class_is_out_of_scope(self):
-        by, _, _ = scan("InheritedLogger.java")
-        hits = by["InheritedLogger.java"]
-        self.assertEqual(1, len(hits))
-        self.assertEqual("heuristic", hits[0].confidence)
-        self.assertEqual("Commons Logging", hits[0].flavour)
-
-    def test_inherited_tier_can_be_switched_off(self):
-        by, _, _ = scan("InheritedLogger.java", inherited=False)
-        self.assertEqual([], by["InheritedLogger.java"])
-
-    def test_cross_file_extends_resolves_a_protected_logger(self):
-        """The child file has no logging import at all — only `extends`."""
-        by, _, _ = scan("SpringBase.java", "SpringChild.java")
-        hits = by["SpringChild.java"]
-        self.assertEqual(1, len(hits))
-        self.assertEqual("inherited", hits[0].confidence)
-        self.assertEqual("Commons Logging", hits[0].flavour)
-        self.assertIn("inherited from `SpringBase`", hits[0].evidence)
-
-    def test_child_alone_finds_nothing(self):
-        by, _, _ = scan("SpringChild.java")
-        self.assertEqual([], by["SpringChild.java"])
-
-    def test_private_base_field_is_not_inheritable(self):
-        by, _, _ = scan("PrivateBase.java", "PrivateChild.java")
-        self.assertEqual(1, len(by["PrivateBase.java"]))
-        self.assertEqual([], by["PrivateChild.java"],
-                         "a private logger in the base must not leak to the subclass")
-
-
-class AnnotationOrderTest(unittest.TestCase):
-    def test_slf4j_is_found_when_it_is_not_the_first_annotation(self):
-        """Regression: a `constraints:` block on `has` does not backtrack past
-        the first annotation, so @RestController used to shadow @Slf4j."""
-        by, _, _ = scan("AnnotationOrder.java")
-        hits = by["AnnotationOrder.java"]
-        self.assertEqual(1, len(hits))
-        self.assertEqual("lombok", hits[0].confidence)
-        self.assertEqual("Lombok @Slf4j", hits[0].flavour)
-        self.assertEqual(["criteria"], hits[0].args)
-
-
-class InlineFactoryTest(unittest.TestCase):
-    def test_receiver_is_the_factory_call_itself(self):
-        by, _, _ = scan("InlineFactory.java")
-        hits = by["InlineFactory.java"]
-        self.assertEqual(2, len(hits), [h.text for h in hits])
-        self.assertEqual({"SLF4J", "Commons Logging"}, {h.flavour for h in hits})
-        self.assertEqual({"WARN", "ERROR"}, {h.level for h in hits})
-        self.assertTrue(all("factory call" in h.evidence for h in hits))
-
-
-class AntiPatternTest(unittest.TestCase):
-    def test_console_calls_are_a_separate_category(self):
-        by, antis, _ = scan("AntiPatterns.java")
-        self.assertEqual([], by["AntiPatterns.java"], "console output must not be a logger hit")
-        self.assertEqual({"System.out", "System.err", "printStackTrace"},
-                         {a.kind for a in antis})
-        self.assertEqual(4, len(antis))
-
-
-class TrickyNegativesTest(unittest.TestCase):
-    def test_math_log_is_not_a_logger(self):
-        _, _, _ = scan("TrickyNegatives.java")
-        by, _, _ = scan("TrickyNegatives.java")
-        texts = [h.text for h in by["TrickyNegatives.java"]]
-        self.assertNotIn("Math.log(2.0)", texts)
-
-    def test_variable_named_log_that_is_not_a_logger(self):
-        by, _, _ = scan("TrickyNegatives.java")
-        texts = [h.text for h in by["TrickyNegatives.java"]]
-        self.assertNotIn("log.log()", texts)
-        self.assertNotIn('log.info("this is a ledger entry")', texts)
-
-    def test_duration_log_is_not_a_logger(self):
-        by, _, _ = scan("TrickyNegatives.java")
-        self.assertNotIn("duration.log()", [h.text for h in by["TrickyNegatives.java"]])
-
-    def test_no_hits_at_all_in_the_negative_fixture(self):
-        by, _, _ = scan("TrickyNegatives.java")
-        self.assertEqual([], by["TrickyNegatives.java"],
-                         [h.text for h in by["TrickyNegatives.java"]])
-
-    def test_timer_log_in_a_file_with_no_logging_import(self):
-        by, _, _ = scan("DurationLog.java")
-        self.assertEqual([], by["DurationLog.java"])
-
-
-class DiffRestrictionTest(unittest.TestCase):
-    def test_hunk_parsing(self):
-        rng = logextract.HUNK_RE.match("@@ -1,3 +12,5 @@ class X {")
-        self.assertEqual(("12", "5"), rng.groups())
-        self.assertTrue(logextract.in_ranges(14, [(12, 16)]))
-        self.assertFalse(logextract.in_ranges(11, [(12, 16)]))
-
-    def test_pure_deletion_hunk_contributes_no_range(self):
-        m = logextract.HUNK_RE.match("@@ -5,2 +4,0 @@")
-        self.assertEqual("0", m.group(2))
-
-
-OLD_ADVICE = """\
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-class Advice {
-    private static final Logger log = LoggerFactory.getLogger(Advice.class);
-
-    void a(Object errors) {
-        log.warn("Validation failed: {}", errors);
-    }
-
-    void b(Object errors) {
-        log.warn("Validation failed: {}", errors);
-    }
-
-    void c(Object e) {
-        log.debug("type mismatch {}", e);
-    }
-
-    void d(Object who) {
-        log.info("Hello {}", who);
-    }
-}
-"""
-
-NEW_ADVICE = """\
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-class Advice {
-    private static final Logger log = LoggerFactory.getLogger(Advice.class);
-    private static final String VALIDATION_FAILED_LOG = "Validation failed: {}";
-
-    void a(Object errors) {
-        log.warn(VALIDATION_FAILED_LOG, errors);
-    }
-
-    void b(Object problems) {
-        log.warn(VALIDATION_FAILED_LOG, problems);
-    }
-
-    void c(Object e) {
-        log.warn("type mismatch {}", e);
-    }
-
-    void d(Object who, Object password) {
-        log.info("Hello {} {}", who, password);
-    }
-
-    void fresh(Object detail) {
-        log.warn(VALIDATION_FAILED_LOG, detail);
-    }
-}
-"""
-
-
-class NewOrRewrittenTest(unittest.TestCase):
-    """Run 5: three `log.warn` lines that only swapped a literal for a constant were listed
-    as new logging beside the one that really was. The rule: a hit is `modified` when its
-    own diff hunk deletes a call to the same logger method, `added` otherwise."""
-
-    def _scan(self, old: str, new: str):
-        import subprocess
-        import tempfile
-        tmp = os.path.realpath(tempfile.mkdtemp())  # git reports canonical paths
-        import shutil
-        self.addCleanup(shutil.rmtree, tmp, True)
-        git = ["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t"]
-        subprocess.run(["git", "init", "-q", tmp], check=True)
-        path = os.path.join(tmp, "Advice.java")
-        with open(path, "w") as f:
-            f.write(old)
-        subprocess.run(git + ["add", "."], check=True)
-        subprocess.run(git + ["commit", "-qm", "base"], check=True)
-        base = subprocess.run(git + ["rev-parse", "HEAD"], capture_output=True, text=True,
-                              check=True).stdout.strip()
-        with open(path, "w") as f:
-            f.write(new)
-        hits, _, _ = logextract.extract([path], root=tmp)
-        rng = logextract.changed_ranges(tmp, base)
-        rel = lambda h: os.path.relpath(h.abs_file, os.path.realpath(tmp))  # noqa: E731
-        changed = [h for h in hits if logextract.in_ranges(h.line, rng.get(rel(h), []))]
-        logextract.pair_with_old_calls(changed, logextract.changed_hunks(tmp, base), tmp)
-        return {h.line: h for h in changed}
-
-    def test_a_literal_turned_constant_is_modified_and_logs_the_same_text(self):
-        by = self._scan(OLD_ADVICE, NEW_ADVICE)
-        a = by[9]
-        self.assertEqual("modified", a.change)
-        self.assertTrue(a.same_output, "the constant is declared with the very same literal")
-        self.assertEqual('log.warn("Validation failed: {}", errors)', a.was)
-
-    def test_a_renamed_variable_is_modified_but_not_claimed_identical(self):
-        # `errors` → `problems`: the same call rewritten, so not new logging; whether the
-        # value is the same is not something a diff can prove, so no `same_output`.
-        b = self._scan(OLD_ADVICE, NEW_ADVICE)[13]
-        self.assertEqual("modified", b.change)
-        self.assertFalse(b.same_output)
-
-    def test_a_new_method_with_a_log_line_is_added(self):
-        fresh = self._scan(OLD_ADVICE, NEW_ADVICE)[25]
-        self.assertEqual("added", fresh.change)
-        self.assertEqual("", fresh.was)
-
-    def test_a_raised_level_is_new_logging(self):
-        # debug → warn changes who reads the line: that is new logging at WARN.
-        self.assertEqual("added", self._scan(OLD_ADVICE, NEW_ADVICE)[17].change)
-
-    def test_a_new_argument_is_modified_and_not_the_same_text(self):
-        d = self._scan(OLD_ADVICE, NEW_ADVICE)[21]
-        self.assertEqual("modified", d.change)
-        self.assertFalse(d.same_output, "a second logged value is a different line")
-
-    def test_a_constant_with_a_different_value_is_not_the_same_text(self):
-        new = NEW_ADVICE.replace('= "Validation failed: {}"', '= "Rejected: {}"')
-        self.assertFalse(self._scan(OLD_ADVICE, new)[9].same_output)
-
-
-class SymbolTableTest(unittest.TestCase):
-    def test_root_receiver_strips_this_and_chains(self):
-        self.assertEqual("log", logextract.root_receiver("this.log"))
-        self.assertEqual("log", logextract.root_receiver("log.atInfo().addKeyValue(1)"))
-        self.assertEqual("Math", logextract.root_receiver("Math"))
-        self.assertIsNone(logextract.root_receiver('"literal"'))
-
-    def test_symbols_are_reported_per_file(self):
-        _, _, stats = scan("Slf4jExplicit.java", "LombokSlf4j.java")
-        self.assertIn("LOG", {s["name"] for s in stats["symbols"]["Slf4jExplicit.java"]})
-        self.assertIn("log", {s["name"] for s in stats["symbols"]["LombokSlf4j.java"]})
-
-
-class OriginWalkTest(unittest.TestCase):
-    """"Data flow to here", the syntactic half: for each interpolated value, the lines it
-    came from, so the report can *quote* them instead of writing a paragraph about them.
-
-    The fixture is one class per case, and the assertions are on line numbers because
-    line numbers are the whole product here — they are what the renderer pulls into the
-    snippet, with the file's own numbering, next to the statement they explain."""
-
-    def origins(self, line):
-        by, _, _ = scan("DataFlow.java")
-        h = next(h for h in by["DataFlow.java"] if h.line == line)
-        return h.origins
-
-    def test_a_chain_is_followed_past_the_first_hop(self):
-        """`name` -> `String name = customer.name` -> `var customer = ...`: one hop would
-        show the reader a variable defined in terms of another variable and stop, which
-        is the paragraph problem again, one line shorter."""
-        got = [(o["line"], o["name"], o["kind"]) for o in self.origins(14)]
-        self.assertIn((13, "name", "local"), got)
-        self.assertIn((12, "customer", "local"), got)
-
-    def test_the_chain_stops_at_a_call_rather_than_chasing_its_receiver(self):
-        """`var customer = owner.getCustomer()` is the boundary. Following `owner` from
-        there lands on the parameter list of a method whose body the reader is already
-        looking at, and following the *call* lands in another file entirely."""
-        self.assertNotIn(11, [o["line"] for o in self.origins(14)])
-
-    def test_a_field_is_a_boundary_and_a_constant_is_not_shown_at_all(self):
-        """`tenant` is a field: quote its declaration and stop. `APP` is `static final`
-        — a literal wearing a name, and showing everything is the same failure as
-        explaining everything."""
-        got = self.origins(14)
-        self.assertIn((9, "tenant", "field"), [(o["line"], o["name"], o["kind"]) for o in got])
-        self.assertNotIn(8, [o["line"] for o in got])
-        self.assertNotIn("APP", [o["name"] for o in got])
-
-    def test_a_reassignment_wins_over_the_declaration_it_shadows(self):
-        """At the log line `who` holds `vet.nickname` (line 19), not `vet.name` (line
-        18). Quoting the declaration would be a lie by omission, and quoting both would
-        be two lines to say one thing."""
-        got = [(o["line"], o["kind"]) for o in self.origins(20)]
-        self.assertIn((19, "assign"), got)
-        self.assertNotIn(18, [l for l, _k in got])
-
-    def test_a_parameter_is_the_boundary(self):
-        """Nothing before a parameter is visible from inside the method, so the
-        signature line is the last honest thing to show."""
-        self.assertIn((17, "vet", "param"),
-                      [(o["line"], o["name"], o["kind"]) for o in self.origins(20)])
-
-    def test_an_obvious_loop_variable_gets_no_origin_at_all(self):
-        """`for (Pet p : owner.pets)` — `p` is the loop, and "it came from the loop
-        header two lines up" is not provenance worth a line of the snippet."""
-        self.assertEqual([], self.origins(25))
-
-    def test_the_hop_cap_stops_a_long_chain_short(self):
-        """Four assignments deep; three hops are shown and the fourth (`var a =
-        owner.root`, line 30) is not. The cap is what keeps a three-line entry from
-        becoming a twenty-line one on a tab that lists every touched file."""
-        got = [o["line"] for o in self.origins(34)]
-        self.assertEqual([33, 32, 31], got)
-        self.assertEqual(logextract.MAX_ORIGIN_HOPS, len(got))
-        self.assertNotIn(30, got)
-
-    def test_the_line_cap_holds_across_all_of_a_statement_s_values(self):
-        """Eight parameters, each its own resolvable boundary — the per-value hop cap
-        never fires, so the per-statement line budget is the only thing standing between
-        this entry and eight extra lines."""
-        got = [o["line"] for o in self.origins(45)]
-        self.assertEqual(logextract.MAX_ORIGIN_LINES, len(got))
-        self.assertEqual([37, 38, 39, 40, 41, 42], got)
-
-    def test_the_statement_s_own_line_is_never_repeated_as_an_origin(self):
-        for h in scan("DataFlow.java")[0]["DataFlow.java"]:
-            self.assertNotIn(h.line, [o["line"] for o in h.origins])
-
-    def test_origins_survive_the_json_round_trip(self):
-        """`asdict` is what the renderer actually receives; a field that only exists on
-        the dataclass would render as no origins at all, silently."""
-        import json
-        from dataclasses import asdict
-        by, _, _ = scan("DataFlow.java")
-        h = next(h for h in by["DataFlow.java"] if h.line == 20)
-        self.assertEqual(h.origins, json.loads(json.dumps(asdict(h)))["origins"])
-
-    def test_nothing_is_traced_out_of_a_literal_or_a_static_type_reference(self):
-        self.assertIsNone(logextract.origin_root('"a string"'))
-        self.assertIsNone(logextract.origin_root("42"))
-        self.assertIsNone(logextract.origin_root("this"))
-        self.assertIsNone(logextract.origin_root("Instant.now()"))
-        self.assertEqual("owner", logextract.origin_root("owner.getName()"))
-        self.assertEqual("vetId", logextract.origin_root("vetId"))
-
-
-class RuleFilesTest(unittest.TestCase):
-    """`ast-grep-rules/` is the same rules as a standalone scan config.
-
-    logextract.py stays dependency-free by carrying its rules as strings and writing them
-    to a temp dir per run, so anyone who wants to run `ast-grep scan` against them by hand
-    — or drop them into a project's own `.ast-grep/rules/` — needs a copy on disk. Two
-    copies of the same YAML is exactly the arrangement that silently rots, so the build of
-    the copy is checked against the original here rather than trusted."""
-
-    def test_every_embedded_rule_has_a_file_and_they_agree(self):
-        for rid, text in logextract.RULES.items():
-            with self.subTest(rule=rid):
-                path = os.path.join(RULE_DIR, rid + ".yml")
-                self.assertTrue(os.path.isfile(path), path + " is missing")
-                with open(path, encoding="utf-8") as fh:
-                    self.assertEqual(text.strip(), fh.read().strip())
-
-    def test_no_rule_file_is_orphaned(self):
-        on_disk = {f[:-4] for f in os.listdir(RULE_DIR) if f.endswith(".yml")}
-        self.assertEqual(set(logextract.RULES), on_disk)
-
-
-
-class ArgTypesTest(unittest.TestCase):
-    """The type hint in front of each logged value: read off declarations, never guessed."""
-
-    def types(self):
-        by, _, _ = scan("ArgTypes.java")
-        return {h.line: dict(zip(h.args, h.arg_types)) for h in by["ArgTypes.java"]}
-
-    def test_parameters_locals_and_var_resolve(self):
-        t = self.types()[27]
-        self.assertEqual({"pet.getId()": "Long", "pet.getName()": "String",
-                          "fresh": "ArgTypesPet", "count": "int"}, t)
-
-    def test_foreach_variable_record_accessor_and_jdk_size(self):
-        self.assertEqual({"p.getTags().size()": "int", "owner.email()": "String"},
-                         self.types()[29])
-
-    def test_an_untyped_lambda_parameter_shadows_a_field(self):
-        self.assertEqual({"o": None}, self.types()[31])
-
-    def test_concatenation_type_variables_and_static_calls(self):
-        self.assertEqual({'"a" + count': "String", "pick(pet)": None,
-                          "load(3).getId()": "Long"}, self.types()[32])
-
-    def test_what_is_not_in_the_repo_gets_no_hint(self):
-        self.assertEqual({"java.time.Instant.now()": None, "unknown.thing()": None},
-                         self.types()[33])
-
-    def test_catch_parameter_and_throwable_message(self):
-        self.assertEqual({"e.getMessage()": "String", "e": "IllegalStateException"},
-                         self.types()[37])
-
-
-if __name__ == "__main__":
-    unittest.main()
+# --- which names are loggers ------------------------------------------------------------
+
+def test_a_powertools_logger_and_every_level_called_on_it():
+    by, _, _ = scan("powertools_explicit.py")
+    hits = by["powertools_explicit.py"]
+    assert [h.level for h in hits] == ["INFO", "DEBUG", "DEBUG", "ERROR"]
+    assert {h.flavour for h in hits} == {"Powertools"}
+    assert {h.receiver for h in hits} == {"LOG"} and {h.confidence for h in hits} == {"declared"}
+
+
+def test_a_level_check_is_not_a_log_statement():
+    by, _, _ = scan("powertools_explicit.py", "tricky_negatives.py")
+    assert "isEnabledFor" not in {h.method for hs in by.values() for h in hs}
+
+
+def test_the_message_and_the_values_after_it_are_split():
+    by, _, _ = scan("powertools_explicit.py")
+    h = by["powertools_explicit.py"][0]
+    assert h.format == '"Booking visit for owner %s pet %s"'
+    assert h.args == ["owner", "pet_id"]
+    assert h.arg_types == ["str", "int"], "a parameter's annotation is its type hint"
+    assert (h.line, h.column, h.method_start) == (8, 9, 7)
+    err = by["powertools_explicit.py"][-1]
+    assert err.args == ["exc_info=True"], "keywords are logged values too"
+
+
+def test_the_stdlib_logger_under_any_alias_and_the_root_logger():
+    by, _, _ = scan("stdlib_logging.py")
+    hits = by["stdlib_logging.py"]
+    assert [(h.receiver, h.level) for h in hits] == [
+        ("log", "WARN"), ("other", "FATAL"), ("logging", "INFO"), ("log", "LOG"),
+        ("log", "ERROR")]
+    assert {h.flavour for h in hits} == {"logging"}
+    via_log = next(h for h in hits if h.method == "log")
+    assert via_log.format == '"via log() %s"', "log(level, msg): the message is the second"
+
+
+def test_a_logger_imported_from_a_scanned_module_is_resolved_through_it():
+    by, _, _ = scan("imported.py", "shared")
+    hits = {h.format: h for h in by["imported.py"]}
+    mine = hits['"imported from a scanned module"']
+    assert (mine.flavour, mine.confidence) == ("Powertools", "imported")
+    assert "shared.log" in mine.evidence
+
+
+def test_a_logger_imported_from_outside_the_scan_is_taken_on_its_name_and_says_so():
+    by, _, _ = scan("imported.py", "shared")
+    outside = next(h for h in by["imported.py"] if h.receiver == "shared_logger")
+    assert outside.confidence == "heuristic" and "outside the scan" in outside.evidence
+    by, _, _ = scan("imported.py", "shared", inherited=False)
+    assert [h.receiver for h in by["imported.py"]] == ["logger"]
+
+
+def test_class_attributes_instance_attributes_and_annotated_parameters():
+    by, _, _ = scan("class_attr.py")
+    got = {(h.receiver, h.flavour) for h in by["class_attr.py"]}
+    assert got == {("self.logger", "Powertools"), ("self.audit", "logging"),
+                   ("cls.logger", "Powertools"), ("logger", "Powertools")}
+
+
+def test_structlog_and_loguru():
+    by, _, _ = scan("other_libraries.py")
+    assert {(h.receiver, h.flavour) for h in by["other_libraries.py"]} == {
+        ("slog", "structlog"), ("logger", "loguru")}
+
+
+def test_things_that_only_look_like_logging_are_not_hits():
+    by, _, _ = scan("tricky_negatives.py")
+    assert by["tricky_negatives.py"] == []
+
+
+def test_console_output_is_collected_apart_and_never_counted_as_logging():
+    by, antis, _ = scan("antipatterns.py")
+    assert by["antipatterns.py"] == []
+    assert [a.kind for a in antis] == ["print", "print_exc", "sys.stderr"]
+
+
+def test_the_libraries_the_tab_names_are_the_ones_recognised():
+    assert set(logextract.LIBRARIES) == {"logging", "aws_lambda_powertools", "structlog", "loguru"}
+
+
+# --- data flow ----------------------------------------------------------------------------
+
+def test_a_logged_value_points_back_to_where_it_was_bound():
+    by, _, _ = scan("data_flow.py")
+    info = next(h for h in by["data_flow.py"] if h.level == "INFO")
+    assert [(o["name"], o["kind"], o["line"]) for o in info.origins] == [
+        ("total", "local", 8), ("customer_id", "param", 6)]
+    debug = next(h for h in by["data_flow.py"] if h.level == "DEBUG")
+    assert [(o["name"], o["line"]) for o in debug.origins] == [("item", 9)]
+
+
+# --- what Ludvig's standard asks to look at twice -------------------------------------
+
+def test_concerns_name_personal_data_whole_payloads_org_numbers_and_f_strings():
+    by, _, _ = scan("concerns.py")
+    got = [[(c["kind"], c["name"]) for c in h.concerns] for h in by["concerns.py"]]
+    assert got == [
+        [("pii", "email")],
+        [("whole-object", "payload")],
+        [("whole-object", "body"), ("f-string", "")],
+        [("org-number", "orgNumber"), ("org-number", "org_number")],
+        [],
+    ]
+    assert all(c["why"] for h in by["concerns.py"] for c in h.concerns)
+
+
+# --- the diff -------------------------------------------------------------------------
+
+def _repo(tmp_path, before: str, after: str) -> Path:
+    r = tmp_path / "r"
+    r.mkdir()
+    run = lambda *a: subprocess.run(["git", *a], cwd=r, check=True, capture_output=True)
+    run("init", "-q")
+    run("config", "user.email", "t@t")
+    run("config", "user.name", "t")
+    (r / "m.py").write_text(before)
+    run("add", "-A")
+    run("commit", "-qm", "base")
+    run("tag", "base")
+    (r / "m.py").write_text(after)
+    return r
+
+
+BEFORE = ('import logging\nlog = logging.getLogger()\n\n\ndef f(x):\n'
+          '    log.warning("Validation failed: %s", x)\n    return x\n')
+
+
+def _changed(repo):
+    hits, _, _ = logextract.extract([str(repo)], root=str(repo))
+    rng = logextract.changed_ranges(str(repo), "base")
+    keep = [h for h in hits if logextract.in_ranges(h.line, rng.get(h.file, []))]
+    logextract.pair_with_old_calls(keep, logextract.changed_hunks(str(repo), "base"), str(repo))
+    return keep
+
+
+def test_a_new_statement_is_added(tmp_path):
+    repo = _repo(tmp_path, BEFORE, BEFORE.replace("    return x\n",
+                                                   '    log.info("done %s", x)\n    return x\n'))
+    [h] = _changed(repo)
+    assert (h.method, h.change) == ("info", "added")
+
+
+def test_a_literal_swapped_for_its_constant_is_rewritten_and_logs_the_same_text(tmp_path):
+    after = ('import logging\nlog = logging.getLogger()\nVALIDATION_FAILED = "Validation failed: %s"\n'
+             '\ndef f(x):\n    log.warning(VALIDATION_FAILED, x)\n    return x\n')
+    repo = _repo(tmp_path, BEFORE, after)
+    [h] = _changed(repo)
+    assert (h.change, h.same_output) == ("modified", True)
+    assert h.was == 'log.warning("Validation failed: %s", x)'
+
+
+def test_changed_arguments_are_rewritten_but_not_the_same_output(tmp_path):
+    repo = _repo(tmp_path, BEFORE, BEFORE.replace('%s", x)', '%s", x * 2)'))
+    [h] = _changed(repo)
+    assert (h.change, h.same_output) == ("modified", False)
+
+
+def test_the_cli_writes_the_json_the_tab_reads(tmp_path):
+    repo = _repo(tmp_path, BEFORE, BEFORE.replace("    return x\n",
+                                                   '    print(x)\n    log.info("x")\n    return x\n'))
+    out = tmp_path / "logging.json"
+    assert logextract.main([".", "--repo", str(repo), "--root", str(repo), "--since", "base",
+                            "--json", str(out)]) == 0
+    import json
+    doc = json.loads(out.read_text())
+    assert set(doc) == {"all", "changed", "stats"}
+    assert [h["method"] for h in doc["changed"]["logging"]] == ["info"]
+    assert [a["kind"] for a in doc["changed"]["antipattern"]] == ["print"]
+    assert doc["stats"]["files_with_loggers"] == 1

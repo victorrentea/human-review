@@ -23,7 +23,7 @@ CLAUDE.md, no saved session. A step that fails stops the run with its exit code 
 command to re-run, and nothing tries to fix it: fixing the harness is a separate session,
 billed as harness work, and never on the page.
 
-    run-review.py                     # base from human-review.json, else origin/main
+    run-review.py                     # base from human-review.json, else origin/develop|main|master
     run-review.py --base origin/main
     run-review.py --no-serve          # build, do not serve or open the page
     run-review.py --dry-run           # print the plan, run nothing
@@ -91,12 +91,23 @@ def run(argv: list[str], *, ok=(0,), tee: Path | None = None, capture=False,
     return proc
 
 
+#: Where a branch is measured from when nothing says: Ludvig's feature branches come off
+#: `develop`; a repository without one (ludvig-shared) is on `main` or `master`.
+BASE_CANDIDATES = ("origin/develop", "origin/main", "origin/master")
+
+
 def default_base() -> str:
     try:
-        return json.loads(Path("human-review.json").read_text(encoding="utf-8")).get("base") \
-            or "origin/main"
+        configured = json.loads(Path("human-review.json").read_text(encoding="utf-8")).get("base")
     except (OSError, ValueError, AttributeError):
-        return "origin/main"
+        configured = None
+    if configured:
+        return configured
+    for ref in BASE_CANDIDATES:
+        if subprocess.run(["git", "rev-parse", "-q", "--verify", ref + "^{commit}"],
+                          capture_output=True).returncode == 0:
+            return ref
+    return "origin/main"
 
 
 def video_configured() -> bool:

@@ -333,7 +333,7 @@ from hrbuild.tabs.city import (
 from hrbuild.tabs.logging import (
     LOGEXTRACT, logging_fragment, logging_libraries, logging_libraries_tip,
     MAX_ORIGIN_LINES_SHOWN, SRCREF_HREF, type_hint_html, _aim_at_statement, _hint_arguments,
-    _CHAR, _insert_at, _LOG_PKGS_RE, _logextract, _logging_aside, _logging_listing,
+    _CHAR, _CONCERN, _concerns_line, _insert_at, _LOG_PKGS_RE, _logextract, _logging_aside, _logging_listing,
     _logging_ref, _plain, _PRE, _ROW, _TAG_SPLIT, _change_line, _mark_rewritten, _ADDED_ROW,
     _inlay_file
 )

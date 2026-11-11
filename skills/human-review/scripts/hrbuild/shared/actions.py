@@ -53,12 +53,11 @@ def rebuild_interpreter() -> str:
     no command, because it is tried first and believed second.
 
     So: plain `python3` when it can already import Pygments, which is the legible answer
-    and the portable one; `uv run --with pygments --with ast-grep-cli --with pyyaml python`
+    and the portable one; `uv run --with pygments --with pyyaml python`
     when it cannot and uv is here, which installs nothing permanently and is ~100ms warm; and only
     then the interpreter running this build, which at least names something real.
 
-    `ast-grep-cli` and `pyyaml` ride along because the Logging tab's scan needs the
-    `ast-grep` binary on PATH and the API tab's diff needs YAML, and each step fails
+    `pyyaml` rides along because the API tab's diff needs YAML, and each step fails
     without them: a press on a served page would rebuild it short of the build that drew it.
     """
     # The probe has to ask what `python3` means *in the reader's terminal*, not in this
@@ -80,7 +79,7 @@ def rebuild_interpreter() -> str:
                                   capture_output=True, env=env).returncode == 0:
         return "python3"
     if shutil.which("uv", path=env["PATH"]) or shutil.which("uv"):
-        return "uv run --with pygments --with ast-grep-cli --with pyyaml python"
+        return "uv run --with pygments --with pyyaml python"
     return shlex.quote(sys.executable)
 
 

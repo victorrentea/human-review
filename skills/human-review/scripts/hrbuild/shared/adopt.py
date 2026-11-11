@@ -402,12 +402,13 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'Every log line this PR adds or changes.',
             'The file name in each box opens that line in VS Code.',
-            'Check: right level?',
-            'No personal data?',
-            'Enough context to debug?',
+            '⚠ chips: personal data, a payload logged whole, an org number, an f-string message.',
+            'Hover a ⚠ chip for the line of Ludvig&#39;s logging standard it is about.',
+            'Check the level: exceptions at ERROR, never a 4xx.',
+            'Enough context to debug, in <code>extra=</code>?',
         ],
         "code": (
-            '<span class="c">e.g. ✗</span> log.info("Saved {}", owner);  <span class="p">// phone, address</span>'
+            '<span class="c">e.g. ✗</span> logger.info("Saved", extra={"payload": payload})  <span class="p"># every field</span>'
         ),
     },
     'owners': {
