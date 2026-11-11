@@ -231,16 +231,16 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'api': {
         "li": [
-            'The OpenAPI contract, main vs this branch, by oasdiff; <b>breaking</b>: a client can fail.',
-            '<b>Generated from code</b>: a test writes the spec from the controllers.',
+            'The OpenAPI contract, develop vs this branch, by oasdiff; <b>breaking</b>: a client can fail.',
+            '<b>Derived from code</b>: serverless.yml routes, plus what each handler reads and returns.',
             '<b>Diagram</b>: a body as classes, entered by an arrow; green added, red struck removed.',
             'One DTO change breaks many endpoints: for each, ask who calls it and if they were updated.',
             '<b>→</b> request, <b>←</b> response; a red row is what breaks a client, no badge: nothing.',
             '<b>changes: expand</b> opens what changed; only a field with fields inside has a <b>▶</b>.',
         ],
         "code": (
-            '<span class="c">e.g. GET /api/owners/1</span>\n'
-            '<span class="c">main:  </span>{ "name": "Leo" }\n'
+            '<span class="c">e.g. POST /customers/{org_number}/things</span>\n'
+            '<span class="c">develop:</span>{ "name": "Leo" }\n'
             '<span class="c">branch:</span>{ "firstName": "Leo" }   <span class="p">breaking</span>'
         ),
     },

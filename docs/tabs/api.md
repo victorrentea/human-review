@@ -34,8 +34,15 @@ additive to any structural differ.
 
 ## What it needs
 
-- An OpenAPI spec the project generates (`human-review.json` names it), **PyYAML**, and a JVM
-  or Docker. `oasdiff` resolves what the fallback cannot.
+- **`oasdiff`** on the PATH (a single Go binary, from its GitHub releases) and **PyYAML**.
+- An OpenAPI spec if the service keeps one (`spec` in `human-review.json`). Ludvig's services
+  don't, so with a `serverless*.yml` at the root both sides are derived by
+  [`serverless-openapi.py`](../../skills/human-review/scripts/serverless-openapi.py): every
+  `http` event (one operation per Powertools resolver route), its path parameters, the query
+  fields and body the handler reads (a pydantic model or dataclass built from the request
+  becomes a schema), the error statuses it returns (`return_error(404, …)`), and SigV4 or
+  bearer security from the authorizer. Both sides by the same program, so the diff is what
+  the code changed.
 - **PlantUML** (and its Graphviz) for the diagrams, as on the Data tab. Without it the switch
   is not offered and the tree is what you get.
 

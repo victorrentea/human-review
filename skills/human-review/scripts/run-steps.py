@@ -1745,8 +1745,36 @@ def _complexity(ctx: Ctx):
     sh(f"{HERE}/endpoint-complexity-delta.py --css > {ART}/complexity-delta.css", ctx)
 
 
+def derived_specs(ctx: "Ctx") -> tuple[str, str] | None:
+    """`(before, after)` OpenAPI documents written from `serverless*.yml` and the handlers
+    (`serverless-openapi.py`), when the service keeps no spec file of its own — Ludvig's
+    don't. Both sides by the same program, so what differs is what the code changed."""
+    if Path(ctx.cfg.get("spec", "openapi.yaml")).is_file() or not has_serverless():
+        return None
+    before, after = f"{ART}/openapi-base.yaml", f"{ART}/openapi-head.yaml"
+    sh(f"{HERE}/serverless-openapi.py --base {ctx.base} --out {before}", ctx)
+    sh(f"{HERE}/serverless-openapi.py --out {after}", ctx)
+    return before, after
+
+
 def _api(ctx: Ctx):
     spec = ctx.cfg.get("spec", "openapi.yaml")
+    derived = derived_specs(ctx)
+    if derived:
+        before, after = derived
+        pair = f"{before} {after}"
+        for cmd in (
+            f"{HERE}/openapi-compat.py {pair} --out {ART}/openapi-compat.html"
+            f" --report {ART}/openapi-compat-report.html",
+            f"{HERE}/openapi-compat.py --css  >  {ART}/openapi-compat.css",
+            f"{HERE}/openapi-compat.py {pair} --panel --out {ART}/openapi-verdict.html",
+            f"{HERE}/openapi-visual-diff.py {pair} --label-old base --label-new branch "
+            f"--out {ART}/openapi-visual-diff.html",
+        ):
+            sh(cmd, ctx)
+        ctx.notes.append("no OpenAPI file in the service: both sides were derived from "
+                         "serverless*.yml and the handlers (serverless-openapi.py)")
+        return
     for cmd in (
         # `--report` is the openable twin of the fragment, written in the same run so the
         # two cannot drift. The verdict band links to it by name, and only when it can see
@@ -2242,8 +2270,9 @@ STEP_INPUTS = {
                      "tools": ("endpoint-complexity.py", "endpoint-complexity-delta.py"),
                      "outputs": ("assets/complexity-delta.html",
                                  "assets/complexity-delta.css")},
-    "api":          {"paths": ("*.yaml", "*.yml", "*.json"),
+    "api":          {"paths": ("*.yaml", "*.yml", "*.json", "*.py"),
                      "tools": ("openapi-compat.py", "openapi-visual-diff.py", "schema_puml.py",
+                               "serverless-openapi.py", "endpoint-complexity.py",
                                "../puml-diff/puml_diff.py"),
                      "outputs": ("assets/openapi-verdict.html",
                                  "assets/openapi-compat.html",
@@ -2530,8 +2559,9 @@ STEPS = [
      or "no serverless*.yml at the root — nothing this step knows how to read entry points from",
      _complexity),
     ("api",         "api",           "REST contract diff",
-     lambda c: Path(c.cfg.get("spec", "openapi.yaml")).is_file()
-     or f"no spec at {c.cfg.get('spec', 'openapi.yaml')}", _api),
+     lambda c: Path(c.cfg.get("spec", "openapi.yaml")).is_file() or has_serverless()
+     or f"no spec at {c.cfg.get('spec', 'openapi.yaml')}, and no serverless*.yml to derive "
+        "one from", _api),
     ("specchanges", "api",           "pb33f report",
      lambda c: have("openapi-changes") or "openapi-changes not installed", _specchanges),
     ("logging",     "logging",       "structural logging scan",
