@@ -83,12 +83,14 @@ LAYOUT_TABS: dict[str, dict] = {
     # demo") — the film shows what it does, the ledger proves it.
     "requirements": {"label": "Tests", "blocks": ("tests", "traces"),
                      "sections": ("requirements-map",), "required": (), "first": True},
+    # Sequence right after Tests (Victor, 11 Nov 2026: "I always go from Tests to Sequence
+    # when presenting") — the tests that prove it, then the calls one of them makes.
+    "sequence":     {"label": "Sequence", "blocks": ("testpairs", "diagrams", "puml"),
+                     "sections": (), "required": ()},
     "api":          {"label": "API", "blocks": (), "sections": ("swaggerdiff",),
                      "required": ("swaggerdiff",)},
     "data":         {"label": "Data", "blocks": ("diagrams", "puml"),
                      "sections": ("conceptual",), "required": ()},
-    "sequence":     {"label": "Sequence", "blocks": ("testpairs", "diagrams", "puml"),
-                     "sections": (), "required": ()},
     "packages":     {"label": "Structure", "blocks": ("diagrams", "puml", "c4"),
                      "sections": ("deployment",), "required": ()},
     "city":         {"label": "City", "blocks": ("codecity",), "sections": (),

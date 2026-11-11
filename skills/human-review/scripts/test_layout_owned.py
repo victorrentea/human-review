@@ -282,6 +282,14 @@ def test_complexity_stands_right_after_city_whatever_order_the_content_file_wrot
     assert got[0] == "review" and got[-1] == "cost"
 
 
+def test_sequence_stands_right_after_tests_whatever_order_the_content_file_wrote(tmp_path):
+    """Victor, 11 Nov 2026: "I always go from Tests to Sequence when presenting"."""
+    ids = ["review", "behaviour", "requirements", "api", "data", "sequence", "packages", "cost"]
+    spec, _ = _own([{"id": i, "label": i, "blocks": []} for i in ids], tmp_path)
+    got = [t["id"] for t in spec["tabs"]]
+    assert got[:5] == ["review", "behaviour", "requirements", "sequence", "api"]
+
+
 def test_a_diagrams_block_whose_context_changed_shows_its_delta_once(tmp_path):
     """PR #49: `only: ["Frontend packages"]` names the card, not the manifest row, so the
     changed frontend-packages.puml went unclaimed, joined the Java packages block as a

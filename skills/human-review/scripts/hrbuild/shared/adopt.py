@@ -201,9 +201,9 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'review': {
         "img": _review_flow(),
         "li": [
-            'The coder 🤖 writes; adversarial reviewers attack it; it fixes what holds up.',
-            '<code>/record-review</code> files what it assumed and fixed; <code>/human-review</code> builds this page.',
-            'Merge risk: ✅ two-way or ⚠️ one-way door, blast 🌑 to 🌕; Publish adds it to the PR text.',
+            'The coder 🤖 writes, reviewers attack it, it fixes; <code>/record-review</code> files what it assumed.',
+            'Merge risk (🤖): ✅ two-way or ⚠️ one-way door, blast ○ to ●; Publish adds it to the PR.',
+            'IDE logo: green = it has this checkout open; grey = picked but unchecked (static page).',
             'Read the assumptions first: a wrong guess is a wrong feature.',
             'Open issues: you decide, top first: <b>must look</b> › <b>worth a look</b> › <b>nit</b>.',
             'Auto fixed: its icons open the fix commit (GitHub, IDE); stop only at behaviour changes.',

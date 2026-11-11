@@ -552,7 +552,7 @@ def _face(r: Resolved) -> str:
 #: package.
 MERGE_DOORS = {"one-way": "One-way door", "two-way": "Two-way door"}
 MERGE_DOOR_MARKS = {"one-way": "\u26a0\ufe0f", "two-way": "\u2705"}
-BLAST_GLYPHS = ("\U0001f311", "\U0001f312", "\U0001f313", "\U0001f314", "\U0001f315")
+BLAST_GLYPHS = ("\u25cb", "\u25d4", "\u25d1", "\u25d5", "\u25cf")
 BLAST_SIZES = ("≈0% of the system", "≈25% of the system", "≈50% of the system",
                "≈75% of the system", "≈100% of the system")
 CONTENT_JSON = "content.json"
@@ -562,12 +562,12 @@ def merge_risk_md(risk: dict | None) -> str:
     """`mergeRisk` in markdown, for the review's summary and the PR's description (the
     page's own copy for a review not published yet: `merge_risk_md` in `tabs/review.py`): a
     heading line and a bullet per fact, each "label: value" (Victor, 30 Oct 2026) — the
-    door with its mark and why, then the blast radius behind its moon, with the size in
+    door with its mark and why, then the blast radius behind its circle, with the size in
     words since GitHub has no hover to say it:
 
         **Merge risk**
         - Two-way door: ✅ a revert simply stops using the column
-        - Blast radius: 🌒 **visits API** (≈25% of the system)
+        - Blast radius: ◔ **visits API** (≈25% of the system)
 
     Empty without a known door, like the page; no blast bullet without a blast."""
     risk = risk if isinstance(risk, dict) else {}

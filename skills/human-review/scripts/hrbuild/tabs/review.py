@@ -1882,6 +1882,21 @@ def door_mark_html(spec, cls: str = "titledoor") -> str:
     return (f'<span class="{cls}" data-tip="{tip}" aria-label="{tip}">'
             f'{MERGE_DOOR_MARKS[door]}</span>')
 
+#: After each line of the grade pill's hover: the door, the blast radius and the grade are
+#: all the AI's judgement, and the robot says so (Victor, 11 Nov 2026).
+AI_MARK = "<sup>\U0001f916</sup>"
+
+
+def _risk_tip_line(line: str) -> str:
+    """One line of the grade pill's hover, as markup: its mark, its words, the robot. The
+    circle is a text glyph beside two emoji, so it wears `tipblast` (masthead.css), which
+    draws it as big and as wide as they are and keeps the column of marks straight."""
+    mark, words = line.split(" ", 1)
+    face = (f'<span class="tipblast">{mark}</span>' if mark in BLAST_GLYPHS
+            else html.escape(mark))
+    return f"{face} {html.escape(words)}{AI_MARK}"
+
+
 def grade_pill_with_risk(spec, pill: str) -> str:
     """The grade pill with the merge's door and blast circle inside it, in front of the
     number: one pill reading `✅ ◔ 7/10` (Victor, 29 Oct 2026). The marks are their own
@@ -1903,7 +1918,7 @@ def grade_pill_with_risk(spec, pill: str) -> str:
             f'{html.escape("; ".join(l.split(" ", 1)[1] for l in lines), quote=True)}">'
             f'{"".join(marks)}</span>')
     if not pill:
-        tip = "<br>".join(html.escape(l) for l in lines)
+        tip = "<br>".join(_risk_tip_line(l) for l in lines)
         return (f'<span class="titlescore ts-alone" data-tip-html="{html.escape(tip, quote=True)}">'
                 f'{risk}</span>')
     m = re.match(r'<(?:a|span) class="titlescore[^>]*>', pill)
@@ -1916,24 +1931,25 @@ def grade_pill_with_risk(spec, pill: str) -> str:
         tag = tag.replace(said.group(0), "")
     if grade:
         lines.append(f"\U0001f50d {grade}")
-    tip = "<br>".join(html.escape(l) for l in lines)
+    tip = "<br>".join(_risk_tip_line(l) for l in lines)
     return (f'{tag[:-1]} data-tip-html="{html.escape(tip, quote=True)}">{risk}'
             + pill[m.end():])
 
 
-#: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a moon that
-#: fills (Victor, 29 Oct 2026) — so a reader knows at a glance what to expect before
-#: reading the words. Moons, not ○◔◑◕●: an emoji is as wide as the door's ✅ beside it, in a
-#: tooltip's column too (Victor, 4 Nov 2026). Index = the level; each with its estimate,
-#: a percentage marked as one ("about a quarter" was too vague).
-BLAST_GLYPHS = ("\U0001f311", "\U0001f312", "\U0001f313", "\U0001f314", "\U0001f315")
+#: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a circle
+#: that fills (Victor, 29 Oct 2026) — so a reader knows at a glance what to expect before
+#: reading the words. ○◔◑◕●, not the moons (4 Nov 2026, for their emoji width): Victor
+#: prefers the plain circles (11 Nov 2026); masthead.css sizes them up to the ✅ beside
+#: them. Index = the level; each with its estimate, a percentage marked as one ("about a
+#: quarter" was too vague).
+BLAST_GLYPHS = ("\u25cb", "\u25d4", "\u25d1", "\u25d5", "\u25cf")
 BLAST_SIZES = ("≈0% of the system", "≈25% of the system", "≈50% of the system",
                "≈75% of the system", "≈100% of the system")
 
 
 def blast_size(spec) -> int | None:
     """`mergeRisk.blastSize` as 0–4, or None. No fallback from the words: "visits API" says
-    where, not how much of the system that is, and a guessed moon is worse than none."""
+    where, not how much of the system that is, and a guessed circle is worse than none."""
     raw = ((spec or {}).get("mergeRisk") or {}).get("blastSize")
     if isinstance(raw, bool):
         return None

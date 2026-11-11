@@ -745,7 +745,8 @@ def _states(page):
     """Each logo as `app:state`, `app:hidden` when the masthead does not show it."""
     return page.eval_on_selector_all(
         ".chip-ide", "cs => cs.map(c => c.dataset.ide + ':' + (c.hidden ? 'hidden' : "
-        "(['ide-on', 'ide-near', 'ide-off'].find(k => c.classList.contains(k)) || '-')))")
+        "(['ide-on', 'ide-near', 'ide-off', 'ide-picked'].find(k => c.classList.contains(k))"
+        " || '-')))")
 
 
 def test_the_logos_connect_one_ide_at_a_time_and_clicks_follow_it(browser):
@@ -915,12 +916,30 @@ def test_off_disk_the_logos_toggle_too(browser, tmp_path):
     page = _offdisk_page(browser, tmp_path)
     assert _states(page) == ["vscode:ide-off", "idea:ide-off"]
     page.click("#hr-ide-idea")
-    assert _states(page) == ["vscode:hidden", "idea:ide-on"]
+    assert _states(page) == ["vscode:hidden", "idea:ide-picked"]
     assert page.locator("a.f-vsc .ide-word").text_content() == "IntelliJ"
     page.click("#hr-ide-idea")
     assert _states(page) == ["vscode:ide-off", "idea:ide-off"]
     assert page.evaluate("localStorage.getItem('hr-ide')") == "none"
     page.close()
+
+
+def test_off_disk_a_picked_ide_is_grey_never_green_and_says_it_is_not_checked(browser, tmp_path):
+    """Victor, 11 Nov 2026: "how do you know an IntelliJ on this branch is there to take
+    commands?" — a static page cannot ask, so the pick wears the neutral ring, not green."""
+    for pick, name in (("idea", "IntelliJ"), ("vscode", "VS Code")):
+        page = _offdisk_page(browser, tmp_path, pick)
+        chip = f"#hr-ide-{pick}"
+        assert page.evaluate(f"document.querySelector('{chip}').classList.contains('ide-picked')")
+        assert not page.evaluate(f"document.querySelector('{chip}').classList.contains('ide-on')")
+        tip = page.get_attribute(chip, "data-tip")
+        assert tip.startswith(f"Code clicks go to {name}") and "not checked" in tip, tip
+        ring, muted = page.evaluate(
+            f"[getComputedStyle(document.querySelector('{chip}')).borderTopColor,"
+            " (() => { const p = document.createElement('i'); p.style.color = 'var(--muted)';"
+            " document.body.append(p); return getComputedStyle(p).color; })()]")
+        assert ring == muted, (ring, muted)
+        page.close()
 
 
 def test_online_the_logos_are_greyed_and_a_press_changes_nothing(browser):

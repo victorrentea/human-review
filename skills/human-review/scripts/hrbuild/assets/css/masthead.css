@@ -118,15 +118,17 @@ a.titlescore { text-decoration:none; cursor:pointer; }
 a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor inset; }
 /* The merge's door and the blast circle, inside the grade pill in front of the number
    (`grade_pill_with_risk`): their own click target, to the MERGE RISK line (tabs.js). */
-/* One row of three equal marks (Victor, 30 Oct 2026): the box, the moon and the grade's
-   digits the same height, the box-to-moon gap the moon-to-digit gap. Both emoji are sized
-   to the digits' capitals (9.5px of ink at 2x, measured headless at 1728px): an emoji
-   fills its whole em, so it is drawn smaller than the text. The two gaps are ink to ink,
-   4px each — `gap` here, `margin-right` plus the pill's own .15rem gap before the digits. */
-.titlescore .ts-risk { display:inline-flex; align-items:center; gap:5px; margin-right:1.5px;
+/* The box and the circle are the key of the pill, so they are drawn bigger than the
+   digits (Victor, 11 Nov 2026: "barely visible, and they are key"), where they used to be
+   sized down to the digits' capitals (30 Oct). Measured headless at 1728px: ✅ 12.25px of
+   ink, ◔ 10.75px, the digits' capitals 9px, all three centred on one line to .1px. ◔ is a
+   text glyph that fills less of its em than an emoji, hence its larger size and its 2px
+   lift; both fit the pill's pinned 18px, so the badge keeps the row's height. The gaps,
+   ink to ink, are 4.5px and 4.75px — `gap` here, `margin-right` plus the pill's .15rem. */
+.titlescore .ts-risk { display:inline-flex; align-items:center; gap:1px; margin-right:2px;
             cursor:pointer; line-height:1; }
-.titlescore .titledoor { font-size:7.6px; line-height:1; position:relative; top:-.5px; }
-.titlescore .titleblast { font-size:7.6px; line-height:1; position:relative; top:-.5px; }
+.titlescore .titledoor { font-size:12.5px; line-height:1; position:relative; top:0; }
+.titlescore .titleblast { font-size:18px; line-height:1; position:relative; top:-2px; }
 .titlescore.ts-alone { background:var(--card); }
 .titlescore.ts-alone .ts-risk { margin-right:0; }
 .titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }
@@ -167,3 +169,7 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
    red wash that used to fade out below it is gone (Victor, 5 Nov 2026: "este suficientă
    linia"), and with it the body background that drew it. */
 .masthead:has(.tabstrip) { border-bottom:0; }
+/* The circle in the grade pill's hover (`_risk_tip_line`): a text glyph between ✅ and 🔍,
+   so drawn at their size and in a box as wide as theirs, the column of marks one column. */
+.tip .tipblast { display:inline-block; font-size:1.45em; line-height:0; width:.86em;
+            text-align:center; position:relative; top:-.02em; }

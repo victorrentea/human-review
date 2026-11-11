@@ -251,7 +251,7 @@ from hrbuild.tabs.review import (
     gh_comment_link, prepare_pr_push, attach_pr_body, pr_description_html, pr_body_html,
     MERGE_DOORS, merge_risk_html, merge_risk_md, BLAST_GLYPHS, BLAST_SIZES, blast_size, blast_tip,
     blast_glyph_html, MERGE_DOOR_MARKS, MERGE_DOOR_TIPS, merge_door, door_mark_html,
-    grade_pill_with_risk,
+    grade_pill_with_risk, AI_MARK, _risk_tip_line,
     _md_inline, PR_BODY_JSON, _PR_BODY_BOILERPLATE, _PR_BODY_MERGE_RISK, pr_comment_slug,
     PR_COMMENTS_JSON,
     PR_PILE_LETTER, _PILE_OF_ID, stamp_fix_commits, fix_commit_links,

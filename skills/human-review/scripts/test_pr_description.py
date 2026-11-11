@@ -60,15 +60,15 @@ def test_the_merge_risk_is_taken_from_the_description_a_push_wrote_it_into():
     and the PR's words win over the content file's."""
     spec = {"mergeRisk": {"door": "one-way", "blast": "stale"},
             "_prBody": {"url": URL, "body": "Closes #25.\n\n<!-- hr:merge-risk -->\n"
-                        "**Merge risk**\n- Two-way door: ✅\n- Blast radius: 🌒 **visits API**\n"
+                        "**Merge risk**\n- Two-way door: ✅\n- Blast radius: ◔ **visits API**\n"
                         "<!-- /hr:merge-risk -->\n\n🤖 Generated with "
                         "[Claude Code](https://claude.com/claude-code)"}}
     out = review.pr_description_html(spec)
     assert ('<div class="mergerisk" id="mergerisk"><p><strong>Merge risk</strong></p><ul>'
-            '<li>Two-way door: ✅</li><li>Blast radius: 🌒 <strong>visits API</strong></li></ul>'
+            '<li>Two-way door: ✅</li><li>Blast radius: ◔ <strong>visits API</strong></li></ul>'
             '</div></div></details>') in out or \
         ('<div class="mergerisk" id="mergerisk"><p><b>Merge risk</b></p><ul>'
-         '<li>Two-way door: ✅</li><li>Blast radius: 🌒 <b>visits API</b></li></ul>'
+         '<li>Two-way door: ✅</li><li>Blast radius: ◔ <b>visits API</b></li></ul>'
          '</div></div></details>') in out, out
     assert out.count("Two-way door") == 1 and "hr:merge-risk" not in out and "stale" not in out
     assert out.index("Closes") < out.index('class="mergerisk"')
@@ -126,24 +126,24 @@ def test_the_page_says_the_merge_risk_in_the_words_a_push_would_write():
 
 
 def test_the_blast_radius_wears_a_circle_that_fills_with_its_size():
-    """Victor, 29 Oct 2026: 🌑 🌒 🌓 🌔 🌕, so a reader knows at a glance what to expect."""
+    """Victor, 29 Oct 2026: ○ ◔ ◑ ◕ ●, so a reader knows at a glance what to expect."""
     md = review.merge_risk_md({"mergeRisk": {"door": "two-way", "blast": "visits API",
                                              "blastSize": 1}})
-    assert "- Blast radius: 🌒 **visits API** (≈25% of the system)" in md
+    assert "- Blast radius: ◔ **visits API** (≈25% of the system)" in md
     assert [review.BLAST_GLYPHS[review.blast_size({"mergeRisk": {"blastSize": n}})]
-            for n in (0, "2", 3, 4)] == ["🌑", "🌓", "🌔", "🌕"]
+            for n in (0, "2", 3, 4)] == ["○", "◑", "◕", "●"]
     # No size, or one off the scale: the words alone, no guessed circle.
     for bad in (None, 5, -1, "big", True):
         assert review.blast_size({"mergeRisk": {"blastSize": bad}}) is None
     # A size with no words says the size.
-    assert "🌕 **≈100% of the system**" in review.merge_risk_md(
+    assert "● **≈100% of the system**" in review.merge_risk_md(
         {"mergeRisk": {"door": "one-way", "blastSize": 4}})
 
 
 def test_the_masthead_draws_the_circle_beside_the_grade_with_its_meaning_on_hover():
     out = review.blast_glyph_html({"mergeRisk": {"blast": "visits API", "blastSize": 1}},
                                   "titleblast")
-    assert out.startswith('<span class="titleblast" data-tip="Blast radius ≈25%: visits API"') and out.endswith("🌒</span>")
+    assert out.startswith('<span class="titleblast" data-tip="Blast radius ≈25%: visits API"') and out.endswith("◔</span>")
     assert review.blast_glyph_html({"mergeRisk": {"blast": "visits API"}}) == ""
 
 
@@ -160,19 +160,21 @@ def test_the_masthead_shows_the_doors_mark_before_the_circle_with_its_meaning_on
 
 
 def test_the_door_and_the_circle_ride_inside_the_grade_pill_with_one_hover_for_all_three():
-    """Victor, 29 Oct 2026: one pill, `✅ 🌒 7/10`; the marks go to the MERGE RISK line."""
+    """Victor, 29 Oct 2026: one pill, `✅ ◔ 7/10`; the marks go to the MERGE RISK line.
+    11 Nov 2026: a superscript 🤖 after each line of the hover — all three are the AI's."""
     spec = {"mergeRisk": {"door": "two-way", "blast": "visits API", "blastSize": 1}}
     pill = ('<a class="titlescore v-mid" href="#review" data-tip="Overall quality: 7/10">'
             '<b>7</b><small>/10</small><i></i></a>')
     out = review.grade_pill_with_risk(spec, pill)
+    bot = "&lt;sup&gt;🤖&lt;/sup&gt;"
     assert out.startswith('<a class="titlescore v-mid" href="#review" data-tip-html="✅ Two-way '
-                          'door: revertable&lt;br&gt;🌒 Blast radius ≈25%: visits '
-                          'API&lt;br&gt;🔍 Overall quality: 7/10"')
+                          f'door: revertable{bot}&lt;br&gt;&lt;span class=&quot;tipblast&quot;&gt;◔&lt;/span&gt; Blast radius ≈25%: visits '
+                          f'API{bot}&lt;br&gt;🔍 Overall quality: 7/10{bot}"')
     assert 'data-tip="' not in out, "one hover, not the grade's alone"
-    assert ('<span class="titledoor">✅</span><span class="titleblast">🌒</span></span>'
+    assert ('<span class="titledoor">✅</span><span class="titleblast">◔</span></span>'
             '<b>7</b><small>/10</small>') in out and out.count('class="ts-risk"') == 1
     assert review.grade_pill_with_risk({}, pill) == pill
-    assert review.grade_pill_with_risk({"mergeRisk": {"door": "one-way"}}, "").startswith(
-        '<span class="titlescore ts-alone"')
+    alone = review.grade_pill_with_risk({"mergeRisk": {"door": "one-way"}}, "")
+    assert alone.startswith('<span class="titlescore ts-alone"') and alone.count(bot) == 1
     # The line the marks go to.
     assert 'id="mergerisk"' in review.pr_description_html(spec)

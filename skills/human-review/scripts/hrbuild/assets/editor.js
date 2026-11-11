@@ -179,7 +179,11 @@
     chips.forEach(function (chip) {
       var app = chip.getAttribute('data-ide'), name = IDE_NAME[app], mine = local && app === on;
       var near = mine && SERVED && said && said.state === 'near', gone = mine && away(app);
-      chip.classList.toggle('ide-on', mine && !near && !gone);
+      // Off the server nothing can be asked: the pick is a preference, not a connection,
+      // so it is grey, never green (Victor, 11 Nov 2026: "how do you know an IntelliJ on
+      // this branch is there to take commands?"). Green only once a server vouches for it.
+      chip.classList.toggle('ide-on', mine && !near && !gone && SERVED);
+      chip.classList.toggle('ide-picked', mine && !SERVED);
       chip.classList.toggle('ide-near', !!near);
       chip.classList.toggle('ide-off', local && (!mine || gone));
       chip.hidden = local && !!on && !mine;
@@ -187,6 +191,8 @@
       // One line, what a press does (Victor, 20 Oct 2026: "say click to disconnect IntelliJ,
       // the rest should not be there"). The colour already tells the state.
       var head = gone ? (said.tip || '').split('\n')[0] || 'Click to open this checkout in ' + name
+        : mine && !SERVED ? 'Code clicks go to ' + name + ' — not checked: a static page '
+          + 'cannot ask it. Click to stop'
         : (mine ? 'Click to disconnect ' : 'Click to connect ') + name;
       chip.setAttribute('data-tip', head);
       chip.removeAttribute('data-tip-html');

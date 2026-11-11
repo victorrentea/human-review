@@ -680,7 +680,7 @@ def test_the_review_summary_carries_the_merge_risk_with_its_blast_circle(tmp_pat
     body = ppc.review_body(payload, [])
     assert body.startswith("**Review record**: 1 auto-fixed.\n\n**Merge risk**\n"
                            "- Two-way door: ✅ a nullable column a revert stops using\n"
-                           "- Blast radius: 🌒 **visits API** (≈25% of the system)"
+                           "- Blast radius: ◔ **visits API** (≈25% of the system)"
                            "\n\n<!-- hr:review")
     # The payload's own wins; no door, no line; no size, no circle.
     assert ppc.attach_merge_risk({"mergeRisk": {"door": "one-way"}},
@@ -690,7 +690,7 @@ def test_the_review_summary_carries_the_merge_risk_with_its_blast_circle(tmp_pat
         "**Merge risk**\n- One-way door: ⚠️\n- Blast radius: **auth**"
     # A size with no words says the size; no blast at all, no blast bullet.
     assert ppc.merge_risk_md({"door": "two-way", "blastSize": 4, "why": "w"}) == \
-        "**Merge risk**\n- Two-way door: ✅ w\n- Blast radius: 🌕 **≈100% of the system**"
+        "**Merge risk**\n- Two-way door: ✅ w\n- Blast radius: ● **≈100% of the system**"
     assert ppc.merge_risk_md({"door": "One-Way", "why": "drops a column"}) == \
         "**Merge risk**\n- One-way door: ⚠️ drops a column"
 
@@ -700,7 +700,7 @@ def test_the_review_summary_carries_the_merge_risk_with_its_blast_circle(tmp_pat
 FOOTER = "🤖 Generated with [Claude Code](https://claude.com/claude-code) · Opus 5.5"
 RISK = {"door": "two-way", "blast": "visits API", "blastSize": 1, "why": "a revert stops it"}
 LINE = ("**Merge risk**\n- Two-way door: ✅ a revert stops it\n"
-        "- Blast radius: 🌒 **visits API** (≈25% of the system)")
+        "- Blast radius: ◔ **visits API** (≈25% of the system)")
 
 
 def test_the_merge_risk_goes_just_above_the_attribution_footer():
@@ -713,8 +713,8 @@ def test_the_merge_risk_goes_just_above_the_attribution_footer():
 def test_a_re_publish_replaces_the_block_and_never_adds_a_second():
     once = ppc.with_merge_risk(f"Adds a vet.\n\n{FOOTER}", LINE)
     assert ppc.with_merge_risk(once, LINE) == once
-    moved = ppc.with_merge_risk(once, LINE.replace("🌒", "🌓"))
-    assert moved.count("<!-- hr:merge-risk -->") == 1 and "🌓" in moved and "🌒" not in moved
+    moved = ppc.with_merge_risk(once, LINE.replace("◔", "◑"))
+    assert moved.count("<!-- hr:merge-risk -->") == 1 and "◑" in moved and "◔" not in moved
     assert moved.endswith(FOOTER) and moved.startswith("Adds a vet.\n\n<!--")
 
 
@@ -722,7 +722,7 @@ def test_a_block_in_the_old_one_line_shape_is_replaced_by_the_bullets():
     """Victor, 30 Oct 2026: the door and the blast radius as "label: value" bullets. A PR
     published before that carries the one-line block; the next publish swaps it whole."""
     old = ("Adds a vet.\n\n<!-- hr:merge-risk -->\n**Merge risk:** ✅ Two-way door · blast "
-           "radius: 🌒 **visits API** — a revert stops it\n<!-- /hr:merge-risk -->\n\n" + FOOTER)
+           "radius: ◔ **visits API** — a revert stops it\n<!-- /hr:merge-risk -->\n\n" + FOOTER)
     new = ppc.with_merge_risk(old, LINE)
     assert new == ppc.with_merge_risk(f"Adds a vet.\n\n{FOOTER}", LINE)
     assert "**Merge risk:**" not in new and new.count("- Blast radius:") == 1
