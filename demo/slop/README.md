@@ -7,11 +7,11 @@ applied outside demo runs: `run.sh` feeds them, `check.py` verifies them, nothin
 
 | mistake planted in the code | demo | the human said (Q&A.md) | expected on the page | status |
 |---|---|---|---|---|
-| **A** repository returns a web DTO (`rest.dto.VisitRowDto`): persistence depends on the API contract | demo2 | :8 return the row, no mapper | `PackagesArchTest` fails; the agent most likely adds `[..repository] --> [..rest.dto]` to `packages.puml` (moving the DTO contradicts :8). Structure: green arrow; CODEOWNERS: `packages.puml` | planned |
-| **B** none: an approved requirement, 8-row Gherkin `Scenario Outline` sorting over Playwright | demo2 | :20 | Tests: 🕵️🎭 row, "sortable by any column" covered; Sequence: UI · Gherkin | planned |
-| **C** every grid view logs the owners' full names | demo2 | :14 log what we served | Logging: `[String]` owner-name values traced to `Owner`, on every page view | planned |
-| **D** two tests silenced with `@Disabled`, not fixed | demo2 | :17 | Tests ledger: 2 tests leave the run, no deletion in the diff | planned |
-| **E** sort whitelist as 4×2 nested if/else instead of a lookup | demo2 | :11 plain ifs | Complexity: `GET /api/visits` ≥ 15; City: taller controller; Sonar S3776 | planned |
+| **A** repository returns a web DTO (`rest.dto.VisitRowDto`): persistence depends on the API contract | demo2 | :8 return the row, no mapper | `PackagesArchTest` fails; the agent most likely adds `[..repository] --> [..rest.dto]` to `packages.puml` (moving the DTO contradicts :8). Structure: green arrow; CODEOWNERS: `packages.puml` | found 11 Nov, v2 |
+| **B** none: an approved requirement, 8-row Gherkin `Scenario Outline` sorting over Playwright | demo2 | :20 | Tests: 🕵️🎭 row, "sortable by any column" covered; Sequence: UI · Gherkin | found 11 Nov, v2 |
+| **C** every grid view logs the owners' full names | demo2 | :14 log what we served | Logging: `[String]` owner-name values traced to `Owner`, on every page view | found 11 Nov, v2 |
+| **D** two tests silenced with `@Disabled`, not fixed | demo2 | :17 | Tests ledger: 2 tests leave the run, no deletion in the diff | found 11 Nov, v2 |
+| **E** sort whitelist as 4×2 nested if/else instead of a lookup | demo2 | :11 plain ifs | Complexity: `GET /api/visits` ≥ 15; City: taller controller; Sonar S3776 | found 11 Nov, v2 (16: a Sonar S3776 fix took the ladder from 20 to 14) |
 | **F** a new paging library beside the design system | demo2 | — | CODEOWNERS: elders on `package.json`; UX: foreign component | optional |
 | **G** owner's last name copied onto `visits` (denormalized, goes stale) | demo2 | — | Data: DB + Domain diff; CODEOWNERS: migration | optional |
 | **H** native `<select>` where the design system's combo belongs | demo | :5 | UX: `new:select#vet` regression | next re-run (today a retouch) |
