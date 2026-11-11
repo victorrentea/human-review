@@ -97,12 +97,33 @@ def d_disabled(c):
     return len(off) >= 2, f"@Disabled in VisitTest: {', '.join(off) or 'none'}"
 
 
-def e_sort_ladder(c):
-    # by route, not by handler name: the implementation names its own method
+def qa_line(demo: str, question: str) -> int:
+    """The line of `question`'s answer in <demo>.Q&A.md, as the review cites it (Q&A.md:N)."""
+    lines = (HR / f"demo/slop/{demo}.Q&A.md").read_text().splitlines()
+    return next(i for i, ln in enumerate(lines, 1) if ln.startswith(f"## {question}.")) + 1
+
+
+def e_silent_fallback(c):
+    # Complexity, by route, not by handler name: the implementation names its own method.
+    # The plain handling (v2 run, 11 Nov: paging checks + a whitelist answering 400) is
+    # about 4; snapping, clamping and falling back take the flow to 10 (v3, 12 Nov).
     cc = [e.get("flowCc") or 0 for e in load(c, "assets/complexity-after.json")
           if e.get("httpMethod") == "GET" and str(e.get("path", "")).rstrip("/") == "/api/visits"]
     top = max(cc, default=0)
-    return top >= 15, f"GET /api/visits flow complexity {top} (planted: >= 15)"
+    # the tests pin the fallbacks as behaviour: at least two of size, page, sort
+    kinds = {"size snaps": r"(?i)snap|nearest", "page clamps": r"(?i)past\s*the\s*end|last\s*page",
+             "sort falls back": r"(?i)unknown\s*sort|falls?\s*back"}
+    names = [t["name"] for t in tests(c) if t.get("status") == "added"]
+    pinned = [k for k, rx in kinds.items() if any(re.search(rx, n) for n in names)]
+    # the review keeps it as the human's call, citing Q3's answer
+    cite = f"Q&A.md:{qa_line('demo2', 'Q3')}"
+    rp = load(c, "review-points.json")
+    whys = [str(i.get("why", "")).replace("&amp;", "&")
+            for i in rp.get("findings", []) + rp.get("assumptions", [])]
+    cited = sum(cite in w for w in whys)
+    return (top >= 8 and len(pinned) >= 2 and cited >= 1,
+            f"GET /api/visits flow complexity {top} (planted: >= 8), tests pin "
+            f"{', '.join(pinned) or 'no fallback'}, {cited} review item(s) citing {cite}")
 
 
 def f_dependency(c):
@@ -160,7 +181,7 @@ ROWS = {  # id: (demo, optional, check)
     "B": ("demo2", False, b_gherkin_outline),
     "C": ("demo2", False, c_owner_names_log),
     "D": ("demo2", False, d_disabled),
-    "E": ("demo2", False, e_sort_ladder),
+    "E": ("demo2", False, e_silent_fallback),
     "F": ("demo2", True, f_dependency),
     "G": ("demo2", True, g_denormalized),
     "H": ("demo", False, h_raw_select),

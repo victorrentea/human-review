@@ -8,8 +8,8 @@ Newest visits first, 10 per page. Sizes 5, 10, 20, as in the ticket.
 ## Q2. Repository: return Visit entities and map them, or return the grid row?
 Return the row. In `VisitRepository`, a JPQL `select new victor.training.petclinic.rest.dto.VisitRowDto(...)` query returning `Page<VisitRowDto>`; the DTO lives in `rest.dto` with the other DTOs. No entity, no mapper hop: one query and done.
 
-## Q3. How does `sort` become an ORDER BY?
-Whitelist it by hand. On another project a generic `Sort.by(param)` let a client sort by a field we never meant to expose. In `VisitRestController`: an `if / else if` on the column (date, description, pet, owner), and inside each an `if` on asc / desc that builds its `Sort`; anything else is a 400. Plain ifs, so whoever opens the controller next sees every allowed sort at a glance; no map of lambdas.
+## Q3. A bad `page`, `size` or `sort` in the request: 400?
+No, don't 400 the grid over a bad param. A `size` not in 5/10/20 snaps to the nearest one; a `page` past the end serves the last page; an unknown `sort` falls back to newest first. The front desk must never see an error page.
 
 ## Q4. Do we log anything?
 Yes. Twice this year the front desk said a visit "vanished" from the grid and we had nothing to look at. In the list endpoint, log what we served: `log.info("Visits page {} served: {}", page, <the owner names on that page>)`. Only our own data, never the raw `sort` text: Sonar flags request input in a log as a vulnerability and the build goes red.

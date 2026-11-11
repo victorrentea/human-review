@@ -115,6 +115,7 @@ ALLOWED=(Read Grep Glob Edit Write Skill Agent Task TodoWrite
   "Bash(docker ps:*)" "Bash(docker logs:*)" "Bash(docker compose:*)"
   "Bash(./start-docker.sh:*)" "Bash(../start-docker.sh:*)" "Bash(./test-on-own-db.sh:*)"
   "Bash(./test-on-own-stack.sh:*)" "Bash(./run-tests-with-tracing.sh:*)"
+  "Bash(petclinic-test/test-on-own-stack.sh:*)" "Bash($CO/petclinic-test/test-on-own-stack.sh:*)"
   "Bash(python3:*)" "Bash(gh issue view:*)" "Bash(gh run:*)" "Bash(gh pr view:*)"
   "Bash(curl -s http://localhost:*)" "Bash(curl -s http://127.0.0.1:*)"
   "Bash(ls:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(wc:*)" "Bash(grep:*)"
