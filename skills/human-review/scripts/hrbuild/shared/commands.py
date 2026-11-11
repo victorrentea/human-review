@@ -902,6 +902,25 @@ def runtime_html(rt, tail: str = "", fixtures: list | None = None) -> str:
             + at + controls + db + tail + '</div>' + row + '</div>')
 
 
+#: The IntelliJ mark, beside the VS Code one in every *in VS Code* that opens a file: the
+#: page shows one of the two, the IDE picked in the masthead (editor.js, `html.ide-idea`).
+#: The classic face Victor asked for (20 Oct 2026): the black square with a bold white `IJ`
+#: top left and the bar under it, bottom left. The letters are JetBrains' own paths
+#: (`idea.svg`, whose black square spans 12-52 of its 64-px grid), stroked a little bolder.
+IJ_ICON = ('<svg class="ij-ico" viewBox="12 12 40 40" width="13" height="13" aria-hidden="true">'
+           '<path fill="#000" d="M12 12H52V52H12Z"/>'
+           '<path fill="#fff" stroke="#fff" stroke-width=".7" d="M17 29.39h2.98v-9.78H17V17'
+           'h8.84v2.61h-2.98v9.78h2.98V32H17zM27.34 29.3h2.15c.44 0 .82-.09 1.16-.28.34-.19.6'
+           '-.45.79-.79.19-.34.28-.73.28-1.16V17h2.92v10.27c0 .9-.2 1.71-.62 2.43a4.3 4.3 0 0 1'
+           '-1.71 1.69c-.73.41-1.55.61-2.45.61h-2.52z"/>'
+           '<path fill="#fff" d="M17 44h16v3.4H17z"/></svg>')
+
+#: DBeaver's and SQL Developer's own app icons (32 px PNG from each .icns, palette-quantised),
+#: inlined so the page stays self-contained: the logos on the Running DB row's buttons.
+DBEAVER_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAADAUExURUdwTP///////////////////////////////////////////////zQkH0EyLI12ZSoYEjMhGzAfGFG4v4hyYSwbFUo5M9HMyn7KzzkpI8S7toRsXGRRR0u0vInP1Pz8/Lu1s5CIhm9dU/Du7nBmYJySjbSsqFi9xFdIQurp6NzZ2KGXksjDwJPT2KPa3rLf42vEynpsZ9jv8eLg3/L4+X17eZF9bqafnb/l6EQ/O02OkZrW2k6sspuGeEJnaEuhphb3mpkAAAAMdFJOUwB8Ocs8dHoG7whiY0kevOkAAAGHSURBVDjLvZNXk4IwFIUtiC2NEHpHQVTsXbf8/3+1QVBYefBp9wwzEO6Xk8vcQ6PxX+oKg47YfErsDIRutd5qg5rarUq9V614xb33JPrV/TsznT48+gUg8MUsiGbZSy3WgDcd5YRQAEO+DxFiaGDmp6kdhUaQA8MC6AAQEAjJAVzGIGbMRse8j04BiACMFQhpAuaaaWGMGc7PEAugCUBIIZTUvaZhK8Q4tHOgWQKZg4R2J+2TITXcHMArEGSAejI/j5ZBIl+rAf7dIeAd2BJE6rQGTJEEoXKaM8YfJBLXALDhFoZ5xJYBucVhXwNSCqVLyjhAL1dHniz2L4BnU5rwFhi6fExk2XF07zcATColpm3h5LpeLtfLm7x6AbyxgnxVZezDvbmL1VrWS0C8dzQzlMhW0NhxXXl9djNALIeVKSbJhkrw212tFmddXpTDGhYBmSuqAenXRNeza1uOW3ikKVYVQuiVf4MjnyuBKSM38ueRP9re3OW2GrmX0IJaaN/H/v2P86f6AQSVMK5XEZP6AAAAAElFTkSuQmCC"
+SQLDEVELOPER_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAADAUExURUdwTJ6x0CoqTmmHtai51FyRTm4lqFSXPwABHbPC2omhx5Cp0KihqFdzoniPt36YwpaqynuSu0Bhm1ehN4acwWW0KGp0dD6rEidGelNyoCKjFLTK6brQ78LT7K3E5bDH58vb8r3S8bfN7KfB5WvII9Lf7p633MjX7Zaw2HvOOFTCCtnl9cPW8xyxAYrUUYmn04HGVv39/eDr96m93nmtg9Pi93mdzKG74cfgv5DMcpO2qkG3Cg+hC2jAMOry/HGcojRv6QsAAAAbdFJOUwDGC8DHXAOYF9/I5hhhg86ndDbApvIm70WE7+gNnQsAAAGgSURBVDjLrZPZdptAEETFIuQoluQtdpLZBzIzwMggEEZr/P9/lQYdRwKUnDykXvvSVdWHGY3+s1zQn2bBw/2d/wnk390/BMP5zCdpURRpmlacI2fWX/2ki/QHiGvCENYVeepazdN2DCKUMiQJr+YdwP95AjhGrSRJ/QHAtRVUMYyxlBJXTgdweJFyK0JVNwDGwsppd4NmOq0k+EthOeekNF5vg0aUgjXRmhBWKvPWBwiB7xsxxmhtsisACinCQgiMQjUApkQ3ANwIOlwDfESJPAO1ecsWPQuklAqZBA/MVJaZbNBCM2WMUY1qtVu/e8EgJNSEEwmLdnkcR18mt5ch2xZhmwGtX0FxlDxeEA4iHy3EOn7NcyCS5eTs4uiSNgCEZPso3m62YLL/fnsZsslYg8lumUTb1WqTR8ly3AmJaViWZbg+AavNsQ+cTm13h/1wQzDHv0OywzLJYRwlycs5w41Hrfxocdgfj3EEumgxcmcL017aWtykiEGPnR87cL9+8xafQVNv8pJEcMkrb8y9Abmj4Hk8Hj///ZEG//ycfwEfz0WhjxNzygAAAABJRU5ErkJggg=="
+
+
 def running_db_html() -> str:
     """"Running DB" and its JDBC URL, on the Running app line right after Stop: the URL,
     login included (`?user=…&password=…`), is what a reader pastes into a database client,
@@ -916,8 +935,8 @@ def running_db_html() -> str:
     ask the host. Off disk and on GitHub Pages it never appears, like the app's address."""
     tools = "".join(
         f'<button type="button" class="appenv-dbtool" data-tool="{tool}" hidden '
-        f'data-tip="{html.escape(tip)}">{word}</button>'
-        for tool, word, tip in DB_TOOLS)
+        f'aria-label="{html.escape(name)}" data-tip="{html.escape(tip)}">{logo}</button>'
+        for tool, name, logo, tip in DB_TOOLS)
     return ('<span class="appenv-db" hidden>'
             '<span class="appenv-title">Running DB</span>'
             f'<span class="appenv-dbtools">{tools}</span>'
@@ -930,8 +949,9 @@ def running_db_html() -> str:
 #: its word on the button, and what a press does. Each is raised only by a served page whose
 #: server says the tool is there (`openDb`, `openDbeaver`, `openSqlDeveloper`).
 DB_TOOLS = (
-    ("idea", "IJ", "Open it in IntelliJ’s Database view, as data source “Running DB”"),
-    ("dbeaver", "DBeaver", "Open it in DBeaver: connected, with an SQL editor"),
+    ("idea", "IntelliJ", IJ_ICON, "Open it in IntelliJ’s Database view, as data source “Running DB”"),
+    ("dbeaver", "DBeaver", f'<img src="{DBEAVER_LOGO}" alt="" width="16" height="16">', "Open it in DBeaver: connected, with an SQL editor"),
     ("sqldeveloper", "SQL Developer",
+     f'<img src="{SQLDEVELOPER_LOGO}" alt="" width="16" height="16">',
      "Open it in SQL Developer (restarts it: it reads connections only at start)"),
 )

@@ -135,7 +135,7 @@ from hrbuild.shared.commands import (
     rerun_face, RERUN_MARK_AI, RERUN_MARK_SCRIPT, RERUN_MARK_SLOW, _RERUN_RING,
     rerun_html, rerun_tests_chip, RUN_TESTS_FACE, tab_rerun_html, TAB_RERUN_TIP,
     place_tab_reruns, TABRE_SLOT, tab_title_row, TAB_TITLES, CARD_HEADED_TABS, _TABTITLE_OPEN, _CARD_TITLE,
-    reveal_html, runtime_html, running_db_html, DB_TOOLS, fixtures_row_html, SEED_OFFLINE_TIP, STATIC_RUN_TIP,
+    reveal_html, runtime_html, running_db_html, DB_TOOLS, DBEAVER_LOGO, SQLDEVELOPER_LOGO, fixtures_row_html, SEED_OFFLINE_TIP, STATIC_RUN_TIP,
     _app_anchor
 )
 from hrbuild.shared.snippets import (
@@ -319,7 +319,7 @@ from hrbuild.tabs.tests import (
     COV_COMMON_MIN,
     COV_NOT_MEASURED, load_coverage, coverage_join, model_pairing, coverage_side, _model_key,
     TEMPLATE_UNSEEN, _rendered_templates,
-    _cov_ranges, _snippet_module, COV_PART_MAX, _GHERKIN_NEXT, _cov_part,
+    _cov_ranges, _snippet_module, COV_PART_MAX, _GHERKIN_NEXT, _GHERKIN_NEXT_DECL, _GHERKIN_OUTLINE, gherkin_end, _cov_part,
     _API_MARKERS, _cov_cat, coverage_tests, coverage_after, _load_test_changes, suite_chips
 )
 from hrbuild.tabs.demo import (

@@ -428,6 +428,21 @@ def test_served_and_live_the_db_shows_its_jdbc_url_with_the_login_after_stop(row
         .filter(b => !b.hidden).map(b => b.dataset.tool)""") == ["idea"]
 
 
+def test_the_db_tools_are_logos_not_words(row):
+    """Victor, 12 Nov 2026: IJ / DBeaver / SQL Developer are their logos, named for a screen
+    reader, with the tooltip kept; no text, no external image."""
+    _db_read(row, served=True, live=True)
+    got = row.page.evaluate("""() => [...document.querySelectorAll('.appenv-dbtool')].map(b => ({
+        tool: b.dataset.tool, label: b.getAttribute('aria-label'), text: b.textContent.trim(),
+        tip: !!b.dataset.tip, img: (b.querySelector('img') || {}).src || '',
+        glyph: !!b.querySelector('svg.ij-ico')}))""")
+    assert [(g["tool"], g["label"], g["text"], g["tip"]) for g in got] == [
+        ("idea", "IntelliJ", "", True), ("dbeaver", "DBeaver", "", True),
+        ("sqldeveloper", "SQL Developer", "", True)]
+    assert got[0]["glyph"] and got[1]["img"].startswith("data:image/png;base64,")
+    assert got[2]["img"].startswith("data:image/png;base64,")
+
+
 def test_the_database_row_is_hidden_offline_and_off_disk(row):
     """No port to name while nothing runs, and a page off disk or on GitHub Pages cannot
     ask the host which one it got."""

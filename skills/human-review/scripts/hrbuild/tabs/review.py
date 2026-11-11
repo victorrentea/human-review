@@ -15,7 +15,7 @@ from pathlib import Path
 from ..shared.actions import ACTIONS, declare_action, rebuild_interpreter, RERUN_ACTION
 from ..shared.bands import _lede_above, _flush_top_bands
 from ..shared.chips import reviewer_names, _angry_bot
-from ..shared.commands import command_html
+from ..shared.commands import command_html, IJ_ICON
 from ..shared.forge import (api_forge, find_pull, forge_at, forge_for, GitHubForge,
                             is_commit_comment_url, is_pull_url, pull_root)
 from ..shared.util import _git
@@ -4131,19 +4131,6 @@ VSCODE_PR_URI = "vscode://github.vscode-pull-request-github/open-pull-request-we
 #: The VS Code mark, in its blue, in front of every *in VS Code*.
 VSC_ICON = ('<svg class="vsc-ico" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path fill="#007ACC" d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>')
 
-
-#: The IntelliJ mark, beside the VS Code one in every *in VS Code* that opens a file: the
-#: page shows one of the two, the IDE picked in the masthead (editor.js, `html.ide-idea`).
-#: The classic face Victor asked for (20 Oct 2026): the black square with a bold white `IJ`
-#: top left and the bar under it, bottom left. The letters are JetBrains' own paths
-#: (`idea.svg`, whose black square spans 12-52 of its 64-px grid), stroked a little bolder.
-IJ_ICON = ('<svg class="ij-ico" viewBox="12 12 40 40" width="13" height="13" aria-hidden="true">'
-           '<path fill="#000" d="M12 12H52V52H12Z"/>'
-           '<path fill="#fff" stroke="#fff" stroke-width=".7" d="M17 29.39h2.98v-9.78H17V17'
-           'h8.84v2.61h-2.98v9.78h2.98V32H17zM27.34 29.3h2.15c.44 0 .82-.09 1.16-.28.34-.19.6'
-           '-.45.79-.79.19-.34.28-.73.28-1.16V17h2.92v10.27c0 .9-.2 1.71-.62 2.43a4.3 4.3 0 0 1'
-           '-1.71 1.69c-.73.41-1.55.61-2.45.61h-2.52z"/>'
-           '<path fill="#fff" d="M17 44h16v3.4H17z"/></svg>')
 
 #: GitHub's mark, in the link's own colour: a card's way to its PR comment.
 GH_ICON = ('<svg class="gh-ico" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">'
