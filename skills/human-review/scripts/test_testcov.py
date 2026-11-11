@@ -471,3 +471,33 @@ def test_the_traces_step_takes_the_same_lock(tmp_path, monkeypatch):
     # flock is per open file description: a second open in the same process conflicts.
     rs._traces(rs.Ctx("main", {}, False))
     assert seen == ["held"]
+
+
+FEATURE = """Feature: Sorting
+  Scenario Outline: Sort by column
+    When I click "<column>"
+    Then it sorts
+
+    Examples:
+      | column |
+      | Date   |
+      | Pet    |
+
+  Scenario: Plain one
+    When I look
+    Then I see
+
+    Examples:
+      | stray |
+"""
+
+
+def test_a_scenario_outline_snippet_runs_through_its_examples_table_a_plain_scenario_does_not(tmp_path):
+    (tmp_path / "s.feature").write_text(FEATURE)
+    outline = T._cov_part(tmp_path, "s.feature", 2)
+    assert outline["label"] == "s.feature:2-9"
+    text = [re.sub(r"<[^>]+>", "", x) for x in outline["html"]]
+    assert any("Examples:" in x for x in text)
+    assert sum("| Date" in x or "| Pet" in x for x in text) == 2
+    plain = T._cov_part(tmp_path, "s.feature", 11)
+    assert plain["label"] == "s.feature:11-13"

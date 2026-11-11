@@ -854,9 +854,7 @@ def test_source(root: Path, file: str, line: int) -> tuple[int, list[str]]:
         return line, []
     start = annotations_start(lines, line)
     if path.suffix == ".feature":
-        end = line
-        while end < len(lines) and not _GHERKIN_NEXT.match(lines[end]):
-            end += 1
+        end = _tests_tab().gherkin_end(lines, line)
     else:
         end = _tests_tab()._snippet_module()._closing_line(lines, line, line)
     while end > line and not lines[end - 1].strip():

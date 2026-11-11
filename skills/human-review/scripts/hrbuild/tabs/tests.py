@@ -888,6 +888,20 @@ def _snippet_module():
 #: How long a quoted test body may run before it is cut: a test is a screen, not a file.
 COV_PART_MAX = 60
 _GHERKIN_NEXT = re.compile(r"\s*(Scenario|Rule|Feature|Background|Examples|@)")
+_GHERKIN_NEXT_DECL = re.compile(r"\s*(Scenario|Rule|Feature|Background|@)")
+_GHERKIN_OUTLINE = re.compile(r"\s*Scenario\s+(Outline|Template)\s*:")
+
+
+def gherkin_end(lines: list[str], line: int) -> int:
+    """Last 1-based line of the Gherkin scenario declared on `line`. A plain Scenario ends
+    at the next keyword (its `Examples:` would be a different thing); a Scenario Outline
+    runs through its `Examples:` block(s) - the table is what its `<placeholders>` mean -
+    until the next Scenario/Rule/Feature/Background or tag line."""
+    stop = _GHERKIN_NEXT_DECL if _GHERKIN_OUTLINE.match(lines[line - 1]) else _GHERKIN_NEXT
+    end = line
+    while end < len(lines) and not stop.match(lines[end]):
+        end += 1
+    return end
 
 
 def _cov_part(root: Path, file: str, line: int, text: str | None = None,
@@ -912,9 +926,7 @@ def _cov_part(root: Path, file: str, line: int, text: str | None = None,
         start -= 1
     es = _snippet_module()
     if path.suffix == ".feature":
-        end = line
-        while end < len(lines) and not _GHERKIN_NEXT.match(lines[end]):
-            end += 1
+        end = gherkin_end(lines, line)
     else:
         end = es._closing_line(lines, line, line)
     while end > line and not lines[end - 1].strip():
