@@ -55,7 +55,7 @@ def test_a_fragment_drawn_by_older_code_is_redrawn_from_its_json(tmp_path):
     assert ds.rerender_if_stale(review) is True
     frag = (review / "assets" / "ds-audit.html").read_text(encoding="utf-8")
     assert ds.rendered_by(frag) == ds.RENDER_STAMP
-    assert '<h2 class="tabtitle">UX design system</h2>' in frag, \
+    assert '<h2 class="tabtitle">UX design system<!--tabre--></h2>' in frag, \
         "the current title, which the build's prompt placement anchors on"
     assert (review / "assets" / "ds-audit.css").read_text(encoding="utf-8") == ds.CSS + "\n"
 
@@ -189,3 +189,50 @@ def test_the_caret_selector_lists_never_name_a_bare_details():
             if part.startswith("details.") and "summary" not in part and "[open]" not in part \
                     and " " not in part and part.split(".")[1] in ("costdetail", "snipmore"):
                 raise AssertionError(f"bare details selector in a caret list: {part!r}")
+
+
+# ── the UX tab's own ⚙️ ─────────────────────────────────────────────────────────
+
+build = _load("build-review-html")
+
+
+def test_the_ux_tab_has_its_own_free_rerun_and_its_gear_follows_the_title_words(tmp_path):
+    """Victor, 11 Nov 2026: "why don't I have a regenerate button on this tab?" It was
+    there, after the Chrome/Safari switch, and read as part of it. The press re-runs the
+    audit (both stacks) and rebuilds; its ⚙️ now sits right after "UX design system"."""
+    (tmp_path / "out").mkdir()
+    got = build.declare_tab_reruns(tmp_path, tmp_path / "out", HERE, ["dsaudit"])
+    assert got["dsaudit"]["steps"] == ["dsaudit"] and not got["dsaudit"]["ai"]
+    assert build.ACTIONS["__rerun__:dsaudit"]["command"].endswith(
+        "--steps dsaudit --no-serve")
+    presses = build.tab_rerun_html("dsaudit", "UX", got["dsaudit"])
+    assert 'data-tip="Regenerate (scripted, free)"' in presses
+    body = ('<div class="dsa-run"><h2 class="tabtitle">UX design system<!--tabre-->'
+            '<span class="dsa-browsers dsa-global">B</span></h2></div>')
+    out = build.place_tab_reruns("dsaudit", "UX", body, presses)
+    assert out.index('class="tabre"') < out.index("dsa-browsers")
+    assert "<!--tabre-->" not in out
+    # Static copy: no presses, the marker is an inert comment.
+    assert build.place_tab_reruns("dsaudit", "UX", body, "") == body
+
+
+def test_the_rerun_interpreter_is_a_path_that_imports_pygments_whoever_runs_it(
+        tmp_path, monkeypatch):
+    """The PR #53 server ran under `uv run`: uv's CPython first on its PATH, no Pygments,
+    and every ⚙️ died in the build on a bare `python3`. The command names an absolute
+    interpreter that imports Pygments, skipping one in front that cannot."""
+    from hrbuild.shared import actions
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    (bare / "python3").write_text("#!/bin/sh\nexit 1\n")
+    (bare / "python3").chmod(0o755)
+    good = tmp_path / "good"
+    good.mkdir()
+    (good / "python3").write_text("#!/bin/sh\nexit 0\n")
+    (good / "python3").chmod(0o755)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(bare), str(good), "/usr/bin", "/bin"]))
+    actions.rebuild_interpreter.cache_clear()
+    try:
+        assert actions.rebuild_interpreter() == str(good / "python3")
+    finally:
+        actions.rebuild_interpreter.cache_clear()

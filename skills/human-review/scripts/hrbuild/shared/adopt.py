@@ -374,9 +374,9 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'dsaudit': {
         "li": [
-            'Every screen, main vs this branch on the same data: a pixel-level visual diff.',
+            'Every screen, main vs this branch on the same data: is each pixel change wanted?',
             "A script flags controls that aren't from the app's own components.",
-            'Open the changed screens: is each change wanted?',
+            '⚙️ by the title, after a committed fix: both builds re-shot, every screen, ~2 min, free.',
             '✅ judged fine · ⚠️ a gap · ⚪ changed, but no control to judge.',
             'Hover a red box: the tag found, struck, against the tag it should be.',
             'Browser logos (title: all, bar: one screen): each picture as it drew it.',

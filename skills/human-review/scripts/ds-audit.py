@@ -2828,7 +2828,9 @@ def render(result: dict, assets_prefix: str, *, root: Path | None = None,
     return (
         f'<!-- ds-audit render {RENDER_STAMP} -->'
         '<div class="dsa-run">'
-        f'<h2 class="tabtitle">UX design system{browser_switch(result)}</h2>'
+        # `<!--tabre-->`: the tab's ⚙️ goes right after the words, before the browser
+        # switch (`commands.TABRE_SLOT`) — after it, it read as part of the switch.
+        f'<h2 class="tabtitle">UX design system<!--tabre-->{browser_switch(result)}</h2>'
         f'{unlisted_line}'
         f'<p class="dsa-hdr">{verdict_line}</p>'
         f'{how_box(result)}'

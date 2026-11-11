@@ -26,14 +26,14 @@ def _two_browser_result(edge_diff=(0.0, 0.0)):
 
 def test_a_run_shot_in_one_browser_has_no_switch():
     frag = ds.render(_result_from_capture(), "assets/")
-    assert '<h2 class="tabtitle">UX design system</h2>' in frag
+    assert '<h2 class="tabtitle">UX design system<!--tabre--></h2>' in frag
     assert "dsa-browsers" not in frag
 
 
 def test_two_browsers_put_the_logos_in_the_title_primary_pressed():
     frag = ds.render(_two_browser_result(), "assets/")
     title = frag[frag.index('<h2 class="tabtitle">'):frag.index("</h2>")]
-    assert title.startswith('<h2 class="tabtitle">UX design system'
+    assert title.startswith('<h2 class="tabtitle">UX design system<!--tabre-->'
                             '<span class="dsa-browsers dsa-global"')
     assert ('data-br="chrome" data-primary="" aria-pressed="true" '
             'aria-label="Chrome and Edge"') in title

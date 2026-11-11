@@ -52,10 +52,18 @@ def rebuild_interpreter() -> str:
     one guaranteed not to work again — and a command that fails when pasted is worse than
     no command, because it is tried first and believed second.
 
-    So: plain `python3` when it can already import Pygments, which is the legible answer
-    and the portable one; `uv run --with pygments --with ast-grep-cli --with pyyaml python`
-    when it cannot and uv is here, which installs nothing permanently and is ~100ms warm; and only
-    then the interpreter running this build, which at least names something real.
+    So: the first `python3` on the reader's PATH that can import Pygments, spelt as the
+    absolute path PATH found it at (`/opt/homebrew/bin/python3`, never the Cellar path it
+    links to, so a `brew upgrade` does not break it); `uv run --with pygments --with
+    ast-grep-cli --with pyyaml python` when none can and uv is here, which installs nothing
+    permanently and is ~100ms warm; and only then the interpreter running this build, which
+    at least names something real.
+
+    Absolute, not a bare `python3`, because the server runs this string with *its own*
+    PATH, which is not the build's. The PR #53 server (11 Nov 2026) had been started under
+    `uv run`, so uv's managed CPython came first on its PATH, without Pygments: every tab's
+    ⚙️ re-derived its evidence, then the build died on `extract-snippet needs Pygments` and
+    the page never moved. A path does not depend on who resolves it.
 
     `ast-grep-cli` and `pyyaml` ride along because the Logging tab's scan needs the
     `ast-grep` binary on PATH and the API tab's diff needs YAML, and each step fails
@@ -75,10 +83,14 @@ def rebuild_interpreter() -> str:
         d for d in env.get("PATH", "").split(os.pathsep)
         if d and not any(t and (d == t or d.startswith(t + os.sep)) for t in throwaway))
     env.pop("VIRTUAL_ENV", None)
-    outside = shutil.which("python3", path=env["PATH"])
-    if outside and subprocess.run([outside, "-c", "import pygments"],
-                                  capture_output=True, env=env).returncode == 0:
-        return "python3"
+    # Every `python3` on that PATH, in order, not only the first: a uv-managed CPython in
+    # front of Homebrew's is the very PATH that broke the presses, and the one behind it
+    # has Pygments.
+    for d in env["PATH"].split(os.pathsep):
+        outside = shutil.which("python3", path=d)
+        if outside and subprocess.run([outside, "-c", "import pygments"],
+                                      capture_output=True, env=env).returncode == 0:
+            return shlex.quote(os.path.abspath(outside))
     if shutil.which("uv", path=env["PATH"]) or shutil.which("uv"):
         return "uv run --with pygments --with ast-grep-cli --with pyyaml python"
     return shlex.quote(sys.executable)

@@ -230,6 +230,13 @@ TAB_TITLES = {"packages": "Structure diagrams"}
 CARD_HEADED_TABS = frozenset({"data"})
 
 _TABTITLE_OPEN = re.compile(r'<h2 class="tabtitle\b[^>]*>')
+
+#: Where a producer's title wants the tab's presses, when its title carries controls of its
+#: own after the words. The UX title ends on the Chrome/Safari switch, and the ⚙️ placed
+#: after it read as part of the switch: Victor asked where the UX tab's regenerate press
+#: was (11 Nov 2026) while it sat right there. Every other tab's ⚙️ follows its title's
+#: words, so this one does too. Absent: the end of the title, as always.
+TABRE_SLOT = "<!--tabre-->"
 _CARD_TITLE = re.compile(r'(<div class="diagram\b[^"]*"[^>]*><div class="head"><b>.*?</b>)', re.S)
 
 
@@ -265,6 +272,9 @@ def place_tab_reruns(tab_id: str, label: str, body: str, presses: str) -> str:
     title = _TABTITLE_OPEN.search(body)
     if title:
         end = body.find("</h2>", title.end())
+        slot = body.find(TABRE_SLOT, title.end(), end) if end >= 0 else -1
+        if slot >= 0:
+            return body[:slot] + presses + body[slot + len(TABRE_SLOT):]
         if end >= 0:
             return body[:end] + presses + body[end:]
     band = re.search(r'<div class="apiverdict\b[^>]*>', body)
