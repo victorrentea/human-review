@@ -127,8 +127,33 @@ to your open questions are in Q&A.md at the repository root: they are final, bui
 exactly and do not reopen them. This run is unattended: run every command in the \
 foreground and never end your turn waiting for anything. Commit the implementation; do \
 not push and do not open a pull request."
-claude_p() { env -u CLAUDE_CODE_SESSION_ID claude -p --model "$MODEL" \
-  --dangerously-skip-permissions --output-format json "$@"; }
+# Unattended, so nobody answers a permission prompt — but not --dangerously-skip-permissions:
+# edits are accepted, and Bash is held to the commands an implementation and its review need
+# in this checkout (build, test, the stacks, git, the issue), with the outward-reaching and
+# destructive ones denied outright. The same shape as rerun-review.py's `claude_argv`.
+# A budget cap per call. The prompt goes on stdin: the tool lists are variadic and would
+# swallow a positional prompt.
+ALLOWED=(Read Grep Glob Edit Write Skill Agent Task TodoWrite
+  "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)"
+  "Bash(git add:*)" "Bash(git commit:*)" "Bash(git rev-parse:*)" "Bash(git merge-base:*)"
+  "Bash(git ls-files:*)" "Bash(git blame:*)" "Bash(git restore:*)" "Bash(git mv:*)" "Bash(git rm:*)"
+  "Bash(mvn:*)" "Bash(./mvnw:*)" "Bash(npm:*)" "Bash(npx:*)" "Bash(node:*)"
+  "Bash(docker ps:*)" "Bash(docker logs:*)" "Bash(docker compose:*)"
+  "Bash(./start-docker.sh:*)" "Bash(./test-on-own-db.sh:*)" "Bash(./run-tests-with-tracing.sh:*)"
+  "Bash(python3:*)" "Bash(gh issue view:*)" "Bash(gh run:*)" "Bash(gh pr view:*)"
+  "Bash(curl -s http://localhost:*)" "Bash(curl -s http://127.0.0.1:*)"
+  "Bash(ls:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(wc:*)" "Bash(grep:*)"
+  "Bash(rg:*)" "Bash(find:*)" "Bash(sed -n:*)" "Bash(jq:*)" "Bash(sleep:*)" "Bash(cd:*)"
+  "Bash(mkdir:*)" "Bash(cp:*)" "Bash(mv:*)" "Bash(echo:*)" "Bash(test:*)" "Bash(diff:*)")
+DENIED=("Bash(git push:*)" "Bash(git reset:*)" "Bash(git checkout:*)" "Bash(git switch:*)"
+  "Bash(git stash:*)" "Bash(git rebase:*)" "Bash(git clean:*)" "Bash(gh pr create:*)"
+  "Bash(gh pr merge:*)" "Bash(rm -rf:*)" "Bash(sudo:*)" "Bash(pkill:*)" "Bash(killall:*)"
+  "Bash(docker rm:*)" "Bash(docker system:*)" "Bash(docker volume rm:*)")
+BUDGET=${SLOP_BUDGET_USD:-15}
+claude_p() { local prompt=$1; shift
+  printf '%s' "$prompt" | env -u CLAUDE_CODE_SESSION_ID claude -p --model "$MODEL" \
+    --permission-mode acceptEdits --output-format json --max-budget-usd "$BUDGET" \
+    --add-dir "$CO" "$@" --allowedTools "${ALLOWED[@]}" --disallowedTools "${DENIED[@]}"; }
 echo "+ (cd $CO && claude -p '<implement #$ISSUE, Q&A.md final>') > $LOG/implement.json"
 if [[ -n $DRY ]]; then SID=DRY-RUN; else
   (cd "$CO" && claude_p "$IMPL") > "$LOG/implement.json"
@@ -149,7 +174,7 @@ them is declined: it goes under Ignored, with a why: that cites the line it rest
 source: human, anchored on the code that carries it."
 echo "+ (cd $CO && claude -p --resume $SID '<record-review prompt + Q&A.md decline rule>') > $LOG/record-review.json"
 if [[ -z $DRY ]]; then
-  (cd "$CO" && claude_p --resume "$SID" "$RR") > "$LOG/record-review.json"
+  (cd "$CO" && claude_p "$RR" --resume "$SID") > "$LOG/record-review.json"
   git -C "$CO" log -1 --format=%s --grep='\[auto-fix\]' | grep -q . \
     || die "no [auto-fix] commit: the review was not recorded ($LOG/record-review.json)"
 fi
