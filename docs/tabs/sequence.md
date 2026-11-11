@@ -29,54 +29,31 @@
 
 ## What it needs
 
-- Tests tagged for tracing, and the project's traced test run named in `human-review.json`.
-- Somewhere for the traces to land. Best: `steps.sequence.app`, the block `video.app` is,
-  whose `up` builds the commit under review **with its own trace store** and whose `vars`
-  command prints every host-picked address as `NAME=value` lines; they are exported to the
-  commands, and `down` runs in a `finally`. Several branches can then be traced at once, each
-  into its own Tempo, from a freshly seeded database. `requires` (URLs or `tcp://host:port`,
-  `{NAME}` expanded from `vars`) is probed before any command runs — after `up` with an
-  `app`, before anything without one — and a miss is a skip naming what did not answer:
+**A Python service (Ludvig)** — nothing but its own pytest. The skill ships a pytest plugin,
+[`hr_genseq`](../../skills/human-review/scripts/genseq/hr_genseq.py), which the Sequence step
+puts on `PYTHONPATH`. While a traced test runs it records every call from one class (or
+module) of the service into another, and every call out of it — each boto3 operation, each
+SQL statement, each `requests` call — and writes the test's diagram, named after the test.
+It traces the tests marked `@pytest.mark.genseq`, and the ones `HR_GENSEQ_SELECT` names:
 
-  ```json
-  "sequence": {
-    "app": {
-      "up": "./start-docker.sh up --ref {sha} --name petclinic-{shortsha}-otel --otel --fresh",
-      "vars": "./start-docker.sh ports petclinic-{shortsha}-otel",
-      "down": "./start-docker.sh down petclinic-{shortsha}-otel"
-    },
-    "requires": [{"url": "{GRAFANA_URL}/api/health", "what": "Grafana"},
-                 {"url": "{OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces", "what": "OTLP collector"}],
-    "commands": ["cd petclinic-test && ./run-tests-with-tracing.sh"]
-  }
-  ```
+```json
+"sequence": {
+  "select": {"max": 6, "suites": {"pytest": {
+    "files": ["tests/**/test_*.py"], "exclude": ["tests/simulation/**", "tests/e2e/**"],
+    "item": "{path}::{name}", "join": "\n"}}},
+  "commands": [{"run": "HR_GENSEQ_SELECT={tests.pytest} pipenv run python -m pytest -p hr_genseq -q",
+                "when": "pytest"}]
+}
+```
 
-- The branch's own tests, untagged: `select` reads the test manifest, keeps the tests a
-  traced suite runs and that carry no tag, ranks them (the file with the most new tests
-  first, added before edited), lets the suites take turns up to `max` (default 6), and
-  expands `{tests.<suite>}` in the commands to the picks — each spelled by `item` (`{name}`
-  `{file}` `{path}` `{line}` `{class}`), joined by `join`, as one shell word. A command
-  written `{"run": …, "when": "<suite>"}` runs only when that suite picked something:
+`select` picks the tests this branch wrote or edited (the file with most new tests first, up
+to `max`) and `{tests.pytest}` hands them to the run; every other test is deselected, so the
+run costs what the traced tests cost. The drawings go to `.human-review/`, never into the
+repository. `HR_GENSEQ_ROOTS` (default `src,lambdas,backend,src_py`) says which folders are
+the service; `HR_GENSEQ_MAX` caps the arrows (120).
 
-  ```json
-  "select": {"max": 6, "suites": {
-    "e2e":  {"files": ["petclinic-test/src/**/*.feature"], "item": "{file}::{name}",
-             "join": "\n", "max": 4},
-    "java": {"files": ["petclinic-backend/src/test/java/**/*.java"],
-             "item": "{class}#{name}", "join": ",", "max": 2}}},
-  "commands": [
-    "cd petclinic-test && GENSEQ_SELECT={tests.e2e} ./run-tests-with-tracing.sh",
-    {"run": "cd petclinic-backend && GENSEQ_SELECT={tests.java} mvn -Pgenseq test -Dtest={tests.java}",
-     "when": "java"}]
-  ```
-
-  The project's runners decide how a named test is traced; petclinic's read `GENSEQ_SELECT`
-  beside the tag. What was picked and left is in `assets/sequence.selection.json`.
-- For the trace screenshot, a Grafana with the run's traces while the stack is up — the
-  `app`'s own `GRAFANA_URL` by default, or `"trace": {"grafana": …, "attribute":
-  "span.test.name"}` — and a span attribute carrying each test's name. Without them the
-  tab shows the skill's own example trace instead, so a bare Tempo (no Docker, no Grafana)
-  is enough for the whole tab; `"trace": false` turns the shot off.
+**Upstream's OpenTelemetry route** (a JVM app traced into Tempo, `steps.sequence.app`,
+`requires`, a Grafana shot) still works for a project that has one; see upstream's docs.
 
 ## Deeper
 

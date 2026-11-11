@@ -4971,20 +4971,14 @@ def test_the_tab_opens_on_how_its_pictures_were_made_shut_and_without_a_shot_sho
     summary = how[how.index("<summary>"):how.index("</summary>")]
     # Victor, 5 Oct 2026: one sentence, the fold's handle, reading without being opened —
     # and counting the tests the pictures came from. One pair here: singular.
-    assert summary == ('<summary><span class="seqhow-ans">These diagrams were captured from '
-                       '<a href="https://opentelemetry.io/" target="_blank" rel="noopener">'
-                       'OpenTelemetry</a> traces of 1 test.</span>'), summary
+    assert summary == ('<summary><span class="seqhow-ans">These diagrams were recorded while '
+                       '1 test ran.</span>'), summary
     assert "How were these captured?" not in out
     assert how.count("<li>") == 3, "three steps, no more"
-    assert "OpenTelemetry" in how and "<dfn>span</dfn>" in how and "<dfn>trace</dfn>" in how
-    # No machinery in it: the reviewer is busy, and the two words are what they lack.
-    assert not re.search(r"\.(sh|py|ts|json|puml)\b|run-tests|trace-shot", how)
-    # Victor, 29 Oct 2026: the picture shows what a trace is, so a run that shot none (no
-    # Grafana: a bare Tempo, no Docker) shows the skill's own example, copied beside the page.
-    assert "sequence.trace.png" not in out
-    assert '<img src="assets/sequence.trace-example.png"' in how
-    assert "An example of a trace" in how
-    assert (review / "assets/sequence.trace-example.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    assert "hr_genseq" in how and "AWS" in how and "SQL" in how
+    # Ludvig fork: a run with no trace shot of its own shows none — upstream's petclinic
+    # example pictured Grafana Tempo, a tool this run did not use.
+    assert "sequence.trace.png" not in out and "seqhow-shot" not in how
     assert weight == 1, "an explanation is not an exhibit"
 
 
@@ -4998,10 +4992,10 @@ def test_the_subtitle_counts_every_test_the_tab_draws_in_the_plural(tmp_path):
     pairs = out.count('<details class="testpair"')
     assert pairs == 2, pairs
     # Both diagrams name the same scenario line: one test, drawn twice, is still one test.
-    assert "OpenTelemetry</a> traces of 1 test." in _how(out)
+    assert "recorded while 1 test ran." in _how(out)
     (tmp_path / other).write_text(_seq_puml(feat, 9, "Another scenario"))
     out = build.render_testpairs(TESTPAIRS, {}, [], tmp_path, review)[0]
-    assert "OpenTelemetry</a> traces of 2 tests." in _how(out)
+    assert "recorded while 2 tests ran." in _how(out)
 
 
 def test_the_trace_closes_the_fold_full_size_and_names_the_pair_it_was_drawn_as(

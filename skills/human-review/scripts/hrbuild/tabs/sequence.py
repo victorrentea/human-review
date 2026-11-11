@@ -51,6 +51,7 @@ TEST_RUNNERS = (
     (".spec.js", "TypeScript", "a Playwright spec, in TypeScript"),
     (".java", "JUnit", "a JUnit test"),
     (".kt", "JUnit", "a JUnit test"),
+    (".py", "pytest", "a pytest test"),
 )
 
 #: A lifeline declaration in a generated sequence: `participant Browser`,
@@ -126,6 +127,12 @@ def _pair_cat(puml_rel: str, root: Path, authored: str | None = None) -> str | N
                 break
     if not lifelines:
         return None
+    if lifelines[0] == "Test":
+        # Drawn by the pytest plugin (`hr_genseq`): the test itself is the driver, so the
+        # picture cannot say which end it drove from. Its file can, by the Tests tab's own
+        # rule — an API Gateway event handed to a handler is API, tests/e2e/ is E2E.
+        from .tests import _cov_cat
+        return _cov_cat({"source": "pytest", "file": test_of_genseq(puml_rel, root)}, root)
     if len(lifelines) == 1:
         return "unit"
     return "e2e" if SEQ_UI_DRIVERS.search(lifelines[0]) else "api"
@@ -976,13 +983,13 @@ TRACE_EXAMPLE_SAID = ("An example of a trace, in Grafana Tempo: one test's reque
 # The fold's handle, and the whole subtitle: a <details> shows nothing outside its <summary>
 # while shut, and Victor wants it to say where the pictures come from — and how many tests
 # they cover — without a click. `{tests}` is counted at build time (`trace_how_html`).
-TRACE_ANSWER = ('These diagrams were captured from <a href="https://opentelemetry.io/" '
-                'target="_blank" rel="noopener">OpenTelemetry</a> traces of {tests}.')
+TRACE_ANSWER = "These diagrams were recorded while {tests} ran."
 TRACE_HOW = (
-    "The tests ran against the real app, with OpenTelemetry tracing switched on.",
-    "Each HTTP call and database query was recorded as a <dfn>span</dfn>: who called whom, "
-    "and for how long. The spans that one action set off form a <dfn>trace</dfn>.",
-    "Each test's traces were drawn as its diagram below.",
+    "Each test ran under pytest with this skill's <code>hr_genseq</code> plugin listening: the "
+    "tests this branch wrote or edited, and any marked <code>@pytest.mark.genseq</code>.",
+    "Every call from one class (or module) of the service into another was recorded, and every "
+    "call out of it: to AWS (each boto3 operation), the database (each SQL statement) and HTTP.",
+    "Each test's calls were drawn as its diagram below, repeats folded into ×N.",
 )
 
 
@@ -1000,7 +1007,9 @@ def _trace_shot_html(out_dir: Path, root: Path, shown: dict[str, str]) -> str:
     reader who wants it bigger gets the full-resolution file, not a thumbnail.
     With no shot of its own, the run gets `TRACE_EXAMPLE`, copied next to the page."""
     if not (Path(out_dir) / TRACE_SHOT).is_file():
-        return _trace_example_html(Path(out_dir))
+        # Ludvig fork: no trace store to shoot, and upstream's petclinic example would show a
+        # tool this run did not use.
+        return ""
     try:
         meta = json.loads((Path(out_dir) / TRACE_SHOT_META).read_text(encoding="utf-8"))
     except (OSError, ValueError):

@@ -630,7 +630,9 @@ def _sequence(ctx: Ctx):
     if gone:
         ctx.notes.append(f"restored {len(gone)} diagram file(s) a failed suite deleted "
                          "without regenerating; say in the guide that the suite could not run")
-    sh(f"{HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
+    # With the generated pairs the diagrams step left, or the delta it redraws here would
+    # lose the DB, Packages and Containers rows the Data and Structure tabs read.
+    sh(f"PUML_GENERATED={GENERATED_PUML} {HERE}/puml-diff.sh {ctx.base} {ART}/diagrams", ctx)
     if ctx.dry:
         return
     lost = lost_vs_committed(kept)
@@ -895,7 +897,11 @@ def _run_traced(ctx: Ctx, cfg: dict, commands, runs: list[dict],
         scratch = Path(tempfile.gettempdir()) / ("hr-sequence-report-" + hashlib.sha1(
             str(Path.cwd()).encode()).hexdigest()[:10])
         own_report = (f"export PLAYWRIGHT_HTML_OUTPUT_DIR={shlex.quote(str(scratch))} "
-                      "PLAYWRIGHT_HTML_OPEN=never; ")
+                      "PLAYWRIGHT_HTML_OPEN=never; "
+                      # A Python suite traces itself with this skill's pytest plugin
+                      # (`-p hr_genseq`); on the path, it needs installing nowhere.
+                      f"export PYTHONPATH={shlex.quote(str(HERE / 'genseq'))}"
+                      "${PYTHONPATH:+:$PYTHONPATH}; ")
         for cmd, expanded in traced_commands(commands, values or {}):
             t0 = time.monotonic()
             r = sh(app.command(own_report + expanded), ctx, check=False, capture=True)

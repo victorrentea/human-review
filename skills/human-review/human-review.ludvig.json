@@ -1,26 +1,65 @@
 {
   "_comment": "human-review.json for a Ludvig Python/Serverless service (shaped on activities-backend). Copy it to the repository root as human-review.json and adjust. Every step not named here either needs nothing (logging, complexity, tests, owners) or is postponed in the Ludvig fork (video, city, dsaudit).",
-
   "base": "origin/develop",
-
   "ci": {
     "_comment": "CircleCI reports to GitHub as commit statuses; name the jobs that prove the build. Never pushes unless push is true.",
-    "workflows": ["[DEV] Lint and Test"],
+    "workflows": [
+      "[DEV] Lint and Test"
+    ],
     "push": false
   },
-
-  "generated": ["Pipfile.lock", "package-lock.json", "src/alembic/versions/*.py"],
-
+  "generated": [
+    "Pipfile.lock",
+    "package-lock.json",
+    "src/alembic/versions/*.py"
+  ],
   "steps": {
     "logging": {
       "_comment": "Optional: the folders scanned. Default: src, lambdas, backend, src_py — whichever exist.",
-      "paths": ["src", "lambdas"]
+      "paths": [
+        "src",
+        "lambdas"
+      ]
     },
     "testcov": {
-      "sources": ["src/**", "lambdas/**"],
-      "exclude": ["src/alembic/**"],
+      "sources": [
+        "src/**",
+        "lambdas/**"
+      ],
+      "exclude": [
+        "src/alembic/**"
+      ],
       "pytest": [
-        {"label": "pytest", "python": "pipenv run python", "args": "-q -p no:cacheprovider"}
+        {
+          "label": "pytest",
+          "python": "pipenv run python",
+          "args": "-q -p no:cacheprovider"
+        }
+      ]
+    },
+    "sequence": {
+      "_comment": "Draws the tests this branch wrote or edited (and any marked @pytest.mark.genseq) as call sequences, with the skill's hr_genseq pytest plugin — the step puts it on PYTHONPATH.",
+      "select": {
+        "max": 6,
+        "suites": {
+          "pytest": {
+            "files": [
+              "tests/**/test_*.py"
+            ],
+            "exclude": [
+              "tests/simulation/**",
+              "tests/e2e/**"
+            ],
+            "item": "{path}::{name}",
+            "join": "\n"
+          }
+        }
+      },
+      "commands": [
+        {
+          "run": "HR_GENSEQ_SELECT={tests.pytest} pipenv run python -m pytest -p hr_genseq -q -p no:cacheprovider",
+          "when": "pytest"
+        }
       ]
     }
   }

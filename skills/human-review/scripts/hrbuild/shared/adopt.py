@@ -371,19 +371,15 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'sequence': {
         "move": 'details.seqhow',
         "li": [
-            'One per tagged or touched test: HTTP, SQL, cross-module calls; '
-            '<b>tx</b>: committed/rolled back.',
-            '<b>New</b>/<b>Old</b>: this branch\'s run, or the base\'s; <b>⇒ .puml</b>: the file the test writes.',
-            'Hover <b>⊕</b> for the SQL, JSON or request, click to keep it; <b>values</b> fills in each <b>?</b>.',
-            'A request\'s Bruno dog opens it in Bruno; off the server it copies it as cURL instead.',
-            'A blue call opens its method; a browser request opens the line that sent it, in that run.',
-            'Dot before the file name: the DB fixture the test starts on; grey = Default; none = empty.',
+            'One per test this branch wrote or edited, or marked <code>genseq</code>: what it called.',
+            'A lifeline per class of the service; Test drives; ×N folds a run of the same call.',
+            'Thin arrows leave the service: AWS (each boto3 call), DB (each SQL), HTTP.',
+            '<b>New</b>/<b>Old</b>: this branch&#39;s run, or the base&#39;s; <b>⇒ .puml</b>: the drawing.',
+            'Look for a call the change did not need, or a query inside a loop.',
         ],
-        "code": (
-            'GET /api/owners\n'
-            '  → OwnerRepository.findByLastNameStartingWith\n'
-            '  → select pets, select visits   <span class="p">per owner ← N+1</span>'
-        ),
+        "code": ('Test → caching : sqs_handler()\n'
+                 '  caching → events : parse_domain_event() ×4\n'
+                 '  caching ⇢ DB : SELECT activities   <span class="p">once per event?</span>'),
     },
     'city': {
         "li": [
