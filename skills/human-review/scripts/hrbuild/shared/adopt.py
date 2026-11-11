@@ -85,10 +85,13 @@ PIECES: dict[str, tuple[str, str]] = {
         "ConceptualModelDiagramTest.java, " + PETCLINIC + "src/test/java/victor/training/"
         "petclinic/guardrail/DeploymentDiagramTest.java, " + PETCLINIC + "src/test/java/"
         "victor/training/petclinic/guardrail/DrawioDiagram.java, scripts/drawio-diff.py"),
+    "diagram.containers": (
+        "the container view written from serverless*.yml — stacks, triggers, queues, tables — "
+        "diffed base against branch",
+        "scripts/structure-diagrams.py, scripts/puml-diff.sh, puml-diff/puml_diff.py"),
     "diagram.packages": (
-        "the package diagram, kept as PlantUML, enforced on the code by ArchUnit and "
-        "diffed base against branch", PETCLINIC + "src/test/java/victor/training/petclinic/"
-        "guardrail/PackagesArchTest.java, scripts/puml-diff.sh, puml-diff/puml_diff.py"),
+        "the package diagram written from the Python imports, diffed base against branch",
+        "scripts/structure-diagrams.py, scripts/puml-diff.sh, puml-diff/puml_diff.py"),
     "diagram.frontend": (
         "the frontend's folders and who imports whom, kept as PlantUML, enforced on the "
         "code by a node:test that reads every import, and diffed base against branch",
@@ -295,15 +298,22 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'diagram.packages': {
         "li": [
-            'The packages and their dependencies.',
-            '<a href="https://www.archunit.org/" target="_blank" rel="noopener noreferrer">'
-            'ArchUnit</a>, a test library, fails the build on an import the drawing lacks.',
+            'The service&#39;s Python packages, one level under each root, and who imports whom.',
+            'Written from the imports at the base and on this branch, then diffed.',
             'A new arrow is new coupling: ask why.',
-            '<b>Blue fill</b> = a box\'s share of the lines added; hover it for the changed files.',
+            '<b>Blue fill</b> = a box&#39;s share of the lines added; hover it for the changed files.',
             '<b>Dimmed box</b>: nothing in it changed; <b>Impacted</b> hides those and their arrows.',
-            '<b>✓ ArchUnit-tested vs code</b> after the title: click it to open that test.',
         ],
-        "ex": 'e.g. <code>..domain</code> → <code>..rest</code>: not drawn, so a test fails.',
+        "ex": 'e.g. <code>src.domain</code> → <code>src.handlers</code>: the domain reaching up.',
+    },
+    'diagram.containers': {
+        "li": [
+            'What serverless*.yml deploys: a box per stack, its functions, queues, buses, tables.',
+            'An arrow is a trigger: a queue, bus or schedule (with its rate) into a function.',
+            'Outside every box: what a stack imports from another stack, or AWS&#39;s own.',
+            'A new queue, trigger or DLQ is new infrastructure: check alarms and IAM came with it.',
+        ],
+        "ex": 'e.g. <code>RpaIntegrationQueue</code> → <code>rpaIntegration</code>, and its DLQ.',
     },
     'diagram.frontend': {
         "li": [
@@ -449,6 +459,7 @@ DIAGRAM_KINDS = (
     ("diagram.drawio", re.compile(r"\.drawio\b", re.I)),
     ("diagram.domain", re.compile(r"domain\s*model", re.I)),
     ("diagram.db", re.compile(r"\bDB\b|\bERD\b|\bschema\b", re.I)),
+    ("diagram.containers", re.compile(r"\bContainers\b")),
     ("diagram.c2", re.compile(r"\bC2\b", re.I)),
     ("diagram.frontend", re.compile(r"\bfrontend\b", re.I)),
     ("diagram.modules", re.compile(r"modules?\b", re.I)),  # also MavenModules.puml, any title

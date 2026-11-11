@@ -20,8 +20,18 @@
 
 ## What it needs
 
-- `plantuml`, and the architecture `.puml` files your project generates. The container
-  view needs the Sequence tab's recorded diagrams.
+- `plantuml`. For a Python Serverless service nothing else:
+  [`structure-diagrams.py`](../../skills/human-review/scripts/structure-diagrams.py) writes
+  both pictures at the merge-base and on the branch, and they are diffed like a committed
+  diagram —
+  - **Packages**: the Python packages one level under each source root (`src.core`,
+    `lambdas.consumers`…) and an arrow per import between them, each box linked to its
+    folder and filled by its share of the lines the branch added;
+  - **Containers**: what the `serverless*.yml` files deploy — a box per stack with its HTTP
+    API, its triggered functions, queues, buses and tables, what it imports from other
+    stacks outside it — and an arrow per trigger (a schedule's carries its rate), dead-letter
+    queue and EventBridge rule.
+- Any `.puml` the project commits is diffed as well.
 
 ## Deeper
 

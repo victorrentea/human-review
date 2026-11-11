@@ -325,6 +325,9 @@ class _Ctx:
 def _composed(monkeypatch, drawio):
     ctx = _Ctx(drawio)
     monkeypatch.setattr(rs, "sh", lambda cmd, c, **kw: c.ran.append(cmd))
+    # The generated pairs (DB, Packages, Containers) are another test's subject; run here
+    # they would draw the skill's own checkout.
+    monkeypatch.setattr(rs, "generated_diagrams", lambda c: [])
     rs._diagrams(ctx)
     return [c for c in ctx.ran if "drawio-diff.py" in c], ctx
 

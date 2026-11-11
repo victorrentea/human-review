@@ -489,6 +489,15 @@ def generated_diagrams(ctx: "Ctx") -> list[str]:
         made.append("DB (from the SQLAlchemy models)")
     else:
         (out / "DB.puml").unlink(missing_ok=True)
+    # The Structure tab's Packages and Containers, from the Python imports and the
+    # serverless*.yml files.
+    head = subprocess.run([sys.executable, str(HERE / "structure-diagrams.py"), "--out-dir",
+                           str(out)], capture_output=True, text=True)
+    if head.returncode == 0:
+        subprocess.run([sys.executable, str(HERE / "structure-diagrams.py"), "--base", ctx.base,
+                        "--out-dir", str(out), "--suffix", ".base"], capture_output=True, text=True)
+        made += [n for n in ("Packages (from the imports)", "Containers (from serverless*.yml)")
+                 if (out / f"{n.split()[0]}.puml").is_file()]
     return made
 
 
@@ -2289,8 +2298,10 @@ STEP_INPUTS = {
                      "reads": ("review-commits.json",),
                      "tools": (),
                      "outputs": ("aftermath.json",)},
-    "diagrams":     {"paths": ("*.puml", "*.drawio", "*.drawio.png", "*.drawio.svg", "*.py"),
+    "diagrams":     {"paths": ("*.puml", "*.drawio", "*.drawio.png", "*.drawio.svg", "*.py",
+                               "serverless*.yml"),
                      "tools": ("puml-diff.sh", "drawio-diff.py", "sqlalchemy-erd.py",
+                               "structure-diagrams.py",
                                "../puml-diff/puml_diff.py", "../puml-diff/seq_puml_diff.py"),
                      "outputs": ("assets/diagrams",)},
     "migrations":   {"paths": ("*/versions/*.py", "*.py"),
