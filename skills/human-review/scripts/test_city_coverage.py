@@ -38,7 +38,7 @@ def _root(tmp_path: Path) -> Path:
     """Two JVM test classes: one through the HTTP layer (API), one not (unit)."""
     t = tmp_path / "be/src/test/java/a"
     t.mkdir(parents=True)
-    (t / "OwnerApiTest.java").write_text("class OwnerApiTest { MockMvc mvc; }\n")
+    (t / "OwnerApiTest.java").write_text("event = {\"httpMethod\": \"GET\"}\n")
     (t / "OwnerTest.java").write_text("class OwnerTest { }\n")
     return tmp_path
 

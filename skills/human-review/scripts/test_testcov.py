@@ -471,3 +471,68 @@ def test_the_traces_step_takes_the_same_lock(tmp_path, monkeypatch):
     # flock is per open file description: a second open in the same process conflicts.
     rs._traces(rs.Ctx("main", {}, False))
     assert seen == ["held"]
+
+
+# ---------------------------------------------------------------- pytest (the Ludvig fork)
+
+def _py_project(tmp_path):
+    """A tiny service and its tests in a real git repo: a changed function, a changed
+    signature, a module-level constant and a docstring."""
+    import subprocess
+    root = tmp_path / "svc"
+    (root / "src").mkdir(parents=True)
+    (root / "tests").mkdir()
+    (root / "src" / "__init__.py").write_text("")
+    (root / "tests" / "__init__.py").write_text("")
+    run = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True)
+    run("init", "-q")
+    run("config", "user.email", "t@t")
+    run("config", "user.name", "t")
+    (root / "src" / "calc.py").write_text("def add(a, b):\n    return a + b\n")
+    (root / "tests" / "test_calc.py").write_text(
+        "import pytest\nfrom src.calc import add, Box\n\n\n"
+        "def test_add():\n    assert add(1, 2) == 3\n\n\n"
+        "class TestBox:\n    @pytest.mark.parametrize('n', [1, 2])\n"
+        "    def test_size(self, n):\n        assert Box().size() == 0\n\n\n"
+        "def test_fails():\n    assert add(1, 1) == 3\n")
+    run("add", "-A")
+    run("commit", "-qm", "base")
+    run("tag", "base")
+    (root / "src" / "calc.py").write_text(
+        "LIMIT = 10\n\n\ndef add(a, b,\n        c=0):\n    \"\"\"Sum.\"\"\"\n    return a + b + c\n\n\n"
+        "class Box:\n    def size(self):\n        return 0\n")
+    run("commit", "-qam", "change")
+    return root
+
+
+def test_a_pytest_suite_is_measured_per_test_and_joined_to_the_change(tmp_path, monkeypatch):
+    root = _py_project(tmp_path)
+    (root / "human-review.json").write_text(json.dumps({"steps": {"testcov": {
+        "sources": ["src/**"],
+        "pytest": [{"label": "pytest", "python": sys.executable, "args": "-q -p no:cacheprovider"}],
+    }}}))
+    monkeypatch.chdir(root)
+    monkeypatch.setattr(tc, "WORK", Path(".human-review/coverage"))
+    assert tc.main(["--base", "base", "--out", ".human-review/assets/test-coverage.json"]) == 0
+    doc = json.loads((root / ".human-review/assets/test-coverage.json").read_text())
+    assert doc["changed"] == {"src/calc.py": [1, 4, 5, 6, 7, 10, 11, 12]}
+    rows = {t["id"]: t for t in doc["tests"]}
+    assert set(rows) == {"tests/test_calc.py::test_add", "tests/test_calc.py::TestBox::test_size[1]",
+                         "tests/test_calc.py::TestBox::test_size[2]", "tests/test_calc.py::test_fails"}
+    add = rows["tests/test_calc.py::test_add"]
+    assert (add["status"], add["source"], add["line"]) == ("passed", "pytest", 5)
+    # The body ran under the test, and the changed header — signature and docstring — is
+    # charged to it with it.
+    assert add["hits"]["src/calc.py"] == [4, 5, 6, 7]
+    assert rows["tests/test_calc.py::test_fails"]["status"] == "failed"
+    assert rows["tests/test_calc.py::TestBox::test_size[1]"]["hits"]["src/calc.py"] == [11, 12]
+    why = {g["reason"]: g["lines"] for g in doc["unmeasurable"]}
+    assert why == {tc.IMPORT_TIME: [1, 10]}
+    [suite] = doc["suites"]
+    assert (suite["source"], suite["status"], suite["tests"]) == ("pytest", "ran", 4)
+    assert "1 failed" in suite["note"]
+
+
+def test_a_python_header_line_runs_as_its_body_runs():
+    src = ["@cache", "def f(a,", "      b):", '    """doc."""', "    return a"]
+    assert tc.python_owners(src) == {1: 5, 2: 5, 3: 5, 4: 5}

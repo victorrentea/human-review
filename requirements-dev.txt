@@ -9,6 +9,8 @@ pygments
 pyyaml
 pillow
 numpy
+# testcov's pytest runner is tested against a real per-test coverage run
+coverage
 
 # NOT here on purpose: `playwright`. Both places that use it (ds-audit's screen capture,
 # shoot-review) import it inside the function that needs a browser, and no test drives

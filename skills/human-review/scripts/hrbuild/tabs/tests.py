@@ -937,8 +937,13 @@ def _cov_part(root: Path, file: str, line: int, text: str | None = None,
 
 
 #: Which of the card's three kinds a measured test is. A browser run is UI; Karma is a
-#: component in isolation; a backend test is API when it goes through the HTTP layer.
-_API_MARKERS = re.compile(r"MockMvc|TestRestTemplate|RestAssured|WebTestClient")
+#: component in isolation; a backend test is API when it goes through the HTTP layer —
+#: at Ludvig, when it hands a Lambda handler an API Gateway event (`httpMethod`,
+#: `pathParameters`, …) or drives an ASGI/HTTP test client.
+_API_MARKERS = re.compile(r"\b(?:httpMethod|pathParameters|queryStringParameters|requestContext|"
+                          r"APIGatewayProxyEvent|APIGatewayRestResolver|TestClient)\b")
+#: A Ludvig service's end-to-end tests live under `tests/e2e/`.
+_E2E_DIR = re.compile(r"(?:^|/)e2e/")
 
 
 def _cov_cat(r: dict, root: Path) -> str:
@@ -950,6 +955,8 @@ def _cov_cat(r: dict, root: Path) -> str:
     if (r.get("suite") or "").endswith("Cucumber"):
         return "api"
     file = r.get("file") or ""
+    if src == "pytest" and _E2E_DIR.search(file):
+        return "e2e"
     if file.endswith(".feature"):
         # A Gherkin scenario is never one isolated component. With no run to say which
         # suite took it, its place does: JVM Cucumber under `src/test/` drives the API

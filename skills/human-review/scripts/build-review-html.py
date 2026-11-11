@@ -320,7 +320,7 @@ from hrbuild.tabs.tests import (
     COV_NOT_MEASURED, load_coverage, coverage_join, model_pairing, coverage_side, _model_key,
     TEMPLATE_UNSEEN, _rendered_templates,
     _cov_ranges, _snippet_module, COV_PART_MAX, _GHERKIN_NEXT, _cov_part,
-    _API_MARKERS, _cov_cat, coverage_tests, coverage_after, _load_test_changes, suite_chips
+    _API_MARKERS, _E2E_DIR, _cov_cat, coverage_tests, coverage_after, _load_test_changes, suite_chips
 )
 from hrbuild.tabs.demo import (
     VOICE_TIPS, voice_films, voice_switch, embed_html, VERDICT_FACE, video_html, VIDEO_VERDICT,

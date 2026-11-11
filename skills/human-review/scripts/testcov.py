@@ -243,6 +243,8 @@ def classify(path: str, src: list[str], lines: list[int], executable: set[int],
     if not lines:
         return []
     ext = Path(path).suffix.lower()
+    if ext == ".py":
+        return classify_python(path, src, lines, executable, init)
     java = ext in (".java", ".kt")
     if not executable and not java:
         why = {".sql": "SQL — runs inside the database, where no probe looks",
@@ -285,6 +287,58 @@ def classify(path: str, src: list[str], lines: list[int], executable: set[int],
                 proxy = sites or None
                 if not sites:
                     reason = "no body of its own, and nothing that runs calls it"
+        key = (reason, json.dumps(proxy, sort_keys=True))
+        g = groups.setdefault(key, {"file": path, "lines": [], "reason": reason,
+                                    **({"proxy": proxy} if proxy else {})})
+        g["lines"].append(ln)
+    return list(groups.values())
+
+
+IMPORT_TIME = "runs when the module is imported — charged to no test"
+
+
+def python_owners(src: list[str]) -> dict[int, int]:
+    """`{line: first body line}` for every line of a `def`'s header — its decorators, the
+    `def` and a signature spread over several lines. A changed header line runs as its body
+    runs (`fold_signature`), the way a Java signature does."""
+    import ast
+    try:
+        tree = ast.parse("\n".join(src))
+    except SyntaxError:
+        return {}
+    out: dict[int, int] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
+            first = node.body[0]
+            # A docstring is not a line that runs; the body starts after it.
+            if isinstance(first, ast.Expr) and isinstance(getattr(first, "value", None), ast.Constant) \
+                    and isinstance(first.value.value, str) and len(node.body) > 1:
+                first = node.body[1]
+            start = min([node.lineno] + [d.lineno for d in node.decorator_list])
+            for ln in range(start, first.lineno):
+                out.setdefault(ln, first.lineno)
+    return out
+
+
+def classify_python(path: str, src: list[str], lines: list[int], executable: set[int],
+                    init: set[int] | frozenset = frozenset()) -> list[dict]:
+    """The changed lines of a Python module that no test is seen to run, grouped by why: a
+    function's header (runs as its body runs), a line run only at import (a module-level
+    assignment, a `class` line, a decorator call), or a line with no code of its own (a
+    docstring, a line inside a multi-line expression)."""
+    owners = python_owners(src)
+    groups: dict[tuple, dict] = {}
+    for ln in lines:
+        proxy = None
+        body = owners.get(ln)
+        if body is not None:
+            body = next((n for n in range(body, body + 40) if n in executable), None)
+        if body is not None:
+            reason, proxy = SIGNATURE, {path: [body]}
+        elif ln in init:
+            reason = IMPORT_TIME
+        else:
+            reason = "no code of its own — a docstring, or a line of a longer statement"
         key = (reason, json.dumps(proxy, sort_keys=True))
         g = groups.setdefault(key, {"file": path, "lines": [], "reason": reason,
                                     **({"proxy": proxy} if proxy else {})})
@@ -597,6 +651,122 @@ def karma_suites(cfg: list[dict], repo: Repo,
     return tests, suites, executable
 
 
+#: coverage.py's settings for a per-test run, written fresh each time beside its data.
+#: `test_function` names every line's context after the test that ran it
+#: (`tests.core.test_x.TestK.test_m`); lines run at import carry the empty context.
+PYTEST_RC = """[run]
+dynamic_context = test_function
+relative_files = True
+data_file = {data}
+source = .
+omit =
+    tests/*
+    */tests/*
+    test_*.py
+    */test_*.py
+    conftest.py
+    */conftest.py
+    .venv/*
+    */site-packages/*
+"""
+
+
+def pytest_tests(xml: Path, contexts: dict[str, dict[str, list[int]]], label: str) -> list[dict]:
+    """One row per `<testcase>` of a pytest JUnit report (xunit1: it carries `file` and
+    `line`), its hits the lines run under its test function's context — shared by the
+    parameters of one parametrised test, which coverage does not tell apart."""
+    import xml.etree.ElementTree as ET
+    out = []
+    try:
+        root = ET.parse(xml).getroot()
+    except (OSError, ET.ParseError):
+        return out
+    for tc in root.iter("testcase"):
+        cls, name = tc.get("classname") or "", tc.get("name") or ""
+        status = "passed"
+        if tc.find("failure") is not None or tc.find("error") is not None:
+            status = "failed"
+        elif tc.find("skipped") is not None:
+            status = "skipped"
+        file = tc.get("file")
+        line = int(tc.get("line")) + 1 if (tc.get("line") or "").isdigit() else None
+        # `tests.core.test_x.TestK` -> the part after the module is the class path.
+        mod = Path(file).with_suffix("").as_posix().replace("/", ".") if file else ""
+        classes = cls[len(mod) + 1:].split(".") if mod and cls.startswith(mod + ".") else []
+        func = name.split("[", 1)[0]
+        test_id = "::".join([file or cls, *classes, name])
+        out.append({"id": test_id, "suite": label, "title": name, "file": file, "line": line,
+                    "status": status, "source": "pytest",
+                    "hits": contexts.get(f"{cls}.{func}", {})})
+    return out
+
+
+def pytest_suites(cfg: list[dict], repo: Repo, init: dict, reuse: bool = False,
+                  in_scope_fn=lambda p: True) -> tuple[list[dict], list[dict], dict]:
+    """Each configured pytest run, once, under coverage.py with per-test contexts.
+
+    `steps.testcov.pytest` is a list of `{label, python, args, cwd}`: `python` is how to
+    reach the service's own interpreter (`pipenv run python`, a venv's `bin/python`) — the
+    suite runs in the service's environment, never this skill's. It needs `coverage`
+    there (pytest-cov brings it). Lines run only at import go to `init`, charged to no
+    test."""
+    tests, suites, executable = [], [], {}
+    for i, run in enumerate(cfg):
+        label = run.get("label", "pytest")
+        cwd = (repo.root / run.get("cwd", ".")).resolve()
+        work = WORK.resolve()
+        data, rc_file = work / f"pytest-{i}.coverage", work / f"pytest-{i}.coveragerc"
+        xml, js = work / f"pytest-{i}.xml", work / f"pytest-{i}.json"
+        py = run.get("python") or "python3"
+        t0 = time.monotonic()
+        rc = 0
+        if not reuse:
+            for f in (data, xml, js):
+                f.unlink(missing_ok=True)
+            rc_file.write_text(PYTEST_RC.format(data=data), encoding="utf-8")
+            rc = run_logged(f"{py} -m coverage run --rcfile={shlex.quote(str(rc_file))} -m pytest "
+                            f"{run.get('args', '-q -p no:cacheprovider')} -o junit_family=xunit1 "
+                            f"--junitxml={shlex.quote(str(xml))}",
+                            cwd, WORK / f"pytest-{i}.log")
+            run_logged(f"{py} -m coverage json --rcfile={shlex.quote(str(rc_file))} "
+                       f"--show-contexts -q -o {shlex.quote(str(js))}", cwd,
+                       WORK / f"pytest-{i}.json.log")
+        if not js.is_file():
+            suites.append({"name": label, "source": "pytest", "status": "failed", "tests": 0,
+                           "seconds": round(time.monotonic() - t0, 1),
+                           "note": f"exit {rc} and no per-test coverage — see {WORK}/pytest-{i}.log"})
+            continue
+        doc = json.loads(js.read_text(encoding="utf-8"))
+        contexts: dict[str, dict[str, list[int]]] = {}
+        prefix = cwd.relative_to(repo.root.resolve()).as_posix()
+        for f, v in (doc.get("files") or {}).items():
+            path = f if prefix in ("", ".") else f"{prefix}/{f}"
+            if not in_scope_fn(path):
+                continue
+            ran = set(v.get("executed_lines") or []) | set(v.get("missing_lines") or [])
+            at_import = set()
+            for ln, ctxs in (v.get("contexts") or {}).items():
+                named = [c for c in ctxs if c]
+                if not named:
+                    at_import.add(int(ln))
+                for c in named:
+                    contexts.setdefault(c, {}).setdefault(path, []).append(int(ln))
+            if at_import:
+                init.setdefault(path, set()).update(at_import)
+            executable.setdefault(path, set()).update(ran - at_import)
+        for hits in contexts.values():
+            for p in hits:
+                hits[p] = sorted(set(hits[p]))
+        rows = pytest_tests(xml, contexts, label)
+        tests.extend(rows)
+        failed = sum(1 for t in rows if t["status"] == "failed")
+        suites.append({"name": label, "source": "pytest", "status": "ran", "tests": len(rows),
+                       "seconds": round(time.monotonic() - t0, 1),
+                       "note": (f"{failed} failed — " if failed else "")
+                       + (f"exit {rc}, see {WORK}/pytest-{i}.log" if rc else "")})
+    return tests, suites, executable
+
+
 def e2e_suites(cfg: dict, repo: Repo, tools: dict | None, head: str,
                node_modules: list[str], init: dict) -> tuple[list[dict], list[dict], dict]:
     tests, suites, executable = [], [], {}
@@ -706,7 +876,7 @@ def main(argv=None) -> int:
     ap.add_argument("--base", default="origin/main")
     ap.add_argument("--config", default="human-review.json")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
-    ap.add_argument("--only", help="comma-separated: junit,karma,e2e")
+    ap.add_argument("--only", help="comma-separated: pytest,junit,karma,e2e")
     ap.add_argument("--reuse", action="store_true",
                     help="run no suite; re-read what the last run left in .human-review/coverage")
     args = ap.parse_args(argv)
@@ -721,7 +891,7 @@ def main(argv=None) -> int:
     if not cfg:
         log("steps.testcov is not configured in human-review.json — nothing to measure")
         return 3
-    only = set(args.only.split(",")) if args.only else {"junit", "karma", "e2e"}
+    only = set(args.only.split(",")) if args.only else {"pytest", "junit", "karma", "e2e"}
     repo = Repo(root)
     head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     mb = subprocess.run(["git", "merge-base", args.base, "HEAD"], capture_output=True,
@@ -755,6 +925,10 @@ def main(argv=None) -> int:
         for k, v in ex.items():
             executable.setdefault(k, set()).update(v)
 
+    if cfg.get("pytest") and "pytest" in only:
+        WORK.mkdir(parents=True, exist_ok=True)
+        merge(pytest_suites(cfg["pytest"], repo, init, args.reuse,
+                            lambda p: in_scope(p, sources, exclude)))
     if cfg.get("junit") and "junit" in only:
         if tools:
             merge(junit_suites(cfg["junit"], repo, tools, init, args.reuse))

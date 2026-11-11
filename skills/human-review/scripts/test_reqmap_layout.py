@@ -336,7 +336,7 @@ def test_a_row_of_the_rest_of_the_run_keeps_every_column_and_opens_nothing():
 
 def test_the_inventory_is_every_test_that_ran_minus_the_card(tmp_path):
     (tmp_path / "src").mkdir()
-    (tmp_path / "src/OwnerTest.java").write_text("class OwnerTest { MockMvc mvc; }")
+    (tmp_path / "src/OwnerTest.java").write_text("event = {\"httpMethod\": \"GET\"}")
     frag = ('<script type="application/json" class="rm-data">'
             '{"tests":{"src/OwnerTest.java:10":{},"gone.java:3@base":{}}}</script>')
     doc = {"tests": [

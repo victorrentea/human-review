@@ -26,6 +26,20 @@
 
 - Your project's test commands in `human-review.json`; Playwright with `--trace on` for the
   recordings. The matching of tests to sentences is the one part a model writes.
+- **Per-test coverage of a Python service** (`steps.testcov.pytest`): the service's own
+  pytest, run once under coverage.py with per-test contexts, in the service's environment
+  — it needs `coverage` there (pytest-cov brings it):
+
+  ```json
+  "testcov": {
+    "sources": ["src/**", "lambdas/**"], "exclude": ["src/alembic/**"],
+    "pytest": [{"label": "pytest", "python": "pipenv run python", "args": "-q -p no:cacheprovider"}]
+  }
+  ```
+
+  A test that hands a handler an API Gateway event counts as **API**, one under
+  `tests/e2e/` as **E2E**, the rest as **Unit**. A changed `def` line counts as run when
+  its body runs; a line run only at import is charged to no test, and says so.
 
 ## Deeper
 
