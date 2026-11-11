@@ -105,36 +105,10 @@ REPOSITORY = """interface VetRepository {
 }""".splitlines()
 
 
-def test_an_annotation_stands_in_for_its_methods_body():
-    got = tc.classify("app/VetRestController.java", CONTROLLER, [4], {6}, lambda n: {})
-    assert got == [{"file": "app/VetRestController.java", "lines": [4],
-                    "reason": "annotation — runs as its method runs",
-                    "proxy": {"app/VetRestController.java": [6]}}]
 
 
-def test_a_method_signature_folds_into_its_body():
-    got = tc.classify("app/VetRestController.java", CONTROLLER, [5], {6}, lambda n: {})
-    assert got[0]["reason"] == tc.SIGNATURE
-    tests = [{"hits": {"app/VetRestController.java": [6]}}, {"hits": {}}]
-    ex = {"app/VetRestController.java": {6}}
-    tc.fold_signature(got[0], ex, tests)
-    assert ex["app/VetRestController.java"] == {5, 6}
-    assert tests[0]["hits"]["app/VetRestController.java"] == [5, 6]
-    assert tests[1]["hits"] == {}
 
 
-def test_a_repository_query_stands_in_as_its_call_sites():
-    asked = []
-
-    def callers(name):
-        asked.append(name)
-        return {"app/OwnerRestController.java": [209]}
-    got = tc.classify("app/VetRepository.java", REPOSITORY, [2, 3, 5], set(), callers)
-    assert asked and set(asked) == {"findByIdWithoutSpecialties"}
-    assert len(got) == 1
-    assert got[0]["lines"] == [2, 3, 5]
-    assert got[0]["proxy"] == {"app/OwnerRestController.java": [209]}
-    assert "called" in got[0]["reason"]
 
 
 def test_a_field_has_no_proxy_and_sql_has_no_probe():
@@ -146,10 +120,6 @@ def test_a_field_has_no_proxy_and_sql_has_no_probe():
                     "reason": "SQL — runs inside the database, where no probe looks"}]
 
 
-def test_a_line_only_a_constructor_runs_is_said_to_be_one():
-    got = tc.classify("app/VetRestController.java", CONTROLLER, [2], {6}, lambda n: {},
-                      init={2})
-    assert got[0]["reason"].startswith("runs while the object is built")
 
 
 def test_the_repo_finds_a_source_by_its_package_suffix(tmp_path, monkeypatch):

@@ -9,15 +9,14 @@ different questions with different answers. This is the program that asks the se
 
 It runs each suite once with a per-test coverage hook — nothing in the project changes:
 
-  * **JUnit** (`steps.testcov.junit`): a JUnit Platform listener this skill ships, put on
-    the test classpath from the command line, dumps and resets JaCoCo's counters around
-    every test. The project's own JaCoCo agent does the measuring (`prepare-agent`);
+  * **pytest** (`steps.testcov.pytest`): the service's own suite, in its own environment,
+    under coverage.py with per-test contexts (`pytest_suites`);
   * **Karma** (`steps.testcov.karma`): a Karma config this skill ships loads the project's
     own and adds a framework + reporter that snapshot Istanbul's counters around every spec;
   * **browser suites** (`steps.testcov.e2e`): not run from here. They already ran, traced,
     for the Tests tab's recordings (`city.tests`, `traces.commands`); run with COVERAGE_DIR
-    set, the project's fixtures leave per-test Chromium coverage and per-test JaCoCo dumps
-    of a backend started under the agent. This harvests what they left, and refuses what a
+    set, the project's fixtures leave per-test Chromium coverage. This harvests what they
+    left, and refuses what a
     run of another commit left.
 
 Writes `.human-review/assets/test-coverage.json`:
@@ -40,7 +39,7 @@ the join with the diff is redone by the page at every build, so a rebuild is fre
 
 Usage:
   testcov.py --base origin/main [--config human-review.json]
-             [--out .human-review/assets/test-coverage.json] [--only junit,karma,e2e]
+             [--out .human-review/assets/test-coverage.json] [--only pytest,karma,e2e]
              [--reuse]
 
 `--reuse` runs no suite: it re-reads what the last run left in `.human-review/coverage/`
@@ -55,16 +54,13 @@ from __future__ import annotations
 
 import argparse
 import fcntl
-import hashlib
 import json
 import os
 import re
 import shlex
-import shutil
 import subprocess
 import sys
 import time
-import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -73,11 +69,6 @@ WORK = Path(".human-review/coverage")
 DEFAULT_OUT = Path(".human-review/assets/test-coverage.json")
 CACHE = Path(os.environ.get("HR_TESTCOV_CACHE")
              or Path.home() / ".cache" / "human-review" / "testcov")
-M2 = Path(os.environ.get("MAVEN_REPO") or Path.home() / ".m2" / "repository")
-
-ENGINES = {"junit-jupiter": "JUnit", "cucumber": "Cucumber", "junit-vintage": "JUnit 4",
-           "testng": "TestNG", "spock": "Spock", "archunit": "ArchUnit"}
-STATUS = {"SUCCESSFUL": "passed", "FAILED": "failed", "ABORTED": "skipped"}
 
 
 #: The open lock file of this process's measurement (`hold_measuring_lock`); released when
@@ -197,101 +188,28 @@ def parse_diff(text: str) -> dict[str, list[int]]:
 # ------------------------------------------------------------------------ what cannot run
 
 SIGNATURE = "signature — runs as its body runs"
-DECL = re.compile(r"^\s*(?!(?:return|new|throw|if|for|while|switch|catch|else)\b)"
-                  r"(?:[\w<>\[\],.?@]+\s+)*?(\w+)\s*\(")
-ANNOT = re.compile(r"^\s*@\w")
-
-
-def owner_declaration(src: list[str], line: int, lookahead: int = 25) -> int | None:
-    """The line of the method a non-executable changed line belongs to — itself, when it is
-    the declaration; the declaration under it, when it is an annotation or a line inside one
-    (a `@Query` whose text block spans five lines). None for a field or a class
-    line, which have no method to stand in for them."""
-    start = line
-    for k in range(line - 1, max(0, line - 16) - 1, -1):      # the annotation it sits in
-        t = src[k]
-        if ANNOT.match(t):
-            start = k + 1
-            break
-        if k < line - 1 and t.rstrip().endswith((";", "{", "}")):
-            break
-    depth, block = 0, False
-    for i in range(start - 1, min(len(src), start - 1 + lookahead)):
-        t = src[i]
-        inside = block or depth > 0
-        if inside or ANNOT.match(t) or re.match(r'^\s*("|\+|\))', t):
-            depth += t.count("(") - t.count(")")
-            if t.count('"""') % 2:
-                block = not block
-            continue
-        if DECL.match(t) and not t.strip().startswith(("//", "*")):
-            return i + 1
-        if i > start - 1 or ";" in t or "=" in t:
-            return None
-    return None
 
 
 def classify(path: str, src: list[str], lines: list[int], executable: set[int],
-             callers, init: set[int] | frozenset = frozenset()) -> list[dict]:
-    """The changed lines of `path` that no probe sees run, grouped by why.
-
-    `callers(name)` returns `{file: [lines]}` of executable call sites of a method name,
-    and is only asked for a Java method with no body of its own (a Spring Data repository
-    method, an interface's declaration): the only thing that runs "because of" such a line
-    is the code that calls it. `init` are the lines only a constructor runs, which no test
-    is charged for (see TestcovAnalyze)."""
+             callers=None, init: set[int] | frozenset = frozenset()) -> list[dict]:
+    """The changed lines of `path` that no probe sees run, grouped by why: a Python module's
+    by `classify_python`, anything else by what kind of file it is."""
     if not lines:
         return []
     ext = Path(path).suffix.lower()
     if ext == ".py":
         return classify_python(path, src, lines, executable, init)
-    java = ext in (".java", ".kt")
-    if not executable and not java:
+    if not executable:
         why = {".sql": "SQL — runs inside the database, where no probe looks",
                ".html": "template — no browser run mapped it",
                ".ts": "types — erased when compiled",
-               ".java": "no bytecode on these lines",
                ".properties": "configuration", ".yml": "configuration",
                ".yaml": "configuration", ".xml": "configuration",
                ".json": "configuration"}.get(ext, "no probe for this kind of file")
         return [{"file": path, "lines": lines, "reason": why}]
-    if not java:
-        why = "types — erased when compiled" if ext == ".ts" else "declarations — no code of their own"
-        return [{"file": path, "lines": lines, "reason": why}]
-    groups: dict[tuple, dict] = {}
-    for ln in lines:
-        reason, proxy = "declaration — no code of its own", None
-        owner = None if ln in init else owner_declaration(src, ln)
-        if ln in init:
-            reason = "runs while the object is built — charged to no test"
-        if owner:
-            body = None
-            for n in range(owner, min(owner + 40, len(src) + 1)):
-                if n in executable:
-                    body = n
-                    break
-                if n > owner and DECL.match(src[n - 1]):
-                    break
-            decl = src[owner - 1]
-            m = DECL.match(decl)
-            name = m.group(1) if m else None
-            if name and name == Path(path).stem:
-                reason = "constructor — runs while the object is built, charged to no test"
-            elif body is not None and not decl.rstrip().endswith(";"):
-                reason = ("annotation — runs as its method runs" if ANNOT.match(src[ln - 1])
-                          or ln != owner else SIGNATURE)
-                proxy = {path: [body]}
-            else:
-                sites = callers(name) if name else {}
-                reason = "no body of its own — runs where it is called"
-                proxy = sites or None
-                if not sites:
-                    reason = "no body of its own, and nothing that runs calls it"
-        key = (reason, json.dumps(proxy, sort_keys=True))
-        g = groups.setdefault(key, {"file": path, "lines": [], "reason": reason,
-                                    **({"proxy": proxy} if proxy else {})})
-        g["lines"].append(ln)
-    return list(groups.values())
+    why = "types — erased when compiled" if ext in (".ts", ".tsx") else \
+        "declarations — no code of their own"
+    return [{"file": path, "lines": lines, "reason": why}]
 
 
 IMPORT_TIME = "runs when the module is imported — charged to no test"
@@ -348,95 +266,14 @@ def classify_python(path: str, src: list[str], lines: list[int], executable: set
 
 # ------------------------------------------------------------------------------- tools
 
-def _versions(d: Path) -> list[str]:
-    def key(v: str):
-        return [int(x) if x.isdigit() else -1 for x in re.split(r"[.-]", v)]
-    stable = [p.name for p in d.iterdir() if p.is_dir() and not re.search(r"[A-Za-z]", p.name)] \
-        if d.is_dir() else []
-    return sorted(stable, key=key)
 
 
-def m2_jar(group: str, artifact: str, version: str | None = None,
-           classifier: str = "") -> Path:
-    """A jar out of the local Maven repository, fetched into it when missing."""
-    d = M2 / group.replace(".", "/") / artifact
-    got = _versions(d)
-    ver = version if version in got else (got[-1] if got and not version else version)
-    if not ver:
-        raise RuntimeError(f"no {group}:{artifact} in {M2} and no version to fetch")
-    suffix = f"-{classifier}" if classifier else ""
-    jar = d / ver / f"{artifact}-{ver}{suffix}.jar"
-    if not jar.is_file():
-        coord = f"{group}:{artifact}:{ver}" + (f":jar:{classifier}" if classifier else "")
-        log(f"fetching {coord}")
-        subprocess.run(["mvn", "-q", "dependency:get", f"-Dartifact={coord}"], check=False)
-    if not jar.is_file():
-        raise RuntimeError(f"{jar} is missing and Maven could not fetch it")
-    return jar
 
 
-def jacoco_classpath(version: str = "0.8.13") -> list[Path]:
-    core = m2_jar("org.jacoco", "org.jacoco.core", version)
-    asm = "9.8"
-    pom = M2 / "org/jacoco/org.jacoco.build" / core.parent.name / \
-        f"org.jacoco.build-{core.parent.name}.pom"
-    if pom.is_file():
-        m = re.search(r"<asm.version>([^<]+)</asm.version>", pom.read_text(errors="replace"))
-        asm = m.group(1) if m else asm
-    return [core] + [m2_jar("org.ow2.asm", a, asm) for a in ("asm", "asm-commons", "asm-tree")]
 
 
-def build_tools() -> dict:
-    """Compile the listener and the analyzer into the user cache, once per source revision.
-
-    Built, never committed: a jar in the repository is a binary nobody can review, and the
-    two classes compile in two seconds against jars every Maven user already has."""
-    srcs = sorted((TOOLS / "java").glob("*.java"))
-    jacoco = jacoco_classpath()
-    platform = [m2_jar("org.junit.platform", a, "1.8.2") if (M2 / "org/junit/platform" / a / "1.8.2").is_dir()
-                else m2_jar("org.junit.platform", a)
-                for a in ("junit-platform-launcher", "junit-platform-engine", "junit-platform-commons")]
-    extra = [m2_jar("org.opentest4j", "opentest4j")]
-    h = hashlib.sha256()
-    for s in srcs:
-        h.update(s.read_bytes())
-    for j in jacoco + platform:
-        h.update(str(j).encode())
-    out = CACHE / h.hexdigest()[:16]
-    listener = out / "hr-testcov-listener.jar"
-    classes = out / "classes"
-    if not listener.is_file():
-        shutil.rmtree(out, ignore_errors=True)
-        classes.mkdir(parents=True)
-        cp = os.pathsep.join(map(str, jacoco + platform + extra))
-        r = subprocess.run(["javac", "--release", "11", "-nowarn", "-Xlint:none", "-d", str(classes),
-                            "-cp", cp, *map(str, srcs)], capture_output=True, text=True)
-        if r.returncode != 0:
-            raise RuntimeError("javac failed:\n" + r.stderr[-2000:])
-        with zipfile.ZipFile(listener, "w") as z:
-            z.write(classes / "hr/testcov/PerTestJacoco.class", "hr/testcov/PerTestJacoco.class")
-            z.writestr("META-INF/services/org.junit.platform.launcher.TestExecutionListener",
-                       "hr.testcov.PerTestJacoco\n")
-        log(f"built the JUnit listener and the JaCoCo analyzer into {out}")
-    return {"listener": listener, "analyze_cp": os.pathsep.join(map(str, [classes] + jacoco))}
 
 
-def analyze(tools: dict, classes: list[str], include: list[str], execs: list[Path]) -> dict:
-    """Run TestcovAnalyze over `execs`; its JSON, with ranges expanded."""
-    args = ["java", "-cp", tools["analyze_cp"], "hr.testcov.TestcovAnalyze"]
-    for c in classes:
-        args += ["--classes", c]
-    for p in include:
-        args += ["--include", p]
-    r = subprocess.run(args + [str(e) for e in execs], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError("TestcovAnalyze failed:\n" + r.stderr[-2000:])
-    doc = json.loads(r.stdout)
-    return {"classes": doc.get("classes", 0),
-            "executable": {k: unranges(v) for k, v in doc["executable"].items()},
-            "init": {k: unranges(v) for k, v in doc.get("init", {}).items()},
-            "execs": {name: {k: unranges(v) for k, v in m.items()}
-                      for name, m in doc["execs"].items()}}
 
 
 # ------------------------------------------------------------------------------ the repo
@@ -516,76 +353,6 @@ def run_logged(cmd: str, cwd: Path, logfile: Path, env: dict | None = None) -> i
     return r.returncode
 
 
-def junit_suites(cfg: list[dict], repo: Repo, tools: dict,
-                 init: dict, reuse: bool = False) -> tuple[list[dict], list[dict], dict]:
-    tests, suites, executable = [], [], {}
-    for i, run in enumerate(cfg):
-        label = run.get("label", "JUnit")
-        out = (WORK / f"junit-{i}").resolve()
-        t0 = time.monotonic()
-        rc = 0
-        if not reuse:
-            shutil.rmtree(out, ignore_errors=True)
-            out.mkdir(parents=True)
-            slot = (f"-Dmaven.test.additionalClasspath={shlex.quote(str(tools['listener']))} "
-                    f"-Dhr.testcov.dir={shlex.quote(str(out))}")
-            rc = run_logged(expand(run["command"], junit=slot, listener=str(tools["listener"]),
-                                   dir=str(out)),
-                            repo.root / run.get("cwd", "."), WORK / f"junit-{i}.log")
-        rows = []
-        idx = out / "index.jsonl"
-        if idx.is_file():
-            rows = [json.loads(l) for l in idx.read_text(encoding="utf-8").splitlines() if l.strip()]
-        note = f"exit {rc}, see {WORK}/junit-{i}.log" if rc else ""
-        if not rows:
-            suites.append({"name": label, "source": "jacoco", "status": "failed",
-                           "tests": 0, "seconds": round(time.monotonic() - t0, 1),
-                           "note": note or "no test reported per-test coverage — is JaCoCo's "
-                                           "agent on the test JVM (jacoco:prepare-agent)?"})
-            continue
-        classes = [str(repo.root / c) for c in run.get("classes") or []]
-        got = analyze(tools, classes, run.get("include") or [], [out / f"{int(r['n']):05d}.exec" for r in rows])
-        prefer = run.get("cwd", "")
-        for src, lines in got["executable"].items():
-            path = repo.by_suffix(src, prefer)
-            if path:
-                executable.setdefault(path, set()).update(lines)
-        for src, lines in got["init"].items():
-            path = repo.by_suffix(src, prefer)
-            if path:
-                init.setdefault(path, set()).update(lines)
-        per_suite: dict[str, int] = {}
-        for r in rows:
-            # The innermost engine: a Cucumber scenario run through a @Suite class is
-            # `[engine:junit-platform-suite]/…/[engine:cucumber]/…`, and it is a scenario.
-            engines = re.findall(r"\[engine:([^\]]+)\]", r.get("uid", ""))
-            engine = engines[-1] if engines else ""
-            suite = f"{label} {ENGINES.get(engine, engine)}".strip()
-            hits = {}
-            for src, lines in got["execs"].get(f"{int(r['n']):05d}.exec", {}).items():
-                path = repo.by_suffix(src, prefer)
-                if path:
-                    hits[path] = lines
-            file, line, title = None, None, r.get("name", "")
-            if r.get("class"):
-                outer = r["class"].split("$")[0]
-                file = repo.by_suffix(outer.replace(".", "/") + ".java", prefer) \
-                    or repo.by_suffix(outer.split(".")[-1] + ".java", prefer)
-                title = r.get("method") or title
-                line = decl_line(repo.text(file), title) if file else None
-            elif r.get("resource") or r.get("file"):
-                res = r.get("resource") or r.get("file")
-                file = repo.by_suffix(res.lstrip("/"), prefer)
-                line = int(r["line"]) if r.get("line") else None
-            per_suite[suite] = per_suite.get(suite, 0) + 1
-            tests.append({"id": f"{suite}:{r.get('uid')}", "suite": suite, "title": title,
-                          "file": file, "line": line,
-                          "status": STATUS.get(r.get("status"), (r.get("status") or "").lower()),
-                          "source": "jacoco", "hits": hits})
-        for name, n in per_suite.items():
-            suites.append({"name": name, "source": "jacoco", "status": "ran", "tests": n,
-                           "seconds": round(time.monotonic() - t0, 1), "note": note})
-    return tests, suites, executable
 
 
 def karma_tests(doc: dict, repo: Repo, label: str, cwd: str, rel) -> list[dict]:
@@ -791,18 +558,9 @@ def e2e_suites(cfg: dict, repo: Repo, tools: dict | None, head: str,
             continue
         t0 = time.monotonic()
         files = sorted(f for f in d.glob("*.json") if f.name != "run.json")
-        execs = sorted(d.glob("*.exec"))
-        jc = {"execs": {}, "executable": {}}
-        if execs and jar.is_file() and tools:
-            jc = analyze(tools, [str(jar)], cfg.get("include") or [], execs)
-            for src, lines in jc["executable"].items():
-                path = repo.by_suffix(src, cfg.get("backend", ""))
-                if path:
-                    executable.setdefault(path, set()).update(lines)
-            for src, lines in jc["init"].items():
-                path = repo.by_suffix(src, cfg.get("backend", ""))
-                if path:
-                    init.setdefault(path, set()).update(lines)
+        # The backend's side (JaCoCo dumps of a JVM under the agent) went with Java support;
+        # what a browser suite leaves of its own (Chromium's V8 coverage) is still read.
+        jc = {"execs": {}, "executable": {}, "init": {}}
         v8 = {"tests": {}, "executable": {}}
         if (d / "scripts").is_dir():
             r = subprocess.run(["node", str(TOOLS / "v8-join.js"), str(d), cfg.get("frontend", ""),
@@ -852,23 +610,6 @@ def fold_signature(group: dict, executable: dict, tests: list[dict]) -> None:
             t["hits"][path] = sorted(set(got) | set(group["lines"]))
 
 
-def callers_finder(repo: Repo, sources, exclude, executable: dict[str, set[int]]):
-    java = [f for f in repo.files if f.endswith((".java", ".kt")) and in_scope(f, sources, exclude)]
-    texts: dict[str, list[str]] = {}
-
-    def find(name: str) -> dict[str, list[int]]:
-        out: dict[str, list[int]] = {}
-        rx = re.compile(r"[.:]\s*" + re.escape(name) + r"\s*\(|::" + re.escape(name) + r"\b")
-        for f in java:
-            ex = executable.get(f)
-            if not ex:
-                continue
-            src = texts.setdefault(f, repo.text(f))
-            got = [i + 1 for i, t in enumerate(src) if rx.search(t) and i + 1 in ex]
-            if got:
-                out[f] = got
-        return out
-    return find
 
 
 def main(argv=None) -> int:
@@ -876,7 +617,7 @@ def main(argv=None) -> int:
     ap.add_argument("--base", default="origin/main")
     ap.add_argument("--config", default="human-review.json")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
-    ap.add_argument("--only", help="comma-separated: pytest,junit,karma,e2e")
+    ap.add_argument("--only", help="comma-separated: pytest,karma,e2e")
     ap.add_argument("--reuse", action="store_true",
                     help="run no suite; re-read what the last run left in .human-review/coverage")
     args = ap.parse_args(argv)
@@ -911,11 +652,6 @@ def main(argv=None) -> int:
 
     hold_measuring_lock(WORK)
     tools = None
-    if (cfg.get("junit") and "junit" in only) or cfg.get("e2e"):
-        try:
-            tools = build_tools()
-        except Exception as e:                   # noqa: BLE001 - the other suites still run
-            log(f"no JaCoCo tools: {e}")
     tests, suites, executable, init = [], [], {}, {}
 
     def merge(got):
@@ -929,12 +665,10 @@ def main(argv=None) -> int:
         WORK.mkdir(parents=True, exist_ok=True)
         merge(pytest_suites(cfg["pytest"], repo, init, args.reuse,
                             lambda p: in_scope(p, sources, exclude)))
-    if cfg.get("junit") and "junit" in only:
-        if tools:
-            merge(junit_suites(cfg["junit"], repo, tools, init, args.reuse))
-        else:
-            suites.append({"name": "JUnit", "source": "jacoco", "status": "failed", "tests": 0,
-                           "note": "the listener could not be built"})
+    if cfg.get("junit"):
+        suites.append({"name": "JUnit", "source": "jacoco", "status": "skipped", "tests": 0,
+                       "note": "JUnit/JaCoCo is not measured in the Ludvig fork — "
+                               "configure steps.testcov.pytest"})
     if cfg.get("karma") and "karma" in only:
         merge(karma_suites(cfg["karma"], repo, args.reuse))
     if cfg.get("e2e") and "e2e" in only:
@@ -944,7 +678,7 @@ def main(argv=None) -> int:
         merge(e2e_suites(cfg["e2e"], repo, tools, head, mods, init))
 
     unmeasurable = []
-    find = callers_finder(repo, sources, exclude, executable)
+    find = None
     for path, lines in changed.items():
         ex = executable.get(path, set())
         dark = [n for n in lines if n not in ex]
