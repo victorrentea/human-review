@@ -894,16 +894,34 @@ def runtime_html(rt, tail: str = "", fixtures: list | None = None) -> str:
 
 def running_db_html() -> str:
     """"Running DB" and its JDBC URL, on the Running app line right after Stop: the URL,
-    login included (`?user=…&password=…`), is what a reader pastes into DataGrip or DBeaver,
-    hence Copy. Served, a click on the URL itself puts it into the IntelliJ window that has
-    this checkout, as a data source, and shows its Database view (`/__open_db__`).
+    login included (`?user=…&password=…`), is what a reader pastes into a database client,
+    hence the 📋 inside its pill. Served, IJ / DBeaver / SQL Developer before it open it in
+    that tool (`/__open_db__` with the tool's name): IntelliJ's window that has this
+    checkout, as a data source in its Database view; DBeaver connected; SQL Developer
+    restarted with the connection in its list.
 
     Empty in the markup and `hidden`: the host picks the database's port when the stack
     starts, so nothing here is knowable at build time. APP_ENV_JS fills it from the host's
     `db` command once the app answers, and only on a served page, the one copy that can
     ask the host. Off disk and on GitHub Pages it never appears, like the app's address."""
+    tools = "".join(
+        f'<button type="button" class="appenv-dbtool" data-tool="{tool}" hidden '
+        f'data-tip="{html.escape(tip)}">{word}</button>'
+        for tool, word, tip in DB_TOOLS)
     return ('<span class="appenv-db" hidden>'
             '<span class="appenv-title">Running DB</span>'
-            '<code class="appenv-jdbc"></code>'
-            '<button type="button" class="appenv-jdbc-copy" data-tip="Copy the JDBC URL, '
-            'login included">Copy</button></span>')
+            f'<span class="appenv-dbtools">{tools}</span>'
+            '<span class="appenv-jdbc-box"><code class="appenv-jdbc"></code>'
+            f'<button type="button" class="appenv-jdbc-copy" aria-label="Copy the JDBC URL" '
+            f'data-tip="Copy the JDBC URL, login included">{CMD_COPY}</button></span></span>')
+
+
+#: The Running DB row's "open it in…" buttons, in the order shown, before the URL: the tool,
+#: its word on the button, and what a press does. Each is raised only by a served page whose
+#: server says the tool is there (`openDb`, `openDbeaver`, `openSqlDeveloper`).
+DB_TOOLS = (
+    ("idea", "IJ", "Open it in IntelliJ’s Database view, as data source “Running DB”"),
+    ("dbeaver", "DBeaver", "Open it in DBeaver: connected, with an SQL editor"),
+    ("sqldeveloper", "SQL Developer",
+     "Open it in SQL Developer (restarts it: it reads connections only at start)"),
+)

@@ -288,56 +288,60 @@
       extra.push('password=' + encodeURIComponent(r.DB_PASSWORD));
     return extra.length ? url + (url.indexOf('?') < 0 ? '?' : '&') + extra.join('&') : url;
   }
-  var idea = false;
+  // Which of IJ / DBeaver / SQL Developer this server can open the database in.
+  var dbTools = {idea: false, dbeaver: false, sqldeveloper: false};
   function fillDb(r) {
-    var code = dbRow.querySelector('.appenv-jdbc');
-    code.textContent = jdbcOf(r);
-    if (idea) {
-      code.setAttribute('role', 'button');
-      code.setAttribute('tabindex', '0');
-      code.dataset.tip = 'Open it in IntelliJ’s Database view';
-    } else code.removeAttribute('data-tip');
+    dbRow.querySelector('.appenv-jdbc').textContent = jdbcOf(r);
+    dbRow.querySelectorAll('.appenv-dbtool').forEach(function (b) {
+      b.hidden = !dbTools[b.dataset.tool];
+    });
     dbRow.hidden = false;
   }
   if (dbRow) {
     dbRow.querySelector('.appenv-jdbc-copy').addEventListener('click', function () {
       var btn = this, url = dbRow.querySelector('.appenv-jdbc').textContent;
       if (!url) return;
+      var glyph = btn.textContent;
       window.HR.copy(url).then(function () {
-        btn.textContent = 'Copied ✓';
+        btn.textContent = '✓';
         btn.classList.add('copied');
-        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1400);
+        setTimeout(function () { btn.textContent = glyph; btn.classList.remove('copied'); }, 1400);
       });
     });
-    // Into IntelliJ: the server writes the data source into the checkout's project and asks
-    // the window that has it to show its Database view. Nothing travels from the page.
-    var openDb = function (ev) {
-      if (!idea) return;
-      ev.preventDefault();
-      var flash = window.HR.flash || function () {};
-      var caps = window.HR.caps ? window.HR.caps() : null;
-      fetch('/__open_db__', {
-        method: 'POST', cache: 'no-store',
-        headers: {'Content-Type': 'application/json',
-                  'X-Human-Review-Token': (caps && caps.token) || ''},
-        body: '{}'
-      }).then(function (r) {
-        if (!r.ok) return r.text().then(function (t) { flash(t || 'the review server refused'); });
-        return r.json().then(function (j) {
-          flash(j.how === 'opened'
-            ? 'In IntelliJ (' + j.window + '): Database view, data source “Running DB”'
-            : j.how === 'launching'
-            ? 'Opening ' + j.window + ' in IntelliJ: its Database view comes up once the '
-              + 'project has loaded'
-            : 'IntelliJ is in front, but its Human Review plugin is too old to open the '
-              + 'Database view: update it');
-        });
-      }).catch(function () { flash('the review server is no longer running'); });
+    // Into a database client: the server writes the connection where that tool keeps it
+    // and starts or raises the tool. Nothing travels from the page but the tool's name.
+    var said = {
+      idea: function (j) {
+        return j.how === 'opened'
+          ? 'In IntelliJ (' + j.window + '): Database view, data source “Running DB”'
+          : j.how === 'launching'
+          ? 'Opening ' + j.window + ' in IntelliJ: its Database view comes up once the '
+            + 'project has loaded'
+          : 'IntelliJ is in front, but its Human Review plugin is too old to open the '
+            + 'Database view: update it';
+      },
+      dbeaver: function () { return 'In DBeaver: connected as “Running DB”, with an SQL editor'; },
+      sqldeveloper: function () {
+        return 'SQL Developer is starting with “Running DB” in its Connections: double-click it';
+      }
     };
-    var code = dbRow.querySelector('.appenv-jdbc');
-    code.addEventListener('click', openDb);
-    code.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter' || ev.key === ' ') openDb(ev);
+    dbRow.querySelectorAll('.appenv-dbtool').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var tool = btn.dataset.tool;
+        var flash = window.HR.flash || function () {};
+        var caps = window.HR.caps ? window.HR.caps() : null;
+        btn.disabled = true;
+        fetch('/__open_db__', {
+          method: 'POST', cache: 'no-store',
+          headers: {'Content-Type': 'application/json',
+                    'X-Human-Review-Token': (caps && caps.token) || ''},
+          body: JSON.stringify({tool: tool})
+        }).then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { flash(t || 'the review server refused'); });
+          return r.json().then(function (j) { flash(said[tool](j)); });
+        }).catch(function () { flash('the review server is no longer running'); })
+          .then(function () { btn.disabled = false; });
+      });
     });
   }
 
@@ -693,7 +697,8 @@
     // start command has to be able to take the verb away from a page that is still open.
     served = window.HR.can('demo-env');
     var caps = window.HR.caps ? window.HR.caps() : null;
-    idea = !!(caps && caps.openDb);
+    dbTools = {idea: !!(caps && caps.openDb), dbeaver: !!(caps && caps.openDbeaver),
+               sqldeveloper: !!(caps && caps.openSqlDeveloper)};
     if (served) {
       // Which swaps the whole row: the verbs come back and the terminal command steps
       // out, since pressing Start here does the same thing without leaving the page.

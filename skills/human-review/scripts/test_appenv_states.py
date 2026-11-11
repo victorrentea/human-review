@@ -412,7 +412,8 @@ def _db_read(row, served, live):
 def test_served_and_live_the_db_shows_its_jdbc_url_with_the_login_after_stop(row):
     seen = _db_read(row, served=True, live=True)
     url = DB_FACTS["JDBC_URL"] + "?user=petclinic&password=petclinic"
-    assert seen == ["Running DB", url, "Copy"]
+    # The tools this server has (IntelliJ only, here), then the URL's pill with its 📋.
+    assert [seen[0], seen[-1]] == ["Running DB", url + "\U0001F4CB"]
     # On the Running app line, after Stop.
     assert row.page.evaluate("""() => { const db = document.querySelector('.appenv-db');
         return db.parentNode.classList.contains('appenv-run')
@@ -421,9 +422,10 @@ def test_served_and_live_the_db_shows_its_jdbc_url_with_the_login_after_stop(row
     assert row.page.evaluate("window.ASKED").count("demo-env-db") == 1, "asked once"
     row.page.click(".appenv-jdbc-copy")
     assert row.page.evaluate("window.COPIED") == [url]
-    assert row.page.text_content(".appenv-jdbc-copy") == "Copied \u2713"
-    # Served by a server that can, the URL itself is the way into IntelliJ.
-    assert row.page.get_attribute(".appenv-jdbc", "role") == "button"
+    assert row.page.text_content(".appenv-jdbc-copy") == "\u2713"
+    # A tool the server did not offer stays hidden: DBeaver and SQL Developer, here.
+    assert row.page.evaluate("""() => [...document.querySelectorAll('.appenv-dbtool')]
+        .filter(b => !b.hidden).map(b => b.dataset.tool)""") == ["idea"]
 
 
 def test_the_database_row_is_hidden_offline_and_off_disk(row):

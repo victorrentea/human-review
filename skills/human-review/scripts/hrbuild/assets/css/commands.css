@@ -477,10 +477,17 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
 .appenv .appenv-db { display:inline-flex; flex-wrap:wrap; align-items:center; gap:.4rem .5rem;
     margin-left:.8rem; min-width:0; }
 .appenv .appenv-db[hidden] { display:none; }
-.appenv .appenv-db .appenv-jdbc { user-select:all; overflow-wrap:anywhere; }
-.appenv .appenv-db .appenv-jdbc[role="button"] { cursor:pointer; }
-.appenv .appenv-db .appenv-jdbc[role="button"]:hover { text-decoration:underline; }
-.appenv .appenv-db .appenv-jdbc-copy { min-width:5.2em; text-align:center; }
+/* The tools first (IJ, DBeaver, SQL Developer), then the URL's pill with its 📋 inside it:
+    the pill is the one box that holds the string, so the copy that takes it lives there. */
+.appenv .appenv-db .appenv-dbtools { display:inline-flex; gap:.3rem; }
+.appenv .appenv-db .appenv-dbtools:not(:has(button:not([hidden]))) { display:none; }
+.appenv .appenv-db .appenv-jdbc-box { display:inline-flex; align-items:center; gap:.2rem;
+    background:var(--accent-soft); border-radius:4px; padding:0 .15rem 0 0; min-width:0; }
+.appenv .appenv-db .appenv-jdbc { user-select:all; overflow-wrap:anywhere; background:none; }
+.appenv .appenv-db .appenv-jdbc-copy { border:0; background:none; padding:.05rem .3rem;
+    font-size:1em; line-height:1; }
+.appenv .appenv-db .appenv-jdbc-copy:hover { background:var(--card); }
+.appenv .appenv-db .appenv-jdbc-copy.copied { color:var(--ok, #2e7d32); }
 /* The "DB Fixture:" row, under the Running app one and always on screen (Victor, 8 Oct
     2026): every fixture the build found, each a chip — its dot, its name, the 👁 on its
     data (dataset-view.js) and Seed. The names never move with the app; only Seed goes

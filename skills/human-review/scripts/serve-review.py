@@ -996,6 +996,175 @@ def open_db_in_idea(root: Path, url: str) -> dict | None:
     return None
 
 
+#: The two database clients the Running DB row offers besides IntelliJ, where they are when
+#: installed the usual way. Asked, not assumed, like Bruno: a button for a tool that is not
+#: there would answer the press with `open`'s error dialog.
+DBEAVER_APPS = (Path("/Applications/DBeaver.app"), Path.home() / "Applications" / "DBeaver.app")
+SQLDEV_APPS = (Path("/Applications/SQLDeveloper.app"),
+               Path.home() / "Applications" / "SQLDeveloper.app")
+#: SQL Developer ships no PostgreSQL driver: a connection of that type only appears once
+#: `org.postgresql.Driver` is on its classpath. This one is put there, once, by an
+#: `AddJavaLibFile` line in the user's own `product.conf` (never in the app bundle).
+PG_DRIVER_VERSION = "42.7.10"
+PG_DRIVER_URL = ("https://repo1.maven.org/maven2/org/postgresql/postgresql/"
+                 f"{PG_DRIVER_VERSION}/postgresql-{PG_DRIVER_VERSION}.jar")
+SQLDEV_HOME = Path.home() / ".sqldeveloper"
+SQLDEV_QUIT_SECONDS = 15.0
+
+
+def _app(candidates) -> Path | None:
+    return next((app for app in candidates if app.is_dir()), None)
+
+
+def dbeaver_app() -> Path | None:
+    return _app(DBEAVER_APPS)
+
+
+def sqldeveloper_app() -> Path | None:
+    return _app(SQLDEV_APPS)
+
+
+def jdbc_parts(url: str) -> dict:
+    """`jdbc:postgresql://localhost:5432/petclinic?user=u&password=p` → its pieces: the URL
+    without the login, driver, host, port, database, user and password."""
+    m = re.fullmatch(r"jdbc:(?P<driver>[a-z0-9]+)://(?P<host>[^:/?]+):(?P<port>\d+)/"
+                     r"(?P<db>[^?]+)(?:\?(?P<query>.*))?", url)
+    if not m:
+        return {}
+    query = dict(urllib.parse.parse_qsl(m["query"] or ""))
+    rest = {k: v for k, v in query.items() if k not in ("user", "password")}
+    bare = url.split("?", 1)[0] + ("?" + urllib.parse.urlencode(rest) if rest else "")
+    return {"url": bare, "driver": m["driver"], "host": m["host"], "port": m["port"],
+            "database": m["db"], "user": query.get("user", ""),
+            "password": query.get("password", "")}
+
+
+def dbeaver_con(url: str) -> str:
+    """DBeaver's `-con` argument (its command-line *connection* parameters): the data source,
+    saved under one name so a second press updates it, connected, with an SQL editor open."""
+    p = jdbc_parts(url)
+    driver = {"postgresql": "postgresql", "oracle": "oracle", "mysql": "mysql"}.get(
+        p.get("driver", ""), p.get("driver", ""))
+    pairs = [("driver", driver), ("url", p.get("url", url)), ("user", p.get("user", "")),
+             ("password", p.get("password", "")), ("savePassword", "true"),
+             ("name", DB_SOURCE_NAME), ("id", "human-review-running-db"),
+             ("connect", "true"), ("openConsole", "true"), ("save", "true")]
+    return "|".join(f"{k}={v}" for k, v in pairs if v)
+
+
+def open_db_in_dbeaver(url: str) -> dict:
+    """`open -n -a DBeaver --args -con …`. A DBeaver already running takes the arguments
+    from the second launch and that one exits, so the click works either way; `-n` because
+    `open` without it only raises a running app and drops the arguments."""
+    app = dbeaver_app()
+    subprocess.Popen(["open", "-n", "-a", str(app), "--args", "-con", dbeaver_con(url)],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return {"how": "dbeaver", "name": DB_SOURCE_NAME}
+
+
+def pg_driver_jar() -> Path:
+    """The PostgreSQL JDBC driver, downloaded once to `~/.human-review/drivers/`."""
+    jar = Path.home() / ".human-review" / "drivers" / f"postgresql-{PG_DRIVER_VERSION}.jar"
+    if not jar.is_file():
+        jar.parent.mkdir(parents=True, exist_ok=True)
+        tmp = jar.with_suffix(".part")
+        with urllib.request.urlopen(PG_DRIVER_URL, timeout=60) as r:
+            tmp.write_bytes(r.read())
+        os.replace(tmp, jar)
+    return jar
+
+
+def sqldev_add_driver(home: Path, jar: Path) -> list[Path]:
+    """`AddJavaLibFile <jar>` in every `~/.sqldeveloper/<version>/product.conf` that lacks
+    it. Returns the files changed."""
+    changed = []
+    for conf in sorted(home.glob("[0-9]*/product.conf")):
+        text = conf.read_text(encoding="utf-8", errors="replace")
+        line = f"AddJavaLibFile {jar}"
+        if line in text:
+            continue
+        conf.write_text(text.rstrip("\n") + f"\n\n# human-review: PostgreSQL driver for the "
+                        f"Running DB connection\n{line}\n", encoding="utf-8")
+        changed.append(conf)
+    return changed
+
+
+def sqldev_connection(url: str) -> dict:
+    """One entry of SQL Developer's `connections.json`, as its PostgreSQL panel writes one
+    (`PostgreSQLConnectionPanel`: `RaptorConnectionType` SDPostgreSQL, `hostname`, `port`,
+    `customUrl`). No `password`: SQL Developer keeps it encrypted with a per-install key, so
+    the login rides in the URL the driver reads, and no password is asked for."""
+    p = jdbc_parts(url)
+    custom = f"jdbc:postgresql://{p['host']}:{p['port']}/{p['database']}"
+    login = urllib.parse.urlencode([(k, p[k]) for k in ("user", "password") if p.get(k)])
+    return {"name": DB_SOURCE_NAME, "type": "jdbc",
+            "info": {"RaptorConnectionType": "SDPostgreSQL", "driver": "org.postgresql.Driver",
+                     "hostname": p["host"], "port": p["port"],
+                     "customUrl": custom + (f"?{login}" if login else ""),
+                     "user": p.get("user", ""), "NoPasswordConnection": "TRUE",
+                     "SavePassword": "false", "ConnName": DB_SOURCE_NAME}}
+
+
+def sqldev_write_connection(home: Path, url: str) -> list[Path]:
+    """Upsert the Running DB connection into every SQL Developer system folder's
+    `connections.json` (creating the store when SQL Developer has never saved one)."""
+    written = []
+    for system in sorted(home.glob("system*")):
+        store = system / "o.jdeveloper.db.connection" / "connections.json"
+        try:
+            data = json.loads(store.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {}
+        if not isinstance(data, dict) or not isinstance(data.get("connections"), list):
+            data = {"connections": []}
+        data["connections"] = [c for c in data["connections"]
+                               if not (isinstance(c, dict) and c.get("name") == DB_SOURCE_NAME)]
+        data["connections"].append(sqldev_connection(url))
+        store.parent.mkdir(parents=True, exist_ok=True)
+        tmp = store.with_name(store.name + ".human-review.tmp")
+        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        os.replace(tmp, store)
+        written.append(store)
+    return written
+
+
+def _apple_event(script: str, timeout: float) -> str:
+    try:
+        done = subprocess.run(["osascript", "-e", script], capture_output=True, text=True,
+                              timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return done.stdout.strip()
+
+
+def sqldev_running() -> bool:
+    return _apple_event('application "SQLDeveloper" is running', 5) == "true"
+
+
+def open_db_in_sqldeveloper(url: str) -> dict | None:
+    """SQL Developer reads its connections only when it starts, and nothing reaches a
+    running one from outside — so, like Bruno: quit it (an Apple Event, never input), write
+    the connection, start it again. None when it would not quit (an unsaved worksheet makes
+    it ask first, and that question is the reader's)."""
+    if not url.startswith("jdbc:postgresql:"):
+        return None
+    sqldev_add_driver(SQLDEV_HOME, pg_driver_jar())
+    if sqldev_running():
+        _apple_event('tell application "SQLDeveloper" to quit', SQLDEV_QUIT_SECONDS)
+        deadline = time.time() + SQLDEV_QUIT_SECONDS
+        while sqldev_running():
+            if time.time() > deadline:
+                return None
+            time.sleep(0.3)
+    if not list(SQLDEV_HOME.glob("system*")):
+        # Never started: its first start creates the folders, and the next press fills them.
+        (SQLDEV_HOME / "system").mkdir(parents=True, exist_ok=True)
+    sqldev_write_connection(SQLDEV_HOME, url)
+    subprocess.Popen(["open", "-a", str(sqldeveloper_app())],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return {"how": "sqldeveloper", "name": DB_SOURCE_NAME}
+
+
 #: Said for a plugin that answers `/open-pr` as a route it does not know (404, no `error`).
 PR_PLUGIN_TOO_OLD = ("The Human Review plugin in IntelliJ is too old to open PRs — "
                      "update it to 0.3.5 or later")
@@ -2784,6 +2953,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if ROOT is None or url is None:
                 self.reply_text("No running database known yet: start the app first", 409)
                 return
+            tool = _field(raw, "tool") or "idea"
+            if tool == "dbeaver":
+                if dbeaver_app() is None:
+                    self.reply_text("DBeaver is not installed", 404)
+                    return
+                self.reply_json({"url": url, **open_db_in_dbeaver(url)})
+                return
+            if tool == "sqldeveloper":
+                if sqldeveloper_app() is None:
+                    self.reply_text("SQL Developer is not installed", 404)
+                    return
+                try:
+                    done = open_db_in_sqldeveloper(url)
+                except OSError as e:
+                    self.reply_text(f"SQL Developer: {e}", 502)
+                    return
+                if done is None:
+                    self.reply_text("SQL Developer would not quit (an unsaved worksheet?) "
+                                    "— close it, then click again", 409)
+                    return
+                self.reply_json({"url": url, **done})
+                return
             done = open_db_in_idea(Path(ROOT), url) or launch_idea_for_db(Path(ROOT), url)
             self.reply_json({"url": url, **done})
             return
@@ -2976,6 +3167,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              # And a request arrow's Bruno button into Bruno itself; without
                              # it the button copies the request as cURL.
                              "openBruno": bruno_app() is not None,
+                             # And the Running DB row's DBeaver / SQL Developer buttons.
+                             "openDbeaver": ROOT is not None and dbeaver_app() is not None,
+                             "openSqlDeveloper": ROOT is not None
+                                                 and sqldeveloper_app() is not None,
                              # The baseline the page was served against. Empty when
                              # nothing is watching, which is how the page knows not to
                              # poll — a build that stopped watching takes the reload
