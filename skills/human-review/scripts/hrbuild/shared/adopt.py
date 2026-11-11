@@ -384,7 +384,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'complexity': {
         "move": 'p.cx-lede',
         "li": [
-            'Cognitive complexity per endpoint: its whole call graph, walked and summed.',
+            'Cognitive complexity per entry point (API, queue, schedule): its call graph, summed.',
             'Nesting is what costs: each level adds one.',
             'Green = added by this PR; hover a number for what it counts.',
             'Watch the + per endpoint, not the total.',
@@ -392,9 +392,9 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'Click a path, class or method name to open it; click the rest to unfold.',
         ],
         "code": (
-            'for (Owner o : owners) {            <span class="p">// +1</span>\n'
-            '  if (o.getPets().isEmpty()) {      <span class="p">// +2  nested once</span>\n'
-            '    for (Visit v : visits) {}       <span class="p">// +3  nested twice</span>'
+            'for owner in owners:            <span class="p"># +1</span>\n'
+            '    if not owner.pets:          <span class="p"># +2  nested once</span>\n'
+            '        for visit in visits:    <span class="p"># +3  nested twice</span>'
         ),
     },
     'logging': {

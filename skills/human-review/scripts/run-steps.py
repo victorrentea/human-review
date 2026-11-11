@@ -146,11 +146,11 @@ def have(binary: str) -> bool:
     return shutil.which(binary) is not None
 
 
-def has_java() -> bool:
-    """Whether this project has Java main sources — asked of the index, not of the disk,
-    so `node_modules` and a build's output cost nothing to walk past."""
-    listed = subprocess.run(["git", "ls-files", "*/src/main/java/*.java", "src/main/java/*.java"],
-                            capture_output=True, text=True)
+def has_serverless() -> bool:
+    """Whether this service deploys with the Serverless Framework — a `serverless*.yml` at
+    the root names its functions, and so its entry points. Asked of the index."""
+    listed = subprocess.run(["git", "ls-files", "serverless.yml", "serverless.*.yml",
+                             "serverless.yaml"], capture_output=True, text=True)
     return bool(listed.stdout.strip())
 
 
@@ -1730,8 +1730,8 @@ def _complexity(ctx: Ctx):
 
     A project that measures this itself keeps doing so — `complexity.extract` runs, and
     `before`/`after` name its two snapshots. With nothing configured, the built-in
-    extractor reads both sides out of the Java sources, the baseline straight from the
-    merge-base, and the step needs no build, no plugin and no test in the project."""
+    extractor reads both sides out of the Python sources and `serverless*.yml`, the
+    baseline straight from the merge-base, and the step needs no build and no test."""
     c = ctx.step_cfg("complexity")
     if c.get("extract"):
         sh(c["extract"], ctx)
@@ -2239,8 +2239,7 @@ STEP_INPUTS = {
                      "tools": ("structurizr-views.py",),
                      "outputs": ("assets/c4",)},
     "complexity":   {"paths": ("*.java", "*.py", "serverless*.yml"),
-                     "tools": ("endpoint-complexity.py", "endpoint-complexity-delta.py",
-                               "complexity/ComplexityEngine.java"),
+                     "tools": ("endpoint-complexity.py", "endpoint-complexity-delta.py"),
                      "outputs": ("assets/complexity-delta.html",
                                  "assets/complexity-delta.css")},
     "api":          {"paths": ("*.yaml", "*.yml", "*.json"),
@@ -2527,8 +2526,8 @@ STEPS = [
      _c4),
     ("video",       "behaviour",     "feature recording",         None,              _video),
     ("complexity",  "complexity",    "entry-point complexity",
-     lambda c: bool(c.step_cfg("complexity")) or has_java()
-     or "no Java main sources here — nothing this step knows how to read entry points from",
+     lambda c: bool(c.step_cfg("complexity")) or has_serverless()
+     or "no serverless*.yml at the root — nothing this step knows how to read entry points from",
      _complexity),
     ("api",         "api",           "REST contract diff",
      lambda c: Path(c.cfg.get("spec", "openapi.yaml")).is_file()
@@ -2696,7 +2695,7 @@ def run_step(name, tabs, label, prereq, fn, ctx: Ctx,
 
     `seconds` is on every row, including the skipped ones.
 
-    A skipped row's time is not noise: half the prerequisites shell out to git (`has_java`,
+    A skipped row's time is not noise: half the prerequisites shell out to git (`has_serverless`,
     `has_genseq`) or open a socket (`answers`), and a prerequisite that takes two seconds to
     say "no" costs exactly as much as one that takes two seconds to say "yes". Without the
     number on the row, the only place that cost could be seen was the wall clock of the

@@ -14,15 +14,23 @@
 
 - **Every entry point, ranked** — the grey bar is the flow's complexity before the branch,
   the green tail is what it added, the number is where it stands now.
-- **Faded rows** are endpoints the branch did not touch, there for scale; `gone` marks one
+- **Faded rows** are entry points the branch did not touch, there for scale; `gone` marks one
   it removed.
 - The score is Cognitive Complexity, summed over every method reachable from the handler,
   so a heavier helper three calls deep shows up at the endpoint that pays for it.
 
 ## What it needs
 
-- Java sources. The measurement is read from source by the skill itself; nothing in your
-  project has to produce it.
+- A Python service deployed with the Serverless Framework. The entry points are the
+  functions of its `serverless*.yml` — HTTP routes (one per route of a Powertools
+  `APIGatewayRestResolver`), queue and event consumers, schedules, functions invoked by
+  other services — and the score is read off Python's `ast` by the skill itself; nothing in
+  your project has to produce it.
+- Calls are followed through the module's names and imports, `self`, and values whose class
+  is known (built in place, an annotated parameter, an `__init__` attribute,
+  `container.resolve(Cls)`). A call on a value of unknown class is followed only when one
+  project function alone has that name, and never for a name every list, dict, session or
+  client also answers to.
 
 ## Deeper
 

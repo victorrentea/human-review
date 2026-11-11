@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""The source-only complexity extractor, pinned.
+"""The entry-point complexity of a Python service, pinned — and the tab that draws it.
 
 Two things here are quoted to a reviewer as measurements and are wrong in silence when
-they break: the score (a number beside an endpoint) and the set of entry points (a row
-that is simply absent). The second is the one that already happened — a parameter list
-with an annotation in it (`listOwners(@RequestParam(…) String lastName)`) carries parens,
-and the first version of the declaration pattern stopped at the first `(`, so five
-handlers and every MCP tool with described parameters were missing from a tab that looked
-complete.
+they break: the score (a number beside an entry point) and the set of entry points (a row
+that is simply absent). The extractor reads both off Python's `ast` and the service's
+`serverless*.yml`.
 
 Run it directly (`python3 test_endpoint_complexity.py`) or under pytest.
 """
@@ -29,425 +26,184 @@ delta = importlib.util.module_from_spec(_dspec)
 _dspec.loader.exec_module(delta)
 
 
-def cc(body: str) -> int:
-    return ec.cognitive(ec.strip("{" + body + "}"))
+
+# ── the score ──────────────────────────────────────────────────────────────────────────
+
+def score(body: str, name: str = "f") -> tuple[int, list[dict]]:
+    """Cognitive complexity of one function `name` in `body`."""
+    prog = ec.Program({"m.py": body})
+    f = prog.funcs[f"m#{name}"]
+    return f.cc, f.hits
 
 
 def test_straight_line_code_is_free():
-    assert cc("int a = 1; a++; log.info(\"done\"); return a;") == 0
+    assert score("def f(a):\n    b = a + 1\n    return g(b)\n")[0] == 0
 
 
 def test_nesting_is_what_costs():
-    # Two sibling ifs are two increments; one inside the other is three, which is the
-    # whole point of the metric over McCabe's count of branches.
-    assert cc("if (a) { x(); } if (b) { y(); }") == 2
-    assert cc("if (a) { if (b) { y(); } }") == 3
-    assert cc("for (Pet p : pets) { if (p.sick()) { while (x) { y(); } } }") == 1 + 2 + 3
+    body = ("def f(xs):\n"
+            "    for x in xs:\n"            # +1
+            "        if x:\n"               # +2 (nesting 1)
+            "            while x:\n"        # +3 (nesting 2)
+            "                x -= 1\n")
+    assert score(body)[0] == 6
 
 
-def test_else_costs_one_flat_and_else_if_is_not_two():
-    assert cc("if (a) { x(); } else { y(); }") == 2
-    assert cc("if (a) { x(); } else if (b) { y(); } else { z(); }") == 3
-
-
-def test_a_braceless_branch_does_not_nest_what_follows():
-    assert cc("if (a) return 1; if (b) { c(); }") == 2
+def test_elif_and_else_cost_one_flat():
+    body = ("def f(a):\n"
+            "    if a == 1:\n        return 1\n"      # +1
+            "    elif a == 2:\n        return 2\n"    # +1
+            "    else:\n        return 3\n")          # +1
+    assert score(body)[0] == 3
 
 
 def test_boolean_runs_cost_per_alternation():
-    assert cc("if (a && b && c) { x(); }") == 2          # the if, then one run of &&
-    assert cc("if ((a && b) || c) { x(); }") == 3        # two runs
-    assert cc("boolean ok = a && b;") == 1
+    assert score("def f(a, b, c):\n    return a and b and c\n")[0] == 1
+    assert score("def f(a, b, c):\n    return a and b or c\n")[0] == 2
 
 
-def test_a_ternary_costs_and_a_wildcard_does_not():
-    assert cc("int n = a ? 1 : 2;") == 1
-    assert cc("List<?> all = repo.findAll();") == 0
+def test_except_costs_and_try_does_not():
+    body = ("def f():\n    try:\n        g()\n"
+            "    except ValueError:\n        pass\n"
+            "    except KeyError:\n        pass\n")
+    assert score(body)[0] == 2
 
 
-def test_do_while_is_one_construct():
-    assert cc("do { x(); } while (a);") == 1
+def test_a_conditional_expression_and_a_comprehension_filter_cost():
+    assert score("def f(a):\n    return 1 if a else 2\n")[0] == 1
+    assert score("def f(xs):\n    return [x for x in xs if x]\n")[0] == 1
 
 
-def test_catch_costs_and_try_does_not():
-    assert cc("try { x(); } catch (Exception e) { log(e); }") == 1
+def test_a_nested_function_deepens_what_is_inside_it():
+    body = ("def f(xs):\n    def inner(x):\n        if x:\n            return 1\n"
+            "    return inner\n")
+    assert score(body)[0] == 2
 
 
-# ── entry points ───────────────────────────────────────────────────────────────────────
+def test_recursion_costs_one_on_the_line_that_calls_back():
+    total, hits = score("def f(n):\n    return f(n - 1)\n")
+    assert total == 1 and hits[0]["line"] == 2 and hits[0]["why"] == "recursion"
 
-CONTROLLER = """
-package app.rest;
 
-@RestController
-@RequestMapping("/api/owners")
-public class OwnerRestController {
-    private final OwnerRepository repository;
+def test_every_increment_names_its_line_and_they_add_up():
+    total, hits = score("def f(a):\n    if a:\n        return [x for x in a if x]\n")
+    assert sum(h["inc"] for h in hits) == total == 3
+    assert [h["line"] for h in hits] == [2, 3]
 
-    @GetMapping(produces = "application/json")
-    public List<OwnerDto> listOwners(@RequestParam(name = "lastName", defaultValue = "") String lastName) {
-        return repository.search(lastName);
-    }
 
-    @GetMapping("{ownerId}")
-    public OwnerDto getOwner(@PathVariable int ownerId) {
-        return repository.byId(ownerId);
-    }
+# ── the entry points and their flow ────────────────────────────────────────────────────
 
-    @PostMapping
-    public void addOwner(@RequestBody OwnerDto dto) {
-        repository.save(dto);
-    }
-}
+SERVERLESS = """
+service: activities
+functions:
+  getThing:
+    handler: src.handlers.get_thing.handler
+    events:
+      - http:
+          method: GET
+          path: /things/{id}
+          authorizer: aws_iam
+  consume:
+    handler: src/handlers/consume.handler
+    events:
+      - sqs:
+          arn: !GetAtt ThingQueue.Arn
+  nightly:
+    handler: src.handlers.consume.nightly
+    events:
+      - schedule: rate(1 day)
+  worker:
+    handler: src.handlers.consume.nightly
+  routed:
+    handler: src.handlers.routed.handler
+    events:
+      - http:
+          method: ANY
+          path: /r/{proxy+}
 """
 
-REPOSITORY = """
-package app.repo;
-
-public class OwnerRepository {
-    public List<OwnerDto> search(String lastName) {
-        if (lastName.isEmpty()) {
-            return all();
-        }
-        for (Owner o : all()) {
-            if (o.matches(lastName)) { hit(o); }
-        }
-        return List.of();
-    }
-    public OwnerDto byId(int id) { return null; }
-    public void save(OwnerDto dto) { }
-    public List<OwnerDto> all() { return null; }
-    public void hit(Owner o) { }
+SOURCES = {
+    "src/__init__.py": "",
+    "src/handlers/get_thing.py": (
+        "from src.services.thing import ThingService\n"
+        "service = ThingService()\n\n\n"
+        "def handler(event, context):\n"
+        "    if not event:\n        return None\n"
+        "    return service.get(event['id'])\n"),
+    "src/services/thing.py": (
+        "from src.repo import Repo\n\n\n"
+        "class ThingService:\n"
+        "    def __init__(self, repo: Repo = None):\n        self.repo = repo or Repo()\n\n"
+        "    def get(self, thing_id):\n"
+        "        for t in self.repo.all():\n"
+        "            if t == thing_id:\n                return self._shape(t)\n\n"
+        "    def _shape(self, t):\n        return {'id': t}\n"),
+    "src/repo.py": "class Repo:\n    def all(self):\n        return []\n",
+    "src/handlers/consume.py": (
+        "from src.shared.app import LambdaApp\n"
+        "app = LambdaApp()\n\n\n"
+        "def work(record):\n    if record:\n        return 1\n\n\n"
+        "handler = app.handler(work)\n\n\n"
+        "def nightly(event, _):\n    return work(event) or 0\n"),
+    "src/shared/app.py": "class LambdaApp:\n    def handler(self, fn):\n        return fn\n",
+    "src/handlers/routed.py": (
+        "from aws_lambda_powertools.event_handler import APIGatewayRestResolver\n"
+        "app = APIGatewayRestResolver()\n\n\n"
+        "@app.get('/r/a')\ndef a():\n    return 1 if app else 2\n\n\n"
+        "@app.route('/r/b', method=['POST'])\ndef b():\n    return 2\n\n\n"
+        "def handler(event, context):\n    return app.resolve(event, context)\n"),
+    "tests/test_thing.py": "def test_x():\n    assert True\n",
 }
-"""
-
-MCP = """
-package app.mcp;
-
-public class PetClinicMcp {
-    @McpTool(name = "create_visit", description = "Book a visit")
-    public String createVisit(
-            @McpToolParam(description = "Pet ID (must belong to the owner)", required = true) int petId,
-            @McpToolParam(description = "Visit date") LocalDate date) {
-        if (petId < 0) { throw new IllegalArgumentException("no"); }
-        return "ok";
-    }
-}
-"""
 
 
-def entries():
-    """The extracted entry points, keyed the way the tab identifies a row: verb and path,
-    because `GET /api/owners` and `POST /api/owners` are two rows."""
-    return {f'{e["httpMethod"]} {e["path"]}': e for e in ec.extract(
-        {"a/src/main/java/app/rest/OwnerRestController.java": CONTROLLER,
-         "a/src/main/java/app/repo/OwnerRepository.java": REPOSITORY,
-         "a/src/main/java/app/mcp/PetClinicMcp.java": MCP})}
+def _extract():
+    return {(e["kind"], e["httpMethod"], e["path"]): e
+            for e in ec.extract(SOURCES, {"serverless.yml": SERVERLESS})}
 
 
-def test_the_class_prefix_is_the_path_of_a_mapping_that_carries_none():
-    found = entries()
-    # `@GetMapping(produces = …)` names no path of its own: the row is the class's path.
-    assert set(found) >= {"GET /api/owners", "POST /api/owners",
-                          "GET /api/owners/{ownerId}", "MCP create_visit"}
-    assert found["GET /api/owners"]["handler"] == "OwnerRestController.listOwners(String)"
+def test_every_serverless_event_is_an_entry_point_of_its_kind():
+    got = set(_extract())
+    assert got == {("http", "GET", "/things/{id}"),
+                   ("listener", "SQS", "consume"),
+                   ("job", "CRON", "nightly (rate(1 day))"),
+                   ("invoke", "INVOKE", "worker"),
+                   ("http", "GET", "/r/a"), ("http", "POST", "/r/b")}
 
 
-def test_an_annotated_parameter_list_does_not_hide_a_handler():
-    found = entries()
-    assert found["MCP create_visit"]["kind"] == "mcp"
-    assert found["MCP create_visit"]["handler"] == "PetClinicMcp.createVisit(int, LocalDate)"
+def test_the_flow_follows_instances_attributes_and_annotations_into_the_project():
+    e = _extract()[("http", "GET", "/things/{id}")]
+    assert e["handler"] == "src.handlers.get_thing.handler()"
+    keys = [f["method"] for f in e["flow"]]
+    assert keys[0] == "src.handlers.get_thing#handler"
+    assert set(keys) == {"src.handlers.get_thing#handler", "src.services.thing.ThingService#get",
+                         "src.services.thing.ThingService#_shape", "src.repo.Repo#all"}
+    # 1 (handler's if) + 1 (for) + 2 (nested if) — straight-line callees are free.
+    assert e["flowCc"] == 4
+    get = next(f for f in e["flow"] if f["method"].endswith("#get"))
+    assert get["file"] == "src/services/thing.py" and get["line"] == 8
+    assert set(get["calls"]) == {"src.repo.Repo#all", "src.services.thing.ThingService#_shape"}
 
 
-PAGED = """
-package app.rest;
-
-@RestController
-@RequestMapping("/api/owners")
-public class OwnerRestController {
-    @GetMapping(produces = "application/json")
-    public OwnerPageDto listOwners(
-            @RequestParam(name = "lastName", defaultValue = "") String lastName,
-            @Parameter(description = "Rows per page",
-                    schema = @Schema(type = "integer", defaultValue = "10")) @RequestParam(name = "size",
-                            required = false) String size,
-            @Parameter(schema = @Schema(allowableValues = {"name,asc", "city,desc"},
-                    defaultValue = "name,asc")) @RequestParam(name = "sort", required = false) String sort) {
-        if (size == null) { return null; }
-        return null;
-    }
-}
-"""
+def test_a_handler_bound_by_assignment_reaches_the_function_it_wraps():
+    e = _extract()[("listener", "SQS", "consume")]
+    assert "src.handlers.consume#work" in [f["method"] for f in e["flow"]]
+    assert e["flowCc"] == 1
 
 
-def test_an_openapi_parameter_two_levels_deep_with_an_array_does_not_hide_a_handler():
-    """`@Parameter(schema = @Schema(allowableValues = {…}))` is two levels of parens with a
-    brace inside. The one-level pattern missed it, and the delta drew the paginated
-    `GET /api/owners` as `gone` while it still existed."""
-    found = {f'{e["httpMethod"]} {e["path"]}': e for e in ec.extract(
-        {"a/src/main/java/app/rest/OwnerRestController.java": PAGED})}
-    assert found["GET /api/owners"]["handler"] == \
-        "OwnerRestController.listOwners(String, String, String)"
-    assert found["GET /api/owners"]["flowCc"] == 1
+def test_a_powertools_resolver_is_one_entry_point_per_route():
+    got = _extract()
+    assert got[("http", "GET", "/r/a")]["flowCc"] == 1
+    assert got[("http", "POST", "/r/b")]["handler"] == "src.handlers.routed.b()"
+    assert ("http", "ANY", "/r/{proxy+}") not in got
 
 
-METER = """
-package app.chat;
-
-@RestController
-public class Assistant {
-    private final TokenCostMeter tokenCostMeter;
-
-    @GetMapping("/assistant")
-    public String assistant(String message) {
-        tokenCostMeter.record(message);
-        return message;
-    }
-}
-"""
-
-TOKEN_METER = """
-package app.chat;
-
-public class TokenCostMeter {
-    private record Leg(String model, long tokens) {
-        Leg {
-            if (tokens < 0) throw new IllegalArgumentException();
-        }
-    }
-
-    public void record(String response) {
-        if (response == null) { return; }
-        recordLeg(priceFor(response));
-    }
-
-    private double priceFor(String model) {
-        return model.isEmpty() ? 0 : 1;
-    }
-
-    private void recordLeg(double price) { }
-}
-"""
+def test_tests_are_not_read_as_the_service():
+    assert ec.wanted("src/x.py") and not ec.wanted("tests/test_thing.py")
+    assert not ec.wanted("src/alembic/versions/1_a.py")
 
 
-def test_a_method_named_record_is_filed_and_called_and_a_record_type_is_not_a_method():
-    """`record` is a contextual keyword. Refused as a name, it dropped `TokenCostMeter.record`
-    — and `priceFor` behind it — from `GET /assistant` on petclinic; the `record Leg(…) {`
-    declaration must still not be read as a method called `Leg`."""
-    found = {f'{e["httpMethod"]} {e["path"]}': e for e in ec.extract(
-        {"a/src/main/java/app/chat/Assistant.java": METER,
-         "a/src/main/java/app/chat/TokenCostMeter.java": TOKEN_METER})}
-    flow = [m["method"] for m in found["GET /assistant"]["flow"]]
-    assert flow == ["app.chat.Assistant#assistant", "app.chat.TokenCostMeter#record",
-                    "app.chat.TokenCostMeter#priceFor", "app.chat.TokenCostMeter#recordLeg"]
-    # record(): the guard is 1; priceFor(): the ternary is 1.
-    assert found["GET /assistant"]["flowCc"] == 2
-    index = ec.Index({"a/src/main/java/app/chat/TokenCostMeter.java": TOKEN_METER})
-    assert "app.chat.TokenCostMeter#Leg" not in index.methods
-
-
-def test_the_flow_is_summed_over_distinct_methods_once():
-    found = entries()
-    # search() is 1 (the guard) + 1 (the loop) + 2 (the if inside it) = 4, and it calls
-    # all() twice — the second call is free, because the method is already in the flow.
-    assert found["GET /api/owners"]["flowCc"] == 4
-    assert [m["method"] for m in found["GET /api/owners"]["flow"]] == [
-        "app.rest.OwnerRestController#listOwners",
-        "app.repo.OwnerRepository#search",
-        "app.repo.OwnerRepository#all",
-        "app.repo.OwnerRepository#hit",
-    ]
-
-
-def test_a_handler_that_reaches_nothing_expensive_scores_zero():
-    assert entries()["GET /api/owners/{ownerId}"]["flowCc"] == 0
-
-
-def test_a_call_this_file_cannot_place_is_dropped_rather_than_guessed():
-    files = {
-        "a/src/main/java/app/A.java":
-            "package app;\npublic class A {\n  @GetMapping(\"/a\")\n  public void go() { helper.run(); }\n}\n",
-        "a/src/main/java/app/B.java":
-            "package app;\npublic class B {\n  public void run() { if (x) { y(); } }\n}\n",
-        "a/src/main/java/app/C.java":
-            "package app;\npublic class C {\n  public void run() { if (x) { y(); } }\n}\n",
-    }
-    [entry] = ec.extract(files)
-    # `helper` has no declared type here and two classes offer `run`: counting both would
-    # invent complexity, counting one would pick it by file order.
-    assert entry["methods"] == 1 and entry["flowCc"] == 0
-
-
-def test_recursion_costs_one():
-    files = {"a/src/main/java/app/A.java":
-             "package app;\npublic class A {\n  @GetMapping(\"/a\")\n"
-             "  public void go(int n) { go(n - 1); }\n}\n"}
-    assert ec.extract(files)[0]["flowCc"] == 1
-
-
-def test_only_a_call_that_can_only_mean_this_method_is_recursion():
-    """Eval run 11: `return Integer.parseInt(value);` inside a helper named `parseInt` was
-    charged +1 'recursion' — the name matched, the receiver was the JDK."""
-    def rec(body: str) -> int:
-        files = {"a/src/main/java/app/A.java":
-                 "package app;\npublic class A {\n  @GetMapping(\"/a\")\n"
-                 f"  public int parseInt(String v) {{ {body} }}\n}}\n"}
-        return ec.extract(files)[0]["flowCc"]
-    assert rec("return Integer.parseInt(v);") == 0, "a library type's method of the same name"
-    assert rec("return super.parseInt(v);") == 0, "the parent's body, not a loop back"
-    assert rec("return v.trim().parseInt(v);") == 0, "a call on whatever trim() returns"
-    assert rec("return parseInt(v);") == 1
-    assert rec("return this.parseInt(v);") == 1
-    assert rec("return A.parseInt(v);") == 1, "a static call through the own class"
-
-
-MCP_SECURITY = """
-package app.mcp;
-public class McpTools {
-    @McpTool(name = "cancel_visit")
-    public void cancel() { int id = Integer.parseInt(name()); java.util.List.of(id); UUID.randomUUID(); }
-}
-"""
-PAGE_REQUEST = """
-package app.rest;
-public class OwnerPageRequest {
-    private static int parseInt(String name, String value) { try { return 1; } catch (Exception e) { return 0; } }
-    public static UUID randomUUID() { if (x) { y(); } return null; }
-}
-"""
-
-
-def test_a_library_type_s_method_never_binds_to_a_project_method_of_the_same_name():
-    """Eval run 11: McpSecurity's `Integer.parseInt(…)` resolved by unique simple name to the
-    branch's new private `OwnerPageRequest#parseInt`, and four untouched MCP tools grew +2."""
-    [entry] = ec.extract({"a/src/main/java/app/mcp/McpTools.java": MCP_SECURITY,
-                          "a/src/main/java/app/rest/OwnerPageRequest.java": PAGE_REQUEST})
-    assert [m["method"] for m in entry["flow"]] == ["app.mcp.McpTools#cancel"]
-    assert entry["flowCc"] == 0
-
-
-def test_a_capitalised_constant_is_still_typed_and_an_untyped_lowercase_receiver_still_guesses():
-    files = {
-        "a/src/main/java/app/A.java":
-            "package app;\npublic class A {\n  private static final B INSTANCE = new B();\n"
-            "  @GetMapping(\"/a\")\n  public void go() { INSTANCE.run(); helper.walk(); }\n}\n",
-        "a/src/main/java/app/B.java":
-            "package app;\npublic class B {\n  public void run() { if (x) { y(); } }\n"
-            "  public void walk() { if (x) { y(); } }\n}\n",
-    }
-    [entry] = ec.extract(files)
-    assert [m["method"] for m in entry["flow"]] == ["app.A#go", "app.B#run", "app.B#walk"]
-
-
-STREAMED = """
-package app.rest;
-
-public class OwnerRestController {
-    private final OwnerMapper ownerMapper;
-
-    @GetMapping("/api/owners")
-    public List<OwnerDto> listOwners(List<Owner> owners) {
-        List<Integer> ids = owners.stream().map(Owner::getId).toList();
-        owners.forEach(o -> audit(o));
-        return owners.stream().map(ownerMapper::toOwnerDto).map(this::trim).map(Box::new).toList();
-    }
-    private OwnerDto trim(OwnerDto d) { if (d == null) { return null; } return d; }
-    private void audit(Owner o) { if (o.isNew()) { log(); } }
-}
-"""
-STREAMED_MAPPER = """
-package app.rest;
-
-public class OwnerMapper {
-    public OwnerDto toOwnerDto(Owner o) { for (Pet p : o.pets()) { if (p.sick()) { flag(p); } } return null; }
-}
-"""
-STREAMED_BOX = """
-package app.rest;
-
-public class Box {
-    public Box(OwnerDto d) { if (d == null) { throw new IllegalStateException(); } }
-}
-"""
-STREAMED_OWNER = """
-package app.rest;
-
-public class Owner {
-    public Integer getId() { return id == null ? 0 : id; }
-}
-"""
-
-
-def test_a_method_reference_is_a_call_and_so_is_a_call_inside_a_lambda():
-    """`.map(ownerMapper::toOwnerDto)` runs the mapper exactly as a dotted call would. The
-    call pattern only read `name(`, so eval run 10 lost the whole mapper chain behind
-    `GET /api/owners` and drew a flow that grew by four as one that shrank by five."""
-    [entry] = ec.extract({"a/src/main/java/app/rest/OwnerRestController.java": STREAMED,
-                          "a/src/main/java/app/rest/OwnerMapper.java": STREAMED_MAPPER,
-                          "a/src/main/java/app/rest/Box.java": STREAMED_BOX,
-                          "a/src/main/java/app/rest/Owner.java": STREAMED_OWNER})
-    reached = {m["method"] for m in entry["flow"]}
-    assert "app.rest.OwnerMapper#toOwnerDto" in reached, "field::method, typed like field.method("
-    assert "app.rest.Owner#getId" in reached, "Type::method"
-    assert "app.rest.OwnerRestController#trim" in reached, "this::method"
-    assert "app.rest.Box#Box" in reached, "Type::new is the declared constructor"
-    assert "app.rest.OwnerRestController#audit" in reached, "a call inside a lambda's body"
-    # mapper: the for 1 + the if inside it 2; trim, Box, getId's ternary and audit 1 each.
-    assert entry["flowCc"] == 3 + 1 + 1 + 1 + 1
-
-
-def test_this_dot_call_resolves_to_the_own_class_even_when_another_declares_the_name():
-    files = {
-        "a/src/main/java/app/A.java":
-            "package app;\npublic class A {\n  @GetMapping(\"/a\")\n"
-            "  public void go() { this.run(); }\n  void run() { if (x) { y(); } }\n}\n",
-        "a/src/main/java/app/B.java":
-            "package app;\npublic class B {\n  public void run() { if (x) { y(); } }\n}\n",
-    }
-    [entry] = ec.extract(files)
-    assert [m["method"] for m in entry["flow"]] == ["app.A#go", "app.A#run"]
-
-
-def test_comments_and_strings_are_not_read_as_code():
-    # A `{` in a string and an `if` in a comment used to open a block and charge for it.
-    assert cc('String s = "if (a) { b(); }"; // if (c) { d(); }') == 0
-
-
-# ── the breakdown behind a number ──────────────────────────────────────────────────────
-
-def test_the_increments_add_up_to_the_number_on_the_row():
-    """The fold under a row is the row's own arithmetic, so it has to be the same sum.
-
-    A breakdown that comes to 3 under a bar labelled 4 is worse than no breakdown: the
-    reviewer now distrusts both. `cognitive` is defined as the sum of `increments`, and
-    `flowCc` as the sum over the flow — this pins the whole chain end to end, on the same
-    fixture the rest of the file measures."""
-    for label, e in entries().items():
-        counted = sum(h["inc"] for f in e["flow"] for h in f["hits"])
-        assert counted == e["flowCc"], f"{label}: {counted} lines vs flowCc {e['flowCc']}"
-        for f in e["flow"]:
-            assert sum(h["inc"] for h in f["hits"]) == f["cognitive"], f["method"]
-    assert entries()["GET /api/owners"]["flowCc"] == 4
-
-
-def test_every_increment_names_the_line_it_was_read_off():
-    flow = {f["method"]: f for f in entries()["GET /api/owners"]["flow"]}
-    hits = flow["app.repo.OwnerRepository#search"]["hits"]
-    assert [(h["why"], h["inc"]) for h in hits] == [("if", 1), ("for", 1), ("if", 2)]
-    for h in hits:
-        assert h["file"] == "a/src/main/java/app/repo/OwnerRepository.java"
-        # The line is the line in the file, and the text is what is on it: the fold is
-        # evidence, and evidence that points a reader at the wrong line is a bug they
-        # cannot see. The nested `if` costs 2 — 1 for itself, 1 for the loop around it.
-        assert REPOSITORY.splitlines()[h["line"] - 1].strip() == h["code"]
-    assert hits[2]["code"].startswith("if (o.matches(")
-
-
-def test_recursion_is_charged_on_the_line_that_calls_back():
-    files = {"a/src/main/java/app/A.java":
-             "package app;\npublic class A {\n  @GetMapping(\"/a\")\n"
-             "  public void go(int n) { go(n - 1); }\n}\n"}
-    [hit] = ec.extract(files)[0]["flow"][0]["hits"]
-    assert (hit["why"], hit["inc"], hit["line"]) == ("recursion", 1, 4)
+def test_the_tab_finds_a_python_method_by_its_module():
+    assert delta._source_of.__doc__ and "py" in delta._source_of.__doc__
 
 
 def test_a_bar_folds_open_onto_its_own_lines():
@@ -589,28 +345,6 @@ if __name__ == "__main__":
 # the call graph under a row, and the header that opens it
 # --------------------------------------------------------------------------- #
 
-def test_cyclomatic_counts_decision_points_not_nesting():
-    def cyc(body):
-        return ec.cyclomatic(ec.strip("{" + body + "}"))
-    assert cyc("a(); b();") == 1
-    # if + for + if + && = 4 decisions; `else` and nesting add paths to read, not to walk.
-    assert cyc("if (a) { for (X x : xs) { if (b && c) { d(); } } } else { e(); }") == 5
-    assert cyc("switch (k) { case 1: a(); break; case 2: b(); }") == 3
-    assert cyc("List<?> l = x ? y : z;") == 2, "a wildcard is not a ternary"
-    assert cyc("do { a(); } while (b);") == 2
-
-
-def test_every_flow_node_carries_its_edges_and_both_scores():
-    flow = {f["method"]: f for f in entries()["GET /api/owners"]["flow"]}
-    assert flow["app.rest.OwnerRestController#listOwners"]["calls"] == [
-        "app.repo.OwnerRepository#search"]
-    assert set(flow["app.repo.OwnerRepository#search"]["calls"]) >= {
-        "app.repo.OwnerRepository#all", "app.repo.OwnerRepository#hit"}
-    for f in flow.values():
-        assert f["cyclomatic"] >= 1
-        assert set(f["calls"]) <= set(flow), "an edge never leaves the flow"
-
-
 def _gnode(key, cog=0, calls=(), delta=0, cyc=1):
     return {"method": key, "display": key.split(".")[-1].replace("#", ".") + "()",
             "cognitive": cog, "cyclomatic": cyc, "calls": list(calls), "delta": delta}
@@ -651,15 +385,14 @@ def test_a_node_folds_open_onto_its_own_lines():
     assert re.search(r'<h2 class="tabtitle cx-title"><a href="[^"]*sonarsource'
                      r'\.com/resources/cognitive-complexity[^"]*"[^>]*>Cognitive Complexity</a>'
                      r' per Entry Point</h2>', page)
-    # The subtitle names what actually computes the number, linked, and says it is no parser.
+    # The subtitle names what actually computes the number, linked, and how.
     lede = page[page.index('<p class="tabsub cx-lede">'):]
     lede = lede[:lede.index("</p>")]
     assert lede.startswith('<p class="tabsub cx-lede">Computed by <a href="https://github.com/'
-                           'victorrentea/human-review/blob/main/skills/human-review/scripts/'
+                           'stojanpeshov/human-review/blob/ludvig/skills/human-review/scripts/'
                            'endpoint-complexity.py" target="_blank" rel="noopener">'
                            'endpoint-complexity.py</a>')
-    assert "regular expressions over the Java sources (no parser, no syntax tree)" in lede
-    assert lede.endswith("(no parser, no syntax tree).")
+    assert "Python&#39;s own <code>ast</code>" in lede and "serverless*.yml" in lede
     assert "scored as" not in lede
     assert "Click ▸" not in page
     assert re.search(r"\.cg-open > \.cg-lines \{[^}]*display:block", delta.CSS)

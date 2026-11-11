@@ -42,6 +42,7 @@ KIND_TITLES = [
     ("mcp", "MCP tools"),
     ("listener", "Message listeners"),
     ("job", "Jobs"),
+    ("invoke", "Invoked by other services"),
 ]
 
 
@@ -56,15 +57,14 @@ def repo_root() -> Path:
 
 @lru_cache(maxsize=None)
 def _source_of(fqcn: str):
-    """`victor.training.petclinic.mcp.PetClinicMcp` -> the .java file that declares it.
-
-    A nested class (`pkg.Outer.Inner`, as the JavaParser engine names it) lives in its
-    outer class's file, so a name that is no file is retried one segment shorter."""
+    """`src.core.services.rpa.RpaService` (or the module itself) -> the .py file that
+    declares it: the longest prefix of the dotted name that is a module of the repository,
+    a package's `__init__.py` included. Only a fallback — `endpoint-complexity.py` writes
+    `file` and `line` on every flow item, which `DECL_AT` reads first."""
     parts = fqcn.split(".")
     while parts:
-        rel = Path(*parts).with_suffix(".java")
-        for src in sorted(repo_root().glob("*/src/main/java")):
-            candidate = src / rel
+        for candidate in (repo_root().joinpath(*parts).with_suffix(".py"),
+                          repo_root().joinpath(*parts, "__init__.py")):
             if candidate.is_file():
                 return candidate
         parts = parts[:-1]
@@ -81,7 +81,7 @@ DECL_AT: dict[str, tuple[str, int]] = {}
 def entry_source(flow_method: str):
     """Where a flow starts, as (absolute path, 1-based line) — or None if not resolvable.
 
-    The JSON names the handler as `pkg.Class#method`. The line comes from the declaration in
+    The JSON names a method `module.Class#method` and a function `module#function`. The line comes from the declaration in
     the file rather than from bytecode, so it stays right for any project layout and needs no
     debug symbols; an overload resolves to its first declaration, which is the file and method
     a reviewer wanted anyway.
@@ -167,7 +167,7 @@ def load_pair(before: Path, after: Path):
 def engine_of(path: Path) -> str:
     """Which extractor wrote a snapshot: `javaparser` or `regex` (older snapshots: regex)."""
     entries = json.loads(path.read_text(encoding="utf-8"))
-    return (entries[0].get("engine") if entries else None) or "regex"
+    return (entries[0].get("engine") if entries else None) or "ast"
 
 
 def compare(before, after):
@@ -275,7 +275,7 @@ def _split(key: str) -> tuple[str, str]:
 SONAR_COGNITIVE = "https://www.sonarsource.com/resources/cognitive-complexity/"
 # The extractor both snapshots come from, on GitHub: the repository is public, and a
 # reader forwarded the page has no checkout of this skill to open it in.
-EXTRACTOR_URL = ("https://github.com/victorrentea/human-review/blob/main/"
+EXTRACTOR_URL = ("https://github.com/stojanpeshov/human-review/blob/ludvig/"
                  "skills/human-review/scripts/endpoint-complexity.py")
 
 
@@ -614,23 +614,21 @@ def render_row(r, peak) -> str:
     )
 
 
-LEDE_REGEX = ("from regular expressions over the Java sources (no parser, no syntax tree).")
-LEDE_JAVAPARSER = ("with <a href=\"https://javaparser.org\" target=\"_blank\" rel=\"noopener\">"
-                   "JavaParser</a> and its symbol solver: a syntax tree of the Java sources, "
-                   "every call bound by type.")
+LEDE_AST = ("with Python&#39;s own <code>ast</code>: entry points from "
+            "<code>serverless*.yml</code>, and every function reachable from each handler, a call "
+            "bound by the class its receiver was built from.")
 
 
 def _lede_engine(engines) -> str:
+    """One extractor in the Ludvig fork; a snapshot from another names itself."""
     before, after = engines
-    if before == after:
-        return LEDE_JAVAPARSER if after == "javaparser" else LEDE_REGEX
-    name = {"javaparser": "JavaParser", "regex": "regular expressions"}
-    return (f"— the merge-base by {name.get(before, before)}, this branch by "
-            f"{name.get(after, after)}: the two sides were measured by different engines, "
-            "so read the deltas with care.")
+    if before == after == "ast":
+        return LEDE_AST
+    return (f"— the merge-base by {before}, this branch by {after}: the two sides were "
+            "measured by different engines, so read the deltas with care.")
 
 
-def render(rows, engines=("regex", "regex")) -> str:
+def render(rows, engines=("ast", "ast")) -> str:
     # A shrunk bar still draws what was removed past its current end, so the scale must fit
     # the taller of the two snapshots.
     peak = max((max(r["now"], r["was"] or 0) for r in rows), default=1) or 1
