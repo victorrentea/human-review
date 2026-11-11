@@ -18,6 +18,11 @@
       "file": "requirements.jpg"
     },
     {
+      "panel": "sequence",
+      "title": "Sequence",
+      "file": "sequence.jpg"
+    },
+    {
       "panel": "api",
       "title": "API",
       "file": "api.jpg"
@@ -26,11 +31,6 @@
       "panel": "data",
       "title": "Data",
       "file": "data.jpg"
-    },
-    {
-      "panel": "sequence",
-      "title": "Sequence",
-      "file": "sequence.jpg"
     },
     {
       "panel": "packages",

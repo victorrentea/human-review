@@ -11,7 +11,7 @@
   "reviewers": "4 read-only Sonnet subagents (correctness, security, ticket-fit, tests briefs)",
   "harness": "claude-code",
   "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
-  "reviewCommit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
+  "reviewCommit": "088f2f283d658041fc67afada5f166ba3e4e66bb"
  },
  "fixed_in": "HEAD",
  "findings": [
@@ -20,7 +20,7 @@
    "source": "correctness, security, ticket-fit and tests reviewers",
    "severity": "low",
    "observation": "A client that omits vetId wipes the existing vet; &quot;leave unchanged&quot; cannot be told from &quot;clear&quot;.",
-   "why": "PUT replaces the whole visit, so clearing persists, as ticket item 2 demands. See the assumption.",
+   "why": "PUT replaces the whole visit, so a clear always sticks (ticket item 2); our form always sends vetId.",
    "refs": [
     "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:85"
    ],
@@ -95,7 +95,7 @@
    "source": "ticket-fit reviewer",
    "severity": "low",
    "observation": "Bookings made through the chatbot always have no vet.",
-   "why": "the vet is optional at booking; owners rarely know it. Separate ticket if wanted.",
+   "why": "&quot;everywhere&quot; covers display, which list_visits does; booking a vet stays a staff action.",
    "refs": [
     "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:55"
    ],
@@ -202,7 +202,7 @@
      "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:351"
     }
    ],
-   "fixCommit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
+   "fixCommit": "ec9fac9037d7ef714362324e24bf5ed57e8f612f"
   },
   {
    "title": "Deleting a vet with visits is untested",
@@ -218,7 +218,7 @@
      "ref": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:429"
     }
    ],
-   "fixCommit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
+   "fixCommit": "ec9fac9037d7ef714362324e24bf5ed57e8f612f"
   },
   {
    "title": "Chatbot list_visits omits the vet",
@@ -246,36 +246,6 @@
   }
  ],
  "assumptions": [
-  {
-   "title": "PUT replaces the visit; a missing vetId means no vet",
-   "alternative": "PATCH-like: absent keeps the vet, explicit null clears it",
-   "confidence": 0.7,
-   "why": "Ticket item 2 makes &quot;clear must stick&quot; the priority, and full-replace PUT is the simplest rule that guarantees it; the only client, our edit form, always sends the field. Four reviewers flagged the omitted-field case, which pulls confidence down.",
-   "decidedBy": "agent",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:85"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:85"
-    }
-   ]
-  },
-  {
-   "title": "Unknown vetId is a 404",
-   "alternative": "400 naming vetId as the bad field",
-   "confidence": 0.6,
-   "why": "Matches how unknown pet types are handled. A 400 is more correct HTTP, which is why this is close to a coin flip.",
-   "decidedBy": "agent",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:20"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:20"
-    }
-   ]
-  },
   {
    "title": "Deleting a vet keeps their visits, with no vet",
    "alternative": "refuse deleting a vet who has visits",
@@ -320,21 +290,6 @@
      "ref": "petclinic-backend/src/main/resources/db/seed/R__seed.sql:142-145"
     }
    ]
-  },
-  {
-   "title": "MCP create_visit takes no vet; list_visits shows it",
-   "alternative": "also add a vet parameter to create_visit",
-   "confidence": 0.7,
-   "why": "&quot;Everywhere&quot; in the ticket covers displaying, which list_visits does; choosing a vet at booking stays a staff action in the UI.",
-   "decidedBy": "agent",
-   "refs": [
-    "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:55"
-   ],
-   "snippets": [
-    {
-     "ref": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java:55"
-    }
-   ]
   }
  ],
  "meta": {
@@ -361,7 +316,7 @@
   "Assumptions": "Assumptions"
  },
  "note": null,
- "items": 19,
+ "items": 16,
  "dropped": 0,
  "warnings": [],
  "empty": false

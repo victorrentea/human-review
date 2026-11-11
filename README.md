@@ -56,6 +56,12 @@ One screenshot per tab of the demo, retaken on every publish.
 
 <sub>[open it live](https://victorrentea.github.io/human-review/demo/review.html#requirements) — What the change set was supposed to do, the tests that pin each sentence of it, and what the branch did to the test run — including the tests it stopped running without deleting.</sub>
 
+### [Sequence](docs/tabs/sequence.md)
+
+<a href="docs/tabs/sequence.md"><img src="demo/demo/tour/sequence.jpg" alt="Sequence tab" width="100%"></a>
+
+<sub>[open it live](https://victorrentea.github.io/human-review/demo/review.html#sequence) — Sequence diagrams recorded from real traces of real test runs, each beside the test that produced it — and the tests tagged for tracing that came back without one.</sub>
+
 ### [API](docs/tabs/api.md)
 
 <a href="docs/tabs/api.md"><img src="demo/demo/tour/api.jpg" alt="API tab" width="100%"></a>
@@ -67,12 +73,6 @@ One screenshot per tab of the demo, retaken on every publish.
 <a href="docs/tabs/data.md"><img src="demo/demo/tour/data.jpg" alt="Data tab" width="100%"></a>
 
 <sub>[open it live](https://victorrentea.github.io/human-review/demo/review.html#data) — The database and domain-model deltas — added in green, removed in red and struck — trimmed to what changed.</sub>
-
-### [Sequence](docs/tabs/sequence.md)
-
-<a href="docs/tabs/sequence.md"><img src="demo/demo/tour/sequence.jpg" alt="Sequence tab" width="100%"></a>
-
-<sub>[open it live](https://victorrentea.github.io/human-review/demo/review.html#sequence) — Sequence diagrams recorded from real traces of real test runs, each beside the test that produced it — and the tests tagged for tracing that came back without one.</sub>
 
 ### [Structure](docs/tabs/structure.md)
 

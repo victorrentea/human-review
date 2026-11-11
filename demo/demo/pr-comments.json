@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "commit_id": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
+  "commit_id": "088f2f283d658041fc67afada5f166ba3e4e66bb",
   "event": "COMMENT",
-  "body": "**Review record** from `review-points.md` (4 read-only Sonnet subagents (correctness, security, ticket-fit, tests briefs)): 4 auto-fixed · 9 declined and still open · 6 assumptions. Each is on the line it is about, or quoted below with its lines when that line is not in the diff.",
+  "body": "**Review record** from `review-points.md` (4 read-only Sonnet subagents (correctness, security, ticket-fit, tests briefs)): 4 auto-fixed · 9 declined and still open · 3 assumptions. Each open one is on the line it is about, or quoted below with its lines when that line is not in the diff.",
   "comments": [
     {
       "hr_id": "F:vet-tests-read-the-session-cache-not-the",
@@ -12,8 +12,8 @@
       "line": 448,
       "side": "RIGHT",
       "start_line": 445,
-      "anchor": "}",
-      "body": "🛠 **Auto-fixed** in be762955 — Vet tests read the session cache, not the database\n\n<sub>raised by tests reviewer</sub>"
+      "body": "**Auto-fixed** — Vet tests read the session cache, not the database\n\n**Reviewer:** VisitTest is @Transactional and only one test cleared the persistence context, so create/update/clear read back the cached entity. A broken vet_id mapping or a clear that never reached the row would still pass.\n\n**Fix:** a flushAndClear() helper runs after every write the vet tests then assert on.\n\n<sub>raised by tests reviewer</sub>",
+      "fix_commit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
     },
     {
       "hr_id": "F:unknown-vetid-on-edit-and-on-owner-page-booking",
@@ -22,8 +22,9 @@
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "line": 380,
       "side": "RIGHT",
-      "anchor": "void update_withUnknownVet_notFound() throws Exception {",
-      "body": "🛠 **Auto-fixed** in be762955 — Unknown vetId on edit and on owner-page booking untested\n\n<sub>raised by tests reviewer</sub>"
+      "anchor": ".setVetId(null);",
+      "body": "**Auto-fixed** — Unknown vetId on edit and on owner-page booking untested\n\n**Reviewer:** Only POST /api/visits had an unknown-vet test; PUT /api/visits/{id} and POST /owners/{o}/pets/{p}/visits could regress to a 500 unnoticed.\n\n**Fix:** one 404 test per path.\n\n<sub>raised by tests reviewer</sub>",
+      "fix_commit": "ec9fac9037d7ef714362324e24bf5ed57e8f612f"
     },
     {
       "hr_id": "F:deleting-a-vet-with-visits-is-untested",
@@ -32,8 +33,9 @@
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "line": 429,
       "side": "RIGHT",
-      "anchor": "void deletingAVet_leavesTheirVisitsWithNoVet() throws Exception {",
-      "body": "🛠 **Auto-fixed** in be762955 — Deleting a vet with visits is untested\n\n<sub>raised by tests reviewer</sub>"
+      "anchor": "private static int idFrom(String location) {",
+      "body": "**Auto-fixed** — Deleting a vet with visits is untested\n\n**Reviewer:** Keeping a deleted vet's visits rests on ON DELETE SET NULL in V4, and nothing exercised it; the delete could fail on the foreign key.\n\n**Fix:** test deletes a vet through the API and reads the visit back with no vet.\n\n<sub>raised by tests reviewer</sub>",
+      "fix_commit": "ec9fac9037d7ef714362324e24bf5ed57e8f612f"
     },
     {
       "hr_id": "F:chatbot-list-visits-omits-the-vet",
@@ -43,7 +45,8 @@
       "line": 126,
       "side": "RIGHT",
       "anchor": "public record VisitView(int id, int petId, String petName, LocalDate date, LocalTime time, String description,",
-      "body": "🛠 **Auto-fixed** in be762955 — Chatbot list_visits omits the vet\n\n<sub>raised by ticket-fit reviewer</sub>"
+      "body": "**Auto-fixed** — Chatbot list_visits omits the vet\n\n**Reviewer:** The ticket says visits show their vet everywhere, yet the MCP list_visits answer had no vet field.\n\n**Fix:** VisitView carries vetName, null when the visit has none.\n\n<sub>raised by ticket-fit reviewer</sub>",
+      "fix_commit": "be762955d5f477feeca0f7db55e32fa1c2fb8db5"
     },
     {
       "hr_id": "I:put-without-vetid-clears-the-stored-vet",
@@ -53,7 +56,7 @@
       "line": 85,
       "side": "RIGHT",
       "anchor": "currentVisit.setVet(vetRepository.findByIdOrNull(visitDto.getVetId()));",
-      "body": "🔴 **Open issue** · low · declined by the author — PUT without vetId clears the stored vet\n\n**Why declined:** PUT replaces the whole visit, so clearing persists, as ticket item 2 demands. See the assumption.\n\n<sub>raised by correctness, security, ticket-fit and tests reviewers</sub>"
+      "body": "**Open issue** · low · declined by the author — PUT without vetId clears the stored vet\n\n**Why declined:** PUT replaces the whole visit, so a clear always sticks (ticket item 2); our form always sends vetId.\n\n<sub>raised by correctness, security, ticket-fit and tests reviewers</sub>"
     },
     {
       "hr_id": "I:unknown-vetid-answers-a-bare-404-not-a-400",
@@ -63,7 +66,7 @@
       "line": 20,
       "side": "RIGHT",
       "anchor": "return id == null ? null : findById(id).orElseThrow();",
-      "body": "🔴 **Open issue** · low · declined by the author — Unknown vetId answers a bare 404, not a 400\n\n**Why declined:** same as unknown pet types, OwnerRestController.java:150; a 400 belongs in a codebase-wide change.\n\n<sub>raised by correctness, security and ticket-fit reviewers</sub>"
+      "body": "**Open issue** · low · declined by the author — Unknown vetId answers a bare 404, not a 400\n\n**Why declined:** same as unknown pet types, OwnerRestController.java:150; a 400 belongs in a codebase-wide change.\n\n<sub>raised by correctness, security and ticket-fit reviewers</sub>"
     },
     {
       "hr_id": "I:vet-ids-can-be-enumerated-via-the-404",
@@ -73,7 +76,7 @@
       "line": 20,
       "side": "RIGHT",
       "anchor": "return id == null ? null : findById(id).orElseThrow();",
-      "body": "🔴 **Open issue** · info · declined by the author — Vet ids can be enumerated via the 404\n\n**Why declined:** GET /api/vets lists every vet already; nothing is disclosed.\n\n<sub>raised by security reviewer</sub>"
+      "body": "**Open issue** · info · declined by the author — Vet ids can be enumerated via the 404\n\n**Why declined:** GET /api/vets lists every vet already; nothing is disclosed.\n\n<sub>raised by security reviewer</sub>"
     },
     {
       "hr_id": "I:visits-expose-vet-names-to-every-caller",
@@ -84,7 +87,7 @@
       "side": "RIGHT",
       "start_line": 51,
       "anchor": ".setVetLastName(vet.getLastName());",
-      "body": "🔴 **Open issue** · info · declined by the author — Visits expose vet names to every caller\n\n**Why declined:** Visit endpoints are OWNER_ADMIN-only and vet names are already public via /api/vets.\n\n<sub>raised by security reviewer</sub>"
+      "body": "**Open issue** · info · declined by the author — Visits expose vet names to every caller\n\n**Why declined:** Visit endpoints are OWNER_ADMIN-only and vet names are already public via /api/vets.\n\n<sub>raised by security reviewer</sub>"
     },
     {
       "hr_id": "I:any-existing-vet-can-be-attributed-to-a-visit",
@@ -93,8 +96,8 @@
       "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
       "line": 192,
       "side": "RIGHT",
-      "anchor": "visit.setVet(vetRepository.findByIdOrNull(visitFieldsDto.getVetId()));",
-      "body": "🔴 **Open issue** · info · declined by the author — Any existing vet can be attributed to a visit\n\n**Why declined:** choosing any vet is the feature; the ticket sets no eligibility rule.\n\n<sub>raised by security reviewer</sub>"
+      "anchor": "@WithSpan(\"book-visit\")",
+      "body": "**Open issue** · info · declined by the author — Any existing vet can be attributed to a visit\n\n**Why declined:** choosing any vet is the feature; the ticket sets no eligibility rule.\n\n<sub>raised by security reviewer</sub>"
     },
     {
       "hr_id": "I:chatbot-create-visit-cannot-choose-a-vet",
@@ -104,7 +107,7 @@
       "line": 55,
       "side": "RIGHT",
       "anchor": "@Transactional",
-      "body": "🔴 **Open issue** · low · declined by the author — Chatbot create_visit cannot choose a vet\n\n**Why declined:** the vet is optional at booking; owners rarely know it. Separate ticket if wanted.\n\n<sub>raised by ticket-fit reviewer</sub>"
+      "body": "**Open issue** · low · declined by the author — Chatbot create_visit cannot choose a vet\n\n**Why declined:** \"everywhere\" covers display, which list_visits does; booking a vet stays a staff action.\n\n<sub>raised by ticket-fit reviewer</sub>"
     },
     {
       "hr_id": "I:failed-vets-fetch-shows-no-vet-for-a-visit-with",
@@ -114,7 +117,7 @@
       "line": 43,
       "side": "RIGHT",
       "anchor": "this.vetService.getVets().subscribe(vets => this.vetOptions = toVetOptions(vets));",
-      "body": "🔴 **Open issue** · low · declined by the author — Failed vets fetch shows \"No vet\" for a visit with one\n\n**Why declined:** model keeps the old vetId, so saving does not clear it; display-only, error path.\n\n<sub>raised by correctness reviewer</sub>"
+      "body": "**Open issue** · low · declined by the author — Failed vets fetch shows \"No vet\" for a visit with one\n\n**Why declined:** model keeps the old vetId, so saving does not clear it; display-only, error path.\n\n<sub>raised by correctness reviewer</sub>"
     },
     {
       "hr_id": "I:clearing-the-combo-could-send-or-0",
@@ -124,7 +127,7 @@
       "line": 57,
       "side": "RIGHT",
       "anchor": "this.value = index === '' ? null : this.valueOf(option);",
-      "body": "🔴 **Open issue** · info · declined by the author — Clearing the combo could send '' or 0\n\n**Why declined:** pick('') sets null, line 57; covered by the combo's own spec.\n\n<sub>raised by tests reviewer</sub>"
+      "body": "**Open issue** · info · declined by the author — Clearing the combo could send '' or 0\n\n**Why declined:** pick('') sets null, line 57; covered by the combo's own spec.\n\n<sub>raised by tests reviewer</sub>"
     },
     {
       "hr_id": "I:pipe-renders-null-null-with-vetid-but-no-names",
@@ -134,27 +137,7 @@
       "line": 21,
       "side": "RIGHT",
       "anchor": "return visit.vetId == null ? NO_VET : `${visit.vetFirstName} ${visit.vetLastName}`;",
-      "body": "🔴 **Open issue** · info · declined by the author — Pipe renders \"null null\" with vetId but no names\n\n**Why declined:** VisitMapper.java:51-53 sets id and both names together from one entity.\n\n<sub>raised by tests reviewer</sub>"
-    },
-    {
-      "hr_id": "A:put-replaces-the-visit-a-missing-vetid-means-no",
-      "pile": "assumption",
-      "title": "PUT replaces the visit; a missing vetId means no vet",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 85,
-      "side": "RIGHT",
-      "anchor": "currentVisit.setVet(vetRepository.findByIdOrNull(visitDto.getVetId()));",
-      "body": "💭 **Assumption** · confidence 0.70 — PUT replaces the visit; a missing vetId means no vet\n\n**Not taken:** PATCH-like: absent keeps the vet, explicit null clears it\n\n**Why:** Ticket item 2 makes \"clear must stick\" the priority, and full-replace PUT is the simplest rule that guarantees it; the only client, our edit form, always sends the field. Four reviewers flagged the omitted-field case, which pulls confidence down."
-    },
-    {
-      "hr_id": "A:unknown-vetid-is-a-404",
-      "pile": "assumption",
-      "title": "Unknown vetId is a 404",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
-      "line": 20,
-      "side": "RIGHT",
-      "anchor": "return id == null ? null : findById(id).orElseThrow();",
-      "body": "💭 **Assumption** · confidence 0.60 — Unknown vetId is a 404\n\n**Not taken:** 400 naming vetId as the bad field\n\n**Why:** Matches how unknown pet types are handled. A 400 is more correct HTTP, which is why this is close to a coin flip."
+      "body": "**Open issue** · info · declined by the author — Pipe renders \"null null\" with vetId but no names\n\n**Why declined:** VisitMapper.java:51-53 sets id and both names together from one entity.\n\n<sub>raised by tests reviewer</sub>"
     },
     {
       "hr_id": "A:deleting-a-vet-keeps-their-visits-with-no-vet",
@@ -164,7 +147,7 @@
       "line": 4,
       "side": "RIGHT",
       "anchor": "ALTER TABLE visits ADD COLUMN vet_id INT REFERENCES vets (id) ON DELETE SET NULL;",
-      "body": "💭 **Assumption** · confidence 0.60 — Deleting a vet keeps their visits, with no vet\n\n**Not taken:** refuse deleting a vet who has visits\n\n**Why:** Ticket item 4 makes \"no vet\" a normal state, and before this change vet deletion always succeeded. Losing who attended is a real history loss, so a business owner could reasonably pick refusal."
+      "body": "**Assumption** · confidence 0.60 — Deleting a vet keeps their visits, with no vet\n\n**Not taken:** refuse deleting a vet who has visits\n\n**Why:** Ticket item 4 makes \"no vet\" a normal state, and before this change vet deletion always succeeded. Losing who attended is a real history loss, so a business owner could reasonably pick refusal."
     },
     {
       "hr_id": "A:no-vet-is-the-wording-for-a-visit-without-one",
@@ -174,7 +157,7 @@
       "line": 5,
       "side": "RIGHT",
       "anchor": "export const NO_VET = 'No vet';",
-      "body": "💭 **Assumption** · confidence 0.75 — \"No vet\" is the wording for a visit without one\n\n**Not taken:** \"—\" or \"Not assigned\"\n\n**Why:** Ticket item 4 rules out \"Unknown\" and blank; \"No vet\" says \"has none\" literally, and the same label serves as the combo placeholder."
+      "body": "**Assumption** · confidence 0.75 — \"No vet\" is the wording for a visit without one\n\n**Not taken:** \"—\" or \"Not assigned\"\n\n**Why:** Ticket item 4 rules out \"Unknown\" and blank; \"No vet\" says \"has none\" literally, and the same label serves as the combo placeholder."
     },
     {
       "hr_id": "A:seed-gives-a-vet-to-some-demo-visits-only",
@@ -184,18 +167,8 @@
       "line": 145,
       "side": "RIGHT",
       "start_line": 142,
-      "anchor": "WHERE pet_id = 3 AND visit_date IN (DATE '2026-05-03', DATE '2025-08-21');  -- Milton",
-      "body": "💭 **Assumption** · confidence 0.65 — Seed gives a vet to some demo visits only\n\n**Not taken:** leave every seeded visit without a vet\n\n**Why:** The demo should show both states; ticket item 4 is about real legacy rows, not the demo dataset."
-    },
-    {
-      "hr_id": "A:mcp-create-visit-takes-no-vet-list-visits-shows",
-      "pile": "assumption",
-      "title": "MCP create_visit takes no vet; list_visits shows it",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
-      "line": 55,
-      "side": "RIGHT",
-      "anchor": "@Transactional",
-      "body": "💭 **Assumption** · confidence 0.70 — MCP create_visit takes no vet; list_visits shows it\n\n**Not taken:** also add a vet parameter to create_visit\n\n**Why:** \"Everywhere\" in the ticket covers displaying, which list_visits does; choosing a vet at booking stays a staff action in the UI."
+      "anchor": "INSERT INTO users (username, password, enabled) VALUES",
+      "body": "**Assumption** · confidence 0.65 — Seed gives a vet to some demo visits only\n\n**Not taken:** leave every seeded visit without a vet\n\n**Why:** The demo should show both states; ticket item 4 is about real legacy rows, not the demo dataset."
     }
   ],
   "generated_by": "push-pr-comments.py --from-review-points"

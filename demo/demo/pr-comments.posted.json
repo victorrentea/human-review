@@ -1,196 +1,168 @@
 {
-  "repo": "victorrentea/petclinic",
-  "pr": 49,
-  "url": "https://github.com/victorrentea/petclinic/pull/49",
-  "head": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0",
-  "payload_sha256": "d4b109a042e66c5fb23a47c622e679970fdd0662ae729f079353a93dded21081",
-  "pushed_at": "2026-10-20T06:31:34+02:00",
-  "review_url": "https://github.com/victorrentea/petclinic/pull/49#pullrequestreview-5419847899",
-  "review_marker": "<!-- hr:review:be762955d5f4 -->",
-  "comments": {
-    "F:vet-tests-read-the-session-cache-not-the": {
-      "pile": "fixed",
-      "title": "Vet tests read the session cache, not the database",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186051",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-      "line": 448,
-      "start_line": 445,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "F:unknown-vetid-on-edit-and-on-owner-page-booking": {
-      "pile": "fixed",
-      "title": "Unknown vetId on edit and on owner-page booking untested",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186067",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-      "line": 380,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "F:deleting-a-vet-with-visits-is-untested": {
-      "pile": "fixed",
-      "title": "Deleting a vet with visits is untested",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186081",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-      "line": 429,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "F:chatbot-list-visits-omits-the-vet": {
-      "pile": "fixed",
-      "title": "Chatbot list_visits omits the vet",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186091",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
-      "line": 126,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "I:put-without-vetid-clears-the-stored-vet": {
-      "pile": "ignored",
-      "title": "PUT without vetId clears the stored vet",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186105",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 85,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "I:unknown-vetid-answers-a-bare-404-not-a-400": {
-      "pile": "ignored",
-      "title": "Unknown vetId answers a bare 404, not a 400",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186112",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
-      "line": 20,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "I:vet-ids-can-be-enumerated-via-the-404": {
-      "pile": "ignored",
-      "title": "Vet ids can be enumerated via the 404",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186122",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
-      "line": 20,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "I:visits-expose-vet-names-to-every-caller": {
-      "pile": "ignored",
-      "title": "Visits expose vet names to every caller",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186135",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
-      "line": 53,
-      "start_line": 51,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "I:any-existing-vet-can-be-attributed-to-a-visit": {
-      "pile": "ignored",
-      "title": "Any existing vet can be attributed to a visit",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186142",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-      "line": 198,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "I:chatbot-create-visit-cannot-choose-a-vet": {
-      "pile": "ignored",
-      "title": "Chatbot create_visit cannot choose a vet",
-      "mode": "body",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#pullrequestreview-5419847899",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
-      "line": 55,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0",
-      "permalink": "https://github.com/victorrentea/petclinic/blob/f39b342543d5d7b3e029abeee5fbb198f8f2b4e0/petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java#L55"
-    },
-    "I:failed-vets-fetch-shows-no-vet-for-a-visit-with": {
-      "pile": "ignored",
-      "title": "Failed vets fetch shows \"No vet\" for a visit with one",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186151",
-      "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.ts",
-      "line": 43,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "I:clearing-the-combo-could-send-or-0": {
-      "pile": "ignored",
-      "title": "Clearing the combo could send '' or 0",
-      "mode": "body",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#pullrequestreview-5419847899",
-      "path": "petclinic-frontend/src/app/design-system/combo.component.ts",
-      "line": 57,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0",
-      "permalink": "https://github.com/victorrentea/petclinic/blob/f39b342543d5d7b3e029abeee5fbb198f8f2b4e0/petclinic-frontend/src/app/design-system/combo.component.ts#L57"
-    },
-    "I:pipe-renders-null-null-with-vetid-but-no-names": {
-      "pile": "ignored",
-      "title": "Pipe renders \"null null\" with vetId but no names",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186164",
-      "path": "petclinic-frontend/src/app/visits/visit-vet.pipe.ts",
-      "line": 21,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "A:put-replaces-the-visit-a-missing-vetid-means-no": {
-      "pile": "assumption",
-      "title": "PUT replaces the visit; a missing vetId means no vet",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186181",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 85,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "A:unknown-vetid-is-a-404": {
-      "pile": "assumption",
-      "title": "Unknown vetId is a 404",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186194",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
-      "line": 20,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "A:deleting-a-vet-keeps-their-visits-with-no-vet": {
-      "pile": "assumption",
-      "title": "Deleting a vet keeps their visits, with no vet",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186204",
-      "path": "petclinic-backend/src/main/resources/db/migration/V4__visit_vet.sql",
-      "line": 4,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "A:no-vet-is-the-wording-for-a-visit-without-one": {
-      "pile": "assumption",
-      "title": "\"No vet\" is the wording for a visit without one",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186214",
-      "path": "petclinic-frontend/src/app/visits/visit-vet.pipe.ts",
-      "line": 5,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "A:seed-gives-a-vet-to-some-demo-visits-only": {
-      "pile": "assumption",
-      "title": "Seed gives a vet to some demo visits only",
-      "mode": "line",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186221",
-      "path": "petclinic-backend/src/main/resources/db/seed/R__seed.sql",
-      "line": 145,
-      "start_line": 142,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
-    },
-    "A:mcp-create-visit-takes-no-vet-list-visits-shows": {
-      "pile": "assumption",
-      "title": "MCP create_visit takes no vet; list_visits shows it",
-      "mode": "body",
-      "html_url": "https://github.com/victorrentea/petclinic/pull/49#pullrequestreview-5419847899",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
-      "line": 55,
-      "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0",
-      "permalink": "https://github.com/victorrentea/petclinic/blob/f39b342543d5d7b3e029abeee5fbb198f8f2b4e0/petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java#L55"
-    }
+ "repo": "victorrentea/petclinic",
+ "pr": 49,
+ "url": "https://github.com/victorrentea/petclinic/pull/49",
+ "head": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0",
+ "payload_sha256": "d4b109a042e66c5fb23a47c622e679970fdd0662ae729f079353a93dded21081",
+ "pushed_at": "2026-10-20T06:31:34+02:00",
+ "review_url": "https://github.com/victorrentea/petclinic/pull/49#pullrequestreview-5419847899",
+ "review_marker": "<!-- hr:review:be762955d5f4 -->",
+ "comments": {
+  "F:vet-tests-read-the-session-cache-not-the": {
+   "pile": "fixed",
+   "title": "Vet tests read the session cache, not the database",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186051",
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "line": 448,
+   "start_line": 445,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
   },
-  "expected": 19,
-  "present": 19,
-  "missing": [],
-  "duplicates": [],
-  "sent": 17,
-  "status": "complete",
-  "message": "All 19 comments are on GitHub PR #49."
+  "F:unknown-vetid-on-edit-and-on-owner-page-booking": {
+   "pile": "fixed",
+   "title": "Unknown vetId on edit and on owner-page booking untested",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186067",
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "line": 380,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "F:deleting-a-vet-with-visits-is-untested": {
+   "pile": "fixed",
+   "title": "Deleting a vet with visits is untested",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186081",
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "line": 429,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "F:chatbot-list-visits-omits-the-vet": {
+   "pile": "fixed",
+   "title": "Chatbot list_visits omits the vet",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186091",
+   "path": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
+   "line": 126,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "I:put-without-vetid-clears-the-stored-vet": {
+   "pile": "ignored",
+   "title": "PUT without vetId clears the stored vet",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186105",
+   "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+   "line": 85,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "I:unknown-vetid-answers-a-bare-404-not-a-400": {
+   "pile": "ignored",
+   "title": "Unknown vetId answers a bare 404, not a 400",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186112",
+   "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
+   "line": 20,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "I:vet-ids-can-be-enumerated-via-the-404": {
+   "pile": "ignored",
+   "title": "Vet ids can be enumerated via the 404",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186122",
+   "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
+   "line": 20,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "I:visits-expose-vet-names-to-every-caller": {
+   "pile": "ignored",
+   "title": "Visits expose vet names to every caller",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186135",
+   "path": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
+   "line": 53,
+   "start_line": 51,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "I:any-existing-vet-can-be-attributed-to-a-visit": {
+   "pile": "ignored",
+   "title": "Any existing vet can be attributed to a visit",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186142",
+   "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
+   "line": 198,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "I:chatbot-create-visit-cannot-choose-a-vet": {
+   "pile": "ignored",
+   "title": "Chatbot create_visit cannot choose a vet",
+   "mode": "body",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#pullrequestreview-5419847899",
+   "path": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
+   "line": 55,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0",
+   "permalink": "https://github.com/victorrentea/petclinic/blob/f39b342543d5d7b3e029abeee5fbb198f8f2b4e0/petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java#L55"
+  },
+  "I:failed-vets-fetch-shows-no-vet-for-a-visit-with": {
+   "pile": "ignored",
+   "title": "Failed vets fetch shows \"No vet\" for a visit with one",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186151",
+   "path": "petclinic-frontend/src/app/visits/visit-edit/visit-edit.component.ts",
+   "line": 43,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "I:clearing-the-combo-could-send-or-0": {
+   "pile": "ignored",
+   "title": "Clearing the combo could send '' or 0",
+   "mode": "body",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#pullrequestreview-5419847899",
+   "path": "petclinic-frontend/src/app/design-system/combo.component.ts",
+   "line": 57,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0",
+   "permalink": "https://github.com/victorrentea/petclinic/blob/f39b342543d5d7b3e029abeee5fbb198f8f2b4e0/petclinic-frontend/src/app/design-system/combo.component.ts#L57"
+  },
+  "I:pipe-renders-null-null-with-vetid-but-no-names": {
+   "pile": "ignored",
+   "title": "Pipe renders \"null null\" with vetId but no names",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186164",
+   "path": "petclinic-frontend/src/app/visits/visit-vet.pipe.ts",
+   "line": 21,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "A:deleting-a-vet-keeps-their-visits-with-no-vet": {
+   "pile": "assumption",
+   "title": "Deleting a vet keeps their visits, with no vet",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186204",
+   "path": "petclinic-backend/src/main/resources/db/migration/V4__visit_vet.sql",
+   "line": 4,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "A:no-vet-is-the-wording-for-a-visit-without-one": {
+   "pile": "assumption",
+   "title": "\"No vet\" is the wording for a visit without one",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186214",
+   "path": "petclinic-frontend/src/app/visits/visit-vet.pipe.ts",
+   "line": 5,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  },
+  "A:seed-gives-a-vet-to-some-demo-visits-only": {
+   "pile": "assumption",
+   "title": "Seed gives a vet to some demo visits only",
+   "mode": "line",
+   "html_url": "https://github.com/victorrentea/petclinic/pull/49#discussion_r4188186221",
+   "path": "petclinic-backend/src/main/resources/db/seed/R__seed.sql",
+   "line": 145,
+   "start_line": 142,
+   "commit_id": "f39b342543d5d7b3e029abeee5fbb198f8f2b4e0"
+  }
+ },
+ "expected": 19,
+ "present": 19,
+ "missing": [],
+ "duplicates": [],
+ "sent": 17,
+ "status": "complete",
+ "message": "All 19 comments are on GitHub PR #49."
 }
