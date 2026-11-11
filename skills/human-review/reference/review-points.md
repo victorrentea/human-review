@@ -121,6 +121,14 @@ The way out of a takeover is a real pass: the Review tab's paid 🤖 runs
 fixes as `[auto-fix]` commits and the file with the three trailers, and pushes to the
 branch's own name. That commit is a review, so the aftermath band counts from it.
 
+**One decision, one item.** When a reviewer attacks a reading you chose and you keep it,
+that is an `Ignored` item — the reviewer's attack is its `observation:`, the reason you kept
+the reading is its `why:` — and **not** an assumption as well. Filing both puts two cards on
+the page and two comments on one PR line, one of them saying "see the assumption". Merge
+them into the Ignored item and delete the assumption; an assumption that sits on the lines
+of an Ignored item is a warning naming both. `Assumptions` keeps only the readings no
+reviewer contested.
+
 An empty `## Ignored` after a multi-agent review is not credible, and the parser cannot
 know that — so it accepts it and the skill's prompt demands a sentence instead.
 

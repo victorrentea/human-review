@@ -605,6 +605,36 @@ def parse(text: str) -> dict:
             "sections": {PILE_HEADING[k]: v for k, v in seen_sections.items()}}
 
 
+def twin_assumptions(piles: dict[str, list[dict]]) -> list[str]:
+    """An assumption on the very lines of a declined finding is one decision told twice.
+
+    The reviewer attacked the reading, the agent kept it: that is an Ignored item, whose
+    `why:` is the reason the reading was kept. Filed as an assumption too, the same line
+    carries two cards on the page and two comments on the PR, one saying "see the other".
+    The Ignored item absorbs it; the assumption goes.
+    """
+    declined = []
+    for item in piles.get("findings", []):
+        for ref in item.get("refs", []):
+            path, spans = ref_spans(ref)
+            if spans:
+                declined.append((path, spans, item.get("title", "")))
+    warnings = []
+    for item in piles.get("assumptions", []):
+        for ref in item.get("refs", []):
+            path, spans = ref_spans(ref)
+            twin = next((t for p, s, t in declined if p == path and spans and any(
+                a <= d and c <= b for a, b in spans for c, d in s)), None)
+            if twin is not None:
+                warnings.append(
+                    f"Assumptions: {item.get('title', '')[:60]!r} (line {item.get('_line')}) "
+                    f"sits on the lines of the Ignored {twin[:60]!r} — one decision, two "
+                    "cards. Merge it into the Ignored item (its `why:` carries the reading "
+                    "kept) and delete the assumption.")
+                break
+    return warnings
+
+
 def anchored(item: dict) -> bool:
     return bool(item.get("refs") or item.get("snippets") or item.get("diffs"))
 
@@ -995,7 +1025,7 @@ def document(path: Path, rel: str, root: Path | None = None) -> dict:
     dropped, unanchored = drop_unanchored(piles)
     # Field warnings first: they name a line the author can still go and fix, whereas the
     # anchoring ones name an item that is already gone from the page.
-    warnings = parsed["warnings"] + unanchored
+    warnings = parsed["warnings"] + twin_assumptions(piles) + unanchored
     kept = sum(len(v) for v in piles.values())
     front = parsed["front"]
     # Read before the bookkeeping keys are stripped: `fixed_in` is derived from the items'

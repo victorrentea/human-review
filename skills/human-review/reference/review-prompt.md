@@ -107,7 +107,9 @@ Overwrite `@@POINTS@@` at the repository root with the new record. The format is
   multi-agent review is not credible; if you accepted everything, say so on one item;
 - **Assumptions** — the readings of the ticket the code embodies, carried forward and
   re-checked, plus any new ones. `confidence:` on every one, in `[0, 1]`, and honest:
-  0.9 on everything is a lie the page will show;
+  0.9 on everything is a lie the page will show. A reading a reviewer attacked and you
+  kept is the Ignored item, not an assumption too: merge the two into the Ignored item
+  (its `why:` is why the reading stands) and drop the assumption;
 - `source:` is the pass that raised it, e.g. `/code-review high`.
 
 Check it before you stop:

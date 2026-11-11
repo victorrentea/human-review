@@ -1251,3 +1251,35 @@ def test_each_fixed_item_names_the_commit_that_fixed_it(tmp_path):
     # No implementation to start a range from: `fixed-in: HEAD` is the recording commit.
     assert rp.fix_commit_of(repo, ["A.java:2"], {"reviewCommit": first}, pinned="HEAD") == first
     assert rp.fix_commit_of(repo, ["A.java:2"], {"reviewCommit": first}) is None
+
+
+# ── visit-has-vet: one decision filed both as a declined finding and an assumption ────
+
+def test_an_assumption_on_the_lines_of_a_declined_finding_is_told_to_merge_into_it(tmp_path):
+    """PR #49 showed "PUT without vetId clears the stored vet" (Ignored, "see the
+    assumption") and "PUT replaces the visit" (Assumption) as two comments on one line."""
+    f = tmp_path / "review-points.md"
+    f.write_text("""## Ignored
+
+### PUT without vetId clears the stored vet
+- file: a/VisitRestController.java:85
+- observation: omitting vetId wipes the vet.
+- why: PUT replaces the whole visit.
+
+## Assumptions
+
+### PUT replaces the visit; a missing vetId means no vet
+- file: a/VisitRestController.java:84-86
+- alternative: PATCH-like
+- confidence: 0.7
+- why: clear must stick.
+
+### "No vet" is the wording
+- file: a/VisitRestController.java:90
+- alternative: "None"
+- confidence: 0.8
+- why: says it literally.
+""")
+    said = [w for w in rp.document(f, "review-points.md")["warnings"] if "one decision" in w]
+    assert len(said) == 1 and "PUT replaces the visit" in said[0], said
+    assert "Merge it into the Ignored item" in said[0]

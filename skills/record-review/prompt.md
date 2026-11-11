@@ -66,6 +66,10 @@ search the disk, re-derive the base, or compose reviewer prompts — the script 
                    section nobody else can write. A choice the human made in this
                    conversation is not your assumption — give it `source: human` and
                    confidence 1.0, or leave it out.
+                   A reading a reviewer attacked and you kept is NOT an assumption: it is
+                   the Ignored item, with the reason you kept it in its `why:`. One
+                   decision, one item — never an Ignored item plus an assumption on the
+                   same line that says "see the assumption".
    Every entry names a file:line. An unanchored entry is dropped by the build. **Anchor
    the line that does the thing** — the call that throws, not the `.toList();` that ends
    its statement; a class or method by the line that matters in it, never its opening
