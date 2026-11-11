@@ -20,6 +20,8 @@ Decisions that hold on this branch:
 - **Kept:** the VS Code extension. **Postponed:** the IntelliJ plugin, Code City, the Demo
   film and the UX audit — their tabs fade when they have nothing.
 
+Setup, configuration and what each tab shows at Ludvig: [`docs/ludvig.md`](docs/ludvig.md).
+
 ## The suite: Python ≥ 3.12, in `.venv`
 
 The scripts use PEP 701 f-strings, so they need Python 3.12+ (the Ludvig services run 3.11;

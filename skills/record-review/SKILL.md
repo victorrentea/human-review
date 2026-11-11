@@ -68,7 +68,8 @@ for c in "${CLAUDE_PLUGIN_ROOT:-/nonexistent}/skills/record-review" \
          "${HUMAN_REVIEW_HOME:-/nonexistent}/../record-review" \
          "$(readlink -f .claude/skills/record-review 2>/dev/null)" \
          "$(readlink -f ~/.copilot/skills/record-review 2>/dev/null)" \
-         "$HOME/workspace/human-review/skills/record-review"; do
+         "$HOME/workspace/human-review/skills/record-review" \
+         "$HOME/dev/sources/human-review/skills/record-review"; do
   [ -f "$c/prompt.md" ] && { PROMPT="$c/prompt.md"; break; }
 done
 ```
@@ -162,6 +163,16 @@ GitHub PR and ends by posting a `gh pr comment`.
 applies the findings to the working tree, which destroys the accept/decline information
 this whole flow is built to capture: afterwards there is a diff, and no record of which of
 its lines the agent would have argued with.
+
+**In a Ludvig repository** (its `CLAUDE.md` carries the `<!-- ludvig:general -->` block, or
+the `ludvig` plugin is installed), run **`ludvig:code-review`** as a second lens beside
+`/code-review high`, against `develop`. Its *Standards* findings (Ludvig's coding standards:
+no PII in logs, exceptions at ERROR, camelCase JSON…) and *Spec* findings (the change
+against the PR description and its Jira ticket) are findings like any other: each goes into
+`review-points.md` with `source: ludvig:code-review`, fixed or declined with a reason, and
+the front matter's `reviewers:` names both passes (`/code-review high, ludvig:code-review`). Its
+CodeGraph blast radius is context for the decisions, not a finding. Like `/code-review`, it
+only finds — never let it apply a fix.
 
 Never re-run a pass to "confirm" a finding. Two runs over the same diff word and rank
 their findings differently, so a second invocation does not confirm the first — it produces
