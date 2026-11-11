@@ -46,6 +46,7 @@ LAYOUT_SECTIONS: dict[str, dict] = {
                   "missing": "run scripts/openapi-visual-diff.py (needs `brew install oasdiff`)"},
     },
     "conceptual": {"id": "conceptual", "title": "", "body": "{{drawio:conceptual}}"},
+    "migrations": {"id": "migrations", "title": "", "includeHtml": "assets/migrations.html"},
     "deployment": {"id": "deployment", "title": "", "body": "{{drawio:deployment}}"},
     "requirements-map": {"id": "requirements-map", "title": "",
                          "includeHtml": "assets/requirements-map.html", "includeFirst": True},
@@ -86,7 +87,7 @@ LAYOUT_TABS: dict[str, dict] = {
     "api":          {"label": "API", "blocks": (), "sections": ("swaggerdiff",),
                      "required": ("swaggerdiff",)},
     "data":         {"label": "Data", "blocks": ("diagrams", "puml"),
-                     "sections": ("conceptual",), "required": ()},
+                     "sections": ("migrations", "conceptual"), "required": ()},
     "sequence":     {"label": "Sequence", "blocks": ("testpairs", "diagrams", "puml"),
                      "sections": (), "required": ()},
     "packages":     {"label": "Structure", "blocks": ("diagrams", "puml", "c4"),
@@ -108,7 +109,9 @@ LAYOUT_TABS: dict[str, dict] = {
 #: view it is checked against (Victor, 20 Oct 2026: it used to close the tab, under it),
 #: only when the project configured one
 #: (`steps.c2.drawio`) — a model writing the content file cannot know that it did.
-LAYOUT_WHEN_WRITTEN = {"deployment": "assets/deployment-diff.json"}
+LAYOUT_WHEN_WRITTEN = {"deployment": "assets/deployment-diff.json",
+                       # Alembic's card, under the DB delta, whenever its step ran.
+                       "migrations": "assets/migrations.html"}
 
 def _deployment_above_containers(blocks: list) -> None:
     """The deployment section, moved in front of the C2 container view's own block (the

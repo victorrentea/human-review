@@ -18,6 +18,11 @@
 - **Diff + extra neighbours: 0 · 1 · 2 · all** — widen the radius around the change until it
   is legible in context.
 - **Diff / New/Old** — flip to the whole diagram before and after.
+- **Migrations** (Alembic): every revision the branch adds, its `upgrade()` one operation per
+  line, linked to the line — flagged *destructive* (a drop), *fails on rows* (NOT NULL with no
+  `server_default`), *raw SQL* (`op.execute`) or *no downgrade*; and a red band when the
+  models changed with no migration, an existing migration was edited, or the history now
+  has two heads.
 - A hand-drawn `.drawio.png` conceptual model, if the project keeps one, diffed by the
   identity of each box rather than by pixels.
 

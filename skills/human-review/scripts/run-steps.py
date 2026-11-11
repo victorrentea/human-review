@@ -146,6 +146,13 @@ def have(binary: str) -> bool:
     return shutil.which(binary) is not None
 
 
+def has_alembic() -> bool:
+    """Whether the repository tracks Alembic revisions (`…/alembic/versions/*.py`)."""
+    listed = subprocess.run(["git", "ls-files", "*/alembic/versions/*.py", "alembic/versions/*.py",
+                             "*/migrations/versions/*.py"], capture_output=True, text=True)
+    return bool(listed.stdout.strip())
+
+
 def has_serverless() -> bool:
     """Whether this service deploys with the Serverless Framework — a `serverless*.yml` at
     the root names its functions, and so its entry points. Asked of the index."""
@@ -483,6 +490,10 @@ def generated_diagrams(ctx: "Ctx") -> list[str]:
     else:
         (out / "DB.puml").unlink(missing_ok=True)
     return made
+
+
+def _migrations(ctx: Ctx):
+    sh(f"{HERE}/alembic-review.py --base {ctx.base} --out {ART}/migrations.html", ctx)
 
 
 def _diagrams(ctx: Ctx):
@@ -2282,6 +2293,10 @@ STEP_INPUTS = {
                      "tools": ("puml-diff.sh", "drawio-diff.py", "sqlalchemy-erd.py",
                                "../puml-diff/puml_diff.py", "../puml-diff/seq_puml_diff.py"),
                      "outputs": ("assets/diagrams",)},
+    "migrations":   {"paths": ("*/versions/*.py", "*.py"),
+                     "reads": ("generated-puml/DB.puml", "generated-puml/DB.base.puml"),
+                     "tools": ("alembic-review.py",),
+                     "outputs": ("assets/migrations.html",)},
     "c2":           {"paths": ("*.genseq.puml", "*.drawio", "*.drawio.png", "*.drawio.svg"),
                      # whether those were re-traced on this run: the card says so
                      "reads": ("assets/sequence.verdict.json",),
@@ -2564,6 +2579,10 @@ STEPS = [
     ("aftermath",   "review",        "what landed after the review commit",
      None,                                                                        _aftermath),
     ("diagrams",    "data,packages", "diagram deltas",            None,              _diagrams),
+    # After `diagrams`: it reads the ER diagram that step generated, to say whether the
+    # models moved without a migration.
+    ("migrations",  "data",          "Alembic migrations",
+     lambda c: has_alembic() or "no alembic versions folder in this repository", _migrations),
     ("sequence",    "sequence",      "sequence diagrams from traces",
      lambda c: bool(c.step_cfg("sequence").get("commands")) or "sequence.commands not configured",
      _sequence),
@@ -2620,6 +2639,7 @@ STEPS = [
 #: that is a real dependency rather than habit.
 NEEDS = {
     "aftermath": {"reviewpoints"},     # reads the review commit reviewpoints resolved
+    "migrations": {"diagrams"},        # reads the DB diagram diagrams generated
     "c2":        {"sequence"},         # projects the diagrams sequence drew
     "traces":    {"tests"},            # after the manifest; runs the browser suites itself
     "testcov":   {"traces"},           # reads the per-test coverage those suites dumped
@@ -2634,7 +2654,7 @@ NEEDS = {
 #: `traces` runs dumped, and `city` colours its plate with what `testcov` wrote: re-running
 #: the tests re-colours the city (Victor, 5 Oct 2026: "when we run the tests, everything
 #: that has to do with the tests should follow").
-HARVESTS = {"testcov": {"traces"}, "city": {"testcov"}}
+HARVESTS = {"testcov": {"traces"}, "city": {"testcov"}, "migrations": {"diagrams"}}
 
 
 def downstream(names: set[str]) -> set[str]:

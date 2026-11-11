@@ -70,6 +70,9 @@ PIECES: dict[str, tuple[str, str]] = {
         "DomainModelExtractorTest.java, " + PETCLINIC + "src/test/java/victor/training/"
         "petclinic/guardrail/DomainModelExtractor.java, scripts/puml-diff.sh, "
         "puml-diff/puml_diff.py"),
+    "migrations": (
+        "the Alembic migrations card: each new revision's operations, flagged where risky",
+        "scripts/alembic-review.py"),
     "diagram.db": (
         "the ER diagram written from the SQLAlchemy models at the merge-base and on the branch, "
         "diffed base against branch",
@@ -253,6 +256,15 @@ EXPLAIN: dict[str, dict[str, object]] = {
             '<b>changed</b> / <b>unchanged</b>: whether this branch moved the drawing.',
         ],
         "ex": 'e.g. <code>Owner 1─* Pet 1─* Visit</code>',
+    },
+    'migrations': {
+        "li": [
+            'Each migration the branch adds, and every op its upgrade() makes, linked to its line.',
+            '<b>destructive</b>: a drop a deploy cannot take back.',
+            '<b>fails on rows</b>: NOT NULL with no server_default, on a table that has data.',
+            '<b>raw SQL</b>: op.execute, which the ER diagram above cannot show.',
+            'Red band: models changed with no migration, an edited old migration, or two heads.',
+        ],
     },
     'diagram.db': {
         "li": [
@@ -462,7 +474,8 @@ PLACES: dict[str, tuple[tuple[str | None, str, str | None, str | None], ...]] = 
     "review": (("review", "row", r'<p class="sub counts pilelede', "first"),),
     "behaviour": (("behaviour", "col", r'<ol class="transcript"', "first"),),
     "api": (("api", "title", r'<div class="apiverdict\b', "first"),),
-    "data": ((None, "in", DIAGRAM_CARD, "all"),),
+    "data": ((None, "in", DIAGRAM_CARD, "all"),
+             ("migrations", "title", r'<h3 class="mg-title"', "first")),
     "packages": ((None, "in", DIAGRAM_CARD, "all"),),
     "requirements": (("requirements", "title", r'<p class="rm-cats"', "first"),),
     "sequence": (("sequence", "title", r'<h2 class="tabtitle\b', "first"),),
@@ -521,9 +534,10 @@ def adopt_prompt(piece: str, title: str = "") -> str | None:
     starts = ", ".join(s if s.startswith("http") else f"skills/human-review/{s}"
                        for s in start.split(", "))
     return (f"Get {what} into this repository — one piece of the review page of "
-            f"{HOME_URL} (branch main). Start from {starts}, and what they import. "
-            "They were written for a Java/Spring + Angular project: port the idea and "
-            "rewrite what only fits that stack. Take only that piece. Run it on the "
+            f"{HOME_URL} (branch ludvig). Start from {starts}, and what they import. "
+            "They were written for Ludvig's Python services on AWS Lambda (Serverless "
+            "Framework, SQLAlchemy, Alembic, pytest): port the idea and rewrite what only "
+            "fits that stack. Take only that piece. Run it on the "
             "current branch against its merge-base with this repository's trunk, and "
             "show me the result — if the branch does not touch what this piece shows, say "
             "so and show it on a recent commit that does. Leave the changes uncommitted.")
