@@ -224,6 +224,112 @@ def branch_name(spec: dict, root: Path) -> str:
     return "" if b == "HEAD" else b
 
 
+# --- Jira (the Ludvig fork) --------------------------------------------------------------
+#
+# Ludvig's tickets are Jira issues, named by key in the branch (`feature/ML-4019-…`), the
+# PR title (`feat: ML-3944 rpa integration`) or review-points.md's `ticket:`. Read from
+# Jira Cloud's REST API with the reader's own token — `JIRA_BASE_URL`, `JIRA_EMAIL`,
+# `JIRA_API_TOKEN`, from the environment or `~/.config/human-review/jira.env` — and written
+# down in ticket-body.json like an issue, so a rebuild needs no network.
+
+JIRA_KEY = re.compile(r"(?<![A-Za-z0-9])([A-Z][A-Z0-9]{1,9}-\d+)(?![A-Za-z0-9])")
+JIRA_ENV = Path.home() / ".config" / "human-review" / "jira.env"
+
+
+def jira_key(*texts: str) -> str | None:
+    """The first Jira key in the texts given, in order."""
+    for t in texts:
+        m = JIRA_KEY.search(t or "")
+        if m:
+            return m.group(1)
+    return None
+
+
+def _jira_config() -> dict[str, str]:
+    import os
+    cfg = {}
+    try:
+        for line in JIRA_ENV.read_text(encoding="utf-8").splitlines():
+            k, sep, v = line.strip().partition("=")
+            if sep and not k.startswith("#"):
+                cfg[k.strip()] = v.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    for k in ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"):
+        if os.environ.get(k):
+            cfg[k] = os.environ[k]
+    return cfg
+
+
+def adf_text(node, depth: int = 0) -> str:
+    """Atlassian Document Format -> Markdown-ish text: paragraphs, headings, list items,
+    code blocks; marks dropped. The matrix splits it into sentences like an issue body."""
+    if isinstance(node, list):
+        return "".join(adf_text(n, depth) for n in node)
+    if not isinstance(node, dict):
+        return ""
+    kind, kids = node.get("type"), node.get("content") or []
+    if kind == "text":
+        return node.get("text", "")
+    if kind == "hardBreak":
+        return "\n"
+    if kind in ("mention", "emoji"):
+        return (node.get("attrs") or {}).get("text", "")
+    if kind == "inlineCard":
+        return (node.get("attrs") or {}).get("url", "")
+    inner = adf_text(kids, depth + (kind in ("bulletList", "orderedList")))
+    if kind == "heading":
+        return "#" * int((node.get("attrs") or {}).get("level", 2)) + " " + inner.strip() + "\n\n"
+    if kind == "paragraph":
+        return inner.strip() + "\n\n"
+    if kind == "listItem":
+        return "  " * max(depth - 1, 0) + "- " + inner.strip().replace("\n\n", "\n") + "\n"
+    if kind in ("bulletList", "orderedList"):
+        return inner + ("\n" if depth == 0 else "")
+    if kind == "codeBlock":
+        return "```\n" + inner + "\n```\n\n"
+    return inner
+
+
+def _jira_issue(key: str, out_dir: Path) -> dict | None:
+    """Issue `key` as the matrix's ticket: from ticket-body.json when it is that issue, else
+    asked of Jira once and written down. None without credentials or an answer."""
+    cache = out_dir / TICKET_BODY_CACHE
+    try:
+        got = json.loads(cache.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        got = {}
+    if got.get("key") == key and "body" in got:
+        return got
+    cfg = _jira_config()
+    base = cfg.get("JIRA_BASE_URL", "").rstrip("/")
+    if not (base and cfg.get("JIRA_EMAIL") and cfg.get("JIRA_API_TOKEN")):
+        print(f"[semcov] {key} looks like a Jira issue, but no JIRA_BASE_URL / JIRA_EMAIL / "
+              f"JIRA_API_TOKEN (environment or {JIRA_ENV}) to read it with", file=sys.stderr)
+        return None
+    auth = base64.b64encode(f"{cfg['JIRA_EMAIL']}:{cfg['JIRA_API_TOKEN']}".encode()).decode()
+    req = urllib.request.Request(
+        f"{base}/rest/api/3/issue/{urllib.parse.quote(key)}?fields=summary,description,reporter,created",
+        headers={"Authorization": f"Basic {auth}", "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            raw = json.loads(r.read().decode("utf-8"))
+    except Exception as exc:                      # noqa: BLE001 - every failure is the same
+        print(f"[semcov] Jira did not answer for {key} ({exc})", file=sys.stderr)
+        return None
+    fields = raw.get("fields") or {}
+    reporter = fields.get("reporter") or {}
+    got = {"key": key, "number": None, "title": f"{key}: {fields.get('summary') or ''}".strip(),
+           "url": f"{base}/browse/{key}", "author": reporter.get("displayName") or "",
+           "avatar": "", "createdAt": fields.get("created") or "",
+           "body": adf_text(fields.get("description") or {}).strip()}
+    try:
+        cache.write_text(json.dumps(got, indent=1) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+    return got
+
+
 def branch_issue(branch: str) -> int | None:
     """The issue a branch name carries — `25-paging`, `feature/25-paging`, `issue-25`,
     `gh-25`, `#25` — or None. A number at the end of a name (`hr-try-4`) is a counter,
@@ -447,6 +553,17 @@ def fetch_ticket(spec: dict, out_dir: Path, root: Path | None = None) -> dict | 
                     "via": f"GitHub issue #{got['number']}, named by the branch `{branch}`",
                     "origin": ""}
         number = number or b_issue
+
+    key = jira_key(fm_value, (spec.get("pr") or {}).get("title") or "", branch or "")
+    if key:
+        got = _jira_issue(key, out_dir)
+        if got:
+            return {**got, "source": "jira",
+                    "via": f"Jira issue {key}, named by "
+                           + ("review-points.md" if jira_key(fm_value) else
+                              "the PR title" if jira_key((spec.get("pr") or {}).get("title") or "")
+                              else f"the branch `{branch}`"),
+                    "origin": ""}
 
     plain = {"number": None, "url": "", "author": "", "avatar": "", "createdAt": ""}
     if fm_text:

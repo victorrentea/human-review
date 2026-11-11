@@ -24,6 +24,12 @@
 
 ## What it needs
 
+- **The ticket** the matrix pairs with tests: a GitHub issue (`#N` in the PR title or
+  branch), or — Ludvig — a **Jira issue** whose key (`ML-3944`, `POG-12`) is in
+  `review-points.md`'s `ticket:`, the PR title or the branch name. Jira is read with your own
+  API token, from `JIRA_BASE_URL`, `JIRA_EMAIL` and `JIRA_API_TOKEN` in the environment or in
+  `~/.config/human-review/jira.env`, once, and cached in `ticket-body.json`.
+
 - Your project's test commands in `human-review.json`; Playwright with `--trace on` for the
   recordings. The matching of tests to sentences is the one part a model writes.
 - **Per-test coverage of a Python service** (`steps.testcov.pytest`): the service's own
