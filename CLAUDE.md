@@ -61,6 +61,26 @@ Two separate publishes deploy Pages and rebuild the zip twice. Rebuild each page
 own checkout and with `--out .human-review/review.html`: written anywhere else, `demo`'s build
 stopped on a review anchor that the same build in place reads fine (5 Nov 2026).
 
+## The demos carry planted mistakes: `demo/slop/`
+
+Victor, 11 Nov 2026: the two public demos must show off as many of the page's signals as
+possible, so their implementations are steered into **intentional mistakes**, filed as
+answers a hurried human approved *before* implementation (`demo/slop/<demo>.Q&A.md`,
+committed as the PR's first commit `Q&A.md`). The catalog of what is planted and which tab
+must show it is `demo/slop/README.md`. Re-implementing a demo goes through
+`demo/slop/run.sh <demo>` (new clone + new branch; `promote` alone touches the PR branch,
+after Victor has looked), and `demo/slop/check.py <demo>` says per item whether the page
+shows it.
+
+- **Only demo runs see them.** Nothing under `skills/` reads `demo/slop` — a clean
+  `/human-review` on any other repo stays clean (`test_demo_slop_guard.py`).
+- **The Q&A stays a plausible human's answers**: no tells ("add the arrow so ArchUnit
+  passes" was rejected), never "make this mistake on purpose". The mistake must come out of
+  the decision, and the reviewers attacking it are declined citing `Q&A.md:N`.
+- **A wording change is proven by an eval**: re-run until an Opus implementation produces
+  every planted item and `check.py` finds each on the built page; check the code right
+  after the implementation step before paying for the review.
+
 ## Every change to `intellij-plugin/` ships, in the same turn
 
 Victor, 16 Oct 2026: "you do that every time from now on". After any change under
