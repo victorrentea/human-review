@@ -485,14 +485,16 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
     the pill is the one box that holds the string, so the copy that takes it lives there. */
 .appenv .appenv-db .appenv-dbtools { display:inline-flex; gap:.3rem; }
 .appenv .appenv-db .appenv-dbtools:not(:has(button:not([hidden]))) { display:none; }
-/* Each tool is its logo, at the row's text height: the IJ mark is an inline SVG sized here,
-    the others are <img>s of a 32-px source (crisp at 2x). The outline keeps IJ's black
-    square, and any dark logo, visible on the dark page. */
-.appenv .appenv-db .appenv-dbtool { display:inline-flex; align-items:center; padding:.1rem .25rem; }
+/* Each tool is its bare logo, 24px, no button chrome (Victor, 12 Nov 2026: bigger, no
+    border): the IJ mark is an inline SVG sized here, the others <img>s of a 48-px source
+    (crisp at 2x). Only IJ's black square keeps an outline, to show on the dark page. */
+.appenv .appenv-db .appenv-dbtool { display:inline-flex; align-items:center; padding:0;
+    border:0; background:none; border-radius:4px; }
+.appenv .appenv-db .appenv-dbtool:hover { background:none; filter:brightness(1.15);
+    transform:scale(1.08); }
 .appenv .appenv-db .appenv-dbtool svg, .appenv .appenv-db .appenv-dbtool img {
-    width:16px; height:16px; display:block; }
-.appenv .appenv-db .appenv-dbtool .ij-ico,
-.appenv .appenv-db .appenv-dbtool img { outline:1px solid color-mix(in srgb, var(--fg) 25%, transparent); }
+    width:24px; height:24px; display:block; }
+.appenv .appenv-db .appenv-dbtool .ij-ico { outline:1px solid color-mix(in srgb, var(--fg) 25%, transparent); }
 .appenv .appenv-db .appenv-jdbc-box { display:inline-flex; align-items:center; gap:.2rem;
     background:var(--accent-soft); border-radius:4px; padding:0 .15rem 0 0; min-width:0; }
 .appenv .appenv-db .appenv-jdbc { user-select:all; overflow-wrap:anywhere; background:none; }
