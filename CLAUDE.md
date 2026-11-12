@@ -53,7 +53,7 @@ leaves no `tests` run to watch.
 
 ```sh
 scripts/publish-demo.sh --push \
-  demo2=$HOME/workspace/petclinic-visits-paginated/.human-review \
+  demo2=$HOME/workspace/petclinic-visits-paginated-v3/.human-review \
   demo=$HOME/workspace/petclinic-pr-visit-has-vet/.human-review
 ```
 
