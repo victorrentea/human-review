@@ -2240,16 +2240,17 @@ def opening_lede(spec) -> str:
     # `pilelede` is what the stylesheet pins: the line names three chapters that are
     # thousands of pixels apart, so it has to still be on screen when the reader is inside
     # one of them and wants the next. Sticky under the masthead, never over it.
-    # The grade's reasons go above the counts line, not under it: the line is sticky and
+    # The grade's reasons go above the counts line (under the PR description), not under it: the line is sticky and
     # has to stay the topmost thing in the tab once the reader scrolls, and the panel is
     # read once, on arrival from the score, and then left behind.
     # The takeover row ("32 commits made after the reviewed version") goes between the
     # two: under the grade, which is read first on arrival from the masthead, and directly
     # above the counts line it qualifies — every number on that line was counted at the
     # reviewed commit, not at the branch's head.
-    # The PR's own words go right under the grade (Victor, 8 Oct 2026): what the change
-    # claims to be, read before the counts of what was found in it.
-    return (grade_reasons_html(spec) + pr_description_html(spec) + _flush_top_bands()
+    # The PR's own words come first, the grade's reasons under them (Victor, 12 Nov 2026,
+    # was the other way round since 8 Oct): what the change claims to be, then what the
+    # review made of it, then the counts of what was found in it.
+    return (pr_description_html(spec) + grade_reasons_html(spec) + _flush_top_bands()
             + f'<p class="sub counts pilelede"{no_pr_line(spec)}>' + line
             + push_pr_button(spec) + "</p>" + push_pr_dialog(spec)
             + PILELEDE_SPY_JS)

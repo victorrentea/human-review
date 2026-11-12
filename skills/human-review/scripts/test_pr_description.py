@@ -178,3 +178,12 @@ def test_the_door_and_the_circle_ride_inside_the_grade_pill_with_one_hover_for_a
     assert alone.startswith('<span class="titlescore ts-alone"') and alone.count(bot) == 1
     # The line the marks go to.
     assert 'id="mergerisk"' in review.pr_description_html(spec)
+
+
+
+def test_the_pr_description_comes_before_the_grade_panel():
+    """Victor, 12 Nov 2026: the grade's note box goes UNDER the PR description — what the
+    change claims to be first, then what the review made of it."""
+    import inspect
+    src = inspect.getsource(review.opening_lede)
+    assert "pr_description_html(spec) + grade_reasons_html(spec)" in src
