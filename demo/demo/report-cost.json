@@ -373,6 +373,11 @@
    "at": "2026-11-10T14:19:19+00:00",
    "seconds": 17.6,
    "steps": "complexity,logging,city"
+  },
+  {
+   "at": "2026-11-12T06:24:47+00:00",
+   "seconds": 14.0,
+   "steps": "none"
   }
  ]
 }
