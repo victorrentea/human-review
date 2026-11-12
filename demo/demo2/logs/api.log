@@ -1,10 +1,10 @@
   * api -> api
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base c70d6642e77f61a54c8e018ad14b88f14f9545bd --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base ad1fb1d35662f8fd94ed202fc3572f309e185dbd --spec openapi.yaml --out .human-review/assets/openapi-compat.html --report .human-review/assets/openapi-compat-report.html
 [openapi-compat] wrote .human-review/assets/openapi-compat-report.html — standalone
 [openapi-compat] wrote .human-review/assets/openapi-compat.html — incompatible
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --css  >  .human-review/assets/openapi-compat.css
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base c70d6642e77f61a54c8e018ad14b88f14f9545bd --spec openapi.yaml --panel --out .human-review/assets/openapi-verdict.html
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-compat.py --base ad1fb1d35662f8fd94ed202fc3572f309e185dbd --spec openapi.yaml --panel --out .human-review/assets/openapi-verdict.html
 [openapi-compat] wrote .human-review/assets/openapi-verdict.html — incompatible
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-visual-diff.py --base c70d6642e77f61a54c8e018ad14b88f14f9545bd --spec openapi.yaml --out .human-review/assets/openapi-visual-diff.html
-[openapi-visual-diff] 25 of 25 distinct class diagrams drawn, 116 KB
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/openapi-visual-diff.py --base ad1fb1d35662f8fd94ed202fc3572f309e185dbd --spec openapi.yaml --out .human-review/assets/openapi-visual-diff.html
+[openapi-visual-diff] 25 of 25 distinct class diagrams drawn, 118 KB
 .human-review/assets/openapi-visual-diff.html  (1 breaking  0 modified  0 added  0 removed  42 untouched)

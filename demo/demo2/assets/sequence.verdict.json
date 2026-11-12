@@ -1,0 +1,113 @@
+{
+ "state": "red",
+ "reason": "cd petclinic-test && GENSEQ_SELECT={tests.e2e} ./run-tests-with-tracing.sh (exit 1)",
+ "missing": [],
+ "runs": [
+  {
+   "command": "cd petclinic-test && GENSEQ_SELECT={tests.e2e} ./run-tests-with-tracing.sh",
+   "exit": 1,
+   "outcome": "failed",
+   "detail": "[tracing] Tests exited with status 1.",
+   "log": [
+    "       Received: \"Wendy Darling | Wallace Wensleydale | Wallace Wensleydale | Wallace Wensleydale | Tintin Reporter | \u0218tefan Mure\u0219an | Sherlock Holmes | Sam Carraclough | Sam Carraclough | Rubeus Hagrid\"",
+    "       Call Log:",
+    "       - Timeout 10000ms exceeded while waiting on the predicate",
+    "           at pollMatcher (/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/node_modules/playwright/lib/matchers/expect.js:293:11)",
+    "           at async PlaywrightWorld.<anonymous> (/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/src/visits-sort.feature.glue.ts:47:5)",
+    "   \u2714 After # src/support/world.ts:143",
+    "15 scenarios (2 failed, 13 passed)",
+    "52 steps (2 failed, 50 passed)",
+    "0m27.353s (executing steps: 0m27.165s)",
+    "[tracing] \ud83d\udcca Collected 3 sequence diagram(s):",
+    "      - petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
+    "      - petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml",
+    "      - petclinic-test/generated/visits.spec.ts.shows-the-first-page-of-visits-on-initial-load.genseq.puml",
+    "[tracing] Tests exited with status 1."
+   ],
+   "skips": [],
+   "seconds": 42.1
+  },
+  {
+   "command": "cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq",
+   "exit": 0,
+   "outcome": "ran",
+   "detail": "passed",
+   "log": [
+    "[INFO] ------------------------------------------------------------------------",
+    "[INFO] BUILD SUCCESS",
+    "[INFO] ------------------------------------------------------------------------",
+    "[INFO] Total time:  19.407 s",
+    "[INFO] Finished at: 2026-11-12T00:44:16+01:00",
+    "[INFO] ------------------------------------------------------------------------",
+    "OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended",
+    "[otel.javaagent 2026-11-12 00:43:59:054 +0100] [main] INFO io.opentelemetry.javaagent.tooling.VersionLogger - opentelemetry-javaagent - version: 2.20.1",
+    "Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3",
+    "OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended",
+    "WARNING: A Java agent has been loaded dynamically (/Users/victorrentea/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar)",
+    "WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning",
+    "WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information",
+    "WARNING: Dynamic loading of agents will be disallowed by default in a future release"
+   ],
+   "skips": [],
+   "seconds": 20.8
+  },
+  {
+   "command": "cd petclinic-backend && GENSEQ_SELECT={tests.java} mvn -o -Pgenseq test -Dtest={tests.java} -Dsurefire.failIfNoSpecifiedTests=false",
+   "exit": 0,
+   "outcome": "ran",
+   "detail": "passed",
+   "log": [
+    "[INFO] ------------------------------------------------------------------------",
+    "[INFO] BUILD SUCCESS",
+    "[INFO] ------------------------------------------------------------------------",
+    "[INFO] Total time:  19.977 s",
+    "[INFO] Finished at: 2026-11-12T00:44:37+01:00",
+    "[INFO] ------------------------------------------------------------------------",
+    "OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended",
+    "[otel.javaagent 2026-11-12 00:44:19:703 +0100] [main] INFO io.opentelemetry.javaagent.tooling.VersionLogger - opentelemetry-javaagent - version: 2.20.1",
+    "Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3",
+    "OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended",
+    "WARNING: A Java agent has been loaded dynamically (/Users/victorrentea/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar)",
+    "WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning",
+    "WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information",
+    "WARNING: Dynamic loading of agents will be disallowed by default in a future release"
+   ],
+   "skips": [],
+   "seconds": 21.3
+  },
+  {
+   "command": "cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram",
+   "exit": 0,
+   "outcome": "ran",
+   "detail": "passed",
+   "log": [
+    "\u2705 \"serves every column of the row\": 1 trace(s)",
+    "\ud83d\udcca src/add-visit.spec.ts: \u201cAdd a visit to an existing pet from the owner detail page\u201d \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
+    "   \ud83d\udd0d 12 revealable arrow(s) \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.json",
+    "\ud83d\udcca src/visits.spec.ts: \u201cshows the first page of visits on initial load\u201d \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/visits.spec.ts.shows-the-first-page-of-visits-on-initial-load.genseq.puml",
+    "   \ud83d\udd0d 4 revealable arrow(s) \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/visits.spec.ts.shows-the-first-page-of-visits-on-initial-load.genseq.json",
+    "\ud83d\udcca src/owner-search.feature: \u201cSearching with an empty last name lists every owner\u201d \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml",
+    "   \ud83d\udd0d 62 revealable arrow(s) \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.json",
+    "\ud83d\udcca ../petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java: \u201cadds a visit to an existing pet\u201d \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
+    "   \ud83d\udd0d 67 revealable arrow(s) \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.json",
+    "\ud83d\udcca ../petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java: \u201cserves the newest ten first\u201d \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/VisitGridTest.java.serves-the-newest-ten-first.genseq.puml",
+    "   \ud83d\udd0d 3 revealable arrow(s) \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/VisitGridTest.java.serves-the-newest-ten-first.genseq.json",
+    "\ud83d\udcca ../petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java: \u201cserves every column of the row\u201d \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/VisitGridTest.java.serves-every-column-of-the-row.genseq.puml",
+    "   \ud83d\udd0d 3 revealable arrow(s) \u2192 /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-test/generated/VisitGridTest.java.serves-every-column-of-the-row.genseq.json",
+    "\ud83d\udcca Generated 6 diagram(s)"
+   ],
+   "skips": [],
+   "seconds": 6.2
+  }
+ ],
+ "drawn": [
+  "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
+  "petclinic-test/generated/VisitGridTest.java.serves-every-column-of-the-row.genseq.puml",
+  "petclinic-test/generated/VisitGridTest.java.serves-the-newest-ten-first.genseq.puml",
+  "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
+  "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml",
+  "petclinic-test/generated/visits.spec.ts.shows-the-first-page-of-visits-on-initial-load.genseq.puml"
+ ],
+ "lost": [],
+ "at": "2026-11-11T23:45:23+00:00"
+}

@@ -1,244 +1,232 @@
 {
-  "scope": [
+ "scope": [
+  {
+   "auto": "diffstat"
+  },
+  {
+   "auto": "tests",
+   "href": "#requirements"
+  },
+  {
+   "auto": "autofixed",
+   "href": "#review"
+  }
+ ],
+ "findings": {
+  "auto": "review-points"
+ },
+ "autofixes": {
+  "auto": "review-points"
+ },
+ "assumptions": {
+  "auto": "review-points"
+ },
+ "codecity": {
+  "png": "assets/codecity.png",
+  "href": "assets/codecity/codecity.html"
+ },
+ "extraCss": [
+  "assets/openapi-compat.css",
+  "assets/complexity-delta.css",
+  "assets/ds-audit.css"
+ ],
+ "testChanges": "assets/test-changes.json",
+ "playwrightTraces": "assets/traces.json",
+ "tabs": [
+  {
+   "id": "review",
+   "label": "Review",
+   "count": true,
+   "blocks": [
     {
-      "auto": "diffstat"
+     "type": "findings"
     },
     {
-      "auto": "tests",
-      "href": "#requirements"
+     "type": "autofixes"
     },
     {
-      "auto": "autofixed",
-      "href": "#review"
+     "type": "assumptions"
     }
-  ],
-  "findings": {
-    "auto": "review-points"
+   ]
   },
-  "autofixes": {
-    "auto": "review-points"
-  },
-  "assumptions": {
-    "auto": "review-points"
-  },
-  "codecity": {
-    "png": "assets/codecity.png",
-    "href": "assets/codecity/codecity.html"
-  },
-  "extraCss": [
-    "assets/openapi-compat.css",
-    "assets/complexity-delta.css",
-    "assets/ds-audit.css"
-  ],
-  "testChanges": "assets/test-changes.json",
-  "playwrightTraces": "assets/traces.json",
-  "tabs": [
+  {
+   "id": "behaviour",
+   "label": "Demo",
+   "blocks": [
     {
-      "id": "review",
-      "label": "Review",
-      "count": true,
-      "blocks": [
-        {
-          "type": "findings"
-        },
-        {
-          "type": "autofixes"
-        },
-        {
-          "type": "assumptions"
-        }
-      ]
-    },
-    {
-      "id": "behaviour",
-      "label": "Demo",
-      "blocks": [
-        {
-          "type": "section",
-          "id": "video"
-        }
-      ]
-    },
-    {
-      "id": "api",
-      "label": "API",
-      "blocks": [
-        {
-          "type": "section",
-          "id": "swaggerdiff"
-        }
-      ]
-    },
-    {
-      "id": "data",
-      "label": "Data",
-      "blocks": [
-        {
-          "type": "diagrams",
-          "only": [
-            "DomainModel",
-            "DB"
-          ]
-        },
-        {
-          "type": "section",
-          "id": "conceptual"
-        }
-      ]
-    },
-    {
-      "id": "requirements",
-      "label": "Tests",
-      "blocks": [
-        {
-          "type": "section",
-          "id": "requirements-map"
-        },
-        {
-          "type": "tests"
-        },
-        {
-          "type": "traces"
-        }
-      ]
-    },
-    {
-      "id": "sequence",
-      "label": "Sequence",
-      "blocks": [
-        {
-          "type": "testpairs",
-          "id": "sequences",
-          "kind": "sequence"
-        }
-      ]
-    },
-    {
-      "id": "packages",
-      "label": "Structure",
-      "blocks": [
-        {
-          "type": "diagrams",
-          "only": [
-            "Backend Java packages"
-          ],
-          "context": {
-            "src": "petclinic-backend/docs/packages.puml",
-            "name": "Backend Java packages"
-          }
-        },
-        {
-          "type": "puml",
-          "src": "petclinic-backend/docs/generated/MavenModules.puml",
-          "name": "Backend Build Units",
-          "status": "unchanged"
-        },
-        {
-          "type": "diagrams",
-          "only": [
-            "Frontend TypeScript packages"
-          ],
-          "context": {
-            "src": "petclinic-frontend/docs/frontend-packages.puml",
-            "name": "Frontend TypeScript packages"
-          }
-        },
-        {
-          "type": "diagrams",
-          "manifest": "assets/c2/MANIFEST.tsv",
-          "only": [
-            "C2-Containers"
-          ],
-          "id": "c2-containers"
-        }
-      ]
-    },
-    {
-      "id": "city",
-      "label": "Code City",
-      "blocks": [
-        {
-          "type": "codecity"
-        }
-      ]
-    },
-    {
-      "id": "dsaudit",
-      "label": "UX",
-      "blocks": [
-        {
-          "type": "section",
-          "id": "ds-audit"
-        }
-      ]
-    },
-    {
-      "id": "complexity",
-      "label": "Complexity",
-      "blocks": [
-        {
-          "type": "section",
-          "id": "complexity-delta"
-        }
-      ]
-    },
-    {
-      "id": "logging",
-      "label": "Logging",
-      "blocks": [
-        {
-          "type": "logging",
-          "base": "origin/main",
-          "paths": [
-            "petclinic-backend"
-          ],
-          "id": "logging-added"
-        }
-      ]
-    },
-    {
-      "id": "owners",
-      "label": "CODEOWNERS",
-      "blocks": [
-        {
-          "type": "codeowners"
-        }
-      ]
+     "type": "section",
+     "id": "video"
     }
-  ],
-  "pr": {
-    "number": 53,
-    "title": "Visits grid: server-side paging, sortable by every column (#52)",
-    "url": "https://github.com/victorrentea/petclinic/pull/53",
-    "repo": "https://github.com/victorrentea/petclinic",
-    "branch": "visits-paginated",
-    "base": "main",
-    "ticket": {
-      "number": 52,
-      "title": "Add pagination to Visits grid",
-      "url": "https://github.com/victorrentea/petclinic/issues/52"
-    }
+   ]
   },
-  "title": "Visits grid: server-side paging, sortable by every column (#52)",
-  "subtitle": "visits-paginated — issue #52",
-  "footer": "Built by /human-review from visits-paginated on 22 Oct 2026.",
-  "verdict": {
-    "score": 8,
-    "bullets": [
-      "The human commits are two merges of `origin/main` into the branch plus their `review-points` base-moved markers; they bring in main's changes, not edits to the Visits feature itself.",
-      "The API accepts page sizes 1..100 while the ticket asks for 5/10/20; the cap is only enforced in the grid, so other clients can request sizes the ticket never meant."
-    ]
-  },
-  "mergeRisk": {
-    "door": "two-way",
-    "blast": "visits grid and its API",
-    "blastSize": 1,
-    "why": "no migration, no data written; GET /api/visits answers a page instead of a list, and its one client, the grid, ships with it"
-  },
-  "sections": [
+  {
+   "id": "api",
+   "label": "API",
+   "blocks": [
     {
-      "id": "video",
-      "intro": "The list of all visits used to be one long scroll; now it comes in small pages.\nWatch: we flip pages, change their size and sort by any column."
+     "type": "section",
+     "id": "swaggerdiff"
     }
+   ]
+  },
+  {
+   "id": "data",
+   "label": "Data",
+   "blocks": [
+    {
+     "type": "diagrams",
+     "only": [
+      "DomainModel",
+      "DB"
+     ]
+    },
+    {
+     "type": "section",
+     "id": "conceptual"
+    }
+   ]
+  },
+  {
+   "id": "requirements",
+   "label": "Tests",
+   "blocks": [
+    {
+     "type": "section",
+     "id": "requirements-map"
+    },
+    {
+     "type": "tests"
+    },
+    {
+     "type": "traces"
+    }
+   ]
+  },
+  {
+   "id": "sequence",
+   "label": "Sequence",
+   "blocks": [
+    {
+     "type": "testpairs",
+     "id": "sequences",
+     "kind": "sequence"
+    }
+   ]
+  },
+  {
+   "id": "packages",
+   "label": "Structure",
+   "blocks": [
+    {
+     "type": "diagrams",
+     "only": [
+      "Backend Java packages"
+     ],
+     "context": {
+      "src": "petclinic-backend/docs/packages.puml",
+      "name": "Backend Java packages"
+     }
+    },
+    {
+     "type": "puml",
+     "src": "petclinic-backend/docs/generated/MavenModules.puml",
+     "name": "Backend Build Units",
+     "status": "unchanged"
+    },
+    {
+     "type": "diagrams",
+     "only": [
+      "Frontend TypeScript packages"
+     ],
+     "context": {
+      "src": "petclinic-frontend/docs/frontend-packages.puml",
+      "name": "Frontend TypeScript packages"
+     }
+    },
+    {
+     "type": "diagrams",
+     "manifest": "assets/c2/MANIFEST.tsv",
+     "only": [
+      "C2-Containers"
+     ],
+     "id": "c2-containers"
+    }
+   ]
+  },
+  {
+   "id": "city",
+   "label": "Code City",
+   "blocks": [
+    {
+     "type": "codecity"
+    }
+   ]
+  },
+  {
+   "id": "dsaudit",
+   "label": "UX",
+   "blocks": [
+    {
+     "type": "section",
+     "id": "ds-audit"
+    }
+   ]
+  },
+  {
+   "id": "complexity",
+   "label": "Complexity",
+   "blocks": [
+    {
+     "type": "section",
+     "id": "complexity-delta"
+    }
+   ]
+  },
+  {
+   "id": "logging",
+   "label": "Logging",
+   "blocks": [
+    {
+     "type": "logging",
+     "base": "origin/main",
+     "paths": [
+      "petclinic-backend"
+     ],
+     "id": "logging-added"
+    }
+   ]
+  },
+  {
+   "id": "owners",
+   "label": "CODEOWNERS",
+   "blocks": [
+    {
+     "type": "codeowners"
+    }
+   ]
+  }
+ ],
+ "title": "Visits grid: paged (5/10/20) and sortable by any column (#52)",
+ "subtitle": "visits-paginated — issue #52",
+ "footer": "Built by /human-review from visits-paginated on 12 Nov 2026.",
+ "verdict": {
+  "score": 5,
+  "bullets": [
+   "The traced e2e run failed on a sort assertion where `Ștefan Mureșan` landed between `Tintin` and `Sherlock`, so the collation item is a live test failure, not just a follow-up, and CI is green anyway.",
+   "Owner sort by first name then last name was assumed at low confidence, and the failing owner-order assertion may be checking that choice, so confirm it with the human."
   ]
+ },
+ "pr": {
+  "number": 53,
+  "title": "Visits grid: paged (5/10/20) and sortable by any column (#52)",
+  "url": "https://github.com/victorrentea/petclinic/pull/53",
+  "repo": "https://github.com/victorrentea/petclinic",
+  "branch": "visits-paginated",
+  "base": "main",
+  "ticket": {
+   "number": 52,
+   "title": "Add pagination to Visits grid",
+   "url": "https://github.com/victorrentea/petclinic/issues/52"
+  }
+ }
 }

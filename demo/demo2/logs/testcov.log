@@ -1,11 +1,11 @@
   * testcov -> requirements
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/testcov.py --base 215038746359a252cf10e12c2f02bbab2a7f4286 --out .human-review/assets/test-coverage.json
-[testcov] $ (cd /Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend && ./test-on-own-db.sh mvn -o test -Dmaven.test.failure.ignore=true -Dmaven.test.additionalClasspath=/Users/victorrentea/.cache/human-review/testcov/4ea001029b8d3ddc/hr-testcov-listener.jar -Dhr.testcov.dir=/Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/coverage/junit-0)  > .human-review/coverage/junit-0.log
-[testcov] $ (cd /Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-frontend && npx ng test --watch=false --code-coverage --browsers=ChromeHeadless --karma-config=/Users/victorrentea/workspace/human-review/skills/human-review/scripts/testcov/karma/karma.conf.js)  > .human-review/coverage/karma-0.log
-[testcov] 360 test(s) in 6 suite(s); 133 changed line(s) in 10 file(s) -> .human-review/assets/test-coverage.json
-[testcov]   Backend JUnit          ran       202 test(s)    45.2s  
-[testcov]   Backend Cucumber       ran         9 test(s)    45.2s  
-[testcov]   Backend ArchUnit       ran         1 test(s)    45.2s  
-[testcov]   Frontend Karma         ran       133 test(s)    11.6s  
-[testcov]   E2E Playwright         ran         8 test(s)     0.8s  
-[testcov]   E2E Cucumber           ran         7 test(s)     0.8s  
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/testcov.py --base ad1fb1d35662f8fd94ed202fc3572f309e185dbd --out .human-review/assets/test-coverage.json
+[testcov] $ (cd /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend && ./test-on-own-db.sh mvn -o test -Dmaven.test.failure.ignore=true -Dmaven.test.additionalClasspath=/Users/victorrentea/.cache/human-review/testcov/4ea001029b8d3ddc/hr-testcov-listener.jar -Dhr.testcov.dir=/Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/coverage/junit-0)  > .human-review/coverage/junit-0.log
+[testcov] $ (cd /Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-frontend && npx ng test --watch=false --code-coverage --browsers=ChromeHeadless --karma-config=/Users/victorrentea/workspace/human-review/skills/human-review/scripts/testcov/karma/karma.conf.js)  > .human-review/coverage/karma-0.log
+[testcov] 399 test(s) in 6 suite(s); 156 changed line(s) in 11 file(s) -> .human-review/assets/test-coverage.json
+[testcov]   Backend JUnit          ran       242 test(s)    79.3s  
+[testcov]   Backend Cucumber       ran         9 test(s)    79.3s  
+[testcov]   Backend ArchUnit       ran         1 test(s)    79.3s  
+[testcov]   Frontend Karma         ran       126 test(s)    19.7s  
+[testcov]   E2E Playwright         ran         6 test(s)     1.4s  
+[testcov]   E2E Cucumber           ran        15 test(s)     1.8s  

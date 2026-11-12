@@ -2,59 +2,43 @@
  "max": 6,
  "picked": [
   {
-   "path": "petclinic-test/src/visits.spec.ts",
-   "name": "shows the ten latest visits on initial load",
-   "line": 37,
+   "path": "petclinic-test/src/visits-sort.feature",
+   "name": "Clicking the <column> header <clicks> sorts the first page <direction>",
+   "line": 7,
    "status": "added",
    "why": "written by this branch",
    "suite": "e2e"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "defaultPage_isTheTenLatestVisits",
-   "line": 73,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "servesTheNewestTenFirst",
+   "line": 92,
    "status": "added",
    "why": "written by this branch",
    "suite": "java"
   },
   {
    "path": "petclinic-test/src/visits.spec.ts",
-   "name": "clicking a column header sorts by it and keeps the sort in the URL",
-   "line": 47,
+   "name": "shows the first page of visits on initial load",
+   "line": 30,
    "status": "added",
    "why": "written by this branch",
    "suite": "e2e"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "aVisitCarriesItsPetAndOwner",
-   "line": 89,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "servesEveryColumnOfTheRow",
+   "line": 106,
    "status": "added",
    "why": "written by this branch",
    "suite": "java"
-  },
-  {
-   "path": "petclinic-test/src/visits.spec.ts",
-   "name": "a page of 5 visits, then the next one",
-   "line": 58,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": "e2e"
-  },
-  {
-   "path": "petclinic-test/src/visits.spec.ts",
-   "name": "Visits Page",
-   "line": 10,
-   "status": "modified",
-   "why": "edited by this branch",
-   "suite": "e2e"
   }
  ],
  "left": [
   {
    "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
-   "name": "asks for the first page with the server defaults when given no query",
-   "line": 35,
+   "name": "should get a page of visits, passing only the params given",
+   "line": 31,
    "status": "added",
    "why": "written by this branch",
    "suite": null,
@@ -62,8 +46,8 @@
   },
   {
    "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
-   "name": "sends every query parameter it is given",
-   "line": 42,
+   "name": "should ask for the default page when the URL names none",
+   "line": 39,
    "status": "added",
    "why": "written by this branch",
    "suite": null,
@@ -71,8 +55,8 @@
   },
   {
    "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "asks for the first page of the latest visits when the URL says nothing",
-   "line": 69,
+   "name": "asks for the page, size and sort in the URL",
+   "line": 57,
    "status": "added",
    "why": "written by this branch",
    "suite": null,
@@ -80,8 +64,8 @@
   },
   {
    "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "asks for what the URL says, with its 1-based page turned 0-based",
-   "line": 75,
+   "name": "shows the rows, paging and sort the backend served",
+   "line": 65,
    "status": "added",
    "why": "written by this branch",
    "suite": null,
@@ -89,8 +73,8 @@
   },
   {
    "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "falls back to the defaults for values the URL gets wrong",
-   "line": 82,
+   "name": "re-queries when the URL changes",
+   "line": 76,
    "status": "added",
    "why": "written by this branch",
    "suite": null,
@@ -98,8 +82,8 @@
   },
   {
    "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "shows each visit with its pet and a link to its owner",
-   "line": 89,
+   "name": "puts a new sort in the URL, back on the first page",
+   "line": 84,
    "status": "added",
    "why": "written by this branch",
    "suite": null,
@@ -107,7 +91,16 @@
   },
   {
    "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "every column can be sorted",
+   "name": "puts a new page and size in the URL",
+   "line": 93,
+   "status": "added",
+   "why": "written by this branch",
+   "suite": null,
+   "left": "no traced suite runs this file"
+  },
+  {
+   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+   "name": "shows \"No visits found.\" when the clinic has no visits",
    "line": 100,
    "status": "added",
    "why": "written by this branch",
@@ -116,269 +109,217 @@
   },
   {
    "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "offers pages of 5, 10 or 20 visits",
+   "name": "renders owner cell as a link to /owners/{ownerId}",
    "line": 108,
-   "status": "added",
-   "why": "written by this branch",
+   "status": "modified",
+   "why": "edited by this branch",
    "suite": null,
    "left": "no traced suite runs this file"
   },
   {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "moving to another page keeps the sort and size",
-   "line": 112,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "a new page size goes back to the first page",
-   "line": 121,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "a new sort goes back to the first page",
-   "line": 130,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "leaves the URL clean when everything is back to its default",
-   "line": 139,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "shows \"No visits found.\" when there are none",
-   "line": 148,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "shows a failure as an error, not as \"no visits\"",
-   "line": 156,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "shows a failed navigation as an error",
-   "line": 164,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "moves to the last page when the URL points past it",
-   "line": 176,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-   "name": "only the latest query may answer",
-   "line": 186,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": null,
-   "left": "no traced suite runs this file"
-  },
-  {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "lastPartialPage",
-   "line": 105,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "servesTheSecondPage",
+   "line": 120,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "pagePastTheEnd_isEmptyWithTotals",
-   "line": 117,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "sortsByAnyColumn",
+   "line": 138,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sortByDateAscending",
-   "line": 129,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "anUnknownSortServesNewestFirst",
+   "line": 146,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sortByDescription",
-   "line": 139,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "aSizeNotOfferedSnapsToTheNearestOne",
+   "line": 154,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sortByPet_thenLatestFirst",
-   "line": 150,
-   "status": "added",
-   "why": "written by this branch",
-   "suite": "java",
-   "left": "over the cap of 6 traced tests"
-  },
-  {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sortByOwnerName_firstNameThenLastName",
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "aPagePastTheEndServesTheLastPage",
    "line": 162,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sortWithoutDirection_isAscending",
-   "line": 171,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "aPageWhoseOffsetOverflowsAnIntServesTheLastPage",
+   "line": 170,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "identicalVisits_onAPageBoundary_appearExactlyOnce",
-   "line": 180,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "garbageParamsNeverFail",
+   "line": 178,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sizeAtTheCap_isAccepted",
-   "line": 192,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "anEmptyClinicServesAnEmptyFirstPage",
+   "line": 185,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sizeAboveTheCap_isRejected",
-   "line": 197,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "name": "logsTheOwnersServed",
+   "line": 196,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "sizeZero_isRejected",
-   "line": 204,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "defaultsToTheFirstTenNewestVisits",
+   "line": 16,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "negativePage_isRejected",
-   "line": 211,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "snapsSizeToTheNearestAllowedOne",
+   "line": 28,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "unsupportedSortKey_isRejected",
-   "line": 218,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "unreadableSizeServesTen",
+   "line": 34,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
   },
   {
-   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-   "name": "aPageLoadsPetsAndOwnersInTheSameQuery_notOneQueryPerVisit",
-   "line": 225,
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "readsThePageLeniently",
+   "line": 40,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
-   "left": "over the cap of 6 traced tests"
+   "left": "over its suite's cap"
+  },
+  {
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "acceptsEveryColumnInBothDirections",
+   "line": 52,
+   "status": "added",
+   "why": "written by this branch",
+   "suite": "java",
+   "left": "over its suite's cap"
+  },
+  {
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "aColumnWithoutDirectionSortsAscending",
+   "line": 58,
+   "status": "added",
+   "why": "written by this branch",
+   "suite": "java",
+   "left": "over its suite's cap"
+  },
+  {
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "anUnknownSortFallsBackToNewestFirst",
+   "line": 65,
+   "status": "added",
+   "why": "written by this branch",
+   "suite": "java",
+   "left": "over its suite's cap"
+  },
+  {
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+   "name": "sortsByTheColumnThenByIdForAStablePaging",
+   "line": 70,
+   "status": "added",
+   "why": "written by this branch",
+   "suite": "java",
+   "left": "over its suite's cap"
+  },
+  {
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "name": "getAll",
+   "line": 108,
+   "status": "modified",
+   "why": "edited by this branch",
+   "suite": "java",
+   "left": "over its suite's cap"
+  },
+  {
+   "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "name": "getAll_returnsEnrichedFields",
+   "line": 124,
+   "status": "modified",
+   "why": "edited by this branch",
+   "suite": "java",
+   "left": "over its suite's cap"
   }
  ],
  "suites": {
   "e2e": [
    {
-    "path": "petclinic-test/src/visits.spec.ts",
-    "name": "shows the ten latest visits on initial load",
-    "line": 37,
+    "path": "petclinic-test/src/visits-sort.feature",
+    "name": "Clicking the <column> header <clicks> sorts the first page <direction>",
+    "line": 7,
     "status": "added",
     "why": "written by this branch",
     "suite": "e2e"
    },
    {
     "path": "petclinic-test/src/visits.spec.ts",
-    "name": "clicking a column header sorts by it and keeps the sort in the URL",
-    "line": 47,
+    "name": "shows the first page of visits on initial load",
+    "line": 30,
     "status": "added",
     "why": "written by this branch",
-    "suite": "e2e"
-   },
-   {
-    "path": "petclinic-test/src/visits.spec.ts",
-    "name": "a page of 5 visits, then the next one",
-    "line": 58,
-    "status": "added",
-    "why": "written by this branch",
-    "suite": "e2e"
-   },
-   {
-    "path": "petclinic-test/src/visits.spec.ts",
-    "name": "Visits Page",
-    "line": 10,
-    "status": "modified",
-    "why": "edited by this branch",
     "suite": "e2e"
    }
   ],
   "java": [
    {
-    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-    "name": "defaultPage_isTheTenLatestVisits",
-    "line": 73,
+    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+    "name": "servesTheNewestTenFirst",
+    "line": 92,
     "status": "added",
     "why": "written by this branch",
     "suite": "java"
    },
    {
-    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-    "name": "aVisitCarriesItsPetAndOwner",
-    "line": 89,
+    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+    "name": "servesEveryColumnOfTheRow",
+    "line": 106,
     "status": "added",
     "why": "written by this branch",
     "suite": "java"
@@ -388,20 +329,20 @@
  "runs": [
   {
    "command": "cd petclinic-test && GENSEQ_SELECT={tests.e2e} ./run-tests-with-tracing.sh",
-   "seconds": 28.1
+   "seconds": 42.1
   },
   {
-   "command": "cd petclinic-backend && ./test-on-own-db.sh mvn -o -Pgenseq test -Dgroups=genseq",
-   "seconds": 13.4
+   "command": "cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq",
+   "seconds": 20.8
   },
   {
-   "command": "cd petclinic-backend && GENSEQ_SELECT={tests.java} ./test-on-own-db.sh mvn -o -Pgenseq test -Dtest={tests.java} -Dsurefire.failIfNoSpecifiedTests=false",
-   "seconds": 13.5
+   "command": "cd petclinic-backend && GENSEQ_SELECT={tests.java} mvn -o -Pgenseq test -Dtest={tests.java} -Dsurefire.failIfNoSpecifiedTests=false",
+   "seconds": 21.3
   },
   {
    "command": "cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram",
-   "seconds": 8.5
+   "seconds": 6.2
   }
  ],
- "at": "2026-11-10T15:09:58+00:00"
+ "at": "2026-11-11T23:44:55+00:00"
 }

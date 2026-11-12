@@ -2,13 +2,11 @@
   "new": {
     "sources": [
       "petclinic-test/generated/AddVisitApiTest.java.adds-a-visit-to-an-existing-pet.genseq.puml",
-      "petclinic-test/generated/VisitListTest.java.a-visit-carries-its-pet-and-owner.genseq.puml",
-      "petclinic-test/generated/VisitListTest.java.default-page-is-the-ten-latest-visits.genseq.puml",
+      "petclinic-test/generated/VisitGridTest.java.serves-every-column-of-the-row.genseq.puml",
+      "petclinic-test/generated/VisitGridTest.java.serves-the-newest-ten-first.genseq.puml",
       "petclinic-test/generated/add-visit.spec.ts.add-a-visit-to-an-existing-pet-from-the-owner-detail-page.genseq.puml",
       "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml",
-      "petclinic-test/generated/visits.spec.ts.a-page-of-5-visits-then-the-next-one.genseq.puml",
-      "petclinic-test/generated/visits.spec.ts.clicking-a-column-header-sorts-by-it-and-keeps-the-sort-in-the-url.genseq.puml",
-      "petclinic-test/generated/visits.spec.ts.shows-the-ten-latest-visits-on-initial-load.genseq.puml"
+      "petclinic-test/generated/visits.spec.ts.shows-the-first-page-of-visits-on-initial-load.genseq.puml"
     ],
     "nodes": {
       "Backend": {
@@ -53,9 +51,9 @@
         "to": "DB",
         "status": "same",
         "protocol": "SQL",
-        "operations": 11,
+        "operations": 7,
         "operationsDelta": 0,
-        "calls": 263,
+        "calls": 209,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -63,39 +61,19 @@
             "calls": 3
           },
           {
-            "name": "PetTypeRepository.findAll",
+            "name": "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner o",
             "path": "",
-            "calls": 2
+            "calls": 3
           },
           {
-            "name": "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner",
+            "name": "SELECT new victor.training.petclinic.rest.dto.VisitRowDto(v.id, v.date, v.description, p.id, p.name, o.id, o.firstName, o.lastName) FROM Visit v JOIN \u2026",
             "path": "",
-            "calls": 7
-          },
-          {
-            "name": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by \u2026",
-            "path": "",
-            "calls": 8
-          },
-          {
-            "name": "VisitRepository.findAllWithPetAndOwner",
-            "path": "",
-            "calls": 26
-          },
-          {
-            "name": "insert for victor.training.petclinic.domain.Owner",
-            "path": "",
-            "calls": 2
-          },
-          {
-            "name": "insert for victor.training.petclinic.domain.Pet",
-            "path": "",
-            "calls": 2
+            "calls": 3
           },
           {
             "name": "insert for victor.training.petclinic.domain.Visit",
             "path": "",
-            "calls": 15
+            "calls": 2
           },
           {
             "name": "select owners",
@@ -139,7 +117,7 @@
         "protocol": "HTTP",
         "operations": 5,
         "operationsDelta": 0,
-        "calls": 13,
+        "calls": 8,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -164,7 +142,7 @@
           {
             "name": "listVisits",
             "path": "GET /api/visits",
-            "calls": 6
+            "calls": 1
           }
         ],
         "toKind": "container"
@@ -386,9 +364,9 @@
         "to": "DB",
         "status": "same",
         "protocol": "SQL",
-        "operations": 11,
+        "operations": 7,
         "operationsDelta": 0,
-        "calls": 263,
+        "calls": 209,
         "detail": [
           {
             "name": "OwnerRepository.findByLastNameStartingWith",
@@ -396,39 +374,19 @@
             "calls": 3
           },
           {
-            "name": "PetTypeRepository.findAll",
+            "name": "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner o",
             "path": "",
-            "calls": 2
+            "calls": 3
           },
           {
-            "name": "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner",
+            "name": "SELECT new victor.training.petclinic.rest.dto.VisitRowDto(v.id, v.date, v.description, p.id, p.name, o.id, o.firstName, o.lastName) FROM Visit v JOIN \u2026",
             "path": "",
-            "calls": 7
-          },
-          {
-            "name": "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner order by \u2026",
-            "path": "",
-            "calls": 8
-          },
-          {
-            "name": "VisitRepository.findAllWithPetAndOwner",
-            "path": "",
-            "calls": 26
-          },
-          {
-            "name": "insert for victor.training.petclinic.domain.Owner",
-            "path": "",
-            "calls": 2
-          },
-          {
-            "name": "insert for victor.training.petclinic.domain.Pet",
-            "path": "",
-            "calls": 2
+            "calls": 3
           },
           {
             "name": "insert for victor.training.petclinic.domain.Visit",
             "path": "",
-            "calls": 15
+            "calls": 2
           },
           {
             "name": "select owners",
@@ -472,7 +430,7 @@
         "protocol": "HTTP",
         "operations": 5,
         "operationsDelta": 0,
-        "calls": 13,
+        "calls": 8,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
@@ -497,7 +455,7 @@
           {
             "name": "listVisits",
             "path": "GET /api/visits",
-            "calls": 6
+            "calls": 1
           }
         ],
         "toKind": "container"
@@ -527,14 +485,12 @@
         "petclinic-test/generated/owner-search.feature.searching-with-an-empty-last-name-lists-every-owner.genseq.puml"
       ],
       "onlyNew": [
-        "petclinic-test/generated/VisitListTest.java.a-visit-carries-its-pet-and-owner.genseq.puml",
-        "petclinic-test/generated/VisitListTest.java.default-page-is-the-ten-latest-visits.genseq.puml",
-        "petclinic-test/generated/visits.spec.ts.a-page-of-5-visits-then-the-next-one.genseq.puml",
-        "petclinic-test/generated/visits.spec.ts.clicking-a-column-header-sorts-by-it-and-keeps-the-sort-in-the-url.genseq.puml",
-        "petclinic-test/generated/visits.spec.ts.shows-the-ten-latest-visits-on-initial-load.genseq.puml"
+        "petclinic-test/generated/VisitGridTest.java.serves-every-column-of-the-row.genseq.puml",
+        "petclinic-test/generated/VisitGridTest.java.serves-the-newest-ten-first.genseq.puml",
+        "petclinic-test/generated/visits.spec.ts.shows-the-first-page-of-visits-on-initial-load.genseq.puml"
       ],
       "onlyOld": []
     }
   },
-  "base": "d0a6aab756bb793756f236f1a6b66e626406abc4"
+  "base": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd"
 }

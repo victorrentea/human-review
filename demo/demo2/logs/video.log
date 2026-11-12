@@ -1,23 +1,457 @@
   * video -> behaviour
     $ git rev-parse HEAD
     $ git rev-parse --short HEAD
-    $ ./start-docker.sh url petclinic-273460ab
-    reusing the stack already up at http://localhost:55092
+    $ ./start-docker.sh url petclinic-08f6593e
+    $ ./start-docker.sh up --ref 08f6593e35fd67c82bef5b3223bdcfd317f60dc3 --ttl 1800
+🐳 building petclinic-08f6593e from 08f6593e  (this takes a few minutes the first time)
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.93kB done
+#1 DONE 0.0s
+
+#2 [frontend internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.67kB done
+#2 DONE 0.0s
+
+#3 [reset internal] load build definition from Dockerfile
+#3 transferring dockerfile: 1.67kB done
+#3 DONE 0.0s
+
+#4 [notification internal] load build definition from Dockerfile
+#4 transferring dockerfile: 1.22kB done
+#4 DONE 0.0s
+
+#5 [backend internal] load build definition from Dockerfile
+#5 transferring dockerfile: 1.22kB done
+#5 DONE 0.0s
+
+#6 [reset context reference] load .dockerignore
+#6 transferring reference: 2B done
+#6 DONE 0.0s
+
+#7 [reset context fixtures] load .dockerignore
+#7 transferring fixtures: 2B done
+#7 DONE 0.0s
+
+#8 [notification context commons] load .dockerignore
+#8 transferring commons: 2B done
+#8 DONE 0.0s
+
+#9 [backend internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#9 ...
+
+#10 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#10 DONE 2.2s
+
+#11 [notification internal] load metadata for docker.io/library/maven:3.9-eclipse-temurin-21
+#11 DONE 2.2s
+
+#12 [reset internal] load metadata for docker.io/library/alpine:3.20
+#12 DONE 2.2s
+
+#13 [reset internal] load .dockerignore
+#13 transferring context: 2B done
+#13 DONE 0.0s
+
+#14 [reset stage-0 1/6] FROM docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+#14 resolve docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.0s done
+#14 DONE 0.0s
+
+#15 [reset context fixtures] load from client
+#15 transferring fixtures: 2.80kB done
+#15 DONE 0.0s
+
+#16 [reset internal] load build context
+#16 transferring context: 7.05kB done
+#16 DONE 0.0s
+
+#17 [reset context reference] load from client
+#17 transferring reference: 2.64kB done
+#17 DONE 0.0s
+
+#18 [reset stage-0 6/6] RUN adduser -D reset && mkdir -p /seed && chown reset:reset /seed
+#18 CACHED
+
+#19 [reset] exporting to image
+#19 exporting layers
+#19 exporting layers done
+#19 exporting manifest sha256:01d485b7e43ec683a49e528dddca7f1f5ddfa43f3714875f812041e5a12c7a93 0.0s done
+#19 exporting config sha256:7b5cd992d5893ea65ee54440345403f947921cb7277c087b760afef6d4a8ca7c 0.0s done
+#19 exporting attestation manifest sha256:7bd1b39b8d6ad9d04dc45b551d556eabdcacde7e3e581e56e60577da9b0d62f2 0.0s done
+#19 exporting manifest list sha256:91abb0c2b526863c7724f3ef8f1e6e899c47752b48b7b70ddeb19f2308368784 0.0s done
+#19 naming to docker.io/library/petclinic-env-reset:08f6593e done
+#19 unpacking to docker.io/library/petclinic-env-reset:08f6593e done
+#19 DONE 0.1s
+
+#20 [frontend internal] load metadata for docker.io/library/node:18-bookworm-slim
+#20 DONE 2.5s
+
+#21 [frontend internal] load .dockerignore
+#21 transferring context: 67B done
+#21 DONE 0.0s
+
+#9 [backend internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#9 DONE 2.7s
+
+#22 [frontend runtime 1/4] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#22 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.1s done
+#22 DONE 0.1s
+
+#23 [frontend build 1/7] FROM docker.io/library/node:18-bookworm-slim@sha256:f9ab18e354e6855ae56ef2b290dd225c1e51a564f87584b9bd21dd651838830e
+#23 resolve docker.io/library/node:18-bookworm-slim@sha256:f9ab18e354e6855ae56ef2b290dd225c1e51a564f87584b9bd21dd651838830e 0.1s done
+#23 DONE 0.1s
+
+#24 [backend internal] load .dockerignore
+#24 transferring context: 230B 0.0s done
+#24 DONE 0.1s
+
+#25 [frontend internal] load build context
+#25 transferring context: 2.89MB 0.2s done
+#25 DONE 0.3s
+
+#26 [reset] resolving provenance for metadata file
+#26 DONE 0.0s
+
+#27 [notification internal] load .dockerignore
+#27 transferring context: 60B done
+#27 DONE 0.1s
+
+#28 [frontend build 3/7] WORKDIR /app
+#28 CACHED
+
+#29 [frontend build 2/7] RUN apt-get update     && apt-get install -y --no-install-recommends python3 make g++     && rm -rf /var/lib/apt/lists/*
+#29 CACHED
+
+#30 [frontend build 4/7] COPY package.json package-lock.json ./
+#30 CACHED
+
+#31 [frontend build 5/7] RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci
+#31 CACHED
+
+#32 [backend internal] load build context
+#32 DONE 0.0s
+
+#33 [backend context commons] load from client
+#33 DONE 0.0s
+
+#34 [backend context commons] load from client
+#34 DONE 0.0s
+
+#35 [notification internal] load build context
+#35 DONE 0.0s
+
+#36 [frontend build 6/7] COPY . .
+#36 DONE 0.1s
+
+#37 [notification build 1/8] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
+#37 resolve docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
+#37 resolve docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320 0.1s done
+#37 DONE 0.1s
+
+#38 [backend stage-1 1/4] FROM docker.io/library/eclipse-temurin:21-jre@sha256:194729a50fcca3b498180858b54cf1b2e3816208cf8d8a1fca9856635f72ca8a
+#38 resolve docker.io/library/eclipse-temurin:21-jre@sha256:194729a50fcca3b498180858b54cf1b2e3816208cf8d8a1fca9856635f72ca8a 0.1s done
+#38 DONE 0.2s
+
+#34 [backend context commons] load from client
+#34 transferring commons: 4.01kB done
+#34 DONE 0.1s
+
+#35 [notification internal] load build context
+#35 transferring context: 9.47kB 0.0s done
+#35 DONE 0.1s
+
+#39 [backend stage-1 2/4] RUN apt-get update     && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#39 ...
+
+#33 [notification context commons] load from client
+#33 transferring commons: 12.96kB 0.0s done
+#33 DONE 0.1s
+
+#32 [backend internal] load build context
+#32 transferring context: 493.55kB 0.0s done
+#32 DONE 0.1s
+
+#40 [backend build 6/8] COPY pom.xml .
+#40 CACHED
+
+#41 [notification build 2/8] COPY --from=commons pom.xml /commons/pom.xml
+#41 CACHED
+
+#42 [notification build 3/8] COPY --from=commons src /commons/src
+#42 CACHED
+
+#43 [notification build 6/8] COPY pom.xml .
+#43 CACHED
+
+#44 [notification build 7/8] COPY src ./src
+#44 CACHED
+
+#45 [notification build 4/8] RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -q -B -f /commons/pom.xml install
+#45 CACHED
+
+#46 [notification build 5/8] WORKDIR /app
+#46 CACHED
+
+#47 [notification build 8/8] RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -q -B clean package -DskipTests
+#47 CACHED
+
+#48 [backend build 7/8] COPY src ./src
+#48 DONE 0.1s
+
+#49 [backend build 8/8] RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -q -B clean package -DskipTests
+#49 ...
+
+#39 [backend stage-1 2/4] RUN apt-get update     && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#39 0.514 Get:1 http://ports.ubuntu.com/ubuntu-ports resolute InRelease [136 kB]
+#39 1.074 Get:2 http://ports.ubuntu.com/ubuntu-ports resolute-updates InRelease [137 kB]
+#39 1.690 Get:3 http://ports.ubuntu.com/ubuntu-ports resolute-backports InRelease [137 kB]
+#39 2.238 Get:4 http://ports.ubuntu.com/ubuntu-ports resolute-security InRelease [137 kB]
+#39 2.776 Get:5 http://ports.ubuntu.com/ubuntu-ports resolute/multiverse arm64 Packages [298 kB]
+#39 3.496 Get:6 http://ports.ubuntu.com/ubuntu-ports resolute/universe arm64 Packages [19.9 MB]
+#39 ...
+
+#49 [backend build 8/8] RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -q -B clean package -DskipTests
+#49 DONE 7.8s
+
+#50 [frontend build 7/7] RUN npx ng build --configuration docker
+#50 3.446 - Generating browser application bundles (phase: setup)...
+#50 24.50 ✔ Browser application bundle generation complete.
+#50 26.59 ✔ Browser application bundle generation complete.
+#50 26.59 - Copying assets...
+#50 26.61 ✔ Copying assets complete.
+#50 26.61 - Generating index html...
+#50 26.75 ✔ Index html generation complete.
+#50 26.75 
+#50 26.75 Initial Chunk Files           | Names         |  Raw Size | Estimated Transfer Size
+#50 26.75 main.97a7900c01a77e43.js      | main          |   1.29 MB |               257.45 kB
+#50 26.75 styles.5a832aed5e36d6b9.css   | styles        | 198.13 kB |                24.13 kB
+#50 26.75 scripts.15a866ab6acfa108.js   | scripts       | 150.92 kB |                44.00 kB
+#50 26.75 polyfills.96561b4e147d79cf.js | polyfills     |  33.06 kB |                10.69 kB
+#50 26.75 runtime.cc455d20bec59982.js   | runtime       |   1.73 kB |               879 bytes
+#50 26.75 
+#50 26.75 | Initial Total |   1.66 MB |               337.13 kB
+#50 26.75 
+#50 26.75 Build at: 2026-11-11T23:41:08.858Z - Hash: 2f99fae2d5eb3adc - Time: 22453ms
+#50 26.87 npm notice
+#50 26.87 npm notice New major version of npm available! 10.8.2 -> 12.2.2
+#50 26.87 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+#50 26.87 npm notice To update run: npm install -g npm@12.2.2
+#50 26.87 npm notice
+#50 DONE 26.9s
+
+#39 [backend stage-1 2/4] RUN apt-get update     && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#39 ...
+
+#22 [frontend runtime 1/4] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#22 CACHED
+
+#51 [frontend runtime 2/4] COPY --from=build /app/dist/ /usr/share/nginx/html/
+#51 DONE 0.0s
+
+#52 [frontend runtime 3/4] COPY nginx.conf /etc/nginx/conf.d/default.conf
+#52 DONE 0.0s
+
+#53 [frontend runtime 4/4] COPY proxy-backend.conf /etc/nginx/proxy-backend.conf
+#53 DONE 0.0s
+
+#54 [frontend] exporting to image
+#54 exporting layers
+#54 exporting layers 0.3s done
+#54 exporting manifest sha256:55f0e082a7c9673ace5e207e8b34a253e30672a0fd09bee169c3aeec0dc34ac9 done
+#54 exporting config sha256:88ee8de89e12b0d34519dfe2ca5e1a67f9e4b3c2791e47ca4c618648546435e0 done
+#54 exporting attestation manifest sha256:33ef4058e60ce0290d865a335c0c3f596c65de817bc73bcbd4425dd6f601fe76 done
+#54 exporting manifest list sha256:e0a149e45228c72f9da341ebad8296c8ac917016c9053c79c1d7f73ce86f38af done
+#54 naming to docker.io/library/petclinic-env-frontend:08f6593e done
+#54 unpacking to docker.io/library/petclinic-env-frontend:08f6593e 0.1s done
+#54 DONE 0.4s
+
+#39 [backend stage-1 2/4] RUN apt-get update     && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#39 ...
+
+#55 [frontend] resolving provenance for metadata file
+#55 DONE 0.0s
+
+#39 [backend stage-1 2/4] RUN apt-get update     && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#39 54.67 Get:7 http://ports.ubuntu.com/ubuntu-ports resolute/main arm64 Packages [1,860 kB]
+#39 57.81 Get:8 http://ports.ubuntu.com/ubuntu-ports resolute/restricted arm64 Packages [231 kB]
+#39 58.02 Get:9 http://ports.ubuntu.com/ubuntu-ports resolute-updates/universe arm64 Packages [473 kB]
+#39 58.95 Get:10 http://ports.ubuntu.com/ubuntu-ports resolute-updates/restricted arm64 Packages [989 kB]
+#39 60.46 Get:11 http://ports.ubuntu.com/ubuntu-ports resolute-updates/multiverse arm64 Packages [26.3 kB]
+#39 60.78 Get:12 http://ports.ubuntu.com/ubuntu-ports resolute-updates/main arm64 Packages [1,119 kB]
+#39 62.46 Get:13 http://ports.ubuntu.com/ubuntu-ports resolute-backports/universe arm64 Packages [3,309 B]
+#39 62.46 Get:14 http://ports.ubuntu.com/ubuntu-ports resolute-security/multiverse arm64 Packages [24.5 kB]
+#39 62.46 Get:15 http://ports.ubuntu.com/ubuntu-ports resolute-security/restricted arm64 Packages [969 kB]
+#39 64.17 Get:16 http://ports.ubuntu.com/ubuntu-ports resolute-security/main arm64 Packages [930 kB]
+#39 65.44 Get:17 http://ports.ubuntu.com/ubuntu-ports resolute-security/universe arm64 Packages [262 kB]
+#39 65.82 Fetched 27.6 MB in 1min 6s (422 kB/s)
+#39 65.82 Reading package lists...
+#39 66.20 Reading package lists...
+#39 66.60 Building dependency tree...
+#39 66.71 Reading state information...
+#39 66.72 curl is already the newest version (8.18.0-1ubuntu2.8).
+#39 66.72 Solving dependencies...
+#39 66.86 0 upgraded, 0 newly installed, 0 to remove and 6 not upgraded.
+#39 DONE 66.9s
+
+#56 [backend stage-1 3/4] WORKDIR /app
+#56 DONE 0.0s
+
+#57 [notification stage-1 4/4] COPY --from=build /app/target/*.jar app.jar
+#57 DONE 0.1s
+
+#58 [backend stage-1 4/4] COPY --from=build /app/target/*.jar app.jar
+#58 DONE 0.1s
+
+#59 [backend] exporting to image
+#59 exporting layers
+#59 ...
+
+#60 [notification] exporting to image
+#60 exporting layers 0.5s done
+#60 exporting manifest sha256:5a510bbdd0f733b884025cba38c2342101bc23475fab92993336c592e62ce111 0.0s done
+#60 exporting config sha256:c32a67d754e724e9495c87e915820dbf13824008f90c3414fe13b949fdd48edd 0.0s done
+#60 exporting attestation manifest sha256:4a6da16e8f1ff4edc12b6ccf9ac986e50318b5c97ff95ea019cefe2c88fb7423 0.0s done
+#60 exporting manifest list sha256:37b870233f63674c0c5b034b8f6c5f0c8cabbf8ad819d0dcba167878494da6eb 0.0s done
+#60 naming to docker.io/library/petclinic-env-notification:08f6593e done
+#60 unpacking to docker.io/library/petclinic-env-notification:08f6593e 0.1s done
+#60 DONE 0.7s
+
+#61 [notification] resolving provenance for metadata file
+#61 DONE 0.1s
+
+#59 [backend] exporting to image
+#59 exporting layers 1.6s done
+#59 exporting manifest sha256:bc91dcba2c7fd14fe4fb9c42b870c47e3b90493bae05eacca0708ac9f834558d 0.0s done
+#59 exporting config sha256:cb01dd74ae0a2255d30d9f4069e2a7048544d0fcb70f0d438333a7966c1e0949 0.0s done
+#59 exporting attestation manifest sha256:e78407e8ec672f69bbc88ab6b66e62436303c95220377ae99bf2ce75a0c0ecc8 0.0s done
+#59 exporting manifest list sha256:49f56859e1db05708a82e41e5ee1ad3e81c5d115794a9c7ba4d6c53d5a616409 0.0s done
+#59 naming to docker.io/library/petclinic-env-backend:08f6593e done
+#59 unpacking to docker.io/library/petclinic-env-backend:08f6593e
+#59 unpacking to docker.io/library/petclinic-env-backend:08f6593e 0.4s done
+#59 DONE 2.2s
+
+#62 [backend] resolving provenance for metadata file
+#62 DONE 0.0s
+
+✅ petclinic-08f6593e ready — reaps itself after 30 idle minutes
+   http://localhost:49667
+   (copied to the clipboard)
+ Image petclinic-env-backend:08f6593e Building 
+ Image petclinic-env-notification:08f6593e Building 
+ Image petclinic-env-frontend:08f6593e Building 
+ Image petclinic-env-reset:08f6593e Building 
+ Image petclinic-env-frontend:08f6593e Built 
+ Image petclinic-env-reset:08f6593e Built 
+ Image petclinic-env-notification:08f6593e Built 
+ Image petclinic-env-backend:08f6593e Built 
+ Network petclinic-08f6593e_default Creating 
+ Network petclinic-08f6593e_default Creating 
+ Volume petclinic-08f6593e_activity Creating 
+ Volume petclinic-08f6593e_activity Creating 
+ Volume petclinic-08f6593e_pgdata Creating 
+ Volume petclinic-08f6593e_pgdata Creating 
+ Volume petclinic-08f6593e_seed Creating 
+ Volume petclinic-08f6593e_seed Creating 
+ Volume petclinic-08f6593e_seed Created 
+ Volume petclinic-08f6593e_seed Created 
+ Volume petclinic-08f6593e_activity Created 
+ Volume petclinic-08f6593e_activity Created 
+ Volume petclinic-08f6593e_pgdata Created 
+ Volume petclinic-08f6593e_pgdata Created 
+ Network petclinic-08f6593e_default Created 
+ Network petclinic-08f6593e_default Created 
+ Container petclinic-08f6593e-reaper-1 Creating 
+ Container petclinic-08f6593e-notification-1 Creating 
+ Container petclinic-08f6593e-db-1 Creating 
+ Container petclinic-08f6593e-notification-1 Created 
+ Container petclinic-08f6593e-reaper-1 Created 
+ Container petclinic-08f6593e-db-1 Created 
+ Container petclinic-08f6593e-backend-1 Creating 
+ Container petclinic-08f6593e-backend-1 Created 
+ Container petclinic-08f6593e-reset-1 Creating 
+ Container petclinic-08f6593e-frontend-1 Creating 
+ Container petclinic-08f6593e-reset-1 Created 
+ Container petclinic-08f6593e-frontend-1 Created 
+ Container petclinic-08f6593e-db-1 Starting 
+ Container petclinic-08f6593e-notification-1 Starting 
+ Container petclinic-08f6593e-reaper-1 Starting 
+ Container petclinic-08f6593e-db-1 Started 
+ Container petclinic-08f6593e-notification-1 Started 
+ Container petclinic-08f6593e-db-1 Waiting 
+ Container petclinic-08f6593e-notification-1 Waiting 
+ Container petclinic-08f6593e-reaper-1 Started 
+ Container petclinic-08f6593e-db-1 Healthy 
+ Container petclinic-08f6593e-notification-1 Healthy 
+ Container petclinic-08f6593e-backend-1 Starting 
+ Container petclinic-08f6593e-backend-1 Started 
+ Container petclinic-08f6593e-backend-1 Waiting 
+ Container petclinic-08f6593e-backend-1 Waiting 
+ Container petclinic-08f6593e-backend-1 Healthy 
+ Container petclinic-08f6593e-reset-1 Starting 
+ Container petclinic-08f6593e-backend-1 Healthy 
+ Container petclinic-08f6593e-frontend-1 Starting 
+ Container petclinic-08f6593e-reset-1 Started 
+ Container petclinic-08f6593e-frontend-1 Started 
+ Container petclinic-08f6593e-frontend-1 Waiting 
+ Container petclinic-08f6593e-reset-1 Waiting 
+ Container petclinic-08f6593e-reaper-1 Waiting 
+ Container petclinic-08f6593e-db-1 Waiting 
+ Container petclinic-08f6593e-backend-1 Waiting 
+ Container petclinic-08f6593e-notification-1 Waiting 
+ Container petclinic-08f6593e-db-1 Healthy 
+ Container petclinic-08f6593e-backend-1 Healthy 
+ Container petclinic-08f6593e-notification-1 Healthy 
+ Container petclinic-08f6593e-reaper-1 Healthy 
+ Container petclinic-08f6593e-reset-1 Healthy 
+ Container petclinic-08f6593e-frontend-1 Healthy 
     seed: reset (/__reset)
-    $ BASE_URL=http://localhost:55092 API_URL=http://localhost:55092 HUMAN_REVIEW_APP_COMMIT=273460ab0793faf449b0e127d2b2275f287abe51 HUMAN_REVIEW_APP_STARTED=1 /Users/victorrentea/workspace/human-review/skills/human-review/scripts/record-feature-video.sh .human-review/assets/feature.webm
-[video] the app cannot say which commit it is; this run started it itself, from 273460ab0793faf449b0e127d2b2275f287abe51
-[video] feature-script.js: visits grid: cold open on a deep link; page sizes 5/10/20, next page, sort by Owner/Pet, reload keeps URL state, 9 cues (9 with a box) -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.raw.webm
+    $ BASE_URL=http://localhost:49667 API_URL=http://localhost:49667 HUMAN_REVIEW_APP_COMMIT=08f6593e35fd67c82bef5b3223bdcfd317f60dc3 HUMAN_REVIEW_APP_STARTED=1 /Users/victorrentea/workspace/human-review/skills/human-review/scripts/record-feature-video.sh .human-review/assets/feature.webm
+    $ ./start-docker.sh down petclinic-08f6593e
+ Container petclinic-08f6593e-frontend-1 Stopping 
+ Container petclinic-08f6593e-reaper-1 Stopping 
+ Container petclinic-08f6593e-reset-1 Stopping 
+ Container petclinic-08f6593e-frontend-1 Stopped 
+ Container petclinic-08f6593e-frontend-1 Removing 
+ Container petclinic-08f6593e-frontend-1 Removed 
+ Container petclinic-08f6593e-reset-1 Stopped 
+ Container petclinic-08f6593e-reset-1 Removing 
+ Container petclinic-08f6593e-reaper-1 Stopped 
+ Container petclinic-08f6593e-reaper-1 Removing 
+ Container petclinic-08f6593e-reset-1 Removed 
+ Container petclinic-08f6593e-backend-1 Stopping 
+ Container petclinic-08f6593e-reaper-1 Removed 
+ Container petclinic-08f6593e-backend-1 Stopped 
+ Container petclinic-08f6593e-backend-1 Removing 
+ Container petclinic-08f6593e-backend-1 Removed 
+ Container petclinic-08f6593e-db-1 Stopping 
+ Container petclinic-08f6593e-notification-1 Stopping 
+ Container petclinic-08f6593e-notification-1 Stopped 
+ Container petclinic-08f6593e-notification-1 Removing 
+ Container petclinic-08f6593e-notification-1 Removed 
+ Container petclinic-08f6593e-db-1 Stopped 
+ Container petclinic-08f6593e-db-1 Removing 
+ Container petclinic-08f6593e-db-1 Removed 
+ Volume petclinic-08f6593e_pgdata Removing 
+ Volume petclinic-08f6593e_seed Removing 
+ Volume petclinic-08f6593e_activity Removing 
+ Network petclinic-08f6593e_default Removing 
+ Volume petclinic-08f6593e_pgdata Removed 
+ Volume petclinic-08f6593e_seed Removed 
+ Volume petclinic-08f6593e_activity Removed 
+ Network petclinic-08f6593e_default Removed 
+🛑 petclinic-08f6593e
+[video] the app cannot say which commit it is; this run started it itself, from 08f6593e35fd67c82bef5b3223bdcfd317f60dc3
+[video] feature-script.js: 1/1 changed screens filmed, 6 cues (5 with a box) -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.raw.webm
 [video] viewport 1280x800 @ dpr 1
-[video] narration: 9/9 cues, 29.6s of speech, voice "Samantha"
-[video] cut 80.4s of still footage (27 stretches): 123.5s -> 43.1s
-[annotate] 162 caption states from 162 frames
-[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.webm
-[video] cut 68.6s of still footage (24 stretches): 123.5s -> 54.9s
-[annotate] 180 caption states from 180 frames
-[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-trump.webm
-[video] 🐘 voice -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-trump.webm
-[video] cut 64.8s of still footage (19 stretches): 123.5s -> 58.7s
-[annotate] 180 caption states from 180 frames
-[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-discovery.webm
-[video] Discovery voice -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-discovery.webm
-[video] 43.120000s, 2.3M
+[video] narration: 6/6 cues, 23.8s of speech, voice "Samantha"
+[video] cut 67.5s of still footage (14 stretches): 95.9s -> 28.4s
+[annotate] 134 caption states from 134 frames
+[annotate] 6 captions, 5 spotlights, 6 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.webm
+[video] cut 57.6s of still footage (13 stretches): 95.9s -> 38.3s
+[annotate] 148 caption states from 148 frames
+[annotate] 6 captions, 5 spotlights, 6 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-trump.webm
+[video] 🐘 voice -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-trump.webm
+[video] cut 56.1s of still footage (9 stretches): 95.9s -> 39.8s
+[annotate] 149 caption states from 149 frames
+[annotate] 6 captions, 5 spotlights, 6 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-discovery.webm
+[video] Discovery voice -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-discovery.webm
+[video] 28.320000s, 1.2M

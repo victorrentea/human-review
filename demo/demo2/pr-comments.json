@@ -1,225 +1,236 @@
 {
   "version": 1,
-  "commit_id": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
+  "commit_id": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
   "event": "COMMENT",
-  "body": "**Review record** from `review-points.md` (4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit): 4 auto-fixed · 11 declined and still open · 6 assumptions. Each is on the line it is about, or quoted below with its lines when that line is not in the diff.",
+  "body": "**Review record** from `review-points.md` (4 read-only Sonnet reviewers (correctness, security, ticket-fit, tests) + CI/SonarCloud): 5 auto-fixed · 9 declined and still open · 8 assumptions. Each open one is on the line it is about, or quoted below with its lines when that line is not in the diff.",
   "comments": [
     {
-      "hr_id": "F:sort-parameter-line-over-119-chars-blocked-the",
+      "hr_id": "F:a-huge-page-overflowed-the-int-offset-into-a-500",
       "pile": "fixed",
-      "title": "Sort parameter line over 119 chars blocked the push",
+      "title": "A huge page overflowed the int offset into a 500",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+      "line": 41,
+      "side": "RIGHT",
+      "anchor": "return requested == null ? 0 : Math.clamp(requested, 0, Integer.MAX_VALUE / pageSize);",
+      "body": "**Auto-fixed** — A huge page overflowed the int offset into a 500\n\n**Reviewer:** `page` was clamped only to Integer.MAX_VALUE, so `page × size` overflowed the int offset JPA takes and `?page=2147483647&size=20` threw a 500 instead of serving the last page.\n\n**Fix:** cap the page at `Integer.MAX_VALUE / size`, and clamp the size into [5, 20] before snapping so a huge negative size cannot overflow either.\n\n<sub>raised by correctness, security and tests reviewers</sub>",
+      "fix_commit": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3"
+    },
+    {
+      "hr_id": "F:navigate-promise-left-floating",
+      "pile": "fixed",
+      "title": "navigate() promise left floating",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
+      "line": 56,
+      "side": "RIGHT",
+      "anchor": "void this.router.navigate([], {relativeTo: this.route, queryParams, queryParamsHandling: 'merge'});",
+      "body": "**Auto-fixed** — navigate() promise left floating\n\n**Reviewer:** `router.navigate` returns a promise nobody handled; Sonar rates it a BUG and the quality gate fails on it.\n\n**Fix:** mark it explicitly ignored with `void`.\n\n<sub>raised by CI (SonarCloud typescript:S9383)</sub>",
+      "fix_commit": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3"
+    },
+    {
+      "hr_id": "F:generic-length-assertion-in-the-visits-page-spec",
+      "pile": "fixed",
+      "title": "Generic length assertion in the visits page spec",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "line": 113,
+      "side": "RIGHT",
+      "anchor": "expect(links).toHaveSize(rows.length);",
+      "body": "**Auto-fixed** — Generic length assertion in the visits page spec\n\n**Reviewer:** `expect(links.length).toBe(...)` reports worse than Jasmine's `toHaveSize`.\n\n**Fix:** use `toHaveSize`.\n\n<sub>raised by CI (SonarCloud typescript:S5906)</sub>",
+      "fix_commit": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3"
+    },
+    {
+      "hr_id": "F:sort-test-passed-even-if-sorting-ran-after-the",
+      "pile": "fixed",
+      "title": "Sort test passed even if sorting ran after the LIMIT",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+      "line": 142,
+      "side": "RIGHT",
+      "anchor": "assertThat(values).hasSize(10).isSortedAccordingTo(order).first().isEqualTo(first);",
+      "body": "**Auto-fixed** — Sort test passed even if sorting ran after the LIMIT\n\n**Reviewer:** each column's test only checked that the 10 rows shown were in order, so a sort applied to the page instead of the table would still pass.\n\n**Fix:** each case also asserts the first row is the global extreme of that column.\n\n<sub>raised by tests reviewer</sub>",
+      "fix_commit": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3"
+    },
+    {
+      "hr_id": "F:missing-space-in-the-visit-type-declaration",
+      "pile": "fixed",
+      "title": "Missing space in the Visit type declaration",
+      "path": "petclinic-frontend/src/app/visits/visit.ts",
+      "line": 14,
+      "side": "RIGHT",
+      "anchor": "export type Visit = Omit<components['schemas']['VisitDto'], 'date' | 'petId'> & {",
+      "body": "**Auto-fixed** — Missing space in the Visit type declaration\n\n**Reviewer:** my edit left `export type Visit =Omit<`.\n\n<sub>raised by ticket-fit reviewer</sub>",
+      "fix_commit": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3"
+    },
+    {
+      "hr_id": "I:owner-names-logged-at-info-on-every-grid-page",
+      "pile": "ignored",
+      "title": "Owner names logged at info on every grid page",
       "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 57,
+      "side": "RIGHT",
+      "anchor": "log.info(\"Visits page {} served: {}\", served.getNumber(), ownerNamesOn(served));",
+      "body": "**Open issue** · medium · declined by the author — Owner names logged at info on every grid page\n\n**Why declined:** the human asked for exactly this log line, at Q&A.md:15.\n\n<sub>raised by security, correctness and ticket-fit reviewers</sub>"
+    },
+    {
+      "hr_id": "I:a-page-past-the-end-costs-a-second-query",
+      "pile": "ignored",
+      "title": "A page past the end costs a second query",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 65,
+      "side": "RIGHT",
+      "anchor": "return visitRepository.findGridPage(pageable.withPage(lastPage));",
+      "body": "**Open issue** · low · declined by the author — A page past the end costs a second query\n\n**Why declined:** happens only on stale or bad pages; serving the last page is Q&A.md:12.\n\n<sub>raised by security and ticket-fit reviewers</sub>"
+    },
+    {
+      "hr_id": "I:a-backend-failure-renders-as-no-visits-found",
+      "pile": "ignored",
+      "title": "A backend failure renders as \"No visits found.\"",
+      "path": "petclinic-frontend/src/app/visits/visit.service.ts",
+      "line": 27,
+      "side": "RIGHT",
+      "anchor": "catchError(this.handlerError('getVisitPage', noVisits))",
+      "body": "**Open issue** · low · declined by the author — A backend failure renders as \"No visits found.\"\n\n**Why declined:** the old `getVisits` swallowed errors into `[]` the same way; no error page per Q&A.md:12.\n\n<sub>raised by correctness, ticket-fit and tests reviewers</sub>"
+    },
+    {
+      "hr_id": "I:paginator-vanishes-when-a-page-comes-back-empty",
+      "pile": "ignored",
+      "title": "Paginator vanishes when a page comes back empty",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.html",
+      "line": 9,
+      "side": "RIGHT",
+      "anchor": "<div class=\"table-responsive\" id=\"visitsTable\" *ngIf=\"visits.length > 0\">",
+      "body": "**Open issue** · info · declined by the author — Paginator vanishes when a page comes back empty\n\n**Why declined:** content is empty only for an empty clinic; past the end serves the last page (VisitRestController.findGridPageWithinBounds).\n\n<sub>raised by correctness reviewer</sub>"
+    },
+    {
+      "hr_id": "I:sort-glue-would-fail-on-an-empty-database",
+      "pile": "ignored",
+      "title": "Sort glue would fail on an empty database",
+      "path": "petclinic-test/src/visits-sort.feature",
+      "line": 1,
+      "side": "RIGHT",
+      "anchor": "@fixture:default",
+      "body": "**Open issue** · info · declined by the author — Sort glue would fail on an empty database\n\n**Why declined:** refuted; the feature is tagged `@fixture:default`, which loads the 30-visit seed.\n\n<sub>raised by correctness reviewer</sub>"
+    },
+    {
+      "hr_id": "I:old-list-tests-disabled-not-replaced",
+      "pile": "ignored",
+      "title": "Old list tests disabled, not replaced",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "line": 107,
+      "side": "RIGHT",
+      "anchor": "@Disabled(\"visits are paged now - revisit\")",
+      "body": "**Open issue** · info · declined by the author — Old list tests disabled, not replaced\n\n**Why declined:** disabling them is Q&A.md:18; VisitGridTest covers findGridPage on Zonky Postgres.\n\n<sub>raised by ticket-fit and tests reviewers</sub>"
+    },
+    {
+      "hr_id": "I:sorting-is-case-and-accent-blind-to-linguistic",
+      "pile": "ignored",
+      "title": "Sorting is case- and accent-blind to linguistic order",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+      "line": 29,
+      "side": "RIGHT",
+      "anchor": "\"owner\", List.of(\"o.firstName\", \"o.lastName\"));",
+      "body": "**Open issue** · medium · declined by the author — Sorting is case- and accent-blind to linguistic order\n\n**Why declined:** database collation (C.UTF-8) decides; a linguistic collation is a separate follow-up.\n\n<sub>raised by ticket-fit reviewer</sub>"
+    },
+    {
+      "hr_id": "I:the-v-id-tie-breaker-has-no-test",
+      "pile": "ignored",
+      "title": "The v.id tie-breaker has no test",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+      "line": 70,
+      "side": "RIGHT",
+      "anchor": "void sortsByTheColumnThenByIdForAStablePaging() {",
+      "body": "**Open issue** · info · declined by the author — The v.id tie-breaker has no test\n\n**Why declined:** refuted; sortsByTheColumnThenByIdForAStablePaging asserts the v.id order and would fail.\n\n<sub>raised by tests reviewer</sub>"
+    },
+    {
+      "hr_id": "I:acceptance-test-passes-for-a-client-side-sort",
+      "pile": "ignored",
+      "title": "Acceptance test passes for a client-side sort too",
+      "path": "petclinic-test/src/visits-sort.feature.glue.ts",
       "line": 39,
       "side": "RIGHT",
-      "start_line": 38,
-      "anchor": "private static final String SORTS_HINT = \"must be date, description, pet or owner, optionally with ,asc or ,desc\";",
-      "body": "🛠 **Auto-fixed** in 4321c5bc — Sort parameter line over 119 chars blocked the push\n\n<sub>raised by pre-push hook</sub>"
+      "anchor": "const inOrder = (v: string[]) => (direction === 'ascending' ? [...v].sort() : [...v].sort().reverse());",
+      "body": "**Open issue** · low · declined by the author — Acceptance test passes for a client-side sort too\n\n**Why declined:** Q&A.md:21 fixes this exact check; VisitGridTest pins the server-side sort.\n\n<sub>raised by tests reviewer</sub>"
     },
     {
-      "hr_id": "F:cucumber-visit-count-step-read-only-the-first",
-      "pile": "fixed",
-      "title": "Cucumber visit-count step read only the first page of all visits",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/functional/VisitSteps.java",
-      "line": 59,
-      "side": "RIGHT",
-      "start_line": 57,
-      "anchor": "var matching = response.jsonPath().getList(\"visits.findAll { it.description == '\" + description + \"' }\");",
-      "body": "🛠 **Auto-fixed** in 4321c5bc — Cucumber visit-count step read only the first page of all visits\n\n<sub>raised by tests reviewer</sub>"
-    },
-    {
-      "hr_id": "F:navigation-promise-left-unhandled-a-failed",
-      "pile": "fixed",
-      "title": "Navigation promise left unhandled; a failed navigation vanished silently",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
-      "line": 87,
-      "side": "RIGHT",
-      "start_line": 86,
-      "anchor": ".catch(error => this.errorMessage = String(error));",
-      "body": "🛠 **Auto-fixed** in 4321c5bc — Navigation promise left unhandled; a failed navigation vanished silently\n\n<sub>raised by CI</sub>"
-    },
-    {
-      "hr_id": "F:injected-dependencies-were-not-readonly",
-      "pile": "fixed",
-      "title": "Injected dependencies were not readonly",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
-      "line": 36,
-      "side": "RIGHT",
-      "start_line": 35,
-      "anchor": "private readonly visitService: VisitService) {}",
-      "body": "🛠 **Auto-fixed** in 4321c5bc — Injected dependencies were not readonly\n\n<sub>raised by CI</sub>"
-    },
-    {
-      "hr_id": "I:service-fallback-would-hide-errors-and-crash",
-      "pile": "ignored",
-      "title": "Service fallback `{}` would hide errors and crash `show()`",
-      "path": "petclinic-frontend/src/app/visits/visit.service.ts",
-      "line": 37,
-      "side": "RIGHT",
-      "anchor": "catchError(this.handlerError('getVisitsPage', {} as VisitPage))",
-      "body": "🔴 **Open issue** · info · declined by the author — Service fallback `{}` would hide errors and crash `show()`\n\n**Why declined:** refuted — `HttpErrorHandler.handleError` rethrows (`return throwError(message)`, error.service.ts:43); the fallback is never emitted.\n\n<sub>raised by correctness, security and ticket-fit reviewers</sub>"
-    },
-    {
-      "hr_id": "I:page-index-has-no-upper-bound",
-      "pile": "ignored",
-      "title": "Page index has no upper bound",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 55,
-      "side": "RIGHT",
-      "anchor": "@RequestParam(defaultValue = \"0\") @Min(0) int page,",
-      "body": "🔴 **Open issue** · low · declined by the author — Page index has no upper bound\n\n**Why declined:** endpoint is admin-only; OFFSET past the end stops at table size. Same as owners paging.\n\n<sub>raised by security reviewer</sub>"
-    },
-    {
-      "hr_id": "I:owner-sort-by-first-name-may-not-match-the",
-      "pile": "ignored",
-      "title": "Owner sort by first name may not match the displayed order",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 73,
-      "side": "RIGHT",
-      "anchor": "default -> Sort.by(direction, \"pet.owner.firstName\", \"pet.owner.lastName\").and(latestFirst);",
-      "body": "🔴 **Open issue** · info · declined by the author — Owner sort by first name may not match the displayed order\n\n**Why declined:** refuted — the cell shows \"First Last\" (visits-page.component.html:31), the same order as the sort.\n\n<sub>raised by ticket-fit reviewer</sub>"
-    },
-    {
-      "hr_id": "I:api-accepts-sizes-1-100-not-only-5-10-20",
-      "pile": "ignored",
-      "title": "API accepts sizes 1..100, not only 5/10/20",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 56,
-      "side": "RIGHT",
-      "anchor": "@RequestParam(defaultValue = \"10\") @Min(1) @Max(MAX_PAGE_SIZE) int size,",
-      "body": "🔴 **Open issue** · low · declined by the author — API accepts sizes 1..100, not only 5/10/20\n\n**Why declined:** the ticket constrains the grid; the API serves other clients. Recorded under Assumptions.\n\n<sub>raised by ticket-fit reviewer</sub>"
-    },
-    {
-      "hr_id": "I:past-the-end-redirect-could-loop-or-show-stale",
-      "pile": "ignored",
-      "title": "Past-the-end redirect could loop or show stale rows",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
-      "line": 78,
-      "side": "RIGHT",
-      "start_line": 76,
-      "anchor": "this.navigate({page: page.totalPages}, true);",
-      "body": "🔴 **Open issue** · low · declined by the author — Past-the-end redirect could loop or show stale rows\n\n**Why declined:** each redirect needs a fresh empty answer; it converges as soon as deletes stop.\n\n<sub>raised by correctness reviewer</sub>"
-    },
-    {
-      "hr_id": "I:text-sort-order-depends-on-database-collation",
-      "pile": "ignored",
-      "title": "Text sort order depends on database collation",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 73,
-      "side": "RIGHT",
-      "start_line": 70,
-      "anchor": "default -> Sort.by(direction, \"pet.owner.firstName\", \"pet.owner.lastName\").and(latestFirst);",
-      "body": "🔴 **Open issue** · info · declined by the author — Text sort order depends on database collation\n\n**Why declined:** Postgres is the only database here (dev and tests); there is no H2 in the project.\n\n<sub>raised by correctness reviewer</sub>"
-    },
-    {
-      "hr_id": "I:pet-and-owner-sort-direction-and-tie-breaks-not",
-      "pile": "ignored",
-      "title": "Pet and owner sort direction and tie-breaks not pinned",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-      "line": 150,
-      "side": "RIGHT",
-      "anchor": "void sortByPet_thenLatestFirst() throws Exception {",
-      "body": "🔴 **Open issue** · low · declined by the author — Pet and owner sort direction and tie-breaks not pinned\n\n**Why declined:** one shared `direction` variable; asc and desc both pinned for description, owner tie-break pinned.\n\n<sub>raised by tests reviewer</sub>"
-    },
-    {
-      "hr_id": "I:query-count-bound-of-3-is-loose",
-      "pile": "ignored",
-      "title": "Query-count bound of 3 is loose",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-      "line": 236,
-      "side": "RIGHT",
-      "anchor": "assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);",
-      "body": "🔴 **Open issue** · low · declined by the author — Query-count bound of 3 is loose\n\n**Why declined:** an N+1 regression over 20 rows needs 20+ statements; the bound catches that.\n\n<sub>raised by tests reviewer</sub>"
-    },
-    {
-      "hr_id": "I:uppercase-or-malformed-sort-values-untested",
-      "pile": "ignored",
-      "title": "Uppercase or malformed sort values untested",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-      "line": 218,
-      "side": "RIGHT",
-      "anchor": "void unsupportedSortKey_isRejected() throws Exception {",
-      "body": "🔴 **Open issue** · info · declined by the author — Uppercase or malformed sort values untested\n\n**Why declined:** the 400 on anything off-pattern is intended and pinned by unsupportedSortKey_isRejected.\n\n<sub>raised by tests reviewer</sub>"
-    },
-    {
-      "hr_id": "I:frontend-specs-stub-the-router-so-the-url-round",
-      "pile": "ignored",
-      "title": "Frontend specs stub the router, so the URL round trip is unproven",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "line": 67,
-      "side": "RIGHT",
-      "anchor": "const navigatedTo = () => navigate.calls.mostRecent().args[1].queryParams;",
-      "body": "🔴 **Open issue** · low · declined by the author — Frontend specs stub the router, so the URL round trip is unproven\n\n**Why declined:** Playwright drives the real round trip: header click and next page (visits.spec.ts:49, 61).\n\n<sub>raised by tests reviewer</sub>"
-    },
-    {
-      "hr_id": "I:removed-getall-tests-thin-seed-data-and-role",
-      "pile": "ignored",
-      "title": "Removed getAll tests thin seed-data and role coverage",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-      "line": 103,
-      "side": "RIGHT",
-      "anchor": "@Test",
-      "body": "🔴 **Open issue** · low · declined by the author — Removed getAll tests thin seed-data and role coverage\n\n**Why declined:** class-level `@PreAuthorize` is unchanged; Playwright compares the grid to the seeded API page.\n\n<sub>raised by tests reviewer</sub>"
-    },
-    {
-      "hr_id": "A:paging-runs-on-the-server-not-in-the-browser",
+      "hr_id": "A:newest-first-10-rows-by-default",
       "pile": "assumption",
-      "title": "Paging runs on the server, not in the browser",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java",
+      "title": "Newest first, 10 rows by default",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
       "line": 22,
       "side": "RIGHT",
-      "start_line": 20,
-      "anchor": "Page<Visit> findAllWithPetAndOwner(Pageable pageable);",
-      "body": "💭 **Assumption** · confidence 0.70 — Paging runs on the server, not in the browser\n\n**Not taken:** keep the bare list; page and sort client-side with MatTableDataSource\n\n**Why:** The owners grid (#25) paged on the server, and visits grow without bound. The ticket says only \"paginated\", and the browser-side version needed no API break, which pulls this down."
+      "start_line": 21,
+      "anchor": "private static final String DEFAULT_SORT = \"date,desc\";",
+      "body": "**Assumption** · confidence 1.00 — Newest first, 10 rows by default\n\n**Why:** Q&A.md:6 decides it."
     },
     {
-      "hr_id": "A:default-view-is-the-10-latest-visits",
+      "hr_id": "A:the-repository-selects-straight-into-visitrowdto",
       "pile": "assumption",
-      "title": "Default view is the 10 latest visits",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
-      "line": 17,
+      "title": "The repository selects straight into VisitRowDto",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java",
+      "line": 23,
       "side": "RIGHT",
-      "anchor": "const DEFAULTS: VisitsPageQuery = {page: 1, size: 10, sort: 'date,desc'};",
-      "body": "💭 **Assumption** · confidence 0.90 — Default view is the 10 latest visits\n\n**Not taken:** the first page in id or ascending-date order\n\n**Why:** The grid already sorted newest first before paging, so this keeps what users saw. Ten is the middle of the three sizes the ticket names."
+      "anchor": "SELECT new victor.training.petclinic.rest.dto.VisitRowDto(",
+      "body": "**Assumption** · confidence 1.00 — The repository selects straight into VisitRowDto\n\n**Why:** Q&A.md:9 decides it."
     },
     {
-      "hr_id": "A:api-caps-the-page-size-at-100-not-at-the-three",
+      "hr_id": "A:bad-params-are-corrected-never-answered-with-400",
       "pile": "assumption",
-      "title": "API caps the page size at 100, not at the three UI sizes",
+      "title": "Bad params are corrected, never answered with 400",
       "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 56,
+      "line": 65,
       "side": "RIGHT",
-      "anchor": "@RequestParam(defaultValue = \"10\") @Min(1) @Max(MAX_PAGE_SIZE) int size,",
-      "body": "💭 **Assumption** · confidence 0.65 — API caps the page size at 100, not at the three UI sizes\n\n**Not taken:** reject any size other than 5, 10 or 20 in the API too\n\n**Why:** It copies the owners endpoint (MAX_PAGE_SIZE = 100), and the ticket describes the grid, not the API. A stricter reading of \"5, 10, or 20\" would hold the API to it too."
+      "start_line": 64,
+      "anchor": "return visitRepository.findGridPage(pageable.withPage(lastPage));",
+      "body": "**Assumption** · confidence 1.00 — Bad params are corrected, never answered with 400\n\n**Why:** Q&A.md:12 decides it."
     },
     {
       "hr_id": "A:owner-column-sorts-by-first-name-then-last-name",
       "pile": "assumption",
       "title": "Owner column sorts by first name, then last name",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 73,
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+      "line": 29,
       "side": "RIGHT",
-      "anchor": "default -> Sort.by(direction, \"pet.owner.firstName\", \"pet.owner.lastName\").and(latestFirst);",
-      "body": "💭 **Assumption** · confidence 0.75 — Owner column sorts by first name, then last name\n\n**Not taken:** sort by last name, as a clinic register usually does\n\n**Why:** The cell reads \"First Last\", so this sort matches what is shown, and owners' Name sort does the same. A clinic looking people up by surname would want last name first."
+      "anchor": "\"owner\", List.of(\"o.firstName\", \"o.lastName\"));",
+      "body": "**Assumption** · confidence 0.60 — Owner column sorts by first name, then last name\n\n**Not taken:** last name first, the usual directory order\n\n**Why:** the column shows \"First Last\", so this order reads sorted on screen and lets the acceptance test compare the visible text. A clinic may still expect surname order, which keeps it near a coin flip."
     },
     {
-      "hr_id": "A:ties-within-a-sorted-column-fall-back-to-latest",
+      "hr_id": "A:a-size-equidistant-from-two-allowed-sizes-snaps",
       "pile": "assumption",
-      "title": "Ties within a sorted column fall back to latest first, then id",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-      "line": 68,
+      "title": "A size equidistant from two allowed sizes snaps down",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+      "line": 52,
       "side": "RIGHT",
-      "anchor": "Sort latestFirst = Sort.by(Direction.DESC, \"date\").and(Sort.by(\"id\"));",
-      "body": "💭 **Assumption** · confidence 0.60 — Ties within a sorted column fall back to latest first, then id\n\n**Not taken:** tie-break by id only, as the owners grid does\n\n**Why:** When one pet has several visits, showing them chronologically is the useful order, and the id still makes paging stable. Nobody asked for it, so a plain id tie-break is equally defensible."
+      "start_line": 50,
+      "anchor": ".orElseThrow();",
+      "body": "**Assumption** · confidence 0.50 — A size equidistant from two allowed sizes snaps down\n\n**Not taken:** 15 snaps up to 20\n\n**Why:** \"nearest\" leaves the tie open; the stream takes the first, smaller size. Nobody types 15, so it barely matters."
     },
     {
-      "hr_id": "A:no-index-added-for-the-date-sort",
+      "hr_id": "A:an-unreadable-page-number-serves-the-first-page",
       "pile": "assumption",
-      "title": "No index added for the date sort",
-      "path": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java",
-      "line": 20,
+      "title": "An unreadable page number serves the first page",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+      "line": 41,
       "side": "RIGHT",
-      "anchor": "@Query(value = \"SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner\",",
-      "body": "💭 **Assumption** · confidence 0.50 — No index added for the date sort\n\n**Not taken:** a Flyway migration indexing visits(visit_date, id)\n\n**Why:** The seed has 28 visits and the ticket does not mention scale. If volume grows, sorting the whole table per page will show up, so this is a coin flip on when."
+      "anchor": "return requested == null ? 0 : Math.clamp(requested, 0, Integer.MAX_VALUE / pageSize);",
+      "body": "**Assumption** · confidence 0.75 — An unreadable page number serves the first page\n\n**Not taken:** treat it as past the end and serve the last page\n\n**Why:** Q3 names only \"past the end\"; garbage reads closest to \"no page given\", which defaults to the first."
+    },
+    {
+      "hr_id": "A:page-size-and-sort-live-in-the-url-query",
+      "pile": "assumption",
+      "title": "Page, size and sort live in the URL query",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts",
+      "line": 56,
+      "side": "RIGHT",
+      "anchor": "void this.router.navigate([], {relativeTo: this.route, queryParams, queryParamsHandling: 'merge'});",
+      "body": "**Assumption** · confidence 0.80 — Page, size and sort live in the URL query\n\n**Not taken:** component state only, lost on reload\n\n**Why:** a reload or Back keeps the front desk's place. It is not asked for, but it is cheap and fits Angular routing."
+    },
+    {
+      "hr_id": "A:the-response-echoes-the-sort-it-actually-applied",
+      "pile": "assumption",
+      "title": "The response echoes the sort it actually applied",
+      "path": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+      "line": 58,
+      "side": "RIGHT",
+      "anchor": "return VisitPageDto.of(served, params.sort());",
+      "body": "**Assumption** · confidence 0.85 — The response echoes the sort it actually applied\n\n**Not taken:** the client trusts the sort it asked for\n\n**Why:** after a fallback the header arrows must show the order actually served; the echo is built only from our own constants."
     }
   ],
   "generated_by": "push-pr-comments.py --from-review-points"

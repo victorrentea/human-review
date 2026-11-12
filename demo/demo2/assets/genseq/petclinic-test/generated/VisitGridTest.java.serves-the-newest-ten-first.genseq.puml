@@ -1,0 +1,22 @@
+@startuml
+' ⚠️  GENERATED FILE — DO NOT EDIT. Every edit is lost on the next run.
+hide footbox
+skinparam hyperlinkUnderline false
+skinparam hyperlinkColor #1A4FA0
+skinparam sequenceGroupFontColor #888888
+skinparam sequenceGroupFontStyle plain
+title [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92{Click to open the test} Test: VisitGridTest: serves the newest ten first]]
+footer traced because this branch wrote it in petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java — generated from real traces of end-to-end test runs, do not edit ❗
+participant Test
+participant Backend
+participant DB
+Test -> Backend: [[genseq://06pr5p7{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:27{Click to open VisitRepository.findGridPage} VisitRepository.findGridPage ↗]]
+activate Backend
+Backend -> DB: [[genseq://1tm6i10{Click for the statement behind this call} SELECT new victor.training.petclinic.rest.dto.VisitRowDto(v.id, v.date, v.description, p.id, p.name, o.id, o.firstName, o.lastName) FROM Visit v JOIN … ⊕]]
+Backend -> DB: [[genseq://00ia1sq{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner o ⊕]]
+deactivate Backend
+Backend --> Test: 200
+deactivate Backend
+@enduml

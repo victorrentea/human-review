@@ -1,0 +1,43 @@
+@startuml
+caption <color:#2E7D32>added</color> or <color:#C62828><s>removed</s></color>
+
+title Java packages and their dependencies - Diff
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam nodesep 20
+' the box label is the package pattern itself, which ArchUnit reads from the stereotype;
+' the stereotype is hidden so the pattern is not printed twice
+hide stereotype
+skinparam ranksep 30
+<style>
+component {
+  BackGroundColor #ECEFF1
+  LineColor #546E7A
+}
+arrow {
+  LineColor #78909C
+}
+</style>
+[..rest] <<..rest>>
+[..mcp] <<..mcp>>
+[..rest.error] <<..rest.error>>
+[..security] <<..security>>
+[..mapper] <<..mapper>>
+[..repository] <<..repository>>
+[..notification] <<..notification>>
+[..rest.dto] <<..rest.dto>>
+[..domain] <<..domain>>
+
+[..repository] --> [..domain]
+[..repository] -[#2E7D32,thickness=2]-> [..rest.dto]
+[..mapper] --> [..domain]
+[..mapper] --> [..rest.dto]
+[..rest] --> [..domain]
+[..rest] --> [..repository]
+[..rest] --> [..mapper]
+[..rest] --> [..rest.dto]
+[..rest] --> [..notification]
+[..mcp] --> [..domain]
+[..mcp] --> [..repository]
+
+@enduml

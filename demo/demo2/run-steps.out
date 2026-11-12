@@ -1,72 +1,70 @@
-[run-steps] base 664c5b3b453f: the base the review audited (review-points.md), inside origin/main
-    $ git merge-base 664c5b3b453fb758230de01e407064c45d07a844 HEAD
+[run-steps] base ad1fb1d35662: the base the review audited (review-points.md), inside origin/main
+    $ git merge-base ad1fb1d35662f8fd94ed202fc3572f309e185dbd HEAD
   > basestack: started at +0 s (log: .human-review/logs/basestack.log)
   > sequence: started at +0 s (log: .human-review/logs/sequence.log)
-  > c4: started at +0 s (log: .human-review/logs/c4.log)
   > tests: started at +0 s (log: .human-review/logs/tests.log)
-  > diagrams: started at +0 s (log: .human-review/logs/diagrams.log)
   > reviewpoints: started at +0 s (log: .human-review/logs/reviewpoints.log)
-  < diagrams: ran in 0.7 s, at +1 s
+  > c4: started at +0 s (log: .human-review/logs/c4.log)
+  > diagrams: started at +0 s (log: .human-review/logs/diagrams.log)
+  < tests: ran in 0.5 s, at +1 s
   > video: started at +1 s (log: .human-review/logs/video.log)
-  < tests: ran in 0.7 s, at +1 s
-  > complexity: started at +1 s (log: .human-review/logs/complexity.log)
-[review-commits] WARNING: 2 commits carry a Review-Points trailer (e1d37517, 4321c5bc); taking the last one as the review commit. The fixes are read from the implementation to it, so every one of them counts as a fix commit — one round recorded in 2 commits, or several rounds; record-review's finish now amends its own unpushed commit instead.
-  < reviewpoints: ran in 0.9 s, at +1 s
+  < reviewpoints: ran in 1.1 s, at +1 s
   > aftermath: started at +1 s (log: .human-review/logs/aftermath.log)
-  < aftermath: ran in 0.5 s, at +1 s
-  > api: started at +2 s (log: .human-review/logs/api.log)
-  < api: ran in 2.6 s, at +4 s
-  > specchanges: started at +4 s (log: .human-review/logs/specchanges.log)
-  < specchanges: ran in 0.8 s, at +5 s
-  > logging: started at +5 s (log: .human-review/logs/logging.log)
-  < logging: ran in 1.8 s, at +7 s
-  > owners: started at +7 s (log: .human-review/logs/owners.log)
-  < owners: ran in 0.4 s, at +7 s
-  < complexity: ran in 8.5 s, at +9 s
-  < basestack: ran in 35.1 s, at +35 s
-  < c4: ran in 45.1 s, at +45 s
-    FAILED: record-feature-video.sh exit 1
-  < video: failed in 66.9 s, at +68 s — record-feature-video.sh exit 1
-  > dsaudit: started at +68 s (log: .human-review/logs/dsaudit.log)
-  < dsaudit: ran in 102.8 s, at +170 s
-  < sequence: ran in 235.2 s, at +235 s
-  > traces: started at +235 s (log: .human-review/logs/traces.log)
-  > c2: started at +235 s (log: .human-review/logs/c2.log)
-  < c2: ran in 5.1 s, at +240 s
-  < traces: ran in 151.3 s, at +387 s
-  > testcov: started at +387 s (log: .human-review/logs/testcov.log)
-  < testcov: ran in 65.6 s, at +452 s
-  > city: started at +452 s (log: .human-review/logs/city.log)
-  < city: ran in 18.4 s, at +470 s
+  < aftermath: ran in 0.2 s, at +1 s
+  > complexity: started at +1 s (log: .human-review/logs/complexity.log)
+  < complexity: ran in 5.4 s, at +7 s
+  > api: started at +7 s (log: .human-review/logs/api.log)
+  < api: ran in 3.0 s, at +10 s
+  > specchanges: started at +10 s (log: .human-review/logs/specchanges.log)
+  < specchanges: ran in 0.6 s, at +10 s
+  > logging: started at +10 s (log: .human-review/logs/logging.log)
+  < logging: ran in 0.6 s, at +11 s
+  < c4: ran in 10.9 s, at +11 s
+  > owners: started at +11 s (log: .human-review/logs/owners.log)
+  < owners: ran in 0.3 s, at +11 s
+  < diagrams: ran in 11.5 s, at +12 s
+  < basestack: ran in 97.9 s, at +98 s
+  < video: ran in 242.3 s, at +243 s
+  > dsaudit: started at +243 s (log: .human-review/logs/dsaudit.log)
+  < sequence: ran in 286.5 s, at +287 s
+  > c2: started at +287 s (log: .human-review/logs/c2.log)
+  < c2: ran in 5.9 s, at +293 s
+  < dsaudit: ran in 64.5 s, at +307 s
+  > traces: started at +307 s (log: .human-review/logs/traces.log)
+  < traces: ran in 91.4 s, at +399 s
+  > testcov: started at +399 s (log: .human-review/logs/testcov.log)
+  < testcov: ran in 102.7 s, at +501 s
+  > city: started at +501 s (log: .human-review/logs/city.log)
+  < city: ran in 19.1 s, at +520 s
 
-[run-steps] 18 step(s) in 470 s wall clock, 6 at a time; each step's output is in .human-review/logs/
+[run-steps] 18 step(s) in 520 s wall clock, 6 at a time; each step's output is in .human-review/logs/
 
   step         status   why / what to say
   basestack    ran      
-               note     started the merge-base stack (664c5b3b) early, for the design-system audit
+               note     started the merge-base stack (ad1fb1d3) early, for the design-system audit
   reviewpoints ran      
   aftermath    ran      
-               note     4 commit(s) landed after the review commit and 62 of the files they touched are not generated — the Review tab opens with a red band naming them. Say in the guide what they were; everything else on this page describes the branch as the agent left it
   diagrams     ran      
   sequence     ran      
-               note     also traced 6 test(s) this branch wrote or edited, untagged: visits.spec.ts: shows the ten latest visits on initial load; VisitListTest.java: defaultPage_isTheTenLatestVisits; visits.spec.ts: clicking a column header sorts by it and keeps the sort in the URL; VisitListTest.java: aVisitCarriesItsPetAndOwner; visits.spec.ts: a page of 5 visits, then the next one; visits.spec.ts: Visits Page — 14 more over the cap of 6
-               note     the traced suites ran against http://localhost:52074, started by this run from the commit under review — not whatever was already listening
+               note     also traced 4 test(s) this branch wrote or edited, untagged: visits-sort.feature: Clicking the <column> header <clicks> sorts the first page <direction>; VisitGridTest.java: servesTheNewestTenFirst; visits.spec.ts: shows the first page of visits on initial load; VisitGridTest.java: servesEveryColumnOfTheRow — 19 more over the cap of 6
+               note     the traced suites ran against http://localhost:49956, started by this run from the commit under review — not whatever was already listening
+               note     the traced suite was RED (cd petclinic-test && GENSEQ_SELECT={tests.e2e} ./run-tests-with-tracing.sh (exit 1)); the diagrams below are of that run, and the guide has to say so
   c2           ran      
   c4           ran      
-  video        failed   record-feature-video.sh exit 1
-               note     filmed against http://localhost:51906, started by this run from the commit under review — not whatever was already listening on :4200
+  video        ran      
+               note     filmed against http://localhost:49667, started by this run from the commit under review — not whatever was already listening on :4200
   complexity   ran      
   api          ran      
   specchanges  ran      
   logging      ran      
   dsaudit      ran      
-               note     the design-system audit compared http://localhost:52061 (this branch) against http://localhost:51927 (664c5b3b, the merge-base) — both started by this run, not whatever happened to be listening
+               note     the design-system audit compared http://localhost:50657 (this branch) against http://localhost:49668 (ad1fb1d3, the merge-base) — both started by this run, not whatever happened to be listening
   owners       ran      
   tests        ran      
   traces       ran      
+               note     the traced browser suite did not pass (cd petclinic-test && PW_TRACE=on COVERAGE_DIR=../.human-review/coverage ./test-on-own-stack.sh npm test); its recordings and its coverage are of that run
+               note     the traced suite did not pass (cd petclinic-test && PW_TRACE=on COVERAGE_DIR=../.human-review/coverage ./test-on-own-stack.sh npm run test:cucumber); the recordings below are of that run, which is exactly when they are worth most
   testcov      ran      
   city         ran      
-               note     codecity lit: 4 changed · coloured by outgoing coupling (put this measured number under the image; never type one)
-
-  tabs with no content, to be named under the strip: behaviour
-exit=1
+               note     codecity lit: 6 changed · coloured by outgoing coupling (put this measured number under the image; never type one)
+exit=0

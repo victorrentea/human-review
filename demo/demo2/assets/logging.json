@@ -3,7 +3,7 @@
     "logging": [
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/notification/NotificationServiceClient.java",
         "line": 39,
         "column": 13,
         "end_line": 39,
@@ -46,10 +46,47 @@
       },
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-        "line": 98,
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "line": 57,
         "column": 9,
-        "end_line": 98,
+        "end_line": 57,
+        "level": "INFO",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "info",
+        "format": "\"Visits page {} served: {}\"",
+        "args": [
+          "served.getNumber()",
+          "ownerNamesOn(served)"
+        ],
+        "raw_line": "        log.info(\"Visits page {} served: {}\", served.getNumber(), ownerNamesOn(served));",
+        "text": "log.info(\"Visits page {} served: {}\", served.getNumber(), ownerNamesOn(served))",
+        "method_start": 43,
+        "method_end": 59,
+        "origins": [
+          {
+            "line": 56,
+            "name": "served",
+            "kind": "local",
+            "text": "findGridPageWithinBounds(params.pageable())"
+          }
+        ],
+        "arg_types": [
+          null,
+          "List<String>"
+        ],
+        "change": "added",
+        "was": "",
+        "same_output": false
+      },
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "line": 95,
+        "column": 9,
+        "end_line": 95,
         "level": "INFO",
         "receiver": "log",
         "flavour": "SLF4J",
@@ -63,11 +100,11 @@
         ],
         "raw_line": "        log.info(\"Booking visit for pet {}: {}\", visitDto.getPetId(), visitDto.getDescription());",
         "text": "log.info(\"Booking visit for pet {}: {}\", visitDto.getPetId(), visitDto.getDescription())",
-        "method_start": 96,
-        "method_end": 102,
+        "method_start": 93,
+        "method_end": 99,
         "origins": [
           {
-            "line": 97,
+            "line": 94,
             "name": "visitDto",
             "kind": "param",
             "text": ""
@@ -83,7 +120,7 @@
       },
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
         "line": 52,
         "column": 9,
         "end_line": 52,
@@ -118,7 +155,7 @@
       },
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
         "line": 66,
         "column": 9,
         "end_line": 66,
@@ -153,7 +190,7 @@
       },
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
         "line": 76,
         "column": 9,
         "end_line": 76,
@@ -190,7 +227,7 @@
       },
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java",
         "line": 87,
         "column": 9,
         "end_line": 87,
@@ -216,7 +253,7 @@
     "antipattern": [
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/PetClinicApplication.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/PetClinicApplication.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/PetClinicApplication.java",
         "line": 22,
         "column": 9,
         "kind": "System.out",
@@ -225,7 +262,7 @@
       },
       {
         "file": "petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java",
         "line": 47,
         "column": 9,
         "kind": "System.out",
@@ -234,7 +271,7 @@
       },
       {
         "file": "petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
         "line": 221,
         "column": 13,
         "kind": "System.err",
@@ -243,7 +280,7 @@
       },
       {
         "file": "petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/test/java/victor/training/petclinic/genseq/SequenceTraceExtension.java",
         "line": 242,
         "column": 13,
         "kind": "System.err",
@@ -252,7 +289,7 @@
       },
       {
         "file": "petclinic-backend/src/test/java/victor/training/petclinic/guardrail/JpaMatchesDBSchemaTest.java",
-        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated/petclinic-backend/src/test/java/victor/training/petclinic/guardrail/JpaMatchesDBSchemaTest.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/test/java/victor/training/petclinic/guardrail/JpaMatchesDBSchemaTest.java",
         "line": 34,
         "column": 9,
         "kind": "System.out",
@@ -279,7 +316,7 @@
           "flavour": "SLF4J",
           "evidence": "declared `Logger log`",
           "confidence": "declared",
-          "line": 35
+          "line": 33
         }
       ],
       "petclinic-backend/src/main/java/victor/training/petclinic/rest/error/ExceptionControllerAdvice.java": [
@@ -622,7 +659,7 @@
           "line": 51,
           "name": "VISITS",
           "type": "String",
-          "text": "public static final String VISITS = \"\"\"\n            {\n              \"content\": [\n                { \"id\": 2, \"date\": \"2013-01-02\", \"description\": \"annual checkup\", \"petId\": 8, \"petName\": \"Pickett\",\n                  \"ownerId\": 7, \"ownerFirstName\": \"Newt\", \"ownerLastName\": \"Scamander\" },\n                { \"id\": 1, \"date\": \"2013-01-01\", \"description\": \"rabies shot\", \"petId\": 9, \"petName\": \"Dinah\",\n                  \"ownerId\": 8, \"ownerFirstName\": \"Alice\", \"ownerLastName\": \"Liddell\" }\n              ],\n              \"totalElements\": 2, \"totalPages\": 1, \"number\": 0, \"size\": 10\n            }\"\"\";"
+          "text": "public static final String VISITS = \"\"\"\n            {\n              \"content\": [\n                { \"id\": 2, \"date\": \"2013-01-02\", \"description\": \"annual checkup\", \"petId\": 8, \"petName\": \"Basil\",\n                  \"ownerId\": 2, \"ownerFirstName\": \"Betty\", \"ownerLastName\": \"Davis\" },\n                { \"id\": 1, \"date\": \"2013-01-01\", \"description\": \"rabies shot\", \"petId\": 7, \"petName\": \"Leo\",\n                  \"ownerId\": 1, \"ownerFirstName\": \"George\", \"ownerLastName\": \"Franklin\" }\n              ],\n              \"page\": 0, \"size\": 10, \"totalElements\": 2, \"totalPages\": 1, \"sort\": \"date,desc\"\n            }\"\"\";"
         },
         {
           "line": 62,
@@ -799,39 +836,47 @@
           "text": "private final SpecialtyRepository specialtyRepository;"
         }
       ],
+      "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java": [
+        {
+          "line": 20,
+          "name": "PAGE_SIZES",
+          "type": "List<Integer>",
+          "text": "private static final List<Integer> PAGE_SIZES = List.of(5, 10, 20);"
+        },
+        {
+          "line": 21,
+          "name": "DEFAULT_PAGE_SIZE",
+          "type": "int",
+          "text": "private static final int DEFAULT_PAGE_SIZE = 10;"
+        },
+        {
+          "line": 22,
+          "name": "DEFAULT_SORT",
+          "type": "String",
+          "text": "private static final String DEFAULT_SORT = \"date,desc\";"
+        },
+        {
+          "line": 25,
+          "name": "COLUMNS",
+          "type": "Map<String, List<String>>",
+          "text": "private static final Map<String, List<String>> COLUMNS = Map.of(\n            \"date\", List.of(\"v.date\"),\n            \"description\", List.of(\"v.description\"),\n            \"pet\", List.of(\"p.name\"),\n            \"owner\", List.of(\"o.firstName\", \"o.lastName\"));"
+        }
+      ],
       "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java": [
         {
-          "line": 35,
+          "line": 33,
           "name": "log",
           "type": "Logger",
           "text": "private static final Logger log = LoggerFactory.getLogger(VisitRestController.class);"
         },
         {
-          "line": 37,
-          "name": "MAX_PAGE_SIZE",
-          "type": "int",
-          "text": "static final int MAX_PAGE_SIZE = 100;"
-        },
-        {
-          "line": 38,
-          "name": "SORTS",
-          "type": "String",
-          "text": "private static final String SORTS = \"(date|description|pet|owner)(,(asc|desc))?\";"
-        },
-        {
-          "line": 39,
-          "name": "SORTS_HINT",
-          "type": "String",
-          "text": "private static final String SORTS_HINT = \"must be date, description, pet or owner, optionally with ,asc or ,desc\";"
-        },
-        {
-          "line": 41,
+          "line": 35,
           "name": "visitRepository",
           "type": "VisitRepository",
           "text": "private final VisitRepository visitRepository;"
         },
         {
-          "line": 42,
+          "line": 36,
           "name": "visitMapper",
           "type": "VisitMapper",
           "text": "private final VisitMapper visitMapper;"
@@ -2209,18 +2254,42 @@
           "text": "int vetId;"
         }
       ],
-      "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java": [
+      "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java": [
         {
-          "line": 50,
-          "name": "DAY",
+          "line": 43,
+          "name": "DAY_1",
           "type": "LocalDate",
-          "text": "static final LocalDate DAY = LocalDate.parse(\"2026-01-01\");"
+          "text": "private static final LocalDate DAY_1 = LocalDate.parse(\"2026-01-01\");"
         },
         {
-          "line": 52,
+          "line": 44,
+          "name": "VISIT_COUNT",
+          "type": "int",
+          "text": "private static final int VISIT_COUNT = 12;"
+        },
+        {
+          "line": 46,
           "name": "mockMvc",
           "type": "MockMvc",
           "text": "@Autowired\n    MockMvc mockMvc;"
+        },
+        {
+          "line": 48,
+          "name": "ownerRepository",
+          "type": "OwnerRepository",
+          "text": "@Autowired\n    OwnerRepository ownerRepository;"
+        },
+        {
+          "line": 50,
+          "name": "petRepository",
+          "type": "PetRepository",
+          "text": "@Autowired\n    PetRepository petRepository;"
+        },
+        {
+          "line": 52,
+          "name": "petTypeRepository",
+          "type": "PetTypeRepository",
+          "text": "@Autowired\n    PetTypeRepository petTypeRepository;"
         },
         {
           "line": 54,
@@ -2230,80 +2299,56 @@
         },
         {
           "line": 56,
-          "name": "petRepository",
-          "type": "PetRepository",
-          "text": "@Autowired\n    PetRepository petRepository;"
-        },
-        {
-          "line": 58,
-          "name": "ownerRepository",
-          "type": "OwnerRepository",
-          "text": "@Autowired\n    OwnerRepository ownerRepository;"
-        },
-        {
-          "line": 60,
-          "name": "petTypeRepository",
-          "type": "PetTypeRepository",
-          "text": "@Autowired\n    PetTypeRepository petTypeRepository;"
-        },
-        {
-          "line": 62,
-          "name": "entityManager",
-          "type": "EntityManager",
-          "text": "@Autowired\n    EntityManager entityManager;"
-        },
-        {
-          "line": 65,
-          "name": "mapper",
-          "type": "ObjectMapper",
-          "text": "ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());"
+          "name": "jdbc",
+          "type": "JdbcTemplate",
+          "text": "@Autowired\n    JdbcTemplate jdbc;"
         }
       ],
       "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java": [
         {
-          "line": 40,
+          "line": 43,
           "name": "mockMvc",
           "type": "MockMvc",
           "text": "@Autowired\n    MockMvc mockMvc;"
         },
         {
-          "line": 43,
+          "line": 46,
           "name": "mapper",
           "type": "ObjectMapper",
           "text": "ObjectMapper mapper = new ObjectMapper()\n            .registerModule(new JavaTimeModule())\n            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);"
         },
         {
-          "line": 47,
+          "line": 50,
           "name": "visitRepository",
           "type": "VisitRepository",
           "text": "@Autowired\n    VisitRepository visitRepository;"
         },
         {
-          "line": 50,
+          "line": 53,
           "name": "petRepository",
           "type": "PetRepository",
           "text": "@Autowired\n    PetRepository petRepository;"
         },
         {
-          "line": 53,
+          "line": 56,
           "name": "ownerRepository",
           "type": "OwnerRepository",
           "text": "@Autowired\n    OwnerRepository ownerRepository;"
         },
         {
-          "line": 56,
+          "line": 59,
           "name": "visitId",
           "type": "int",
           "text": "int visitId;"
         },
         {
-          "line": 57,
+          "line": 60,
           "name": "petId",
           "type": "int",
           "text": "int petId;"
         },
         {
-          "line": 58,
+          "line": 61,
           "name": "petTypeRepository",
           "type": "PetTypeRepository",
           "text": "@Autowired\n    private PetTypeRepository petTypeRepository;"
@@ -2342,7 +2387,45 @@
     }
   },
   "changed": {
-    "logging": [],
+    "logging": [
+      {
+        "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "abs_file": "/Users/victorrentea/workspace/petclinic-visits-paginated-v3/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+        "line": 57,
+        "column": 9,
+        "end_line": 57,
+        "level": "INFO",
+        "receiver": "log",
+        "flavour": "SLF4J",
+        "evidence": "declared `Logger log`",
+        "confidence": "declared",
+        "method": "info",
+        "format": "\"Visits page {} served: {}\"",
+        "args": [
+          "served.getNumber()",
+          "ownerNamesOn(served)"
+        ],
+        "raw_line": "        log.info(\"Visits page {} served: {}\", served.getNumber(), ownerNamesOn(served));",
+        "text": "log.info(\"Visits page {} served: {}\", served.getNumber(), ownerNamesOn(served))",
+        "method_start": 43,
+        "method_end": 59,
+        "origins": [
+          {
+            "line": 56,
+            "name": "served",
+            "kind": "local",
+            "text": "findGridPageWithinBounds(params.pageable())"
+          }
+        ],
+        "arg_types": [
+          null,
+          "List<String>"
+        ],
+        "change": "added",
+        "was": "",
+        "same_output": false
+      }
+    ],
     "antipattern": []
   }
 }

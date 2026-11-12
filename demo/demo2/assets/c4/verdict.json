@@ -1,17 +1,17 @@
 {
  "state": "drawn",
  "reason": "",
- "fingerprint": "79cb98df8e7e78acbd1f",
+ "fingerprint": "0126b6f3ee3f20a26ef7",
  "workspaces": [
   "petclinic-backend/docs/c4model.c1+c2.dsl"
  ],
  "image": "structurizr/structurizr",
- "base": "78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9",
+ "base": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
  "views": {
   "C2-Containers": "unchanged",
   "C2-BackendOutbound": "unchanged",
-  "C3-Components-All": "unchanged",
-  "C3-Repository": "unchanged",
+  "C3-Components-All": "modified",
+  "C3-Repository": "modified",
   "C3-Mapper": "unchanged",
   "C1-Context": "unchanged"
  }

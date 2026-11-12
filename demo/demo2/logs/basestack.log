@@ -1,2 +1,384 @@
   * basestack -> (no tab)
-    skipped: dsaudit is unchanged or not running — no stack to start early
+    $ git merge-base ad1fb1d35662f8fd94ed202fc3572f309e185dbd HEAD
+    $ git rev-parse ad1fb1d35662f8fd94ed202fc3572f309e185dbd
+    $ git rev-parse --short ad1fb1d35662f8fd94ed202fc3572f309e185dbd
+    $ ./start-docker.sh up --ref ad1fb1d35662f8fd94ed202fc3572f309e185dbd --ttl 1800
+🐳 building petclinic-ad1fb1d3 from ad1fb1d3  (this takes a few minutes the first time)
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.93kB done
+#1 DONE 0.0s
+
+#2 [reset internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.67kB done
+#2 DONE 0.0s
+
+#3 [backend internal] load build definition from Dockerfile
+#3 transferring dockerfile: 1.22kB done
+#3 DONE 0.0s
+
+#4 [frontend internal] load build definition from Dockerfile
+#4 transferring dockerfile: 1.67kB done
+#4 DONE 0.0s
+
+#5 [notification internal] load build definition from Dockerfile
+#5 transferring dockerfile: 1.22kB done
+#5 DONE 0.0s
+
+#6 [reset context reference] load .dockerignore
+#6 transferring reference: 2B done
+#6 DONE 0.0s
+
+#7 [notification context commons] load .dockerignore
+#7 transferring commons: 2B done
+#7 DONE 0.0s
+
+#8 [reset context fixtures] load .dockerignore
+#8 transferring fixtures: 2B done
+#8 DONE 0.0s
+
+#9 [notification internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#9 ...
+
+#10 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#10 DONE 2.1s
+
+#11 [notification internal] load metadata for docker.io/library/maven:3.9-eclipse-temurin-21
+#11 DONE 2.1s
+
+#12 [reset internal] load metadata for docker.io/library/alpine:3.20
+#12 DONE 2.1s
+
+#13 [reset internal] load .dockerignore
+#13 transferring context: 2B done
+#13 DONE 0.0s
+
+#14 [reset stage-0 1/6] FROM docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+#14 resolve docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.0s done
+#14 DONE 0.0s
+
+#15 [reset internal] load build context
+#15 transferring context: 7.05kB done
+#15 DONE 0.0s
+
+#16 [reset context reference] load from client
+#16 transferring reference: 2.64kB done
+#16 DONE 0.0s
+
+#17 [reset context fixtures] load from client
+#17 transferring fixtures: 2.80kB done
+#17 DONE 0.0s
+
+#18 [reset stage-0 4/6] COPY --from=fixtures . /fixtures/
+#18 CACHED
+
+#19 [reset stage-0 3/6] COPY reset-server.py /reset-server.py
+#19 CACHED
+
+#20 [reset stage-0 2/6] RUN apk add --no-cache postgresql16-client python3
+#20 CACHED
+
+#21 [reset stage-0 5/6] COPY --from=reference R__reference.sql /reference.sql
+#21 CACHED
+
+#22 [reset stage-0 6/6] RUN adduser -D reset && mkdir -p /seed && chown reset:reset /seed
+#22 CACHED
+
+#23 [reset] exporting to image
+#23 exporting layers
+#23 exporting layers done
+#23 exporting manifest sha256:d51bc653d6664288c56bf6f2f00a1b492f9b475efd6b9f97a9d29d2cbab5c4f7 0.0s done
+#23 exporting config sha256:d33954de0e5a54510be7f22d3170d9dad9a2bbed62024a8883337e39187bf3c1 0.0s done
+#23 exporting attestation manifest sha256:86a81feb89c6aed2a99c2e7eaa5b92855fbf22fb6f30e1498c4fdd01f99d2d2d 0.0s done
+#23 exporting manifest list sha256:c19f52b797f5e3c27e64e8e72ec1433ab95d7d057cb540a976e5e19ae880fe1e 0.0s done
+#23 naming to docker.io/library/petclinic-env-reset:ad1fb1d3 done
+#23 unpacking to docker.io/library/petclinic-env-reset:ad1fb1d3 done
+#23 DONE 0.1s
+
+#24 [frontend internal] load metadata for docker.io/library/node:18-bookworm-slim
+#24 DONE 2.4s
+
+#25 [frontend internal] load .dockerignore
+#25 transferring context: 67B done
+#25 DONE 0.0s
+
+#26 [frontend internal] load build context
+#26 ...
+
+#27 [frontend runtime 1/4] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#27 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.1s done
+#27 DONE 0.1s
+
+#28 [frontend build 1/7] FROM docker.io/library/node:18-bookworm-slim@sha256:f9ab18e354e6855ae56ef2b290dd225c1e51a564f87584b9bd21dd651838830e
+#28 resolve docker.io/library/node:18-bookworm-slim@sha256:f9ab18e354e6855ae56ef2b290dd225c1e51a564f87584b9bd21dd651838830e 0.1s done
+#28 DONE 0.1s
+
+#9 [notification internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#9 DONE 2.6s
+
+#26 [frontend internal] load build context
+#26 transferring context: 2.89MB 0.2s done
+#26 DONE 0.3s
+
+#29 [backend internal] load .dockerignore
+#29 transferring context: 230B 0.0s done
+#29 DONE 0.1s
+
+#30 [reset] resolving provenance for metadata file
+#30 DONE 0.0s
+
+#31 [notification internal] load .dockerignore
+#31 transferring context: 60B 0.0s done
+#31 DONE 0.1s
+
+#32 [backend internal] load build context
+#32 DONE 0.0s
+
+#33 [backend stage-1 1/4] FROM docker.io/library/eclipse-temurin:21-jre@sha256:194729a50fcca3b498180858b54cf1b2e3816208cf8d8a1fca9856635f72ca8a
+#33 ...
+
+#34 [frontend build 5/7] RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci
+#34 CACHED
+
+#35 [notification context commons] load from client
+#35 DONE 0.0s
+
+#36 [notification context commons] load from client
+#36 DONE 0.0s
+
+#37 [notification internal] load build context
+#37 DONE 0.0s
+
+#38 [frontend build 2/7] RUN apt-get update     && apt-get install -y --no-install-recommends python3 make g++     && rm -rf /var/lib/apt/lists/*
+#38 CACHED
+
+#39 [frontend runtime 3/4] COPY nginx.conf /etc/nginx/conf.d/default.conf
+#39 CACHED
+
+#40 [frontend build 3/7] WORKDIR /app
+#40 CACHED
+
+#41 [frontend build 5/7] RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci
+#41 CACHED
+
+#42 [frontend build 7/7] RUN npx ng build --configuration docker
+#42 CACHED
+
+#43 [frontend runtime 2/4] COPY --from=build /app/dist/ /usr/share/nginx/html/
+#43 CACHED
+
+#44 [frontend build 6/7] COPY . .
+#44 CACHED
+
+#45 [frontend build 4/7] COPY package.json package-lock.json ./
+#45 CACHED
+
+#46 [frontend runtime 4/4] COPY proxy-backend.conf /etc/nginx/proxy-backend.conf
+#46 CACHED
+
+#33 [backend stage-1 1/4] FROM docker.io/library/eclipse-temurin:21-jre@sha256:194729a50fcca3b498180858b54cf1b2e3816208cf8d8a1fca9856635f72ca8a
+#33 resolve docker.io/library/eclipse-temurin:21-jre@sha256:194729a50fcca3b498180858b54cf1b2e3816208cf8d8a1fca9856635f72ca8a 0.1s done
+#33 resolve docker.io/library/eclipse-temurin:21-jre@sha256:194729a50fcca3b498180858b54cf1b2e3816208cf8d8a1fca9856635f72ca8a 0.1s done
+#33 DONE 0.2s
+
+#47 [backend build 1/8] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
+#47 resolve docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320 0.1s done
+#47 DONE 0.1s
+
+#32 [backend internal] load build context
+#32 transferring context: 472.74kB 0.0s done
+#32 DONE 0.1s
+
+#48 [backend stage-1 2/4] RUN apt-get update     && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#48 ...
+
+#37 [notification internal] load build context
+#37 transferring context: 9.47kB done
+#37 DONE 0.1s
+
+#36 [notification context commons] load from client
+#36 transferring commons: 4.01kB done
+#36 DONE 0.1s
+
+#49 [frontend] exporting to image
+#49 exporting layers done
+#49 exporting manifest sha256:46e9265c49f14e47ca0e8a99db27fde6e8ccf4ab4a367a39604d7d174e88a352 0.0s done
+#49 exporting config sha256:c8074c7337f4211ea0b1945886774789915db5fc51c2eb79297cfa2120b2ba65 0.0s done
+#49 exporting attestation manifest sha256:da84a3eb389af770f741539a03a46b76039a23ddfa9389084c977a0c4b058d63 0.0s done
+#49 exporting manifest list sha256:24fc0b0c8c4974a15a42c3a9c722d8c577ccef13ab6a227a1a88a62e1a7bbb6b 0.0s done
+#49 naming to docker.io/library/petclinic-env-frontend:ad1fb1d3 done
+#49 unpacking to docker.io/library/petclinic-env-frontend:ad1fb1d3 done
+#49 DONE 0.2s
+
+#35 [backend context commons] load from client
+#35 transferring commons: 12.96kB 0.0s done
+#35 DONE 0.1s
+
+#50 [backend build 6/8] COPY pom.xml .
+#50 CACHED
+
+#51 [notification build 8/8] RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -q -B clean package -DskipTests
+#51 CACHED
+
+#52 [backend build 5/8] WORKDIR /app
+#52 CACHED
+
+#53 [backend build 7/8] COPY src ./src
+#53 CACHED
+
+#54 [backend build 3/8] COPY --from=commons src /commons/src
+#54 CACHED
+
+#55 [backend build 4/8] RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -q -B -f /commons/pom.xml install
+#55 CACHED
+
+#56 [backend build 6/8] COPY pom.xml .
+#56 CACHED
+
+#57 [backend build 2/8] COPY --from=commons pom.xml /commons/pom.xml
+#57 CACHED
+
+#58 [backend build 8/8] RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -q -B clean package -DskipTests
+#58 CACHED
+
+#59 [frontend] resolving provenance for metadata file
+#59 DONE 0.0s
+
+#48 [backend stage-1 2/4] RUN apt-get update     && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#48 0.513 Get:1 http://ports.ubuntu.com/ubuntu-ports resolute InRelease [136 kB]
+#48 1.074 Get:2 http://ports.ubuntu.com/ubuntu-ports resolute-updates InRelease [137 kB]
+#48 1.690 Get:3 http://ports.ubuntu.com/ubuntu-ports resolute-backports InRelease [137 kB]
+#48 2.238 Get:4 http://ports.ubuntu.com/ubuntu-ports resolute-security InRelease [137 kB]
+#48 2.775 Get:5 http://ports.ubuntu.com/ubuntu-ports resolute/multiverse arm64 Packages [298 kB]
+#48 3.495 Get:6 http://ports.ubuntu.com/ubuntu-ports resolute/universe arm64 Packages [19.9 MB]
+#48 54.67 Get:7 http://ports.ubuntu.com/ubuntu-ports resolute/main arm64 Packages [1,860 kB]
+#48 57.81 Get:8 http://ports.ubuntu.com/ubuntu-ports resolute/restricted arm64 Packages [231 kB]
+#48 58.02 Get:9 http://ports.ubuntu.com/ubuntu-ports resolute-updates/universe arm64 Packages [473 kB]
+#48 58.95 Get:10 http://ports.ubuntu.com/ubuntu-ports resolute-updates/restricted arm64 Packages [989 kB]
+#48 60.46 Get:11 http://ports.ubuntu.com/ubuntu-ports resolute-updates/multiverse arm64 Packages [26.3 kB]
+#48 60.78 Get:12 http://ports.ubuntu.com/ubuntu-ports resolute-updates/main arm64 Packages [1,119 kB]
+#48 62.45 Get:13 http://ports.ubuntu.com/ubuntu-ports resolute-backports/universe arm64 Packages [3,309 B]
+#48 62.45 Get:14 http://ports.ubuntu.com/ubuntu-ports resolute-security/multiverse arm64 Packages [24.5 kB]
+#48 62.45 Get:15 http://ports.ubuntu.com/ubuntu-ports resolute-security/restricted arm64 Packages [969 kB]
+#48 64.17 Get:16 http://ports.ubuntu.com/ubuntu-ports resolute-security/main arm64 Packages [930 kB]
+#48 65.44 Get:17 http://ports.ubuntu.com/ubuntu-ports resolute-security/universe arm64 Packages [262 kB]
+#48 65.82 Fetched 27.6 MB in 1min 6s (422 kB/s)
+#48 65.82 Reading package lists...
+#48 66.20 Reading package lists...
+#48 66.60 Building dependency tree...
+#48 66.70 Reading state information...
+#48 66.72 curl is already the newest version (8.18.0-1ubuntu2.8).
+#48 66.72 Solving dependencies...
+#48 66.86 0 upgraded, 0 newly installed, 0 to remove and 6 not upgraded.
+#48 DONE 66.9s
+
+#60 [backend stage-1 3/4] WORKDIR /app
+#60 DONE 0.0s
+
+#61 [notification stage-1 4/4] COPY --from=build /app/target/*.jar app.jar
+#61 DONE 0.1s
+
+#62 [backend stage-1 4/4] COPY --from=build /app/target/*.jar app.jar
+#62 DONE 0.1s
+
+#63 [backend] exporting to image
+#63 exporting layers
+#63 ...
+
+#64 [notification] exporting to image
+#64 exporting layers 0.5s done
+#64 exporting manifest sha256:5369a43c0821a64cc57a8b95eb445c98ac44c198dedb97bf92da621778917de1 0.0s done
+#64 exporting config sha256:3434167c0454562dc63780f3d5484bb5bb38ef395173dff7976f34aac34360a8 0.0s done
+#64 exporting attestation manifest sha256:3fe1fb4a68bb45145b9d9c56fea1b59941ac4c0f293b0b2721eefb724ace08c3 0.0s done
+#64 exporting manifest list sha256:7e3d4a8036bb653c3f44338ccbba62ceda3d37c3a0154e0d71dfa0faf0ed301b 0.0s done
+#64 naming to docker.io/library/petclinic-env-notification:ad1fb1d3 done
+#64 unpacking to docker.io/library/petclinic-env-notification:ad1fb1d3 0.1s done
+#64 DONE 0.8s
+
+#65 [notification] resolving provenance for metadata file
+#65 DONE 0.0s
+
+#63 [backend] exporting to image
+#63 exporting layers 1.7s done
+#63 exporting manifest sha256:ac6e9b334a1832ef364f04d57fe5a19faef4b23852edf784d1b557b5d11a88b2 0.0s done
+#63 exporting config sha256:caf4b871ba42a68ff46b8033f64b03e2d53ebb9aa66aa525c7049c99f44f9435 done
+#63 exporting attestation manifest sha256:53f7f36b1c8e9dc5987af83d8fab1eae003aa774b083ad5b8b99fe500abf021b done
+#63 exporting manifest list sha256:759984b06c3968fa4a535d4587d22b54c3dd101eafaa3eed1681fbc71e0ed872 done
+#63 naming to docker.io/library/petclinic-env-backend:ad1fb1d3 done
+#63 unpacking to docker.io/library/petclinic-env-backend:ad1fb1d3
+#63 unpacking to docker.io/library/petclinic-env-backend:ad1fb1d3 0.4s done
+#63 DONE 2.2s
+
+#66 [backend] resolving provenance for metadata file
+#66 DONE 0.0s
+
+✅ petclinic-ad1fb1d3 ready — reaps itself after 30 idle minutes
+   http://localhost:49668
+   (copied to the clipboard)
+ Image petclinic-env-backend:ad1fb1d3 Building 
+ Image petclinic-env-notification:ad1fb1d3 Building 
+ Image petclinic-env-frontend:ad1fb1d3 Building 
+ Image petclinic-env-reset:ad1fb1d3 Building 
+ Image petclinic-env-notification:ad1fb1d3 Built 
+ Image petclinic-env-backend:ad1fb1d3 Built 
+ Image petclinic-env-reset:ad1fb1d3 Built 
+ Image petclinic-env-frontend:ad1fb1d3 Built 
+ Network petclinic-ad1fb1d3_default Creating 
+ Network petclinic-ad1fb1d3_default Creating 
+ Volume petclinic-ad1fb1d3_activity Creating 
+ Volume petclinic-ad1fb1d3_activity Creating 
+ Volume petclinic-ad1fb1d3_pgdata Creating 
+ Volume petclinic-ad1fb1d3_pgdata Creating 
+ Volume petclinic-ad1fb1d3_seed Creating 
+ Volume petclinic-ad1fb1d3_seed Creating 
+ Volume petclinic-ad1fb1d3_seed Created 
+ Volume petclinic-ad1fb1d3_seed Created 
+ Volume petclinic-ad1fb1d3_activity Created 
+ Volume petclinic-ad1fb1d3_activity Created 
+ Volume petclinic-ad1fb1d3_pgdata Created 
+ Volume petclinic-ad1fb1d3_pgdata Created 
+ Network petclinic-ad1fb1d3_default Created 
+ Network petclinic-ad1fb1d3_default Created 
+ Container petclinic-ad1fb1d3-reaper-1 Creating 
+ Container petclinic-ad1fb1d3-notification-1 Creating 
+ Container petclinic-ad1fb1d3-db-1 Creating 
+ Container petclinic-ad1fb1d3-notification-1 Created 
+ Container petclinic-ad1fb1d3-reaper-1 Created 
+ Container petclinic-ad1fb1d3-db-1 Created 
+ Container petclinic-ad1fb1d3-backend-1 Creating 
+ Container petclinic-ad1fb1d3-backend-1 Created 
+ Container petclinic-ad1fb1d3-reset-1 Creating 
+ Container petclinic-ad1fb1d3-frontend-1 Creating 
+ Container petclinic-ad1fb1d3-reset-1 Created 
+ Container petclinic-ad1fb1d3-frontend-1 Created 
+ Container petclinic-ad1fb1d3-notification-1 Starting 
+ Container petclinic-ad1fb1d3-reaper-1 Starting 
+ Container petclinic-ad1fb1d3-db-1 Starting 
+ Container petclinic-ad1fb1d3-notification-1 Started 
+ Container petclinic-ad1fb1d3-reaper-1 Started 
+ Container petclinic-ad1fb1d3-db-1 Started 
+ Container petclinic-ad1fb1d3-db-1 Waiting 
+ Container petclinic-ad1fb1d3-notification-1 Waiting 
+ Container petclinic-ad1fb1d3-notification-1 Healthy 
+ Container petclinic-ad1fb1d3-db-1 Healthy 
+ Container petclinic-ad1fb1d3-backend-1 Starting 
+ Container petclinic-ad1fb1d3-backend-1 Started 
+ Container petclinic-ad1fb1d3-backend-1 Waiting 
+ Container petclinic-ad1fb1d3-backend-1 Waiting 
+ Container petclinic-ad1fb1d3-backend-1 Healthy 
+ Container petclinic-ad1fb1d3-backend-1 Healthy 
+ Container petclinic-ad1fb1d3-reset-1 Starting 
+ Container petclinic-ad1fb1d3-frontend-1 Starting 
+ Container petclinic-ad1fb1d3-reset-1 Started 
+ Container petclinic-ad1fb1d3-frontend-1 Started 
+ Container petclinic-ad1fb1d3-notification-1 Waiting 
+ Container petclinic-ad1fb1d3-frontend-1 Waiting 
+ Container petclinic-ad1fb1d3-reset-1 Waiting 
+ Container petclinic-ad1fb1d3-reaper-1 Waiting 
+ Container petclinic-ad1fb1d3-db-1 Waiting 
+ Container petclinic-ad1fb1d3-backend-1 Waiting 
+ Container petclinic-ad1fb1d3-reaper-1 Healthy 
+ Container petclinic-ad1fb1d3-backend-1 Healthy 
+ Container petclinic-ad1fb1d3-db-1 Healthy 
+ Container petclinic-ad1fb1d3-notification-1 Healthy 
+ Container petclinic-ad1fb1d3-reset-1 Healthy 
+ Container petclinic-ad1fb1d3-frontend-1 Healthy 

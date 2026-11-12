@@ -1,394 +1,342 @@
 {
-  "base": "215038746359a252cf10e12c2f02bbab2a7f4286",
+  "base": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
   "totals": {
-    "added": 36,
-    "modified": 1,
-    "deleted": 8,
-    "unchanged": 15,
+    "added": 29,
+    "modified": 3,
+    "deleted": 4,
+    "unchanged": 17,
     "commented": 0,
-    "disabled": 0,
+    "disabled": 2,
     "reenabled": 0,
     "runningBefore": 24,
-    "runningAfter": 52,
-    "gained": 36,
-    "lost": 8,
+    "runningAfter": 47,
+    "gained": 29,
+    "lost": 6,
     "viaHelper": 0
   },
   "tests": [
     {
-      "name": "defaultPage_isTheTenLatestVisits",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "defaultsToTheFirstTenNewestVisits",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
       "status": "added",
-      "line": 73
+      "line": 16
     },
     {
-      "name": "aVisitCarriesItsPetAndOwner",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "snapsSizeToTheNearestAllowedOne",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
       "status": "added",
-      "line": 89
+      "line": 28
     },
     {
-      "name": "lastPartialPage",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "unreadableSizeServesTen",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
       "status": "added",
-      "line": 105
+      "line": 34
     },
     {
-      "name": "pagePastTheEnd_isEmptyWithTotals",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "readsThePageLeniently",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
       "status": "added",
-      "line": 117
+      "line": 40
     },
     {
-      "name": "sortByDateAscending",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "acceptsEveryColumnInBothDirections",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
       "status": "added",
-      "line": 129
+      "line": 52
     },
     {
-      "name": "sortByDescription",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "aColumnWithoutDirectionSortsAscending",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
       "status": "added",
-      "line": 139
+      "line": 58
     },
     {
-      "name": "sortByPet_thenLatestFirst",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "anUnknownSortFallsBackToNewestFirst",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
       "status": "added",
-      "line": 150
+      "line": 65
     },
     {
-      "name": "sortByOwnerName_firstNameThenLastName",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "sortsByTheColumnThenByIdForAStablePaging",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java",
+      "status": "added",
+      "line": 70
+    },
+    {
+      "name": "servesTheNewestTenFirst",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+      "status": "added",
+      "line": 92
+    },
+    {
+      "name": "servesEveryColumnOfTheRow",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+      "status": "added",
+      "line": 106
+    },
+    {
+      "name": "servesTheSecondPage",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+      "status": "added",
+      "line": 120
+    },
+    {
+      "name": "sortsByAnyColumn",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+      "status": "added",
+      "line": 138
+    },
+    {
+      "name": "anUnknownSortServesNewestFirst",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+      "status": "added",
+      "line": 146
+    },
+    {
+      "name": "aSizeNotOfferedSnapsToTheNearestOne",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+      "status": "added",
+      "line": 154
+    },
+    {
+      "name": "aPagePastTheEndServesTheLastPage",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
       "status": "added",
       "line": 162
     },
     {
-      "name": "sortWithoutDirection_isAscending",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "aPageWhoseOffsetOverflowsAnIntServesTheLastPage",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
       "status": "added",
-      "line": 171
+      "line": 170
     },
     {
-      "name": "identicalVisits_onAPageBoundary_appearExactlyOnce",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "garbageParamsNeverFail",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
       "status": "added",
-      "line": 180
+      "line": 178
     },
     {
-      "name": "sizeAtTheCap_isAccepted",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "anEmptyClinicServesAnEmptyFirstPage",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
       "status": "added",
-      "line": 192
+      "line": 185
     },
     {
-      "name": "sizeAboveTheCap_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
+      "name": "logsTheOwnersServed",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
       "status": "added",
-      "line": 197
-    },
-    {
-      "name": "sizeZero_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-      "status": "added",
-      "line": 204
-    },
-    {
-      "name": "negativePage_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-      "status": "added",
-      "line": 211
-    },
-    {
-      "name": "unsupportedSortKey_isRejected",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-      "status": "added",
-      "line": 218
-    },
-    {
-      "name": "aPageLoadsPetsAndOwnersInTheSameQuery_notOneQueryPerVisit",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitListTest.java",
-      "status": "added",
-      "line": 225
+      "line": 196
     },
     {
       "name": "getByIdOk",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 89
+      "line": 92
     },
     {
       "name": "getById_notFound",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 98
+      "line": 101
+    },
+    {
+      "name": "getAll",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "modified",
+      "line": 108,
+      "silenced": "disabled"
+    },
+    {
+      "name": "getAll_returnsEnrichedFields",
+      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+      "status": "modified",
+      "line": 124,
+      "silenced": "disabled"
     },
     {
       "name": "create_invalid",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 104
+      "line": 149
     },
     {
       "name": "update_invalid",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 117
+      "line": 162
     },
     {
       "name": "delete_ok",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 128
+      "line": 173
     },
     {
       "name": "delete_notFound",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 137
+      "line": 182
     },
     {
       "name": "create_ok",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 143
+      "line": 188
     },
     {
       "name": "update_ok",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 159
+      "line": 204
     },
     {
       "name": "findVisitsByPetId",
       "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
       "status": "unchanged",
-      "line": 174
+      "line": 219
     },
     {
-      "name": "getAll",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-      "status": "deleted",
-      "line": 102,
-      "baseLine": 106,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L106"
-    },
-    {
-      "name": "getAll_returnsEnrichedFields",
-      "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-      "status": "deleted",
-      "line": 102,
-      "baseLine": 121,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java#L121"
-    },
-    {
-      "name": "asks for the first page with the server defaults when given no query",
+      "name": "should get a page of visits, passing only the params given",
       "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "added",
-      "line": 35
+      "line": 31
     },
     {
-      "name": "sends every query parameter it is given",
+      "name": "should ask for the default page when the URL names none",
       "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "added",
-      "line": 42
+      "line": 39
     },
     {
       "name": "should get visit by id",
       "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "unchanged",
-      "line": 49
+      "line": 44
     },
     {
       "name": "should add visit via owner/pet URL",
       "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "unchanged",
-      "line": 56
+      "line": 51
     },
     {
       "name": "should update visit",
       "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "unchanged",
-      "line": 64
+      "line": 59
     },
     {
       "name": "should delete visit",
       "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "unchanged",
-      "line": 72
+      "line": 67
     },
     {
       "name": "should return expected visits",
       "path": "petclinic-frontend/src/app/visits/visit.service.spec.ts",
       "status": "deleted",
-      "line": 32,
+      "line": 31,
       "baseLine": 31,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-frontend/src/app/visits/visit.service.spec.ts#L31"
+      "baseSha": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/ad1fb1d35662f8fd94ed202fc3572f309e185dbd/petclinic-frontend/src/app/visits/visit.service.spec.ts#L31"
     },
     {
-      "name": "asks for the first page of the latest visits when the URL says nothing",
+      "name": "should create",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "unchanged",
+      "line": 53
+    },
+    {
+      "name": "asks for the page, size and sort in the URL",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "added",
-      "line": 69
+      "line": 57
     },
     {
-      "name": "asks for what the URL says, with its 1-based page turned 0-based",
+      "name": "shows the rows, paging and sort the backend served",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "added",
-      "line": 75
+      "line": 65
     },
     {
-      "name": "falls back to the defaults for values the URL gets wrong",
+      "name": "re-queries when the URL changes",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "added",
-      "line": 82
+      "line": 76
     },
     {
-      "name": "shows each visit with its pet and a link to its owner",
+      "name": "puts a new sort in the URL, back on the first page",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "added",
-      "line": 89
+      "line": 84
     },
     {
-      "name": "every column can be sorted",
+      "name": "puts a new page and size in the URL",
+      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
+      "status": "added",
+      "line": 93
+    },
+    {
+      "name": "shows \"No visits found.\" when the clinic has no visits",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "added",
       "line": 100
     },
     {
-      "name": "offers pages of 5, 10 or 20 visits",
+      "name": "renders owner cell as a link to /owners/{ownerId}",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
+      "status": "modified",
       "line": 108
-    },
-    {
-      "name": "moving to another page keeps the sort and size",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 112
-    },
-    {
-      "name": "a new page size goes back to the first page",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 121
-    },
-    {
-      "name": "a new sort goes back to the first page",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 130
-    },
-    {
-      "name": "leaves the URL clean when everything is back to its default",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 139
-    },
-    {
-      "name": "shows \"No visits found.\" when there are none",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 148
-    },
-    {
-      "name": "shows a failure as an error, not as \"no visits\"",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 156
-    },
-    {
-      "name": "shows a failed navigation as an error",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 164
-    },
-    {
-      "name": "moves to the last page when the URL points past it",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 176
-    },
-    {
-      "name": "only the latest query may answer",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "added",
-      "line": 186
-    },
-    {
-      "name": "should create",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "deleted",
-      "line": 66,
-      "baseLine": 53,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L53"
     },
     {
       "name": "loads and sorts visits descending by date",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "deleted",
-      "line": 75,
+      "line": 57,
       "baseLine": 57,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L57"
+      "baseSha": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/ad1fb1d35662f8fd94ed202fc3572f309e185dbd/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L57"
     },
     {
       "name": "shows \"No visits found.\" when service returns empty list",
       "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
       "status": "deleted",
-      "line": 79,
+      "line": 62,
       "baseLine": 66,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L66"
+      "baseSha": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/ad1fb1d35662f8fd94ed202fc3572f309e185dbd/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L66"
     },
     {
-      "name": "renders owner cell as a link to /owners/{ownerId}",
-      "path": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts",
-      "status": "deleted",
-      "line": 86,
-      "baseLine": 76,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts#L76"
+      "name": "Clicking the <column> header <clicks> sorts the first page <direction>",
+      "path": "petclinic-test/src/visits-sort.feature",
+      "status": "added",
+      "line": 7
     },
     {
       "name": "Visits Page",
       "path": "petclinic-test/src/visits.spec.ts",
-      "status": "modified",
+      "status": "unchanged",
       "line": 10
     },
     {
-      "name": "shows the ten latest visits on initial load",
+      "name": "shows the first page of visits on initial load",
       "path": "petclinic-test/src/visits.spec.ts",
       "status": "added",
-      "line": 37
-    },
-    {
-      "name": "clicking a column header sorts by it and keeps the sort in the URL",
-      "path": "petclinic-test/src/visits.spec.ts",
-      "status": "added",
-      "line": 47
-    },
-    {
-      "name": "a page of 5 visits, then the next one",
-      "path": "petclinic-test/src/visits.spec.ts",
-      "status": "added",
-      "line": 58
+      "line": 30
     },
     {
       "name": "rows are sorted descending by date",
       "path": "petclinic-test/src/visits.spec.ts",
       "status": "unchanged",
-      "line": 70
+      "line": 47
     },
     {
       "name": "owner link navigates to owner detail",
       "path": "petclinic-test/src/visits.spec.ts",
       "status": "unchanged",
-      "line": 78
+      "line": 55
     },
     {
       "name": "shows all visits on initial load",
@@ -396,8 +344,8 @@
       "status": "deleted",
       "line": 30,
       "baseLine": 30,
-      "baseSha": "215038746359a252cf10e12c2f02bbab2a7f4286",
-      "baseUrl": "https://github.com/victorrentea/petclinic/blob/215038746359a252cf10e12c2f02bbab2a7f4286/petclinic-test/src/visits.spec.ts#L30"
+      "baseSha": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
+      "baseUrl": "https://github.com/victorrentea/petclinic/blob/ad1fb1d35662f8fd94ed202fc3572f309e185dbd/petclinic-test/src/visits.spec.ts#L30"
     }
   ]
 }

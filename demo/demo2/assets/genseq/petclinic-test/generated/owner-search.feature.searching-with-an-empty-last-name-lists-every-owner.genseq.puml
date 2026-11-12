@@ -12,9 +12,7 @@ participant Backend
 participant DB
 [-> Browser: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:30{Click to open the line that sent this request: owner-list.component.ts:30} OwnerService.getOwners ↗]]
 activate Browser
-Browser -> Backend: [[genseq://0h0ihxd{Click for the request as it was sent} List owners\nGET /api/owners ⊕]]
-activate Backend
-Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:89{Click to open OwnerRestController.listOwners} OwnerRestController.listOwners ↗]]
+Browser -> Backend: [[genseq://0tbmqzh{Click for the request as it was sent} List owners\nGET /api/owners ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:12{Click to open OwnerRepository.findByLastNameStartingWith} OwnerRepository.findByLastNameStartingWith ↗]]
 activate Backend
@@ -79,15 +77,12 @@ Backend -> DB: [[genseq://14lgvhs{Click for the statement behind this call} sele
 Backend -> DB: [[genseq://1tjajq1{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://0ccg4wn{Click for the statement behind this call} select pets ⊕]]
 Backend -> DB: [[genseq://0chbrim{Click for the statement behind this call} select visits ⊕]]
-deactivate Backend
 Backend --> Browser: [[genseq://0ke7864{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Browser
 [-> Browser: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:48{Click to open the line that sent this request: owner-list.component.ts:48 ← owner-list.component.html:18} OwnerService.getOwners ↗]]
 activate Browser
-Browser -> Backend: [[genseq://0h0ihxd{Click for the request as it was sent} List owners\nGET /api/owners ⊕]]
-activate Backend
-Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java:89{Click to open OwnerRestController.listOwners} OwnerRestController.listOwners ↗]]
+Browser -> Backend: [[genseq://0tbmqzh{Click for the request as it was sent} List owners\nGET /api/owners ⊕]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/OwnerRepository.java:12{Click to open OwnerRepository.findByLastNameStartingWith} OwnerRepository.findByLastNameStartingWith ↗]]
 activate Backend
@@ -152,7 +147,6 @@ Backend -> DB: [[genseq://14lgvhs{Click for the statement behind this call} sele
 Backend -> DB: [[genseq://1tjajq1{Click for the statement behind this call} select visits ⊕]]
 Backend -> DB: [[genseq://0ccg4wn{Click for the statement behind this call} select pets ⊕]]
 Backend -> DB: [[genseq://0chbrim{Click for the statement behind this call} select visits ⊕]]
-deactivate Backend
 Backend --> Browser: [[genseq://0ke7864{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Browser

@@ -1,0 +1,40 @@
+{
+  "version": 3,
+  "details": {
+    "0jjpnwy": {
+      "title": "SELECT new victor.training.petclinic.rest.dto.VisitRowDto(v.id, v.date, v.description, p.id, p.name, o.id, o.firstName, o.lastName) FROM Visit v JOIN …",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.name, o1_0.id, o1_0.first_name, o1_0.last_name\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date, v1_0.id\nFETCH FIRST ? rows only",
+          "alternate": {
+            "label": "",
+            "text": "SELECT v1_0.id, v1_0.visit_date, v1_0.description, p1_0.id, p1_0.name, o1_0.id, o1_0.first_name, o1_0.last_name\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id\nORDER BY v1_0.visit_date, v1_0.id\nFETCH FIRST 5 rows only"
+          }
+        }
+      ]
+    },
+    "00ia1sq": {
+      "title": "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner o",
+      "steps": [
+        {
+          "label": "",
+          "text": "SELECT count(v1_0.id)\nFROM visits v1_0\nJOIN pets p1_0\nON p1_0.id=v1_0.pet_id\nJOIN owners o1_0\nON o1_0.id=p1_0.owner_id"
+        }
+      ]
+    },
+    "077m3ln": {
+      "title": "Test → Backend: GET /api/visits",
+      "steps": [
+        {
+          "label": "request",
+          "text": "GET /api/visits?size=5&sort=date,asc"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "/api/visits?size=5&sort=date,asc"
+      }
+    }
+  }
+}

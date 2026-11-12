@@ -1,182 +1,25 @@
 {
- "base": "d0a6aab756bb793756f236f1a6b66e626406abc4",
+ "base": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 24,
- "implementation": "6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9",
- "review": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
- "session": "498ee103-9160-4f7a-be05-c641ebd16920",
+ "commits": 3,
+ "implementation": "d21158744e03c0b1167df0eb57be9089c71b1976",
+ "review": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
+ "session": "1c2f57a0-d326-4ee3-931a-392042066103",
  "fallback": false,
- "after": [
-  "170c2cdb98139d95a9d8b9e33a1df7b063b17ec8",
-  "90e8b7ef7f0f4718700107a15485d0c00af1b04a",
-  "9823b0c64ffa53d9666e87c9bbe7ef1159a72c98",
-  "12dc99e2f93d11e5fd3c9b2d301053ca90e217b7",
-  "8c127cbb9656ac3c21f9a52e52b3d451566a16de",
-  "84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d",
-  "a3845d7dd4d3eb0c84da1d83cad7b91c750700d8",
-  "642db15fc139a4f4542ab08934910ba325df8e80",
-  "6691753d002f66bf0253be30a4504c4532ef78d6",
-  "7c30589ed5661fe2abe635ade560b53189c46ad6",
-  "8c9671cc13121aef3aaf48f256b4f4701a17ec3c",
-  "aa5457fae334095a6129c2af9cef5453f661ffdb",
-  "cdbe640f8215c931b7d7ddaa9702d6c25b6f9db4",
-  "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847",
-  "dd83fb2574e21ca0fa56e2aefc48eb83e6366f0f",
-  "180dbebcbce16f76ef4762b12321d64c05fffe93",
-  "3680a314c00c82aef36198f12f44fc8611004487",
-  "ff12002a902c6e6497a9158294e74b235bf5dfbe",
-  "273460ab0793faf449b0e127d2b2275f287abe51",
-  "498760430fee38bfe7c8ece353f40fa402803e1b",
-  "ca7f0e721744e2ed53b405cbe4faa210df1a90da"
- ],
- "after_detail": [
-  {
-   "sha": "170c2cdb98139d95a9d8b9e33a1df7b063b17ec8",
-   "when": "2026-10-20T06:24:01+02:00",
-   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
-   "auto_fix": false
-  },
-  {
-   "sha": "90e8b7ef7f0f4718700107a15485d0c00af1b04a",
-   "when": "2026-10-20T06:24:31+02:00",
-   "subject": "review-points: base moved past main's c790590b (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "9823b0c64ffa53d9666e87c9bbe7ef1159a72c98",
-   "when": "2026-10-21T09:53:33+03:00",
-   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
-   "auto_fix": false
-  },
-  {
-   "sha": "12dc99e2f93d11e5fd3c9b2d301053ca90e217b7",
-   "when": "2026-10-21T09:56:49+03:00",
-   "subject": "review-points: base moved past main's 664c5b3b (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "8c127cbb9656ac3c21f9a52e52b3d451566a16de",
-   "when": "2026-10-27T16:26:20+02:00",
-   "subject": "Merge main: database published to a host port, start-docker.sh db",
-   "auto_fix": false
-  },
-  {
-   "sha": "84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d",
-   "when": "2026-10-27T16:26:21+02:00",
-   "subject": "review-points: base moved past main's e27182cb (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "a3845d7dd4d3eb0c84da1d83cad7b91c750700d8",
-   "when": "2026-10-30T00:06:45+02:00",
-   "subject": "Merge main: tx frames say how they ended, Tempo without Docker",
-   "auto_fix": false
-  },
-  {
-   "sha": "642db15fc139a4f4542ab08934910ba325df8e80",
-   "when": "2026-10-30T00:06:57+02:00",
-   "subject": "review-points: base moved past main's 6ebaae49 (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "6691753d002f66bf0253be30a4504c4532ef78d6",
-   "when": "2026-10-30T00:12:06+02:00",
-   "subject": "Merge main: [committed] beside a tx frame is grey from the diagram header",
-   "auto_fix": false
-  },
-  {
-   "sha": "7c30589ed5661fe2abe635ade560b53189c46ad6",
-   "when": "2026-10-30T00:12:06+02:00",
-   "subject": "review-points: base moved past main's 21503874 (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "8c9671cc13121aef3aaf48f256b4f4701a17ec3c",
-   "when": "2026-11-06T07:04:58+02:00",
-   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
-   "auto_fix": false
-  },
-  {
-   "sha": "aa5457fae334095a6129c2af9cef5453f661ffdb",
-   "when": "2026-11-06T07:05:59+02:00",
-   "subject": "review-points: base moved past main's 051b601f (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "cdbe640f8215c931b7d7ddaa9702d6c25b6f9db4",
-   "when": "2026-11-06T09:11:07+02:00",
-   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
-   "auto_fix": false
-  },
-  {
-   "sha": "a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847",
-   "when": "2026-11-06T09:11:47+02:00",
-   "subject": "review-points: base moved past main's b2bcb848 (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "dd83fb2574e21ca0fa56e2aefc48eb83e6366f0f",
-   "when": "2026-11-06T09:41:53+02:00",
-   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
-   "auto_fix": false
-  },
-  {
-   "sha": "180dbebcbce16f76ef4762b12321d64c05fffe93",
-   "when": "2026-11-06T09:42:01+02:00",
-   "subject": "review-points: base moved past main's 7e688e70 (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "3680a314c00c82aef36198f12f44fc8611004487",
-   "when": "2026-11-06T09:51:33+02:00",
-   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
-   "auto_fix": false
-  },
-  {
-   "sha": "ff12002a902c6e6497a9158294e74b235bf5dfbe",
-   "when": "2026-11-06T09:51:33+02:00",
-   "subject": "review-points: base moved past main's c70d6642 (merged)",
-   "auto_fix": false
-  },
-  {
-   "sha": "273460ab0793faf449b0e127d2b2275f287abe51",
-   "when": "2026-11-06T09:54:13+02:00",
-   "subject": "Regenerate the browser sequence diagrams: request arrows link to this branch's lines",
-   "auto_fix": false
-  },
-  {
-   "sha": "498760430fee38bfe7c8ece353f40fa402803e1b",
-   "when": "2026-11-06T18:37:45+02:00",
-   "subject": "Merge remote-tracking branch 'origin/main' into visits-paginated",
-   "auto_fix": false
-  },
-  {
-   "sha": "ca7f0e721744e2ed53b405cbe4faa210df1a90da",
-   "when": "2026-11-06T18:37:59+02:00",
-   "subject": "review-points: base moved past main's 78f54394 (merged)",
-   "auto_fix": false
-  }
- ],
- "review_when": "2026-10-10T23:30:17+03:00",
+ "after": [],
+ "after_detail": [],
+ "review_when": "2026-11-12T00:34:46+01:00",
  "takeover": null,
  "auto_fixes": [
   {
-   "sha": "e1d375177ab3e6da286947d07d9d97d3d7cfb9a1",
-   "when": "2026-10-10T23:21:05+03:00",
-   "subject": "[auto-fix] Visits paging: sort hint fits the line gate; visit-count step reads the pet's own visits"
-  },
-  {
-   "sha": "4321c5bc3d67629c04c6eb2555c96b4d917d5efd",
-   "when": "2026-10-10T23:30:17+03:00",
-   "subject": "[auto-fix] Visits grid: a failed navigation shows as an error; injected services readonly"
+   "sha": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
+   "when": "2026-11-12T00:34:46+01:00",
+   "subject": "[auto-fix] Cap the visits page so its offset fits an int; settle Sonar's floating promise; sharpen the sort test"
   }
  ],
  "review_commits": [
-  "e1d375177ab3e6da286947d07d9d97d3d7cfb9a1",
-  "4321c5bc3d67629c04c6eb2555c96b4d917d5efd"
+  "08f6593e35fd67c82bef5b3223bdcfd317f60dc3"
  ],
- "warnings": [
-  "2 commits carry a Review-Points trailer (e1d37517, 4321c5bc); taking the last one as the review commit. The fixes are read from the implementation to it, so every one of them counts as a fix commit \u2014 one round recorded in 2 commits, or several rounds; record-review's finish now amends its own unpushed commit instead."
- ]
+ "warnings": []
 }

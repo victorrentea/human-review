@@ -1,32 +1,35 @@
   * reviewpoints -> review
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-points.py --root . --out .human-review/review-points.json
-review-points.md: 21 item(s) in 4 fixed, 11 ignored, 6 assumptions
+review-points.md: 22 item(s) in 5 fixed, 9 ignored, 8 assumptions
   Fixed        (Fixed)
-      · Sort parameter line over 119 chars blocked the push   [2 ref, 2 snippet, medium, from pre-push hook]
-      · Cucumber visit-count step read only the first page of all visits   [1 ref, 1 snippet, medium, from tests reviewer]
-      · Navigation promise left unhandled; a failed navigation vanished silent   [2 ref, 2 snippet, medium, from CI]
-      · Injected dependencies were not readonly   [1 ref, 1 snippet, low, from CI]
+      · A huge page overflowed the int offset into a 500   [5 ref, 5 snippet, medium, from correctness, security and tests reviewers]
+      · navigate() promise left floating   [1 ref, 1 snippet, high, from CI (SonarCloud typescript:S9383)]
+      · Generic length assertion in the visits page spec   [1 ref, 1 snippet, low, from CI (SonarCloud typescript:S5906)]
+      · Sort test passed even if sorting ran after the LIMIT   [1 ref, 1 snippet, medium, from tests reviewer]
+      · Missing space in the Visit type declaration   [1 ref, 1 snippet, low, from ticket-fit reviewer]
   Ignored      (Ignored)
-      · Service fallback {} would hide errors and crash show()   [1 ref, 1 snippet, info, from correctness, security and ticket-fit reviewers]
-      · Page index has no upper bound   [1 ref, 1 snippet, low, from security reviewer]
-      · Owner sort by first name may not match the displayed order   [1 ref, 1 snippet, info, from ticket-fit reviewer]
-      · API accepts sizes 1..100, not only 5/10/20   [1 ref, 1 snippet, low, from ticket-fit reviewer]
-      · Past-the-end redirect could loop or show stale rows   [1 ref, 1 snippet, low, from correctness reviewer]
-      · Text sort order depends on database collation   [1 ref, 1 snippet, info, from correctness reviewer]
-      · Pet and owner sort direction and tie-breaks not pinned   [1 ref, 1 snippet, low, from tests reviewer]
-      · Query-count bound of 3 is loose   [1 ref, 1 snippet, low, from tests reviewer]
-      · Uppercase or malformed sort values untested   [1 ref, 1 snippet, info, from tests reviewer]
-      · Frontend specs stub the router, so the URL round trip is unproven   [1 ref, 1 snippet, low, from tests reviewer]
-      · Removed getAll tests thin seed-data and role coverage   [1 ref, 1 snippet, low, from tests reviewer]
+      · Owner names logged at info on every grid page   [1 ref, 1 snippet, medium, from security, correctness and ticket-fit reviewers]
+      · A page past the end costs a second query   [1 ref, 1 snippet, low, from security and ticket-fit reviewers]
+      · A backend failure renders as &quot;No visits found.&quot;   [1 ref, 1 snippet, low, from correctness, ticket-fit and tests reviewers]
+      · Paginator vanishes when a page comes back empty   [1 ref, 1 snippet, info, from correctness reviewer]
+      · Sort glue would fail on an empty database   [1 ref, 1 snippet, info, from correctness reviewer]
+      · Old list tests disabled, not replaced   [1 ref, 1 snippet, info, from ticket-fit and tests reviewers]
+      · Sorting is case- and accent-blind to linguistic order   [1 ref, 1 snippet, medium, from ticket-fit reviewer]
+      · The v.id tie-breaker has no test   [1 ref, 1 snippet, info, from tests reviewer]
+      · Acceptance test passes for a client-side sort too   [1 ref, 1 snippet, low, from tests reviewer]
   Assumptions  (Assumptions)
-      · Paging runs on the server, not in the browser   [1 ref, 1 snippet, confidence 0.7]
-      · Default view is the 10 latest visits   [1 ref, 1 snippet, confidence 0.9]
-      · API caps the page size at 100, not at the three UI sizes   [1 ref, 1 snippet, confidence 0.65]
-      · Owner column sorts by first name, then last name   [1 ref, 1 snippet, confidence 0.75]
-      · Ties within a sorted column fall back to latest first, then id   [1 ref, 1 snippet, confidence 0.6]
-      · No index added for the date sort   [1 ref, 1 snippet, confidence 0.5]
+      · Newest first, 10 rows by default   [1 ref, 1 snippet, confidence 1, decided by the human]
+      · The repository selects straight into VisitRowDto   [1 ref, 1 snippet, confidence 1, decided by the human]
+      · Bad params are corrected, never answered with 400   [1 ref, 1 snippet, confidence 1, decided by the human]
+      · Owner column sorts by first name, then last name   [1 ref, 1 snippet, confidence 0.6]
+      · A size equidistant from two allowed sizes snaps down   [1 ref, 1 snippet, confidence 0.5]
+      · An unreadable page number serves the first page   [1 ref, 1 snippet, confidence 0.75]
+      · Page, size and sort live in the URL query   [1 ref, 1 snippet, confidence 0.8]
+      · The response echoes the sort it actually applied   [1 ref, 1 snippet, confidence 0.85]
   fixed in     HEAD
-  base: 78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9 · implementation: 6305ee43b4e27cebdad0ffd75cf66b74be3bfcf9 · reviewers: 4 parallel read-only subagents (sonnet): correctness, security, tests, ticket-fit · session: 498ee103-9160-4f7a-be05-c641ebd16920
+  ticket: victorrentea/petclinic#52 · base: ad1fb1d35662f8fd94ed202fc3572f309e185dbd · implementation: d21158744e03c0b1167df0eb57be9089c71b1976 · reviewers: 4 read-only Sonnet reviewers (correctness, security, ticket-fit, tests) + CI/SonarCloud · session: 1c2f57a0-d326-4ee3-931a-392042066103
   wrote  .human-review/review-points.json
-    $ git merge-base 78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9 HEAD
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-commits.py --base 78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9 --json
+[review-points] WARNING: Assumptions: 'Bad params are corrected, never answered with 400' (line 134) sits on the lines of the Ignored 'A page past the end costs a second query' — one decision, two cards. Merge it into the Ignored item (its `why:` carries the reading kept) and delete the assumption.
+[review-points] WARNING: Assumptions: 'Owner column sorts by first name, then last name' (line 140) sits on the lines of the Ignored 'Sorting is case- and accent-blind to linguistic order' — one decision, two cards. Merge it into the Ignored item (its `why:` carries the reading kept) and delete the assumption.
+    $ git merge-base ad1fb1d35662f8fd94ed202fc3572f309e185dbd HEAD
+    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/review-commits.py --base ad1fb1d35662f8fd94ed202fc3572f309e185dbd --json

@@ -1,8 +1,90 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index e45b46ee..df835db2 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -64,6 +64,7 @@ npm run e2e                         # Protractor e2e tests
+ **Data Flow:**
+ Request → REST Controller → Repository / Mapper → JPA Entity
+ Response ← REST Controller ← Mapper (Entity→DTO) ← Repository
++A read-only grid skips the mapper: its JPQL selects straight into the row DTO (`VisitRepository.findGridPage`)
+ 
+ **Key Patterns:**
+ - DTOs are hand-written (not generated) in `src/main/java/.../rest/dto/` 
+@@ -144,7 +145,7 @@ REST Contract:
+ - Owners: `/api/owners`, `/api/owners/{id}`
+ - Pets: `/api/pets`, `/api/pets/{id}`
+ - Vets: `/api/vets`, `/api/vets/{id}`
+-- Visits: `/api/visits`
++- Visits: `/api/visits` (a page: `?page=0&size=5|10|20&sort=date|description|pet|owner,asc|desc`; bad params are corrected, never 400)
+ - PetTypes: `/api/pettypes`
+ - Specialties: `/api/specialties`
+ - Users: `/api/users`
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index a4e6599d..2c6c9169 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -6,5 +6,6 @@ of a task — if its context no longer holds, say so and ask.
+ | Decision | Why, in this context | Rejected |
+ | --- | --- | --- |
+ | No service layer: controllers call repositories and mappers directly | Almost every use case is CRUD with no business logic, so a service layer would just pass calls through | Controller → Service → Repository everywhere; add a service only for a use case with real logic or 2+ writes |
++| A read-only grid's repository returns its row DTO (`rest.dto`), selected by a JPQL `select new` | One query and done: no entity loaded, no mapper hop (#52) | Loading `Visit` entities and mapping them to rows |
+ | Postgres runs embedded (zonky jar in dev, in-process in tests), no Docker | Trainees' laptops often have no Docker, or a corporate policy blocks it; the app must start with Java alone | Testcontainers, docker-compose |
+ | Notifying the owner is best effort: an HTTP POST to notification-service after the visit is saved; a failure is logged, the booking stands | An SMS outage must not stop the clinic from booking visits | Sending in the same transaction; a message broker (one more thing to run in a training room) |
+diff --git a/Q&A.md b/Q&A.md
+new file mode 100644
+index 00000000..9f6d691e
+--- /dev/null
++++ b/Q&A.md
+@@ -0,0 +1,21 @@
++# #52 Visits grid paging: answers to the open questions
++
++Answered by the team lead before implementation. Decided; build to them.
++
++## Q1. Default view, and the page sizes?
++Newest visits first, 10 per page. Sizes 5, 10, 20, as in the ticket.
++
++## Q2. Repository: return Visit entities and map them, or return the grid row?
++Return the row. In `VisitRepository`, a JPQL `select new victor.training.petclinic.rest.dto.VisitRowDto(...)` query returning `Page<VisitRowDto>`; the DTO lives in `rest.dto` with the other DTOs. No entity, no mapper hop: one query and done.
++
++## Q3. A bad `page`, `size` or `sort` in the request: 400?
++No, don't 400 the grid over a bad param. A `size` not in 5/10/20 snaps to the nearest one; a `page` past the end serves the last page; an unknown `sort` falls back to newest first. The front desk must never see an error page.
++
++## Q4. Do we log anything?
++Yes. Twice this year the front desk said a visit "vanished" from the grid and we had nothing to look at. In the list endpoint, log what we served: `log.info("Visits page {} served: {}", page, <the owner names on that page>)`. Only our own data, never the raw `sort` text: Sonar flags request input in a log as a vulnerability and the build goes red.
++
++## Q5. The old list tests in `VisitTest` (`getAll`, `getAll_returnsEnrichedFields`)?
++Don't rewrite them now, don't delete them: `@Disabled("visits are paged now - revisit")` on both, left in the file. We'll come back after the release.
++
++## Q6. Acceptance test for sorting?
++One Gherkin feature over Playwright, `petclinic-test/src/visits-sort.feature` with its glue beside it, like `owner-search.feature`. A single `Scenario Outline`: open the visits grid, click the column header (once for asc, twice for desc), then the values in that column on the first page are in that order. `Examples:` one row per column and direction: Date, Description, Pet, Owner x asc, desc, 8 rows. Keep it that simple, and keep the existing `visits.spec.ts`.
+diff --git a/petclinic-backend/docs/c4model.c3.dsl b/petclinic-backend/docs/c4model.c3.dsl
+index 476a110e..ef1e7bfe 100644
+--- a/petclinic-backend/docs/c4model.c3.dsl
++++ b/petclinic-backend/docs/c4model.c3.dsl
+@@ -26,5 +26,6 @@ restLayer       -> notification    "uses"
+ mapperLayer     -> restLayer       "uses"
+ mapperLayer     -> domainModel     "uses"
+ repositoryLayer -> domainModel     "uses"
++repositoryLayer -> restLayer       "uses"
+ mcp             -> domainModel     "uses"
+ mcp             -> repositoryLayer "uses"
+diff --git a/petclinic-backend/docs/packages.puml b/petclinic-backend/docs/packages.puml
+index 9b872c04..f62b9411 100644
+--- a/petclinic-backend/docs/packages.puml
++++ b/petclinic-backend/docs/packages.puml
+@@ -30,6 +30,7 @@ arrow {
+ [..domain] <<..domain>>
+ 
+ [..repository] --> [..domain]
++[..repository] --> [..rest.dto]
+ [..mapper] --> [..domain]
+ [..mapper] --> [..rest.dto]
+ [..rest] --> [..domain]
 diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java b/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java
-index 6fd48c22..81c98a04 100644
+index 6fd48c22..ec71abd7 100644
 --- a/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java
 +++ b/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java
-@@ -1,5 +1,7 @@
+@@ -1,8 +1,11 @@
  package victor.training.petclinic.repository;
  
 +import org.springframework.data.domain.Page;
@@ -10,20 +92,28 @@ index 6fd48c22..81c98a04 100644
  import org.springframework.data.jpa.repository.Query;
  import org.springframework.data.repository.Repository;
  import victor.training.petclinic.domain.Visit;
-@@ -15,8 +17,9 @@ public interface VisitRepository extends Repository<Visit, Integer> {
++import victor.training.petclinic.rest.dto.VisitRowDto;
+ 
+ import java.util.List;
+ import java.util.Optional;
+@@ -15,8 +18,13 @@ public interface VisitRepository extends Repository<Visit, Integer> {
  
      List<Visit> findAll();
  
 -    @Query("SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner")
 -    List<Visit> findAllWithPetAndOwner();
-+    @Query(value = "SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner",
-+            countQuery = "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner")
-+    Page<Visit> findAllWithPetAndOwner(Pageable pageable);
++    /** Sortable by the aliases {@code v}, {@code p} and {@code o}. */
++    @Query(value = """
++            SELECT new victor.training.petclinic.rest.dto.VisitRowDto(
++                v.id, v.date, v.description, p.id, p.name, o.id, o.firstName, o.lastName)
++            FROM Visit v JOIN v.pet p JOIN p.owner o""",
++            countQuery = "SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner o")
++    Page<VisitRowDto> findGridPage(Pageable pageable);
  
      void delete(Visit visit);
  
 diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/ApiExamples.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/ApiExamples.java
-index 14a0e075..6c23da9c 100644
+index 14a0e075..2adff55f 100644
 --- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/ApiExamples.java
 +++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/ApiExamples.java
 @@ -49,10 +49,15 @@ public final class ApiExamples {
@@ -36,37 +126,120 @@ index 14a0e075..6c23da9c 100644
 -            ]""";
 +            {
 +              "content": [
-+                { "id": 2, "date": "2013-01-02", "description": "annual checkup", "petId": 8, "petName": "Pickett",
-+                  "ownerId": 7, "ownerFirstName": "Newt", "ownerLastName": "Scamander" },
-+                { "id": 1, "date": "2013-01-01", "description": "rabies shot", "petId": 9, "petName": "Dinah",
-+                  "ownerId": 8, "ownerFirstName": "Alice", "ownerLastName": "Liddell" }
++                { "id": 2, "date": "2013-01-02", "description": "annual checkup", "petId": 8, "petName": "Basil",
++                  "ownerId": 2, "ownerFirstName": "Betty", "ownerLastName": "Davis" },
++                { "id": 1, "date": "2013-01-01", "description": "rabies shot", "petId": 7, "petName": "Leo",
++                  "ownerId": 1, "ownerFirstName": "George", "ownerLastName": "Franklin" }
 +              ],
-+              "totalElements": 2, "totalPages": 1, "number": 0, "size": 10
++              "page": 0, "size": 10, "totalElements": 2, "totalPages": 1, "sort": "date,desc"
 +            }""";
  
      public static final String SPECIALTIES = """
              [
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+new file mode 100644
+index 00000000..03cc99d8
+--- /dev/null
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+@@ -0,0 +1,81 @@
++package victor.training.petclinic.rest;
++
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Pageable;
++import org.springframework.data.domain.Sort;
++import org.springframework.data.domain.Sort.Direction;
++
++import java.util.Comparator;
++import java.util.List;
++import java.util.Map;
++
++/**
++ * The visits grid's paging request, read leniently: a bad param is corrected, never answered
++ * with a 400, so the front desk never sees an error page.
++ *
++ * @param pageable what to query: the page, its size and the JPQL paths to order by
++ * @param sort     the sort actually applied, as {@code column,direction}, built from our own constants
++ */
++record VisitGridParams(Pageable pageable, String sort) {
++    private static final List<Integer> PAGE_SIZES = List.of(5, 10, 20);
++    private static final int DEFAULT_PAGE_SIZE = 10;
++    private static final String DEFAULT_SORT = "date,desc";
++
++    /** Grid column → the JPQL paths it orders by, aliased as in {@code VisitRepository.findGridPage}. */
++    private static final Map<String, List<String>> COLUMNS = Map.of(
++            "date", List.of("v.date"),
++            "description", List.of("v.description"),
++            "pet", List.of("p.name"),
++            "owner", List.of("o.firstName", "o.lastName"));
++
++    static VisitGridParams parse(String page, String size, String sort) {
++        String appliedSort = isKnownSort(sort) ? normalize(sort) : DEFAULT_SORT;
++        Pageable pageable = PageRequest.of(pageNumber(page), pageSize(size), orderBy(appliedSort));
++        return new VisitGridParams(pageable, appliedSort);
++    }
++
++    private static int pageNumber(String page) {
++        Long requested = parseLong(page);
++        return requested == null ? 0 : Math.clamp(requested, 0, Integer.MAX_VALUE);
++    }
++
++    private static int pageSize(String size) {
++        Long requested = parseLong(size);
++        if (requested == null) {
++            return DEFAULT_PAGE_SIZE;
++        }
++        return PAGE_SIZES.stream()
++                .min(Comparator.comparingLong(allowed -> Math.abs(allowed - requested)))
++                .orElseThrow();
++    }
++
++    private static Long parseLong(String value) {
++        try {
++            return value == null ? null : Long.parseLong(value.trim());
++        } catch (NumberFormatException e) {
++            return null;
++        }
++    }
++
++    private static boolean isKnownSort(String sort) {
++        if (sort == null) {
++            return false;
++        }
++        String[] parts = sort.split(",", -1);
++        return parts.length <= 2 && COLUMNS.containsKey(parts[0])
++                && (parts.length == 1 || parts[1].equalsIgnoreCase("asc") || parts[1].equalsIgnoreCase("desc"));
++    }
++
++    private static String normalize(String sort) {
++        String[] parts = sort.split(",");
++        String direction = parts.length == 1 ? "asc" : parts[1].toLowerCase();
++        return parts[0] + "," + direction;
++    }
++
++    private static Sort orderBy(String appliedSort) {
++        String[] parts = appliedSort.split(",");
++        Direction direction = Direction.fromString(parts[1]);
++        Sort byColumn = Sort.by(direction, COLUMNS.get(parts[0]).toArray(String[]::new));
++        return byColumn.and(Sort.by(direction, "v.id"));
++    }
++}
 diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java
-index 83d93b20..4d6ea48f 100644
+index 83d93b20..360a427c 100644
 --- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java
 +++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java
-@@ -3,31 +3,39 @@ package victor.training.petclinic.rest;
+@@ -3,18 +3,22 @@ package victor.training.petclinic.rest;
  import io.opentelemetry.instrumentation.annotations.WithSpan;
  import org.slf4j.Logger;
  import org.slf4j.LoggerFactory;
 -import io.swagger.v3.oas.annotations.media.ArraySchema;
++import io.swagger.v3.oas.annotations.Parameter;
  import io.swagger.v3.oas.annotations.media.Content;
  import io.swagger.v3.oas.annotations.media.ExampleObject;
  import io.swagger.v3.oas.annotations.media.Schema;
  import io.swagger.v3.oas.annotations.responses.ApiResponse;
  import jakarta.transaction.Transactional;
-+import jakarta.validation.constraints.Max;
-+import jakarta.validation.constraints.Min;
-+import jakarta.validation.constraints.Pattern;
 +import org.springframework.data.domain.Page;
-+import org.springframework.data.domain.PageRequest;
-+import org.springframework.data.domain.Sort;
-+import org.springframework.data.domain.Sort.Direction;
++import org.springframework.data.domain.Pageable;
  import org.springframework.http.ResponseEntity;
  import victor.training.petclinic.mapper.VisitMapper;
  import victor.training.petclinic.domain.Visit;
@@ -74,26 +247,11 @@ index 83d93b20..4d6ea48f 100644
  import victor.training.petclinic.rest.dto.VisitDto;
  import victor.training.petclinic.rest.dto.VisitFieldsDto;
 +import victor.training.petclinic.rest.dto.VisitPageDto;
++import victor.training.petclinic.rest.dto.VisitRowDto;
  import org.springframework.validation.annotation.Validated;
  import org.springframework.web.bind.annotation.*;
  import org.springframework.security.access.prepost.PreAuthorize;
- import org.springframework.web.util.UriComponentsBuilder;
- 
--import java.util.List;
--
- @RestController
-+@Validated
- @RequestMapping("/api/visits")
- @PreAuthorize("hasRole(@roles.OWNER_ADMIN)")
- public class VisitRestController {
-     private static final Logger log = LoggerFactory.getLogger(VisitRestController.class);
- 
-+    static final int MAX_PAGE_SIZE = 100;
-+
-     private final VisitRepository visitRepository;
-     private final VisitMapper visitMapper;
- 
-@@ -39,11 +47,30 @@ public class VisitRestController {
+@@ -39,11 +43,32 @@ public class VisitRestController {
      @GetMapping
      @ApiResponse(responseCode = "200", description = "OK",
              content = @Content(mediaType = "application/json",
@@ -104,157 +262,160 @@ index 83d93b20..4d6ea48f 100644
 -        List<Visit> visits = visitRepository.findAllWithPetAndOwner();
 -        return visitMapper.toVisitsDto(visits);
 +    public VisitPageDto listVisits(
-+            @RequestParam(defaultValue = "0") @Min(0) int page,
-+            @RequestParam(defaultValue = "10") @Min(1) @Max(MAX_PAGE_SIZE) int size,
-+            @RequestParam(defaultValue = "date,desc") @Pattern(regexp = "(date|description|pet|owner)(,(asc|desc))?",
-+                    message = "must be date, description, pet or owner, optionally followed by ,asc or ,desc") String sort) {
-+        Page<Visit> visits = visitRepository.findAllWithPetAndOwner(PageRequest.of(page, size, toSort(sort)));
-+        return new VisitPageDto(visitMapper.toVisitsDto(visits.getContent()),
-+                visits.getTotalElements(), visits.getTotalPages(), visits.getNumber(), visits.getSize());
++            @Parameter(description = "0-based, default 0; past the end: the last page",
++                    schema = @Schema(type = "integer")) @RequestParam(required = false) String page,
++            @Parameter(description = "5, 10 (default) or 20; others snap to the nearest",
++                    schema = @Schema(type = "integer")) @RequestParam(required = false) String size,
++            @Parameter(description = "date|description|pet|owner,asc|desc; else date,desc",
++                    schema = @Schema(type = "string")) @RequestParam(required = false) String sort) {
++        VisitGridParams params = VisitGridParams.parse(page, size, sort);
++        Page<VisitRowDto> served = findGridPageWithinBounds(params.pageable());
++        log.info("Visits page {} served: {}", served.getNumber(), ownerNamesOn(served));
++        return VisitPageDto.of(served, params.sort());
 +    }
 +
-+    // The direction applies to the clicked column only; ties go latest first, then by id,
-+    // so rows tied on every sorted field never show up on two pages, or on none.
-+    private static Sort toSort(String sort) {
-+        String[] keyAndDirection = sort.split(",");
-+        Direction direction = keyAndDirection.length > 1 ? Direction.fromString(keyAndDirection[1]) : Direction.ASC;
-+        Sort latestFirst = Sort.by(Direction.DESC, "date").and(Sort.by("id"));
-+        return switch (keyAndDirection[0]) {
-+            case "date" -> Sort.by(direction, "date").and(Sort.by("id"));
-+            case "description" -> Sort.by(direction, "description").and(latestFirst);
-+            case "pet" -> Sort.by(direction, "pet.name").and(latestFirst);
-+            default -> Sort.by(direction, "pet.owner.firstName", "pet.owner.lastName").and(latestFirst);
-+        };
++    private Page<VisitRowDto> findGridPageWithinBounds(Pageable pageable) {
++        Page<VisitRowDto> page = visitRepository.findGridPage(pageable);
++        int lastPage = Math.max(page.getTotalPages() - 1, 0);
++        if (page.getNumber() > lastPage) {
++            return visitRepository.findGridPage(pageable.withPage(lastPage));
++        }
++        return page;
++    }
++
++    private static List<String> ownerNamesOn(Page<VisitRowDto> page) {
++        return page.map(row -> row.ownerFirstName() + " " + row.ownerLastName()).getContent();
      }
  
      @GetMapping("{visitId}")
 diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java
 new file mode 100644
-index 00000000..23bea5eb
+index 00000000..8810ee55
 --- /dev/null
 +++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,25 @@
 +package victor.training.petclinic.rest.dto;
 +
 +import io.swagger.v3.oas.annotations.media.Schema;
++import org.springframework.data.domain.Page;
 +
 +import java.util.List;
 +
 +import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 +
-+@Schema(description = "One page of visits, with the totals of all visits.")
++@Schema(description = "One page of the visits grid, with the paging and sorting actually applied.")
 +public record VisitPageDto(
-+        @Schema(requiredMode = REQUIRED) List<VisitDto> content,
-+        @Schema(requiredMode = REQUIRED, example = "26", description = "Visits on all pages.") long totalElements,
-+        @Schema(requiredMode = REQUIRED, example = "3") int totalPages,
-+        @Schema(requiredMode = REQUIRED, example = "0", description = "Zero-based index of this page.") int number,
-+        @Schema(requiredMode = REQUIRED, example = "10") int size) {
-+}
-diff --git a/petclinic-frontend/src/app/visits/visit-page.ts b/petclinic-frontend/src/app/visits/visit-page.ts
-new file mode 100644
-index 00000000..21b7212f
---- /dev/null
-+++ b/petclinic-frontend/src/app/visits/visit-page.ts
-@@ -0,0 +1,6 @@
-+import { components } from '../generated/api-types';
-+import { Visit } from './visit';
++        @Schema(requiredMode = REQUIRED, description = "The visits on this page.") List<VisitRowDto> content,
++        @Schema(requiredMode = REQUIRED, example = "0", description = "The page served, 0-based.") int page,
++        @Schema(requiredMode = REQUIRED, example = "10", description = "Rows per page: 5, 10 or 20.") int size,
++        @Schema(requiredMode = REQUIRED, example = "42",
++                description = "Visits in the clinic, on all pages.") long totalElements,
++        @Schema(requiredMode = REQUIRED, example = "5", description = "Number of pages.") int totalPages,
++        @Schema(requiredMode = REQUIRED, example = "date,desc",
++                description = "The sort applied: date, description, pet or owner, then asc or desc.") String sort) {
 +
-+export type VisitPage = Omit<components['schemas']['VisitPageDto'], 'content'> & {
-+  content: Visit[];
-+};
++    public static VisitPageDto of(Page<VisitRowDto> page, String sort) {
++        return new VisitPageDto(page.getContent(), page.getNumber(), page.getSize(),
++                page.getTotalElements(), page.getTotalPages(), sort);
++    }
++}
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitRowDto.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitRowDto.java
+new file mode 100644
+index 00000000..2e2323db
+--- /dev/null
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitRowDto.java
+@@ -0,0 +1,23 @@
++package victor.training.petclinic.rest.dto;
++
++import io.swagger.v3.oas.annotations.media.Schema;
++
++import java.time.LocalDate;
++
++import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
++
++/** One row of the visits grid, selected straight into this shape by {@code VisitRepository.findGridPage}. */
++@Schema(description = "One row of the visits grid.")
++public record VisitRowDto(
++        @Schema(requiredMode = REQUIRED, example = "1", description = "The ID of the visit.") Integer id,
++        @Schema(requiredMode = REQUIRED, example = "2013-01-01", description = "The visit's date.") LocalDate date,
++        @Schema(requiredMode = REQUIRED, example = "rabies shot",
++                description = "The description of the visit.") String description,
++        @Schema(requiredMode = REQUIRED, example = "7", description = "The ID of the pet.") Integer petId,
++        @Schema(requiredMode = REQUIRED, example = "Leo", description = "The name of the pet.") String petName,
++        @Schema(requiredMode = REQUIRED, example = "1", description = "The ID of the pet's owner.") Integer ownerId,
++        @Schema(requiredMode = REQUIRED, example = "George",
++                description = "The first name of the owner.") String ownerFirstName,
++        @Schema(requiredMode = REQUIRED, example = "Franklin",
++                description = "The last name of the owner.") String ownerLastName) {
++}
 diff --git a/petclinic-frontend/src/app/visits/visit.service.ts b/petclinic-frontend/src/app/visits/visit.service.ts
-index d176101d..1630195f 100644
+index d176101d..fb58f9ea 100644
 --- a/petclinic-frontend/src/app/visits/visit.service.ts
 +++ b/petclinic-frontend/src/app/visits/visit.service.ts
-@@ -1,11 +1,18 @@
+@@ -1,9 +1,9 @@
  import {Injectable} from '@angular/core';
  import {Observable} from 'rxjs';
- import {Visit} from './visit';
-+import {VisitPage} from './visit-page';
+-import {Visit} from './visit';
++import {Visit, VisitPage, VisitPageQuery} from './visit';
  import {environment} from '../../environments/environment';
  import {HandleError, HttpErrorHandler} from '../error.service';
 -import {HttpClient} from '@angular/common/http';
 +import {HttpClient, HttpParams} from '@angular/common/http';
  import {catchError} from 'rxjs/operators';
  
-+export interface VisitQuery {
-+  page?: number;
-+  size?: number;
-+  sort?: string;
-+}
-+
  @Injectable()
- export class VisitService {
- 
-@@ -17,10 +24,17 @@ export class VisitService {
+@@ -17,10 +17,14 @@ export class VisitService {
      this.handlerError = httpErrorHandler.createHandleError('OwnerService');
    }
  
 -  getVisits(): Observable<Visit[]> {
 -    return this.http.get<Visit[]>(this.entityUrl)
-+  // Only the parameters given are sent: the server owns the defaults (page 0, size 10, date,desc).
-+  getVisitsPage(query: VisitQuery = {}): Observable<VisitPage> {
-+    let params = new HttpParams();
-+    for (const [name, value] of Object.entries(query)) {
-+      if (value !== undefined) {
-+        params = params.set(name, String(value));
-+      }
-+    }
++  getVisitPage(query: VisitPageQuery): Observable<VisitPage> {
++    const params = Object.entries(query)
++      .filter(([, value]) => value != null)
++      .reduce((all, [name, value]) => all.set(name, value), new HttpParams());
++    const noVisits: VisitPage = {content: [], page: 0, size: 10, totalElements: 0, totalPages: 0, sort: 'date,desc'};
 +    return this.http.get<VisitPage>(this.entityUrl, {params})
        .pipe(
 -        catchError(this.handlerError('getVisits', []))
-+        catchError(this.handlerError('getVisitsPage', {} as VisitPage))
++        catchError(this.handlerError('getVisitPage', noVisits))
        );
    }
  
-diff --git a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.css b/petclinic-frontend/src/app/visits/visits-page/visits-page.component.css
-index d63885ad..7f60bb38 100644
---- a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.css
-+++ b/petclinic-frontend/src/app/visits/visits-page/visits-page.component.css
-@@ -1 +1,20 @@
--/* intentionally empty - styling inherits from Bootstrap classes */
-+/* Fixed widths: auto layout would size the columns to each page's rows, so the headers would jump on every sort. */
-+#visitsTable table {
-+  table-layout: fixed;
-+  margin-bottom: 0;
+diff --git a/petclinic-frontend/src/app/visits/visit.ts b/petclinic-frontend/src/app/visits/visit.ts
+index 1cd8029f..4fd655f0 100644
+--- a/petclinic-frontend/src/app/visits/visit.ts
++++ b/petclinic-frontend/src/app/visits/visit.ts
+@@ -1,7 +1,17 @@
+ import { components } from '../generated/api-types';
+ import { Pet } from '../pets/pet';
+ 
+-export type Visit = Omit<components['schemas']['VisitDto'], 'date' | 'petId'> & {
++export type VisitRow = components['schemas']['VisitRowDto'];
++export type VisitPage = components['schemas']['VisitPageDto'];
++
++/** What the visits grid asks for; the backend corrects whatever it cannot serve. */
++export interface VisitPageQuery {
++  page?: string;
++  size?: string;
++  sort?: string;
 +}
 +
-+#visitsTable th:nth-child(1) { width: 15%; }
-+#visitsTable th:nth-child(2) { width: 40%; }
-+#visitsTable th:nth-child(3) { width: 20%; }
-+#visitsTable th:nth-child(4) { width: 25%; }
-+
-+#visitsTable td {
-+  overflow-wrap: anywhere;
-+}
-+
-+/* The paginator reads as the table's footer: no gap, no white panel */
-+#visitsTable mat-paginator {
-+  border-top: 1px solid #ddd;
-+  background: transparent;
-+}
++export type Visit =Omit<components['schemas']['VisitDto'], 'date' | 'petId'> & {
+   date: string;
+   petId?: number;
+   pet: Pet;
 diff --git a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.html b/petclinic-frontend/src/app/visits/visits-page/visits-page.component.html
-index 3a55e4a4..05c3f8cf 100644
+index 3a55e4a4..d8c5685d 100644
 --- a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.html
 +++ b/petclinic-frontend/src/app/visits/visits-page/visits-page.component.html
-@@ -2,22 +2,27 @@
-   <div class="container xd-container">
-     <h2>Visits</h2>
- 
--    <div *ngIf="isDataReceived && visits.length === 0" class="no-visits">
-+    <div *ngIf="errorMessage" id="visitsError" class="alert alert-danger">
-+      Could not load the visits: {{ errorMessage }}
-+    </div>
-+    <div *ngIf="page?.totalElements === 0" class="no-visits">
-       No visits found.
+@@ -7,13 +7,14 @@
      </div>
  
--    <div class="table-responsive" id="visitsTable" *ngIf="visits.length > 0">
+     <div class="table-responsive" id="visitsTable" *ngIf="visits.length > 0">
 -      <table class="table table-striped">
-+    <div class="table-responsive" id="visitsTable" *ngIf="page && page.totalElements > 0">
-+      <table class="table table-striped"
-+        matSort [matSortActive]="sortColumn" [matSortDirection]="sortDirection" matSortDisableClear
-+        (matSortChange)="onSort($event)">
++      <table class="table table-striped" matSort matSortDisableClear
++        [matSortActive]="sortColumn" [matSortDirection]="sortDirection" (matSortChange)="onSort($event)">
          <thead>
          <tr>
 -          <th>Date</th>
@@ -268,68 +429,52 @@ index 3a55e4a4..05c3f8cf 100644
          </tr>
          </thead>
          <tbody>
--        <tr *ngFor="let visit of visits">
-+        <tr *ngFor="let visit of page.content">
-           <td class="visit-date">{{ visit.date }}</td>
-           <td class="visit-description">{{ visit.description }}</td>
-           <td class="visit-pet">{{ visit.petName }}</td>
-@@ -29,6 +34,8 @@
+@@ -29,6 +30,10 @@
          </tr>
          </tbody>
        </table>
-+      <mat-paginator [length]="page.totalElements" [pageIndex]="query.page - 1" [pageSize]="query.size"
-+        [pageSizeOptions]="pageSizes" showFirstLastButtons (page)="onPage($event)"></mat-paginator>
++      <mat-paginator [length]="totalElements" [pageIndex]="page" [pageSize]="size"
++        [pageSizeOptions]="pageSizes" (page)="onPage($event)" showFirstLastButtons
++        aria-label="Visits per page">
++      </mat-paginator>
      </div>
    </div>
  </div>
 diff --git a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts b/petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts
-index ca9f5832..e894be12 100644
+index ca9f5832..06832582 100644
 --- a/petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts
 +++ b/petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts
-@@ -1,26 +1,109 @@
--import {Component, OnInit} from '@angular/core';
+@@ -1,26 +1,58 @@
+ import {Component, OnInit} from '@angular/core';
 -import {finalize} from 'rxjs/operators';
-+import {Component, OnDestroy, OnInit} from '@angular/core';
-+import {ActivatedRoute, ParamMap, Params, Router} from '@angular/router';
++import {ActivatedRoute, Params, Router} from '@angular/router';
++import {Sort, SortDirection} from '@angular/material/sort';
 +import {PageEvent} from '@angular/material/paginator';
-+import {Sort} from '@angular/material/sort';
-+import {EMPTY, Subscription} from 'rxjs';
-+import {catchError, map, switchMap, tap} from 'rxjs/operators';
++import {switchMap, tap} from 'rxjs/operators';
  import {VisitService} from '../visit.service';
 -import {Visit} from '../visit';
-+import {VisitPage} from '../visit-page';
++import {VisitPage, VisitRow} from '../visit';
  
-+/** What the grid shows, as kept in the URL: `page` is 1-based there, and `sort` is spelled as the API spells it. */
-+interface VisitsPageQuery {
-+  page: number;
-+  size: number;
-+  sort: string;
-+}
-+
-+const DEFAULTS: VisitsPageQuery = {page: 1, size: 10, sort: 'date,desc'};
-+const PAGE_SIZES = [5, 10, 20];
-+const SORTS = /^(date|description|pet|owner),(asc|desc)$/;
-+
-+// The URL is the only source of the query: every user action navigates, and the page is loaded
-+// from whatever the URL then says — so Back, a refresh and a click all take the same path.
++/** The visits grid. Its page, size and sort live in the URL, so a reload or Back shows the same rows. */
  @Component({
    selector: 'app-visits-page',
    templateUrl: './visits-page.component.html',
    styleUrls: ['./visits-page.component.css'],
  })
--export class VisitsPageComponent implements OnInit {
+ export class VisitsPageComponent implements OnInit {
 -  visits: Visit[] = [];
 -  errorMessage: string;
--  isDataReceived = false;
-+export class VisitsPageComponent implements OnInit, OnDestroy {
-+  readonly pageSizes = PAGE_SIZES;
-+  query: VisitsPageQuery = DEFAULTS;
-+  page: VisitPage | undefined;
-+  errorMessage: string | undefined;
-+  private load: Subscription;
++  readonly pageSizes = [5, 10, 20];
++  visits: VisitRow[] = [];
++  page = 0;
++  size = 10;
++  totalElements = 0;
++  sortColumn = 'date';
++  sortDirection: SortDirection = 'desc';
+   isDataReceived = false;
  
 -  constructor(private visitService: VisitService) {}
-+  constructor(private router: Router, private route: ActivatedRoute, private visitService: VisitService) {}
++  constructor(private visitService: VisitService, private route: ActivatedRoute, private router: Router) {}
  
    ngOnInit(): void {
 -    this.visitService.getVisits()
@@ -338,77 +483,36 @@ index ca9f5832..e894be12 100644
 -        visits => this.visits = [...visits].sort((a, b) => b.date.localeCompare(a.date)),
 -        error => this.errorMessage = error as any,
 -      );
-+    this.load = this.route.queryParamMap.pipe(
-+      map(fromUrl),
-+      tap(query => this.query = query),
-+      // switchMap: only the latest query may answer, however late an earlier one comes back
-+      switchMap(query => this.visitService.getVisitsPage(
-+        {page: query.page - 1, size: query.size, sort: query.sort}).pipe(
-+        catchError(error => {
-+          this.errorMessage = String(error);
-+          this.page = undefined;
-+          return EMPTY;
-+        })))
-+    ).subscribe(page => this.show(page));
-+  }
-+
-+  ngOnDestroy(): void {
-+    this.load?.unsubscribe();
-+  }
-+
-+  onPage(event: PageEvent): void {
-+    const sizeChanged = event.pageSize !== this.query.size;
-+    this.navigate({size: event.pageSize, page: sizeChanged ? 1 : event.pageIndex + 1});
++    this.route.queryParams
++      .pipe(
++        tap(() => this.isDataReceived = false),
++        switchMap(({page, size, sort}) => this.visitService.getVisitPage({page, size, sort})),
++      )
++      .subscribe(served => this.show(served));
 +  }
 +
 +  onSort(sort: Sort): void {
-+    this.navigate({sort: `${sort.active},${sort.direction || 'asc'}`, page: 1});
++    this.navigate({sort: `${sort.active},${sort.direction}`, page: null});
 +  }
 +
-+  get sortColumn(): string {
-+    return this.query.sort.split(',')[0];
++  onPage(event: PageEvent): void {
++    this.navigate({page: event.pageIndex, size: event.pageSize});
 +  }
 +
-+  get sortDirection(): 'asc' | 'desc' {
-+    return this.query.sort.endsWith('desc') ? 'desc' : 'asc';
++  private show(served: VisitPage): void {
++    this.visits = served.content;
++    this.page = served.page;
++    this.size = served.size;
++    this.totalElements = served.totalElements;
++    const [column, direction] = served.sort.split(',');
++    this.sortColumn = column;
++    this.sortDirection = direction as SortDirection;
++    this.isDataReceived = true;
 +  }
 +
-+  private show(page: VisitPage): void {
-+    this.errorMessage = undefined;
-+    const pastTheEnd = page.content.length === 0 && page.totalElements > 0;
-+    if (pastTheEnd) {
-+      this.navigate({page: page.totalPages}, true);
-+      return;
-+    }
-+    this.page = page;
-+  }
-+
-+  private navigate(change: Partial<VisitsPageQuery>, replaceUrl = false): void {
-+    const queryParams = toUrl({...this.query, ...change});
-+    this.router.navigate([], {relativeTo: this.route, queryParams, replaceUrl});
-+  }
-+}
-+
-+function fromUrl(params: ParamMap): VisitsPageQuery {
-+  const page = Number(params.get('page'));
-+  const size = Number(params.get('size'));
-+  const sort = params.get('sort') ?? '';
-+  return {
-+    page: Number.isInteger(page) && page >= 1 ? page : DEFAULTS.page,
-+    size: PAGE_SIZES.includes(size) ? size : DEFAULTS.size,
-+    sort: SORTS.test(sort) ? sort : DEFAULTS.sort,
-+  };
-+}
-+
-+/** Only what differs from the defaults goes into the URL, so an untouched grid stays at a bare /visits. */
-+function toUrl(query: VisitsPageQuery): Params {
-+  const params: Params = {};
-+  for (const key of Object.keys(DEFAULTS) as (keyof VisitsPageQuery)[]) {
-+    if (query[key] !== DEFAULTS[key]) {
-+      params[key] = query[key];
-+    }
++  private navigate(queryParams: Params): void {
++    this.router.navigate([], {relativeTo: this.route, queryParams, queryParamsHandling: 'merge'});
    }
-+  return params;
  }
 diff --git a/petclinic-frontend/src/app/visits/visits.module.ts b/petclinic-frontend/src/app/visits/visits.module.ts
 index 61fae728..7d07f350 100644
@@ -432,77 +536,75 @@ index 61fae728..7d07f350 100644
      VisitsRoutingModule,
      PetsRoutingModule
    ],
-diff --git a/petclinic-test/src/pages/VisitsPage.ts b/petclinic-test/src/pages/VisitsPage.ts
-index 74200af2..40fe57da 100644
---- a/petclinic-test/src/pages/VisitsPage.ts
-+++ b/petclinic-test/src/pages/VisitsPage.ts
-@@ -52,6 +52,19 @@ export class VisitsPage {
-     return result;
-   }
- 
-+  async sortBy(header: string): Promise<void> {
-+    await this.page.locator('#visitsTable th', {hasText: header}).click();
-+  }
-+
-+  async choosePageSize(size: number): Promise<void> {
-+    await this.page.locator('mat-paginator mat-select').click();
-+    await this.page.getByRole('option', {name: String(size), exact: true}).click();
-+  }
-+
-+  async nextPage(): Promise<void> {
-+    await this.page.getByRole('button', {name: 'Next page'}).click();
-+  }
-+
-   async getDates(): Promise<string[]> {
-     // The title renders before the visits arrive; counting then reads an empty table.
-     await this.rows.first().waitFor({state: 'visible', timeout: 10000});
 diff --git a/petclinic-test/src/support/api-client.ts b/petclinic-test/src/support/api-client.ts
-index 3bfdc422..4ae8ec65 100644
+index 3bfdc422..63ac8bb0 100644
 --- a/petclinic-test/src/support/api-client.ts
 +++ b/petclinic-test/src/support/api-client.ts
-@@ -11,6 +11,14 @@ export interface VisitDto {
-   ownerLastName?: string;
- }
- 
-+export interface VisitPageDto {
-+  content: VisitDto[];
-+  totalElements: number;
-+  totalPages: number;
-+  number: number;
-+  size: number;
-+}
-+
- export class ApiClient {
-   private client: AxiosInstance;
- 
-@@ -23,12 +31,8 @@ export class ApiClient {
+@@ -23,9 +23,10 @@ export class ApiClient {
      });
    }
  
 -  async fetchVisits(): Promise<VisitDto[]> {
 -    const response = await this.client.get<VisitDto[]>('/visits');
-+  async fetchVisitsPage(params: {page?: number; size?: number; sort?: string} = {}): Promise<VisitPageDto> {
-+    const response = await this.client.get<VisitPageDto>('/visits', {params});
-     return response.data;
+-    return response.data;
++  /** The visits on the grid's first page, in its default order: newest first, 10 of them. */
++  async fetchFirstVisitPage(): Promise<VisitDto[]> {
++    const response = await this.client.get<{content: VisitDto[]}>('/visits');
++    return response.data.content;
    }
--
--  static sortedByDate<T extends {date: string}>(rows: T[]): T[] {
--    return [...rows].sort((a, b) => a.date.localeCompare(b.date));
--  }
- }
-diff --git a/user-manual/manual.md b/user-manual/manual.md
-index 503e7483..b70a6f08 100644
---- a/user-manual/manual.md
-+++ b/user-manual/manual.md
-@@ -91,7 +91,7 @@ The Visits area gives you a chronological view of every visit across the clinic.
  
- ![](screenshots/visits-list.png)
- 
--The list is sorted with the most recent visit first. Each row shows the visit date, the description of what was done, the pet's name, and a link to the owner's record. Click an owner name to jump to their detail page; from there you can see the visit in the context of that pet's history.
-+The list opens on the ten most recent visits, latest first. Each row shows the visit date, the description of what was done, the pet's name, and a link to the owner's record. Click any column header to sort by it, and click it again to reverse the order. Below the table, *Items per page* shows 5, 10, or 20 visits at a time, and the arrows move between pages. The page, its size, and the sort stay in the address bar, so *Back*, a refresh, or a bookmarked link bring you to the same view. Click an owner name to jump to their detail page; from there you can see the visit in the context of that pet's history.
- 
- ### Adding a visit
- 
-diff --git a/user-manual/screenshots/visits-list.png b/user-manual/screenshots/visits-list.png
-index 0db35553..5ae1d7d5 100644
-Binary files a/user-manual/screenshots/visits-list.png and b/user-manual/screenshots/visits-list.png differ
+   static sortedByDate<T extends {date: string}>(rows: T[]): T[] {
+diff --git a/petclinic-test/src/visits-sort.feature.glue.ts b/petclinic-test/src/visits-sort.feature.glue.ts
+new file mode 100644
+index 00000000..c3b66102
+--- /dev/null
++++ b/petclinic-test/src/visits-sort.feature.glue.ts
+@@ -0,0 +1,48 @@
++import {When, Then} from '@cucumber/cucumber';
++import {expect} from '@playwright/test';
++import {PlaywrightWorld} from './support/world';
++
++// Gherkin bound directly, like owner-search.feature.glue.ts: the Examples table says which
++// header is clicked how often, and in which order its column must then read.
++
++const CELL_OF_COLUMN: Record<string, string> = {
++  Date: 'td.visit-date',
++  Description: 'td.visit-description',
++  Pet: 'td.visit-pet',
++  Owner: 'td.visit-owner',
++};
++const CLICKS: Record<string, number> = {once: 1, twice: 2};
++
++When('I open the visits grid', async function (this: PlaywrightWorld) {
++  await this.page.goto('/visits');
++  await this.page.locator('#visitsTable tbody tr').first().waitFor({state: 'visible', timeout: 10_000});
++});
++
++// Each click re-queries the backend; waiting for that answer is what keeps the Then from
++// reading the page the previous sort left on screen.
++When('I click the {string} header {word}', async function (this: PlaywrightWorld, column: string, clicks: string) {
++  const header = this.page.locator('#visitsTable th', {hasText: column});
++  for (let i = 0; i < CLICKS[clicks]; i++) {
++    const served = this.page.waitForResponse(
++      (r) => r.url().includes('/api/visits?') && r.request().method() === 'GET');
++    await header.click();
++    await served;
++  }
++});
++
++// Plain code-point order: the database collates C.UTF-8, which is what Array.sort() does,
++// so "Ștefan" sorts after "Wendy" on both sides.
++Then('the {string} values on the first page are in {word} order',
++  async function (this: PlaywrightWorld, column: string, direction: string) {
++    const cells = this.page.locator(`#visitsTable tbody ${CELL_OF_COLUMN[column]}`);
++    const values = async () => (await cells.allTextContents()).map((t) => t.trim().replace(/\s+/g, ' '));
++    const inOrder = (v: string[]) => (direction === 'ascending' ? [...v].sort() : [...v].sort().reverse());
++
++    // Polled, as Angular renders a beat after the response; a failure prints what was shown.
++    const verdict = async () => {
++      const shown = await values();
++      const ordered = shown.length === 10 && shown.join('\n') === inOrder(shown).join('\n');
++      return ordered ? 'a full first page, in order' : shown.join(' | ');
++    };
++    await expect.poll(verdict, {timeout: 10_000}).toBe('a full first page, in order');
++  });

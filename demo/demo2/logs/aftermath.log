@@ -1,24 +1,3 @@
   * aftermath -> review
     $ git rev-parse HEAD
-    $ git diff --numstat 4321c5bc3d67629c04c6eb2555c96b4d917d5efd..HEAD
-    $ git show --numstat --format= 170c2cdb98139d95a9d8b9e33a1df7b063b17ec8
-    $ git show --numstat --format= 90e8b7ef7f0f4718700107a15485d0c00af1b04a
-    $ git show --numstat --format= 9823b0c64ffa53d9666e87c9bbe7ef1159a72c98
-    $ git show --numstat --format= 12dc99e2f93d11e5fd3c9b2d301053ca90e217b7
-    $ git show --numstat --format= 8c127cbb9656ac3c21f9a52e52b3d451566a16de
-    $ git show --numstat --format= 84bc4aaf29fdb3ef843d16e32a68a4b41962cc2d
-    $ git show --numstat --format= a3845d7dd4d3eb0c84da1d83cad7b91c750700d8
-    $ git show --numstat --format= 642db15fc139a4f4542ab08934910ba325df8e80
-    $ git show --numstat --format= 6691753d002f66bf0253be30a4504c4532ef78d6
-    $ git show --numstat --format= 7c30589ed5661fe2abe635ade560b53189c46ad6
-    $ git show --numstat --format= 8c9671cc13121aef3aaf48f256b4f4701a17ec3c
-    $ git show --numstat --format= aa5457fae334095a6129c2af9cef5453f661ffdb
-    $ git show --numstat --format= cdbe640f8215c931b7d7ddaa9702d6c25b6f9db4
-    $ git show --numstat --format= a4e22e13ae13a3d5c323e5d5c4af6aedca9cc847
-    $ git show --numstat --format= dd83fb2574e21ca0fa56e2aefc48eb83e6366f0f
-    $ git show --numstat --format= 180dbebcbce16f76ef4762b12321d64c05fffe93
-    $ git show --numstat --format= 3680a314c00c82aef36198f12f44fc8611004487
-    $ git show --numstat --format= ff12002a902c6e6497a9158294e74b235bf5dfbe
-    $ git show --numstat --format= 273460ab0793faf449b0e127d2b2275f287abe51
-    $ git show --numstat --format= 498760430fee38bfe7c8ece353f40fa402803e1b
-    $ git show --numstat --format= ca7f0e721744e2ed53b405cbe4faa210df1a90da
+    $ git diff --numstat 08f6593e35fd67c82bef5b3223bdcfd317f60dc3..HEAD

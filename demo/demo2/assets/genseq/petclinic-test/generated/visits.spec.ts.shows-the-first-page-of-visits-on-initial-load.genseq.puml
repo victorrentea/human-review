@@ -1,0 +1,25 @@
+@startuml
+' ⚠️  GENERATED FILE — DO NOT EDIT. Every edit is lost on the next run.
+hide footbox
+skinparam hyperlinkUnderline false
+skinparam hyperlinkColor #1A4FA0
+skinparam sequenceGroupFontColor #888888
+skinparam sequenceGroupFontStyle plain
+title [[src://petclinic-test/src/visits.spec.ts:30{Click to open the test} Test: shows the first page of visits on initial load]]
+footer traced because this branch wrote it in src/visits.spec.ts — generated from real traces of end-to-end test runs, do not edit ❗
+participant Browser
+participant Backend
+participant DB
+[-> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:33{Click to open the line that sent this request: visits-page.component.ts:33} VisitService.getVisitPage ↗]]
+activate Browser
+Browser -> Backend: [[genseq://1o6i1eh{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
+activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:27{Click to open VisitRepository.findGridPage} VisitRepository.findGridPage ↗]]
+activate Backend
+Backend -> DB: [[genseq://1tm6i10{Click for the statement behind this call} SELECT new victor.training.petclinic.rest.dto.VisitRowDto(v.id, v.date, v.description, p.id, p.name, o.id, o.firstName, o.lastName) FROM Visit v JOIN … ⊕]]
+Backend -> DB: [[genseq://00ia1sq{Click for the statement behind this call} SELECT count(v) FROM Visit v JOIN v.pet p JOIN p.owner o ⊕]]
+deactivate Backend
+Backend --> Browser: [[genseq://1p9819k{Click for this call’s JSON body} 200 ⊕]]
+deactivate Backend
+deactivate Browser
+@enduml

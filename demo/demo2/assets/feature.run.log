@@ -1,16 +1,16 @@
-[video] the app cannot say which commit it is; this run started it itself, from 273460ab0793faf449b0e127d2b2275f287abe51
-[video] feature-script.js: visits grid: cold open on a deep link; page sizes 5/10/20, next page, sort by Owner/Pet, reload keeps URL state, 9 cues (9 with a box) -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.raw.webm
+[video] the app cannot say which commit it is; this run started it itself, from 08f6593e35fd67c82bef5b3223bdcfd317f60dc3
+[video] feature-script.js: 1/1 changed screens filmed, 6 cues (5 with a box) -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.raw.webm
 [video] viewport 1280x800 @ dpr 1
-[video] narration: 9/9 cues, 29.6s of speech, voice "Samantha"
-[video] cut 80.4s of still footage (27 stretches): 123.5s -> 43.1s
-[annotate] 162 caption states from 162 frames
-[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.webm
-[video] cut 68.6s of still footage (24 stretches): 123.5s -> 54.9s
-[annotate] 180 caption states from 180 frames
-[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-trump.webm
-[video] 🐘 voice -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-trump.webm
-[video] cut 64.8s of still footage (19 stretches): 123.5s -> 58.7s
-[annotate] 180 caption states from 180 frames
-[annotate] 9 captions, 9 spotlights, 9 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-discovery.webm
-[video] Discovery voice -> /Users/victorrentea/workspace/petclinic-visits-paginated/.human-review/assets/feature.voice-discovery.webm
-[video] 43.120000s, 2.3M
+[video] narration: 6/6 cues, 23.8s of speech, voice "Samantha"
+[video] cut 67.5s of still footage (14 stretches): 95.9s -> 28.4s
+[annotate] 134 caption states from 134 frames
+[annotate] 6 captions, 5 spotlights, 6 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.webm
+[video] cut 57.6s of still footage (13 stretches): 95.9s -> 38.3s
+[annotate] 148 caption states from 148 frames
+[annotate] 6 captions, 5 spotlights, 6 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-trump.webm
+[video] 🐘 voice -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-trump.webm
+[video] cut 56.1s of still footage (9 stretches): 95.9s -> 39.8s
+[annotate] 149 caption states from 149 frames
+[annotate] 6 captions, 5 spotlights, 6 spoken -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-discovery.webm
+[video] Discovery voice -> /Users/victorrentea/workspace/petclinic-visits-paginated-v3/.human-review/assets/feature.voice-discovery.webm
+[video] 28.320000s, 1.2M
