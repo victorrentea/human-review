@@ -182,11 +182,13 @@
       // Off the server nothing can be asked: the pick is a preference, not a connection,
       // so it is grey, never green (Victor, 11 Nov 2026: "how do you know an IntelliJ on
       // this branch is there to take commands?"). Green only once a server vouches for it.
+      // And both stay, both grey, ringed like `Static · Serve` beside them (Victor, 12 Nov
+      // 2026): red and the lone survivor are states a server reports, and there is none.
       chip.classList.toggle('ide-on', mine && !near && !gone && SERVED);
-      chip.classList.toggle('ide-picked', mine && !SERVED);
+      chip.classList.toggle('ide-static', local && !SERVED);
       chip.classList.toggle('ide-near', !!near);
-      chip.classList.toggle('ide-off', local && (!mine || gone));
-      chip.hidden = local && !!on && !mine;
+      chip.classList.toggle('ide-off', SERVED && (!mine || gone));
+      chip.hidden = SERVED && !!on && !mine;
       chip.setAttribute('aria-pressed', mine ? 'true' : 'false');
       // One line, what a press does (Victor, 20 Oct 2026: "say click to disconnect IntelliJ,
       // the rest should not be there"). The colour already tells the state.

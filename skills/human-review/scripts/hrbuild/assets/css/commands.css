@@ -396,9 +396,10 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
             background:color-mix(in srgb, var(--ide) 22%, var(--card)); }
 .titlerow .titleside .chip-ide:is(.ide-on, .ide-near, .ide-off):hover {
             background:color-mix(in srgb, var(--ide) 40%, var(--card)); }
-/* Picked on a static page: nothing could check it, so the neutral ring of the page's
-   lines, not the green of a window the server found. */
-.titlerow .titleside .chip-ide.ide-picked { border-color:var(--muted); }
+/* A static page: nothing could check either IDE, so both stay, in the ring of the
+   `Static · Serve` chip beside them — the page's line, 1px — not a server's red or green. */
+.titlerow .titleside .chip-ide.ide-static { border-width:1px; border-color:var(--line); }
+.titlerow .titleside .chip-ide.ide-static:hover { border-color:var(--link); }
 /* IntelliJ's mark is a black square: on the dark page it needs the halo's edge to show. */
 .titlerow .titleside .chip-ide .ij-ico { outline:1px solid color-mix(in srgb, var(--fg) 25%, transparent); }
 @media (prefers-color-scheme:dark) {

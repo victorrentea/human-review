@@ -207,7 +207,7 @@ def test_everything_posted_reads_published_as_grey_text_that_does_nothing(browse
                                    "pr-comments.posted.json": record(sha=_sha(PAYLOAD_TEXT))})
     page.wait_for_function("document.querySelector('.pr-push').dataset.state === 'done'")
     b = page.locator(".pr-push")
-    assert b.inner_text() == "Published on GitHub"
+    assert b.inner_text() == "on GitHub"
     assert b.get_attribute("aria-disabled") == "true"
     assert b.get_attribute("data-tip") == "Published as a review on PR #51 \u2014 2026-10-07 15:28"
     assert not page.locator(".pr-repub").is_visible(), "unchanged: nothing to re-publish"
@@ -312,7 +312,7 @@ def test_a_partial_record_renders_retry_and_its_sentence():
     assert ">Retry</button>" in face and 'data-face="Publish on GitHub"' in face
     assert PARTIAL["message"] in face and "pp-err" in face
     face = build.push_pr_button({"_prPush": {**base, "status": "complete", "message": "x"}})
-    assert ">Published on GitHub</button>" in face and 'data-state="done"' in face
+    assert ">on GitHub</button>" in face and 'data-state="done"' in face
     assert 'aria-disabled="true"' in face and "↗" not in face.split("</button>")[0]
     assert 'data-tip="Published as a review on the pull request — 2026-10-07 15:28"' in face
     assert 'class="pr-repub" hidden' in face

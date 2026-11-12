@@ -203,7 +203,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'The coder 🤖 writes, reviewers attack it, it fixes; <code>/record-review</code> files what it assumed.',
             'Merge risk (🤖): ✅ two-way or ⚠️ one-way door, blast ○ to ●; Publish adds it to the PR.',
-            'IDE logo: green = it has this checkout open; grey = picked but unchecked (static page).',
+            'IDE logo: green = it has this checkout open; grey = static page, nothing checked.',
             'Read the assumptions first: a wrong guess is a wrong feature.',
             'Open issues: you decide, top first: <b>must look</b> › <b>worth a look</b> › <b>nit</b>.',
             'Auto fixed: its icons open the fix commit (GitHub, IDE); stop only at behaviour changes.',

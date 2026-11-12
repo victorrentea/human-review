@@ -745,7 +745,7 @@ def _states(page):
     """Each logo as `app:state`, `app:hidden` when the masthead does not show it."""
     return page.eval_on_selector_all(
         ".chip-ide", "cs => cs.map(c => c.dataset.ide + ':' + (c.hidden ? 'hidden' : "
-        "(['ide-on', 'ide-near', 'ide-off', 'ide-picked'].find(k => c.classList.contains(k))"
+        "(['ide-on', 'ide-near', 'ide-off', 'ide-static'].find(k => c.classList.contains(k))"
         " || '-')))")
 
 
@@ -889,7 +889,8 @@ def _offdisk_page(browser, tmp_path, pick=None):
     f.write_text('<!doctype html><html data-hr-head="abc" data-hr-root="/r"><head>'
                  + '<style>' + build.CSS + '</style>' + build.SERVER_JS + '</head><body>'
                  + '<div class="titlerow"><span class="titleside">' + build.IDE_CHIPS
-                 + '</span></div>'
+                 + '<button type="button" class="chip chip-mode chip-serve" id="hr-serve">'
+                 + 'Static</button></span></div>'
                  + build.gh_comment_link({"_ghUrl": "https://github.com/o/r/pull/51#discussion_r1",
                                           "_ghFile": "vscode://file//r/src/A.java:12:1",
                                           "_ghWhere": "src/A.java:12"})
@@ -913,13 +914,15 @@ def test_off_disk_the_remembered_intellij_pick_words_the_links(browser, tmp_path
 
 
 def test_off_disk_the_logos_toggle_too(browser, tmp_path):
+    """Victor, 12 Nov 2026: off the server both logos stay, both grey, picked or not."""
     page = _offdisk_page(browser, tmp_path)
-    assert _states(page) == ["vscode:ide-off", "idea:ide-off"]
+    assert _states(page) == ["vscode:ide-static", "idea:ide-static"]
     page.click("#hr-ide-idea")
-    assert _states(page) == ["vscode:hidden", "idea:ide-picked"]
+    assert _states(page) == ["vscode:ide-static", "idea:ide-static"]
+    assert page.get_attribute("#hr-ide-idea", "aria-pressed") == "true"
     assert page.locator("a.f-vsc .ide-word").text_content() == "IntelliJ"
     page.click("#hr-ide-idea")
-    assert _states(page) == ["vscode:ide-off", "idea:ide-off"]
+    assert _states(page) == ["vscode:ide-static", "idea:ide-static"]
     assert page.evaluate("localStorage.getItem('hr-ide')") == "none"
     page.close()
 
@@ -930,15 +933,16 @@ def test_off_disk_a_picked_ide_is_grey_never_green_and_says_it_is_not_checked(br
     for pick, name in (("idea", "IntelliJ"), ("vscode", "VS Code")):
         page = _offdisk_page(browser, tmp_path, pick)
         chip = f"#hr-ide-{pick}"
-        assert page.evaluate(f"document.querySelector('{chip}').classList.contains('ide-picked')")
+        assert _states(page) == ["vscode:ide-static", "idea:ide-static"]
         assert not page.evaluate(f"document.querySelector('{chip}').classList.contains('ide-on')")
         tip = page.get_attribute(chip, "data-tip")
         assert tip.startswith(f"Code clicks go to {name}") and "not checked" in tip, tip
-        ring, muted = page.evaluate(
-            f"[getComputedStyle(document.querySelector('{chip}')).borderTopColor,"
-            " (() => { const p = document.createElement('i'); p.style.color = 'var(--muted)';"
-            " document.body.append(p); return getComputedStyle(p).color; })()]")
-        assert ring == muted, (ring, muted)
+        # Both logos ringed exactly like `Static · Serve` beside them: colour and width.
+        ring = ("el => { const s = getComputedStyle(el);"
+                " return [s.borderTopColor, s.borderTopWidth]; }")
+        serve = page.eval_on_selector("#hr-serve", ring)
+        for app in ("vscode", "idea"):
+            assert page.eval_on_selector(f"#hr-ide-{app}", ring) == serve, app
         page.close()
 
 

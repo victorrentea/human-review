@@ -1400,13 +1400,12 @@ REQMAP_CSS = """
    opens on; this only places it in the grid. */
 .reqmap .rm-head{grid-column:1;grid-row:1;display:flex;align-items:center;
   justify-content:space-between;gap:12px;min-width:0}
-/* The switch keeps to the far end of the ticket's header strip, and reads in the muted
-   weight of a control rather than the weight of the login beside it. */
+/* The switch keeps to the far end of the ticket's header strip, in the page's full text
+   colour, bright like the login beside it (Victor, 12 Nov 2026: "alb aprins, nu gri"). */
 .reqmap .rm-semcov{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;
-  gap:6px;font:inherit;font-size:13px;font-weight:600;color:var(--muted,#6b6b6b);cursor:pointer;
+  gap:6px;font:inherit;font-size:13px;font-weight:600;color:var(--fg,#1c1c1c);cursor:pointer;
   user-select:none;white-space:nowrap}
 .reqmap .rm-semcov input{margin:0;cursor:pointer}
-.reqmap .rm-semcov:hover{color:var(--fg,#1c1c1c)}
 /* Unchecked: the ticket as its author wrote it. The fills come off every sentence, and
    the legend under the ticket - which explains nothing once nothing is coloured - keeps
    its height but not its ink, so the card beside it does not jump. */
