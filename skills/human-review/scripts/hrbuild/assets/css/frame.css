@@ -145,7 +145,7 @@ button.diskcopy:hover { opacity:1; }
    the header's: scrolled, the (i) floated over the tab strip (Victor, 9 Oct 2026, on the
    Structure tab). Isolated, 60 and 61 still order the two inside the panel and the whole
    panel paints under the header. Popovers that must cover the header (.tip, .rm-covpop,
-   #genseq-panel, .hrconfirm) live on <body>, outside every panel. */
+   .genseq-held, .hrconfirm) live on <body>, outside every panel. */
 .panel { isolation:isolate; }
 /* The moment before the strip runs. Every panel is in the document and *visible* while
    the earlier scripts measure it -- TABS_JS says why: getBBox() inside a display:none

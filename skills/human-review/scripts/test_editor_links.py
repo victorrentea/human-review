@@ -234,7 +234,7 @@ HREFS = """() => {
   return {src: document.getElementById('src').getAttribute('href'),
           svg: svg.getAttribute('href'),
           xlink: svg.getAttributeNS('http://www.w3.org/1999/xlink', 'href'),
-          handler: document.querySelector('#genseq-panel .genseq-handler').getAttribute('href')};
+          handler: document.querySelector('.genseq-held .genseq-handler').getAttribute('href')};
 }"""
 
 
@@ -305,9 +305,9 @@ def test_the_statement_panel_and_the_scenario_header_follow_the_picked_ide(brows
     try:
         page.click('a[href="genseq://booked"] text')
         hrefs = page.evaluate(HREFS)
-        page.click("#genseq-panel .genseq-handler")
+        page.click(".genseq-held .genseq-handler")
         page.wait_for_timeout(150)
-        assert page.is_visible("#genseq-panel"), "a click inside the panel does not close it"
+        assert page.is_visible(".genseq-held"), "a click inside the panel does not close it"
         page.click('a[href="genseq-scenario://12"] text')
         page.wait_for_timeout(150)
     finally:

@@ -249,7 +249,7 @@ def _page(browser, caps="null"):
 
 
 def _button(page):
-    return page.evaluate("""() => { const b = document.querySelector('#genseq-panel .genseq-bruno');
+    return page.evaluate("""() => { const b = document.querySelector('.genseq-held .genseq-bruno');
         return b && {hidden: b.hidden, tip: b.getAttribute('data-tip'),
                      logo: !!b.querySelector('svg path[fill="#F4AA41"]'),
                      beforeClose: b.nextElementSibling.classList.contains('genseq-close')}; }""")
@@ -263,7 +263,7 @@ def test_off_a_server_the_button_copies_the_request_as_curl(browser):
         assert b == {"hidden": False, "logo": True, "beforeClose": True,
                      "tip": "Copy this request as cURL, to paste into Bruno "
                             "(New Request \u25B8 from cURL)"}
-        page.click("#genseq-panel .genseq-bruno")
+        page.click(".genseq-held .genseq-bruno")
         page.wait_for_function("window.copied.length === 1")
         assert page.evaluate("window.copied") == [
             "curl 'http://localhost:8080/api/owners/1' -H 'Accept: application/json'"]
@@ -271,7 +271,7 @@ def test_off_a_server_the_button_copies_the_request_as_curl(browser):
             "cURL copied \u2014 in Bruno: New Request \u25B8 from cURL"]
         page.keyboard.press("Escape")
         page.click('a[href="genseq://svc"] text')
-        page.click("#genseq-panel .genseq-bruno")
+        page.click(".genseq-held .genseq-bruno")
         page.wait_for_function("window.copied.length === 2")
         assert page.evaluate("window.copied[1]") == (
             "curl -X POST 'http://notification:8090/api/n' -H 'Content-Type: application/json' "
@@ -289,7 +289,7 @@ def test_served_the_button_hands_the_request_to_the_server_and_says_where_it_wen
     try:
         page.click('a[href="genseq://req"] text')
         assert _button(page)["tip"] == "Open this request in Bruno"
-        page.click("#genseq-panel .genseq-bruno")
+        page.click(".genseq-held .genseq-bruno")
         page.wait_for_function("window.flashed.length === 1")
         headers, body = sent[0]
         assert headers["x-human-review-token"] == "tok"
@@ -298,7 +298,7 @@ def test_served_the_button_hands_the_request_to_the_server_and_says_where_it_wen
         assert page.evaluate("window.flashed") == [
             "Opened in Bruno on GET /api/owners/1, environment local"]
         assert page.evaluate("window.copied") == []
-        assert page.evaluate("!document.querySelector('#genseq-panel').hidden"), "panel stays"
+        assert page.evaluate("!document.querySelector('.genseq-held').hidden"), "panel stays"
     finally:
         page.close()
 
@@ -319,12 +319,12 @@ def test_a_request_step_reads_as_an_http_message(browser):
     page, _ = _page(browser)
     try:
         page.click('a[href="genseq://req"] text')
-        parts = page.evaluate("""() => [...document.querySelectorAll('#genseq-panel pre span')]
+        parts = page.evaluate("""() => [...document.querySelectorAll('.genseq-held pre span')]
             .map(s => [s.className, s.textContent])""")
-        text = page.evaluate("document.querySelector('#genseq-panel pre').textContent")
-        label = page.evaluate("document.querySelector('#genseq-panel .genseq-label').textContent")
-        head = page.evaluate("""() => [document.querySelector('#genseq-panel .genseq-title').textContent,
-            document.querySelector('#genseq-panel .genseq-handler').textContent]""")
+        text = page.evaluate("document.querySelector('.genseq-held pre').textContent")
+        label = page.evaluate("document.querySelector('.genseq-held .genseq-label').textContent")
+        head = page.evaluate("""() => [document.querySelector('.genseq-held .genseq-title').textContent,
+            document.querySelector('.genseq-held .genseq-handler').textContent]""")
     finally:
         page.close()
     assert text == REQUEST_TEXT, "every character as the sidecar wrote it"

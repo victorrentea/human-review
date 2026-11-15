@@ -292,20 +292,22 @@ def test_a_resting_pointer_previews_and_only_a_click_keeps(browser, tmp_path):
         assert _open(page, "#genseq-peek") is None, "not until the pointer rests, as tip.js"
         page.wait_for_timeout(200)
         assert _open(page, "#genseq-peek") == "SELECT 1"
-        assert _open(page, "#genseq-panel") is None and not _kept(page, "sql"), "not white"
+        assert _open(page, ".genseq-held") is None and not _kept(page, "sql"), "not white"
         page.mouse.move(600, 400)
         assert _open(page, "#genseq-peek") is None, "volatile: gone with the pointer"
 
         page.hover(SQL)
         page.wait_for_timeout(200)
         page.click(SQL)
-        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql")
+        assert _open(page, ".genseq-held") == "SELECT 1" and _kept(page, "sql")
         assert _open(page, "#genseq-peek") is None, "one panel for one arrow"
         page.mouse.move(600, 400)
         page.wait_for_timeout(200)
-        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql"), "it stays"
+        assert _open(page, ".genseq-held") == "SELECT 1" and _kept(page, "sql"), "it stays"
         page.click(SQL)
-        assert _open(page, "#genseq-panel") is None and not _kept(page, "sql")
+        assert _open(page, ".genseq-held") == "SELECT 1" and _kept(page, "sql"), "only its × closes it"
+        page.click(".genseq-held .genseq-close")
+        assert _open(page, ".genseq-held") is None and not _kept(page, "sql")
         page.wait_for_timeout(200)
         assert _open(page, "#genseq-peek") is None, "closing it does not preview it again"
     finally:
@@ -326,10 +328,10 @@ def test_the_words_of_a_browser_request_open_its_code_and_only_the_marker_opens_
         page.click(CODE)
         assert page.evaluate("window.reached") == "vscode://file/a.component.ts:22:1"
         assert not page.evaluate("window.prevented"), "editor.js must see an untouched click"
-        assert _open(page, "#genseq-panel") is None
+        assert _open(page, ".genseq-held") is None
 
         page.click('a[href="genseq://sql"] text')
-        assert _open(page, "#genseq-panel") == "SELECT 1"
+        assert _open(page, ".genseq-held") == "SELECT 1"
     finally:
         page.close()
 
@@ -351,15 +353,56 @@ def test_a_preview_leaves_the_kept_panel_alone(browser, tmp_path):
     page = _hover_page(browser, tmp_path)
     try:
         page.click(SQL)
-        kept = page.evaluate("document.querySelector('#genseq-panel').getBoundingClientRect().toJSON()")
+        kept = page.evaluate("document.querySelector('.genseq-held').getBoundingClientRect().toJSON()")
         page.hover(JSON_LABEL)
         page.wait_for_timeout(200)
         assert _open(page, "#genseq-peek") == '{"id": 1}' and not _kept(page, "json")
-        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql")
+        assert _open(page, ".genseq-held") == "SELECT 1" and _kept(page, "sql")
         page.mouse.move(600, 400)
         assert _open(page, "#genseq-peek") is None
-        assert _open(page, "#genseq-panel") == "SELECT 1" and _kept(page, "sql")
-        assert kept == page.evaluate("document.querySelector('#genseq-panel').getBoundingClientRect().toJSON()")
+        assert _open(page, ".genseq-held") == "SELECT 1" and _kept(page, "sql")
+        assert kept == page.evaluate("document.querySelector('.genseq-held').getBoundingClientRect().toJSON()")
+    finally:
+        page.close()
+
+
+def _held(page):
+    """The text of every kept panel, in the order they were opened."""
+    return page.evaluate("""() => [...document.querySelectorAll('.genseq-held')]
+        .filter(p => !p.hidden).map(p => p.querySelector('pre').textContent)""")
+
+
+def test_kept_panels_stay_open_side_by_side_until_their_own_x(browser, tmp_path):
+    """Victor, 15 Nov 2026: a click on another arrow must not close the one before it, "only
+    with X", so the calls to the database or the requests can be compared."""
+    page = _hover_page(browser, tmp_path)
+    try:
+        page.click(SQL)
+        page.click(JSON_LABEL)
+        assert _held(page) == ["SELECT 1", '{"id": 1}'] and _kept(page, "sql") and _kept(page, "json")
+        page.mouse.click(700, 450)
+        assert len(_held(page)) == 2, "a click on the page closes neither"
+        page.evaluate("document.querySelector('.svgbox').dispatchEvent(new Event('scroll'))")
+        assert len(_held(page)) == 2, "nor does scrolling the diagram"
+
+        # The first one is dragged aside, comes above the other, and a click on its arrow
+        # leaves it where it was put.
+        head = page.locator(".genseq-held .genseq-title").first.bounding_box()
+        page.mouse.move(head["x"] + 3, head["y"] + 3)
+        page.mouse.down()
+        page.mouse.move(head["x"] + 203, head["y"] + 103, steps=4)
+        page.mouse.up()
+        moved = page.locator(".genseq-held").first.bounding_box()
+        assert abs(moved["x"] - (head["x"] + 200)) < 30
+        z = page.evaluate("[...document.querySelectorAll('.genseq-held')].map(p => +getComputedStyle(p).zIndex)")
+        assert z[0] > z[1], "the one last touched is on top"
+        page.click(SQL)
+        assert page.locator(".genseq-held").first.bounding_box() == moved
+
+        page.locator(".genseq-held .genseq-close").first.click()
+        assert _held(page) == ['{"id": 1}'] and not _kept(page, "sql") and _kept(page, "json")
+        page.keyboard.press("Escape")
+        assert _held(page) == [] and not _kept(page, "json")
     finally:
         page.close()
 
@@ -399,9 +442,9 @@ def test_the_two_lines_of_a_wrapped_label_are_one_label(browser, tmp_path):
         page.hover(second)
         assert _open(page, "#genseq-peek") == "SELECT 1", "no closing between the lines"
         page.click(second)
-        assert _open(page, "#genseq-panel") == "SELECT 1"
+        assert _open(page, ".genseq-held") == "SELECT 1"
         page.click(second)
-        assert _open(page, "#genseq-panel") is None
+        assert _held(page) == ["SELECT 1"], "still one panel, and still open"
     finally:
         page.close()
 
@@ -416,9 +459,9 @@ def test_the_preview_replaces_the_click_tip_and_reaches_the_keyboard(browser, tm
         page.wait_for_timeout(200)
         assert _open(page, "#genseq-peek") == "SELECT 1"
         page.keyboard.press("Enter")
-        assert _open(page, "#genseq-panel") == "SELECT 1" and _open(page, "#genseq-peek") is None
+        assert _open(page, ".genseq-held") == "SELECT 1" and _open(page, "#genseq-peek") is None
         page.keyboard.press("Escape")
-        assert _open(page, "#genseq-panel") is None
+        assert _open(page, ".genseq-held") is None
     finally:
         page.close()
 
@@ -438,15 +481,15 @@ def test_the_panel_colours_sql_and_json_and_keeps_the_value_marks(browser, tmp_p
     page_file.write_text(COLOUR_PAGE.format(css=GENSEQ_CSS, js=GENSEQ_JS,
                                             details=json.dumps(details)), encoding="utf-8")
     page = browser.new_page()
-    read = """() => [...document.querySelector('#genseq-panel pre').childNodes]
+    read = """() => [...document.querySelector('.genseq-held pre').childNodes]
                  .filter(n => n.nodeType === 1).map(n => [n.className, n.textContent])"""
     try:
         page.goto(page_file.as_uri())
-        assert page.evaluate("document.querySelector('#genseq-panel') === null")
+        assert page.evaluate("document.querySelector('.genseq-held') === null")
         page.click('a[href="genseq://sql"] text')
-        assert page.evaluate("document.querySelector('#genseq-panel pre').classList.contains('code')")
+        assert page.evaluate("document.querySelector('.genseq-held pre').classList.contains('code')")
         sent = page.evaluate(read)
-        page.click("#genseq-panel .genseq-toggle")
+        page.click(".genseq-held .genseq-toggle")
         bound = page.evaluate(read)
         page.keyboard.press("Escape")
         page.click('a[href="genseq://json"] text')

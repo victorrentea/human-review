@@ -354,7 +354,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
             '<b>tx</b>: committed/rolled back.',
             'One per tagged/touched test; <b>New</b>/<b>Old</b>: this branch\'s run or the base\'s; '
             '<b>⇒ .puml</b>: its file.',
-            'Hover <b>⊕</b> for the SQL, JSON or request, click to keep it; <b>values</b> fills in each <b>?</b>.',
+            'Hover <b>⊕</b>: SQL, JSON or request; a click keeps it, several at once, until <b>×</b>; <b>values</b> fills <b>?</b>.',
             'A request\'s Bruno dog opens it in Bruno; off the server it copies it as cURL instead.',
             'A blue call opens its method; a browser request opens the line that sent it, in that run.',
             'Dot before the file name: the DB fixture the test starts on; grey = Default; none = empty.',

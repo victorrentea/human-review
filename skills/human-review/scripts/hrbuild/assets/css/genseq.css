@@ -34,9 +34,10 @@
                 box-shadow:0 8px 28px rgba(0,0,0,.22); padding:.55rem .7rem .7rem; }
 .genseq-panel[hidden] { display:none; }
 /* The preview a resting pointer opens (see peekPanel in genseq.js): the same panel in the same
-   place, above a kept one, and the pointer passes through it. Its × could never be reached, so
+   place, above the kept ones (40, and 41 for the one last touched: `front` in genseq.js), and
+   the pointer passes through it. Its × could never be reached, so
    the promise of a click sits there instead. */
-#genseq-peek { z-index:41; pointer-events:none; }
+#genseq-peek { z-index:42; pointer-events:none; }
 #genseq-peek .genseq-close { display:none; }
 .genseq-panel .genseq-keep { display:none; }
 #genseq-peek .genseq-keep { display:inline; color:var(--muted); font-size:.76rem; white-space:nowrap; }

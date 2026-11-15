@@ -2,8 +2,8 @@
 // the label of every arrow that has more to say in a PlantUML link, which PlantUML
 // rendered as <a href="genseq://<id>"> — a stable, generation-time handle, so nothing
 // here has to match rendered label text. The detail itself rides in the sidecar next to
-// each diagram. Resting on a label previews its detail, one click keeps it open, another
-// closes.
+// each diagram. Resting on a label previews its detail, one click keeps it open, and it
+// stays open until its own × (or Esc): several are kept side by side, to compare them.
 //
 // Where a step has a second rendering of the same fact — a statement as sent vs. the
 // same statement with its bound values put back — the panel offers it as a toggle. It
@@ -20,10 +20,12 @@
   // who asked for values once is reading the whole page in values. So the choice is the
   // page's, and every panel opened after it honours it.
   var showValues = false;
-  // Two panels, because a preview must not disturb what is kept: `held`, the one a click
-  // opened (`current` is the arrow it belongs to), and `peek`, the one a resting pointer
-  // opened. Crossing other labels on the way to the held panel leaves it where it is.
-  var held = null, current = null;
+  // A preview must not disturb what is kept: every arrow a click opened keeps a panel of its
+  // own (`state.view`; `kept` lists those arrows, the one last touched at the end), and
+  // `peek` is the one a resting pointer opened. A click on another arrow used to close the
+  // one before it; now only a panel's own × does, so two statements or two requests can be
+  // read against each other (Victor, 15 Nov 2026).
+  var kept = [];
   var peek = null, peeking = null, peekTimer = null;
   // tip.js's own wait: long enough that a pointer crossing a diagram opens nothing.
   var PEEK_DELAY = 150;
@@ -105,22 +107,28 @@
     };
   }
 
-  function heldPanel() {
-    if (held) return held;
-    held = buildPanel('genseq-panel');
+  function heldPanel(state) {
+    if (state.view) return state.view;
+    var held = state.view = buildPanel('');
     var panel = held.root;
-    panel.querySelector('.genseq-close').addEventListener('click', close);
+    panel.removeAttribute('id');
+    panel.classList.add('genseq-held');
+    panel.querySelector('.genseq-close').addEventListener('click', function () { close(state); });
     // The title is a label, not a control. ⌘-click on it used to open the diagram's test
     // — a door with no handle, opening what the section header above the picture opens on
     // a plain click, and at the right line rather than at line 1.
-    held.toggle.addEventListener('click', function () { showValues = !showValues; render(held); });
+    // The page's choice, so every kept panel follows it, not only the one that was pressed.
+    held.toggle.addEventListener('click', function () {
+      showValues = !showValues;
+      kept.forEach(function (other) { render(other.view); });
+    });
     held.bruno.addEventListener('click', function () { toBruno(held.entry); });
-    // A click inside the panel is not a click outside it, so it does not close it — said in
-    // the closing listener (`outside`, below) rather than by stopping the click here: the
-    // handler link's click has to reach editor.js's listener on `document`, which opens it
-    // in the picked IDE. Stopped here, it fell through to its bare `vscode://` href and
-    // opened VS Code with IntelliJ picked (Victor, 29 Oct 2026).
+    // No click is stopped here: the handler link's click has to reach editor.js's listener
+    // on `document`, which opens it in the picked IDE. Stopped, it fell through to its bare
+    // `vscode://` href and opened VS Code with IntelliJ picked (Victor, 29 Oct 2026).
     enableDrag(panel, panel.querySelector('.genseq-head'));
+    // The panel being read or dragged comes above the others it overlaps.
+    panel.addEventListener('pointerdown', function () { front(state); }, true);
     return held;
   }
 
@@ -162,11 +170,31 @@
     if (peek) peek.root.hidden = true;
   }
 
-  function close() {
+  // Above the other kept panels, by stacking order alone: they share one z-index, under the
+  // page's own bubbles, so the last one in the document is the one on top. `kept` follows.
+  var Z_KEPT = 40;
+  function front(state) {
+    var at = kept.indexOf(state);
+    if (at >= 0 && at === kept.length - 1) return;
+    if (at >= 0) kept.splice(at, 1);
+    kept.push(state);
+    kept.forEach(function (other, i) { other.view.root.style.zIndex = Z_KEPT + (i === kept.length - 1 ? 1 : 0); });
+  }
+
+  // One arrow's panel. Dropped rather than hidden: its place after a drag is not remembered,
+  // so the next click opens it beside its arrow again.
+  function close(state) {
     unpeek();
-    if (current) current.reset();
-    current = null;
-    if (held) held.root.hidden = true;
+    var at = kept.indexOf(state);
+    if (at >= 0) kept.splice(at, 1);
+    state.reset();
+    if (state.view) state.view.root.remove();
+    state.view = null;
+  }
+
+  function closeAll() {
+    unpeek();
+    kept.slice().forEach(close);
   }
 
   // A pointer resting on a label, or the keyboard landing on it. The arrow already open is
@@ -174,7 +202,7 @@
   function peekAt(state) {
     if (state === peeking) return;
     unpeek();
-    if (state === current) return;
+    if (state.view) return;
     peeking = state;
     peekTimer = setTimeout(function () {
       show(peekPanel(), state.entry, 0, state.link, true);
@@ -547,12 +575,21 @@
       // One arrow, one gesture. ⌘-click used to open the test from here as well, which
       // was a second way to reach what the section header above already opens — and a
       // chord the page had to spend a sentence explaining.
-      if (current && current !== state) current.reset();
-      index++;
-      if (index >= entry.steps.length) { close(); return; }
-      current = state;
+      // The arrows opened before this one keep their panels. A second click on this one
+      // does not close it either — only its × does: it turns to the next step where there
+      // is one, and comes back above the others where there is not.
+      var open = !!state.view;
+      if (open && entry.steps.length < 2) { front(state); return; }
+      index = (index + 1) % entry.steps.length;
       group.classList.add('genseq-open');
-      show(heldPanel(), entry, index, state.link);
+      var view = heldPanel(state);
+      front(state);
+      if (open) {
+        // In place: the reader may have dragged it next to the one it is compared with.
+        view.step = entry.steps[index];
+        view.counter.textContent = (index + 1) + ' / ' + entry.steps.length;
+        render(view);
+      } else show(view, entry, index, state.link);
     });
     return state;
   }
@@ -663,27 +700,28 @@
   }
   wireGlyphs(document);
 
-  // The panel is placed in page coordinates, so a diagram scrolled sideways under it
-  // would leave it pointing at the wrong arrow.
+  // A preview is placed in page coordinates, so a diagram scrolled sideways under it would
+  // leave it pointing at the wrong arrow. A kept panel stays: it is named by its title and
+  // its arrow stays marked, and it may be waiting there to be compared with the next one.
   function wireScroll(root) {
     root.querySelectorAll('.diagram .svgbox').forEach(function (box) {
-      box.addEventListener('scroll', close);
+      box.addEventListener('scroll', unpeek);
     });
   }
   wireScroll(document);
-  document.addEventListener('click', function outside(ev) {
-    if (held && held.root.contains(ev.target)) return;
-    close();
-  });
   // A rebuild swapped part of the page (`panels.js`, `rerun.js`): the open detail may point
   // at an arrow that is gone, and the new arrows need their handles.
   document.addEventListener('hr:swapped', function (ev) {
     var root = ev.detail;
     if (!root || !root.querySelectorAll) return;
-    close();
+    closeAll();
     wireDiagrams(root);
     wireGlyphs(root);
     wireScroll(root);
   });
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') close(); });
+  // Esc is the × of the panel on top: one press, one panel, never the whole set at once.
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    if (kept.length) close(kept[kept.length - 1]); else unpeek();
+  });
 })();
