@@ -1910,6 +1910,9 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path, root: Path | None = None
                              root if root is not None else out_dir.resolve().parent,
                              generated=generated)
     text_col, side_col = gap_under_card(text_col, side_col)
+    # The 🧬 Mutagent card, last in the tests' column: it is a verdict on those tests.
+    side_col = _append_inside(side_col, mutagent_card(
+        out_dir, root if root is not None else out_dir.resolve().parent))
     ref = (generated and drawn_ticket(frag)) or ticket_ref(spec, out_dir)
     body = (m.group(0) + ticket_head(ref)
             + text_col + all_tests_toggle(cats) + side_col + "</div>")
@@ -2017,3 +2020,226 @@ def run_tests_button(info: dict | None) -> str:
             # ↺⏳ in one button, the masthead's own face for the same press: regenerate,
             # and wait for the suites.
             + RUN_TESTS_FACE + '</button>')
+
+
+# --- Mutagent 🧬: do the tests that claim a sentence really prove it? ------------------
+#
+# Two presses after the tab's own three, and a card on the tab. `mutagent.py generate`
+# asks a model for a handful of semantic mutants of the PR's production code, each aimed at
+# a sentence some test claims to prove (`test-mapping.json`) and naming the tests that must
+# fail; `mutagent.py run` applies each one in a throwaway worktree and runs those tests. A
+# mutant every expected test survives is a test that does not prove what it claims — the
+# example Victor drew for the class (19 Nov 2026) was a search test that inserts A, B, C
+# and asserts A, B, C, green with or without the ORDER BY it is said to cover.
+#
+# Wired like the ↺⏳: declared here, drawn inside the tab's `.tabre` span
+# (`commands.tab_rerun_html`, its `after` slot), routed by the server's rerun lock and
+# reload hold (`/__rerun_ai__` and `/__rerun__` with `mode: "mutagent"`,
+# `serve-review.py:tab_rerun_plan`), and driven by the page's rerun machine (`rerun.js`,
+# `server.js`). Each ends in the plain rebuild (`refresh-report.py --steps none`), so the
+# card shows what the press found.
+
+#: The paid press (`/__rerun_ai__`, mode `mutagent`): AI writes the mutants.
+MUTAGENT_ACTION = "__mutagent__"
+#: The free, slow one (`/__rerun__`, mode `mutagent`): run each mutant's tests.
+MUTAGENT_RUN_ACTION = "__mutagent_run__"
+#: Where `mutagent.py` writes, under the review directory.
+MUTAGENT_DIR = "mutagent"
+MUTAGENT_MARK = "🧬"
+MUTAGENT_RUN_MARK = "🧪"
+MUTAGENT_GEN_TIP = ("Mutagent: AI writes a few small mutants of this PR's code, each aimed "
+                    "at a sentence a test claims to prove, and the tests that must catch it.")
+MUTAGENT_CONFIRM = ("Mutagent: AI (Sonnet) reads the ticket's claimed sentences and the PR's "
+                    "production code and writes up to 6 small mutants, each with the tests "
+                    "that must fail. The previous mutants and their results are replaced.")
+MUTAGENT_RUN_TIP = ("Mutagent: apply each mutant in a throwaway worktree and run the tests "
+                    "expected to catch it. Free, takes minutes; your checkout is not touched.")
+
+
+def declare_mutagent(root: Path, out_dir: Path, skill_dir: Path, *,
+                     tab: str = LEDGER_TAB) -> dict | None:
+    """Declare the two Mutagent presses in the action manifest; `{"tab", "generate",
+    "run"}` for the buttons, or None where the page cannot offer them.
+
+    Only with something to attack: no `test-mapping.json`, no claim. The run press only
+    once there are mutants to run."""
+    from ..shared.actions import declare_action, tab_rerun_id
+    program, refresh = skill_dir / "mutagent.py", skill_dir / "refresh-report.py"
+    if not program.is_file() or not refresh.is_file():
+        return None
+    if not (out_dir / "test-mapping.json").is_file():
+        return None
+    try:
+        rel = str(out_dir.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return None
+    here, py, at = shlex.quote(str(root.resolve())), rebuild_interpreter(), shlex.quote(rel)
+    mutagent = f"{py} {shlex.quote(str(program))}"
+    rebuild = f"{py} {shlex.quote(str(refresh))} --dir {at} --steps none --no-serve"
+    info = {"tab": tab, "run": None,
+            "generate": declare_action(
+                tab_rerun_id(MUTAGENT_ACTION, tab),
+                f"cd {here} && {mutagent} generate --dir {at} && {rebuild}", reload=True,
+                label="Mutagent: AI writes mutants of this PR's code, then rebuild")}
+    if (out_dir / MUTAGENT_DIR / "mutants.json").is_file():
+        info["run"] = declare_action(
+            tab_rerun_id(MUTAGENT_RUN_ACTION, tab),
+            f"cd {here} && {mutagent} run --dir {at} && {rebuild}", reload=True,
+            label="Mutagent: run each mutant's tests, then rebuild")
+    return info
+
+
+def mutagent_buttons(info: dict | None) -> str:
+    """🧬 (paid, amber, behind the page's spend dialog) and 🧪 (free, slow), in the tab's
+    rerun markup so `rerun.js` drives them; hidden until the probe says they can run."""
+    if not info:
+        return ""
+    from ..shared.commands import rerun_face
+    tab = html.escape(info.get("tab") or LEDGER_TAB, quote=True)
+    gen_tip = html.escape(MUTAGENT_GEN_TIP, quote=True)
+    out = ('<button type="button" class="chip chip-rerun chip-rerun-ai chip-served tabrerun '
+           f'tabrerun-mutagent" hidden aria-disabled="true" data-rerun="{MUTAGENT_ACTION}" '
+           f'data-tab="{tab}" aria-label="Mutagent: AI writes mutants — costs money" '
+           f'data-confirm="{html.escape(MUTAGENT_CONFIRM, quote=True)}" '
+           f'data-tip-fmt="costs money: {{price}} on Sonnet. {gen_tip}" data-price="mutagent" '
+           f'data-tip="costs money. {gen_tip}">{rerun_face(MUTAGENT_MARK)}</button>')
+    if info.get("run"):
+        out += ('<button type="button" class="chip chip-rerun chip-served tabrerun '
+                f'tabrerun-mutrun" hidden aria-disabled="true" '
+                f'data-rerun="{MUTAGENT_RUN_ACTION}" data-tab="{tab}" '
+                'aria-label="Mutagent: run the tests against each mutant" '
+                f'data-tip="{html.escape(MUTAGENT_RUN_TIP, quote=True)}">'
+                f'{rerun_face(MUTAGENT_RUN_MARK)}</button>')
+    return out
+
+
+#: Each verdict's pill, and what it means in its hover.
+MUTAGENT_VERDICTS = {
+    "survived": ("survived", "Every test expected to catch this mutant stayed green: "
+                             "it does not prove what it claims."),
+    "killed": ("killed", "A test expected to catch this mutant failed: it proves its sentence."),
+    "broken": ("broken", "The mutant did not apply or did not compile: it says nothing."),
+    "not-run": ("not run", "Its tests were not run here; the row says why."),
+    "pending": ("not run yet", "Press 🧪 to run the tests against it."),
+}
+_MUTAGENT_ORDER = ("survived", "killed", "pending", "not-run", "broken")
+
+
+def _mutagent_json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def mutagent_summary(rows: list[dict]) -> str:
+    """`5 of 7 mutants killed · 1 survived · 1 not run`."""
+    n = len(rows)
+    count = {k: sum(1 for r in rows if r["verdict"] == k) for k in _MUTAGENT_ORDER}
+    if count["pending"] == n:
+        return f"{n} mutant{'s' if n != 1 else ''}, not run yet"
+    parts = [f"{count['killed']} of {n} mutants killed"]
+    for k in ("survived", "not-run", "broken", "pending"):
+        if count[k]:
+            parts.append(f"{count[k]} {MUTAGENT_VERDICTS[k][0]}")
+    return " · ".join(parts)
+
+
+_RESULT_MARK = {
+    "pass": '<span class="mg-res mg-pass" data-tip="Green with the mutant applied">✓</span>',
+    "fail": '<span class="mg-res mg-fail" data-tip="Failed with the mutant applied">✗</span>',
+    "missing": '<span class="mg-res" data-tip="The runner did not report it">?</span>',
+}
+
+
+def _mutagent_test(tid: str, t: dict, state: str, root: Path, said: str = "") -> str:
+    """One expected test, linked like the matrix's rows, with what it did under the mutant
+    (a failure's own message on its ✗)."""
+    path, _, line = tid.rpartition(":")
+    label = html.escape(t.get("label") or Path(path or tid).name)
+    off = "" if t.get("runnable", True) else (t.get("why") or "")
+    tip = html.escape((path or tid) + (f" — not run: {off}" if off else ""), quote=True)
+    if path and line.isdigit() and (root / path).is_file():
+        link = (f'<a class="srcref testref" href="vscode://file/{(root / path).resolve()}:'
+                f'{line}:1" data-tip="{tip}">{label}</a>')
+    else:
+        link = f'<span class="srcref testref" data-tip="{tip}">{label}</span>'
+    cls = ' class="mg-off"' if off else ""
+    mark = _RESULT_MARK.get(state, "")
+    if said and state == "fail":
+        mark = mark.replace('data-tip="Failed with the mutant applied"',
+                            f'data-tip="{html.escape("Failed with the mutant applied: " + said, quote=True)}"')
+    return f'<li{cls}>{mark}{link}</li>'
+
+
+def mutagent_card(out_dir: Path, root: Path) -> str:
+    """The 🧬 Mutagent card: one row per mutant, a survivor first. Empty without
+    `mutagent/mutants.json` — the 🧬 press is the way in."""
+    from ..shared.adopt import adopt_html
+    from ..shared.snippets import diff_text_html
+    base = out_dir / MUTAGENT_DIR
+    doc = _mutagent_json(base / "mutants.json")
+    if not isinstance(doc, dict) or not doc.get("mutants"):
+        return ""
+    res = _mutagent_json(base / "results.json") or {}
+    # Results of another set of mutants answer other questions.
+    if not isinstance(res, dict) or (res.get("mutantsHead")
+                                     and res.get("mutantsHead") != doc.get("head")):
+        res = {}
+    verdicts = res.get("mutants") or {}
+    tests = doc.get("tests") or {}
+    rows = []
+    for m in doc["mutants"]:
+        v = verdicts.get(m.get("id")) or {}
+        rows.append({**m, "verdict": v.get("verdict") or "pending", "why": v.get("why") or "",
+                     "states": v.get("tests") or {}, "said": v.get("messages") or {}})
+    rows.sort(key=lambda r: _MUTAGENT_ORDER.index(r["verdict"])
+              if r["verdict"] in _MUTAGENT_ORDER else len(_MUTAGENT_ORDER))
+    items = []
+    for r in rows:
+        face, tip = MUTAGENT_VERDICTS.get(r["verdict"], (r["verdict"], ""))
+        title = html.escape(r.get("title") or r.get("id") or "")
+        sentence = r.get("sentence") or {}
+        said = html.escape(sentence.get("text") or sentence.get("id") or "")
+        headline = ""
+        if r["verdict"] == "survived":
+            green = [(tests.get(t) or {}).get("label") or t
+                     for t, s in r["states"].items() if s == "pass"]
+            headline = (f'<p class="mg-headline">{html.escape(", ".join(green))} '
+                        f'pass{"es" if len(green) == 1 else ""} even with this mutant.</p>')
+        why = (f'<p class="mg-why">{html.escape(r["why"])}</p>'
+               if r["why"] and r["verdict"] in ("not-run", "broken") else "")
+        rationale = (f'<p class="mg-rationale">{html.escape(r["rationale"])}</p>'
+                     if r.get("rationale") else "")
+        patch = ""
+        try:
+            text = (base / r["patch"]).read_text(encoding="utf-8")
+            patch = diff_text_html(text, r.get("file") or "", root, fold=True)
+        except (OSError, KeyError, TypeError):
+            pass
+        tlist = "".join(_mutagent_test(t, tests.get(t) or {}, r["states"].get(t, ""), root,
+                                       r["said"].get(t, ""))
+                        for t in r.get("expect") or [])
+        items.append(
+            f'<li class="mg-row mg-{html.escape(r["verdict"])}">'
+            f'<div class="mg-top"><span class="mg-pill" data-tip="{html.escape(tip, quote=True)}">'
+            f'{html.escape(face)}</span><b class="mg-title">{title}</b></div>'
+            + headline
+            + (f'<p class="mg-attacks" data-tip="The ticket sentence this mutant attacks">'
+               f'“{said}”</p>' if said else "")
+            + rationale + why
+            + f'<ul class="mg-tests" data-tip="Tests expected to fail with this mutant">{tlist}</ul>'
+            + patch + '</li>')
+    sum_tip = ("Killed: a test expected to catch the mutant failed, so it proves its sentence. "
+               "Survived: all stayed green, so it does not.")
+    spent = doc.get("cost")
+    meta = " ".join(x for x in (str(doc.get("model") or ""),
+                                f"${spent:.2f}" if isinstance(spent, (int, float)) else "") if x)
+    return ('<aside class="mutagent" id="mutagent">'
+            f'<div class="mg-head"><b class="mg-name">{MUTAGENT_MARK} Mutagent</b>'
+            f'<span class="mg-sum" data-tip="{html.escape(sum_tip, quote=True)}">'
+            f'{html.escape(mutagent_summary(rows))}</span>'
+            + (f'<span class="mg-meta" data-tip="The model that wrote the mutants, and what it '
+               f'cost">{html.escape(meta)}</span>' if meta else "")
+            + adopt_html("requirements.mutagent", how="in") + '</div>'
+            f'<ol class="mg-list">{"".join(items)}</ol></aside>')

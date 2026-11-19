@@ -1811,6 +1811,7 @@ MODEL_RUN_LEDGERS = (
     (".model-runs.json", "requirements↔tests mapping", "rerun-model.py"),
     (".film-runs.json", "film script", "rerun-film.py"),
     (".content-runs.json", "verdict", "write-content.py"),
+    (".mutagent-runs.json", "Mutagent mutants", "mutagent.py"),
 )
 
 

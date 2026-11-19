@@ -152,11 +152,21 @@ RERUN_AI_ACTION = "__rerun_ai__"
 # Free, so both ride `/__rerun__` with `mode: "tests"` — the same lock and the same reload
 # hold — and neither is reachable through `/__run__`.
 RERUN_TESTS_ACTION = "__rerun_tests__"
+# The Tests tab's 🧬 Mutagent pair (`tabs/tests.py:declare_mutagent`), narrowed like the
+# others (`…:requirements`): AI writes mutants of the PR's code — paid, so it comes through
+# `/__rerun_ai__` with `mode: "mutagent"`, behind the spend dialog and never joined in
+# silence — and a free, slow press runs each mutant's tests, through `/__rerun__` with the
+# same mode. Both share the one lock: a mutant run beside a rebuild would rebuild over it.
+MUTAGENT_ACTION = "__mutagent__"
+MUTAGENT_RUN_ACTION = "__mutagent_run__"
 
 # Both reruns, for the one question every guard here asks: "is a rerun already going?" One
 # tuple rather than two comparisons, because the lock is shared and a second membership
 # test added in one of the three places that ask would be a lock with a hole in it.
-RERUN_ACTIONS = (RERUN_ACTION, RERUN_AI_ACTION, RERUN_TESTS_ACTION)
+RERUN_ACTIONS = (RERUN_ACTION, RERUN_AI_ACTION, RERUN_TESTS_ACTION, MUTAGENT_ACTION,
+                 MUTAGENT_RUN_ACTION)
+#: The paid ones among them: a run of either is "a paid run" to the page's status probe.
+PAID_ACTIONS = (RERUN_AI_ACTION, MUTAGENT_ACTION)
 
 # What the paid reruns on this page have actually cost, written by `rerun-model.py` after
 # each run. Beside the page and dot-prefixed like the manifest, so it never travels in the
@@ -180,7 +190,9 @@ FILM_PRICE_UNKNOWN = "~$1\u2013$3"
 #: Every priced paid press, `{kind: (ledger, fallback)}` — the kinds are the build's
 #: (`actions.PRICED`, worn on the button as `data-price`; absent means `model`).
 PRICED_RUNS = {"model": (MODEL_RUNS_FILE, PRICE_UNKNOWN),
-               "film": (FILM_RUNS_FILE, FILM_PRICE_UNKNOWN)}
+               "film": (FILM_RUNS_FILE, FILM_PRICE_UNKNOWN),
+               # One no-tools call over the claims and the changed files: cents, not dollars.
+               "mutagent": (".mutagent-runs.json", "~$0.10–$0.50")}
 
 
 def price_estimate(served_root, ledger: str = MODEL_RUNS_FILE,
@@ -2860,6 +2872,14 @@ def rerun_ai_plan(served_root):
 TAB_ID = re.compile(r"^[a-z][a-z0-9_-]{0,40}$")
 
 
+def rerun_action(ai: bool, mode: str | None) -> str:
+    """Which manifest id a press on `/__rerun__` or `/__rerun_ai__` names, by its mode."""
+    if mode == "mutagent":
+        return MUTAGENT_ACTION if ai else MUTAGENT_RUN_ACTION
+    return (RERUN_AI_ACTION if ai else
+            RERUN_TESTS_ACTION if mode == "tests" else RERUN_ACTION)
+
+
 def tab_rerun_plan(served_root, ai: bool, tab: str, mode: str | None = None):
     """`(argv, cwd)` for one tab's ↻ (or ↻+AI), or None when the build declared none.
 
@@ -2868,9 +2888,7 @@ def tab_rerun_plan(served_root, ai: bool, tab: str, mode: str | None = None):
     tab name is a key into the manifest and nothing else — it never reaches a shell."""
     if ROOT is None or not TAB_ID.match(tab or ""):
         return None
-    base = (RERUN_AI_ACTION if ai else
-            RERUN_TESTS_ACTION if mode == "tests" else RERUN_ACTION)
-    entry = actions(served_root).get(f"{base}:{tab}")
+    entry = actions(served_root).get(f"{rerun_action(ai, mode)}:{tab}")
     if not entry:
         return None
     return (["/bin/sh", "-c", entry["command"]], ROOT)
@@ -2947,7 +2965,8 @@ def start_rerun(served_root, ai=False, tab: str | None = None, mode: str | None 
     elif tab:
         plan = tab_rerun_plan(served_root, ai, tab, mode)
         if plan is None:
-            what = ("paid rerun" if ai else "test run" if mode == "tests" else "rerun")
+            what = ("Mutagent press" if mode == "mutagent" else "paid rerun" if ai
+                    else "test run" if mode == "tests" else "rerun")
             return None, f"the {tab} tab has no {what} here", 404, False
     elif mode == "tests":
         plan = rerun_tests_plan(served_root)
@@ -2975,7 +2994,7 @@ def start_rerun(served_root, ai=False, tab: str | None = None, mode: str | None 
                     # rather than 200, because "yours did not start" is the fact the page
                     # has to be able to tell from "yours started".
                     started = time.strftime("%H:%M", time.localtime(run.started))
-                    which = ("a paid run" if run.action == RERUN_AI_ACTION
+                    which = ("a paid run" if run.action in PAID_ACTIONS
                              else "a rerun")
                     return (run, f"{which} started at {started} is still going; wait for "
                             "it, then decide \u2014 it may already be doing what you want, "
@@ -2987,9 +3006,7 @@ def start_rerun(served_root, ai=False, tab: str | None = None, mode: str | None 
     if WATCHER:
         WATCHER.hold()
     try:
-        run = Run(RERUN_AI_ACTION if ai else
-                  RERUN_TESTS_ACTION if mode == "tests" else RERUN_ACTION,
-                  {"reload": True}, argv, cwd,
+        run = Run(rerun_action(ai, mode), {"reload": True}, argv, cwd,
                   on_done=lambda _r: WATCHER and WATCHER.release())
     except Exception:
         # A hold whose run never started is a watcher that never reloads anything again.
@@ -3301,7 +3318,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception:
                 tab = mode = card = None
             tab = tab if isinstance(tab, str) and tab else None
-            mode = "tests" if mode == "tests" and route == RERUN else None
+            # `mode: "mutagent"` on either: the 🧬 pair, paid on `/__rerun_ai__`, free here.
+            mode = (mode if mode == "mutagent" or (mode == "tests" and route == RERUN)
+                    else None)
             card = card if isinstance(card, str) and card and route == RERUN else None
             run, problem, status, joined = start_rerun(Handler.root, ai=route == RERUN_AI,
                                                        tab=tab, mode=mode, card=card)
@@ -3442,6 +3461,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                  k.startswith(RERUN_TESTS_ACTION + ":") for k in declared),
                              # And whether the masthead's ↺⏳ (every slow step) has one.
                              "rerunTestsAll": bool(rerun_tests_plan(Handler.root)),
+                             # And the Tests tab's 🧬 Mutagent pair, each declared or not.
+                             "mutagent": ROOT is not None and any(
+                                 k.startswith(MUTAGENT_ACTION + ":") for k in declared),
+                             "mutagentRun": ROOT is not None and any(
+                                 k.startswith(MUTAGENT_RUN_ACTION + ":") for k in declared),
                              # What the paid button should say it costs, out of what this
                              # page's own paid runs have cost. Answered here rather than
                              # written into the markup, because the markup is built once
@@ -3498,8 +3522,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self.reply_json({"active": None, "kind": None, "started": None,
                                      "joined": 0})
                     return
-                kind = ("rerun_ai" if run.action == RERUN_AI_ACTION
-                        else "rerun" if run.action in (RERUN_ACTION, RERUN_TESTS_ACTION)
+                kind = ("rerun_ai" if run.action in PAID_ACTIONS
+                        else "rerun" if run.action in RERUN_ACTIONS
                         else "action")
                 self.reply_json({"active": run.snapshot(), "kind": kind,
                                  "started": run.started, "joined": run.joins})

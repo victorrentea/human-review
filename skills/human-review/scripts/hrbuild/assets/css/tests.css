@@ -111,3 +111,50 @@ ul.req-tests li { list-style:none; }
 .cov-suites { margin:.35rem 0 0; display:flex; flex-wrap:wrap; gap:.3rem; }
 .cov-suite { padding:1px 7px; border:1px solid var(--line, #d0d0d0); border-radius:9px;
         color:var(--muted); font-size:.8rem; cursor:help; }
+
+/* 🧬 Mutagent (tabs/tests.py:mutagent_card): a card under the tests' column, one row per
+   mutant. A survivor is the headline, so it is drawn first and red; a killed one is the
+   page's green; broken and not run are grey, they say nothing about the tests. */
+.mutagent { margin-top:8px; background:var(--card); border:1px solid var(--line);
+        border-radius:6px; font-size:.86rem; }
+.mutagent > .mg-head { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px;
+        padding:4.5px 10px; border-bottom:1px solid var(--line); }
+.mutagent .mg-name { white-space:nowrap; }
+.mutagent .mg-sum { color:var(--fg); }
+.mutagent .mg-meta { color:var(--muted); font-size:.78rem; }
+.mutagent > .mg-head > .adoptline { margin-left:auto; }
+.mutagent .mg-list { list-style:none; margin:0; padding:0; }
+.mutagent .mg-row { padding:6px 10px; border-top:1px solid var(--line); }
+.mutagent .mg-row:first-child { border-top:0; }
+.mutagent .mg-top { display:flex; align-items:baseline; gap:8px; }
+.mutagent .mg-pill { flex:none; font:600 .7rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+        padding:0 7px; border-radius:9px; text-transform:uppercase; letter-spacing:.02em;
+        background:#e6e6e6; color:#555; }
+.mutagent .mg-killed .mg-pill { background:#d6f0dc; color:#1a7f37; }
+.mutagent .mg-survived .mg-pill { background:#ffd8d3; color:#b42318; }
+.mutagent .mg-survived { background:rgba(220,60,40,.05); }
+.mutagent .mg-headline { margin:3px 0 0; color:#b42318; font-weight:600; }
+.mutagent .mg-attacks, .mutagent .mg-rationale, .mutagent .mg-why { margin:3px 0 0; }
+.mutagent .mg-attacks { font-style:italic; }
+.mutagent .mg-rationale, .mutagent .mg-why { color:var(--muted); }
+.mutagent .mg-tests { list-style:none; margin:3px 0 0; padding:0; display:flex; flex-wrap:wrap;
+        gap:2px 12px; }
+.mutagent .mg-tests .mg-off { opacity:.55; }
+.mutagent .mg-res { display:inline-block; width:1.1em; font-weight:700; color:var(--muted); }
+.mutagent .mg-res.mg-pass { color:#b42318; }
+.mutagent .mg-res.mg-fail { color:#1a7f37; }
+.mutagent .ghfold { margin-top:4px; }
+/* In the window-filling layout (tests.py:REQMAP_CSS) the card keeps its height under the
+   tests' card and scrolls inside a cap, rather than squeezing that list to nothing. */
+@media (min-width:901px){
+  .reqmap .rm-side > .mutagent { flex:none; max-height:45vh; overflow-y:auto; }
+  .reqmap .rm-side > .mutagent > .mg-head { position:sticky; top:0; z-index:1;
+        background:var(--card); }
+}
+@media (prefers-color-scheme: dark) {
+  .mutagent .mg-pill { background:#3a3a3a; color:#bbb; }
+  .mutagent .mg-killed .mg-pill { background:#173d22; color:#6fdd8b; }
+  .mutagent .mg-survived .mg-pill { background:#4a1d18; color:#ff9b8f; }
+  .mutagent .mg-headline, .mutagent .mg-res.mg-pass { color:#ff9b8f; }
+  .mutagent .mg-res.mg-fail { color:#6fdd8b; }
+}

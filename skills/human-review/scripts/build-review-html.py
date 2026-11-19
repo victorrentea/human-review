@@ -142,7 +142,7 @@ from hrbuild.shared.snippets import (
     DIFF_CONTEXT, diff_html, DIFF_INLINE_TOKEN, diff_link_html, DIFF_TOKEN, diff_uri_handler,
     expand_snippets, review_step_rev, SNIPPET_BASE, snippet_html,
     SNIPPET_TOKEN, _extract_module, _parse_unified, set_diff_base, commit_stamp,
-    _installed_diff_handler
+    _installed_diff_handler, diff_text_html
 )
 from hrbuild.shared.forge import (
     api_forge, find_issue, find_pull, forge_at, forge_for, forge_from_any_remote, FORGES,
@@ -314,6 +314,10 @@ from hrbuild.tabs.tests import (
     CARD_WHO, CARD_WHEN, CARD_AI_TIP, card_head,
     SEMCOV, COV_NOT_MEASURED_SCRIPTED, _semcov_module, scripted_reqmap,
     RUN_TESTS_ACTION, run_tests_steps, declare_run_tests_rerun, run_tests_button,
+    MUTAGENT_ACTION, MUTAGENT_RUN_ACTION, MUTAGENT_DIR, MUTAGENT_MARK, MUTAGENT_RUN_MARK,
+    MUTAGENT_GEN_TIP, MUTAGENT_CONFIRM, MUTAGENT_RUN_TIP, MUTAGENT_VERDICTS, declare_mutagent,
+    mutagent_buttons, mutagent_summary, mutagent_card, _mutagent_test, _RESULT_MARK,
+    _MUTAGENT_ORDER, _mutagent_json,
     _gh_issue, _issue_url, _ms, _take, _test_changes_module,
     COVERAGE_JSON, COVCARD_WHO, COVCARD_WHO_PR, covcard_who, covcard_tip, COVCARD_TIP, COVCARD_TIP_ALL, COV_SHIELD, promote_traced, COV_COMMON_SHARE,
     COV_COMMON_MIN,
@@ -437,6 +441,11 @@ def _main(argv=None) -> int:
         tab_reruns[LEDGER_TAB]["extra"] = run_tests_button(run_tests)
     # ...and the Code City's, the same press with the city rebuilt after it: the city is
     # coloured by the coverage those suites measure.
+    # ...and its 🧬 Mutagent pair after the paid one: AI writes mutants of the PR's code, and
+    # a free, slow press runs the tests each one is expected to break.
+    mutagent = declare_mutagent(root, out_dir, HERE)
+    if mutagent and tab_reruns.get(LEDGER_TAB):
+        tab_reruns[LEDGER_TAB]["after"] = mutagent_buttons(mutagent)
     city_tests = declare_city_run_tests(root, out_dir, HERE)
     if city_tests and tab_reruns.get(CITY_TAB):
         tab_reruns[CITY_TAB]["extra"] = run_tests_button(city_tests)

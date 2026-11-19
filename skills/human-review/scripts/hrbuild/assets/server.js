@@ -74,7 +74,11 @@ window.HR = (function () {
   // tab's suites when a tab is named, every slow producer when not (the masthead's). It
   // rides the free rerun's endpoint (same lock, same reload hold) with `mode: "tests"`,
   // and the two scopes are two answers of the probe, since a build may declare either.
-  var OWN = {'__rerun__': 'rerun', '__rerun_ai__': 'rerunAi', '__rerun_tests__': 'rerunTests'};
+  // The Tests tab's 🧬 Mutagent pair is two more of the same kind: `__mutagent__` (AI writes
+  // mutants, paid, on `/__rerun_ai__`) and `__mutagent_run__` (run their tests, free, on
+  // `/__rerun__`), both with `mode: "mutagent"`, each raised by its own probe answer.
+  var OWN = {'__rerun__': 'rerun', '__rerun_ai__': 'rerunAi', '__rerun_tests__': 'rerunTests',
+             '__mutagent__': 'mutagent', '__mutagent_run__': 'mutagentRun'};
 
   function can(id, tab, card) {
     // One draw.io card's own ring: its redraw is a manifest entry of its own, declared by
@@ -127,6 +131,12 @@ window.HR = (function () {
     if (id === '__rerun_tests__') {
       var tab = params && params.tab;
       return ask('/__rerun__', tab ? 'rerunTests' : 'rerunTestsAll', onprogress, tab, 'tests');
+    }
+    if (id === '__mutagent__') {
+      return ask('/__rerun_ai__', 'mutagent', onprogress, params && params.tab, 'mutagent');
+    }
+    if (id === '__mutagent_run__') {
+      return ask('/__rerun__', 'mutagentRun', onprogress, params && params.tab, 'mutagent');
     }
     return fetch('/__run__', {
       method: 'POST', cache: 'no-store',

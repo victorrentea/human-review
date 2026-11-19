@@ -108,6 +108,11 @@ PIECES: dict[str, tuple[str, str]] = {
     "diagram": (
         "the {title} diagram, kept in the repository as PlantUML and diffed base against "
         "branch", "scripts/puml-diff.sh, puml-diff/puml_diff.py, puml-diff/seq_puml_diff.py"),
+    "requirements.mutagent": (
+        "Mutagent: AI writes a few semantic mutants of the PR's production code, each aimed at "
+        "a ticket sentence a test claims to prove, then runs those tests against each mutant "
+        "in a throwaway worktree and reports which mutants survived",
+        "scripts/mutagent.py, reference/mutagent-prompt.md, scripts/hrbuild/tabs/tests.py"),
     "requirements": (
         "the ticket's requirements mapped to the tests that prove each one, side by side, "
         "with every test that runs the changed lines",
@@ -344,6 +349,16 @@ EXPLAIN: dict[str, dict[str, object]] = {
             'Click a sentence: lines to its tests (greyed = never runs); <b>▲ ▼</b> = more scrolled away.',
             '<b>− ✏️ +</b> before a total: deleted, edited, new, of the tests shown; hover <b>−</b>: in the IDE.',
             'Dot: the DB fixture a test declares it starts on; grey = Default; none = empty DB.',
+        ],
+    },
+    'requirements.mutagent': {
+        "li": [
+            '🧬 AI changes the PR\'s code a little where a test claims a sentence (costs money).',
+            'Each mutant names the tests that must fail; 🧪 runs them in a throwaway worktree.',
+            '<b>killed</b>: an expected test failed, so it does prove its sentence.',
+            '<b>survived</b>: all stayed green: the test does not prove what it claims.',
+            '<b>broken</b>: did not apply or compile; <b>not run</b>: no runner (e2e, Karma).',
+            '✓ green / ✗ failed with the mutant; open the patch to see what changed.',
         ],
     },
     'sequence': {

@@ -109,7 +109,8 @@ def model_cost() -> float:
     total = 0.0
     started = (REVIEW / ".started").read_text(encoding="utf-8").strip() \
         if (REVIEW / ".started").is_file() else ""
-    for name in (".film-runs.json", ".model-runs.json", ".content-runs.json"):
+    for name in (".film-runs.json", ".model-runs.json", ".content-runs.json",
+                 ".mutagent-runs.json"):
         try:
             doc = json.loads((REVIEW / name).read_text(encoding="utf-8"))
         except (OSError, ValueError):

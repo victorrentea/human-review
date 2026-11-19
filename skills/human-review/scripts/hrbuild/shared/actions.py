@@ -309,7 +309,7 @@ AI_STEPS = {"model": ("rerun-model.py", True), "review": ("rerun-review.py", Fal
 
 #: The paid presses whose price the probe can quote, each out of its own program's ledger
 #: (`serve-review.price_estimate`). The re-review is not one: its price is in its sentence.
-PRICED = ("model", "film")
+PRICED = ("model", "film", "mutagent")
 
 
 #: What a tab's free ↺ does, where "re-derive the tab" would promise more than it does.

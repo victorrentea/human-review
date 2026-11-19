@@ -147,6 +147,14 @@ def diff_html(rel: str, base: str, root: Path, caption: str | None = None,
         text = "".join(p for i, p in enumerate(parts[1:]) if i in keep)
         if not text.strip():
             return ""
+    return diff_text_html(text, rel, root, caption, fold)
+
+
+def diff_text_html(text: str, rel: str, root: Path, caption: str | None = None,
+                   fold: bool = False) -> str:
+    """A unified diff already in hand, rendered as `diff_html` renders the one it asks git
+    for — the Tests tab's Mutagent card shows each mutant's patch this way."""
+    src = root / rel
     rows = _parse_unified(text)
     adds = sum(1 for r in rows if r[0] == "add")
     dels = sum(1 for r in rows if r[0] == "del")

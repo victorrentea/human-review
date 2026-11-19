@@ -30,6 +30,9 @@
   if (!buttons.length) return;
   var fail = document.getElementById('hr-rerun-fail');
   var done = document.getElementById('hr-rerun-done');
+  // The presses that spend money, and so open the confirmation first: the masthead's and a
+  // tab's 🤖, and the Tests tab's 🧬 Mutagent (AI writes mutants of the PR's code).
+  var PAID = {'__rerun_ai__': true, '__mutagent__': true};
 
   // The run while it runs: a bar, the step it is on, how many are left, roughly how long.
   //
@@ -336,7 +339,7 @@
     // The steps this press runs, when the button says: a tab's own, or the masthead ↺⏳'s
     // whole list (the slow ones included, which the last run's timings may not know).
     var only = btn.getAttribute('data-steps');
-    progress.start(btn.getAttribute('data-rerun') === '__rerun_ai__' ? 'rerun_ai' : 'rerun',
+    progress.start(PAID[btn.getAttribute('data-rerun')] ? 'rerun_ai' : 'rerun',
                    0, only ? only.split(',') : null, tab);
     window.HR.run(btn.getAttribute('data-rerun'), tab ? {tab: tab} : {}, function (snap) {
       // One line, in the hover: the button has room for a word and the reader who wants
@@ -365,7 +368,7 @@
         stop(btn, '', null);
         if (fail) fail.hidden = true;
         panel.hidden = false;
-        sayBusy({active: e.busy || {}, kind: (e.busy && e.busy.action === '__rerun_ai__')
+        sayBusy({active: e.busy || {}, kind: (e.busy && PAID[e.busy.action])
                    ? 'rerun_ai' : 'rerun',
                  started: e.busy && e.busy.started, joined: 0});
         return;
@@ -583,7 +586,7 @@
     // a closure per button holding the strings. Only the tooltip: the face is a glyph the
     // run never replaces, so there is nothing else to put back.
     btn.setAttribute('data-idle-tip', btn.getAttribute('data-tip') || '');
-    var paid = btn.getAttribute('data-rerun') === '__rerun_ai__';
+    var paid = PAID[btn.getAttribute('data-rerun')];
     btn.addEventListener('click', function () {
       if (btn.disabled) return;
       if (btn.hasAttribute('data-card')) { redrawCard(btn); return; }

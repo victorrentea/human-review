@@ -1227,8 +1227,10 @@ FILM_RUNS = ".film-runs.json"
 #: And what `write-content.py` spent on the page's verdict.
 CONTENT_RUNS = ".content-runs.json"
 #: Every paid model step's ledger, in the order the page-build row names them.
+#: And what `mutagent.py generate` spent on the Tests tab's 🧬 mutants.
+MUTAGENT_RUNS = ".mutagent-runs.json"
 MODEL_LEDGERS = ((MODEL_RUNS, "the model step"), (FILM_RUNS, "the film-script step"),
-                 (CONTENT_RUNS, "the verdict step"))
+                 (CONTENT_RUNS, "the verdict step"), (MUTAGENT_RUNS, "the Mutagent step"))
 
 
 def model_run_in(review: Path, lo, hi, ledger: str = MODEL_RUNS) -> dict | None:
@@ -2383,6 +2385,7 @@ MODEL_RUN_TABS = {
     MODEL_PROGRAM: ("requirements", "tests"),
     FILM_PROGRAM: ("behaviour", "demo", "video"),
     CONTENT_PROGRAM: ("review",),
+    "mutagent.py": ("requirements", "tests"),
 }
 _PROGRAM_IN_WHAT = re.compile(r"\(((?:rerun|write)-[a-z-]+\.py)\)")
 

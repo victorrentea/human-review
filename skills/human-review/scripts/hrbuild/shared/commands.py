@@ -216,6 +216,9 @@ def tab_rerun_html(tab_id: str, label: str, info: dict | None) -> str:
                    else "") +
                 f'data-tip="costs money. {tip}">'
                 f'{rerun_face(RERUN_MARK_AI)}</button>')
+    # And whatever a tab draws after its paid one: the Tests tab's 🧬 Mutagent pair
+    # (`tabs/tests.py:mutagent_buttons`), a different verb from re-deriving the tab.
+    out += info.get("after") or ""
     return out + "</span>"
 
 

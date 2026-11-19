@@ -614,7 +614,8 @@ def write_evidence(evidence: dict) -> None:
 #: Per-branch model state a run keeps in `.human-review/` between runs: what a 🤖 rerun
 #: replaced, and what each paid run cost. The folder outlives a branch.
 MODEL_PREV = ".model-prev"
-MODEL_LEDGERS = (".model-runs.json", ".film-runs.json", ".content-runs.json")
+MODEL_LEDGERS = (".model-runs.json", ".film-runs.json", ".content-runs.json",
+                 ".mutagent-runs.json")
 BRANCH_MARKER = ".branch"
 
 
