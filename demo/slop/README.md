@@ -18,6 +18,7 @@ applied outside demo runs: `run.sh` feeds them, `check.py` verifies them, nothin
 | **I** lazy `Visit.vet`, no fetch join: one `SELECT vet` per visit (N+1) | demo | :8 | Sequence: ≥ 3 `SELECT vets` in one diagram | next re-run |
 | **J** "Clearing the field must persist as empty" left untested | demo | :11 | Tests: that sentence missing | next re-run (today a retouch) |
 | **K** owner's telephone written to the log | demo | :14 | Logging: `[String]` telephone value | next re-run (today a retouch) |
+| **L** a weak order test: `VisitTest#getAll_returnsVisitsInDateOrder` inserts its three visits already in date order, so it is green with or without `ORDER BY v.date` in `findAllWithPetAndOwner` | demo | — pre-existing on main (petclinic `01aa5b68`, merged into test-pr) | Tests: 🧬 Mutagent survivor "drop ORDER BY in all-visits query", claimed by the test's own name | found 20 Nov (Opus; Sonnet, 5 tries, did not delete the clause) |
 
 ```sh
 demo/slop/run.sh demo2 --checkout ~/workspace/petclinic-visits-paginated-v2 --branch visits-paginated-v2 --dry-run
