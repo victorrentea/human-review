@@ -2,13 +2,22 @@
  "base": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 3,
+ "commits": 4,
  "implementation": "d21158744e03c0b1167df0eb57be9089c71b1976",
  "review": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
  "session": "1c2f57a0-d326-4ee3-931a-392042066103",
  "fallback": false,
- "after": [],
- "after_detail": [],
+ "after": [
+  "3262ac5323221c8f31b39772e08982a3823a353a"
+ ],
+ "after_detail": [
+  {
+   "sha": "3262ac5323221c8f31b39772e08982a3823a353a",
+   "when": "2026-11-20T11:44:17+02:00",
+   "subject": "visits-sort glue: the grid's selectors move into VisitsPage",
+   "auto_fix": false
+  }
+ ],
  "review_when": "2026-11-12T00:34:46+01:00",
  "takeover": null,
  "auto_fixes": [

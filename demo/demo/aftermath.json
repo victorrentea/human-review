@@ -1,7 +1,7 @@
 {
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "review_short": "be762955",
- "head": "f937b8f8018ee8bfd662bcd52290894aefc818d9",
+ "head": "2f65b67b964fbd359a0c6cdfcae7779d97c423d6",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -3406,17 +3406,227 @@
    "measured": true,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "e33bdc9b0f6dc40b2e3dff47b75ccee4dd48da5f",
+   "short": "e33bdc9b",
+   "when": "2026-11-20T11:38:21+02:00",
+   "subject": "Merge origin/main into test-pr: page objects under the vet-linking steps",
+   "files": [
+    {
+     "path": "REVIEW.md",
+     "added": 1,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/eval/README.md",
+     "added": 8,
+     "deleted": 7,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "docs/eval/db-cli-skill.html",
+     "added": 22,
+     "deleted": 7,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{evals => docs/eval}/db-cli/pretty_report.html",
+     "added": 21,
+     "deleted": 6,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{evals => docs/eval}/db-cli/pretty_report.py",
+     "added": 13,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{evals => docs/eval}/db-cli/report.py",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{evals => docs/eval}/db-cli/run.py",
+     "added": 4,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{evals => docs/eval}/db-cli/tasks.json",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "notification-service/Dockerfile",
+     "added": 5,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-backend/Dockerfile",
+     "added": 5,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/AGENTS.md",
+     "added": 4,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/README.md",
+     "added": 8,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/add-owner.spec.ts",
+     "added": 27,
+     "deleted": 40,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/add-visit.dsl.ts",
+     "added": 18,
+     "deleted": 39,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/add-visit.spec.ts",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/chatbot.spec.ts",
+     "added": 9,
+     "deleted": 10,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/owner-search.feature.glue.ts",
+     "added": 9,
+     "deleted": 10,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/pages/AssistantPage.ts",
+     "added": 32,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/pages/OwnerForm.ts",
+     "added": 50,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/pages/OwnerPage.ts",
+     "added": 66,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/pages/OwnersPage.ts",
+     "added": 45,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/pages/VisitForm.ts",
+     "added": 67,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/pages/VisitsPage.ts",
+     "added": 6,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/visit-date-range.dsl.ts",
+     "added": 8,
+     "deleted": 9,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/visit-vet.feature.glue.ts",
+     "added": 1,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 430,
+   "deleted": 145,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "2f65b67b964fbd359a0c6cdfcae7779d97c423d6",
+   "short": "2f65b67b",
+   "when": "2026-11-20T11:38:34+02:00",
+   "subject": "review-points: base moved past main's eef8413a (merged)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 68,
-  "files": 201,
-  "added": 8146,
-  "deleted": 1392,
+  "commits": 70,
+  "files": 212,
+  "added": 8510,
+  "deleted": 1471,
   "code": {
-   "files": 167,
-   "added": 7650,
-   "deleted": 955
+   "files": 178,
+   "added": 8014,
+   "deleted": 1034
   },
   "generated": {
    "files": 34,

@@ -1,6 +1,6 @@
 {
  "schema": "test-mapping/1",
- "note": "0 links by script (unconfirmed), 7 by model, 10 script links rejected by the model; 0 sentences not paired yet",
+ "note": "0 links by script (unconfirmed), 11 by model, 6 script links rejected by the model; 0 sentences not paired yet",
  "sentences": [
   {
    "id": "s0dda55",
@@ -9,7 +9,7 @@
     {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138",
      "strength": "asserted",
-     "why": "Requests every column in both directions and asserts the returned values are sorted in that order with the expected first value",
+     "why": "for each of date, description, pet and owner in both directions, asserts the served column is sorted and starts with the expected value",
      "line": "assertThat(values).hasSize(10).isSortedAccordingTo(order).first().isEqualTo(first);",
      "by": "model",
      "evidence": [
@@ -21,46 +21,63 @@
     {
      "id": "petclinic-test/src/visits-sort.feature:7",
      "strength": "asserted",
-     "why": "Clicks each column header once and twice in the UI and polls that the first page's values are in ascending/descending order",
+     "why": "clicks each of the four headers once and twice and polls until the first page's values are a full page in ascending or descending order",
      "line": "await expect.poll(verdict, {timeout: 10_000}).toBe('a full first page, in order');",
      "by": "model"
     },
     {
-     "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:84",
-     "strength": "asserted",
-     "why": "Asserts a sort event on a column puts the sort in the URL and resets the page",
-     "line": "queryParams: {sort: 'description,asc', page: null}, queryParamsHandling: 'merge',",
-     "by": "model"
-    },
-    {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java:52",
-     "strength": "exercised",
-     "why": "asserts the parser accepts date, description, pet and owner in both directions",
+     "strength": "asserted",
+     "why": "asserts parse accepts date, description, pet and owner in both directions and echoes the same sort",
+     "line": "assertThat(VisitGridParams.parse(null, null, column + \",\" + direction).sort())",
      "by": "model",
      "evidence": [
       "grid (name)",
       "sort (assert)",
       "column (name)"
      ]
+    },
+    {
+     "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java:58",
+     "strength": "exercised",
+     "why": "asserts only that a column without a direction defaults to ascending",
+     "line": "",
+     "by": "model",
+     "evidence": [
+      "grid (name)",
+      "sort (name)",
+      "column (name)"
+     ]
+    },
+    {
+     "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java:70",
+     "strength": "exercised",
+     "why": "asserts the sort chain for the pet column only (p.name, then v.id)",
+     "line": "",
+     "by": "model",
+     "evidence": [
+      "grid (name)",
+      "sort (name)",
+      "column (name)"
+     ]
+    },
+    {
+     "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:84",
+     "strength": "exercised",
+     "why": "asserts that sorting the description column puts sort=description,asc in the URL; the other columns are not checked",
+     "line": "",
+     "by": "model"
     }
    ],
    "by": "model",
    "rejected": [
     {
-     "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java:58",
-     "why": "only checks that a missing direction defaults to asc in the param parser, not that columns sort"
-    },
-    {
-     "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java:70",
-     "why": "checks the pet sort adds a v.id tie-breaker, one column only, not sorting by any column"
-    },
-    {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:146",
-     "why": "checks an unknown column falls back to date,desc, the opposite of sorting by a column"
+     "why": "asserts the fallback to date,desc for an unsupported column, not that the supported columns sort"
     },
     {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92",
-     "why": "asserts the default newest-first page, not a chosen column sort"
+     "why": "asserts the default newest-first page and its paging fields, not sorting by a chosen column"
     }
    ]
   },
@@ -71,7 +88,7 @@
     {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154",
      "strength": "asserted",
-     "why": "Requests size=7 and asserts the page holds 5 rows and reports size 5",
+     "why": "asks for size=7 and asserts the response size is 5, so a 5-row page is served",
      "line": "assertThat((Integer) JsonPath.read(json, \"$.size\")).isEqualTo(5);",
      "by": "model",
      "evidence": [
@@ -84,48 +101,65 @@
     {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92",
      "strength": "asserted",
-     "why": "Default request serves 10 rows and reports size 10 and two total pages",
+     "why": "asserts the default response has size 10 and ten rows",
      "line": "assertThat((Integer) JsonPath.read(json, \"$.size\")).isEqualTo(10);",
      "by": "model"
     },
     {
      "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:93",
      "strength": "exercised",
-     "why": "Passes page size 20 to onPage and checks the navigation query, but does not check the grid offers 5, 10 or 20 or renders that many rows",
+     "why": "asserts that a page change with size 20 navigates with size 20 in the URL, but not that the paginator offers 5, 10 and 20",
+     "line": "",
      "by": "model",
      "evidence": [
       "20 (assert)",
       "row (covered change)",
       "page (name)"
      ]
-    }
-   ],
-   "gap": "The backend pages by 5 and 10 (default), but no test asserts a page of 20 rows is served or that the grid UI offers 5, 10 and 20.",
-   "by": "model",
-   "rejected": [
-    {
-     "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:65",
-     "why": "checks component fields are set from the served page, not the offered page sizes"
-    },
-    {
-     "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:108",
-     "why": "checks owner cells render as links, nothing about paging"
     },
     {
      "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:57",
-     "why": "checks URL params are forwarded to the service, not page sizes of the grid"
+     "strength": "exercised",
+     "why": "asserts that the size 5 from the URL is passed to the service, not what the paginator offers",
+     "line": "",
+     "by": "model",
+     "evidence": [
+      "20 (covered change)",
+      "row (assert)",
+      "page (name)"
+     ]
+    },
+    {
+     "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:65",
+     "strength": "exercised",
+     "why": "asserts the component takes size 5 from the served page, not the set of sizes offered",
+     "line": "",
+     "by": "model",
+     "evidence": [
+      "20 (covered change)",
+      "row (name)",
+      "page (name)"
+     ]
+    }
+   ],
+   "gap": "No test asserts a 20-row page is served or that the paginator offers exactly 5, 10 and 20.",
+   "by": "model",
+   "rejected": [
+    {
+     "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:108",
+     "why": "only checks the owner links render and their href, nothing about paging"
     },
     {
      "id": "petclinic-frontend/src/app/visits/visits-page/visits-page.component.spec.ts:76",
-     "why": "checks only that a URL change re-queries"
+     "why": "only counts service calls after a URL change, no page size is checked"
     },
     {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridParamsTest.java:70",
-     "why": "checks the sort tie-breaker, not page sizes"
+     "why": "asserts the sort chain, not the page size"
     },
     {
      "id": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:185",
-     "why": "checks an empty clinic serves an empty first page, not the page sizes"
+     "why": "asserts the empty-clinic page and total pages, not the page sizes"
     }
    ]
   }

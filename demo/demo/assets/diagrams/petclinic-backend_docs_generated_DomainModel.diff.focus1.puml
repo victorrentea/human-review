@@ -7,7 +7,7 @@ hide empty members
 skinparam classAttributeIconSize 0
 skinparam hyperlinkUnderline false
 skinparam hyperlinkColor #000000
-class Pet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:29{Click to open in editor}]] #back:F4DCB4 {
+class Pet [[src://petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java:30{Click to open in editor}]] #back:F4DCB4 {
   id : Integer
   name : String
   birthDate : LocalDate

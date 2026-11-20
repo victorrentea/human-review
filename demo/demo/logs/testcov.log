@@ -2,10 +2,10 @@
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/testcov.py --base origin/main --out .human-review/assets/test-coverage.json
 [testcov] $ (cd /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/petclinic-backend && ./test-on-own-db.sh mvn -o test -Dmaven.test.failure.ignore=true -Dmaven.test.additionalClasspath=/Users/victorrentea/.cache/human-review/testcov/4ea001029b8d3ddc/hr-testcov-listener.jar -Dhr.testcov.dir=/Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/coverage/junit-0)  > .human-review/coverage/junit-0.log
 [testcov] $ (cd /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/petclinic-frontend && npx ng test --watch=false --code-coverage --browsers=ChromeHeadless --karma-config=/Users/victorrentea/workspace/human-review/skills/human-review/scripts/testcov/karma/karma.conf.js)  > .human-review/coverage/karma-0.log
-[testcov] 346 test(s) in 4 suite(s); 126 changed line(s) in 20 file(s) -> .human-review/assets/test-coverage.json
-[testcov]   Backend JUnit          ran       205 test(s)    82.9s  
-[testcov]   Backend Cucumber       ran        10 test(s)    82.9s  
-[testcov]   Backend ArchUnit       ran         2 test(s)    82.9s  
-[testcov]   Frontend Karma         ran       129 test(s)     5.2s  
-[testcov]   E2E Playwright         stale       0 test(s)       0s  measured on 788c63dc, not on HEAD f937b8f8 — re-run the traced suite
-[testcov]   E2E Cucumber           stale       0 test(s)       0s  measured on 788c63dc, not on HEAD f937b8f8 — re-run the traced suite
+[testcov] 364 test(s) in 6 suite(s); 126 changed line(s) in 20 file(s) -> .human-review/assets/test-coverage.json
+[testcov]   Backend JUnit          ran       205 test(s)   110.3s  
+[testcov]   Backend Cucumber       ran        10 test(s)   110.3s  
+[testcov]   Backend ArchUnit       ran         2 test(s)   110.3s  
+[testcov]   Frontend Karma         ran       129 test(s)     6.5s  
+[testcov]   E2E Playwright         ran         9 test(s)     1.0s  
+[testcov]   E2E Cucumber           ran         9 test(s)     1.1s  

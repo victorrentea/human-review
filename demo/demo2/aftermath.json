@@ -1,7 +1,7 @@
 {
  "review": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
  "review_short": "08f6593e",
- "head": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
+ "head": "3262ac5323221c8f31b39772e08982a3823a353a",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -28,16 +28,45 @@
   "**/poetry.lock",
   ".human-review/**"
  ],
- "commits": [],
+ "commits": [
+  {
+   "sha": "3262ac5323221c8f31b39772e08982a3823a353a",
+   "short": "3262ac53",
+   "when": "2026-11-20T11:44:17+02:00",
+   "subject": "visits-sort glue: the grid's selectors move into VisitsPage",
+   "files": [
+    {
+     "path": "petclinic-test/src/pages/VisitsPage.ts",
+     "added": 33,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/visits-sort.feature.glue.ts",
+     "added": 13,
+     "deleted": 24,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 46,
+   "deleted": 24,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  }
+ ],
  "totals": {
-  "commits": 0,
-  "files": 0,
-  "added": 0,
-  "deleted": 0,
+  "commits": 1,
+  "files": 2,
+  "added": 46,
+  "deleted": 24,
   "code": {
-   "files": 0,
-   "added": 0,
-   "deleted": 0
+   "files": 2,
+   "added": 46,
+   "deleted": 24
   },
   "generated": {
    "files": 0,
@@ -45,5 +74,5 @@
    "deleted": 0
   }
  },
- "clean": true
+ "clean": false
 }

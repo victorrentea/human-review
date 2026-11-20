@@ -1,8 +1,8 @@
 {
- "base": "01aa5b685c22bd843c26b9d9840576e32e5a853c",
+ "base": "eef8413a06f94be7527ed30a6c59f454a364345e",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 134,
+ "commits": 136,
  "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
@@ -75,7 +75,9 @@
   "4c0ba36c2b619b31c986b014429697505ea4c21e",
   "088f2f283d658041fc67afada5f166ba3e4e66bb",
   "a31b30ad895c83a444fb639b37766fb9718eeef2",
-  "f937b8f8018ee8bfd662bcd52290894aefc818d9"
+  "f937b8f8018ee8bfd662bcd52290894aefc818d9",
+  "e33bdc9b0f6dc40b2e3dff47b75ccee4dd48da5f",
+  "2f65b67b964fbd359a0c6cdfcae7779d97c423d6"
  ],
  "after_detail": [
   {
@@ -484,6 +486,18 @@
    "sha": "f937b8f8018ee8bfd662bcd52290894aefc818d9",
    "when": "2026-11-20T09:08:02+02:00",
    "subject": "review-points: base moved past main's 01aa5b68 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "e33bdc9b0f6dc40b2e3dff47b75ccee4dd48da5f",
+   "when": "2026-11-20T11:38:21+02:00",
+   "subject": "Merge origin/main into test-pr: page objects under the vet-linking steps",
+   "auto_fix": false
+  },
+  {
+   "sha": "2f65b67b964fbd359a0c6cdfcae7779d97c423d6",
+   "when": "2026-11-20T11:38:34+02:00",
+   "subject": "review-points: base moved past main's eef8413a (merged)",
    "auto_fix": false
   }
  ],

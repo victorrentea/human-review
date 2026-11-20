@@ -1,3 +1,1 @@
-  * owners -> owners
-    $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/codeowners-check.py --base ad1fb1d35662f8fd94ed202fc3572f309e185dbd --state
-approval_required
+  = owners: unchanged, 0.2 s saved
