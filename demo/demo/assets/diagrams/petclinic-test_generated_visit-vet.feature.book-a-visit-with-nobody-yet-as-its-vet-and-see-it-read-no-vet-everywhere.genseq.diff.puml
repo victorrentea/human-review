@@ -40,7 +40,7 @@ NotificationService -> "SMS gateway": [[src://notification-service/src/main/java
 NotificationService --> Backend: 202
 deactivate NotificationService
 deactivate Backend
-[-> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:21{Click to open the line that sent this request: visits-page.component.ts:21} VisitService.getVisits ↗]]
+Browser -> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:21{Click to open the line that sent this request: visits-page.component.ts:21} VisitService.getVisits ↗]]
 activate Browser
 Browser -> Backend: [[genseq://1myr631{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
 activate Backend

@@ -434,9 +434,8 @@
   .coupling-label.in   { background: rgba(185, 28, 28, 0.94); }
   .coupling-label.both { background: rgba(126, 34, 206, 0.94); }
   /* ...and while a road this diff added is up, every other name on the bundle steps back
-     with its road. A new road's own peer keeps its direction's colour and wears a star. */
+     with its road. A new road's own peer keeps its direction's colour at full strength. */
   .coupling-label.faded { opacity: 0.55; }
-  .new-mark { font-size: 1.5em; line-height: 0; vertical-align: -0.12em; }
   .coupling-label.subject {   /* the one you asked about: on no road, so on no side */
     background: rgba(12, 32, 96, 0.96);
     box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.9), 0 6px 18px rgba(15, 23, 42, 0.4);
@@ -586,7 +585,7 @@
   Scroll to zoom<br>
   Shift-click a floor/building to zoom in<br>
   <span id="roadsHint"><b>&#8997; over a building</b>: its coupling, as roads (&#8997;-click to pin, Esc or click the ground to let go)<br>
-    <span id="addedRoadsHint" hidden>&nbsp;&nbsp;under &#8997;, <span class="new-mark">&#x1F195;</span> riding a road: a dependency this diff added; the rest fade<br></span>
+    <span id="addedRoadsHint" hidden>&nbsp;&nbsp;under &#8997;, a road at full strength: a dependency this diff added; the rest fade<br></span>
     <span id="roadJumpHint">&nbsp;&nbsp;&#8984;/Ctrl-click a road: the source line that couples the two<br></span></span>
   <b>&#8679; over a building</b>: what changes with it (co-change colour), or its whole axis (cohesion colour)<br>
   Shift-click the ground (or Esc / breadcrumb) to step out<br>
@@ -737,14 +736,14 @@ function pickedIde() {
 }
 // The same file on github.com at the commit the city was drawn from, or "" (see
 // _github_blob_base). Used instead of VS Code when the page is not read on this machine.
-const GITHUB_BLOB = "https://github.com/victorrentea/petclinic/blob/f937b8f8018ee8bfd662bcd52290894aefc818d9/";
+const GITHUB_BLOB = "https://github.com/victorrentea/petclinic/blob/2f65b67b964fbd359a0c6cdfcae7779d97c423d6/";
 // Read off this machine (GitHub Pages, any host but localhost): a vscode:// path is the
 // generating machine's, so a click goes to GitHub instead, or nowhere, and says so.
 const LOCAL_PAGE = location.protocol === "file:" ||
   /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const EDITOR_LINKS = LOCAL_PAGE || !!GITHUB_BLOB;
 const HAS_CHANGES = true;  // any file in the current git change set?
-const CHANGE_SOURCE = {"kind": "pr", "label": "PR #49", "detail": "Link Visit with Vet (issue #37)", "before": "01aa5b685c22bd843c26b9d9840576e32e5a853c", "tooltip": "Link Visit with Vet (issue #37)\n\nCloses #37.\n\nA visit can now record the vet who attended it, and the vet is optional. You can pick a vet when booking or editing a visit, or leave it empty, since the vet is often unknown when the appointment is made. The owner's page, the all-visits screen and the chatbot's visit list now show each visit's vet. A visit without one reads \"No vet\"; that includes every visit created before this change. The data model is a nullable `visits.vet_id` (migration V4). The API adds `vetId` plus read-only vet first and last names to the visit payloads. A few demo seed visits get a vet so both states show up.\n\nTwo decisions deserve a reviewer's eye. First, editing a visit (PUT) replaces it whole, so a request without `vetId` clears the vet. That is what makes clearing the field persist, as the ticket requires, but a client that omits the field will also wipe the vet. Second, deleting a vet keeps their visits and sets the vet to none (`ON DELETE SET NULL`); refusing the delete would also be defensible. Still open: an unknown `vetId` returns 404, the same as an unknown pet type, rather than 400. The chatbot's `create_visit` can't choose a vet. The new Angular specs have only run in CI, since npm couldn't run in my session. Separately, this branch's CI cancels itself: the push and pull-request runs share one concurrency group, so CI on the fix commit only went green after a manual re-run. That workflow fix belongs on `main`.\n\n<!-- hr:merge-risk -->\n**Merge risk**\n- Two-way door: \u2705 a nullable vet column that a revert simply stops using; but a PUT that omits vetId clears the vet\n- Blast radius: \u25d4 **visits API** (about a quarter of the system)\n<!-- /hr:merge-risk -->\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code) \u00b7 Opus 5.5 (effort: high, context: 1M)", "url": "https://github.com/victorrentea/petclinic/pull/49"};  // what that change set is a diff OF (PR / commit / working tree)
+const CHANGE_SOURCE = {"kind": "pr", "label": "PR #49", "detail": "Link Visit with Vet (issue #37)", "before": "eef8413a06f94be7527ed30a6c59f454a364345e", "tooltip": "Link Visit with Vet (issue #37)\n\nCloses #37.\n\nA visit can now record the vet who attended it, and the vet is optional. You can pick a vet when booking or editing a visit, or leave it empty, since the vet is often unknown when the appointment is made. The owner's page, the all-visits screen and the chatbot's visit list now show each visit's vet. A visit without one reads \"No vet\"; that includes every visit created before this change. The data model is a nullable `visits.vet_id` (migration V4). The API adds `vetId` plus read-only vet first and last names to the visit payloads. A few demo seed visits get a vet so both states show up.\n\nTwo decisions deserve a reviewer's eye. First, editing a visit (PUT) replaces it whole, so a request without `vetId` clears the vet. That is what makes clearing the field persist, as the ticket requires, but a client that omits the field will also wipe the vet. Second, deleting a vet keeps their visits and sets the vet to none (`ON DELETE SET NULL`); refusing the delete would also be defensible. Still open: an unknown `vetId` returns 404, the same as an unknown pet type, rather than 400. The chatbot's `create_visit` can't choose a vet. The new Angular specs have only run in CI, since npm couldn't run in my session. Separately, this branch's CI cancels itself: the push and pull-request runs share one concurrency group, so CI on the fix commit only went green after a manual re-run. That workflow fix belongs on `main`.\n\n<!-- hr:merge-risk -->\n**Merge risk**\n- Two-way door: \u2705 a nullable vet column that a revert simply stops using; but a PUT that omits vetId clears the vet\n- Blast radius: \u25d4 **visits API** (about a quarter of the system)\n<!-- /hr:merge-risk -->\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code) \u00b7 Opus 5.5 (effort: high, context: 1M)", "url": "https://github.com/victorrentea/petclinic/pull/49"};  // what that change set is a diff OF (PR / commit / working tree)
 const COMMIT_CHOICES = [];   // recent commits that touched rendered code; empty unless the diff came from history
 // What the changed files measured on the other side of the diff: path -> a partial row
 // (size, LOC, complexity, commit counts). Only the change set is in here, and only the
@@ -995,7 +994,7 @@ const HAS_COUPLING_DELTA = true;   // only the rows that moved carry a value
 // It opened on a "Δ outgoing coupling" colour for a while — grey where the change left a
 // class's dependencies alone, red where it added some, blue where it cut some — with a
 // "Δ incoming coupling" beside it. Dropped (Oct 2026): it painted every building a third
-// palette nobody else on the page uses, said nothing the stars and the two-tone skin do not
+// palette nobody else on the page uses, said nothing the new roads and the two-tone skin do not
 // already say, and took the plain coupling ramp's place on the one view a reviewer opens.
 if (HAS_COUPLING_DELTA) {
   const colorSel = document.getElementById("colorMetric");
@@ -2272,7 +2271,7 @@ function rebuildCity() {
     // roofY/baseY spare the labels, the intro and the coupling anchors from each
     // recomputing the same two numbers off the mesh.
     buildings.push({ mesh, file, height, width, depth, colorValue, maxColor,
-                     baseY, roofY: baseY + height,
+                     baseY, roofY: baseY + height, leaf,
                      footprint: Math.min(width, depth) });
     buildingByPath.set(file.path, buildings[buildings.length - 1]);
     cityTop = Math.max(cityTop, baseY + height);
@@ -2282,8 +2281,10 @@ function rebuildCity() {
   }
   styleForChanges();
   crimePath = null;        // fresh materials: nothing to restore, and nothing painted
-  roadGrid = null;         // the blocks moved: the plate has to be re-gridded around them
-  drawAddedCoupling();     // ...which is the grid the diff's new roads are routed over
+  streetPlan = root;       // the blocks moved: the streets between them are wherever this layout left them
+  roadNet = null;
+  drawAddedCoupling();     // ...which are the streets the diff's new roads are routed over
+  warmRoadNet();           // ...and which the first ⌥ hover should find already mapped
   renderer.shadowMap.needsUpdate = true;   // ...and re-shadowed, once, on the next frame
   undersideGlass = null;   // fresh district materials: let the next frame re-glass them
   refreshScopeOptions();
@@ -2619,7 +2620,6 @@ for (const kind of ROAD_KINDS) flowMaterial[kind] = trafficMaterial(FLOW_BLUE[ki
 let streetGroup = null;         // the roads currently drawn (one hovered building's)
 let streetedPath = null;        // whose they are, so a pointermove inside the same roof is free
 let streetFlowFrozen = false;   // a bundle past ROAD_FLOW_MAX: drawn, but the traffic holds still
-let bundleStars = [];           // the runs a hovered bundle's new roads' stars ride (see "The stars")
 const streetLabels = [];        // the names of the hovered building and everything it touches
 // How many roads the last draw actually put on screen per direction, vs how many peers
 // were there to draw: the hover tooltip says so on the coupling lines, so a capped or
@@ -2703,7 +2703,6 @@ function clearStreets() {
     streetGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); });
     streetGroup = null;
   }
-  bundleStars = [];
   for (const label of streetLabels) {
     if (label.element && label.element.parentNode) label.element.parentNode.removeChild(label.element);
     scene.remove(label);
@@ -2714,12 +2713,12 @@ function clearStreets() {
   wireStatus.out = wireStatus.in = null;
 }
 
-// Where a road meets a building. All of them leaving the exact centre knot into an
-// unreadable star the moment a building has more than a handful of peers, so each one
-// leaves (or arrives) at the point of the FOOTPRINT that faces its peer: the base
-// rectangle cut along the horizontal direction to the other building, at 70% of the way
-// out. The bundle then fans around the base in the directions the couplings actually
-// run — which is itself information, since the city is laid out by package.
+// Where a road meets a building when no street reaches it — the straight L of last resort
+// (see layBundles); every other road comes in through a door (roadDoors). All of them
+// leaving the exact centre knot into an unreadable star the moment a building has more
+// than a handful of peers, so each one leaves (or arrives) at the point of the FOOTPRINT
+// that faces its peer: the base rectangle cut along the horizontal direction to the other
+// building, at 70% of the way out.
 function baseAnchor(entry, towards) {
   const c = entry.mesh.position;
   let dx = towards.x - c.x, dz = towards.z - c.z;
@@ -2733,127 +2732,354 @@ function baseAnchor(entry, towards) {
   return new THREE.Vector3(c.x + dx * reach, entry.baseY, c.z + dz * reach);
 }
 
-// Where a road coming from ring cell `towards` goes in through the wall that cell faces:
-// straight across, square to the wall, to the same 70% of the way in. Aiming at the cell
-// from the building's centre instead (baseAnchor) came in on a slant whenever the cell sat
-// off the centre line, and orthogonalize turned the slant into an extra corner — the road
-// left the top of a block to come back down beside it (Owner ↔ Pet, 10 Nov 2026).
-function doorAnchor(entry, towards) {
-  const c = entry.mesh.position;
-  const hw = entry.width / 2, hd = entry.depth / 2;
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const outX = Math.abs(towards.x - c.x) - hw, outZ = Math.abs(towards.z - c.z) - hd;
-  if (outX <= 0 && outZ <= 0) return baseAnchor(entry, towards);
-  if (outX >= outZ) {
-    return new THREE.Vector3(c.x + Math.sign(towards.x - c.x) * hw * 0.7, entry.baseY,
-                             clamp(towards.z, c.z - hd * 0.7, c.z + hd * 0.7));
-  }
-  return new THREE.Vector3(clamp(towards.x, c.x - hw * 0.7, c.x + hw * 0.7), entry.baseY,
-                           c.z + Math.sign(towards.z - c.z) * hd * 0.7);
-}
-
-// ── Routing: around the blocks, never under them ─────────────────────────────
+// ── Routing: down the streets, never under a block ───────────────────────────
 // The straight L between two bases is the shortest road and the wrong one — it drives
-// through whatever stands between them, and a road through a building is not a road. So
-// the plate is gridded once per rebuild, every footprint marked as built-up, and each
-// bundle is routed over the free cells with a turn priced above a straight, which is
-// what keeps the result reading as roads rather than as staircases.
+// through whatever stands between them, and a road through a building is not a road.
+//
+// So the roads run on the STREETS, and the city already has them. The treemap leaves a
+// strip of open ground around every building's cell and around every district, which
+// makes the edges of those cells a street map: sparse, exact, and drawn by the very layout
+// that placed the blocks. Every cell edge is a track, every crossing of two tracks is a
+// node, and a bundle is routed over that graph with a turn priced above a straight, which
+// is what keeps the result reading as roads rather than as staircases.
+//
+// Until November 2026 it was a uniform grid over the plate: mark the cells a footprint
+// covers, sweep the free ones. But a grid a hover can afford is 24k cells, and that is a
+// pitch of 7.7 units on PetClinic's plate and 58 on Spring's — under gaps of 6 to 19 units
+// between neighbours and footprints of 32. The grid could not see the gaps it was meant to
+// route through. A cell counted as free when its centre was, the road was drawn up to
+// seven units wide and pushed to one side of its centreline on top of that, and so it ran
+// along the edges of the blocks and under their corners (Victor: "route this line somehow
+// that it doesn't go under any building. Try to squeeze them in between"). Counted by the
+// page itself (road_check.py), 89 of PetClinic's 99 classes drew a bundle with a road under
+// a building, and 687 of 698 sampled on Spring; with the streets, none in either. A finer
+// grid is the freeze the cap was there to stop: 120k cells once cost 2-20 SECONDS a hover.
+// The street graph is about four crossings a building — 20.7k on Spring, fewer than the
+// grid's cells — and every edge of it is open ground by construction.
 //
 // ONE search per hover, not one per peer: a sweep from the hovered building reaches
 // every peer on the plate anyway, so eighty roads cost what one costs.
-// Fine enough to find the gaps the treemap leaves BETWEEN buildings, not just the ones
-// between districts: at a coarse pitch those gaps close up, and a road that could have
-// slipped between two blocks goes the long way around the whole district instead. The cap
-// below coarsens it again on a plate where that would cost too much, so this is the pitch
-// a small city gets, not the pitch every city pays for.
-const ROAD_CELL = 2.0;          // × cityUnit — grid pitch
-const ROAD_TURN_COST = 2.4;     // cells' worth of detour a corner is worth avoiding
-// The sweep is a per-hover cost on the main thread, so the grid is sized by what a hover
-// can afford, not by what would be pretty. 24k cells is ~155x155 over the plate: still
-// several cells across the narrowest building in a readable city, and ~100k states to
-// settle in the worst case. It was 120k cells once, which measured at 2-20 SECONDS of
-// heap traffic per hover — one held key and the tab was gone.
-const ROAD_MAX_CELLS = 24000;
+const ROAD_TURN_COST = 30;      // × cityUnit of detour a corner is worth avoiding
+// A street costs its length. An alley costs more, the narrower the more, so a bundle takes
+// the boulevard between two districts rather than the three-unit slit between two classes
+// when the detour is modest — and still takes the slit, thinned to fit, when it is not.
+// ROAD_ROOM is half the gap at which the toll is gone: the widest road, kerb to kerb.
+const ROAD_ROOM = 7.0;          // × cityUnit
+const ROAD_TIGHT = 3.0;         // a gap of no width would cost this many times its length extra
+const ROAD_KERB = 0.8;          // × cityUnit of ground left showing between tarmac and wall
+const ROAD_JOG = 1.5;           // × cityUnit: a sidestep shorter than this is not a turn
+// d3 rounds every rect to whole world units, so the two sides of one street — one cell's
+// right edge, its neighbour's left — come back up to a unit apart. Tracks closer than
+// that which overlap are one track.
+const TRACK_SNAP = 1.01;
 
-let roadGrid = null;            // invalidated by every rebuild; see rebuildCity
+let streetPlan = null;          // the laid-out hierarchy of the last rebuild; see rebuildCity
+let roadNet = null;             // built from it on first use, dropped by every rebuild
 
-function ensureRoadGrid() {
-  if (roadGrid !== null || !buildings.length) return roadGrid;
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (const b of buildings) {
-    minX = Math.min(minX, b.mesh.position.x - b.width / 2);
-    maxX = Math.max(maxX, b.mesh.position.x + b.width / 2);
-    minZ = Math.min(minZ, b.mesh.position.z - b.depth / 2);
-    maxZ = Math.max(maxZ, b.mesh.position.z + b.depth / 2);
+function ensureRoadNet() {
+  if (roadNet !== null || !buildings.length || !streetPlan) return roadNet;
+  const ox = cityW / 2, oz = cityD / 2;
+  // A node's rect grown by half the gap to its siblings: grown, siblings share their edges
+  // exactly, and that shared edge is the middle of the street between them.
+  const grownRect = new Map();
+  const grown = node => {
+    let rect = grownRect.get(node);
+    if (!rect) {
+      const p = node.parent ? districtStreet(node.parent) / 2 : 0;
+      rect = { x0: node.x0 - ox - p, x1: node.x1 - ox + p, z0: node.y0 - oz - p, z1: node.y1 - oz + p };
+      grownRect.set(node, rect);
+    }
+    return rect;
+  };
+  const blockRect = new Map();   // a district -> the box around all its grown children
+  const blockOf = parent => {
+    let box = blockRect.get(parent);
+    if (!box) {
+      box = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+      for (const child of parent.children) {
+        const e = grown(child);
+        box.x0 = Math.min(box.x0, e.x0); box.x1 = Math.max(box.x1, e.x1);
+        box.z0 = Math.min(box.z0, e.z0); box.z1 = Math.max(box.z1, e.z1);
+      }
+      blockRect.set(parent, box);
+    }
+    return box;
+  };
+  // Every edge of every grown rect is a candidate track: [0] the ones running along x (at
+  // a z), [1] the ones running along z. Flat triples of line, from, to.
+  const flat = [[], []];
+  const push = (axis, line, from, to) => { flat[axis].push(line, from, to); return flat[axis].length / 3 - 1; };
+  const leafEdges = new Map();   // leaf -> its four candidates, in heading order: +x, -x, +z, -z
+  let rimEdges = [];
+  streetPlan.eachBefore(node => {
+    const e = grown(node);
+    let x0 = e.x0, x1 = e.x1, z0 = e.z0, z1 = e.z1;
+    if (node.parent) {
+      // The children's streets stop at the ring their district keeps clear for its name,
+      // and the district's own streets run outside that ring: two networks, a name band
+      // apart. So an edge that reaches the rim of the children's block runs on across the
+      // ring to the district's own edge. The ring is open ground; only the name is there.
+      const u = blockOf(node.parent), pe = grown(node.parent);
+      if (e.x0 <= u.x0 + TRACK_SNAP) x0 = Math.min(x0, pe.x0);
+      if (e.x1 >= u.x1 - TRACK_SNAP) x1 = Math.max(x1, pe.x1);
+      if (e.z0 <= u.z0 + TRACK_SNAP) z0 = Math.min(z0, pe.z0);
+      if (e.z1 >= u.z1 - TRACK_SNAP) z1 = Math.max(z1, pe.z1);
+    }
+    const ids = [push(1, e.x1, z0, z1), push(1, e.x0, z0, z1), push(0, e.z1, x0, x1), push(0, e.z0, x0, x1)];
+    if (!node.children) leafEdges.set(node, ids);
+    if (!node.parent) rimEdges = ids;
+  });
+
+  // Candidates on one line that overlap are one track, as long as the ground allows.
+  const tracks = [[], []], trackOf = [null, null];
+  for (const axis of [0, 1]) {
+    const f = flat[axis], count = f.length / 3;
+    const order = Array.from({ length: count }, (_, i) => i).sort((a, b) => f[a * 3] - f[b * 3]);
+    const parent = Int32Array.from({ length: count }, (_, i) => i);
+    const find = i => {
+      while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; }
+      return i;
+    };
+    for (let a = 0; a < count; a++) {
+      const i = order[a];
+      for (let b = a + 1; b < count; b++) {
+        const j = order[b];
+        if (f[j * 3] - f[i * 3] > TRACK_SNAP) break;
+        if (f[i * 3 + 1] <= f[j * 3 + 2] + TRACK_SNAP && f[j * 3 + 1] <= f[i * 3 + 2] + TRACK_SNAP) {
+          parent[find(i)] = find(j);
+        }
+      }
+    }
+    const byRoot = new Map();
+    trackOf[axis] = new Int32Array(count);
+    for (let i = 0; i < count; i++) {
+      const root = find(i);
+      let t = byRoot.get(root);
+      if (t === undefined) {
+        t = tracks[axis].length;
+        byRoot.set(root, t);
+        tracks[axis].push({ axis, line: 0, parts: 0, from: Infinity, to: -Infinity, at: [], node: [] });
+      }
+      const track = tracks[axis][t];
+      track.line += f[i * 3]; track.parts++;
+      track.from = Math.min(track.from, f[i * 3 + 1]);
+      track.to = Math.max(track.to, f[i * 3 + 2]);
+      trackOf[axis][i] = t;
+    }
+    for (const track of tracks[axis]) track.line /= track.parts;
   }
-  let size = ROAD_CELL * cityUnit, cols, rows, x0, z0;
-  for (;;) {
-    const margin = 6 * size;    // room to get around the outermost blocks
-    x0 = minX - margin; z0 = minZ - margin;
-    cols = Math.ceil((maxX - minX + 2 * margin) / size);
-    rows = Math.ceil((maxZ - minZ + 2 * margin) / size);
-    if (cols * rows <= ROAD_MAX_CELLS) break;
-    size *= 1.4;                // a 5000-class plate gets a coarser grid, not a frozen tab
-  }
-  const free = new Uint8Array(cols * rows).fill(1);
-  // A cell is built up when a footprint covers its CENTRE, not when one clips its corner:
-  // on a coarse grid, "any overlap" walls off the gaps the treemap actually left.
-  for (const b of buildings) {
-    const p = b.mesh.position;
-    const c0 = Math.max(0, Math.round((p.x - b.width / 2 - x0) / size));
-    const c1 = Math.min(cols - 1, Math.round((p.x + b.width / 2 - x0) / size) - 1);
-    const r0 = Math.max(0, Math.round((p.z - b.depth / 2 - z0) / size));
-    const r1 = Math.min(rows - 1, Math.round((p.z + b.depth / 2 - z0) / size) - 1);
-    for (let r = r0; r <= r1; r++) {
-      for (let c = c0; c <= c1; c++) free[r * cols + c] = 0;
+
+  // The nodes: wherever a track along z meets one along x. The along-x ones are sorted by
+  // their z once, so each along-z track only looks at the band it actually spans.
+  const across = tracks[0].slice().sort((a, b) => a.line - b.line);
+  const xs = [], zs = [];
+  for (const down of tracks[1]) {
+    let lo = 0, hi = across.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (across[mid].line < down.from - TRACK_SNAP) lo = mid + 1; else hi = mid;
+    }
+    for (let i = lo; i < across.length && across[i].line <= down.to + TRACK_SNAP; i++) {
+      const level = across[i];
+      if (down.line < level.from - TRACK_SNAP || down.line > level.to + TRACK_SNAP) continue;
+      const id = xs.length;
+      xs.push(down.line); zs.push(level.line);
+      down.at.push(level.line); down.node.push(id);
+      level.at.push(down.line); level.node.push(id);
     }
   }
-  // The highest floor anything stands on: every road clears it, so no terrace can cover one.
-  let floorTop = 0;
-  for (const b of buildings) floorTop = Math.max(floorTop, b.baseY);
-  roadGrid = { cols, rows, size, x0, z0, free, minX, maxX, minZ, maxZ, floorTop };
-  return roadGrid;
+  for (const level of tracks[0]) {
+    const order = level.at.map((_, i) => i).sort((a, b) => level.at[a] - level.at[b]);
+    level.at = order.map(i => level.at[i]);
+    level.node = order.map(i => level.node[i]);
+  }
+
+  // The footprints, bucketed, so "what stands either side of this stretch" is a look at a
+  // few buckets and not a pass over the city: asked once per edge here, and once per
+  // straight run of every hover after.
+  const count = buildings.length;
+  const rects = new Float64Array(count * 4);
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, floorTop = 0;
+  buildings.forEach((b, i) => {
+    const p = b.mesh.position;
+    rects[i * 4] = p.x - b.width / 2; rects[i * 4 + 1] = p.x + b.width / 2;
+    rects[i * 4 + 2] = p.z - b.depth / 2; rects[i * 4 + 3] = p.z + b.depth / 2;
+    minX = Math.min(minX, rects[i * 4]); maxX = Math.max(maxX, rects[i * 4 + 1]);
+    minZ = Math.min(minZ, rects[i * 4 + 2]); maxZ = Math.max(maxZ, rects[i * 4 + 3]);
+    // The highest floor anything stands on: every road clears it, so no terrace can cover one.
+    floorTop = Math.max(floorTop, b.baseY);
+  });
+  const bucket = Math.max(4 * cityUnit, Math.sqrt((maxX - minX) * (maxZ - minZ) / count));
+  const cols = Math.floor((maxX - minX) / bucket) + 1, rows = Math.floor((maxZ - minZ) / bucket) + 1;
+  const start = new Int32Array(cols * rows + 1);
+  const span = i => [Math.floor((rects[i * 4] - minX) / bucket), Math.min(cols - 1, Math.floor((rects[i * 4 + 1] - minX) / bucket)),
+                     Math.floor((rects[i * 4 + 2] - minZ) / bucket), Math.min(rows - 1, Math.floor((rects[i * 4 + 3] - minZ) / bucket))];
+  for (let i = 0; i < count; i++) {
+    const [c0, c1, r0, r1] = span(i);
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) start[r * cols + c + 1]++;
+  }
+  for (let k = 0; k < cols * rows; k++) start[k + 1] += start[k];
+  const items = new Int32Array(start[cols * rows]), fill = start.slice(0, cols * rows);
+  for (let i = 0; i < count; i++) {
+    const [c0, c1, r0, r1] = span(i);
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) items[fill[r * cols + c]++] = i;
+  }
+
+  const n = xs.length;
+  const net = { n, x: Float64Array.from(xs), z: Float64Array.from(zs),
+                next: new Int32Array(n * 4).fill(-1), cost: new Float32Array(n * 4),
+                rects, bucket, cols, rows, start, items, minX, maxX, minZ, maxZ, floorTop,
+                index: new Map(buildings.map((b, i) => [b, i])),
+                sides: new Map(), doors: new Map(), rim: [],
+                wanted: new Int32Array(n), sweeps: 0 };
+  // What an edge costs: its length in city units, and a toll on top where the gap it runs
+  // through is narrower than a road wants. A track that turns out to lie under a footprint
+  // — a degenerate cell, a building clamped to a minimum size its cell did not have — is
+  // simply not an edge.
+  const reach = 2 * ROAD_ROOM * cityUnit;
+  const edgeCost = (axis, line, from, to) => {
+    if (!roadWalls(net, axis, line, from, to, reach)) return Infinity;
+    const t = Math.max(0, 1 - (_wallHi - _wallLo) / reach);
+    return (to - from) / cityUnit * (1 + ROAD_TIGHT * t * t);
+  };
+  for (const axis of [0, 1]) {
+    const forward = axis === 0 ? 0 : 2;
+    for (const track of tracks[axis]) {
+      for (let i = 1; i < track.node.length; i++) {
+        const a = track.node[i - 1], b = track.node[i];
+        const c = edgeCost(axis, track.line, track.at[i - 1], track.at[i]);
+        net.next[a * 4 + forward] = b; net.cost[a * 4 + forward] = c;
+        net.next[b * 4 + forward + 1] = a; net.cost[b * 4 + forward + 1] = c;
+      }
+    }
+  }
+  for (const [leaf, ids] of leafEdges) {
+    net.sides.set(leaf, ids.map((id, d) => tracks[d < 2 ? 1 : 0][trackOf[d < 2 ? 1 : 0][id]]));
+  }
+  // The outermost streets: where a road to a class that is not on the plate leaves it.
+  rimEdges.forEach((id, d) => net.rim.push(...tracks[d < 2 ? 1 : 0][trackOf[d < 2 ? 1 : 0][id]].node));
+  roadNet = net;
+  return roadNet;
 }
 
-// The free cells hugging a building's footprint: where its roads start, and where a road
-// coming the other way is allowed to arrive.
+// Mapping the streets of Spring takes ~40 ms, once per rebuild. Left to the first ⌥ hover,
+// that hover costs 85 ms and the held key stutters; done inside the rebuild, it is 40 ms on
+// the way to a first frame nobody may ever ask a road of. So it is done in the first idle
+// moment after the rebuild, and a hover that gets there first simply builds it itself.
 //
-// Side cells only, while there is one: a corner cell touches the block diagonally, so a road
-// through it has to turn again to reach a wall. And each cell carries a `bias`, under a step,
-// growing from 0 at the middle of its wall to RING_BIAS at the wall's end. Every ring cell
-// used to cost the same, so the sweep's ties went to whichever cell was pushed first — the
-// top-left CORNER — and two blocks side by side were joined by a hook over the top of the
-// gap between them instead of a straight road across it.
-const RING_BIAS = 0.6;          // steps' worth: breaks ties, never buys a detour
-function roadRing(entry, grid) {
-  const p = entry.mesh.position;
-  const c0 = Math.floor((p.x - entry.width / 2 - grid.x0) / grid.size) - 1;
-  const c1 = Math.floor((p.x + entry.width / 2 - grid.x0) / grid.size) + 1;
-  const r0 = Math.floor((p.z - entry.depth / 2 - grid.z0) / grid.size) - 1;
-  const r1 = Math.floor((p.z + entry.depth / 2 - grid.z0) / grid.size) + 1;
-  const sides = [], corners = [], sideBias = [];
-  const midC = (c0 + c1) / 2, midR = (r0 + r1) / 2;
-  const halfC = Math.max(1, (c1 - c0) / 2 - 1), halfR = Math.max(1, (r1 - r0) / 2 - 1);
+// The transposed adjacency and the width scale ride along: both are built once per view on
+// the first bundle anyone asks for, and on Spring they were the rest of what made that
+// first hover the worst one on the page — 33-47 ms with the streets warmed alone, 18-22
+// with all three.
+let _roadNetWarming = 0;
+function warmRoadNet() {
+  const idle = window.requestIdleCallback || (fn => setTimeout(fn, 300));
+  const turn = ++_roadNetWarming;
+  idle(() => {
+    if (turn !== _roadNetWarming) return;
+    ensureRoadNet();
+    if (HAS_COUPLING) { incomingAdjacency(); couplingWeightScale(); }
+  }, { timeout: 2000 });
+}
+
+// What stands either side of one straight stretch: the nearest wall below its line and the
+// nearest above, among the footprints alongside it and within reach. Left in _wallLo and
+// _wallHi (-Infinity / Infinity for open ground), like the heap's pop, so a hover does not
+// pay for a pair per call. False when a footprint lies ACROSS the line: not a street at all.
+// Axis 0 is a stretch along x, whose line is a z; axis 1 the other way round.
+let _wallLo = 0, _wallHi = 0;
+function roadWalls(net, axis, line, from, to, reach, skipA = -1, skipB = -1) {
+  const eps = 1e-3;
+  if (to - from < 4 * eps) { from -= 2 * eps; to += 2 * eps; }
+  const x0 = axis === 0 ? from : line - reach, x1 = axis === 0 ? to : line + reach;
+  const z0 = axis === 0 ? line - reach : from, z1 = axis === 0 ? line + reach : to;
+  const c0 = Math.max(0, Math.floor((x0 - net.minX) / net.bucket));
+  const c1 = Math.min(net.cols - 1, Math.floor((x1 - net.minX) / net.bucket));
+  const r0 = Math.max(0, Math.floor((z0 - net.minZ) / net.bucket));
+  const r1 = Math.min(net.rows - 1, Math.floor((z1 - net.minZ) / net.bucket));
+  const rects = net.rects, along = axis === 0 ? 0 : 2, lateral = 2 - along;
+  let lo = -Infinity, hi = Infinity;
   for (let r = r0; r <= r1; r++) {
     for (let c = c0; c <= c1; c++) {
-      if (r !== r0 && r !== r1 && c !== c0 && c !== c1) continue;   // the ring, not the block
-      if (c < 0 || r < 0 || c >= grid.cols || r >= grid.rows) continue;
-      const idx = r * grid.cols + c;
-      if (!grid.free[idx]) continue;
-      const corner = (r === r0 || r === r1) && (c === c0 || c === c1);
-      if (corner) { corners.push(idx); continue; }
-      sides.push(idx);
-      sideBias.push(RING_BIAS * Math.min(1, (c === c0 || c === c1)
-        ? Math.abs(r - midR) / halfR : Math.abs(c - midC) / halfC));
+      const k = r * net.cols + c;
+      for (let j = net.start[k]; j < net.start[k + 1]; j++) {
+        const i = net.items[j];
+        if (i === skipA || i === skipB) continue;
+        if (rects[i * 4 + along + 1] <= from + eps || rects[i * 4 + along] >= to - eps) continue;
+        const l0 = rects[i * 4 + lateral], l1 = rects[i * 4 + lateral + 1];
+        if (l1 <= line + eps) { if (l1 > lo && l1 >= line - reach) lo = l1; }
+        else if (l0 >= line - eps) { if (l0 < hi && l0 <= line + reach) hi = l0; }
+        else return false;
+      }
     }
   }
-  const cells = sides.length ? sides : corners;
-  cells.bias = sides.length ? sideBias : corners.map(() => RING_BIAS);
-  return cells;
+  _wallLo = lo; _wallHi = hi;
+  return true;
 }
 
-const _ROAD_DC = [1, -1, 0, 0];
-const _ROAD_DR = [0, 0, 1, -1];
+// Where a building's roads meet the street: one door per wall, in the middle of it, straight
+// across to the street that runs past that wall. Each door knows the two crossings its
+// street reaches next, one either way, and what the stretch to each costs — which is all a
+// sweep needs to start from this building, or to arrive at it.
+//
+// Mid-wall and square to it, always. Every free cell hugging the footprint used to be a way
+// out, with a bias toward the middle; the road then left wherever was cheapest and skimmed
+// the wall to get there. A door is one short stub, perpendicular to its wall, and the road
+// only becomes a road once it is out in the street.
+function roadDoors(entry, net) {
+  let doors = net.doors.get(entry);
+  if (doors) return doors;
+  doors = [];
+  const tracks = entry.leaf ? net.sides.get(entry.leaf) : null;
+  const c = entry.mesh.position;
+  for (let d = 0; tracks && d < 4; d++) {
+    const track = tracks[d];
+    const along = d < 2 ? c.z : c.x;
+    const wall = d < 2 ? c.x + (d === 0 ? 1 : -1) * entry.width / 2 : c.z + (d === 2 ? 1 : -1) * entry.depth / 2;
+    if (d % 2 === 0 ? track.line <= wall : track.line >= wall) continue;   // no street outside this wall
+    let lo = 0, hi = track.at.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (track.at[mid] < along) lo = mid + 1; else hi = mid;
+    }
+    const forward = track.axis === 0 ? 0 : 2;
+    const before = lo > 0 ? track.node[lo - 1] : -1, after = lo < track.at.length ? track.node[lo] : -1;
+    let rate = 1 / cityUnit;                    // cost per world unit of this stretch of street
+    if (before >= 0 && after >= 0 && track.at[lo] - track.at[lo - 1] > 1e-6) {
+      rate = net.cost[before * 4 + forward] / (track.at[lo] - track.at[lo - 1]);
+    }
+    if (!isFinite(rate)) continue;
+    const ends = [];
+    if (after >= 0) ends.push({ node: after, heading: forward, cost: (track.at[lo] - along) * rate });
+    if (before >= 0) ends.push({ node: before, heading: forward + 1, cost: (along - track.at[lo - 1]) * rate });
+    if (!ends.length) continue;
+    doors.push({ entry, dir: d, track, slot: lo, along, rate, ends,
+                 x: d < 2 ? track.line : c.x, z: d < 2 ? c.z : track.line });
+  }
+  net.doors.set(entry, doors);
+  return doors;
+}
+
+// The ways one road of a bundle can end: at any door of its peer, coming along that door's
+// street from either side — or, for a peer that is not on the plate, at the crossing on
+// the city's outermost street nearest to where it leaves the picture.
+function roadTargets(item, net) {
+  const ways = [];
+  if (item.peer) {
+    for (const door of roadDoors(item.peer, net)) {
+      // heading ^ 1: the door's street was listed leaving the door; a road arrives the other way.
+      for (const end of door.ends) ways.push({ node: end.node, heading: end.heading ^ 1, cost: end.cost, door });
+    }
+  } else if (item.exit) {
+    let best = -1, bestD = Infinity;
+    for (const node of net.rim) {
+      const d = Math.abs(net.x[node] - item.exit.x) + Math.abs(net.z[node] - item.exit.z);
+      if (d < bestD) { bestD = d; best = node; }
+    }
+    if (best >= 0) ways.push({ node: best, heading: -1, cost: 0, door: null });
+  }
+  return ways;
+}
 
 // A binary heap over (cost, state) in two flat typed arrays. Not a library, and not an
 // array of pairs: at a hundred thousand states a hover, one small object per push — or
@@ -2902,120 +3128,97 @@ function heapPop() {
   }
 }
 
-// Dijkstra over (cell, heading) from every free cell touching the hovered building.
-// Heading is part of the state because that is the only way a turn can cost more than a
-// straight — without it the sweep is a BFS and every road comes out a staircase.
+// Dijkstra over (crossing, heading) from the hovered building's doors. Heading is part of
+// the state because that is the only way a turn can cost more than a straight — without it
+// every road comes out a staircase.
 //
-// It STOPS as soon as every peer in this bundle has been reached, which is what keeps it
-// interactive: a bundle is usually a handful of neighbours, and settling the far corner of
-// a plate nobody asked about is most of the work a full sweep does.
-function roadSweep(entry, grid, wantedCells) {
-  const states = grid.cols * grid.rows * 4;
-  const dist = new Float32Array(states).fill(Infinity);
-  const prev = new Int32Array(states).fill(-1);
-  const wanted = new Uint8Array(grid.cols * grid.rows);
-  let remaining = 0;
-  for (const cell of wantedCells) {
-    if (!wanted[cell]) { wanted[cell] = 1; remaining++; }
-  }
-  heapClear();
-  const ring = roadRing(entry, grid);
-  ring.forEach((cell, i) => {
-    const bias = ring.bias[i];
-    for (let d = 0; d < 4; d++) {
-      const state = cell * 4 + d;
-      if (dist[state] > bias) { dist[state] = bias; heapPush(bias, state); }
+// Each target is one road of the bundle with the ways it can end (roadTargets), and the
+// sweep keeps the cheapest way it has found into each. It STOPS once nothing still on the
+// heap could beat any of them, which is what keeps it interactive: a bundle is usually a
+// handful of neighbours, and settling the far corner of a plate nobody asked about is most
+// of the work a full sweep does.
+function roadSweep(entry, net, targets) {
+  const dist = new Float32Array(net.n * 4).fill(Infinity);
+  const prev = new Int32Array(net.n * 4).fill(-1);
+  const best = targets.map(() => ({ cost: Infinity, state: -1, way: null, from: null }));
+  const doors = roadDoors(entry, net);
+  // crossing -> the ways that end there, as [target, way] pairs. Asked of every state the
+  // sweep settles, so the answer "none", which is nearly all of them, is one read of a
+  // flat array stamped with this sweep's number rather than a Map lookup.
+  const waysAt = new Map(), wanted = net.wanted, sweepNo = ++net.sweeps;
+  targets.forEach((ways, t) => {
+    for (const way of ways) {
+      wanted[way.node] = sweepNo;
+      if (waysAt.has(way.node)) waysAt.get(way.node).push(t, way);
+      else waysAt.set(way.node, [t, way]);
+      // Two doors on one stretch of street, no crossing between them: the road is that
+      // stretch, and no walk over the crossings would ever find it.
+      for (const door of doors) {
+        if (!way.door || door.track !== way.door.track || door.slot !== way.door.slot) continue;
+        const cost = Math.abs(door.along - way.door.along) * door.rate;
+        if (cost < best[t].cost) best[t] = { cost, state: -1, way, from: door };
+      }
     }
   });
-  while (_heapSize && remaining > 0) {
+  // The dearest of the roads found so far — Infinity while any is still unfound.
+  const dearest = () => {
+    let worst = 0;
+    for (let t = 0; t < best.length; t++) if (targets[t].length && best[t].cost > worst) worst = best[t].cost;
+    return worst;
+  };
+  let limit = dearest();
+  heapClear();
+  const seedDoor = new Map();    // root state -> the door it left through
+  for (const door of doors) {
+    for (const end of door.ends) {
+      const state = end.node * 4 + end.heading;
+      if (end.cost < dist[state]) { dist[state] = end.cost; seedDoor.set(state, door); heapPush(end.cost, state); }
+    }
+  }
+  while (_heapSize) {
     heapPop();
     const cost = _popCost, state = _popItem;
     if (cost > dist[state]) continue;
-    const cell = state >> 2, dir = state & 3;
-    if (wanted[cell] === 1) { wanted[cell] = 2; if (--remaining === 0) break; }
-    const c = cell % grid.cols, r = (cell / grid.cols) | 0;
-    for (let d = 0; d < 4; d++) {
-      const nc = c + _ROAD_DC[d], nr = r + _ROAD_DR[d];
-      if (nc < 0 || nr < 0 || nc >= grid.cols || nr >= grid.rows) continue;
-      const nIdx = nr * grid.cols + nc;
-      if (!grid.free[nIdx]) continue;               // built up: a road does not go through it
-      const next = nIdx * 4 + d;
-      const step = cost + 1 + (d === dir ? 0 : ROAD_TURN_COST);
-      if (step < dist[next]) { dist[next] = step; prev[next] = state; heapPush(step, next); }
-    }
-  }
-  return { dist, prev };
-}
-
-// The free cell nearest (x, z), so a road can be routed to a POINT rather than to a
-// building — which is what an edge leaving the drilled-into scope needs.
-function freeCellNear(grid, x, z) {
-  const c0 = Math.max(0, Math.min(grid.cols - 1, Math.floor((x - grid.x0) / grid.size)));
-  const r0 = Math.max(0, Math.min(grid.rows - 1, Math.floor((z - grid.z0) / grid.size)));
-  if (grid.free[r0 * grid.cols + c0]) return r0 * grid.cols + c0;
-  for (let ring = 1; ring <= 8; ring++) {
-    for (let dr = -ring; dr <= ring; dr++) {
-      for (let dc = -ring; dc <= ring; dc++) {
-        if (Math.abs(dr) !== ring && Math.abs(dc) !== ring) continue;
-        const r = r0 + dr, c = c0 + dc;
-        if (c < 0 || r < 0 || c >= grid.cols || r >= grid.rows) continue;
-        if (grid.free[r * grid.cols + c]) return r * grid.cols + c;
+    if (cost >= limit) break;
+    const node = state >> 2, dir = state & 3;
+    if (wanted[node] === sweepNo) {
+      const ways = waysAt.get(node);
+      let found = false;
+      for (let k = 0; k < ways.length; k += 2) {
+        const t = ways[k], way = ways[k + 1];
+        if (way.heading === (dir ^ 1)) continue;          // the door is behind us
+        const total = cost + way.cost + (way.heading >= 0 && way.heading !== dir ? ROAD_TURN_COST : 0);
+        if (total < best[t].cost) { best[t] = { cost: total, state, way, from: null }; found = true; }
       }
+      if (found) limit = dearest();
+    }
+    for (let d = 0; d < 4; d++) {
+      if (d === (dir ^ 1)) continue;                      // a road does not double back
+      const next = net.next[node * 4 + d];
+      if (next < 0) continue;
+      const step = cost + net.cost[node * 4 + d] + (d === dir ? 0 : ROAD_TURN_COST);
+      const to = next * 4 + d;
+      if (step < dist[to]) { dist[to] = step; prev[to] = state; heapPush(step, to); }
     }
   }
-  return -1;
+  return { dist, prev, best, seedDoor };
 }
 
 // Where a road leaves the picture, for a peer that is not in it. It aims at whichever edge
 // of the plate is nearest, staggered so a building with six absent peers does not stack six
 // roads on one exit.
-function offPlateExit(entry, grid, index, count) {
+const ROAD_EXIT_STEP = 8;       // × cityUnit
+function offPlateExit(entry, net, index, count) {
   const p = entry.mesh.position;
-  const gaps = [p.x - grid.minX, grid.maxX - p.x, p.z - grid.minZ, grid.maxZ - p.z];
+  const gaps = [p.x - net.minX, net.maxX - p.x, p.z - net.minZ, net.maxZ - p.z];
   const side = gaps.indexOf(Math.min(...gaps));
-  const spread = (index - (count - 1) / 2) * 3 * grid.size;
-  const out = 2 * grid.size;
-  if (side === 0) return new THREE.Vector3(grid.minX - out, entry.baseY, p.z + spread);
-  if (side === 1) return new THREE.Vector3(grid.maxX + out, entry.baseY, p.z + spread);
-  if (side === 2) return new THREE.Vector3(p.x + spread, entry.baseY, grid.minZ - out);
-  return new THREE.Vector3(p.x + spread, entry.baseY, grid.maxZ + out);
-}
-
-// Whichever of `cells` the sweep reached most cheaply, as a state — the heading is part of
-// it, and that matters: two routes through the same STATE share every step from there back
-// to the root, which is what makes them bundleable.
-function roadBestState(sweep, cells) {
-  let best = -1, bestCost = Infinity;
-  cells.forEach((cell, i) => {
-    const bias = cells.bias ? cells.bias[i] : 0;    // arrive mid-wall too, as roadRing leaves
-    for (let d = 0; d < 4; d++) {
-      const state = cell * 4 + d;
-      if (sweep.dist[state] + bias < bestCost) { bestCost = sweep.dist[state] + bias; best = state; }
-    }
-  });
-  return isFinite(bestCost) ? best : -1;
-}
-
-function cellCentre(cell, grid) {
-  const c = cell % grid.cols, r = (cell / grid.cols) | 0;
-  return new THREE.Vector3(grid.x0 + (c + 0.5) * grid.size, 0, grid.z0 + (r + 0.5) * grid.size);
-}
-
-// Cell centres with the straight runs collapsed: only the corners survive.
-function statesToPoints(states, grid) {
-  const points = [];
-  for (let i = 0; i < states.length; i++) {
-    const point = cellCentre(states[i] >> 2, grid);
-    if (i > 0 && i < states.length - 1) {
-      const previous = points[points.length - 1];
-      const next = cellCentre(states[i + 1] >> 2, grid);
-      const straight = (Math.abs(point.x - previous.x) < 1e-6 && Math.abs(next.x - point.x) < 1e-6) ||
-                       (Math.abs(point.z - previous.z) < 1e-6 && Math.abs(next.z - point.z) < 1e-6);
-      if (straight) continue;
-    }
-    points.push(point);
-  }
-  return points;
+  const step = ROAD_EXIT_STEP * cityUnit;
+  const spread = (index - (count - 1) / 2) * 3 * step;
+  const out = 2 * step;
+  if (side === 0) return new THREE.Vector3(net.minX - out, entry.baseY, p.z + spread);
+  if (side === 1) return new THREE.Vector3(net.maxX + out, entry.baseY, p.z + spread);
+  if (side === 2) return new THREE.Vector3(p.x + spread, entry.baseY, net.minZ - out);
+  return new THREE.Vector3(p.x + spread, entry.baseY, net.maxZ + out);
 }
 
 // ── Bundling ────────────────────────────────────────────────────────────────
@@ -3026,9 +3229,9 @@ function statesToPoints(states, grid) {
 // thins every time something branches off it — the shape of the coupling rather than a
 // tally of it.
 //
-// The tree is over (cell, heading) states, not cells: a cell can be reached facing two
-// different ways with two different parents, but a state has exactly one parent, so two
-// routes sharing a state provably share every step from there to the root.
+// The tree is over (crossing, heading) states, not crossings: a crossing can be reached
+// facing two different ways with two different parents, but a state has exactly one parent,
+// so two routes sharing a state provably share every step from there to the root.
 function bundleRoutes(sweep, ends) {
   const carried = new Map();     // state -> total weight of the peers behind it
   // ...and WHICH peer, while there is only one: a chain runs exactly as far as `carried`
@@ -3074,47 +3277,146 @@ function bundleRoutes(sweep, ends) {
   return chains;
 }
 
-// Roads turn at 90 degrees and never run on a diagonal. The routed middle already does —
-// it is a walk over a grid — but the two ENDS are the buildings' own anchors, which sit
-// wherever the peer happens to lie, so the first and last legs came out at an angle. Insert
-// the missing corner instead: a city block has no diagonal streets, and one drawn as a
-// shortcut across the plate reads as a mistake in the drawing rather than a road.
+// ── Seating: down the middle of the gap ──────────────────────────────────────
+// A route over the street graph runs on cell edges, and a cell edge is in the gap between
+// two buildings but not in the middle of it: each building sits centred in its own cell,
+// at its own size, so the open ground either side of an edge is whatever slack the two
+// neighbours happened to leave. And a road is not a line. It is up to seven units wide,
+// and it shares its street with the road coming back, each keeping to its side of a
+// median.
 //
-// Same dominant-axis-first rule the rest of the routing uses, so an end leg turns the way
-// the run through the city was already going to.
-function orthogonalize(points) {
-  const out = [points[0]];
-  for (let i = 1; i < points.length; i++) {
-    const a = out[out.length - 1], b = points[i];
-    const dx = Math.abs(b.x - a.x), dz = Math.abs(b.z - a.z);
-    if (dx > 1e-6 && dz > 1e-6) {
-      out.push(dx >= dz ? new THREE.Vector3(b.x, a.y, a.z)
-                        : new THREE.Vector3(a.x, a.y, b.z));
+// So every straight stretch is SEATED before it is drawn. All the legs of a bundle that
+// lie on one street and touch are one stretch, with one seat: the trunk, the branches
+// that leave it and the road coming the other way move together or the picture comes
+// apart at every fork. The stretch is measured as it will be drawn — the hull of every
+// road on it, each on its own side of the median — and looked up against the walls that
+// actually stand beside it (roadWalls), over its whole length. Then, in this order:
+//
+//   - both walls in reach: the hull goes in the middle of the gap between them;
+//   - one wall: it keeps a kerb's width off that wall and otherwise stays on its edge;
+//   - the gap is narrower than the hull: the roads on it are THINNED to fit, median and
+//     all, rather than drawn over the walls. A thin road in an alley still says "these two
+//     are coupled"; a wide one under two buildings says the drawing is wrong.
+//
+// A door's stub is a stretch like any other, pinned to the middle of its wall and never
+// wider than the wall it comes through.
+//
+// Seated more than once. Moving a stretch sideways lengthens or shortens the stretches
+// that meet it at its ends, and one of those may now reach past a wall it had not been
+// measured against; so every stretch is measured again at the length the pass before gave
+// it, corners included, until nothing moves — four passes at most, and usually two.
+function seatStretches(net, pieces, rawX, rawZ) {
+  const SIDE = { out: 1, in: -1, both: 0 };
+  const parent = [new Map(), new Map()];      // [0]: legs along x, seated in z; [1]: along z
+  const find = (axis, id) => {
+    const m = parent[axis];
+    let root = id;
+    while (m.get(root) !== root) root = m.get(root);
+    while (m.get(id) !== root) { const up = m.get(id); m.set(id, root); id = up; }
+    return root;
+  };
+  const jog = Math.max(2 * TRACK_SNAP, ROAD_JOG * cityUnit);
+  const join = (axis, a, b) => {
+    const m = parent[axis];
+    if (!m.has(a)) m.set(a, a);
+    if (!m.has(b)) m.set(b, b);
+    const ra = find(axis, a), rb = find(axis, b);
+    if (ra !== rb) m.set(ra, rb);
+  };
+  for (const piece of pieces) {
+    const ids = piece.ids, axis = [], short = [];
+    for (let i = 1; i < ids.length; i++) {
+      const dx = Math.abs(rawX(ids[i]) - rawX(ids[i - 1])), dz = Math.abs(rawZ(ids[i]) - rawZ(ids[i - 1]));
+      axis.push(dx >= dz ? 0 : 1);
+      short.push(Math.max(dx, dz) < jog);
     }
-    out.push(b);
-  }
-  return dropStraightVertices(out);
-}
-
-// A vertex in the middle of a straight run is not a corner, and offsetPath must never see
-// one: it offsets a vertex by the sum of its two segments' perpendiculars, which on a
-// straight run is the SAME perpendicular twice — that one point jumps out twice as far and
-// the two runs either side of it come out on a slant (Pet's inbound trunk, 10 Nov 2026).
-// orthogonalize makes them whenever an inserted corner lands in line with the next leg.
-function dropStraightVertices(points) {
-  const out = [];
-  for (const p of points) {
-    const a = out[out.length - 1];
-    if (a && Math.abs(p.x - a.x) < 1e-6 && Math.abs(p.z - a.z) < 1e-6) continue;
-    const b = out[out.length - 2];
-    if (b && a) {
-      const cross = (a.x - b.x) * (p.z - a.z) - (a.z - b.z) * (p.x - a.x);
-      const dot = (a.x - b.x) * (p.x - a.x) + (a.z - b.z) * (p.z - a.z);
-      if (Math.abs(cross) < 1e-6 && dot > 0) { out[out.length - 1] = p; continue; }
+    for (let k = 0; k < axis.length; k++) {
+      // A sidestep shorter than a road is wide is not a leg. Two cell edges a unit or two
+      // apart are one street to the eye, and the hop from one to the other would be drawn
+      // as a kink in it; so the hop is dropped (axis -1) and the two sides of it are
+      // seated as ONE stretch. Only a hop ACROSS the road's own way, though: a short leg
+      // in line with the one before it is just more of that street.
+      if (short[k] && k > 0 && k < axis.length - 1 && axis[k - 1] !== axis[k] && axis[k + 1] !== axis[k]) {
+        join(1 - axis[k], ids[k], ids[k + 1]);
+        axis[k] = -1;
+      } else {
+        join(axis[k], ids[k], ids[k + 1]);
+      }
     }
-    out.push(p);
+    piece.axis = axis;
   }
-  return out;
+  const stretches = [], byRoot = [new Map(), new Map()];
+  const stretchOf = (axis, id) => (parent[axis].has(id) ? byRoot[axis].get(find(axis, id)) || null : null);
+  const gap = ROAD_GAP * cityUnit;
+  for (const piece of pieces) {
+    piece.stretch = [];
+    const side = SIDE[baseKind(piece.kind)];
+    for (let i = 1; i < piece.ids.length; i++) {
+      const axis = piece.axis[i - 1], a = piece.ids[i - 1], b = piece.ids[i];
+      if (axis < 0) { piece.stretch.push(null); continue; }
+      const root = find(axis, a);
+      let s = byRoot[axis].get(root);
+      if (!s) {
+        s = { axis, line: axis === 0 ? rawZ(a) : rawX(a), lo: Infinity, hi: -Infinity, ids: [],
+              seat: 0, scale: 1, pin: null, span: Infinity, skipA: -1, skipB: -1 };
+        s.seat = s.line;
+        byRoot[axis].set(root, s);
+        stretches.push(s);
+      }
+      s.ids.push(a, b);
+      // Which side of the line this road lies on, in world terms: the right of its own
+      // travel for a road out, the left for one in — the same rule offsetLegs draws by.
+      const sign = axis === 0 ? (rawX(b) > rawX(a) ? 1 : -1) : (rawZ(b) > rawZ(a) ? -1 : 1);
+      const near = side === 0 ? -piece.width / 2 : sign * side * gap / 2;
+      const far = side === 0 ? piece.width / 2 : sign * side * (gap / 2 + piece.width);
+      s.lo = Math.min(s.lo, near, far);
+      s.hi = Math.max(s.hi, near, far);
+      for (const through of piece.doors[i - 1] || []) {
+        const c = through.mesh.position;
+        if (s.pin === null) s.pin = axis === 0 ? c.z : c.x;
+        s.span = Math.min(s.span, axis === 0 ? through.depth : through.width);
+        if (s.skipA < 0) s.skipA = net.index.get(through); else s.skipB = net.index.get(through);
+      }
+      piece.stretch.push(s);
+    }
+  }
+  const seatedX = id => { const s = stretchOf(1, id); return s ? s.seat : rawX(id); };
+  const seatedZ = id => { const s = stretchOf(0, id); return s ? s.seat : rawZ(id); };
+  const kerb = ROAD_KERB * cityUnit, reach = 3 * ROAD_ROOM * cityUnit;
+  for (let pass = 0, moved = true; pass < 4 && moved; pass++) {
+    moved = false;
+    for (const s of stretches) {
+      const was = s.seat;
+      let from = Infinity, to = -Infinity;
+      for (const id of s.ids) {
+        const at = s.axis === 0 ? seatedX(id) : seatedZ(id);
+        // ...as wide as the corner it turns in: the stretch it meets there has a width too.
+        const cross = pass > 0 ? stretchOf(1 - s.axis, id) : null;
+        from = Math.min(from, at + (cross ? Math.min(0, cross.scale * cross.lo) : 0));
+        to = Math.max(to, at + (cross ? Math.max(0, cross.scale * cross.hi) : 0));
+      }
+      // A line with a footprint across it is the straight L of a road no street reached:
+      // there is nothing to seat it between, so it stays where it was drawn.
+      if (!net || !roadWalls(net, s.axis, s.line, from, to, reach, s.skipA, s.skipB)) continue;
+      const need = s.hi - s.lo;
+      let scale = Math.min(1, 0.9 * s.span / need);
+      let lower = _wallLo + kerb - scale * s.lo, upper = _wallHi - kerb - scale * s.hi;
+      if (lower > upper) {
+        const room = _wallHi - _wallLo;
+        scale = Math.min(scale, Math.max(0.1, (room - 2 * Math.min(kerb, 0.15 * room)) / need));
+        s.seat = (_wallLo + _wallHi) / 2 - scale * (s.lo + s.hi) / 2;
+      } else if (s.pin !== null) {
+        s.seat = Math.max(lower, Math.min(upper, s.pin - scale * (s.lo + s.hi) / 2));
+      } else if (isFinite(lower) && isFinite(upper)) {
+        s.seat = (lower + upper) / 2;
+      } else {
+        s.seat = Math.max(lower, Math.min(upper, s.line));
+      }
+      s.scale = scale;
+      if (Math.abs(s.seat - was) > 1e-3) moved = true;
+    }
+  }
+  return { seatedX, seatedZ };
 }
 
 // Shift a whole route sideways, so the road OUT and the road BACK never lie on the same
@@ -3122,36 +3424,35 @@ function dropStraightVertices(points) {
 // reversed, which is what lets a sign put them on opposite sides for good; offsetting after
 // the reverse would put them back on top of each other.
 //
-// A corner offsets to the intersection of its two offset lines. For a right angle that is
-// just the corner plus BOTH perpendiculars: the two are orthogonal unit vectors, so adding
-// them satisfies each offset line's equation on its own.
-function offsetPath(points, d) {
-  if (Math.abs(d) < 1e-6 || points.length < 2) return points;
-  const perp = [];
-  for (let i = 1; i < points.length; i++) {
-    const dx = points[i].x - points[i - 1].x, dz = points[i].z - points[i - 1].z;
-    const len = Math.hypot(dx, dz) || 1;
-    perp.push([-dz / len, dx / len]);
-  }
+// Leg by leg, since a stretch thinned to fit its alley is offset by less than the one
+// before it. A corner offsets to the intersection of its two offset lines; for a right
+// angle that is just the corner plus BOTH perpendiculars, each by its own leg's distance:
+// the two are orthogonal unit vectors, so adding them satisfies each offset line's
+// equation on its own. It must never be handed a vertex in the middle of a straight run —
+// that one point would jump out twice as far (Pet's inbound trunk, 10 Nov 2026) — and
+// layBundles merges those away before calling. Each leg's side is taken from the heading
+// it was routed with, not from its two points: see where layBundles works that out.
+function offsetLegs(points, distances, headings) {
+  if (points.length < 2) return points;
+  const perp = headings.map(([ux, uz], k) => [-uz * distances[k], ux * distances[k]]);
   return points.map((p, i) => {
-    const a = perp[i - 1], b = perp[i];      // the segments this vertex belongs to
-    const nx = (a ? a[0] : 0) + (b ? b[0] : 0);
-    const nz = (a ? a[1] : 0) + (b ? b[1] : 0);
-    return new THREE.Vector3(p.x + nx * d, p.y, p.z + nz * d);
+    const a = perp[i - 1], b = perp[i];      // the legs this vertex belongs to
+    return new THREE.Vector3(p.x + (a ? a[0] : 0) + (b ? b[0] : 0), p.y,
+                             p.z + (a ? a[1] : 0) + (b ? b[1] : 0));
   });
 }
 
 // ── Laying the road ──────────────────────────────────────────────────────────
 // Every road in a bundle goes into ONE merged geometry per surface — the roadway, and the
 // lane riding on it — rather than a mesh per straight run. Eighty roads with a corner every
-// few cells is a couple of thousand meshes, which is a couple of thousand draw calls per
+// few blocks is a couple of thousand meshes, which is a couple of thousand draw calls per
 // frame: the city stops turning and the traffic stops moving, on a page whose whole point is
 // that it turns. Merged, a bundle costs two draw calls whatever its size.
 // `owner` is one entry per QUAD, in the order the quads were pushed — which is what turns
 // a raycast hit (a triangle index) back into "which road is this, and where does it go in
 // the source". Only the roadway sink fills it: the lane and the gates ride on top of a
 // road that already answers the question.
-function roadSink() { return { position: [], uv: [], index: [], owner: [] }; }
+function roadSink() { return { position: [], uv: [], index: [], owner: [], door: [] }; }
 
 // One flat quad from a to b, `width` across, with the texture's v running from `v0` at the a
 // end to `v1` at the b end — which is what keeps a wedge crossing a corner instead of
@@ -3180,29 +3481,36 @@ function sinkMesh(sink, material, renderOrder) {
   return mesh;
 }
 
-// One road, corner to corner. At every bend the incoming run is extended half a road width
-// PAST the corner and the outgoing one starts half a width AFTER it, which covers the corner
-// square exactly once: butt them together and every turn has a notch bitten out of it,
-// overlap them and the lane gets a bright square at each one.
-function addRoad(road, lane, points, width, y, owner, spacingUnits = FLOW_SPACING, laneShare = 0.55) {
+// One road, corner to corner, each run at its own width (a run seated in an alley is
+// thinner than the one before it). At every bend the incoming run is extended PAST the
+// corner by half the width of the run it turns into, and the outgoing one starts half the
+// incoming run's width AFTER it, which covers the corner exactly once: butt them together
+// and every turn has a notch bitten out of it, overlap them and the lane gets a bright
+// square at each one.
+//
+// 'doors' is, per run, the buildings that run may enter — the stub through a wall, and
+// nothing else; kept per quad beside 'owner' so the page can be asked whether any road
+// lies under a building it has no business in (window.__cityRoadsOverBuildings).
+function addRoad(road, lane, points, widths, y, owner, doors, spacingUnits = FLOW_SPACING, laneShare = 0.55) {
   const spacing = spacingUnits * cityUnit;
-  const laneWidth = width * laneShare;
   let traveled = 0;
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1], b = points[i];
     const len = Math.hypot(b.x - a.x, b.z - a.z);
     if (len < 1e-6) continue;
     const ux = (b.x - a.x) / len, uz = (b.z - a.z) / len;
-    // A run shorter than the road is wide cannot be trimmed AND extended without turning
-    // itself inside out. Let those overlap instead — same colour, same plane, nothing to see.
-    const trim = len > width ? width / 2 : 0;
-    const head = i > 1 ? trim : 0;                       // trimmed: the bend before it filled this
-    const tail = i < points.length - 1 ? trim : 0;       // extended: this bend is ours to fill
+    const width = widths[i - 1], laneWidth = width * laneShare;
+    // Extended: this bend is ours to fill. Trimmed: the bend before it filled this — unless
+    // the run is so short that the trim would turn it inside out, as a door's stub often is.
+    // Then the two overlap instead: same colour, same plane, nothing to see.
+    const tail = i < points.length - 1 ? widths[i] / 2 : 0;
+    const head = i > 1 && len > widths[i - 2] / 2 ? widths[i - 2] / 2 : 0;
     const p0 = { x: a.x + ux * head, z: a.z + uz * head };
     const p1 = { x: b.x + ux * tail, z: b.z + uz * tail };
     const v0 = (traveled + head) / spacing, v1 = (traveled + len + tail) / spacing;
     addQuad(road, p0, p1, width, y, v0, v1);
     road.owner.push(owner || null);
+    road.door.push((doors && doors[i - 1]) || null);
     addQuad(lane, p0, p1, laneWidth, y + 0.05 * cityUnit, v0, v1);
     traveled += len;
   }
@@ -3214,12 +3522,13 @@ function addRoad(road, lane, points, width, y, owner, spacingUnits = FLOW_SPACIN
 // trick: two streams converging on the middle, out of one texture and one offset per frame.
 // The two halves butt exactly at the cut — addRoad only extends a run past a bend it owns,
 // and neither half owns this one — so the tarmac has no seam and no overlap there.
-function halfRoutes(points) {
+function halfRoutes(points, widths, doors) {
+  const whole = [{ path: points, widths, doors }];
   let total = 0;
   for (let i = 1; i < points.length; i++) {
     total += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
   }
-  if (total < 1e-6) return [points];
+  if (total < 1e-6) return whole;
   let traveled = 0;
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1], b = points[i];
@@ -3227,16 +3536,19 @@ function halfRoutes(points) {
     if (traveled + len >= total / 2) {
       const t = len > 1e-6 ? (total / 2 - traveled) / len : 0;
       const mid = new THREE.Vector3(a.x + (b.x - a.x) * t, a.y, a.z + (b.z - a.z) * t);
+      // Run i is cut in two, so it is the last run of the first half and the first of the
+      // second — which is then turned round, its runs with it.
       const first = points.slice(0, i);
       first.push(mid);
       const second = points.slice(i);
       second.unshift(mid);
       second.reverse();
-      return [first, second];
+      return [{ path: first, widths: widths.slice(0, i), doors: doors.slice(0, i) },
+              { path: second, widths: widths.slice(i - 1).reverse(), doors: doors.slice(i - 1).reverse() }];
     }
     traveled += len;
   }
-  return [points];
+  return whole;
 }
 
 // ── Gates: where a road leaves the package ──────────────────────────────────
@@ -3394,7 +3706,7 @@ function showStreetsFor(entry) {
   streetedPath = path;
 
   // Who is in this bundle is settled BEFORE any routing: the sweep needs to know which
-  // cells it is trying to reach so it can stop once it has them all, and the tooltip needs
+  // doors it is trying to reach so it can stop once it has them all, and the tooltip needs
   // the counts whether or not a single road turns out to be drawable.
   const outgoing = outgoingAdjacency()[path] || {};
   const incoming = incomingAdjacency().get(path) || {};
@@ -3487,8 +3799,8 @@ function showStreetsFor(entry) {
   // its own two endpoints' floors is a road that ducks under whatever it crosses. The
   // diff's own roads fly highest, so where a new road and an old one share a corridor the
   // new one is the one on top, and the faded deck under it never shows through.
-  const grid = ensureRoadGrid();
-  const floorTop = grid ? grid.floorTop : entry.baseY;
+  const net = ensureRoadNet();
+  const floorTop = net ? net.floorTop : entry.baseY;
   const deck = { out: floorTop + ROAD_LIFT * cityUnit,
                  in: floorTop + (ROAD_LIFT + ROAD_DECK) * cityUnit,
                  both: floorTop + (ROAD_LIFT + 2 * ROAD_DECK) * cityUnit,
@@ -3498,7 +3810,7 @@ function showStreetsFor(entry) {
   // Every polyline this bundle actually puts down, kept so the package gates can be
   // placed on the tarmac as drawn rather than on the route as planned — the two differ by
   // the lateral offset, and a gate half a road-width off its own road reads as litter.
-  const laid = layBundle(entry, bundle, sinks, deck, ADDED_WIDEN_HOVER);
+  const laid = layBundles([[entry, bundle]], sinks, deck, ADDED_WIDEN_HOVER);
 
   addPackageGates(laid, entry, sinks, deck);
 
@@ -3509,7 +3821,10 @@ function showStreetsFor(entry) {
     const roadway = sinkMesh(sinks[kind].road, look(roadMaterial[baseKind(kind)]), 0);
     // Quad i of this geometry is triangles 2i and 2i+1, so a raycast's faceIndex >> 1 is
     // the index into the owner table the sink filled as it was built.
-    if (roadway) roadway.userData.roadOwners = sinks[kind].road.owner;
+    if (roadway) {
+      roadway.userData.roadOwners = sinks[kind].road.owner;
+      roadway.userData.roadDoors = sinks[kind].road.door;
+    }
     for (const mesh of [roadway,
                         sinkMesh(sinks[kind].lane, look(flowMaterial[baseKind(kind)]), 1),
                         sinkMesh(sinks[kind].gate, look(gateMaterial[kind]), 2),
@@ -3520,128 +3835,235 @@ function showStreetsFor(entry) {
   if (!group.children.length) return;
   scene.add(group);
   streetGroup = group;
-  bundleStars = starRuns(laid, deck);
   nameTheBundle(entry, bundle, fade);
 }
 
-// Route one building's bundle and lay it into `sinks` (one { road, lane } per kind it
-// uses), at `deck[kind]`. Returns every polyline it put down. The ONE router and the one
-// road-layer in the city: the ⌥ hover comes through here, and so does the standing layer
-// of the diff's new roads, which is what makes a new road run the very trail ⌥ would show
-// for it — the same sweep, the same bundling, the same corners — rather than a look-alike
-// that disagrees with it by a block. `widen` is how much wider than a hovered road of the
-// same weight a road of the diff's is drawn (see ADDED_WIDEN_*).
-function layBundle(entry, bundle, sinks, deck, widen) {
-  const grid = ensureRoadGrid();
-  let sweep = null;
-  if (grid) {
-    // Each road's destination, resolved to grid cells up front: a peer's own doorstep, or
-    // a point on the plate's edge for the ones that are not on it.
-    const offPlate = bundle.filter(b => !b.peer);
-    offPlate.forEach((b, i) => {
-      b.exit = offPlateExit(entry, grid, i, offPlate.length);
-      const cell = freeCellNear(grid, b.exit.x, b.exit.z);
-      b.cells = cell >= 0 ? [cell] : [];
-    });
-    for (const b of bundle) {
-      if (b.peer) b.cells = roadRing(b.peer, grid);
+// Route every bundle in 'jobs' — one [building, its roads] pair each — and lay them all into
+// 'sinks' (one { road, lane } per kind they use), at 'deck[kind]'. Returns every polyline
+// it put down. The ONE router and the one road-layer in the city: the ⌥ hover comes through
+// here with its one bundle, and so does the standing layer of the diff's new roads with one
+// bundle per class that took a dependency on, which is what makes a new road run the very
+// trail ⌥ would show for it — the same sweep, the same bundling, the same corners — rather
+// than a look-alike that disagrees with it by a block. 'widen' is how much wider than a
+// hovered road of the same weight a road of the diff's is drawn (see ADDED_WIDEN_*).
+//
+// All the jobs at once, not one call each, because of the seating: two classes whose new
+// roads share a street have to be seated as one stretch, side by side. Seated one bundle
+// at a time, each would take the middle of the gap for itself.
+function layBundles(jobs, sinks, deck, widen) {
+  const net = ensureRoadNet();
+  // A route is a list of vertex ids: crossings of the street graph, and above them the
+  // points that are nobody's crossing — a door, the spot inside the wall behind it, the
+  // place a road leaves the plate.
+  const base = net ? net.n : 0;
+  const px = [], pz = [];
+  const point = (x, z) => { px.push(x); pz.push(z); return base + px.length - 1; };
+  const rawX = id => (id < base ? net.x[id] : px[id - base]);
+  const rawZ = id => (id < base ? net.z[id] : pz[id - base]);
+  const pieces = [];
+  // ids: the route; doors: per leg, the buildings that leg may enter (its own two ends').
+  const piece = (kind, weight, jump, ids, doors) => {
+    const fresh = isAddedKind(kind);
+    const width = fresh ? Math.min(widen * roadWidth(weight), ROAD_MAX_W * cityUnit)
+                        : roadWidth(weight);
+    const route = [ids[0]], through = [];
+    for (let i = 1; i < ids.length; i++) {
+      // A door that IS a crossing, or two doors facing each other across one street: the
+      // same spot twice is one vertex, or the two would be seated apart.
+      const last = route[route.length - 1];
+      if (Math.abs(rawX(ids[i]) - rawX(last)) < 1e-6 && Math.abs(rawZ(ids[i]) - rawZ(last)) < 1e-6) continue;
+      route.push(ids[i]);
+      through.push(doors[i - 1] || null);
     }
-    const wanted = [];
-    for (const b of bundle) wanted.push(...b.cells);
-    sweep = roadSweep(entry, grid, wanted);
+    if (route.length > 1) pieces.push({ kind, width, jump, ids: route, doors: through });
+  };
+  // A door as two vertices: 70% of the way from the building's centre to its wall, and
+  // the point on the street straight outside.
+  const doorways = new Map();
+  const doorway = door => {
+    let pair = doorways.get(door);
+    if (!pair) {
+      const e = door.entry, c = e.mesh.position;
+      const inside = point(c.x + [0.7, -0.7, 0, 0][door.dir] * e.width / 2,
+                           c.z + [0, 0, 0.7, -0.7][door.dir] * e.depth / 2);
+      const onCrossing = door.ends.find(end => end.cost < 1e-9);
+      pair = [inside, onCrossing ? onCrossing.node : point(door.x, door.z)];
+      doorways.set(door, pair);
+    }
+    return pair;
+  };
+
+  for (const [entry, bundle] of jobs) {
+    let sweep = null;
+    if (net) {
+      // Each road's destination, resolved up front: the ways into a peer's doors, or a
+      // point on the plate's edge for the ones that are not on it.
+      const offPlate = bundle.filter(b => !b.peer);
+      offPlate.forEach((b, i) => { b.exit = offPlateExit(entry, net, i, offPlate.length); });
+      sweep = roadSweep(entry, net, bundle.map(b => roadTargets(b, net)));
+      bundle.forEach((b, t) => { b.reach = sweep.best[t]; });
+    }
+    // The last stretch of one road: from the crossing its route ended on, along the street
+    // to its peer's door and in — or straight off the plate.
+    const tail = item => {
+      const node = item.reach.state >> 2, way = item.reach.way;
+      if (way.door) {
+        const [inside, street] = doorway(way.door);
+        return { ids: [node, street, inside], doors: [null, [item.peer]] };
+      }
+      const exit = item.exit;
+      const bend = Math.abs(exit.x - net.x[node]) >= Math.abs(exit.z - net.z[node])
+        ? point(exit.x, net.z[node]) : point(net.x[node], exit.z);
+      return { ids: [node, bend, point(exit.x, exit.z)], doors: [null, null] };
+    };
+
+    for (const kind of ALL_ROAD_KINDS) {
+      const side = bundle.filter(b => b.kind === kind);
+      if (!side.length) continue;
+      const ends = [];
+      for (const b of side) {
+        const reach = b.reach;
+        if (reach && reach.from) {
+          // Next door on the same street: out of one door, along, in at the other.
+          const here = doorway(reach.from), there = doorway(reach.way.door);
+          piece(kind, b.weight, b.jump, [here[0], here[1], there[1], there[0]], [[entry], null, [b.peer]]);
+        } else if (!reach || reach.state < 0) {
+          // No street reaches it, or no street plan at all: this one edge falls back to a
+          // straight L of its own, and that one may cross whatever is in the way.
+          if (!b.peer && !b.exit) continue;
+          const there = b.peer ? baseAnchor(b.peer, entry.mesh.position) : b.exit;
+          const here = baseAnchor(entry, b.peer ? b.peer.mesh.position : b.exit);
+          const bend = Math.abs(there.x - here.x) >= Math.abs(there.z - here.z)
+            ? point(there.x, here.z) : point(here.x, there.z);
+          const both = b.peer ? [entry, b.peer] : [entry];
+          piece(kind, b.weight, b.jump, [point(here.x, here.z), bend, point(there.x, there.z)], [both, both]);
+        } else {
+          ends.push({ state: reach.state, weight: b.weight, item: b });
+        }
+      }
+      if (!ends.length) continue;
+
+      // A both-ways road is drawn WHOLE, one route per peer, and never bundled into a trunk.
+      // Its halves have to meet at the middle of the road between these two classes, and a
+      // trunk is by definition a stretch belonging to several peers at once — halving it
+      // would put a meeting point in the middle of a shared stretch, which is the middle of
+      // nothing. The cost is the trunk these roads would have saved, and it is small: a
+      // mutual pair is the rare, interesting case, never the bulk of a bundle.
+      if (kind === "both") {
+        for (const { state, weight, item } of ends) {
+          const nodes = [];
+          let root = state;
+          for (let s = state; s >= 0; s = sweep.prev[s]) { nodes.push(s >> 2); root = s; }
+          nodes.reverse();
+          const last = tail(item);
+          piece(kind, weight, null, [...doorway(sweep.seedDoor.get(root)), ...nodes, ...last.ids.slice(1)],
+                [[entry], null, ...nodes.slice(1).map(() => null), ...last.doors]);
+        }
+        continue;
+      }
+
+      for (const chain of bundleRoutes(sweep, ends)) {
+        // The trunk starts at the building it all leaves from; a branch starts at the
+        // crossing where the trunk let it go, so the two meet on one point.
+        const before = sweep.prev[chain.states[0]];
+        const lead = before < 0 ? doorway(sweep.seedDoor.get(chain.states[0])) : [before >> 2];
+        // A trunk shared by several peers names none of them, so it carries no jump and a
+        // ⌘-click over it does nothing. That is the honest answer: the trunk IS the stretch
+        // where the bundle has not yet decided which class it is going to. Every branch past
+        // the last fork, and every peer's own last stretch, does name one.
+        piece(kind, chain.weight, chain.item ? chain.item.jump : null,
+              [...lead, ...chain.states.map(s => s >> 2)], before < 0 ? [[entry]] : []);
+      }
+      // ...and each peer's own last stretch, from where its branch ended to its wall.
+      for (const { weight, item } of ends) {
+        const last = tail(item);
+        piece(kind, weight, item.jump, last.ids, last.doors);
+      }
+    }
   }
 
-  // Out and back sit either side of their shared centreline; a both-ways road has no
+  const { seatedX, seatedZ } = seatStretches(net, pieces, rawX, rawZ);
+
+  // Out and back sit either side of their shared median; a both-ways road has no
   // counterpart to keep clear of, so it takes the middle. A new road keeps its direction's
   // side, so new-out and new-in between the same pair never land on the same tarmac.
   const SIDE = { out: 1, in: -1, both: 0 };
   const laid = [];
-
-  // One lateral sign per direction, so a trunk carrying traffic out and one carrying it in
-  // can share a corridor without ever sharing a segment.
-  const draw = (points, weight, kind, jump) => {
-    if (points.length < 2) return;
-    const fresh = isAddedKind(kind);
-    const width = fresh ? Math.min(widen * roadWidth(weight), ROAD_MAX_W * cityUnit)
-                        : roadWidth(weight);
-    let path = orthogonalize(points);
-    path = offsetPath(path, SIDE[baseKind(kind)] * (width / 2 + ROAD_GAP * cityUnit / 2));
-    if (baseKind(kind) === "in") path.reverse();
-    laid.push({ path, width, kind });
+  for (const { kind, width, jump, ids, doors, stretch } of pieces) {
+    // The route as seated, with its legs' own widths. Only its ends and its corners are
+    // placed: a crossing a road runs straight through is seated by whatever crosses it
+    // there, which says nothing about where along its own street the road is, and placing
+    // it sent the road back on itself for the length of that seat. Legs of no length are
+    // dropped and a leg that only continues the one before it is merged into it, so what is
+    // left turns at every vertex — which is what offsetLegs and addRoad both assume.
+    const path = [], widths = [], shifts = [], through = [], headings = [];
+    let run = null;                  // the legs since the last vertex placed: narrowest scale, every door
+    for (let i = 0; i < ids.length; i++) {
+      if (i > 0) {
+        const s = stretch[i - 1];
+        if (!run) run = { scale: 1, doors: null };
+        if (s) run.scale = Math.min(run.scale, s.scale);
+        if (doors[i - 1]) run.doors = (run.doors || []).concat(doors[i - 1]);
+        if (i < ids.length - 1 && stretch[i] === s) {
+          // Same stretch on both sides: straight through, unless it doubles back there.
+          const back = (rawX(ids[i]) - rawX(ids[i - 1])) * (rawX(ids[i + 1]) - rawX(ids[i])) +
+                       (rawZ(ids[i]) - rawZ(ids[i - 1])) * (rawZ(ids[i + 1]) - rawZ(ids[i])) < 0;
+          if (!back) continue;
+        }
+      }
+      const p = new THREE.Vector3(seatedX(ids[i]), 0, seatedZ(ids[i]));
+      const a = path[path.length - 1];
+      if (!a) { path.push(p); continue; }
+      const dx = p.x - a.x, dz = p.z - a.z;
+      if (Math.hypot(dx, dz) < 1e-6) continue;
+      const b = path[path.length - 2];
+      if (b && Math.abs((a.x - b.x) * dz - (a.z - b.z) * dx) < 1e-6) {
+        // In line with the leg before it — onward, or BACK along it, where two seats
+        // crossed over. Either way it is that leg, ending somewhere else: a road that
+        // reversed on itself would have its offset cancel at the turn and come out slanted.
+        const k = widths.length - 1;
+        run.scale = Math.min(run.scale, widths[k] / width);
+        if (through[k]) run.doors = (run.doors || []).concat(through[k]);
+        run.heading = headings[k];
+        path.pop(); widths.pop(); shifts.pop(); through.pop(); headings.pop();
+        if (Math.hypot(p.x - b.x, p.z - b.z) < 1e-6) continue;       // ...ending where it began
+      }
+      // Which way the leg was GOING, as routed. A short leg between two seats that moved
+      // towards each other comes out pointing backwards, and offset by where it points it
+      // would be laid on the wrong side of its own median — under the wall across the
+      // street. Offset by where it was going, it lands where the road continues.
+      if (!run.heading) {
+        const rx = rawX(ids[i]) - rawX(ids[i - 1]), rz = rawZ(ids[i]) - rawZ(ids[i - 1]);
+        const from = Math.hypot(rx, rz) > 1e-6 ? [rx, rz] : [dx, dz];
+        run.heading = Math.abs(from[0]) >= Math.abs(from[1]) ? [Math.sign(from[0]), 0] : [0, Math.sign(from[1])];
+      }
+      headings.push(run.heading);
+      path.push(p);
+      widths.push(run.scale * width);
+      shifts.push(SIDE[baseKind(kind)] * run.scale * (width / 2 + ROAD_GAP * cityUnit / 2));
+      through.push(run.doors);
+      run = null;
+    }
+    if (path.length < 2) continue;
+    // One lateral sign per direction, so a trunk carrying traffic out and one carrying it in
+    // can share a corridor without ever sharing a segment.
+    let road = offsetLegs(path, shifts, headings);
+    if (baseKind(kind) === "in") { road.reverse(); widths.reverse(); through.reverse(); }
+    // What the package gates are placed on: the tarmac as drawn, not the
+    // route as planned — the two differ by the seat and by the lateral offset.
+    laid.push({ path: road, width: Math.max(...widths), kind });
     if (kind === "both") {
       // Both halves run from their own far end IN to the middle, so the traffic on them
       // does too: v is distance from the start of the run, and the wedges always slide
       // toward +v. Two streams meeting head-on at the halfway point is the only drawing of
       // "these two depend on each other" that does not have to be decoded — one arrow
       // pointing one way, whatever colour it is, reads as one direction and a legend.
-      for (const half of halfRoutes(path)) {
-        addRoad(sinks[kind].road, sinks[kind].lane, half, width, deck[kind]);
-      }
-      return;
-    }
-    addRoad(sinks[kind].road, sinks[kind].lane, path, width, deck[kind], jump);
-  };
-
-  for (const kind of ALL_ROAD_KINDS) {
-    const side = bundle.filter(b => b.kind === kind);
-    if (!side.length) continue;
-    // Each peer's own end of the tree, and the anchor its stub runs to.
-    const ends = [];
-    for (const b of side) {
-      const state = sweep && b.cells && b.cells.length ? roadBestState(sweep, b.cells) : -1;
-      if (state < 0) {
-        // Fenced in, or no grid: this one edge falls back to a straight L of its own.
-        const there = b.peer ? baseAnchor(b.peer, entry.mesh.position) : b.exit.clone();
-        const here = baseAnchor(entry, b.peer ? b.peer.mesh.position : b.exit);
-        const bend = Math.abs(there.x - here.x) >= Math.abs(there.z - here.z)
-          ? new THREE.Vector3(there.x, here.y, here.z)
-          : new THREE.Vector3(here.x, here.y, there.z);
-        draw([here, bend, there], b.weight, kind, b.jump);
-        continue;
-      }
-      ends.push({ state, weight: b.weight, item: b });
-    }
-    if (!ends.length) continue;
-
-    // A both-ways road is drawn WHOLE, one route per peer, and never bundled into a trunk.
-    // Its halves have to meet at the middle of the road between these two classes, and a
-    // trunk is by definition a stretch belonging to several peers at once — halving it
-    // would put a meeting point in the middle of a shared stretch, which is the middle of
-    // nothing. The cost is the trunk these roads would have saved, and it is small: a
-    // mutual pair is the rare, interesting case, never the bulk of a bundle.
-    if (kind === "both") {
-      for (const { state, weight, item } of ends) {
-        const states = [];
-        for (let s = state; s >= 0; s = sweep.prev[s]) states.push(s);
-        states.reverse();
-        const points = statesToPoints(states, grid);
-        if (!points.length) continue;
-        points.unshift(doorAnchor(entry, points[0]));
-        const last = points[points.length - 1];
-        points.push(item.peer ? doorAnchor(item.peer, last) : item.exit.clone());
-        draw(points, weight, kind);
+      for (const half of halfRoutes(road, widths, through)) {
+        addRoad(sinks[kind].road, sinks[kind].lane, half.path, half.widths, deck[kind], null, half.doors);
       }
       continue;
     }
-
-    for (const chain of bundleRoutes(sweep, ends)) {
-      const points = statesToPoints(chain.states, grid);
-      // The trunk starts at the building it all leaves from; the branches start where the
-      // trunk left them, which is already the first cell of the chain.
-      const root = sweep.prev[chain.states[0]] < 0;
-      if (root && points.length) points.unshift(doorAnchor(entry, points[0]));
-      // A trunk shared by several peers names none of them, so it carries no jump and a
-      // ⌘-click over it does nothing. That is the honest answer: the trunk IS the stretch
-      // where the bundle has not yet decided which class it is going to. Every branch past
-      // the last fork, and every peer's own last stretch, does name one.
-      draw(points, chain.weight, kind, chain.item ? chain.item.jump : null);
-    }
-    // ...and each peer's own last stretch, from where its branch ended to its wall.
-    for (const { state, weight, item } of ends) {
-      const from = cellCentre(state >> 2, grid);
-      const to = item.peer ? doorAnchor(item.peer, from) : item.exit.clone();
-      draw([from, to], weight, kind, item.jump);
-    }
+    addRoad(sinks[kind].road, sinks[kind].lane, road, widths, deck[kind], jump, through);
   }
   return laid;
 }
@@ -3667,12 +4089,11 @@ function nameTheBundle(entry, bundle, fade) {
     const div = document.createElement("div");
     // Each name wears the colour of the road it is on, so "which of these depends on
     // which" is answered by the labels alone once the roads are behind a tower.
-    // A peer at the far end of a new road wears the star its road carries.
+    // A peer at the far end of a new road keeps its full colour, as its road does.
     const fresh = isAddedKind(item.kind);
     div.className = "coupling-label " + (fresh ? baseKind(item.kind)
       : item.kind + (fade && item.kind !== "subject" ? " faded" : ""));
     div.textContent = peer.file.name;
-    if (fresh) div.prepend(Object.assign(document.createElement("span"), { className: "new-mark", textContent: "🆕 " }));
     const label = new CSS2DObject(div);
     label.position.set(peer.mesh.position.x, peer.roofY + LABEL_STEM, peer.mesh.position.z);
     label.center.set(0.5, 1);
@@ -3696,25 +4117,23 @@ function nameTheBundle(entry, bundle, fade) {
 // The SAME look as every other road out of that class — its direction's blue, its wedges
 // running the way the dependency points. Standing, with no key held, every road on the plate
 // is a new one, so the legend over the help box is what says "new". Under ⌥, where old and
-// new share a bundle, a star rides each new road from the class that took the dependency
-// on to the one it now leans on; it rode the standing roads too until 10 Nov 2026, and a
-// dozen moving badges pulled the eye off the city.
+// new share a bundle, the old roads fade and the new ones stay at full strength, and that
+// contrast is the whole mark. A 🆕 rode each new road until 20 Nov 2026 (the standing ones
+// until 10 Nov): moving badges pulled the eye off the city they were pointing into.
 //
 // It wore a look of its own until October 2026: a pale yellow road with small black
 // arrows, the one colour the city spends nowhere else. Nobody read it. Shown the city cold,
 // Victor could not tell what the yellow was for until it was explained to him, and a mark
 // that has to be explained has already failed — yellow means nothing in particular, and a
-// road painted differently reads as a different KIND of road, not as a recent one. A star
-// is the one mark that already means "new" before anyone says so, and moving along the road
-// it ties itself to that road and to its direction, which a static badge would not.
+// road painted differently reads as a different KIND of road, not as a recent one.
 //
 // The same in every coupling colour, because it is the same edge: one building's new
 // fan-out is the other's new fan-in. And the same under ⌥: hold it over a building and its
-// whole bundle comes up, the old roads faded and its new ones at full strength with their
-// stars (see showStreetsFor) — the standing layer steps aside for it, since the hovered
+// whole bundle comes up, the old roads faded and its new ones at full strength
+// (see showStreetsFor) — the standing layer steps aside for it, since the hovered
 // bundle now carries its share.
 //
-// Routed by layBundle, the one router ⌥ uses, from the class that took the dependency on:
+// Routed by layBundles, the one router ⌥ uses, from the class that took the dependency on:
 // a standing road runs the very trail ⌥-ing that class would draw for it. It ran on a
 // separate copy of the routing once, one road per edge with no trunk, so wherever ⌥
 // shared a trunk the two drawings of the same edge did not match.
@@ -3722,126 +4141,29 @@ const ADDED_ROAD_MAX = 60;
 const ADDED_LIFT = 0.35;        // × cityUnit: under both hover decks, which fly over it
 // How much wider than an old road of the same weight a new one is drawn. Standing: twice,
 // because it has to read from the zoom the city opens at, where a single-reference road is
-// a hairline. Under ⌥: half again — the bundle is looked at up close, and the stars and the
+// a hairline. Under ⌥: half again — the bundle is looked at up close, and the
 // faded roads around it already do most of the standing out.
 const ADDED_WIDEN_STANDING = 2;
 const ADDED_WIDEN_HOVER = 1.5;
 
 // A new road leaving the hovered class's package gets its gate like any other, and the
-// same gate as an old road of its direction: the star is the only thing that is new.
+// same gate as an old road of its direction: only its strength says it is new.
 for (const kind of [ADDED_KIND.out, ADDED_KIND.in]) {
   gateMaterial[kind] = gateMaterial[baseKind(kind)];
   gateSideMaterial[kind] = gateSideMaterial[baseKind(kind)];
 }
 
-// ── The stars ───────────────────────────────────────────────────────────────
-// "Every now and then", not a conveyor belt: one star every STAR_SPACING along a road, at
-// the traffic's own speed, so a short road between neighbours is empty most of the time and
-// lights up for a second every few. A belt of them would be a new kind of road again —
-// what is wanted is the eye catching something move, looking, and finding an ordinary road.
-//
-// A constant size on screen (sizeAttenuation off), like the name tags: the star is read at
-// the zoom the city opens at, where a road is a hairline, and up close it must not grow
-// into a blot that hides the class it is arriving at.
-//
-// ONE Points object for every star in the city — one draw call, positions rewritten each
-// frame. There are only ever a diff's worth of roads to put them on (ADDED_ROAD_MAX).
-// 150 was tried first: on PR #49's city the longest new road is ~560 units, and it carried
-// three or four stars at once, which is the belt again. At 220, one every ~4.5 s.
-const STAR_SPACING = 220;       // × cityUnit between two stars on one road
-const STAR_SIZE = 60;           // CSS px, at every zoom; the 🆕 fills the top half of it
-const STAR_LIFT = 1.2;          // × cityUnit above the road's own deck, so the tarmac never cuts it
-const STAR_MAX = 512;
-function starTexture() {
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 128;
-  const ctx = canvas.getContext("2d");
-  ctx.font = "56px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  // Above the point, not around it: a lower half would sink into the deck in front of it.
-  ctx.fillText("🆕", 64, 34);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-const starPositions = new Float32Array(STAR_MAX * 3);
-const starGeometry = new THREE.BufferGeometry();
-starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
-const starPoints = new THREE.Points(starGeometry, new THREE.PointsMaterial({
-  map: starTexture(), size: STAR_SIZE, sizeAttenuation: false,
-  transparent: true, alphaTest: 0.05, depthWrite: false, depthTest: false,
-}));
-starPoints.frustumCulled = false;   // the positions move every frame; the bounds never would
-// Over everything WebGL draws, at every zoom: from afar a road runs behind the towers, and a
-// badge the buildings can cut is a badge nobody sees. Only the HTML name tags stay above it.
-starPoints.renderOrder = 1000;
-starPoints.visible = false;
-scene.add(starPoints);
-
-// Every new road a layBundle put down, as a run a star can ride: its polyline in the
-// direction of travel, how long it is, and where along the whole trail it starts. A trail is
-// several runs — a trunk, the branches off it, each peer's last stretch — and a star has to
-// cross from one to the next without a hiccup, so each run's phase is the length of the run
-// it continues (the one whose end is where this one starts). A run continuing none starts
-// at 0. Where several branches merge into one trunk (an inbound bundle) the trunk carries on
-// from one of them, and the others' stars simply arrive.
-function starRuns(laid, deck) {
-  const runs = [];
-  for (const { path, width, kind } of laid) {
-    if (!isAddedKind(kind) || path.length < 2) continue;
-    const cum = [0];
-    for (let i = 1; i < path.length; i++) {
-      cum.push(cum[i - 1] + Math.hypot(path[i].x - path[i - 1].x, path[i].z - path[i - 1].z));
-    }
-    runs.push({ path, cum, len: cum[cum.length - 1], kind, width, phase: 0,
-                y: deck[kind] + STAR_LIFT * cityUnit });
-  }
-  // Two runs of one trail meet within a road's width of each other: each was offset to its
-  // own side of its own centreline, so at a bend the two ends are not the same point.
-  const near = (a, b, tol) => Math.hypot(a.x - b.x, a.z - b.z) <= tol;
-  const prev = runs.map(run => runs.find(other => other !== run && other.kind === run.kind &&
-    near(other.path[other.path.length - 1], run.path[0], run.width + other.width)) || null);
-  const phaseOf = (i, seen) => {
-    if (!prev[i] || seen.has(i)) return 0;
-    seen.add(i);
-    const j = runs.indexOf(prev[i]);
-    return phaseOf(j, seen) + runs[j].len;
-  };
-  runs.forEach((run, i) => { run.phase = phaseOf(i, new Set()); });
-  return runs;
-}
-
-// Once a frame: every star on the hovered bundle, where the clock puts it. The standing
-// layer carries none: with no key held every road on the plate is a new one, so its blue
-// says "new" by itself and the legend above the help box says it in words — a badge
-// riding each of them only pulled the eye off the city (Victor, 10 Nov 2026).
+// Once a frame: the legend above the help box is up while the standing layer is, and only
+// then. With no key held every road on the plate is a new one, so its blue says "new" by
+// itself and the legend says it in words. Under ⌥ nothing rides the new roads: they stay at
+// full strength while the bundle's old ones fade, and that is enough to tell them apart. A
+// 🆕 rode each of them until 20 Nov 2026 (on the standing layer until 10 Nov), and the
+// moving badges pulled the eye off the roads they were meant to point at (Victor: "it is
+// enough that the new ones are more opaque").
 const addedLegend = document.getElementById("addedLegend");
-function updateStars() {
+function updateAddedLegend() {
   const legendOn = !streetGroup && !!addedGroup;
   if (addedLegend && addedLegend.hidden === legendOn) addedLegend.hidden = !legendOn;
-  const runs = streetGroup ? bundleStars : [];
-  const spacing = STAR_SPACING * cityUnit;
-  const travel = (performance.now() / 1000) * FLOW_SPEED * cityUnit;
-  let n = 0;
-  for (const run of runs) {
-    let s = (((travel - run.phase) % spacing) + spacing) % spacing;
-    let seg = 1;
-    for (; s < run.len && n < STAR_MAX; s += spacing) {
-      while (seg < run.path.length - 1 && run.cum[seg] < s) seg++;
-      const a = run.path[seg - 1], b = run.path[seg];
-      const span = run.cum[seg] - run.cum[seg - 1];
-      const t = span > 1e-6 ? (s - run.cum[seg - 1]) / span : 0;
-      starPositions[n * 3] = a.x + (b.x - a.x) * t;
-      starPositions[n * 3 + 1] = run.y;
-      starPositions[n * 3 + 2] = a.z + (b.z - a.z) * t;
-      n++;
-    }
-  }
-  starPoints.visible = n > 0;
-  if (!n) return;
-  starGeometry.setDrawRange(0, n);
-  starGeometry.attributes.position.needsUpdate = true;
 }
 
 let addedGroup = null;
@@ -3912,7 +4234,7 @@ function addedEdges() {
   return edges;
 }
 
-// The help box names the star only while there is one to see: with no diff, or a
+// The help box names the new roads only while there is one to see: with no diff, or a
 // diff that coupled nothing new, the line would describe a mark that is nowhere.
 function syncAddedRoadsHint() {
   const hint = document.getElementById("addedRoadsHint");
@@ -3928,11 +4250,10 @@ function drawAddedCoupling() {
   if (!addedCouplingOn()) return;
   const edges = addedEdges();
   if (!edges.length || edges.length > ADDED_ROAD_MAX) return;
-  const grid = ensureRoadGrid();
+  const net = ensureRoadNet();
   const kind = ADDED_KIND.out;
-  const deck = { [kind]: (grid ? grid.floorTop : 0) + ADDED_LIFT * cityUnit };
+  const deck = { [kind]: (net ? net.floorTop : 0) + ADDED_LIFT * cityUnit };
   const sinks = { [kind]: { road: roadSink(), lane: roadSink() } };
-  const laid = [];
   const bySource = new Map();
   for (const edge of edges) {
     if (!bySource.has(edge.from)) bySource.set(edge.from, []);
@@ -3941,19 +4262,75 @@ function drawAddedCoupling() {
   }
   // Each source's new edges are its outbound bundle, routed from it exactly as ⌥ would
   // route them. A pair the diff coupled BOTH ways is two sources' bundles, each road on
-  // its own right, so the two lie side by side with their arrows opposed.
-  for (const [from, bundle] of bySource) {
-    laid.push(...layBundle(from, bundle, sinks, deck, ADDED_WIDEN_STANDING));
-  }
+  // its own right, so the two lie side by side with their arrows opposed. All of them in
+  // one call, so that roads of two sources sharing a street are seated in it together.
+  layBundles([...bySource], sinks, deck, ADDED_WIDEN_STANDING);
   const group = new THREE.Group();
-  for (const mesh of [sinkMesh(sinks[kind].road, roadMaterial.out, 0),
-                      sinkMesh(sinks[kind].lane, flowMaterial.out, 1)]) {
+  const roadway = sinkMesh(sinks[kind].road, roadMaterial.out, 0);
+  if (roadway) roadway.userData.roadDoors = sinks[kind].road.door;
+  for (const mesh of [roadway, sinkMesh(sinks[kind].lane, flowMaterial.out, 1)]) {
     if (mesh) group.add(mesh);
   }
   if (!group.children.length) return;
   scene.add(group);
   addedGroup = group;
 }
+
+// Testability hooks, for the two things about a road no string in the page can show: that
+// it lies on open ground, and where on screen a class is so a probe can hover it.
+//
+// Every roadway quad on the plate against every footprint. A quad may enter one building —
+// the one its sink recorded as its door, where the road begins or ends — and no other.
+window.__cityRoadsOverBuildings = () => {
+  const eps = 0.02 * cityUnit;
+  const hits = [];
+  let quads = 0;
+  for (const group of [addedGroup, streetGroup]) {
+    if (!group || !group.visible) continue;
+    for (const mesh of group.children) {
+      const doors = mesh.userData.roadDoors;
+      if (!doors) continue;                            // the roadway, not the lane or a gate
+      const p = mesh.geometry.attributes.position;
+      for (let q = 0; q < p.count / 4; q++) {
+        quads++;
+        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+        for (let k = 0; k < 4; k++) {
+          x0 = Math.min(x0, p.getX(q * 4 + k)); x1 = Math.max(x1, p.getX(q * 4 + k));
+          z0 = Math.min(z0, p.getZ(q * 4 + k)); z1 = Math.max(z1, p.getZ(q * 4 + k));
+        }
+        for (const b of buildings) {
+          const c = b.mesh.position;
+          const w = Math.min(x1, c.x + b.width / 2) - Math.max(x0, c.x - b.width / 2);
+          const d = Math.min(z1, c.z + b.depth / 2) - Math.max(z0, c.z - b.depth / 2);
+          if (w <= eps || d <= eps) continue;
+          if (doors[q] && doors[q].includes(b)) continue;
+          hits.push({ building: b.file.name, w: +(w / cityUnit).toFixed(2), d: +(d / cityUnit).toFixed(2),
+                      door: doors[q] ? doors[q].map(e => e.file.name).join("+") : "" });
+        }
+      }
+    }
+  }
+  return { quads, hits };
+};
+
+window.__cityClasses = () => buildings.map(b => b.file.name);
+
+// Look at one class from an elevation in degrees and a distance in city units, and say
+// where its roof landed on screen.
+window.__cityLookAt = (name, elevation, distance) => {
+  const entry = buildings.find(b => b.file.name === name);
+  if (!entry) return null;
+  const e = elevation * Math.PI / 180;
+  controls.target.set(entry.mesh.position.x, entry.baseY, entry.mesh.position.z);
+  camera.position.copy(controls.target).add(new THREE.Vector3(
+    Math.cos(e) * Math.sin(viewAzimuth), Math.sin(e), Math.cos(e) * Math.cos(viewAzimuth))
+    .multiplyScalar(distance * cityUnit));
+  controls.update();
+  camera.updateMatrixWorld();
+  const roof = new THREE.Vector3(entry.mesh.position.x, entry.roofY, entry.mesh.position.z).project(camera);
+  const box = renderer.domElement.getBoundingClientRect();
+  return { x: box.left + (roof.x + 1) / 2 * box.width, y: box.top + (1 - roof.y) / 2 * box.height };
+};
 
 // ── Change coupling: the crime scene ────────────────────────────────────────
 // Hover a building with this ticked and the city answers one question: who else, OUTSIDE
@@ -4641,7 +5018,7 @@ function wireNote(key) {
   const drawn = status.drawn === status.reachable
     ? `${status.drawn} road${status.drawn === 1 ? "" : "s"}`
     : `${status.drawn} of ${status.reachable} drawn`;
-  // ...and how many of those this diff laid: the starred ones, counted where the number is.
+  // ...and how many of those this diff laid: the full-strength ones, counted where the number is.
   const added = status.drawn && status.added ? `, ${status.added} new` : "";
   return ` <span class="perkloc">(${drawn}${added})</span>`;
 }
@@ -5857,9 +6234,7 @@ function updateStreetFlow() {
   // aside for it rather than crossing it road for road — the bundle draws its own share
   // of the new roads, in the same look.
   if (addedGroup) addedGroup.visible = !streetGroup;
-  // The stars move whichever of the two is carrying them, and even on a bundle too big
-  // for its wedges to flow: there are only ever a diff's worth of them.
-  updateStars();
+  updateAddedLegend();
   // The standing roads flow like any other, so the traffic runs while they are up too.
   if (streetGroup ? streetFlowFrozen : !addedGroup) return;
   flowTex.offset.y = -((performance.now() / 1000) * (FLOW_SPEED / FLOW_SPACING)) % 1;

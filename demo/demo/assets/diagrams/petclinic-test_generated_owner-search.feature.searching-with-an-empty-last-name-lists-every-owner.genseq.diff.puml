@@ -11,7 +11,7 @@ participant Browser
 participant Backend
 participant DB
 Browser -[#C62828]> Backend: <color:#C62828><s>List owners</s></color>\n<color:#C62828><s>GET /api/owners</s></color>
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:30{Click to open the line that sent this request: owner-list.component.ts:30} OwnerService.getOwners ↗]]
+Browser -[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:30{Click to open the line that sent this request: owner-list.component.ts:30} OwnerService.getOwners ↗]]
 activate Browser #EAF6EC
 Browser -[#2E7D32]> Backend: [[genseq://16qujzl{Click for the request as it was sent} List owners\nGET /api/owners ⊕]]
 activate Backend
@@ -82,7 +82,7 @@ Backend -[#2E7D32]-> Browser: [[genseq://1sp2sda{Click for this call’s JSON bo
 deactivate Backend
 Browser -[#C62828]> Backend: <color:#C62828><s>List owners</s></color>\n<color:#C62828><s>GET /api/owners</s></color>
 deactivate Browser
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:48{Click to open the line that sent this request: owner-list.component.ts:48 ← owner-list.component.html:18} OwnerService.getOwners ↗]]
+Browser -[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-list/owner-list.component.ts:48{Click to open the line that sent this request: owner-list.component.ts:48 ← owner-list.component.html:18} OwnerService.getOwners ↗]]
 activate Browser #EAF6EC
 Browser -[#2E7D32]> Backend: [[genseq://16qujzl{Click for the request as it was sent} List owners\nGET /api/owners ⊕]]
 activate Backend
