@@ -24,6 +24,10 @@ import javax.swing.JComponent
  *  `prFollowEditor` — the GitHub plugin's Pull Requests tool window selects, in an open PR's
  *  changes tree, the file the editor switches to (PullRequests.kt). On by default.
  *
+ *  `prShowOnOpen` — a file opened from the review page brings its PR up in that tool window,
+ *  the PR's tab selected, without taking the focus off the editor (PullRequests.kt, PrShow). On
+ *  by default.
+ *
  *  `prStatusFolded` — that tool window's status block (checks, reviewers) shows one line, and a
  *  double-click on it unfolds it (PullRequests.kt). Off by default; remembered. */
 @Service(Service.Level.APP)
@@ -33,6 +37,7 @@ class HumanReviewSettings : PersistentStateComponent<HumanReviewSettings.Data> {
         var serveScript: String = ""
         var pageInIde: Boolean = true
         var prFollowEditor: Boolean = true
+        var prShowOnOpen: Boolean = true
         var prStatusFolded: Boolean = false
     }
 
@@ -55,6 +60,10 @@ class HumanReviewSettings : PersistentStateComponent<HumanReviewSettings.Data> {
         get() = data.prFollowEditor
         set(v) { data.prFollowEditor = v }
 
+    var prShowOnOpen: Boolean
+        get() = data.prShowOnOpen
+        set(v) { data.prShowOnOpen = v }
+
     var prStatusFolded: Boolean
         get() = data.prStatusFolded
         set(v) { data.prStatusFolded = v }
@@ -69,6 +78,7 @@ class HumanReviewConfigurable : Configurable {
     private var field: JBTextField? = null
     private var inIde: JBCheckBox? = null
     private var follow: JBCheckBox? = null
+    private var show: JBCheckBox? = null
     private var fold: JBCheckBox? = null
 
     override fun getDisplayName() = "Human Review"
@@ -89,6 +99,8 @@ class HumanReviewConfigurable : Configurable {
             })
             .addComponent(JBCheckBox("Pull Requests tool window: follow the editor — select the editor's file in the PR's changes tree",
                 HumanReviewSettings.get().prFollowEditor).also { follow = it })
+            .addComponent(JBCheckBox("Pull Requests tool window: a file opened from the review page brings its PR's tab up beside it",
+                HumanReviewSettings.get().prShowOnOpen).also { show = it })
             .addComponent(JBCheckBox("Pull Requests tool window: fold the status block (checks, reviewers) to one line",
                 HumanReviewSettings.get().prStatusFolded).also { fold = it })
             .addComponentToRightColumn(JBLabel("Both also in the tool window: right-click the changes tree. " +
@@ -103,12 +115,14 @@ class HumanReviewConfigurable : Configurable {
     override fun isModified() = field?.text?.trim() != HumanReviewSettings.get().serveScript ||
         inIde?.isSelected != HumanReviewSettings.get().pageInIde ||
         follow?.isSelected != HumanReviewSettings.get().prFollowEditor ||
+        show?.isSelected != HumanReviewSettings.get().prShowOnOpen ||
         fold?.isSelected != HumanReviewSettings.get().prStatusFolded
 
     override fun apply() {
         HumanReviewSettings.get().serveScript = field?.text ?: ""
         inIde?.let { HumanReviewSettings.get().pageInIde = it.isSelected }
         follow?.let { HumanReviewSettings.get().prFollowEditor = it.isSelected }
+        show?.let { HumanReviewSettings.get().prShowOnOpen = it.isSelected }
         fold?.let { PrStatusFold.setFolded(it.isSelected) }
     }
 
@@ -116,6 +130,7 @@ class HumanReviewConfigurable : Configurable {
         field?.text = HumanReviewSettings.get().serveScript
         inIde?.isSelected = HumanReviewSettings.get().pageInIde
         follow?.isSelected = HumanReviewSettings.get().prFollowEditor
+        show?.isSelected = HumanReviewSettings.get().prShowOnOpen
         fold?.isSelected = HumanReviewSettings.get().prStatusFolded
     }
 
@@ -123,6 +138,7 @@ class HumanReviewConfigurable : Configurable {
         field = null
         inIde = null
         follow = null
+        show = null
         fold = null
     }
 }

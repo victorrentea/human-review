@@ -413,6 +413,7 @@ class HumanReviewBridge : Disposable {
         val out = linkedMapOf<String, Any?>("ok" to true, "path" to opened.path, "line" to opened.line)
         if (opened.ranged) out["endLine"] = RangeSpan.num(endLine)?.toInt()
         if (comment != null) out["comment"] = CommentNotice.offer(project, opened.path, comment.line, comment.url)
+        PrShow.after(project, opened.path, comment?.url)
         send(ex, 200, out)
     }
 

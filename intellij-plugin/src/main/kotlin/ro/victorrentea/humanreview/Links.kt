@@ -166,6 +166,7 @@ object Links {
         val vf = Ide.findFile(file) ?: return  // the file moved; a warning above already said something
         val opened = runCatching { Ide.open(project, vf, line, endLine, null, true) }.getOrNull() ?: return
         comment?.let { CommentNotice.offer(project, opened.path, it.line, it.url) }
+        PrShow.after(project, opened.path, comment?.url)
     }
 
     /**

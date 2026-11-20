@@ -17,6 +17,9 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 import java.awt.AWTEvent
 import java.awt.Component
 import java.awt.Container
@@ -44,7 +47,9 @@ import javax.swing.tree.TreePath
 //   PrFollow      the file the editor switches to is selected in the open PR's changes tree;
 //   PrStatusFold  a double-click on the status block folds it to one line, giving the tree the room;
 //   PrOpen        a PR named by its URL opens there, its tab selected — the review page's
-//                 "in IntelliJ" beside a review posted to the PR (`/open-pr`, `open-pr` links).
+//                 "in IntelliJ" beside a review posted to the PR (`/open-pr`, `open-pr` links);
+//   PrShow        a file opened from the review page brings its PR's tab up beside it, the
+//                 file selected in the changes tree, without taking the focus off the editor.
 //
 // The GitHub plugin has no public API for any of it: its view models are internal and its UI
 // is a Swing tree it is free to rearrange. So nothing here links against it — no class of it in
@@ -346,6 +351,19 @@ object PrOpen {
         runCatching { ActionManager.getInstance().getAction(id) }.getOrNull()?.javaClass?.classLoader
     }
 
+    /** The GitHub plugin's project service and the StateFlow holding the view model of the
+     *  repository its tool window is connected to (null while not connected); null when this
+     *  GitHub plugin has neither shape. */
+    fun projectVm(project: Project, loader: ClassLoader): Pair<Any, StateFlow<*>>? =
+        SHAPES.firstNotNullOfOrNull { (name, getter) ->
+            val type = runCatching { Class.forName(name, true, loader) }.getOrNull() ?: return@firstNotNullOfOrNull null
+            val service = runCatching { project.getService(type) }.getOrNull() ?: return@firstNotNullOfOrNull null
+            (call(service, getter) as? StateFlow<*>)?.let { service to it }
+        }
+
+    /** The GitHub repository a connected view model shows, as `https://github.com/<owner>/<repo>`. */
+    fun repoUrl(vm: Any): String? = (call(call(vm, "getRepository"), "getWebURI") as? URI)?.toString()?.trimEnd('/')
+
     /**
      * Off the EDT. Show `pr` in `project`'s Pull Requests tool window — its tab selected and the
      * tool window active — the way the GitHub plugin opens a `#123` clicked in a PR description:
@@ -357,11 +375,7 @@ object PrOpen {
     fun open(project: Project, pr: Pr, waitMs: Long = 8_000): String? {
         check(!ApplicationManager.getApplication().isDispatchThread) { "PrOpen.open waits: not on the EDT" }
         val loader = githubLoader() ?: return NO_GITHUB
-        val (vmService, getter) = SHAPES.firstNotNullOfOrNull { (name, getter) ->
-            val type = runCatching { Class.forName(name, true, loader) }.getOrNull() ?: return@firstNotNullOfOrNull null
-            runCatching { project.getService(type) }.getOrNull()?.let { it to getter }
-        } ?: return UNSUPPORTED
-        val connected = call(vmService, getter) as? StateFlow<*> ?: return UNSUPPORTED
+        val (vmService, connected) = projectVm(project, loader) ?: return UNSUPPORTED
         var vm = connected.value
         if (vm == null) {
             // Shown, the tool window connects by itself to a project's one GitHub repository
@@ -374,7 +388,7 @@ object PrOpen {
             }
             vm ?: return NOT_CONNECTED
         }
-        val shows = (call(call(vm, "getRepository"), "getWebURI") as? URI)?.toString()?.trimEnd('/')
+        val shows = repoUrl(vm)
         if (shows != null && !shows.equals(pr.repoUrl, ignoreCase = true)) {
             val name = shows.substringAfter("://").substringAfter('/')
             return "IntelliJ's Pull Requests tool window here is on $name, not ${pr.owner}/${pr.repo} — " +
@@ -390,5 +404,113 @@ object PrOpen {
             LOG.warn("human-review: opening PR #${pr.number}", it)
             "IntelliJ's GitHub plugin could not open PR #${pr.number}: ${(it.cause ?: it).message ?: it.javaClass.simpleName}"
         }
+    }
+}
+
+
+// ---------------------------------------------------------------------- show the PR beside the file
+
+/**
+ * A reference opened from the review page lands in the editor, and the PR it belongs to comes up
+ * in the Pull Requests tool window beside it: the tool window shown, the PR's tab selected, the
+ * file selected in its changes tree — so the reader ticks the file "viewed" right there instead
+ * of going to the tool window, the PR list, the PR (Victor, 20 Nov 2026).
+ *
+ * Unlike `PrOpen` it never takes the focus off the editor and never opens the timeline, which
+ * would cover the file just opened: it asks the view model for `viewPullRequest(id, false)`, the
+ * tab alone. The PR is the one the click names (a PR comment's `commentUrl`), else the one the
+ * GitHub plugin knows for the branch checked out. Off with `prShowOnOpen`. Anything not where
+ * it is looked for — no GitHub plugin, not connected after a few seconds, another repository, a
+ * branch with no PR — makes it a no-op, logged, never a word to the reader: the file did open.
+ */
+object PrShow {
+    private const val CONNECTED_VM = "org.jetbrains.plugins.github.pullrequest.ui.GHPRConnectedProjectViewModel"
+    private const val IDENTIFIER = "org.jetbrains.plugins.github.pullrequest.data.GHPRIdentifier"
+
+    /** Any thread; returns at once. `path` is the file just opened, `url` the PR (or a comment
+     *  on it) the click named, if any. */
+    fun after(project: Project, path: String, url: String?) {
+        if (!HumanReviewSettings.get().prShowOnOpen || project.isDisposed) return
+        val pr = PrOpen.parse(url)
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching { show(project, pr, path) }.onFailure { LOG.info("human-review: showing the PR beside ${path}", it) }
+        }
+    }
+
+    /** Off the EDT. What `after` does; the reason it did nothing, or null. */
+    fun show(project: Project, pr: PrOpen.Pr?, path: String, waitMs: Long = 8_000): String? {
+        check(!ApplicationManager.getApplication().isDispatchThread) { "PrShow.show waits: not on the EDT" }
+        val loader = PrOpen.githubLoader() ?: return PrOpen.NO_GITHUB
+        val (_, connected) = PrOpen.projectVm(project, loader) ?: return PrOpen.UNSUPPORTED
+        val window = ToolWindowManager.getInstance(project).getToolWindow(PrWindow.ID) ?: return PrOpen.NO_GITHUB
+        // Shown, not activated: the caret stays in the editor. Shown first, too, because a tool
+        // window never opened this session is what connects the view model.
+        OffStack.runOnEdt(OffStack.runnable(window, com.intellij.openapi.wm.ToolWindow::class.java, "show", Runnable::class.java to null))
+        var vm = connected.value
+        val until = System.currentTimeMillis() + waitMs
+        while (vm == null && System.currentTimeMillis() < until) {
+            Thread.sleep(150)
+            vm = connected.value
+        }
+        vm ?: return PrOpen.NOT_CONNECTED
+        if (pr != null && PrOpen.repoUrl(vm)?.equals(pr.repoUrl, ignoreCase = true) == false) return "another repository"
+        val id = identifier(vm, pr?.number) ?: return "no PR for this branch"
+        val type = Class.forName(CONNECTED_VM, true, loader)
+        val idType = Class.forName(IDENTIFIER, true, loader)
+        // The tab is built by the GitHub plugin: dispatched off this plugin's stack (OffStack).
+        OffStack.runOnEdt(OffStack.runnable(vm, type, "viewPullRequest", idType to id, java.lang.Boolean.TYPE to false))
+        // The tab's changes tree loads after it: the file selected once it is there — when the
+        // reader lets the tree follow the editor at all (`prFollowEditor`).
+        if (!HumanReviewSettings.get().prFollowEditor) return null
+        val file = Ide.findFile(path) ?: return null
+        repeat(40) {
+            if (project.isDisposed) return null
+            val asked = Ide.onEdt { PrFollow.reveal(project, file) || selected(project, file) }
+            if (asked) return null
+            Thread.sleep(250)
+        }
+        return "the PR's changes tree did not list ${file.name}"
+    }
+
+    /** EDT. The file is already the selection in the shown tab's changes tree. */
+    private fun selected(project: Project, file: VirtualFile): Boolean {
+        val paths = setOfNotNull(file.path, file.canonicalPath)
+        val (tree, path) = PrWindow.tabs(project, selectedOnly = true).firstNotNullOfOrNull { PrFollow.find(it, paths) } ?: return false
+        return tree.selectionPaths?.singleOrNull() == path
+    }
+
+    /**
+     * The PR's identifier (its GraphQL id and number), as the view model wants it: the branch's
+     * own PR when it is that number (known already, no request), else looked up by number —
+     * `findPRId`, a suspend function of the plugin's details service, called here with a
+     * continuation of our own and given five seconds.
+     */
+    fun identifier(vm: Any, number: Long?): Any? {
+        val onBranch = (call(vm, "getPrOnCurrentBranch") as? StateFlow<*>)?.value?.let { findIdentifier(it, 2) }
+        if (onBranch != null && (number == null || call(onBranch, "getNumber") == number)) return onBranch
+        number ?: return null
+        val details = call(call(vm, "getDataContext"), "getDetailsService\$intellij_vcs_github") ?: return null
+        val find = details.javaClass.methods.firstOrNull { it.name == "findPRId" && it.parameterCount == 2 } ?: return null
+        runCatching { find.trySetAccessible() }
+        return runBlocking {
+            withTimeoutOrNull(5_000) {
+                suspendCoroutineUninterceptedOrReturn<Any?> { c -> find.invoke(details, number, c) }
+            }
+        }?.takeIf { it.javaClass.name == IDENTIFIER }
+    }
+
+    /** A `GHPRIdentifier` inside `o` — itself, or behind a getter of it (a `ComputedResult`,
+     *  the `kotlin.Result` it holds) — at most `depth` getters deep. */
+    private fun findIdentifier(o: Any?, depth: Int): Any? {
+        if (o == null) return null
+        if (o.javaClass.name == IDENTIFIER) return o
+        if (depth == 0) return null
+        for (m in o.javaClass.methods) {
+            if (m.parameterCount != 0 || m.declaringClass == Any::class.java) continue
+            if (!m.name.startsWith("get") && !m.name.startsWith("unbox")) continue
+            val v = runCatching { m.trySetAccessible(); m.invoke(o) }.getOrNull()
+            findIdentifier(v, depth - 1)?.let { return it }
+        }
+        return null
     }
 }

@@ -201,6 +201,7 @@ object ReviewOpen {
                 }
                 if (opened == null) return failed
                 ref.commentAim(line)?.let { ok["comment"] = CommentNotice.offer(w.project, opened.path, it.line, it.url) }
+                PrShow.after(w.project, opened.path, ref.commentUrl)
                 200 to ok
             }
             is Where.There -> {
