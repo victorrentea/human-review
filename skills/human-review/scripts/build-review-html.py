@@ -317,6 +317,7 @@ from hrbuild.tabs.tests import (
     MUTAGENT_ACTION, MUTAGENT_RUN_ACTION, MUTAGENT_DIR, MUTAGENT_MARK, MUTAGENT_RUN_MARK,
     MUTAGENT_GEN_TIP, MUTAGENT_CONFIRM, MUTAGENT_RUN_TIP, MUTAGENT_VERDICTS, declare_mutagent,
     mutagent_buttons, mutagent_summary, mutagent_card, _mutagent_test, _RESULT_MARK,
+    _mutagent_rows, mutant_anchor, MUTAGENT_SURVIVORS_ID, mutagent_survivors,
     _MUTAGENT_ORDER, _mutagent_json, _MG_TOKEN, MG_LINES_MAX, _mutation_blocks, _word_diff,
     mutation_html,
     _gh_issue, _issue_url, _ms, _take, _test_changes_module,

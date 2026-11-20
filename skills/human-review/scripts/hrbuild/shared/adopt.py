@@ -353,8 +353,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
     },
     'requirements.mutagent': {
         "li": [
-            '🧬 AI changes the PR\'s code a little where a test claims a sentence (costs money).',
-            'Also old tests running changed lines that no sentence claims: their name is the claim.',
+            '🧬 AI tweaks the PR\'s code where a test claims a sentence, or by its name (costs money).',
+            'A survivor puts 🧬 on its test\'s row in the list above; click it to open the mutant here.',
             'Each names the tests that must fail; 🧪 runs them in a throwaway worktree.',
             '<b>killed</b>: an expected test failed, it proves its sentence; <b>survived</b>: not.',
             'Folded to one line, survivors in red; open: each change before → after, ✓/✗ per test.',

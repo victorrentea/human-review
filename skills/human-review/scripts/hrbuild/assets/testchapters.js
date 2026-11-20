@@ -567,6 +567,42 @@
     run.dataset.cover = 'yes';
   }
   Array.prototype.forEach.call(list.querySelectorAll('.rm-t[data-id]'), arm);
+
+  // ---- 🧬 on a test a mutant survived ------------------------------------------------------
+  // The Mutagent card, last in the column, said "2 survived" and named the tests there; the
+  // test's own row did not (Victor, 20 Nov 2026: "this test was proven to be wrong"). So the
+  // row wears the 🧬 just before its file link, the mutants on its hover, and a click opens
+  // the card on the first one (`#rm-mutagent`, written by tests.py `mutagent_survivors`).
+  var MUT = {};
+  try { MUT = JSON.parse(document.getElementById('rm-mutagent').textContent) || {}; }
+  catch (e) { MUT = {}; }
+  function mutBadge(row) {
+    var ms = MUT[(row.dataset.id || '').replace(/@base$/, '')];
+    var at = ms && row.querySelector('.rm-thead .rm-tw');
+    if (!at || row.querySelector('.rm-mg')) return;
+    var a = document.createElement('a');
+    a.className = 'rm-mg';
+    a.href = '#' + ms[0][0];
+    a.textContent = '🧬';
+    a.setAttribute('aria-label', 'a mutant survived this test');
+    a.setAttribute('data-tip', 'Passes even with the code broken by '
+      + (ms.length === 1 ? 'this mutant: ' : ms.length + ' mutants: ')
+      + ms.map(function (m) { return m[1]; }).join('; ') + '. Click to see it.');
+    a.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var card = document.getElementById('mutagent'), li = document.getElementById(ms[0][0]);
+      if (card) card.open = true;
+      var to = li || card;
+      if (!to) return;
+      to.scrollIntoView({block: 'center', behavior: 'smooth'});
+      to.classList.remove('mg-flash');
+      void to.offsetWidth;
+      to.classList.add('mg-flash');
+    });
+    row.dataset.mutant = 'survived';
+    at.parentNode.insertBefore(a, at);
+  }
+  Array.prototype.forEach.call(list.querySelectorAll('.rm-t[data-id]'), mutBadge);
   // On the card, not the list: the grand total's `−N` sits in the title strip above it.
   var POPS = '.rm-run[data-cover], .removed[data-gone]';
   map.addEventListener('pointerover', function (e) {

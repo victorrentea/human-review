@@ -1923,7 +1923,8 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path, root: Path | None = None
                              root if root is not None else out_dir.resolve().parent)
     out = relabel_cats(out)
     at = root if root is not None else out_dir.resolve().parent
-    inventory = all_tests_inventory(out, doc, at) + test_cover_files(out, doc, at)
+    inventory = (all_tests_inventory(out, doc, at) + test_cover_files(out, doc, at)
+                 + mutagent_survivors(out_dir))
     # The matrix's own renderer (`reqmap/reqmap.js`) re-renders a fresh matrix and may run
     # again (`data-hr-swap="rerun"`); semcov.py says so, and a fragment written before it
     # did is told here.
@@ -2234,24 +2235,19 @@ def mutation_html(text: str, rel: str, root: Path) -> str:
     return "".join(out)
 
 
-def mutagent_card(out_dir: Path, root: Path) -> str:
-    """The 🧬 Mutagent card, folded to one line (Victor, 20 Nov 2026: "only on demand"):
-    what was killed and what survived, and who wrote the mutants at what cost. Open, one row
-    per mutant, a survivor first, each showing the change it made. Empty without
-    `mutagent/mutants.json` — the 🧬 press is the way in."""
-    from ..shared.adopt import adopt_html
-    from ..shared.snippets import diff_text_html
+def _mutagent_rows(out_dir: Path) -> tuple[dict, list[dict]] | None:
+    """`(mutants.json, one row per mutant with its verdict)`, a survivor first; None without
+    mutants. Results written for another set of mutants are not read: they answer other
+    questions."""
     base = out_dir / MUTAGENT_DIR
     doc = _mutagent_json(base / "mutants.json")
     if not isinstance(doc, dict) or not doc.get("mutants"):
-        return ""
+        return None
     res = _mutagent_json(base / "results.json") or {}
-    # Results of another set of mutants answer other questions.
     if not isinstance(res, dict) or (res.get("mutantsHead")
                                      and res.get("mutantsHead") != doc.get("head")):
         res = {}
     verdicts = res.get("mutants") or {}
-    tests = doc.get("tests") or {}
     rows = []
     for m in doc["mutants"]:
         v = verdicts.get(m.get("id")) or {}
@@ -2259,6 +2255,51 @@ def mutagent_card(out_dir: Path, root: Path) -> str:
                      "states": v.get("tests") or {}, "said": v.get("messages") or {}})
     rows.sort(key=lambda r: _MUTAGENT_ORDER.index(r["verdict"])
               if r["verdict"] in _MUTAGENT_ORDER else len(_MUTAGENT_ORDER))
+    return doc, rows
+
+
+def mutant_anchor(row: dict) -> str:
+    """The `id` of a mutant's row on the card, where a test row's 🧬 lands."""
+    return "mg-" + re.sub(r"[^\w-]", "-", str(row.get("id") or ""))
+
+
+#: The test rows' 🧬, keyed like `rm-data`'s tests (`path:line`): written here, drawn by
+#: testchapters.js.
+MUTAGENT_SURVIVORS_ID = "rm-mutagent"
+
+
+def mutagent_survivors(out_dir: Path) -> str:
+    """For each test a mutant survived — it stayed green with the code broken — the mutants
+    it let through: `{"path:line": [[anchor, title], …]}`. The card says it at the bottom
+    of the column; the test's own row is where a reader looks (Victor, 20 Nov 2026: "this
+    test was proven to be wrong"). Empty when nothing survived."""
+    got = _mutagent_rows(out_dir)
+    out: dict[str, list] = {}
+    for r in (got[1] if got else []):
+        if r["verdict"] != "survived":
+            continue
+        for tid, state in r["states"].items():
+            if state == "pass":
+                out.setdefault(tid, []).append([mutant_anchor(r), r.get("title") or r.get("id")])
+    if not out:
+        return ""
+    body = json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
+    return f'<script type="application/json" id="{MUTAGENT_SURVIVORS_ID}">{body}</script>'
+
+
+def mutagent_card(out_dir: Path, root: Path) -> str:
+    """The 🧬 Mutagent card, folded to one line (Victor, 20 Nov 2026: "only on demand"):
+    what was killed and what survived, and who wrote the mutants at what cost. Open, one row
+    per mutant, a survivor first, each showing the change it made. Empty without
+    `mutagent/mutants.json` — the 🧬 press is the way in."""
+    from ..shared.adopt import adopt_html
+    from ..shared.snippets import diff_text_html
+    got = _mutagent_rows(out_dir)
+    if got is None:
+        return ""
+    doc, rows = got
+    base = out_dir / MUTAGENT_DIR
+    tests = doc.get("tests") or {}
     items = []
     for r in rows:
         face, tip = MUTAGENT_VERDICTS.get(r["verdict"], (r["verdict"], ""))
@@ -2286,7 +2327,7 @@ def mutagent_card(out_dir: Path, root: Path) -> str:
                                        r["said"].get(t, ""))
                         for t in r.get("expect") or [])
         items.append(
-            f'<li class="mg-row mg-{html.escape(r["verdict"])}">'
+            f'<li class="mg-row mg-{html.escape(r["verdict"])}" id="{mutant_anchor(r)}">'
             f'<div class="mg-top"><span class="mg-pill" data-tip="{html.escape(tip, quote=True)}">'
             f'{html.escape(face)}</span><b class="mg-title">{title}</b></div>'
             + headline + change
