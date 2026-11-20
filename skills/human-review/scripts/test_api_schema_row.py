@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The API tab's schema block, in a browser: one row, and Tree | Diagram under it.
+"""The API tab's schema block, in a browser: one row, Tree | Diagram | Example value in it.
 
 Swagger UI comes off a CDN, so the page here is the real template, stylesheet and script,
 over a stand-in `SwaggerUIBundle` that draws the DOM Swagger UI 5.33 draws for a response and
@@ -23,19 +23,22 @@ def select(*values, cls="content-type") -> str:
             + "".join(f'<option value="{v}">{v}</option>' for v in values) + "</select>")
 
 
-def tabs(example: bool) -> str:
-    """Swagger UI's DOM order is Example first; the stylesheet puts Schema first."""
+def tabs(example: bool, strip: bool = True) -> str:
+    """Swagger UI's DOM order is Example first. A body without an example has no strip."""
     a, b = (" active", "") if example else ("", " active")
     panel = ('<div role="tabpanel" data-name="examplePanel"><pre>{}</pre></div>' if example else
              '<div role="tabpanel" data-name="modelPanel" class="model-container">'
              '<div class="model-box"><article class="json-schema-2020-12">tree</article></div></div>')
+    if not strip:
+        return f'<div class="model-example">{panel}</div>'
     return (f'<div class="model-example"><ul class="tab" role="tablist">'
             f'<li class="tabitem{a}"><button class="tablinks" data-name="example">Example Value</button></li>'
             f'<li class="tabitem{b}"><button class="tablinks" data-name="model">Schema</button></li>'
             f'</ul>{panel}</div>')
 
 
-def response(code: str, medias: tuple, samples: tuple = (), example: bool = False) -> str:
+def response(code: str, medias: tuple, samples: tuple = (), example: bool = False,
+             strip: bool = True) -> str:
     examples = ""
     if samples:
         examples = ('<div class="response-control-examples"><small class="response-control-'
@@ -47,7 +50,7 @@ def response(code: str, medias: tuple, samples: tuple = (), example: bool = Fals
             '<div class="response-controls"><div class="response-control-media-type">'
             '<small class="response-control-media-type__title">Media type</small>'
             f'<div class="content-type-wrapper">{select(*medias)}</div></div>{examples}</div>'
-            f'{tabs(example)}</td><td class="response-col_links"></td></tr>')
+            f'{tabs(example, strip)}</td><td class="response-col_links"></td></tr>')
 
 
 REQUEST = ('<div class="opblock-section opblock-section-request-body">'
@@ -72,7 +75,8 @@ FAKE = ('<div class="swagger-ui"><div class="opblock-tag-section">'
                     response("201", ("application/json", "application/xml")) +
                     response("202", ("application/json",), ("sample",), example=True) +
                     response("203", ("application/json",), ("one", "two"), example=True) +
-                    response("204", ("application/json",), ("sample",)))
+                    response("204", ("application/json",), ("sample",)) +
+                    response("205", ("application/json",), strip=False))
         + '<div class="opblock-body dv-noparams"><div class="opblock-section">'
         '<div class="opblock-section-header"><h4>Parameters</h4></div>'
         '<div class="parameters-container"><div class="opblock-description-wrapper">'
@@ -84,6 +88,20 @@ ENTRIES = {"POST /a": {"state": "untouched", "changes": [], "ghosts": [], "deepS
                                     "200 application/json": "d2",
                                     "201 application/json": "d2"}}}
 SVG = '<svg width="10" height="10"><text>{}</text></svg>'
+
+# What React does on a click on Swagger UI's Schema / Example Value tab: mark it and swap
+# the panel, appended last in .model-example.
+SWITCH = """o.domNode.addEventListener('click', e => {
+  const b = e.target.closest('button.tablinks'); if (!b) return;
+  const box = b.closest('.model-example'), ex = b.dataset.name === 'example';
+  box.querySelectorAll('ul.tab li').forEach(li =>
+    li.classList.toggle('active', li.querySelector('button') === b));
+  box.querySelector(':scope > [role=tabpanel]').remove();
+  const n = document.createElement('div'); n.setAttribute('role', 'tabpanel');
+  n.dataset.name = ex ? 'examplePanel' : 'modelPanel';
+  n.innerHTML = ex ? '<pre>{}</pre>'
+    : '<div class="model-box"><article class="json-schema-2020-12">tree</article></div>';
+  box.appendChild(n); });"""
 
 
 @pytest.fixture()
@@ -104,7 +122,7 @@ def page(tmp_path):
         pg.route("**/*swagger-ui*", lambda r: r.abort())
         pg.add_init_script(
             "window.SwaggerUIBundle = o => { o.domNode.innerHTML = " + repr(FAKE)
-            + "; o.onComplete(); };")
+            + "; " + SWITCH + " o.onComplete(); };")
         pg.goto(doc.as_uri())
         pg.wait_for_selector(".dv-views")
         yield pg
@@ -122,21 +140,22 @@ def row(code: str) -> str:
     return f'tr.response[data-code="{code}"]'
 
 
-def test_the_media_type_ends_the_radio_row(page):
-    radios = box(page, f"{row('200')} ul.tab")
+def test_the_media_type_ends_the_pill_row(page):
+    pills = box(page, f"{row('200')} .dv-views")
     media = box(page, f"{row('200')} .response-control-media-type")
     panel = box(page, f"{row('200')} [role=tabpanel]")
-    assert media["top"] < radios["bottom"] and radios["top"] < media["bottom"], "not one row"
-    assert media["left"] > radios["right"]
+    assert media["top"] < pills["bottom"] and pills["top"] < media["bottom"], "not one row"
+    assert media["left"] > pills["right"]
     assert abs(media["right"] - panel["right"]) <= 1, "not pinned to the right end"
+    assert panel["top"] >= pills["bottom"] - 1
 
 
 def test_the_request_reads_the_same(page):
     body = ".opblock-section-request-body"
-    radios, media = box(page, f"{body} ul.tab"), box(page, f"{body} label")
+    pills, media = box(page, f"{body} .dv-views"), box(page, f"{body} label")
     title, panel = box(page, f"{body} h4"), box(page, f"{body} [role=tabpanel]")
-    assert media["top"] < radios["bottom"] and radios["top"] < media["bottom"]
-    assert title["bottom"] <= radios["top"] + 1 and panel["top"] >= radios["bottom"] - 1
+    assert media["top"] < pills["bottom"] and pills["top"] < media["bottom"]
+    assert title["bottom"] <= pills["top"] + 1 and panel["top"] >= pills["bottom"] - 1
     assert abs(media["right"] - panel["right"]) <= 1
     label = page.evaluate("s => getComputedStyle(document.querySelector(s), '::before').content",
                           f"{body} label")
@@ -145,18 +164,23 @@ def test_the_request_reads_the_same(page):
 
 def test_a_request_without_parameters_still_shows_its_body(page):
     """Swagger UI nests the body in the section that says "No parameters"."""
-    assert page.locator(".dv-noparams .opblock-section-request-body ul.tab").is_visible()
+    assert page.locator(".dv-noparams .opblock-section-request-body [role=tabpanel]").is_visible()
     assert page.locator(".dv-noparams .parameters-container").is_hidden()
+
+
+def test_no_radio_is_left(page):
+    assert page.locator("ul.tab").first.is_hidden()
+    assert page.locator("ul.tab:visible").count() == 0
 
 
 def test_the_sample_follows_example_value_and_only_then(page):
     assert page.locator(f"{row('204')} .response-control-examples").is_hidden()
     examples = box(page, f"{row('202')} .response-control-examples")
-    radios = box(page, f"{row('202')} ul.tab")
+    pills = box(page, f"{row('202')} .dv-views")
     media = box(page, f"{row('202')} .response-control-media-type")
-    assert examples["top"] < radios["bottom"] and radios["top"] < examples["bottom"]
-    assert radios["right"] <= examples["left"] < media["left"]
-    assert examples["left"] - radios["right"] < 40, "not right after the radio"
+    assert examples["top"] < pills["bottom"] and pills["top"] < examples["bottom"]
+    assert pills["right"] <= examples["left"] < media["left"]
+    assert examples["left"] - pills["right"] < 40, "not right after the pills"
 
 
 LOOKS = """s => { const c = getComputedStyle(document.querySelector(s));
@@ -180,20 +204,27 @@ def test_two_values_stay_a_dropdown(page, selector):
     assert page.evaluate("s => document.querySelector(s).tabIndex", selector) == 0
 
 
-def test_the_switch_says_tree_and_diagram_and_opens_on_diagram(page):
-    words = page.locator(f"{row('200')} .dv-views button").all_inner_texts()
-    assert words == ["Tree", "Diagram"]
-    assert page.get_attribute(f"{row('200')} .dv-views button[data-view=diagram]",
-                              "aria-pressed") == "true"
+def words(pg, where: str) -> list:
+    return pg.locator(f"{where} .dv-views button").all_inner_texts()
+
+
+def pressed(pg, where: str) -> str:
+    return pg.get_attribute(f"{where} .dv-views button[aria-pressed=true]", "data-view")
+
+
+def test_one_row_says_tree_diagram_example_value_and_opens_on_diagram(page):
+    assert words(page, row("200")) == ["Tree", "Diagram", "Example value"]
+    assert pressed(page, row("200")) == "diagram"
     assert page.locator(f"{row('200')} article").is_hidden()
     assert page.locator(f"{row('200')} .dv-dgm svg").is_visible()
 
 
-def test_it_sits_under_the_row_and_only_under_schema(page):
-    bar = box(page, f"{row('200')} .dv-views")
-    assert bar["top"] >= box(page, f"{row('200')} ul.tab")["bottom"] - 1
-    assert page.locator(f"{row('202')} .dv-views").count() == 0   # on Example Value
-    assert page.locator(f"{row('204')} .dv-views").count() == 0   # no diagram for that body
+def test_a_pill_is_offered_only_where_it_has_something_to_show(page):
+    assert words(page, row("202")) == ["Tree", "Example value"]     # no diagram
+    assert pressed(page, row("202")) == "example"                    # Swagger opened it there
+    assert words(page, row("204")) == ["Tree", "Example value"]
+    assert pressed(page, row("204")) == "tree"
+    assert page.locator(f"{row('205')} .dv-views").count() == 0      # Tree alone: no bar
 
 
 def test_diagram_replaces_the_tree_in_every_open_block(page):
@@ -202,17 +233,30 @@ def test_diagram_replaces_the_tree_in_every_open_block(page):
                         (".opblock-body > .opblock-section-request-body", "request")):
         assert page.locator(f"{where} article").is_hidden()
         assert page.locator(f"{where} .dv-dgm svg").text_content() == word
-    assert page.get_attribute(f"{row('201')} .dv-views button[data-view=diagram]",
-                              "aria-pressed") == "true"
+    assert pressed(page, row("201")) == "diagram"
     page.click(f"{row('201')} .dv-views button[data-view=tree]")
     assert page.locator(f"{row('200')} article").is_visible()
+    assert page.locator(f"{row('200')} .dv-dgm").is_hidden()
+
+
+def test_example_value_shows_every_sample_and_tree_brings_the_schema_back(page):
+    page.click(f"{row('200')} .dv-views button[data-view=example]")
+    for code in ("200", "201", "204"):
+        page.wait_for_selector(f"{row(code)} [data-name=examplePanel]")
+        page.wait_for_selector(f"{row(code)} .dv-views button[data-view=example][aria-pressed=true]")
+    assert page.locator(f"{row('204')} .response-control-examples").is_visible()
+    assert page.locator(f"{row('205')} article").is_visible()        # nothing else to show
+    page.click(f"{row('201')} .dv-views button[data-view=tree]")
+    for code in ("200", "202", "204"):
+        page.wait_for_selector(f"{row(code)} [data-name=modelPanel] article")
+        assert pressed(page, row(code)) == "tree"
     assert page.locator(f"{row('200')} .dv-dgm").is_hidden()
 
 
 def test_a_block_redrawn_by_swagger_ui_keeps_the_view(page):
     page.click(f"{row('200')} .dv-views button[data-view=diagram]")
     page.evaluate("s => { const t = document.querySelector(s); const n = t.cloneNode(true);"
-                  " n.querySelector('.dv-views').remove(); n.querySelector('.dv-dgm').remove();"
+                  " n.querySelector('.dv-dgm').remove();"
                   " delete n.dataset.dvView; t.replaceWith(n); }",
                   f"{row('200')} [role=tabpanel]")
     page.wait_for_selector(f"{row('200')} .dv-dgm svg")

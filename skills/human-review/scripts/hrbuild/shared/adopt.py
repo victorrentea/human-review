@@ -238,7 +238,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'The OpenAPI contract, main vs this branch, by oasdiff; <b>breaking</b>: a client can fail.',
             '<b>Generated from code</b>: a test writes the spec from the controllers.',
-            '<b>Diagram</b>: a body as classes, entered by an arrow; green added, red struck removed.',
+            '<b>Tree | Diagram | Example value</b>: fields, classes (green new, red gone) or a sample.',
             'One DTO change breaks many endpoints: for each, ask who calls it and if they were updated.',
             '<b>→</b> request, <b>←</b> response; a red row is what breaks a client, no badge: nothing.',
             '<b>changes: expand</b> opens what changed; only a field with fields inside has a <b>▶</b>.',
