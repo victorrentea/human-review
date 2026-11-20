@@ -753,7 +753,7 @@
   .swagger-ui .responses-table tr.response.dv-folded .response-col_description__inner .renderedMarkdown p {
     color: var(--dv-muted) !important;
   }
-  /* One row, radios on the left and the media type pinned right (Victor, 6 Nov 2026: the
+  /* One row, the Tree | Diagram | Example value pills on the left and the media type pinned right (Victor, 6 Nov 2026: the
      block took too much height). Swagger UI draws those controls in two different boxes, so
      the row is this grid with `display: contents` on the boxes in between: nothing of its
      DOM moves, and a React re-render has nothing to undo. Requests below read the same. */
@@ -843,28 +843,19 @@
   .swagger-ui :is(td.response-col_description, .opblock-section-request-body):has(ul.tab li:last-child.active) :is(.response-control-examples, .examples-select) { display: none; }
   .swagger-ui .response-control-examples { display: flex; align-items: baseline; gap: 8px; }
   .swagger-ui .response-control-examples__title { font-size: 11px; color: var(--dv-muted); }
-  /* "Schema" and "Example Value" read as the choice they are: a radio before each, Schema
-     first (the page opens on it). Order only: the DOM keeps Swagger's, so `li:last-child`
-     above is still Schema. */
-  .swagger-ui ul.tab { display: flex; align-items: center; gap: 14px; }
-  .swagger-ui ul.tab li:first-of-type { order: 2; }
-  .swagger-ui ul.tab li { padding: 0 !important; }
-  .swagger-ui ul.tab li::after { display: none !important; }
-  .swagger-ui ul.tab li button.tablinks { display: inline-flex; align-items: center; gap: 6px; }
-  .swagger-ui ul.tab li button.tablinks::before {
-    content: ""; flex: 0 0 auto; width: 11px; height: 11px; box-sizing: border-box;
-    border: 1.5px solid var(--dv-muted); border-radius: 50%;
-  }
-  .swagger-ui ul.tab li.active button.tablinks::before {
-    border-color: var(--dv-fg); background: radial-gradient(circle, var(--dv-fg) 0 2.5px, transparent 3px);
-  }
-  /* Tree | Diagram: the review page's Diff | New/Old pills, copied because no stylesheet
-     crosses into this shadow root; the colours come through as inherited variables, with
-     this file's own for a copy opened alone. */
-  .swagger-ui .dv-views { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+  /* Tree | Diagram | Example value: one row of pills, where Swagger UI's "Schema" and
+     "Example Value" tabs used to sit as radios with the pills on a second row under them
+     (Victor, 20 Nov 2026). The tabs stay in the DOM, hidden: the pills click them, and the
+     walk to a change does too. They are the review page's Diff | New/Old pills, copied
+     because no stylesheet crosses into this shadow root; the colours come through as
+     inherited variables, with this file's own for a copy opened alone. */
+  .swagger-ui .model-example > ul.tab { display: none !important; }
+  .swagger-ui .responses-table td.response-col_description > .model-example > .dv-views { grid-column: 1; grid-row: 2; }
+  .swagger-ui .opblock-section-request-body > .opblock-description-wrapper > div > .model-example > .dv-views { grid-column: 1; grid-row: 3; }
+  .swagger-ui .dv-views { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
   .swagger-ui .dv-views button {
     border: 2px solid var(--dv-line); background: var(--dv-card); color: var(--dv-muted);
-    border-radius: 999px; cursor: pointer; padding: 0 10px;
+    border-radius: 999px; cursor: pointer; padding: 0 10px; white-space: nowrap;
     font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.75;
   }
   .swagger-ui .dv-views button:hover { border-color: currentColor; color: var(--dv-fg); }
@@ -872,7 +863,7 @@
     background: var(--view-new, var(--dv-side-out)); border-color: var(--view-new, var(--dv-side-out));
     color: var(--on-fill, var(--dv-card));
   }
-  .swagger-ui [data-name="modelPanel"][data-dv-view="diagram"] > :not(.dv-views, .dv-dgm),
+  .swagger-ui [data-name="modelPanel"][data-dv-view="diagram"] > :not(.dv-dgm),
   .swagger-ui [data-name="modelPanel"][data-dv-view="tree"] > .dv-dgm { display: none !important; }
   /* The Data tab's `.svgbox`. */
   .swagger-ui .dv-dgm { background: var(--dgm-bg); border-radius: 6px; padding: 8px; overflow-x: auto; }
@@ -1386,78 +1377,114 @@ function dressSelects() {
   });
 }
 
-// ---- Tree | Diagram, under Schema ----
+// ---- Tree | Diagram | Example value ----
 // Each body's class diagram was drawn at build time (schema_puml.py): `DATA.diagrams` holds
 // each distinct picture once, and `info.diagrams` says which one a body shows, under the
 // key `<request or status> <media type>`. A body with no entry there (no object in it, no
-// PlantUML on the build machine) gets no switch, and its tree is all it ever had. The
+// PlantUML on the build machine) gets no Diagram pill, and its tree is all it ever had. The
 // picture enters the DOM only when asked for, so a page of forty operations stays light.
+//
+// "Example value" is Swagger UI's own "Example Value" tab, hidden and clicked from here, so
+// a body without an example has no such pill. A body left with Tree alone gets no bar.
 //
 // One choice for the whole tab, because a reader comparing two responses wants them in the
 // same view, and an operation opened later opens the way the last one was left. It starts on
 // the diagram: what a change did to a body is easier to see as classes and arrows than by
 // unfolding a tree (Victor, 20 Nov 2026).
-let schemaView = 'diagram';
+let schemaView = 'diagram';   // 'tree' | 'diagram': what Schema shows
+let showExample = false;      // the reader's last pick was Example value
 
 function schemaBodies(op) {
   return op.querySelectorAll('.opblock-section-request-body, .responses-table tr.response[data-code]');
 }
 
 function diagramFor(info, body) {
+  if (!DATA.diagrams || !info || !info.diagrams) return null;
   const slot = body.matches('tr.response') ? body.dataset.code : 'request';
-  return info.diagrams[`${slot} ${body.querySelector('select.content-type')?.value}`];
+  return info.diagrams[`${slot} ${body.querySelector('select.content-type')?.value}`] || null;
 }
 
-function paintSchema(panel, id) {
-  panel.dataset.dvView = schemaView;
-  panel.querySelectorAll(':scope > .dv-views button').forEach(b =>
-    b.setAttribute('aria-pressed', String(b.dataset.view === schemaView)));
-  const pane = panel.querySelector(':scope > .dv-dgm');
-  if (schemaView === 'diagram' && pane.dataset.id !== id) {
-    pane.innerHTML = DATA.diagrams[id];
-    pane.dataset.id = id;
-  }
+function swaggerTab(box, name) {
+  return box.querySelector(`:scope > ul.tab button[data-name="${name}"]`);
 }
+
+function tabActive(button) {
+  return !!button && button.closest('li').classList.contains('active');
+}
+
+const VIEW_WORDS = { tree: 'Tree', diagram: 'Diagram', example: 'Example value' };
 
 function dressSchemas() {
-  if (!DATA.diagrams) return;
   root.querySelectorAll('.swagger-ui .opblock.is-open').forEach(op => {
     const info = DATA.ops[keyOf(op)];
-    if (!info || !info.diagrams) return;
     schemaBodies(op).forEach(body => {
-      const panel = body.querySelector('[data-name="modelPanel"]');
-      if (!panel) return;                // on Example Value: nothing to switch
+      const box = body.querySelector('.model-example');
+      if (!box) return;
+      const example = swaggerTab(box, 'example');
+      if (!body.dataset.dvSeen) {        // opened after the reader picked Example value
+        body.dataset.dvSeen = '1';
+        if (showExample && example && !tabActive(example)) { example.click(); return; }
+      }
       const id = diagramFor(info, body);
-      let bar = panel.querySelector(':scope > .dv-views');
-      if (!id) {                         // another media type, with no picture of its own
+      const views = ['tree', ...(id ? ['diagram'] : []), ...(example ? ['example'] : [])];
+      let bar = box.querySelector(':scope > .dv-views');
+      if (views.length < 2) bar?.remove();
+      else if (!bar || bar.dataset.views !== views.join(' ')) {
         bar?.remove();
-        panel.querySelector(':scope > .dv-dgm')?.remove();
+        bar = document.createElement('div');
+        bar.className = 'dv-views';
+        bar.dataset.views = views.join(' ');
+        bar.innerHTML = views.map(v =>
+          `<button type="button" data-view="${v}" aria-pressed="false">${VIEW_WORDS[v]}</button>`).join('');
+        const strip = box.querySelector(':scope > ul.tab');
+        if (strip) strip.after(bar); else box.prepend(bar);
+      }
+      const panel = box.querySelector(':scope > [data-name="modelPanel"]');
+      const view = tabActive(example) || !panel ? 'example' : id ? schemaView : 'tree';
+      bar?.querySelectorAll('button').forEach(b =>
+        b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+      if (!panel) return;
+      let pane = panel.querySelector(':scope > .dv-dgm');
+      if (!id) {                         // another media type, with no picture of its own
+        pane?.remove();
         delete panel.dataset.dvView;
         return;
       }
-      if (!bar) {
-        panel.insertAdjacentHTML('afterbegin', '<div class="dv-views">'
-          + '<button type="button" data-view="tree" aria-pressed="false">Tree</button>'
-          + '<button type="button" data-view="diagram" aria-pressed="true">Diagram</button>'
-          + '</div>');
-        panel.insertAdjacentHTML('beforeend', '<div class="dv-dgm"></div>');
+      if (!pane) panel.insertAdjacentHTML('beforeend', '<div class="dv-dgm"></div>');
+      pane = panel.querySelector(':scope > .dv-dgm');
+      panel.dataset.dvView = schemaView;
+      if (schemaView === 'diagram' && pane.dataset.id !== id) {
+        pane.innerHTML = DATA.diagrams[id];
+        pane.dataset.id = id;
       }
-      paintSchema(panel, id);
     });
   });
 }
 
-// Every open block flips, so the blocks above the click change height: the one under the
-// pointer is held where it was.
+// Every open block flips, so the blocks above the click change height: the body under the
+// pointer is held where it was. Swagger UI redraws a switched tab on its own schedule, so
+// the layout waits a frame for it.
 root.addEventListener('click', e => {
   const button = e.target.closest && e.target.closest('.dv-views button');
   if (!button) return;
-  const top = button.getBoundingClientRect().top;
-  schemaView = button.dataset.view;
-  dressSchemas();
-  layoutDescriptions();
-  drawRoads();
-  scrollBy({ top: button.getBoundingClientRect().top - top, behavior: 'instant' });
+  const anchor = button.closest('tr.response, .opblock-section-request-body') || button;
+  const top = anchor.getBoundingClientRect().top;
+  showExample = button.dataset.view === 'example';
+  if (!showExample) schemaView = button.dataset.view;
+  root.querySelectorAll('.swagger-ui .opblock.is-open').forEach(op =>
+    schemaBodies(op).forEach(body => {
+      const box = body.querySelector('.model-example');
+      const tab = box && swaggerTab(box, showExample ? 'example' : 'model');
+      if (tab && !tabActive(tab)) tab.click();
+    }));
+  const settle = () => {
+    dressSchemas();
+    layoutDescriptions();
+    drawRoads();
+    scrollBy({ top: anchor.getBoundingClientRect().top - top, behavior: 'instant' });
+  };
+  settle();
+  requestAnimationFrame(() => requestAnimationFrame(settle));
 });
 
 // Swagger prints "Default value :" even when the parameter has none.
