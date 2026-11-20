@@ -2290,8 +2290,12 @@ def mutagent_card(out_dir: Path, root: Path) -> str:
             f'<div class="mg-top"><span class="mg-pill" data-tip="{html.escape(tip, quote=True)}">'
             f'{html.escape(face)}</span><b class="mg-title">{title}</b></div>'
             + headline + change
-            + (f'<p class="mg-attacks" data-tip="The ticket sentence this mutant attacks">'
-               f'“{said}”</p>' if said else "")
+            + ((f'<p class="mg-attacks mg-byname" data-tip="A pre-existing test that runs lines '
+                f'this PR changed, claimed by no ticket sentence: its own name is its claim">'
+                f'<span class="mg-claim">claims, by its name:</span> “{said}”</p>')
+               if said and sentence.get("kind") == "test" else
+               (f'<p class="mg-attacks" data-tip="The ticket sentence this mutant attacks">'
+                f'“{said}”</p>') if said else "")
             + rationale + why
             + f'<ul class="mg-tests" data-tip="Tests expected to fail with this mutant">{tlist}</ul>'
             + patch + '</li>')

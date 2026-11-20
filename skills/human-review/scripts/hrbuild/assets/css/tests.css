@@ -147,6 +147,7 @@ ul.req-tests li { list-style:none; }
 .mutagent .mg-headline { margin:3px 0 0; color:#b42318; font-weight:600; }
 .mutagent .mg-attacks, .mutagent .mg-rationale, .mutagent .mg-why { margin:3px 0 0; }
 .mutagent .mg-attacks { font-style:italic; }
+.mutagent .mg-attacks .mg-claim { font-style:normal; color:var(--muted); }
 .mutagent .mg-rationale, .mutagent .mg-why { color:var(--muted); }
 /* The mutation itself, readable unopened: file:line, the line at HEAD, then → and the line
    with the mutant, the changed tokens marked; long lines wrap rather than being cut. */

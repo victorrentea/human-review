@@ -29,13 +29,32 @@ write ONE mutant:
   least one runnable test in `expect`.
 - Spread the mutants over different sentences and different files when you can.
 
+## Tests no sentence claims
+
+Some entries under `sentences` are not from the ticket: they have `"kind": "test"`. Each is
+a test that existed before this PR, that runs lines the PR changed (`changedLines`, by file),
+and that no ticket sentence claims. Its `text` is its own name, read as a sentence: that
+name is the only claim it makes, so attack that claim. Put the mutant on a line this PR
+changed in a file under `changedLines` — or on another line the PR changed in that file,
+such as a query or an annotation the test's code path goes through — and expect that test.
+Mutants for these entries count toward `max`: when the input has any, at least half of the
+mutants you write MUST target them (their `expect` names that entry's test), chosen among the tests whose body looks least able to catch a violation of their own name — those are
+the claims nobody has checked yet.
+
 ## Aim at the gap
 
 Each test comes with its `body`. Read it before you write the mutant: the most valuable
 mutant is one that breaks what the **sentence** promises in a way this test's assertions do
 not look at — data that is already in the expected order, a field the test never reads back,
 only one of two cases exercised, an assertion on the size instead of the content, a value
-that happens to equal the default. That is how a lying test is caught. Do not, however,
+that happens to equal the default. A test that inserts its fixture already in the order it
+then expects back cannot tell a sorted result from an unsorted one: remove the sorting it claims
+(drop the `ORDER BY`, the sort call, the comparator) rather than replacing it with another
+order: the rows then come back in whatever order the store hands them, which is exactly what
+such a test cannot tell apart. When a test asserts an order, the most revealing mutant deletes the
+ordering clause entirely, so the store falls back to insertion order; replacing it with
+another order is the weaker mutant. In general prefer the smallest change that breaks the
+claim — removing a step over swapping in a different one. That is how a lying test is caught. Do not, however,
 write a mutant a correct test could not catch: it must still violate the sentence.
 
 ## How to express the change

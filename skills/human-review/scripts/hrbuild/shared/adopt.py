@@ -354,10 +354,10 @@ EXPLAIN: dict[str, dict[str, object]] = {
     'requirements.mutagent': {
         "li": [
             '🧬 AI changes the PR\'s code a little where a test claims a sentence (costs money).',
-            'Each mutant names the tests that must fail; 🧪 runs them in a throwaway worktree.',
-            'Folded to one line: how many were killed, survivors in red; click it to open.',
+            'Also old tests running changed lines that no sentence claims: their name is the claim.',
+            'Each names the tests that must fail; 🧪 runs them in a throwaway worktree.',
             '<b>killed</b>: an expected test failed, it proves its sentence; <b>survived</b>: not.',
-            'Each row: the line before → after, changed words marked; ✓ green / ✗ failed per test.',
+            'Folded to one line, survivors in red; open: each change before → after, ✓/✗ per test.',
             '<b>broken</b>: did not apply or compile; <b>not run</b>: no runner (e2e, Karma).',
         ],
     },

@@ -166,9 +166,12 @@ def changed_production_files(root: Path, base: str) -> list[str]:
 # ------------------------------------------------------------------------- the claims
 
 def load_claims(review: Path) -> list[dict]:
-    """The sentences some test claims to prove: `test-mapping.json`'s covered and partly
-    covered ones, each with its claimed tests."""
-    for name in ("test-mapping.json", "assets/test-mapping.merged.json"):
+    """The sentences some test claims to prove — the covered and partly covered ones of the
+    pairing (`test-mapping.json`, as the build re-anchored it), each with its claimed tests."""
+    # The build's merged copy first: it carries each test id to the line the test is on in
+    # the tree as it is now, where the model's file still names the lines it was shown —
+    # after a merge from the base those point at other tests.
+    for name in ("assets/test-mapping.merged.json", "test-mapping.json"):
         try:
             doc = json.loads((review / name).read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -180,6 +183,74 @@ def load_claims(review: Path) -> list[dict]:
                 out.append({"id": s["id"], "coverage": s.get("coverage"), "tests": tests})
         return out
     return []
+
+
+#: What the Tests tab measured: which test ran which changed line (`testcov`), and what the
+#: PR did to each test (`tests`). Read to find the tests nobody claims for a sentence.
+COVERAGE = "assets/test-coverage.json"
+TEST_CHANGES = "assets/test-changes.json"
+#: How many unclaimed tests go in the prompt, the ones running the most changed lines first.
+UNCLAIMED_MAX = 15
+
+
+def _json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _say_name(title: str) -> str:
+    """A test's name read as the sentence it promises: `getAll_returnsVisitsInDateOrder`
+    → "get all returns visits in date order"."""
+    words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", " ",
+                   re.sub(r"[_\-]+", " ", title or ""))
+    return " ".join(words.split()).lower()
+
+
+def load_unclaimed(review: Path, root: Path, claimed: set[tuple[str, str]], cfg: dict,
+                   limit: int = UNCLAIMED_MAX) -> list[dict]:
+    """Pre-existing tests — ones this PR did not write or edit — that run lines the PR
+    changed and that no ticket sentence claims. Each becomes a claim of its own, its name
+    being what it promises; a mutant on the changed lines it runs asks whether it keeps it.
+
+    `claimed` is `{(file, test name)}` of the tests the mapping already pairs."""
+    cov = _json(review / COVERAGE) or {}
+    changed = cov.get("changed") or {}
+    moved = {}
+    for t in (_json(review / TEST_CHANGES) or {}).get("tests") or []:
+        if isinstance(t, dict):
+            moved[(t.get("path"), t.get("name"))] = t.get("status")
+    picks = []
+    for t in cov.get("tests") or []:
+        if not isinstance(t, dict) or t.get("status") not in (None, "passed"):
+            continue
+        rel, title, line = t.get("file") or "", t.get("title") or "", t.get("line")
+        hits = {f: sorted(set(ls) & set(changed[f])) for f, ls in (t.get("hits") or {}).items()
+                if f in changed and set(ls) & set(changed[f])}
+        if not rel or not line or not hits or (rel, title) in claimed:
+            continue
+        if moved.get((rel, title), "unchanged") != "unchanged":
+            continue
+        tid = f"{rel}:{line}"
+        c = classify(tid, root, cfg)
+        if not c["runnable"] or (rel, c.get("name")) in claimed:
+            continue
+        picks.append((sum(len(ls) for ls in hits.values()), tid, title, hits, c))
+    picks.sort(key=lambda p: (-p[0], p[1]))
+    out, seen = [], set()
+    for _, tid, title, hits, c in picks:
+        if tid in seen:
+            continue
+        seen.add(tid)
+        ran = "; ".join(f"{Path(f).name}:{','.join(map(str, ls))}" for f, ls in hits.items())
+        out.append({"id": "t:" + tid, "kind": "test", "coverage": "exercised",
+                    "text": _say_name(c.get("name") or title), "changed": hits,
+                    "tests": [{"id": tid, "strength": "name",
+                               "why": f"claims no sentence; runs lines this PR changed: {ran}"}]})
+        if len(out) >= limit:
+            break
+    return out
 
 
 def sentence_texts(review: Path, root: Path) -> dict[str, str]:
@@ -558,8 +629,10 @@ def build_input(claims: list[dict], texts: dict, files: list[dict], tests: dict,
                 max_n: int) -> dict:
     sentences = []
     for s in claims:
-        sentences.append({"id": s["id"], "text": texts.get(s["id"], ""),
+        sentences.append({"id": s["id"], "text": texts.get(s["id"], s.get("text", "")),
                           "coverage": s.get("coverage"),
+                          **({"kind": "test", "changedLines": s["changed"]}
+                             if s.get("kind") == "test" else {}),
                           "tests": [{"id": t["id"], "why": t.get("why", ""),
                                      "line": t.get("line", ""),
                                      "runnable": bool((tests.get(t["id"]) or {}).get("runnable")),
@@ -685,7 +758,9 @@ def write_mutants(review: Path, kept: list[dict], dropped: list[dict], texts: di
         mid = f"{i:02d}-{slug(m['title'])}"
         (out / f"{mid}.patch").write_text(m["patch_text"], encoding="utf-8")
         mutants.append({"id": mid, "title": m["title"],
-                        "sentence": {"id": m["sentence"], "text": texts.get(m["sentence"], "")},
+                        "sentence": {"id": m["sentence"], "text": texts.get(m["sentence"], ""),
+                                     **({"kind": "test"} if m["sentence"].startswith("t:")
+                                        else {})},
                         "file": m["file"], "rationale": m["rationale"], "expect": m["expect"],
                         "patch": f"{mid}.patch"})
     used = {t for m in mutants for t in m["expect"]}
@@ -709,9 +784,9 @@ def cmd_generate(args) -> int:
             "the repository root.", err=True)
         return 2
     claims = load_claims(review)
-    if not claims:
-        say("no sentence of the ticket is claimed by a test (test-mapping.json): nothing to "
-            "attack.", err=True)
+    if not claims and not (review / COVERAGE).is_file():
+        say("no sentence of the ticket is claimed by a test (test-mapping.json) and no "
+            "coverage of the change was measured: nothing to attack.", err=True)
         return 2
     base = review_base(root)
     files = changed_production_files(root, base)
@@ -721,7 +796,19 @@ def cmd_generate(args) -> int:
         return 2
     cfg = load_config(root, args.config)
     tests = {t["id"]: classify(t["id"], root, cfg) for s in claims for t in s["tests"]}
-    texts = sentence_texts(review, root)
+    # And the tests nobody claims: pre-existing, running lines this PR changed. Their own
+    # name is the claim a mutant attacks.
+    unclaimed = load_unclaimed(review, root, {(c["file"], c.get("name")) for c in tests.values()},
+                               cfg)
+    for s in unclaimed:
+        for t in s["tests"]:
+            tests[t["id"]] = classify(t["id"], root, cfg)
+    claims = claims + unclaimed
+    if not claims:
+        say("no sentence is claimed by a test and no pre-existing test runs a changed line: "
+            "nothing to attack.", err=True)
+        return 2
+    texts = {**{s["id"]: s["text"] for s in unclaimed}, **sentence_texts(review, root)}
     # The files beside a runnable test first: they are the ones whose whole text fits the
     # budget, and a mutant there is one this machine can actually judge.
     homes = {t["cwd"] for t in tests.values() if t["runnable"]}
@@ -729,7 +816,8 @@ def cmd_generate(args) -> int:
     asked = build_input(claims, texts, prompt_files(root, base, files), tests, args.max)
     prompt = build_prompt(asked)
     runnable = sum(1 for t in tests.values() if t["runnable"])
-    say(f"{len(claims)} claimed sentence(s), {len(tests)} claimed test(s) ({runnable} "
+    say(f"{len(claims) - len(unclaimed)} claimed sentence(s) and {len(unclaimed)} unclaimed "
+        f"pre-existing test(s), {len(tests)} test(s) ({runnable} "
         f"runnable here), {len(files)} changed production file(s); asking for up to "
         f"{args.max} mutants ({len(prompt)} chars).")
     if args.prompt_only:

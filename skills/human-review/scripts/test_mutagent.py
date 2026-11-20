@@ -66,6 +66,11 @@ class SearchTest {
             assertThat(search.none()).isEqualTo("none");
         }
     }
+
+    @Test
+    void namesComeBackSorted() {
+        assertThat(search.names(repo)).isSorted();
+    }
 }
 """
 
@@ -404,3 +409,54 @@ def test_the_server_routes_both_presses_by_mode_and_never_through_run(tmp_path):
     assert "mutagent" in srv.PRICED_RUNS
     assert "'/__rerun_ai__', 'mutagent'" in build.SERVER_JS
     assert "'/__rerun__', 'mutagentRun'" in build.SERVER_JS
+
+
+LEGACY_ID = "src/test/java/shop/SearchTest.java:22"
+
+
+def _measured(repo):
+    """What the Tests tab measured: a pre-existing, unclaimed test running a changed line,
+    beside a claimed one and a new one."""
+    assets = repo / ".human-review/assets"
+    assets.mkdir()
+    (assets / "test-coverage.json").write_text(json.dumps({
+        "changed": {"src/main/java/shop/Search.java": [7, 11]},
+        "tests": [
+            {"file": "src/test/java/shop/SearchTest.java", "line": 22, "status": "passed",
+             "title": "namesComeBackSorted", "hits": {"src/main/java/shop/Search.java": [7]}},
+            {"file": "src/test/java/shop/SearchTest.java", "line": 8, "status": "passed",
+             "title": "returnsInOrder", "hits": {"src/main/java/shop/Search.java": [7]}},
+            {"file": "src/test/java/shop/SearchTest.java", "line": 16, "status": "passed",
+             "title": "saysNone", "hits": {"README.md": [1]}}]}))
+    (assets / "test-changes.json").write_text(json.dumps({"tests": [
+        {"name": "namesComeBackSorted", "path": "src/test/java/shop/SearchTest.java",
+         "status": "unchanged", "line": 22},
+        {"name": "returnsInOrder", "path": "src/test/java/shop/SearchTest.java",
+         "status": "added", "line": 8}]}))
+
+
+def test_an_unclaimed_pre_existing_test_is_attacked_on_what_its_name_claims(
+        repo, tmp_path, monkeypatch, capsys):
+    _measured(repo)
+    picked = mg.load_unclaimed(repo / ".human-review", repo, set(), {})
+    assert [p["id"] for p in picked] == ["t:" + LEGACY_ID]        # new and off-change ones out
+    assert picked[0]["text"] == "names come back sorted" and picked[0]["kind"] == "test"
+    assert picked[0]["changed"] == {"src/main/java/shop/Search.java": [7]}
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(mg, "sentence_texts", lambda review, root: {})
+    assert mg.main(["generate", "--dir", ".human-review", "--prompt-only"]) == 0
+    asked = json.loads(capsys.readouterr().out.split(FENCE + "json\n")[-1].split("\n" + FENCE)[0])
+    legacy = [s for s in asked["sentences"] if s.get("kind") == "test"]
+    assert [s["id"] for s in legacy] == ["t:" + LEGACY_ID]
+    assert "isSorted" in legacy[0]["tests"][0]["body"]
+    answer = {"mutants": [{"sentence": "t:" + LEGACY_ID, "title": "drop the sort",
+                           "file": "src/main/java/shop/Search.java", "find": ORDER_BY,
+                           "replace": ORDER_BY.replace(" ORDER BY name", ""),
+                           "rationale": "unsorted", "expect": [LEGACY_ID]}]}
+    assert _generate(repo, tmp_path, monkeypatch, answer) == 0
+    doc = json.loads((repo / ".human-review/mutagent/mutants.json").read_text())
+    assert doc["mutants"][0]["sentence"] == {"id": "t:" + LEGACY_ID, "kind": "test",
+                                             "text": "names come back sorted"}
+    assert doc["tests"][LEGACY_ID]["label"] == "SearchTest#namesComeBackSorted"
+    card = build.mutagent_card(repo / ".human-review", repo)
+    assert "claims, by its name:</span> “names come back sorted”" in card
