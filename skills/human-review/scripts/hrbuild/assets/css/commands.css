@@ -80,13 +80,16 @@ span.tabre > button.chip-rerun span.rr-mark { font-size:9px; line-height:1; colo
 .diagram > .head:has(> .tabre) > b { font-size:1.3rem; }
 /* The API tab: after the last word of its verdict band, the line that opens the tab; the
    band's text is the group's own size, so the shared -.11em centres it too. */
-/* The Tests tab: the ticket's title is a flex row in its grid cell; with the presses in
-   it, it is text again, so they follow its last word and a long title wraps under. They
-   hang in room the title keeps free at its right end (76px, three rings and their gaps),
-   so they ride the last line instead of dropping to a line of their own, and never reach
-   the filters in the next cell. */
-.reqmap h2.rm-head:has(> .tabre) { display:block; padding-right:76px; }
-.reqmap h2.rm-head > .tabre { margin-right:-76px; }
+/* The Tests tab: the ticket's title is a flex row in its grid cell, one line that ellipsises
+   (tests.py, Victor 20 Oct 2026), and the presses are its last item: they follow the
+   title's last visible word on that line, however many are showing — three served, five
+   with the 🧬 Mutagent pair, none static. It used to turn into text and keep 76px free at
+   its right end for "three rings"; two more rings and the reservation was too small, so the
+   group dropped onto a line of its own under a long title (Victor, 20 Nov 2026). A flex
+   item that never shrinks needs no reservation: the title gives way instead. Centred like
+   a Data card's: the flex row centres the ring on the title's line box, no offset. */
+.reqmap h2.rm-head:has(> .tabre) { justify-content:flex-start; gap:0; }
+.reqmap h2.rm-head > .tabre { flex:none; top:0; }
 @media (prefers-reduced-motion:reduce) { button.tab { transition:none; } }
 /* The page's own confirmation, over the page. Fixed and full-viewport because the click it
    guards costs money and a panel the reader can scroll away from is a panel they can

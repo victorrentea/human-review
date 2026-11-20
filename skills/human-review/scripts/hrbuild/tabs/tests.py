@@ -2133,12 +2133,12 @@ def _mutagent_json(path: Path):
 
 
 def mutagent_summary(rows: list[dict]) -> str:
-    """`5 of 7 mutants killed · 1 survived · 1 not run`."""
+    """`5 of 7 killed · 1 survived · 1 not run` — the card's folded line."""
     n = len(rows)
     count = {k: sum(1 for r in rows if r["verdict"] == k) for k in _MUTAGENT_ORDER}
     if count["pending"] == n:
         return f"{n} mutant{'s' if n != 1 else ''}, not run yet"
-    parts = [f"{count['killed']} of {n} mutants killed"]
+    parts = [f"{count['killed']} of {n} killed"]
     for k in ("survived", "not-run", "broken", "pending"):
         if count[k]:
             parts.append(f"{count[k]} {MUTAGENT_VERDICTS[k][0]}")
@@ -2172,8 +2172,72 @@ def _mutagent_test(tid: str, t: dict, state: str, root: Path, said: str = "") ->
     return f'<li{cls}>{mark}{link}</li>'
 
 
+#: A token for the word-level diff of a mutated line: a word, a run of blanks, one symbol.
+_MG_TOKEN = re.compile(r"\w+|\s+|[^\w\s]")
+#: How much of one mutation the row shows before the folded patch takes over.
+MG_LINES_MAX = 6
+
+
+def _mutation_blocks(text: str) -> list[tuple[int, list[str], list[str]]]:
+    """`[(line at HEAD, removed lines, added lines)]`, one per run of changed lines."""
+    from ..shared.snippets import _parse_unified
+    out, dels, adds, at = [], [], [], None
+    for kind, old_no, new_no, code in _parse_unified(text) + [("end", None, None, "")]:
+        if kind in ("del", "add"):
+            at = at if at is not None else (old_no if kind == "del" else new_no)
+            (dels if kind == "del" else adds).append(code)
+            continue
+        if dels or adds:
+            out.append((at or 0, dels, adds))
+        dels, adds, at = [], [], None
+    return out
+
+
+def _word_diff(before: str, after: str) -> tuple[str, str]:
+    """Both sides as HTML, the tokens the mutant changed wrapped in `<del>` / `<ins>`."""
+    import difflib
+    a, b = _MG_TOKEN.findall(before), _MG_TOKEN.findall(after)
+    left, right = [], []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        x, y = html.escape("".join(a[i1:i2])), html.escape("".join(b[j1:j2]))
+        if op == "equal":
+            left.append(x)
+            right.append(y)
+            continue
+        if x:
+            left.append(f"<del>{x}</del>")
+        if y:
+            right.append(f"<ins>{y}</ins>")
+    return "".join(left), "".join(right)
+
+
+def mutation_html(text: str, rel: str, root: Path) -> str:
+    """What the mutant did, readable without opening its patch: each changed run of lines,
+    before → after in code, the changed tokens marked, under the file:line it is at."""
+    out = []
+    for at, dels, adds in _mutation_blocks(text)[:2]:
+        lines = [x for x in dels + adds if x.strip()]
+        pad = min((len(x) - len(x.lstrip()) for x in lines), default=0)
+        cut = lambda xs: "\n".join(x[pad:] for x in xs[:MG_LINES_MAX])  # noqa: E731
+        before, after = _word_diff(cut(dels), cut(adds))
+        where = f"{Path(rel).name}:{at}"
+        tip = html.escape(f"{rel}:{at}", quote=True)
+        src = root / rel
+        link = (f'<a class="srcref mg-where" href="vscode://file/{src.resolve()}:{at}:1" '
+                f'data-tip="{tip}">{html.escape(where)}</a>' if src.is_file() else
+                f'<span class="srcref mg-where" data-tip="{tip}">{html.escape(where)}</span>')
+        out.append('<div class="mg-change">' + link
+                   + f'<code class="mg-before" data-tip="At HEAD">{before or "&nbsp;"}</code>'
+                   + '<span class="mg-arrow" aria-label="becomes">→</span>'
+                   + f'<code class="mg-after" data-tip="With the mutant">{after or "&nbsp;"}'
+                   + '</code></div>')
+    return "".join(out)
+
+
 def mutagent_card(out_dir: Path, root: Path) -> str:
-    """The 🧬 Mutagent card: one row per mutant, a survivor first. Empty without
+    """The 🧬 Mutagent card, folded to one line (Victor, 20 Nov 2026: "only on demand"):
+    what was killed and what survived, and who wrote the mutants at what cost. Open, one row
+    per mutant, a survivor first, each showing the change it made. Empty without
     `mutagent/mutants.json` — the 🧬 press is the way in."""
     from ..shared.adopt import adopt_html
     from ..shared.snippets import diff_text_html
@@ -2211,9 +2275,10 @@ def mutagent_card(out_dir: Path, root: Path) -> str:
                if r["why"] and r["verdict"] in ("not-run", "broken") else "")
         rationale = (f'<p class="mg-rationale">{html.escape(r["rationale"])}</p>'
                      if r.get("rationale") else "")
-        patch = ""
+        change = patch = ""
         try:
             text = (base / r["patch"]).read_text(encoding="utf-8")
+            change = mutation_html(text, r.get("file") or "", root)
             patch = diff_text_html(text, r.get("file") or "", root, fold=True)
         except (OSError, KeyError, TypeError):
             pass
@@ -2224,22 +2289,25 @@ def mutagent_card(out_dir: Path, root: Path) -> str:
             f'<li class="mg-row mg-{html.escape(r["verdict"])}">'
             f'<div class="mg-top"><span class="mg-pill" data-tip="{html.escape(tip, quote=True)}">'
             f'{html.escape(face)}</span><b class="mg-title">{title}</b></div>'
-            + headline
+            + headline + change
             + (f'<p class="mg-attacks" data-tip="The ticket sentence this mutant attacks">'
                f'“{said}”</p>' if said else "")
             + rationale + why
             + f'<ul class="mg-tests" data-tip="Tests expected to fail with this mutant">{tlist}</ul>'
             + patch + '</li>')
     sum_tip = ("Killed: a test expected to catch the mutant failed, so it proves its sentence. "
-               "Survived: all stayed green, so it does not.")
+               "Survived: all stayed green, so it does not. Click to open the mutants.")
+    summary = html.escape(mutagent_summary(rows))
+    # The survivors are the news: in red on the folded line, where they are seen unopened.
+    summary = re.sub(r"(\d+ survived)", r'<span class="mg-sv">\1</span>', summary)
     spent = doc.get("cost")
     meta = " ".join(x for x in (str(doc.get("model") or ""),
                                 f"${spent:.2f}" if isinstance(spent, (int, float)) else "") if x)
-    return ('<aside class="mutagent" id="mutagent">'
-            f'<div class="mg-head"><b class="mg-name">{MUTAGENT_MARK} Mutagent</b>'
-            f'<span class="mg-sum" data-tip="{html.escape(sum_tip, quote=True)}">'
-            f'{html.escape(mutagent_summary(rows))}</span>'
-            + (f'<span class="mg-meta" data-tip="The model that wrote the mutants, and what it '
-               f'cost">{html.escape(meta)}</span>' if meta else "")
-            + adopt_html("requirements.mutagent", how="in") + '</div>'
-            f'<ol class="mg-list">{"".join(items)}</ol></aside>')
+    return ('<details class="mutagent" id="mutagent">'
+            f'<summary class="mg-head" data-tip="{html.escape(sum_tip, quote=True)}">'
+            f'<b class="mg-name">{MUTAGENT_MARK} Mutagent</b>'
+            f'<span class="mg-sum">{summary}</span>'
+            + (f'<span class="mg-meta">{html.escape(meta)}</span>' if meta else "")
+            + '</summary><div class="mg-body">'
+            + adopt_html("requirements.mutagent", how="in")
+            + f'<ol class="mg-list">{"".join(items)}</ol></div></details>')

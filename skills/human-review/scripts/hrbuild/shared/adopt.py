@@ -355,10 +355,10 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             '🧬 AI changes the PR\'s code a little where a test claims a sentence (costs money).',
             'Each mutant names the tests that must fail; 🧪 runs them in a throwaway worktree.',
-            '<b>killed</b>: an expected test failed, so it does prove its sentence.',
-            '<b>survived</b>: all stayed green: the test does not prove what it claims.',
+            'Folded to one line: how many were killed, survivors in red; click it to open.',
+            '<b>killed</b>: an expected test failed, it proves its sentence; <b>survived</b>: not.',
+            'Each row: the line before → after, changed words marked; ✓ green / ✗ failed per test.',
             '<b>broken</b>: did not apply or compile; <b>not run</b>: no runner (e2e, Karma).',
-            '✓ green / ✗ failed with the mutant; open the patch to see what changed.',
         ],
     },
     'sequence': {

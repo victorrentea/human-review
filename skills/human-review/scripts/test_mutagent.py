@@ -320,11 +320,17 @@ RESULTS = {"mutantsHead": "abc", "mutants": {
 
 def test_the_card_leads_with_the_survivor_and_says_what_it_proves(tmp_path):
     card = build.mutagent_card(_review(tmp_path, results=RESULTS), tmp_path)
-    assert card.startswith('<aside class="mutagent" id="mutagent">')
-    assert "1 of 2 mutants killed · 1 survived" in card
+    assert card.startswith('<details class="mutagent" id="mutagent">')      # folded
+    assert '1 of 2 killed · <span class="mg-sv">1 survived</span>' in card
+    # The folded line is the summary alone: the prompt pill and its ⓘ open with the list.
+    head = card[:card.index("</summary>")]
+    assert "sonnet $0.22" in head and "Prompt to get this" not in head
     assert card.index("mg-survived") < card.index("mg-killed")
     assert "T#none passes even with this mutant." in card
-    assert "“Says none.”" in card and "sonnet $0.22" in card
+    assert "“Says none.”" in card
+    # The mutation itself, unopened: before → after, the changed token marked.
+    assert '<code class="mg-before" data-tip="At HEAD"><del>ORDER BY name</del>' in card
+    assert 'Search.java:1</span>' in card
     assert "expected: [A, B] but was: [B, A]" in card            # the ✗'s own message
     assert card.count('<details class="ghfold">') == 2           # each patch, folded
     assert 'data-explain="requirements.mutagent"' in card        # its ⓘ
@@ -336,6 +342,18 @@ def test_no_mutants_no_card_and_old_results_do_not_colour_new_mutants(tmp_path):
     stale = {**RESULTS, "mutantsHead": "older"}
     card = build.mutagent_card(_review(tmp_path / "b", results=stale), tmp_path / "b")
     assert "2 mutants, not run yet" in card and "mg-survived" not in card
+
+
+def test_the_mutation_is_shown_word_by_word_and_wraps_instead_of_hiding():
+    patch = ("diff --git a/A.java b/A.java\n--- a/A.java\n+++ b/A.java\n@@ -84,3 +84,3 @@\n"
+             "     ctx();\n-        put(\"description\", List.of(\"v.description\"));\n"
+             "+        put(\"description\", List.of(\"v.id\"));\n     ctx();\n")
+    out = build.mutation_html(patch, "src/A.java", Path("/nowhere"))
+    assert 'A.java:85</span>' in out and 'data-tip="src/A.java:85"' in out
+    assert ('<code class="mg-before" data-tip="At HEAD">put(&quot;description&quot;, '
+            'List.of(&quot;v.<del>description</del>&quot;));</code>') in out
+    assert '<ins>id</ins>' in out and "→" in out
+    assert build._word_diff("a b", "a c") == ("a <del>b</del>", "a <ins>c</ins>")
 
 
 def test_the_two_presses_are_declared_and_drawn_after_the_paid_one(tmp_path):

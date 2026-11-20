@@ -112,19 +112,30 @@ ul.req-tests li { list-style:none; }
 .cov-suite { padding:1px 7px; border:1px solid var(--line, #d0d0d0); border-radius:9px;
         color:var(--muted); font-size:.8rem; cursor:help; }
 
-/* 🧬 Mutagent (tabs/tests.py:mutagent_card): a card under the tests' column, one row per
-   mutant. A survivor is the headline, so it is drawn first and red; a killed one is the
-   page's green; broken and not run are grey, they say nothing about the tests. */
+/* 🧬 Mutagent (tabs/tests.py:mutagent_card): folded to one line under the tests' card,
+   opened on demand (Victor, 20 Nov 2026: "far too much of the window"). The line says what
+   was killed, survivors in red, and who wrote the mutants at what cost; it never wraps.
+   Open, one row per mutant: a survivor first and red, a killed one the page's green,
+   broken and not run grey — they say nothing about the tests. */
 .mutagent { margin-top:8px; background:var(--card); border:1px solid var(--line);
-        border-radius:6px; font-size:.86rem; }
-.mutagent > .mg-head { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px;
-        padding:4.5px 10px; border-bottom:1px solid var(--line); }
-.mutagent .mg-name { white-space:nowrap; }
-.mutagent .mg-sum { color:var(--fg); }
-.mutagent .mg-meta { color:var(--muted); font-size:.78rem; }
-.mutagent > .mg-head > .adoptline { margin-left:auto; }
+        border-radius:6px; font-size:.86rem; min-width:0; overflow-x:hidden; }
+.mutagent > summary.mg-head { display:flex; flex-wrap:nowrap; align-items:center; gap:8px;
+        padding:4.5px 10px; cursor:pointer; list-style:none; white-space:nowrap;
+        overflow:hidden; min-width:0; }
+.mutagent > summary.mg-head::-webkit-details-marker { display:none; }
+.mutagent > summary.mg-head::before { content:"\25B8"; flex:none; color:var(--muted);
+        transition:transform .15s ease; }
+.mutagent[open] > summary.mg-head::before { transform:rotate(90deg); }
+.mutagent[open] > summary.mg-head { border-bottom:1px solid var(--line); }
+.mutagent .mg-name { flex:none; }
+.mutagent .mg-sum { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+        color:var(--fg); }
+.mutagent .mg-sv { color:#b42318; font-weight:700; }
+.mutagent .mg-meta { flex:none; margin-left:auto; color:var(--muted); font-size:.78rem; }
+.mutagent .mg-body > .adoptline { display:flex; justify-content:flex-end; align-items:center;
+        gap:6px; padding:4px 10px 0; }
 .mutagent .mg-list { list-style:none; margin:0; padding:0; }
-.mutagent .mg-row { padding:6px 10px; border-top:1px solid var(--line); }
+.mutagent .mg-row { padding:6px 10px; border-top:1px solid var(--line); min-width:0; }
 .mutagent .mg-row:first-child { border-top:0; }
 .mutagent .mg-top { display:flex; align-items:baseline; gap:8px; }
 .mutagent .mg-pill { flex:none; font:600 .7rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -137,24 +148,46 @@ ul.req-tests li { list-style:none; }
 .mutagent .mg-attacks, .mutagent .mg-rationale, .mutagent .mg-why { margin:3px 0 0; }
 .mutagent .mg-attacks { font-style:italic; }
 .mutagent .mg-rationale, .mutagent .mg-why { color:var(--muted); }
+/* The mutation itself, readable unopened: file:line, the line at HEAD, then → and the line
+   with the mutant, the changed tokens marked; long lines wrap rather than being cut. */
+.mutagent .mg-change { display:grid; grid-template-columns:auto minmax(0,1fr); gap:1px 6px;
+        margin:5px 0 0; align-items:baseline; }
+.mutagent .mg-change > .mg-where { grid-column:1 / -1; justify-self:start; font-size:.78rem; }
+.mutagent .mg-change > code { grid-column:2; display:block; white-space:pre-wrap;
+        overflow-wrap:anywhere; font:.8rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+        padding:1px 6px; border-radius:4px; }
+.mutagent .mg-change > .mg-before { background:var(--diff-del-bg); }
+.mutagent .mg-change > .mg-after { background:var(--diff-add-bg); }
+.mutagent .mg-change > .mg-arrow { grid-column:1; grid-row:3; color:var(--muted);
+        font-weight:700; }
+.mutagent .mg-change > .mg-before { grid-row:2; }
+.mutagent .mg-change > .mg-after { grid-row:3; }
+.mutagent .mg-change del { text-decoration:none; background:var(--diff-del-gutter);
+        outline:1px solid rgba(207,34,46,.45); border-radius:2px; }
+.mutagent .mg-change ins { text-decoration:none; background:var(--diff-add-gutter);
+        outline:1px solid rgba(26,127,55,.45); border-radius:2px; }
 .mutagent .mg-tests { list-style:none; margin:3px 0 0; padding:0; display:flex; flex-wrap:wrap;
         gap:2px 12px; }
+.mutagent .mg-tests > li { min-width:0; max-width:100%; }
+.mutagent .mg-tests .srcref { white-space:normal; overflow-wrap:anywhere; }
 .mutagent .mg-tests .mg-off { opacity:.55; }
 .mutagent .mg-res { display:inline-block; width:1.1em; font-weight:700; color:var(--muted); }
 .mutagent .mg-res.mg-pass { color:#b42318; }
 .mutagent .mg-res.mg-fail { color:#1a7f37; }
-.mutagent .ghfold { margin-top:4px; }
+.mutagent .ghfold { margin:4px 0 0; }
+.mutagent table.ghdiff-body { table-layout:fixed; }
+.mutagent table.ghdiff-body td.gln { width:2.6rem; }
 /* In the window-filling layout (tests.py:REQMAP_CSS) the card keeps its height under the
-   tests' card and scrolls inside a cap, rather than squeezing that list to nothing. */
+   tests' card and, open, scrolls inside a cap rather than squeezing that list to nothing. */
 @media (min-width:901px){
   .reqmap .rm-side > .mutagent { flex:none; max-height:45vh; overflow-y:auto; }
-  .reqmap .rm-side > .mutagent > .mg-head { position:sticky; top:0; z-index:1;
+  .reqmap .rm-side > .mutagent > summary.mg-head { position:sticky; top:0; z-index:1;
         background:var(--card); }
 }
 @media (prefers-color-scheme: dark) {
   .mutagent .mg-pill { background:#3a3a3a; color:#bbb; }
   .mutagent .mg-killed .mg-pill { background:#173d22; color:#6fdd8b; }
   .mutagent .mg-survived .mg-pill { background:#4a1d18; color:#ff9b8f; }
-  .mutagent .mg-headline, .mutagent .mg-res.mg-pass { color:#ff9b8f; }
+  .mutagent .mg-headline, .mutagent .mg-res.mg-pass, .mutagent .mg-sv { color:#ff9b8f; }
   .mutagent .mg-res.mg-fail { color:#6fdd8b; }
 }
