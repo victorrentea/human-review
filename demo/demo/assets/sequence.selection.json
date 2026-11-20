@@ -12,7 +12,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "create_withoutVet",
-   "line": 256,
+   "line": 346,
    "status": "added",
    "why": "written by this branch",
    "suite": "java"
@@ -28,7 +28,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "create_withUnknownVet_notFound",
-   "line": 275,
+   "line": 365,
    "status": "added",
    "why": "written by this branch",
    "suite": "java"
@@ -119,7 +119,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "bookFromOwnerPage_withVet_isShownOnOwnerPage",
-   "line": 289,
+   "line": 379,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -128,7 +128,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "bookFromOwnerPage_withoutVet",
-   "line": 312,
+   "line": 402,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -137,7 +137,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "bookFromOwnerPage_withUnknownVet_notFound",
-   "line": 330,
+   "line": 420,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -146,7 +146,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "update_assignsVet",
-   "line": 343,
+   "line": 433,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -155,7 +155,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "update_withUnknownVet_notFound",
-   "line": 359,
+   "line": 449,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -164,7 +164,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "update_clearsVet",
-   "line": 372,
+   "line": 462,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -173,7 +173,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "getAll_returnsVetNames",
-   "line": 394,
+   "line": 484,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -182,7 +182,7 @@
   {
    "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
    "name": "deletingAVet_leavesTheirVisitsWithNoVet",
-   "line": 408,
+   "line": 498,
    "status": "added",
    "why": "written by this branch",
    "suite": "java",
@@ -221,7 +221,7 @@
    {
     "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
     "name": "create_withoutVet",
-    "line": 256,
+    "line": 346,
     "status": "added",
     "why": "written by this branch",
     "suite": "java"
@@ -229,7 +229,7 @@
    {
     "path": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
     "name": "create_withUnknownVet_notFound",
-    "line": 275,
+    "line": 365,
     "status": "added",
     "why": "written by this branch",
     "suite": "java"
@@ -239,20 +239,20 @@
  "runs": [
   {
    "command": "cd petclinic-test && GENSEQ_SELECT={tests.e2e} ./run-tests-with-tracing.sh",
-   "seconds": 24.9
+   "seconds": 26.4
   },
   {
-   "command": "cd petclinic-backend && ./test-on-own-db.sh mvn -o -Pgenseq test -Dgroups=genseq",
-   "seconds": 14.2
+   "command": "cd petclinic-backend && mvn -o -Pgenseq test -Dgroups=genseq",
+   "seconds": 18.3
   },
   {
-   "command": "cd petclinic-backend && GENSEQ_SELECT={tests.java} ./test-on-own-db.sh mvn -o -Pgenseq test -Dtest={tests.java} -Dsurefire.failIfNoSpecifiedTests=false",
-   "seconds": 13.0
+   "command": "cd petclinic-backend && GENSEQ_SELECT={tests.java} mvn -o -Pgenseq test -Dtest={tests.java} -Dsurefire.failIfNoSpecifiedTests=false",
+   "seconds": 16.1
   },
   {
    "command": "cd petclinic-test && GENSEQ_REFRESH=1 npm run trace:diagram",
-   "seconds": 8.3
+   "seconds": 4.4
   }
  ],
- "at": "2026-11-10T18:39:08+00:00"
+ "at": "2026-11-20T20:21:18+00:00"
 }

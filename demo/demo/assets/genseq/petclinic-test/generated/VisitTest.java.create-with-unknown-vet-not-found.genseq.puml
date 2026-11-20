@@ -5,15 +5,16 @@ skinparam hyperlinkUnderline false
 skinparam hyperlinkColor #1A4FA0
 skinparam sequenceGroupFontColor #888888
 skinparam sequenceGroupFontStyle plain
-title [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:275{Click to open the test} Test: VisitTest: create with unknown vet not found]]
+title [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:365{Click to open the test} Test: VisitTest: create with unknown vet not found]]
 footer traced because this branch wrote it in petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java — generated from real traces of end-to-end test runs, do not edit ❗
 participant Test
 participant Backend
 participant DB
 Test -> Backend: [[genseq://0rymiqj{Click for the request as it was sent} addVisit\nPOST /api/visits ⊕]]
 activate Backend
-Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:72{Click to open VisitRestController.bookVisit} book-visit ↗]]
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:77{Click to open VisitRestController.bookVisit} book-visit ↗]]
 activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/PetRepository.java:16{Click to open PetRepository.findById} PetRepository.findById ↗]]
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:19{Click to open VetRepository.findByIdOrNull} VetRepository.findByIdOrNull ↗]]
 activate Backend
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:16{Click to open VetRepository.findById} VetRepository.findById ↗]]

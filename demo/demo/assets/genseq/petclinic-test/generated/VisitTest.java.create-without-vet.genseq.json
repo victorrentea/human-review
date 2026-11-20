@@ -1,7 +1,7 @@
 {
   "version": 3,
   "details": {
-    "1k65kuu": {
+    "0mjxzx9": {
       "title": "insert for victor.training.petclinic.domain.Visit",
       "steps": [
         {
@@ -9,7 +9,7 @@
           "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES (?, ?, ?, ?, ?)",
           "alternate": {
             "label": "",
-            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-11-10', 'annual checkup', 1, ?, ?)"
+            "text": "INSERT INTO visits (visit_date, description, pet_id, visit_time, vet_id)\nVALUES ('2026-11-20', 'annual checkup', 1, ?, ?)"
           }
         }
       ]

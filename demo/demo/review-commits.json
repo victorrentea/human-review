@@ -1,8 +1,8 @@
 {
- "base": "eef8413a06f94be7527ed30a6c59f454a364345e",
+ "base": "e4f69d33bdf9e87afec213fef98bb82de9a04dc7",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 136,
+ "commits": 138,
  "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
@@ -77,7 +77,9 @@
   "a31b30ad895c83a444fb639b37766fb9718eeef2",
   "f937b8f8018ee8bfd662bcd52290894aefc818d9",
   "e33bdc9b0f6dc40b2e3dff47b75ccee4dd48da5f",
-  "2f65b67b964fbd359a0c6cdfcae7779d97c423d6"
+  "2f65b67b964fbd359a0c6cdfcae7779d97c423d6",
+  "1ab46cb888300ae8f0ec8e8e7151c7077c648eec",
+  "c7fa6f09dbaf4966b87fd40a2831a6839b015aca"
  ],
  "after_detail": [
   {
@@ -498,6 +500,18 @@
    "sha": "2f65b67b964fbd359a0c6cdfcae7779d97c423d6",
    "when": "2026-11-20T11:38:34+02:00",
    "subject": "review-points: base moved past main's eef8413a (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "1ab46cb888300ae8f0ec8e8e7151c7077c648eec",
+   "when": "2026-11-20T22:18:37+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "c7fa6f09dbaf4966b87fd40a2831a6839b015aca",
+   "when": "2026-11-20T22:22:14+02:00",
+   "subject": "review-points: the review's base moves to main's e4f69d33 (merged back)",
    "auto_fix": false
   }
  ],

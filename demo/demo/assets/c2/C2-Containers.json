@@ -89,12 +89,12 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 9
+            "calls": 5
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 88
+            "calls": 92
           },
           {
             "name": "select visits",
@@ -128,12 +128,12 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 0,
-        "calls": 10,
+        "calls": 12,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
             "path": "POST /api/owners/{ownerId}/pets/{petId}/visits",
-            "calls": 1
+            "calls": 3
           },
           {
             "name": "Get an owner by ID",
@@ -417,12 +417,12 @@
           {
             "name": "select owners",
             "path": "",
-            "calls": 9
+            "calls": 5
           },
           {
             "name": "select pets",
             "path": "",
-            "calls": 88
+            "calls": 92
           },
           {
             "name": "select visits",
@@ -456,12 +456,12 @@
         "protocol": "HTTP",
         "operations": 6,
         "operationsDelta": 1,
-        "calls": 10,
+        "calls": 12,
         "detail": [
           {
             "name": "Add a visit for an owner's pet",
             "path": "POST /api/owners/{ownerId}/pets/{petId}/visits",
-            "calls": 1
+            "calls": 3
           },
           {
             "name": "Get an owner by ID",
@@ -524,5 +524,5 @@
       "onlyOld": []
     }
   },
-  "base": "eef8413a06f94be7527ed30a6c59f454a364345e"
+  "base": "e4f69d33bdf9e87afec213fef98bb82de9a04dc7"
 }

@@ -14,7 +14,7 @@ participant NotificationService
 participant "«module»\nCommons" as Commons
 participant "SMS gateway"
 Browser -[#C62828]> Backend: <color:#C62828><s>Get an owner by ID</s></color>\n<color:#C62828><s>GET /api/owners/{ownerId}</s></color>
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-detail/owner-detail.component.ts:22{Click to open the line that sent this request: owner-detail.component.ts:22} OwnerService.getOwnerById ↗]]
+Browser -[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-detail/owner-detail.component.ts:22{Click to open the line that sent this request: owner-detail.component.ts:22} OwnerService.getOwnerById ↗]]
 activate Browser #EAF6EC
 Browser -[#2E7D32]> Backend: [[genseq://02kjgbq{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]
 activate Backend
@@ -30,7 +30,7 @@ Backend --> Browser: [[genseq://0zavcxa{Click for this call’s JSON body} 200 �
 deactivate Backend
 Browser -[#C62828]> Backend: <color:#C62828><s>getPet</s></color>\n<color:#C62828><s>GET /api/pets/{petId}</s></color>
 deactivate Browser
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:42{Click to open the line that sent this request: visit-add.component.ts:42} PetService.getPetById ↗]]
+Browser -[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:42{Click to open the line that sent this request: visit-add.component.ts:42} PetService.getPetById ↗]]
 activate Browser #EAF6EC
 Browser -[#2E7D32]> Backend: [[genseq://1bdv4p2{Click for the request as it was sent} getPet\nGET /api/pets/{petId} ⊕]]
 activate Backend
@@ -45,7 +45,7 @@ Backend --> Browser: [[genseq://01mmlgx{Click for this call’s JSON body} 200 �
 deactivate Backend
 Browser -[#C62828]> Backend: <color:#C62828><s>Get an owner by ID</s></color>\n<color:#C62828><s>GET /api/owners/{ownerId}</s></color>
 deactivate Browser
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:47{Click to open the line that sent this request: visit-add.component.ts:47} OwnerService.getOwnerById ↗]]
+Browser -[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:47{Click to open the line that sent this request: visit-add.component.ts:47} OwnerService.getOwnerById ↗]]
 activate Browser #EAF6EC
 Browser -[#2E7D32]> Backend: [[genseq://02kjgbq{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]
 activate Backend
@@ -60,7 +60,7 @@ Backend -> DB: [[genseq://13apewa{Click for the statement behind this call} sele
 Backend --> Browser: [[genseq://0zavcxa{Click for this call’s JSON body} 200 ⊕]]
 deactivate Backend
 deactivate Browser
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:63{Click to open the line that sent this request: visit-add.component.ts:63 ← visit-add.component.html:25} VisitService.addVisit ↗]]
+Browser -[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/visits/visit-add/visit-add.component.ts:63{Click to open the line that sent this request: visit-add.component.ts:63 ← visit-add.component.html:25} VisitService.addVisit ↗]]
 activate Browser #EAF6EC
 Browser -[#2E7D32]> Backend: [[genseq://03gu05t{Click for the request as it was sent} Add a visit for an owner's pet\nPOST /api/owners/{ownerId}/pets/{petId}/visits ⊕]]
 activate Backend
@@ -94,7 +94,7 @@ Backend --> Browser: 201
 deactivate Backend
 Browser -[#C62828]> Backend: <color:#C62828><s>Get an owner by ID</s></color>\n<color:#C62828><s>GET /api/owners/{ownerId}</s></color>
 deactivate Browser
-[-[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-detail/owner-detail.component.ts:22{Click to open the line that sent this request: owner-detail.component.ts:22} OwnerService.getOwnerById ↗]]
+Browser -[#2E7D32]> Browser: [[src://petclinic-frontend/src/app/owners/owner-detail/owner-detail.component.ts:22{Click to open the line that sent this request: owner-detail.component.ts:22} OwnerService.getOwnerById ↗]]
 activate Browser #EAF6EC
 Browser -[#2E7D32]> Backend: [[genseq://02kjgbq{Click for the request as it was sent} Get an owner by ID\nGET /api/owners/{ownerId} ⊕]]
 activate Backend

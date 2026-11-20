@@ -476,5 +476,9 @@
    "gap": "Out of scope, per the ticket — nothing to cover.",
    "gapKind": "requirement"
   }
- ]
+ ],
+ "stale": {
+  "why": "7 candidate test(s) the model was never shown: visit-edit.component.spec.ts:110, visit-edit.component.spec.ts:114, visit-edit.component.spec.ts:133, VisitTest.java:167 …",
+  "command": "rerun-model.py"
+ }
 }

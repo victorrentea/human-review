@@ -1,7 +1,7 @@
 {
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "review_short": "be762955",
- "head": "2f65b67b964fbd359a0c6cdfcae7779d97c423d6",
+ "head": "c7fa6f09dbaf4966b87fd40a2831a6839b015aca",
  "takeover": null,
  "generated_globs": [
   "**/generated/**",
@@ -3616,17 +3616,129 @@
    "measured": true,
    "taken_over": false,
    "takeover": false
+  },
+  {
+   "sha": "1ab46cb888300ae8f0ec8e8e7151c7077c648eec",
+   "short": "1ab46cb8",
+   "when": "2026-11-20T22:18:37+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "files": [
+    {
+     "path": "{docs => .claude/skills/db-cli}/eval/README.md",
+     "added": 6,
+     "deleted": 6,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{docs => .claude/skills/db-cli}/eval/db-cli-runs.json",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{docs => .claude/skills/db-cli}/eval/db-cli-skill.html",
+     "added": 8,
+     "deleted": 8,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{docs/eval/db-cli => .claude/skills/db-cli/eval}/pretty_report.html",
+     "added": 8,
+     "deleted": 8,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{docs/eval/db-cli => .claude/skills/db-cli/eval}/pretty_report.py",
+     "added": 4,
+     "deleted": 3,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{docs/eval/db-cli => .claude/skills/db-cli/eval}/report.py",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{docs/eval/db-cli => .claude/skills/db-cli/eval}/run.py",
+     "added": 4,
+     "deleted": 4,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "{docs/eval/db-cli => .claude/skills/db-cli/eval}/tasks.json",
+     "added": 0,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "REVIEW.md",
+     "added": 4,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.spec.ts",
+     "added": 31,
+     "deleted": 0,
+     "binary": false,
+     "generated": false
+    },
+    {
+     "path": "petclinic-test/src/genseq/trace-to-puml.ts",
+     "added": 18,
+     "deleted": 1,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 83,
+   "deleted": 30,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
+  },
+  {
+   "sha": "c7fa6f09dbaf4966b87fd40a2831a6839b015aca",
+   "short": "c7fa6f09",
+   "when": "2026-11-20T22:22:14+02:00",
+   "subject": "review-points: the review's base moves to main's e4f69d33 (merged back)",
+   "files": [
+    {
+     "path": "review-points.md",
+     "added": 2,
+     "deleted": 2,
+     "binary": false,
+     "generated": false
+    }
+   ],
+   "added": 2,
+   "deleted": 2,
+   "generated_only": false,
+   "measured": true,
+   "taken_over": false,
+   "takeover": false
   }
  ],
  "totals": {
-  "commits": 70,
+  "commits": 72,
   "files": 212,
-  "added": 8510,
-  "deleted": 1471,
+  "added": 8564,
+  "deleted": 1472,
   "code": {
    "files": 178,
-   "added": 8014,
-   "deleted": 1034
+   "added": 8068,
+   "deleted": 1035
   },
   "generated": {
    "files": 34,

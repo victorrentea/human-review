@@ -5,19 +5,20 @@ skinparam hyperlinkUnderline false
 skinparam hyperlinkColor #1A4FA0
 skinparam sequenceGroupFontColor #888888
 skinparam sequenceGroupFontStyle plain
-title [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:256{Click to open the test} Test: VisitTest: create without vet]]
+title [[src://petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:346{Click to open the test} Test: VisitTest: create without vet]]
 footer traced because this branch wrote it in petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java — generated from real traces of end-to-end test runs, do not edit ❗
 participant Test
 participant Backend
 participant DB
 Test -> Backend: [[genseq://0rymiqj{Click for the request as it was sent} addVisit\nPOST /api/visits ⊕]]
 activate Backend
-Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:72{Click to open VisitRestController.bookVisit} book-visit ↗]]
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java:77{Click to open VisitRestController.bookVisit} book-visit ↗]]
 activate Backend
+Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/PetRepository.java:16{Click to open PetRepository.findById} PetRepository.findById ↗]]
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java:19{Click to open VetRepository.findByIdOrNull} VetRepository.findByIdOrNull ↗]]
 Backend -> Backend: [[src://petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java:14{Click to open VisitRepository.save} VisitRepository.save ↗]]
 activate Backend
-Backend -> DB: [[genseq://1k65kuu{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
+Backend -> DB: [[genseq://0mjxzx9{Click for the statement behind this call} insert for victor.training.petclinic.domain.Visit ⊕]]
 deactivate Backend
 deactivate Backend
 Backend --> Test: 201

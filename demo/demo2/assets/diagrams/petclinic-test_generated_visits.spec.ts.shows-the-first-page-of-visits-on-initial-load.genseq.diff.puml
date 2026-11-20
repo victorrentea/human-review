@@ -10,7 +10,7 @@ footer traced because this branch wrote it in src/visits.spec.ts — generated f
 participant Browser
 participant Backend
 participant DB
-[-> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:33{Click to open the line that sent this request: visits-page.component.ts:33} VisitService.getVisitPage ↗]]
+Browser -> Browser: [[src://petclinic-frontend/src/app/visits/visits-page/visits-page.component.ts:33{Click to open the line that sent this request: visits-page.component.ts:33} VisitService.getVisitPage ↗]]
 activate Browser
 Browser -> Backend: [[genseq://1o6i1eh{Click for the request as it was sent} listVisits\nGET /api/visits ⊕]]
 activate Backend
