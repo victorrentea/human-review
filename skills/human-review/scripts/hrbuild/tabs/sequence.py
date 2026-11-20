@@ -272,19 +272,33 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(text).lower()).strip("-")
 
 
-def picked_for(test_rel: str, scenarios, selection: dict | None) -> dict | None:
-    """The selection entry this pair's picture was traced for, if it was one.
+def _draws(t: dict, line: int, title: str) -> bool:
+    """Whether a manifest or ledger entry `t` names the scenario drawn at `line` as `title`.
 
     By line, or by name: a JVM picture is titled with JUnit's display name
     (`defaultRequest_returnsFirstTen…()`), which begins with the slug of the method the
-    manifest names."""
+    manifest names. A camel-cased method under a class prefix — `create_withoutVet`
+    drawn as `VisitTest: create without vet` — slugs to neither, so the names are also
+    compared squashed, prefix dropped. The line alone is not enough: it is the one the
+    test had when the manifest was written, and a merge of main moved `VisitTest`'s
+    two new tests 90 lines down (PR#49, 20 Nov 2026), leaving their rows without a `+`."""
+    if t.get("line") and line == t["line"]:
+        return True
+    raw = t.get("name", "")
+    name = _slug(raw)
+    if name and _slug(title).startswith(name):
+        return True
+    squashed = _squash(raw)
+    return bool(squashed) and squashed in {_squash(title), _squash(title.split(": ", 1)[-1])}
+
+
+def picked_for(test_rel: str, scenarios, selection: dict | None) -> dict | None:
+    """The selection entry this pair's picture was traced for, if it was one (`_draws`)."""
     for t in (selection or {}).get("picked") or []:
         if not isinstance(t, dict) or t.get("path") != test_rel:
             continue
-        name = _slug(t.get("name", ""))
-        for line, title in scenarios:
-            if (t.get("line") and line == t["line"]) or (name and _slug(title).startswith(name)):
-                return t
+        if any(_draws(t, line, title) for line, title in scenarios):
+            return t
     return None
 
 
@@ -328,9 +342,8 @@ def ledger_status(test_rel: str, scenarios, tests) -> str | None:
             continue
         if t.get("status") not in SEQ_ALSO:
             continue
-        name = _slug(t.get("name", ""))
         for line, title in scenarios:
-            if (t.get("line") and line == t["line"]) or (name and _slug(title).startswith(name)):
+            if _draws(t, line, title):
                 if t["status"] == "added":
                     return "added"
                 found = "modified"

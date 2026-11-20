@@ -5129,6 +5129,18 @@ def test_without_a_selection_the_tab_says_nothing_new(tmp_path):
         "a JUnit display name is matched by the method's name, whatever line it was found on"
 
 
+def test_a_camel_cased_method_under_its_class_prefix_is_still_picked():
+    """PR#49, 20 Nov 2026: `create_withoutVet` was picked as written by the branch, drawn as
+    `VisitTest: create without vet` 90 lines below the line the manifest kept, and its row
+    showed no `+`."""
+    scenarios = [(346, "VisitTest: create without vet")]
+    entry = {"path": "a.java", "name": "create_withoutVet", "line": 256, "status": "added"}
+    assert build.picked_for("a.java", scenarios, {"picked": [entry]}) is entry
+    assert build.ledger_status("a.java", scenarios, [entry]) == "added"
+    assert build.picked_for("a.java", [(346, "VisitTest: create with vet")],
+                            {"picked": [entry]}) is None
+
+
 def test_a_struck_tab_carries_no_explanatory_line(tmp_path):
     """The struck tab used to open on "Nothing on this tab changed on this branch. Shown for
     context." Victor, 5 Oct 2026: useless text; the strike on the pill already says it."""
