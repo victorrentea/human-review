@@ -60,3 +60,12 @@
     $ git show --numstat --format= 521a3f0420ecef93173a3b96135fcf031c317ffb
     $ git show --numstat --format= d5ff445c5261a085c9fd49c8352c30532b9dc02b
     $ git show --numstat --format= 80ce4c81ce4b50e040e6d569d8a71d4d33226769
+    $ git show --numstat --format= 0e3754f18fbb8e1c373d5d10e1db6b610d382b2f
+    $ git show --numstat --format= 2a449317f8a2bacb29f355059b6a09f9437f546d
+    $ git show --numstat --format= 1df03d9ba85de051470c290d433635967e947ce3
+    $ git show --numstat --format= 09710767971ea7af6276a5da6978aaeb523e7d0e
+    $ git show --numstat --format= 2cecfb1c4c19108aa276910fd00ce5a398cd8128
+    $ git show --numstat --format= 4c0ba36c2b619b31c986b014429697505ea4c21e
+    $ git show --numstat --format= 088f2f283d658041fc67afada5f166ba3e4e66bb
+    $ git show --numstat --format= a31b30ad895c83a444fb639b37766fb9718eeef2
+    $ git show --numstat --format= f937b8f8018ee8bfd662bcd52290894aefc818d9

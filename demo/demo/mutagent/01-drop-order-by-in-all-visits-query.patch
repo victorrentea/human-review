@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java b/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java
+@@ -15,7 +15,7 @@
+ 
+     List<Visit> findAll();
+ 
+-    @Query("SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner LEFT JOIN FETCH v.vet ORDER BY v.date")
++    @Query("SELECT v FROM Visit v JOIN FETCH v.pet p JOIN FETCH p.owner LEFT JOIN FETCH v.vet")
+     List<Visit> findAllWithPetAndOwner();
+ 
+     void delete(Visit visit);

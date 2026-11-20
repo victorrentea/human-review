@@ -408,6 +408,21 @@
    "at": "2026-11-20T06:06:13+00:00",
    "seconds": 22.7,
    "steps": "none"
+  },
+  {
+   "at": "2026-11-20T07:11:14+00:00",
+   "seconds": 132.0,
+   "steps": "reviewpoints,aftermath,tests,testcov"
+  },
+  {
+   "at": "2026-11-20T07:19:53+00:00",
+   "seconds": 15.6,
+   "steps": "none"
+  },
+  {
+   "at": "2026-11-20T07:24:17+00:00",
+   "seconds": 20.6,
+   "steps": "none"
   }
  ]
 }

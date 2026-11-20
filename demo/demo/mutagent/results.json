@@ -1,84 +1,111 @@
 {
  "schema": "mutagent-results/1",
- "head": "088f2f283d658041fc67afada5f166ba3e4e66bb",
- "mutantsHead": "088f2f283d658041fc67afada5f166ba3e4e66bb",
- "when": "2026-11-19T09:03:14+00:00",
+ "head": "f937b8f8018ee8bfd662bcd52290894aefc818d9",
+ "mutantsHead": "f937b8f8018ee8bfd662bcd52290894aefc818d9",
+ "when": "2026-11-20T07:21:36+00:00",
  "baseline": {
-  "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java:81": "pass",
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:256": "pass",
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289": "pass",
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:312": "pass",
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:343": "pass",
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:372": "pass"
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java:74": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java:139": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:142": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:167": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:237": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:311": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:346": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:402": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:462": "pass"
  },
  "mutants": {
-  "01-keep-old-vet-when-update-sends-none": {
+  "01-drop-order-by-in-all-visits-query": {
+   "verdict": "survived",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:167": "pass"
+   },
+   "why": "all 1 expected test(s) stayed green with the mutant",
+   "seconds": 14.4
+  },
+  "02-update-keeps-old-vet-ignores-new": {
    "verdict": "killed",
    "tests": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:372": "fail"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:311": "pass",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433": "fail"
    },
    "messages": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:372": "expected: null but was: 1"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433": "expected: 1 but was: null"
+   },
+   "why": "1 of 2 expected test(s) failed",
+   "seconds": 15.4
+  },
+  "03-create-via-api-visits-discards-chosen-ve": {
+   "verdict": "survived",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:237": "pass"
+   },
+   "why": "all 1 expected test(s) stayed green with the mutant",
+   "seconds": 15.0
+  },
+  "04-owner-page-booking-drops-the-chosen-vet": {
+   "verdict": "killed",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java:139": "pass",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java:74": "pass",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": "fail"
+   },
+   "messages": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": "JSON path \"$.pets[0].visits[?(@.description == 'ear infection')].vetId\" expected:<1> but was:<null>"
+   },
+   "why": "1 of 3 expected test(s) failed",
+   "seconds": 12.5
+  },
+  "05-mapper-never-enriches-dto-with-vet": {
+   "verdict": "killed",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:142": "pass",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433": "fail",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": "fail"
+   },
+   "messages": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433": "expected: 1 but was: null",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": "JSON path \"$.pets[0].visits[?(@.description == 'ear infection')].vetId\" expected:<1> but was:<null>"
+   },
+   "why": "2 of 3 expected test(s) failed",
+   "seconds": 11.7
+  },
+  "06-swap-vet-first-and-last-name-in-dto": {
+   "verdict": "killed",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": "fail"
+   },
+   "messages": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": "JSON path \"$.pets[0].visits[?(@.description == 'ear infection')].vetLastName\" expected:<Herriot> but was:<James>"
    },
    "why": "1 of 1 expected test(s) failed",
-   "seconds": 12.4
+   "seconds": 12.3
   },
-  "02-mapper-drops-vetid-from-visit-dto": {
+  "07-update-skips-vet-when-cleared-to-null": {
    "verdict": "killed",
    "tests": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:343": "fail"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:462": "fail"
    },
    "messages": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:343": "expected: 1 but was: null"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:462": "expected: null but was: 1"
    },
    "why": "1 of 1 expected test(s) failed",
-   "seconds": 11.4
+   "seconds": 13.2
   },
-  "03-owner-page-booking-ignores-chosen-vet": {
+  "08-vet-lookup-fails-when-no-vet-given": {
    "verdict": "killed",
    "tests": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289": "fail"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:402": "fail",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:346": "fail"
    },
    "messages": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289": "JSON path \"$.pets[0].visits[?(@.description == 'ear infection')].vetId\" expected:<1> but was:<null>"
-   },
-   "why": "1 of 1 expected test(s) failed",
-   "seconds": 11.6
-  },
-  "04-mcp-vet-name-reversed-to-last-first": {
-   "verdict": "killed",
-   "tests": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java:81": "fail"
-   },
-   "messages": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java:81": "Expecting actual: [(\"vet not yet known\", null), (\"seen by Helen\", \"Leary Helen\")] to contain exactly in any order: [(\"seen by Helen\", \"Helen Leary\"), (\"vet not yet known\", null)] elements not found: [(\"seen by Helen\", \"Helen Leary\")] and el"
-   },
-   "why": "1 of 1 expected test(s) failed",
-   "seconds": 10.5
-  },
-  "05-null-vet-id-no-longer-allowed": {
-   "verdict": "killed",
-   "tests": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:312": "fail",
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:256": "fail"
-   },
-   "messages": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:312": "Status expected:<201> but was:<404>",
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:256": "Status expected:<201> but was:<404>"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:402": "Status expected:<201> but was:<500>",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:346": "Status expected:<201> but was:<500>"
    },
    "why": "2 of 2 expected test(s) failed",
-   "seconds": 11.5
-  },
-  "06-mapper-puts-first-name-in-vet-last-name": {
-   "verdict": "killed",
-   "tests": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289": "fail"
-   },
-   "messages": {
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289": "JSON path \"$.pets[0].visits[?(@.description == 'ear infection')].vetLastName\" expected:<Herriot> but was:<James>"
-   },
-   "why": "1 of 1 expected test(s) failed",
-   "seconds": 10.8
+   "seconds": 14.4
   }
  }
 }

@@ -1,146 +1,224 @@
 {
  "schema": "mutagent/1",
- "head": "088f2f283d658041fc67afada5f166ba3e4e66bb",
- "base": "c4b3769e2a79582332fa5bc13ba30758de693210",
- "when": "2026-11-19T08:58:11+00:00",
- "model": "sonnet",
- "cost": 0.2584918,
+ "head": "f937b8f8018ee8bfd662bcd52290894aefc818d9",
+ "base": "01aa5b685c22bd843c26b9d9840576e32e5a853c",
+ "when": "2026-11-20T07:20:41+00:00",
+ "model": "opus",
+ "cost": 0.6886378,
  "mutants": [
   {
-   "id": "01-keep-old-vet-when-update-sends-none",
-   "title": "keep old vet when update sends none",
+   "id": "01-drop-order-by-in-all-visits-query",
+   "title": "drop ORDER BY in all-visits query",
    "sentence": {
-    "id": "s40c393",
-    "text": "Editing a visit can change the vet, and can remove it."
+    "id": "t:petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:167",
+    "text": "get all returns visits in date order",
+    "kind": "test"
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VisitRepository.java",
+   "rationale": "Without ORDER BY the visits come back in insertion order. The test inserts its three visits already in date order, so it passes either way unless it really checks the sorting.",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:167"
+   ],
+   "patch": "01-drop-order-by-in-all-visits-query.patch"
+  },
+  {
+   "id": "02-update-keeps-old-vet-ignores-new",
+   "title": "update keeps old vet, ignores new",
+   "sentence": {
+    "id": "t:petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:311",
+    "text": "update ok",
+    "kind": "test"
    },
    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
-   "rationale": "Editing a visit must be able to remove the vet; with this mutant a null vetId leaves the old vet in place, so the cleared-vet check fails.",
+   "rationale": "An update that silently drops the vet field is not 'ok'. update_ok only reads back the description, so it cannot notice.",
    "expect": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:372"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:311",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433"
    ],
-   "patch": "01-keep-old-vet-when-update-sends-none.patch"
+   "patch": "02-update-keeps-old-vet-ignores-new.patch"
   },
   {
-   "id": "02-mapper-drops-vetid-from-visit-dto",
-   "title": "mapper drops vetId from visit DTO",
+   "id": "03-create-via-api-visits-discards-chosen-ve",
+   "title": "create via /api/visits discards chosen vet",
    "sentence": {
-    "id": "sde7c7e",
-    "text": "The Visit should be linked to the vet that attended that consultation."
+    "id": "t:petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:237",
+    "text": "create ok",
+    "kind": "test"
    },
-   "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
-   "rationale": "A visit linked to a vet must expose that vet's id, so reading back a visit that has a vet must return a null vetId and the assertion fails.",
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+   "rationale": "Creating a visit that loses the vet it was given is not a correct create. create_ok never sends a vet, so it cannot tell.",
    "expect": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:343"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:237"
    ],
-   "patch": "02-mapper-drops-vetid-from-visit-dto.patch"
+   "patch": "03-create-via-api-visits-discards-chosen-ve.patch"
   },
   {
-   "id": "03-owner-page-booking-ignores-chosen-vet",
-   "title": "owner-page booking ignores chosen vet",
+   "id": "04-owner-page-booking-drops-the-chosen-vet",
+   "title": "owner-page booking drops the chosen vet",
    "sentence": {
-    "id": "sd7740d",
-    "text": "Booking a visit lets you choose the vet, and lets you not choose one."
+    "id": "t:petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java:139",
+    "text": "add visit to owner created",
+    "kind": "test"
    },
    "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java",
-   "rationale": "Booking must let you choose the vet, so the owner response for a visit booked with a vet must carry that vetId, and this mutant stores none.",
+   "rationale": "The visit is created but the vet sent with it is never stored. The test books without a vet and checks only the description, so it passes.",
    "expect": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java:139",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java:74",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379"
    ],
-   "patch": "03-owner-page-booking-ignores-chosen-vet.patch"
+   "patch": "04-owner-page-booking-drops-the-chosen-vet.patch"
   },
   {
-   "id": "04-mcp-vet-name-reversed-to-last-first",
-   "title": "MCP vet name reversed to last first",
+   "id": "05-mapper-never-enriches-dto-with-vet",
+   "title": "mapper never enriches DTO with vet",
    "sentence": {
-    "id": "s076ab2",
-    "text": "Visit should display its vet everywhere throughout the app."
+    "id": "t:petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:142",
+    "text": "get all returns enriched fields",
+    "kind": "test"
    },
-   "file": "petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java",
-   "rationale": "The visit must show its vet's name, and the MCP view now reads 'Leary Helen' instead of 'Helen Leary'.",
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
+   "rationale": "The vet id and names are enriched fields of a listed visit and now never appear. The test checks only the pet and owner fields, on a fixture visit that has no vet.",
    "expect": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java:81"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:142",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379"
    ],
-   "patch": "04-mcp-vet-name-reversed-to-last-first.patch"
+   "patch": "05-mapper-never-enriches-dto-with-vet.patch"
   },
   {
-   "id": "05-null-vet-id-no-longer-allowed",
-   "title": "null vet id no longer allowed",
-   "sentence": {
-    "id": "sf782ab",
-    "text": "The vet is optional: half the time the appointment is booked before anyone knows who is taking it, and forcing a choice there produces bad data rather than information."
-   },
-   "file": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
-   "rationale": "The vet is optional, so a booking with no vet must be accepted; this mutant throws for a null id and rejects it.",
-   "expect": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:312",
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:256"
-   ],
-   "patch": "05-null-vet-id-no-longer-allowed.patch"
-  },
-  {
-   "id": "06-mapper-puts-first-name-in-vet-last-name",
-   "title": "mapper puts first name in vet last name",
+   "id": "06-swap-vet-first-and-last-name-in-dto",
+   "title": "swap vet first and last name in DTO",
    "sentence": {
     "id": "sc32ae5",
     "text": "Wherever a visit is shown with its details, the vet is shown too."
    },
    "file": "petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java",
-   "rationale": "Wherever a visit is shown with details, the vet must be shown correctly, and the owner-page JSON now carries the first name as the vet's last name.",
+   "rationale": "Every screen would show the vet's name reversed, so a test that reads the vet's name back must fail.",
    "expect": [
-    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289"
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379"
    ],
-   "patch": "06-mapper-puts-first-name-in-vet-last-name.patch"
+   "patch": "06-swap-vet-first-and-last-name-in-dto.patch"
+  },
+  {
+   "id": "07-update-skips-vet-when-cleared-to-null",
+   "title": "update skips vet when cleared to null",
+   "sentence": {
+    "id": "sff3319",
+    "text": "Clearing the field must persist as empty."
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java",
+   "rationale": "Clearing the vet no longer persists: the old vet stays on the visit after a PUT with a null vetId.",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:462"
+   ],
+   "patch": "07-update-skips-vet-when-cleared-to-null.patch"
+  },
+  {
+   "id": "08-vet-lookup-fails-when-no-vet-given",
+   "title": "vet lookup fails when no vet given",
+   "sentence": {
+    "id": "sf782ab",
+    "text": "The vet is optional: half the time the appointment is booked before anyone knows who is taking it, and forcing a choice there produces bad data rather than information."
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java",
+   "rationale": "A booking without a vet now throws while unboxing the null id, so the vet is no longer optional.",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:402",
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:346"
+   ],
+   "patch": "08-vet-lookup-fails-when-no-vet-given.patch"
   }
  ],
  "dropped": [],
  "tests": {
-  "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java:81": {
-   "file": "petclinic-backend/src/test/java/victor/training/petclinic/mcp/ListVisitsToolTest.java",
-   "line": 81,
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java:74": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/AddVisitApiTest.java",
+   "line": 74,
    "runnable": true,
    "why": "",
-   "label": "ListVisitsToolTest#names_the_vet_of_each_visit_and_none_where_there_is_none",
-   "suite": "maven"
+   "label": "AddVisitApiTest#addsAVisitToAnExistingPet",
+   "suite": "java"
   },
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:256": {
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java:139": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/OwnerCreateTest.java",
+   "line": 139,
+   "runnable": true,
+   "why": "",
+   "label": "OwnerCreateTest#addVisitToOwner_created",
+   "suite": "java"
+  },
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:142": {
    "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-   "line": 256,
+   "line": 142,
+   "runnable": true,
+   "why": "",
+   "label": "VisitTest#getAll_returnsEnrichedFields",
+   "suite": "java"
+  },
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:167": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "line": 167,
+   "runnable": true,
+   "why": "",
+   "label": "VisitTest#getAll_returnsVisitsInDateOrder",
+   "suite": "java"
+  },
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:237": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "line": 237,
+   "runnable": true,
+   "why": "",
+   "label": "VisitTest#create_ok",
+   "suite": "java"
+  },
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:311": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "line": 311,
+   "runnable": true,
+   "why": "",
+   "label": "VisitTest#update_ok",
+   "suite": "java"
+  },
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:346": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
+   "line": 346,
    "runnable": true,
    "why": "",
    "label": "VisitTest#create_withoutVet",
-   "suite": "maven"
+   "suite": "java"
   },
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:289": {
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:379": {
    "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-   "line": 289,
+   "line": 379,
    "runnable": true,
    "why": "",
    "label": "VisitTest#bookFromOwnerPage_withVet_isShownOnOwnerPage",
-   "suite": "maven"
+   "suite": "java"
   },
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:312": {
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:402": {
    "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-   "line": 312,
+   "line": 402,
    "runnable": true,
    "why": "",
    "label": "VisitTest#bookFromOwnerPage_withoutVet",
-   "suite": "maven"
+   "suite": "java"
   },
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:343": {
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:433": {
    "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-   "line": 343,
+   "line": 433,
    "runnable": true,
    "why": "",
    "label": "VisitTest#update_assignsVet",
-   "suite": "maven"
+   "suite": "java"
   },
-  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:372": {
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java:462": {
    "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitTest.java",
-   "line": 372,
+   "line": 462,
    "runnable": true,
    "why": "",
    "label": "VisitTest#update_clearsVet",
-   "suite": "maven"
+   "suite": "java"
   }
  }
 }

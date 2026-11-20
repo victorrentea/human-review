@@ -1,8 +1,8 @@
 {
- "base": "c4b3769e2a79582332fa5bc13ba30758de693210",
+ "base": "01aa5b685c22bd843c26b9d9840576e32e5a853c",
  "head": "HEAD",
  "points_file": "review-points.md",
- "commits": 125,
+ "commits": 134,
  "implementation": "1bcf74d4f14a165cabaaa7e9cd1cc5faaa3311b1",
  "review": "be762955d5f477feeca0f7db55e32fa1c2fb8db5",
  "session": "82329d0a-55d2-448f-aff5-0363cf80b32f",
@@ -66,7 +66,16 @@
   "01041dae8792f26948753b3744f824ff92b4b791",
   "521a3f0420ecef93173a3b96135fcf031c317ffb",
   "d5ff445c5261a085c9fd49c8352c30532b9dc02b",
-  "80ce4c81ce4b50e040e6d569d8a71d4d33226769"
+  "80ce4c81ce4b50e040e6d569d8a71d4d33226769",
+  "0e3754f18fbb8e1c373d5d10e1db6b610d382b2f",
+  "2a449317f8a2bacb29f355059b6a09f9437f546d",
+  "1df03d9ba85de051470c290d433635967e947ce3",
+  "09710767971ea7af6276a5da6978aaeb523e7d0e",
+  "2cecfb1c4c19108aa276910fd00ce5a398cd8128",
+  "4c0ba36c2b619b31c986b014429697505ea4c21e",
+  "088f2f283d658041fc67afada5f166ba3e4e66bb",
+  "a31b30ad895c83a444fb639b37766fb9718eeef2",
+  "f937b8f8018ee8bfd662bcd52290894aefc818d9"
  ],
  "after_detail": [
   {
@@ -421,6 +430,60 @@
    "sha": "80ce4c81ce4b50e040e6d569d8a71d4d33226769",
    "when": "2026-11-06T18:37:57+02:00",
    "subject": "review-points: base moved past main's 78f54394 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "0e3754f18fbb8e1c373d5d10e1db6b610d382b2f",
+   "when": "2026-11-10T16:53:41+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "2a449317f8a2bacb29f355059b6a09f9437f546d",
+   "when": "2026-11-10T17:04:38+02:00",
+   "subject": "review-points: base moved past main's d0a6aab7 (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "1df03d9ba85de051470c290d433635967e947ce3",
+   "when": "2026-11-10T17:04:38+02:00",
+   "subject": "Regenerate the browser sequence diagrams: the Angular method a request starts in, the request as sent, its controller on a third line",
+   "auto_fix": false
+  },
+  {
+   "sha": "09710767971ea7af6276a5da6978aaeb523e7d0e",
+   "when": "2026-11-10T20:36:18+02:00",
+   "subject": "Merge remote-tracking branch 'origin/main' into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "2cecfb1c4c19108aa276910fd00ce5a398cd8128",
+   "when": "2026-11-10T20:36:23+02:00",
+   "subject": "review-points: base moved past main's c4b3769e (merged)",
+   "auto_fix": false
+  },
+  {
+   "sha": "4c0ba36c2b619b31c986b014429697505ea4c21e",
+   "when": "2026-11-10T20:40:05+02:00",
+   "subject": "Regenerate the browser sequence diagrams: a request arrow carries only its words, the controller is named in its panel",
+   "auto_fix": false
+  },
+  {
+   "sha": "088f2f283d658041fc67afada5f166ba3e4e66bb",
+   "when": "2026-11-11T17:57:35+02:00",
+   "subject": "review-points: a contested reading is one Ignored item, not an assumption too",
+   "auto_fix": false
+  },
+  {
+   "sha": "a31b30ad895c83a444fb639b37766fb9718eeef2",
+   "when": "2026-11-20T09:07:49+02:00",
+   "subject": "Merge origin/main into test-pr",
+   "auto_fix": false
+  },
+  {
+   "sha": "f937b8f8018ee8bfd662bcd52290894aefc818d9",
+   "when": "2026-11-20T09:08:02+02:00",
+   "subject": "review-points: base moved past main's 01aa5b68 (merged)",
    "auto_fix": false
   }
  ],

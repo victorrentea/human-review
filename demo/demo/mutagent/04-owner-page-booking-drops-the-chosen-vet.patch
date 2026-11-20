@@ -2,7 +2,7 @@ diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/Owne
 --- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java
 +++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java
 @@ -196,7 +196,7 @@
-         pet.setId(petId);
+         pet.requireVisitDateInRange(visit.getDate());
          visit.setPet(pet);
          Vet vet = vetRepository.findByIdOrNull(visitFieldsDto.getVetId());
 -        visit.setVet(vet);

@@ -6,7 +6,7 @@ diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/repositor
      /** For an optional vet reference: null when no id is given, NoSuchElementException for an unknown one. */
      default @Nullable Vet findByIdOrNull(@Nullable Integer id) {
 -        return id == null ? null : findById(id).orElseThrow();
-+        return findById(id == null ? -1 : id).orElseThrow();
++        return findById(id).orElseThrow();
      }
  
      void save(Vet vet);

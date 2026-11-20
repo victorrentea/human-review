@@ -1,8 +1,8 @@
   * city -> city
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/city-coverage.py --in .human-review/assets/test-coverage.json --out .human-review/assets/codecity-coverage.json
-[city-coverage] 128 file(s): line coverage 68.7%, acceptance 50.2% -> .human-review/assets/codecity-coverage.json
+[city-coverage] 93 file(s): line coverage 73.5%, acceptance 36.1% -> .human-review/assets/codecity-coverage.json
     $ git rev-parse HEAD
-    $ git merge-base 78f54394e96dafdc9fa9112ecc4d7ec3b86f08b9 HEAD
+    $ git merge-base origin/main HEAD
     $ /Users/victorrentea/workspace/human-review/skills/human-review/scripts/regenerate-codecity.sh --out ".human-review/assets/codecity" --title "Code City" --coverage ".human-review/assets/codecity-coverage.json"
 updating the Code City generators in /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/.tools/codecity ...
 using /Users/victorrentea/.local/bin/python3.12 for the generators — .pylibs was vendored for python3.12, not for Python 3.15.1
@@ -15,7 +15,7 @@ coverage: /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review
 Files processed: 99
 Files with parse errors: 0
 Total classes: 122
-Total methods/constructors: 496
+Total methods/constructors: 498
 
 Top 10 classes by complexity:
   complexity	methods	file	class_fqn
@@ -46,17 +46,17 @@ Top 10 files by complexity:
 loaded 122 FQN entries across 20 packages
 scanning 99 java files
 wrote 99 rows to /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/fanio-per-file.tsv
-wrote 164 edges to /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/coupling-edges.tsv
+wrote 166 edges to /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/coupling-edges.tsv
 
 top fan_out:
     19  petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java
      9  petclinic-backend/src/main/java/victor/training/petclinic/mapper/PetMapper.java
+     9  petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java
      8  petclinic-backend/src/main/java/victor/training/petclinic/mcp/PetClinicMcp.java
      8  petclinic-backend/src/main/java/victor/training/petclinic/rest/VetRestController.java
-     8  petclinic-chatbot/src/main/java/victor/training/petclinic/chatbot/firefighter/FirefighterAgent.java
 
 top fan_in:
-     8  petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java
+     9  petclinic-backend/src/main/java/victor/training/petclinic/domain/Pet.java
      7  petclinic-backend/src/main/java/victor/training/petclinic/domain/Owner.java
      7  petclinic-backend/src/main/java/victor/training/petclinic/domain/Vet.java
      7  petclinic-backend/src/main/java/victor/training/petclinic/domain/Visit.java
@@ -66,12 +66,12 @@ top fan_in:
 loaded 0 bug/regression issue numbers
 flagging bug commits via subject regex (default heuristic): '^(fix|fixed|fixes|bugfix)\\b'
 discovered 6 Maven/Gradle module dir(s)
-walked 1124 commits, 61 flagged as bug-linked
-touched 2516 distinct file paths (across all history)
+walked 1162 commits, 62 flagged as bug-linked
+touched 2540 distinct file paths (across all history)
 found 99 current non-test java files
 loaded complexity for 99 files
 loaded fan-in/out for 99 files
-loaded line/acceptance coverage for 128 files from /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity-coverage.json
+loaded line/acceptance coverage for 93 files from /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity-coverage.json
 wrote 99 rows to /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codemap.tsv
 wrote 20 package rows to /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codemap-packages.tsv
 wrote 6 module rows to /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codemap-modules.tsv
@@ -90,7 +90,7 @@ coupling the change set moved (class: fan-out, fan-in):
   VisitMapper.java: out +1, in +0
   PetClinicMcp.java: out +1, in +0
   VisitRestController.java: out +1, in +0
-wrote /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codecity.html (1337.0 KB)
+wrote /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codecity.html (1337.2 KB)
 [7/7] render combined side-by-side (2D codemap <-> 3D city)...
 wrote /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/combined.html (3.1 KB)
 done -> /Users/victorrentea/workspace/petclinic-pr-visit-has-vet/.human-review/assets/codecity/codemap.html
