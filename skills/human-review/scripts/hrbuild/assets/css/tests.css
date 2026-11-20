@@ -112,6 +112,11 @@ ul.req-tests li { list-style:none; }
 .cov-suite { padding:1px 7px; border:1px solid var(--line, #d0d0d0); border-radius:9px;
         color:var(--muted); font-size:.8rem; cursor:help; }
 
+/* The title's presses: a hairline between the tab's own three (⚙️⏳🤖) and Mutagent's two
+   (🧬🧪), so the pair reads as a second group, not as two more reruns (Victor, 20 Nov 2026). */
+.tabre > .tabrerun-mutagent { position:relative; margin-left:.5rem; }
+.tabre > .tabrerun-mutagent::before { content:""; position:absolute; left:calc(-.425rem - .5px);
+         top:1px; bottom:1px; width:1px; background:var(--muted); opacity:.55; }
 /* 🧬 Mutagent (tabs/tests.py:mutagent_card): folded to one line under the tests' card,
    opened on demand (Victor, 20 Nov 2026: "far too much of the window"). The line says what
    was killed, survivors in red, and who wrote the mutants at what cost; it never wraps.
