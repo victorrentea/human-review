@@ -365,8 +365,7 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "move": 'details.seqhow',
         "li": [
             'Arrows: <b style="color:var(--dgm-arrow-net)">violet</b> between systems, '
-            '<b style="color:var(--dgm-arrow-sql)">orange</b> SQL, plain in-process; '
-            '<b>tx</b>: committed/rolled back.',
+            '<b style="color:var(--dgm-arrow-sql)">orange</b> SQL in its orange <b>tx</b> box, plain in-process.',
             'One per tagged/touched test; <b>New</b>/<b>Old</b>: this branch\'s run or the base\'s; '
             '<b>⇒ .puml</b>: its file.',
             'Hover <b>⊕</b>: SQL, JSON or request; a click keeps it, several at once, until <b>×</b>; <b>values</b> fills <b>?</b>.',

@@ -59,3 +59,17 @@ def test_the_colours_are_themed_for_dark_mode():
     text = svg.read_text()
     assert f'"{m.NETWORK}": "--dgm-arrow-net"' in text
     assert f'"{m.SQL}": "--dgm-arrow-sql"' in text
+
+
+def test_a_transaction_frame_wears_the_database_colour():
+    src = ("@startuml\nparticipant Backend\ndatabase DB\ngroup tx [committed]\n"
+           "Backend -> DB: select\nend\n@enduml\n")
+    got = m.colour(src).splitlines()
+    assert got[0] == "@startuml"
+    style = "\n".join(got[1:7])
+    assert f"group {{ LineColor {m.SQL} }}" in style
+    assert f"groupHeader {{ LineColor {m.SQL} }}" in style
+
+
+def test_no_transaction_no_style():
+    assert "<style>" not in m.colour(TRACE)

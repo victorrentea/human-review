@@ -18,7 +18,12 @@ carries `«module»`. Every other lifeline is a system of its own, so an arrow b
 different ones crossed a wire.
 
 An arrow that already names a colour (`-[#…]->`) keeps it: a generator that chose one
-chose it on purpose. Only the undiffed New/Old renders go through this; the delta keeps
+chose it on purpose.
+
+A traced transaction (`group tx [committed]`) is drawn in `SQL` too, frame and header
+(Victor, 20 Nov 2026): it holds the statements, so it wears their colour. PlantUML has no
+per-group line colour (`group#hex` fills the header tab), so a `<style>` block paints every
+group — and `tx` is the only group the tracer writes. Only the undiffed New/Old renders go through this; the delta keeps
 its green and red, which are the one thing a delta is for.
 """
 from __future__ import annotations
@@ -42,6 +47,10 @@ ARROW = re.compile(
     r'\s*(?P<b>"[^"]*"|[^\s"<>:\[\]-]+)\s*(?P<rest>:.*)?$')
 DB_NAME = re.compile(r"^(db|database|postgres(ql)?|oracle|mysql|sql|.*\bdb)$", re.I)
 SQL_LINK = "{Click for the statement behind this call}"
+TX_GROUP = re.compile(r"^\s*group\s+tx\b")
+TX_STYLE = ("<style>\nsequenceDiagram {\n"
+            f"  group {{ LineColor {SQL} }}\n  groupHeader {{ LineColor {SQL} }}\n"
+            "}\n</style>")
 
 
 def _key(token: str) -> str:
@@ -93,6 +102,9 @@ def colour(text: str) -> str:
         i = arrow.index("-")
         arrow = arrow[:i + 1] + f"[{hue}]" + arrow[i + 1:]
         out.append(f'{m["lead"]}{m["a"]} {arrow} {m["b"]}{m["rest"] or ""}')
+    if any(TX_GROUP.match(line) for line in lines):
+        start = next((i for i, line in enumerate(out) if line.strip().startswith("@startuml")), -1)
+        out.insert(start + 1, TX_STYLE)
     return "\n".join(out) + ("\n" if text.endswith("\n") else "")
 
 
