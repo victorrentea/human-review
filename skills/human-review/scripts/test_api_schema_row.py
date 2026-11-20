@@ -180,12 +180,13 @@ def test_two_values_stay_a_dropdown(page, selector):
     assert page.evaluate("s => document.querySelector(s).tabIndex", selector) == 0
 
 
-def test_the_switch_says_tree_and_diagram_and_opens_on_tree(page):
+def test_the_switch_says_tree_and_diagram_and_opens_on_diagram(page):
     words = page.locator(f"{row('200')} .dv-views button").all_inner_texts()
     assert words == ["Tree", "Diagram"]
-    assert page.locator(f"{row('200')} article").is_visible()
-    assert page.locator(f"{row('200')} .dv-dgm").is_hidden()
-    assert page.locator(f"{row('200')} .dv-dgm svg").count() == 0, "drawn before it was asked for"
+    assert page.get_attribute(f"{row('200')} .dv-views button[data-view=diagram]",
+                              "aria-pressed") == "true"
+    assert page.locator(f"{row('200')} article").is_hidden()
+    assert page.locator(f"{row('200')} .dv-dgm svg").is_visible()
 
 
 def test_it_sits_under_the_row_and_only_under_schema(page):

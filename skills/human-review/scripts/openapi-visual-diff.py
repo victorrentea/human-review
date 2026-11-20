@@ -1826,8 +1826,10 @@ function dressSelects() {
 // picture enters the DOM only when asked for, so a page of forty operations stays light.
 //
 // One choice for the whole tab, because a reader comparing two responses wants them in the
-// same view, and an operation opened later opens the way the last one was left.
-let schemaView = 'tree';
+// same view, and an operation opened later opens the way the last one was left. It starts on
+// the diagram: what a change did to a body is easier to see as classes and arrows than by
+// unfolding a tree (Victor, 20 Nov 2026).
+let schemaView = 'diagram';
 
 function schemaBodies(op) {
   return op.querySelectorAll('.opblock-section-request-body, .responses-table tr.response[data-code]');
@@ -1867,8 +1869,8 @@ function dressSchemas() {
       }
       if (!bar) {
         panel.insertAdjacentHTML('afterbegin', '<div class="dv-views">'
-          + '<button type="button" data-view="tree" aria-pressed="true">Tree</button>'
-          + '<button type="button" data-view="diagram" aria-pressed="false">Diagram</button>'
+          + '<button type="button" data-view="tree" aria-pressed="false">Tree</button>'
+          + '<button type="button" data-view="diagram" aria-pressed="true">Diagram</button>'
           + '</div>');
         panel.insertAdjacentHTML('beforeend', '<div class="dv-dgm"></div>');
       }
