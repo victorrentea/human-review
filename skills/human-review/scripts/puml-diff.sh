@@ -57,6 +57,7 @@ OUT_DIR="${2:-.human-review/assets/diagrams}"
 STRUCT_DIFF="$SCRIPT_DIR/../puml-diff/puml_diff.py"
 SEQ_DIFF="$SCRIPT_DIR/../puml-diff/seq_puml_diff.py"
 SEQ_COLORS="$SCRIPT_DIR/../puml-diff/seq_arrow_colors.py"
+SEQ_SELF="$SCRIPT_DIR/../puml-diff/seq_found_as_self.py"
 
 for tool in "$STRUCT_DIFF" "$SEQ_DIFF"; do
   [ -f "$tool" ] || { echo "[puml-diff] missing $tool" >&2; exit 2; }
@@ -130,6 +131,9 @@ render_plain() {
   command -v plantuml >/dev/null 2>&1 || return 1
   if [ "${3:-}" = sequence ]; then
     python3 "$SEQ_COLORS" "$1" "$2.puml" 2>/dev/null || cp "$1" "$2.puml"
+    # A found message (`[-> Browser: OwnerService.getOwners`) is drawn as the Browser
+    # activating itself, not as an arrow out of nowhere (puml-diff/seq_found_as_self.py).
+    python3 "$SEQ_SELF" "$2.puml" "$2.puml" 2>/dev/null || true
   else
     cp "$1" "$2.puml"
   fi
@@ -261,6 +265,11 @@ for rel in ${CHANGED[@]+"${CHANGED[@]}"}; do
        && [ "$(python3 "$STRUCT_DIFF" "$old" "$new" --count-changes 2>/dev/null)" = 0 ]; then
       status=unchanged
     fi
+  fi
+
+  # The delta draws a found message the way the New/Old renders do (see render_plain).
+  if [ "$kind" = sequence ]; then
+    python3 "$SEQ_SELF" "$diff_puml" "$diff_puml" 2>/dev/null || true
   fi
 
   svg=""
