@@ -1527,7 +1527,10 @@ REQMAP_CSS = """
    `data-off`; the rest of the run's rows exist only under "all". */
 .reqmap .rm-list:not([data-all=yes]) .rm-cho{display:none}
 .reqmap .rm-list .rm-t[data-off=yes]{display:none}
-.reqmap .rm-code > .rm-tkhead > .rm-mode{flex:0 0 auto;min-width:0;align-self:center;
+/* It gives way on a narrow card, never the counts after it: they stand in the chapters'
+   columns, and a choice that would not shrink pushed them past the card's right edge,
+   clipped and out of line (Victor, 20 Nov 2026: "align the numbers"). */
+.reqmap .rm-code > .rm-tkhead > .rm-mode{flex:0 1 auto;min-width:3em;align-self:center;
   margin-left:0;padding:1px 4px;font:inherit;font-weight:600;color:var(--fg,#1c1c1c);
   background:transparent;border:1px solid var(--border,#d0d7de);border-radius:6px;
   cursor:pointer;text-overflow:ellipsis}
@@ -1544,7 +1547,8 @@ REQMAP_CSS = """
 /* The grand total closes the title row, in the chapters' four columns and right above
    them. The strip's own 16px right padding is the headings', so the columns stand one
    over the other. */
-.reqmap .rm-code > .rm-tkhead > .rm-grand{flex:0 0 auto;margin-left:auto;align-self:center}
+.reqmap .rm-code > .rm-tkhead > .rm-grand{flex:0 0 auto;margin-left:auto;align-self:center;
+  min-width:max-content}
 .reqmap .rm-grand > .rm-chn{font-weight:700}
 /* One row, always (Victor, 19 Oct 2026): on a narrow card the totals wrapped under the
    title. The title gives way instead, cut with an ellipsis; its hover keeps the rest. A
@@ -1924,7 +1928,7 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path, root: Path | None = None
     out = relabel_cats(out)
     at = root if root is not None else out_dir.resolve().parent
     inventory = (all_tests_inventory(out, doc, at) + test_cover_files(out, doc, at)
-                 + mutagent_survivors(out_dir))
+                 + mutagent_survivors(out_dir, at))
     # The matrix's own renderer (`reqmap/reqmap.js`) re-renders a fresh matrix and may run
     # again (`data-hr-swap="rerun"`); semcov.py says so, and a fragment written before it
     # did is told here.
@@ -2268,19 +2272,27 @@ def mutant_anchor(row: dict) -> str:
 MUTAGENT_SURVIVORS_ID = "rm-mutagent"
 
 
-def mutagent_survivors(out_dir: Path) -> str:
+def mutagent_survivors(out_dir: Path, root: Path | None = None) -> str:
     """For each test a mutant survived — it stayed green with the code broken — the mutants
-    it let through: `{"path:line": [[anchor, title], …]}`. The card says it at the bottom
+    it let through: `{"path:line": [[anchor, title, change], …]}`, `change` the mutation as
+    the card draws it (before → after), shown when the test's row is opened. The card says it at the bottom
     of the column; the test's own row is where a reader looks (Victor, 20 Nov 2026: "this
     test was proven to be wrong"). Empty when nothing survived."""
     got = _mutagent_rows(out_dir)
+    at = root if root is not None else out_dir.resolve().parent
     out: dict[str, list] = {}
     for r in (got[1] if got else []):
         if r["verdict"] != "survived":
             continue
+        try:
+            change = mutation_html((out_dir / MUTAGENT_DIR / r["patch"]).read_text(
+                encoding="utf-8"), r.get("file") or "", at)
+        except (OSError, KeyError, TypeError):
+            change = ""
         for tid, state in r["states"].items():
             if state == "pass":
-                out.setdefault(tid, []).append([mutant_anchor(r), r.get("title") or r.get("id")])
+                out.setdefault(tid, []).append([mutant_anchor(r), r.get("title") or r.get("id"),
+                                                change])
     if not out:
         return ""
     body = json.dumps(out, ensure_ascii=False).replace("</", "<\\/")

@@ -460,3 +460,19 @@ def test_an_unclaimed_pre_existing_test_is_attacked_on_what_its_name_claims(
     assert doc["tests"][LEGACY_ID]["label"] == "SearchTest#namesComeBackSorted"
     card = build.mutagent_card(repo / ".human-review", repo)
     assert "claims, by its name:</span> “names come back sorted”" in card
+
+
+def test_a_survivors_test_row_carries_the_mutation_it_let_through(tmp_path):
+    """The ledger's row opens on the mutant (testchapters.js): its title and the change,
+    before → after, drawn as the card draws it."""
+    out = _review(tmp_path, results=RESULTS)
+    blob = build.mutagent_survivors(out, tmp_path)
+    got = json.loads(blob.split(">", 1)[1].rsplit("</script>", 1)[0])
+    assert list(got) == ["T.java:9"]                       # the killed one's test is not here
+    anchor, title, change = got["T.java:9"][0]
+    assert title == "return null" and anchor.startswith("mg-")
+    assert '<div class="mg-change">' in change and "<ins>null</ins>" in change
+    js = (Path(build.__file__).parent / "hrbuild/assets/testchapters.js").read_text()
+    assert "rm-chmg" in js and "mutDetails" in js
+    css = (Path(build.__file__).parent / "hrbuild/assets/css/tests.css").read_text()
+    assert "rm-mg-pulse" in css and "prefers-reduced-motion" in css

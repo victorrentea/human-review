@@ -41,6 +41,13 @@
   var D = {};
   try { D = JSON.parse(map.querySelector('.rm-data').textContent); } catch (e) { D = {}; }
   var TESTS = D.tests || {}, LABEL = D.cats || {e2e: 'E2E', api: 'API', unit: 'Unit'};
+  // The tests a Mutagent mutant survived (`#rm-mutagent`, tests.py `mutagent_survivors`):
+  // `{"path:line": [[card anchor, title, change html], …]}`. Read here, before the counts:
+  // a chapter wears the 🧬 while one of them is on show in it.
+  var MUT = {};
+  try { MUT = JSON.parse(document.getElementById('rm-mutagent').textContent) || {}; }
+  catch (e) { MUT = {}; }
+  function mutsOf(row) { return MUT[(row.dataset.id || '').replace(/@base$/, '')]; }
   // The subtitles, as few words as say what the badge alone does not.
   var CH = [['e2e', 'end-to-end, from the browser'],
             ['api', 'calling the API directly'],
@@ -102,6 +109,7 @@
       + '<span class="rm-cat" data-cat="' + c[0] + '">' + esc(LABEL[c[0]] || c[0]) + '</span>'
       + '<span class="rm-chsub">' + esc(c[1]) + '</span>'
       + '<span class="rm-chhit" hidden></span>'
+      + '<span class="rm-chmg" hidden aria-hidden="true">🧬</span>'
       + '<span class="rm-chled"></span></div>'
       + '<div class="rm-chb"><div class="rm-cho"></div></div>';
     chapters[c[0]] = sec;
@@ -326,6 +334,16 @@
       // The `+N` sits right in front of the total, as the Complexity tab writes `+1 12`.
       var K = esc(LABEL[c[0]] || c[0].toUpperCase());
       sec.querySelector('.rm-chled').innerHTML = led(st, n, K, 'listed', c[0]);
+      // 🧬 on the chapter, pulsing slowly, while a test a mutant survived is on show in it
+      // (Victor, 20 Nov 2026: "inviting you to look for it"); a choice that hides that test
+      // takes the badge off the chapter too.
+      var mg = sec.querySelector('.rm-chmg'), m = shown.filter(mutsOf).length;
+      mg.hidden = !m;
+      if (m) {
+        mg.setAttribute('data-tip', 'A mutant survived ' + (m === 1 ? 'a test' : m + ' tests')
+          + ' here: ' + (m === 1 ? 'it passes' : 'they pass') + ' with the code broken. Open the '
+          + 'chapter, then the test with the 🧬, to see the mutant.');
+      }
       Object.keys(st).forEach(function (k) { sum[k] += st[k]; });
       total += n;
     });
@@ -571,38 +589,63 @@
   // ---- 🧬 on a test a mutant survived ------------------------------------------------------
   // The Mutagent card, last in the column, said "2 survived" and named the tests there; the
   // test's own row did not (Victor, 20 Nov 2026: "this test was proven to be wrong"). So the
-  // row wears the 🧬 just before its file link, the mutants on its hover, and a click opens
-  // the card on the first one (`#rm-mutagent`, written by tests.py `mutagent_survivors`).
-  var MUT = {};
-  try { MUT = JSON.parse(document.getElementById('rm-mutagent').textContent) || {}; }
-  catch (e) { MUT = {}; }
+  // row wears the 🧬 just before its file link, and its chapter wears it too (`count`).
+  // The mutant itself is the row's to show: opened, the row says it first, above the
+  // test's source — what the mutant changed, before → after, and that the test still
+  // passes (Victor, 20 Nov 2026: "only when you open the test are the details shown").
+  // The badge is part of the row's head, so a click on it opens the row like any other.
   function mutBadge(row) {
-    var ms = MUT[(row.dataset.id || '').replace(/@base$/, '')];
+    var ms = mutsOf(row);
     var at = ms && row.querySelector('.rm-thead .rm-tw');
     if (!at || row.querySelector('.rm-mg')) return;
-    var a = document.createElement('a');
-    a.className = 'rm-mg';
-    a.href = '#' + ms[0][0];
-    a.textContent = '🧬';
-    a.setAttribute('aria-label', 'a mutant survived this test');
-    a.setAttribute('data-tip', 'Passes even with the code broken by '
-      + (ms.length === 1 ? 'this mutant: ' : ms.length + ' mutants: ')
-      + ms.map(function (m) { return m[1]; }).join('; ') + '. Click to see it.');
-    a.addEventListener('click', function (e) {
-      e.preventDefault(); e.stopPropagation();
-      var card = document.getElementById('mutagent'), li = document.getElementById(ms[0][0]);
-      if (card) card.open = true;
-      var to = li || card;
-      if (!to) return;
-      to.scrollIntoView({block: 'center', behavior: 'smooth'});
-      to.classList.remove('mg-flash');
-      void to.offsetWidth;
-      to.classList.add('mg-flash');
-    });
+    var b = document.createElement('span');
+    b.className = 'rm-mg';
+    b.textContent = '🧬';
+    b.setAttribute('aria-label', 'a mutant survived this test');
+    b.setAttribute('data-tip', 'A mutant survived this test: it passes with the code broken by '
+      + ms.map(function (m) { return m[1]; }).join('; ') + '. Open the test to see the mutant.');
     row.dataset.mutant = 'survived';
-    at.parentNode.insertBefore(a, at);
+    at.parentNode.insertBefore(b, at);
   }
   Array.prototype.forEach.call(list.querySelectorAll('.rm-t[data-id]'), mutBadge);
+  function mutDetails(row) {
+    var ms = mutsOf(row), inner = row.querySelector('.rm-tinner');
+    if (!ms || !inner || inner.querySelector('.rm-mgd')) return;
+    var box = document.createElement('div');
+    box.className = 'rm-mgd';
+    box.innerHTML = ms.map(function (m) {
+      return '<p class="rm-mgh"><span class="rm-mgi" aria-hidden="true">🧬</span>'
+        + ' This test passes even with this mutant: <b>' + esc(m[1]) + '</b>'
+        + ' <a class="rm-mgcard" href="#' + esc(m[0]) + '">on the Mutagent card</a></p>'
+        + (m[2] || '');
+    }).join('');
+    inner.insertBefore(box, inner.firstChild);
+  }
+  // After reqmap.js has filled the row's body (it fills it, then marks the row open).
+  if (window.MutationObserver) {
+    new MutationObserver(function (recs) {
+      recs.forEach(function (r) {
+        var t = r.target;
+        if (t.classList && t.classList.contains('rm-t') && t.dataset.open === 'yes') mutDetails(t);
+      });
+    }).observe(list, {attributes: true, subtree: true, attributeFilter: ['data-open']});
+  }
+  // "on the Mutagent card": open it on that mutant, which flashes once.
+  list.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a.rm-mgcard');
+    if (!a) return;
+    e.preventDefault(); e.stopPropagation();
+    var card = document.getElementById('mutagent');
+    var li = document.getElementById(a.getAttribute('href').slice(1));
+    if (card) card.open = true;
+    var to = li || card;
+    if (!to) return;
+    to.scrollIntoView({block: 'center', behavior: 'smooth'});
+    to.classList.remove('mg-flash');
+    void to.offsetWidth;
+    to.classList.add('mg-flash');
+  }, true);
+  count();
   // On the card, not the list: the grand total's `−N` sits in the title strip above it.
   var POPS = '.rm-run[data-cover], .removed[data-gone]';
   map.addEventListener('pointerover', function (e) {

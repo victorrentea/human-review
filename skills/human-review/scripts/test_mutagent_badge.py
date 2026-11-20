@@ -28,7 +28,9 @@ def test_a_survivor_names_the_tests_that_stayed_green(tmp_path):
     })
     html = B.mutagent_survivors(out)
     body = re.search(r'id="rm-mutagent">(.*)</script>', html).group(1)
-    assert json.loads(body) == {"T.java:10": [["mg-01-drop-order", "drop ORDER BY"]]}
+    # Anchor, title, and the change as the card draws it — empty here: these mutants have
+    # no patch on disk.
+    assert json.loads(body) == {"T.java:10": [["mg-01-drop-order", "drop ORDER BY", ""]]}
     # The anchor the badge jumps to is the card's row for that mutant.
     assert 'id="mg-01-drop-order"' in B.mutagent_card(out, tmp_path)
 
@@ -49,4 +51,4 @@ def test_results_of_other_mutants_are_not_read(tmp_path):
 def test_the_row_draws_the_badge_before_its_file_link():
     js = (HERE / "hrbuild" / "assets" / "testchapters.js").read_text(encoding="utf-8")
     assert "getElementById('rm-mutagent')" in js
-    assert "insertBefore(a, at)" in js and "'.rm-thead .rm-tw'" in js
+    assert "insertBefore(b, at)" in js and "'.rm-thead .rm-tw'" in js

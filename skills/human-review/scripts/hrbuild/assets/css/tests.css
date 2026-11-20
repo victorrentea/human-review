@@ -156,21 +156,21 @@ ul.req-tests li { list-style:none; }
 .mutagent .mg-rationale, .mutagent .mg-why { color:var(--muted); }
 /* The mutation itself, readable unopened: file:line, the line at HEAD, then → and the line
    with the mutant, the changed tokens marked; long lines wrap rather than being cut. */
-.mutagent .mg-change { display:grid; grid-template-columns:auto minmax(0,1fr); gap:1px 6px;
+:is(.mutagent, .rm-mgd) .mg-change { display:grid; grid-template-columns:auto minmax(0,1fr); gap:1px 6px;
         margin:5px 0 0; align-items:baseline; }
-.mutagent .mg-change > .mg-where { grid-column:1 / -1; justify-self:start; font-size:.78rem; }
-.mutagent .mg-change > code { grid-column:2; display:block; white-space:pre-wrap;
+:is(.mutagent, .rm-mgd) .mg-change > .mg-where { grid-column:1 / -1; justify-self:start; font-size:.78rem; }
+:is(.mutagent, .rm-mgd) .mg-change > code { grid-column:2; display:block; white-space:pre-wrap;
         overflow-wrap:anywhere; font:.8rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
         padding:1px 6px; border-radius:4px; }
-.mutagent .mg-change > .mg-before { background:var(--diff-del-bg); }
-.mutagent .mg-change > .mg-after { background:var(--diff-add-bg); }
-.mutagent .mg-change > .mg-arrow { grid-column:1; grid-row:3; color:var(--muted);
+:is(.mutagent, .rm-mgd) .mg-change > .mg-before { background:var(--diff-del-bg); }
+:is(.mutagent, .rm-mgd) .mg-change > .mg-after { background:var(--diff-add-bg); }
+:is(.mutagent, .rm-mgd) .mg-change > .mg-arrow { grid-column:1; grid-row:3; color:var(--muted);
         font-weight:700; }
-.mutagent .mg-change > .mg-before { grid-row:2; }
-.mutagent .mg-change > .mg-after { grid-row:3; }
-.mutagent .mg-change del { text-decoration:none; background:var(--diff-del-gutter);
+:is(.mutagent, .rm-mgd) .mg-change > .mg-before { grid-row:2; }
+:is(.mutagent, .rm-mgd) .mg-change > .mg-after { grid-row:3; }
+:is(.mutagent, .rm-mgd) .mg-change del { text-decoration:none; background:var(--diff-del-gutter);
         outline:1px solid rgba(207,34,46,.45); border-radius:2px; }
-.mutagent .mg-change ins { text-decoration:none; background:var(--diff-add-gutter);
+:is(.mutagent, .rm-mgd) .mg-change ins { text-decoration:none; background:var(--diff-add-gutter);
         outline:1px solid rgba(26,127,55,.45); border-radius:2px; }
 .mutagent .mg-tests { list-style:none; margin:3px 0 0; padding:0; display:flex; flex-wrap:wrap;
         gap:2px 12px; }
@@ -198,11 +198,29 @@ ul.req-tests li { list-style:none; }
   .mutagent .mg-res.mg-fail { color:#6fdd8b; }
 }
 /* 🧬 on a test row a mutant survived (testchapters.js): just before its file link, on a
-   faint red disc - the test is green and does not prove what it claims. A click opens the
-   Mutagent card on that mutant, which flashes once. */
+   faint red disc - the test is green and does not prove what it claims. It is part of the
+   row's head: a click opens the row, whose body then says which mutant, before → after. */
 .reqmap .rm-thead .rm-mg { flex:none; display:inline-flex; align-items:center; justify-content:center;
   width:20px; height:20px; border-radius:50%; font-size:13px; line-height:1;
   text-decoration:none; background:rgba(220,60,40,.18); box-shadow:0 0 0 1px rgba(220,60,40,.55); }
 .reqmap .rm-thead .rm-mg:hover { background:rgba(220,60,40,.32); }
+.reqmap .rm-thead .rm-mg { cursor:pointer; }
+/* And on the chapter, while such a test is on show in it: the same disc, pulsing slowly so
+   a closed chapter invites a look (Victor, 20 Nov 2026), still for whoever asked the
+   system for less motion. */
+.reqmap .rm-chh .rm-chmg { flex:none; display:inline-flex; align-items:center;
+  justify-content:center; width:20px; height:20px; border-radius:50%; font-size:13px;
+  line-height:1; background:rgba(220,60,40,.18); box-shadow:0 0 0 1px rgba(220,60,40,.55);
+  animation:rm-mg-pulse 2.4s ease-in-out infinite; cursor:help; }
+.reqmap .rm-chh .rm-chmg[hidden] { display:none; }
+@keyframes rm-mg-pulse { 0%, 100% { opacity:1; } 50% { opacity:.3; } }
+@media (prefers-reduced-motion: reduce) { .reqmap .rm-chh .rm-chmg { animation:none; } }
+/* The opened row says the mutant first, above the test's source. */
+.reqmap .rm-mgd { margin:4px 0 6px; padding:6px 10px; border-left:3px solid #e5534b;
+  background:rgba(220,60,40,.06); font-size:12.5px; }
+.reqmap .rm-mgd .rm-mgh { margin:0; color:#b42318; }
+.reqmap .rm-mgd .rm-mgh + .mg-change { margin-top:4px; }
+.reqmap .rm-mgd .rm-mgcard { font-weight:400; margin-left:4px; }
+@media (prefers-color-scheme: dark) { .reqmap .rm-mgd .rm-mgh { color:#ff9b8f; } }
 .mutagent .mg-row.mg-flash { animation:mg-flash 1.6s ease-out; }
 @keyframes mg-flash { 0%, 30% { box-shadow:inset 0 0 0 2px #e5534b; } 100% { box-shadow:inset 0 0 0 2px transparent; } }
