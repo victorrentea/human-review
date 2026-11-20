@@ -71,7 +71,7 @@ record is `review-points.md`). Write it **after** commit #2, so `commit_id` is t
       "line": 5,
       "side": "RIGHT",
       "anchor": "ALTER TABLE visits ADD COLUMN vet_id INT REFERENCES vets (id) ON DELETE SET NULL;",
-      "body": "**Assumption** · confidence 0.55 — a deleted vet leaves their visits unattended rather than blocking the delete.\n\n**Not taken:** RESTRICT, which makes `DELETE /api/vets/{id}` fail on real data."
+      "body": "**Assumption** · 55% confident — a deleted vet leaves their visits unattended rather than blocking the delete.\n\n**Not taken:** RESTRICT, which makes `DELETE /api/vets/{id}` fail on real data."
     },
     {
       "pile": "ignored",
@@ -123,7 +123,7 @@ fixed it) are for the script and are stripped before sending.
    | --- | --- |
    | `fixed` | `**Auto-fixed** in <short sha>` — on the PR never: the push turns it into a note on that commit |
    | `ignored` | `**Open issue** · <severity> · declined` — then *why* it was declined |
-   | `assumption` | `**Assumption** · confidence <0.00>` — then the reading **not** taken |
+   | `assumption` | `**Assumption** · <NN>% confident` — then the reading **not** taken |
 
    Do not paste the `review-points.md` body. Do not write the marker or the emoji prefix;
    the script adds both — `🤖💭🤷‍♂️` on an assumption, `🤖⚔️🤖❌` on an open issue,

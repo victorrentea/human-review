@@ -102,7 +102,7 @@
       "line": 5,
       "side": "RIGHT",
       "anchor": "ALTER TABLE visits ADD COLUMN vet_id INT REFERENCES vets (id) ON DELETE SET NULL;",
-      "body": "💭 **Assumption** · confidence 0.55 — vet_id is ON DELETE SET NULL, so deleting a vet is never blocked\n\n**Not taken:** the default RESTRICT — a vet who has attended anything can no longer be deleted, and `DELETE /api/vets/{id}` starts failing on real data\n\n**Why:** #37 says a visit with no vet is normal and \"never an error\", so a vet's departure landing their old visits in that case is the reading that keeps the ticket's own rule true. RESTRICT would invent a new failure mode the ticket never asks for."
+      "body": "💭 **Assumption** · 55% confident — vet_id is ON DELETE SET NULL, so deleting a vet is never blocked\n\n**Not taken:** the default RESTRICT — a vet who has attended anything can no longer be deleted, and `DELETE /api/vets/{id}` starts failing on real data\n\n**Why:** #37 says a visit with no vet is normal and \"never an error\", so a vet's departure landing their old visits in that case is the reading that keeps the ticket's own rule true. RESTRICT would invent a new failure mode the ticket never asks for."
     },
     {
       "hr_id": "A:an-unknown-vetid-is-a-404-not-a-quietly",
@@ -112,7 +112,7 @@
       "line": 93,
       "side": "RIGHT",
       "anchor": "private Vet attendingVet(Integer vetId) {",
-      "body": "💭 **Assumption** · confidence 0.70 — An unknown vetId is a 404, not a quietly unattended visit\n\n**Not taken:** the house `petOfId` pattern — build a `Vet` carrying only the id, run no query, and let the foreign key reject a bad one as a 500\n\n**Why:** `petId` already takes the stub route, so consistency argued for it; correctness won. A typo'd vet id is a client error and reads like one, at the cost of one lean query per booking."
+      "body": "💭 **Assumption** · 70% confident — An unknown vetId is a 404, not a quietly unattended visit\n\n**Not taken:** the house `petOfId` pattern — build a `Vet` carrying only the id, run no query, and let the foreign key reject a bad one as a 500\n\n**Why:** `petId` already takes the stub route, so consistency argued for it; correctness won. A typo'd vet id is a client error and reads like one, at the cost of one lean query per booking."
     },
     {
       "hr_id": "A:a-visit-with-no-vet-reads-none-and-the-dropdown",
@@ -122,7 +122,7 @@
       "line": 14,
       "side": "RIGHT",
       "anchor": "export function vetLabel(visit: Visit): string {",
-      "body": "💭 **Assumption** · confidence 0.90 — A visit with no vet reads \"none\", and the dropdown offers \"-- none --\"\n\n**Not taken:** an em dash, or leaving the cell empty and letting the reader infer\n\n**Why:** #37's fourth requirement is that the visit reads as *having none* — not \"Unknown\", not blank-because-broken. A blank cell is indistinguishable from a failed load, which is the thing the requirement rules out."
+      "body": "💭 **Assumption** · 90% confident — A visit with no vet reads \"none\", and the dropdown offers \"-- none --\"\n\n**Not taken:** an em dash, or leaving the cell empty and letting the reader infer\n\n**Why:** #37's fourth requirement is that the visit reads as *having none* — not \"Unknown\", not blank-because-broken. A blank cell is indistinguishable from a failed load, which is the thing the requirement rules out."
     },
     {
       "hr_id": "A:the-seed-gives-some-visits-a-vet-and",
@@ -132,7 +132,7 @@
       "line": 118,
       "side": "RIGHT",
       "anchor": "-- vet_id is deliberately NULL on some rows: an appointment is routinely booked before anyone",
-      "body": "💭 **Assumption** · confidence 0.45 — The seed gives some visits a vet and deliberately withholds one from others\n\n**Not taken:** leave every seeded visit unattended, since the ticket only says old rows keep no vet\n\n**Why:** a demo dataset where nothing has a vet cannot show the feature at all, and one where everything does never exercises the \"none\" rendering. The older batch (the four visits on Alice's cats) stays vet-less as the pre-change history; Milton's three cover both."
+      "body": "💭 **Assumption** · 45% confident — The seed gives some visits a vet and deliberately withholds one from others\n\n**Not taken:** leave every seeded visit unattended, since the ticket only says old rows keep no vet\n\n**Why:** a demo dataset where nothing has a vet cannot show the feature at all, and one where everything does never exercises the \"none\" rendering. The older batch (the four visits on Alice's cats) stays vet-less as the pre-change history; Milton's three cover both."
     },
     {
       "hr_id": "A:the-vet-rides-on-visitdto-as-three-flat-fields",
@@ -142,7 +142,7 @@
       "line": 46,
       "side": "RIGHT",
       "anchor": "private @Nullable Integer vetId;",
-      "body": "💭 **Assumption** · confidence 0.80 — The vet rides on VisitDto as three flat fields, not a nested VetDto\n\n**Not taken:** `vet: VetDto`, the shape the vet screens already speak\n\n**Why:** `VisitDto` already flattens the owner into `ownerId`/`ownerFirstName`/ `ownerLastName`, and a nested `VetDto` carries `specialties`, which would put a vet's whole specialty list on every row of the all-visits table."
+      "body": "💭 **Assumption** · 80% confident — The vet rides on VisitDto as three flat fields, not a nested VetDto\n\n**Not taken:** `vet: VetDto`, the shape the vet screens already speak\n\n**Why:** `VisitDto` already flattens the owner into `ownerId`/`ownerFirstName`/ `ownerLastName`, and a nested `VetDto` carries `specialties`, which would put a vet's whole specialty list on every row of the all-visits table."
     },
     {
       "hr_id": "A:mcp-s-create-visit-and-the-chatbot-were-left",
@@ -152,7 +152,7 @@
       "line": 48,
       "side": "RIGHT",
       "anchor": "name = \"create_visit\",",
-      "body": "💭 **Assumption** · confidence 0.60 — MCP's create_visit and the chatbot were left alone\n\n**Not taken:** read \"everywhere throughout the app\" to include the MCP surface and let the assistant book with a vet\n\n**Why:** the ticket's own four requirements name the booking form, the edit form, the owner's page and the all-visits screen. The MCP tools keep booking without a vet, which is a valid visit under this change, so nothing there breaks."
+      "body": "💭 **Assumption** · 60% confident — MCP's create_visit and the chatbot were left alone\n\n**Not taken:** read \"everywhere throughout the app\" to include the MCP surface and let the assistant book with a vet\n\n**Why:** the ticket's own four requirements name the booking form, the edit form, the owner's page and the all-visits screen. The MCP tools keep booking without a vet, which is a valid visit under this change, so nothing there breaks."
     },
     {
       "hr_id": "A:two-generated-files-were-written-by-hand",
@@ -162,7 +162,7 @@
       "line": 346,
       "side": "RIGHT",
       "anchor": "/** @description First name of the vet (server-populated). */",
-      "body": "💭 **Assumption** · confidence 0.85 — Two generated files were written by hand because their generators cannot run here\n\n**Not taken:** leave them stale and let CI's regenerate-and-auto-commit fix them\n\n**Why:** stale TS types mean `visit.vetId` does not compile, so the working tree would not build for anyone who pulled it."
+      "body": "💭 **Assumption** · 85% confident — Two generated files were written by hand because their generators cannot run here\n\n**Not taken:** leave them stale and let CI's regenerate-and-auto-commit fix them\n\n**Why:** stale TS types mean `visit.vetId` does not compile, so the working tree would not build for anyone who pulled it."
     }
   ],
   "generated_by": "push-pr-comments.py --from-review-points"

@@ -1343,7 +1343,7 @@ def comment_body(pile: str, item: dict, fixed_sha: str | None, page: str | None)
         parts.append(_short(item.get("body", ""), BODY_MAX - 300))
     else:
         conf = item.get("confidence")
-        head = f"**Assumption**{f' · confidence {conf:.2f}' if conf is not None else ''} — {title}"
+        head = f"**Assumption**{f' · {conf * 100:.0f}% confident' if conf is not None else ''} — {title}"
         parts = [head]
         if item.get("alternative"):
             parts.append(f"**Not taken:** {_short(item['alternative'], 300)}")

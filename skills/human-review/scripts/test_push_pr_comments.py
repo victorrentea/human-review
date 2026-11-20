@@ -295,7 +295,7 @@ def test_from_review_points_then_check_against_a_real_diff(tmp_path, capsys):
     assert "The vet was dropped." in by["F:return-the-vet"]["body"]
     assert by["F:return-the-vet"]["fix_commit"] == _git(root, "rev-parse", "HEAD").strip()
     assert by["A:none-means-none"]["start_line"] == 2
-    assert "confidence 0.50" in by["A:none-means-none"]["body"]
+    assert "50% confident" in by["A:none-means-none"]["body"]
     assert "**Open issue** · low" in by["I:rename-the-class"]["body"]
     capsys.readouterr()
 
