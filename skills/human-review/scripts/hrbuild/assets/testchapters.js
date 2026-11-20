@@ -41,13 +41,21 @@
   var D = {};
   try { D = JSON.parse(map.querySelector('.rm-data').textContent); } catch (e) { D = {}; }
   var TESTS = D.tests || {}, LABEL = D.cats || {e2e: 'E2E', api: 'API', unit: 'Unit'};
-  // The tests a Mutagent mutant survived (`#rm-mutagent`, tests.py `mutagent_survivors`):
-  // `{"path:line": [[card anchor, title, change html], …]}`. Read here, before the counts:
-  // a chapter wears the 🧬 while one of them is on show in it.
+  // The tests Mutagent ran its mutants against (`#rm-mutagent`, tests.py `mutagent_marks`):
+  // `{"path:line": [{how, title, change, why}, …]}`, worst first; `how` is killed,
+  // survived, or missed (green, but another test caught it). Read here, before the counts:
+  // a chapter wears the 🧬 while a test a mutant survived is on show in it.
   var MUT = {};
   try { MUT = JSON.parse(document.getElementById('rm-mutagent').textContent) || {}; }
   catch (e) { MUT = {}; }
   function mutsOf(row) { return MUT[(row.dataset.id || '').replace(/@base$/, '')]; }
+  // Red with one survivor; green when it caught every mutant aimed at it; grey otherwise.
+  function mutColour(ms) {
+    if (!ms) return '';
+    if (ms.some(function (m) { return m.how === 'survived'; })) return 'red';
+    return ms.every(function (m) { return m.how === 'killed'; }) ? 'green' : 'grey';
+  }
+  function survived(row) { return mutColour(mutsOf(row)) === 'red'; }
   // The subtitles, as few words as say what the badge alone does not.
   var CH = [['e2e', 'end-to-end, from the browser'],
             ['api', 'calling the API directly'],
@@ -337,7 +345,7 @@
       // 🧬 on the chapter, pulsing slowly, while a test a mutant survived is on show in it
       // (Victor, 20 Nov 2026: "inviting you to look for it"); a choice that hides that test
       // takes the badge off the chapter too.
-      var mg = sec.querySelector('.rm-chmg'), m = shown.filter(mutsOf).length;
+      var mg = sec.querySelector('.rm-chmg'), m = shown.filter(survived).length;
       mg.hidden = !m;
       if (m) {
         mg.setAttribute('data-tip', 'A mutant survived ' + (m === 1 ? 'a test' : m + ' tests')
@@ -586,25 +594,33 @@
   }
   Array.prototype.forEach.call(list.querySelectorAll('.rm-t[data-id]'), arm);
 
-  // ---- 🧬 on a test a mutant survived ------------------------------------------------------
-  // The Mutagent card, last in the column, said "2 survived" and named the tests there; the
-  // test's own row did not (Victor, 20 Nov 2026: "this test was proven to be wrong"). So the
-  // row wears the 🧬 just before its file link, and its chapter wears it too (`count`).
-  // The mutant itself is the row's to show: opened, the row says it first, above the
-  // test's source — what the mutant changed, before → after, and that the test still
-  // passes (Victor, 20 Nov 2026: "only when you open the test are the details shown").
-  // The badge is part of the row's head, so a click on it opens the row like any other.
+  // ---- 🧬 on a test Mutagent ran a mutant against -----------------------------------------
+  // Each such row wears the 🧬 just before its file link: red if one mutant survived it (it
+  // passes with the code broken), green if it failed against every mutant, as it should
+  // (Victor, 20 Nov 2026). Opened, the row says first, above the test's source, which
+  // mutants it met and what each changed, before → after. That replaced the Mutagent card
+  // at the foot of the column: the verdict sits on the test it is about. The badge is part
+  // of the row's head, so a click on it opens the row like any other.
+  var MUT_TIP = {
+    red: 'A mutant survived this test: it passes with the code broken.',
+    green: 'This test caught every mutant aimed at it: it fails when the code is broken.',
+    grey: 'Another test caught the mutant aimed at this one; this one stayed green.'};
+  var MUT_SAID = {
+    survived: 'Survived: passes even with',
+    missed: 'Stayed green, another test caught',
+    killed: 'Killed: fails, as it should, with'};
   function mutBadge(row) {
-    var ms = mutsOf(row);
+    var ms = mutsOf(row), colour = mutColour(ms);
     var at = ms && row.querySelector('.rm-thead .rm-tw');
     if (!at || row.querySelector('.rm-mg')) return;
     var b = document.createElement('span');
     b.className = 'rm-mg';
+    b.dataset.mg = colour;
     b.textContent = '🧬';
-    b.setAttribute('aria-label', 'a mutant survived this test');
-    b.setAttribute('data-tip', 'A mutant survived this test: it passes with the code broken by '
-      + ms.map(function (m) { return m[1]; }).join('; ') + '. Open the test to see the mutant.');
-    row.dataset.mutant = 'survived';
+    b.setAttribute('aria-label', MUT_TIP[colour]);
+    b.setAttribute('data-tip', MUT_TIP[colour] + ' ' + ms.map(function (m) {
+      return m.how + ': ' + m.title; }).join('; ') + '. Open the test to see the mutation.');
+    row.dataset.mutant = colour;
     at.parentNode.insertBefore(b, at);
   }
   Array.prototype.forEach.call(list.querySelectorAll('.rm-t[data-id]'), mutBadge);
@@ -613,11 +629,12 @@
     if (!ms || !inner || inner.querySelector('.rm-mgd')) return;
     var box = document.createElement('div');
     box.className = 'rm-mgd';
+    box.dataset.mg = mutColour(ms);
     box.innerHTML = ms.map(function (m) {
-      return '<p class="rm-mgh"><span class="rm-mgi" aria-hidden="true">🧬</span>'
-        + ' This test passes even with this mutant: <b>' + esc(m[1]) + '</b>'
-        + ' <a class="rm-mgcard" href="#' + esc(m[0]) + '">on the Mutagent card</a></p>'
-        + (m[2] || '');
+      return '<div class="rm-mgm" data-how="' + esc(m.how) + '">'
+        + '<p class="rm-mgh"' + (m.why ? ' data-tip="' + esc(m.why) + '"' : '') + '>'
+        + '<span class="rm-mgi" aria-hidden="true">🧬</span> ' + MUT_SAID[m.how]
+        + ' <b>' + esc(m.title) + '</b></p>' + (m.change || '') + '</div>';
     }).join('');
     inner.insertBefore(box, inner.firstChild);
   }
@@ -630,21 +647,6 @@
       });
     }).observe(list, {attributes: true, subtree: true, attributeFilter: ['data-open']});
   }
-  // "on the Mutagent card": open it on that mutant, which flashes once.
-  list.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('a.rm-mgcard');
-    if (!a) return;
-    e.preventDefault(); e.stopPropagation();
-    var card = document.getElementById('mutagent');
-    var li = document.getElementById(a.getAttribute('href').slice(1));
-    if (card) card.open = true;
-    var to = li || card;
-    if (!to) return;
-    to.scrollIntoView({block: 'center', behavior: 'smooth'});
-    to.classList.remove('mg-flash');
-    void to.offsetWidth;
-    to.classList.add('mg-flash');
-  }, true);
   count();
   // On the card, not the list: the grand total's `−N` sits in the title strip above it.
   var POPS = '.rm-run[data-cover], .removed[data-gone]';

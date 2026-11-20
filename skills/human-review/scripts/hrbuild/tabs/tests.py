@@ -1914,9 +1914,6 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path, root: Path | None = None
                              root if root is not None else out_dir.resolve().parent,
                              generated=generated)
     text_col, side_col = gap_under_card(text_col, side_col)
-    # The 🧬 Mutagent card, last in the tests' column: it is a verdict on those tests.
-    side_col = _append_inside(side_col, mutagent_card(
-        out_dir, root if root is not None else out_dir.resolve().parent))
     ref = (generated and drawn_ticket(frag)) or ticket_ref(spec, out_dir)
     body = (m.group(0) + ticket_head(ref)
             + text_col + all_tests_toggle(cats) + side_col + "</div>")
@@ -1928,7 +1925,7 @@ def reqmap_layout(frag: str, spec: dict, out_dir: Path, root: Path | None = None
     out = relabel_cats(out)
     at = root if root is not None else out_dir.resolve().parent
     inventory = (all_tests_inventory(out, doc, at) + test_cover_files(out, doc, at)
-                 + mutagent_survivors(out_dir, at))
+                 + mutagent_marks(out_dir, at))
     # The matrix's own renderer (`reqmap/reqmap.js`) re-renders a fresh matrix and may run
     # again (`data-hr-swap="rerun"`); semcov.py says so, and a fragment written before it
     # did is told here.
@@ -2119,14 +2116,7 @@ def mutagent_buttons(info: dict | None) -> str:
 
 
 #: Each verdict's pill, and what it means in its hover.
-MUTAGENT_VERDICTS = {
-    "survived": ("survived", "Every test expected to catch this mutant stayed green: "
-                             "it does not prove what it claims."),
-    "killed": ("killed", "A test expected to catch this mutant failed: it proves its sentence."),
-    "broken": ("broken", "The mutant did not apply or did not compile: it says nothing."),
-    "not-run": ("not run", "Its tests were not run here; the row says why."),
-    "pending": ("not run yet", "Press 🧪 to run the tests against it."),
-}
+#: A mutant's verdicts, in the order a test's row lists them: what it let through first.
 _MUTAGENT_ORDER = ("survived", "killed", "pending", "not-run", "broken")
 
 
@@ -2135,46 +2125,6 @@ def _mutagent_json(path: Path):
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-
-
-def mutagent_summary(rows: list[dict]) -> str:
-    """`5 of 7 killed · 1 survived · 1 not run` — the card's folded line."""
-    n = len(rows)
-    count = {k: sum(1 for r in rows if r["verdict"] == k) for k in _MUTAGENT_ORDER}
-    if count["pending"] == n:
-        return f"{n} mutant{'s' if n != 1 else ''}, not run yet"
-    parts = [f"{count['killed']} of {n} killed"]
-    for k in ("survived", "not-run", "broken", "pending"):
-        if count[k]:
-            parts.append(f"{count[k]} {MUTAGENT_VERDICTS[k][0]}")
-    return " · ".join(parts)
-
-
-_RESULT_MARK = {
-    "pass": '<span class="mg-res mg-pass" data-tip="Green with the mutant applied">✓</span>',
-    "fail": '<span class="mg-res mg-fail" data-tip="Failed with the mutant applied">✗</span>',
-    "missing": '<span class="mg-res" data-tip="The runner did not report it">?</span>',
-}
-
-
-def _mutagent_test(tid: str, t: dict, state: str, root: Path, said: str = "") -> str:
-    """One expected test, linked like the matrix's rows, with what it did under the mutant
-    (a failure's own message on its ✗)."""
-    path, _, line = tid.rpartition(":")
-    label = html.escape(t.get("label") or Path(path or tid).name)
-    off = "" if t.get("runnable", True) else (t.get("why") or "")
-    tip = html.escape((path or tid) + (f" — not run: {off}" if off else ""), quote=True)
-    if path and line.isdigit() and (root / path).is_file():
-        link = (f'<a class="srcref testref" href="vscode://file/{(root / path).resolve()}:'
-                f'{line}:1" data-tip="{tip}">{label}</a>')
-    else:
-        link = f'<span class="srcref testref" data-tip="{tip}">{label}</span>'
-    cls = ' class="mg-off"' if off else ""
-    mark = _RESULT_MARK.get(state, "")
-    if said and state == "fail":
-        mark = mark.replace('data-tip="Failed with the mutant applied"',
-                            f'data-tip="{html.escape("Failed with the mutant applied: " + said, quote=True)}"')
-    return f'<li{cls}>{mark}{link}</li>'
 
 
 #: A token for the word-level diff of a mutated line: a word, a run of blanks, one symbol.
@@ -2262,27 +2212,30 @@ def _mutagent_rows(out_dir: Path) -> tuple[dict, list[dict]] | None:
     return doc, rows
 
 
-def mutant_anchor(row: dict) -> str:
-    """The `id` of a mutant's row on the card, where a test row's 🧬 lands."""
-    return "mg-" + re.sub(r"[^\w-]", "-", str(row.get("id") or ""))
-
-
 #: The test rows' 🧬, keyed like `rm-data`'s tests (`path:line`): written here, drawn by
 #: testchapters.js.
-MUTAGENT_SURVIVORS_ID = "rm-mutagent"
+MUTAGENT_MARKS_ID = "rm-mutagent"
+#: What one mutant did to one test, worst first: the order the row lists them in.
+_MARK_ORDER = ("survived", "missed", "killed")
 
 
-def mutagent_survivors(out_dir: Path, root: Path | None = None) -> str:
-    """For each test a mutant survived — it stayed green with the code broken — the mutants
-    it let through: `{"path:line": [[anchor, title, change], …]}`, `change` the mutation as
-    the card draws it (before → after), shown when the test's row is opened. The card says it at the bottom
-    of the column; the test's own row is where a reader looks (Victor, 20 Nov 2026: "this
-    test was proven to be wrong"). Empty when nothing survived."""
+def mutagent_marks(out_dir: Path, root: Path | None = None) -> str:
+    """Every test a Mutagent mutant was run against, with what came of it:
+    `{"path:line": [{"how", "title", "change", "why"}, …]}`, worst first.
+
+    `how` is the test's own outcome: `killed` — it failed with the code broken, as it
+    should; `survived` — it stayed green and so did every other test aimed at that mutant;
+    `missed` — it stayed green but another test caught the mutant. `change` is the mutation
+    before → after (`mutation_html`), shown when the row is opened; `why` the model's reason
+    for it, on its hover. The row's 🧬 is red with one survivor, green when it only killed
+    (Victor, 20 Nov 2026: "a single mutant failed makes that test RED mutant"). This replaced
+    the Mutagent card at the foot of the column: the verdict sits on the test it is about.
+    Mutants not run, or that did not apply, mark nothing. Empty without results."""
     got = _mutagent_rows(out_dir)
     at = root if root is not None else out_dir.resolve().parent
     out: dict[str, list] = {}
     for r in (got[1] if got else []):
-        if r["verdict"] != "survived":
+        if r["verdict"] not in ("killed", "survived"):
             continue
         try:
             change = mutation_html((out_dir / MUTAGENT_DIR / r["patch"]).read_text(
@@ -2290,81 +2243,17 @@ def mutagent_survivors(out_dir: Path, root: Path | None = None) -> str:
         except (OSError, KeyError, TypeError):
             change = ""
         for tid, state in r["states"].items():
-            if state == "pass":
-                out.setdefault(tid, []).append([mutant_anchor(r), r.get("title") or r.get("id"),
-                                                change])
+            if state == "fail":
+                how = "killed"
+            elif state == "pass":
+                how = "survived" if r["verdict"] == "survived" else "missed"
+            else:
+                continue
+            out.setdefault(tid, []).append({"how": how, "title": r.get("title") or r.get("id"),
+                                            "change": change, "why": r.get("rationale") or ""})
     if not out:
         return ""
+    for marks in out.values():
+        marks.sort(key=lambda m: _MARK_ORDER.index(m["how"]))
     body = json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
-    return f'<script type="application/json" id="{MUTAGENT_SURVIVORS_ID}">{body}</script>'
-
-
-def mutagent_card(out_dir: Path, root: Path) -> str:
-    """The 🧬 Mutagent card, folded to one line (Victor, 20 Nov 2026: "only on demand"):
-    what was killed and what survived, and who wrote the mutants at what cost. Open, one row
-    per mutant, a survivor first, each showing the change it made. Empty without
-    `mutagent/mutants.json` — the 🧬 press is the way in."""
-    from ..shared.adopt import adopt_html
-    from ..shared.snippets import diff_text_html
-    got = _mutagent_rows(out_dir)
-    if got is None:
-        return ""
-    doc, rows = got
-    base = out_dir / MUTAGENT_DIR
-    tests = doc.get("tests") or {}
-    items = []
-    for r in rows:
-        face, tip = MUTAGENT_VERDICTS.get(r["verdict"], (r["verdict"], ""))
-        title = html.escape(r.get("title") or r.get("id") or "")
-        sentence = r.get("sentence") or {}
-        said = html.escape(sentence.get("text") or sentence.get("id") or "")
-        headline = ""
-        if r["verdict"] == "survived":
-            green = [(tests.get(t) or {}).get("label") or t
-                     for t, s in r["states"].items() if s == "pass"]
-            headline = (f'<p class="mg-headline">{html.escape(", ".join(green))} '
-                        f'pass{"es" if len(green) == 1 else ""} even with this mutant.</p>')
-        why = (f'<p class="mg-why">{html.escape(r["why"])}</p>'
-               if r["why"] and r["verdict"] in ("not-run", "broken") else "")
-        rationale = (f'<p class="mg-rationale">{html.escape(r["rationale"])}</p>'
-                     if r.get("rationale") else "")
-        change = patch = ""
-        try:
-            text = (base / r["patch"]).read_text(encoding="utf-8")
-            change = mutation_html(text, r.get("file") or "", root)
-            patch = diff_text_html(text, r.get("file") or "", root, fold=True)
-        except (OSError, KeyError, TypeError):
-            pass
-        tlist = "".join(_mutagent_test(t, tests.get(t) or {}, r["states"].get(t, ""), root,
-                                       r["said"].get(t, ""))
-                        for t in r.get("expect") or [])
-        items.append(
-            f'<li class="mg-row mg-{html.escape(r["verdict"])}" id="{mutant_anchor(r)}">'
-            f'<div class="mg-top"><span class="mg-pill" data-tip="{html.escape(tip, quote=True)}">'
-            f'{html.escape(face)}</span><b class="mg-title">{title}</b></div>'
-            + headline + change
-            + ((f'<p class="mg-attacks mg-byname" data-tip="A pre-existing test that runs lines '
-                f'this PR changed, claimed by no ticket sentence: its own name is its claim">'
-                f'<span class="mg-claim">claims, by its name:</span> “{said}”</p>')
-               if said and sentence.get("kind") == "test" else
-               (f'<p class="mg-attacks" data-tip="The ticket sentence this mutant attacks">'
-                f'“{said}”</p>') if said else "")
-            + rationale + why
-            + f'<ul class="mg-tests" data-tip="Tests expected to fail with this mutant">{tlist}</ul>'
-            + patch + '</li>')
-    sum_tip = ("Killed: a test expected to catch the mutant failed, so it proves its sentence. "
-               "Survived: all stayed green, so it does not. Click to open the mutants.")
-    summary = html.escape(mutagent_summary(rows))
-    # The survivors are the news: in red on the folded line, where they are seen unopened.
-    summary = re.sub(r"(\d+ survived)", r'<span class="mg-sv">\1</span>', summary)
-    spent = doc.get("cost")
-    meta = " ".join(x for x in (str(doc.get("model") or ""),
-                                f"${spent:.2f}" if isinstance(spent, (int, float)) else "") if x)
-    return ('<details class="mutagent" id="mutagent">'
-            f'<summary class="mg-head" data-tip="{html.escape(sum_tip, quote=True)}">'
-            f'<b class="mg-name">{MUTAGENT_MARK} Mutagent</b>'
-            f'<span class="mg-sum">{summary}</span>'
-            + (f'<span class="mg-meta">{html.escape(meta)}</span>' if meta else "")
-            + '</summary><div class="mg-body">'
-            + adopt_html("requirements.mutagent", how="in")
-            + f'<ol class="mg-list">{"".join(items)}</ol></div></details>')
+    return f'<script type="application/json" id="{MUTAGENT_MARKS_ID}">{body}</script>'

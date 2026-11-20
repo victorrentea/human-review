@@ -108,16 +108,12 @@ PIECES: dict[str, tuple[str, str]] = {
     "diagram": (
         "the {title} diagram, kept in the repository as PlantUML and diffed base against "
         "branch", "scripts/puml-diff.sh, puml-diff/puml_diff.py, puml-diff/seq_puml_diff.py"),
-    "requirements.mutagent": (
-        "Mutagent: AI writes a few semantic mutants of the PR's production code, each aimed at "
-        "a ticket sentence a test claims to prove, then runs those tests against each mutant "
-        "in a throwaway worktree and reports which mutants survived",
-        "scripts/mutagent.py, reference/mutagent-prompt.md, scripts/hrbuild/tabs/tests.py"),
     "requirements": (
         "the ticket's requirements mapped to the tests that prove each one, side by side, "
-        "with every test that runs the changed lines",
+        "with every test that runs the changed lines, each test marked by Mutagent: AI "
+        "mutates the PR's code where a test claims something and checks that the test fails",
         "reference/matrix-prompt.md, scripts/rerun-model.py, scripts/semcov.py, "
-        "scripts/testcov.py"),
+        "scripts/testcov.py, scripts/mutagent.py, reference/mutagent-prompt.md"),
     "sequence": (
         "sequence diagrams drawn from traced test runs, each beside the test that drew it",
         "scripts/hrbuild/shared/genseq.py, scripts/puml-diff.sh, puml-diff/seq_puml_diff.py"),
@@ -345,20 +341,10 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             '<b>Show:</b> tests covering the ticket (fork), running changed code (shield), or all.',
             '<b>green</b> = proven · <b>orange</b> = partly · <b>red</b> = no test; AI-matched, may be wrong.',
-            'Name colour = kind: E2E and API weigh most, they prove the feature, not one method.',
+            'Name colour = kind (E2E, API weigh most); dot: the DB fixture it starts on, grey: Default',
             'Click a sentence: lines to its tests (greyed = never runs); <b>▲ ▼</b> = more scrolled away.',
             '<b>− ✏️ +</b> before a total: deleted, edited, new, of the tests shown; hover <b>−</b>: in the IDE.',
-            'Dot: the DB fixture a test declares it starts on; grey = Default; none = empty DB.',
-        ],
-    },
-    'requirements.mutagent': {
-        "li": [
-            '🧬 AI tweaks the PR\'s code where a test claims a sentence, or by its name (costs money).',
-            'A survivor\'s test wears 🧬, its kind pulsing; open the test row to see the mutant.',
-            'Each names the tests that must fail; 🧪 runs them in a throwaway worktree.',
-            '<b>killed</b>: an expected test failed, it proves its sentence; <b>survived</b>: not.',
-            'Folded to one line, survivors in red; open: each change before → after, ✓/✗ per test.',
-            '<b>broken</b>: did not apply or compile; <b>not run</b>: no runner (e2e, Karma).',
+            '🧬 AI broke code this test runs: <b>green</b> = it failed, as it should; <b>red</b> = still passed.',
         ],
     },
     'sequence': {

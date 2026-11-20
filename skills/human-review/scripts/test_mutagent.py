@@ -323,30 +323,29 @@ RESULTS = {"mutantsHead": "abc", "mutants": {
     "02-null": {"verdict": "survived", "tests": {"T.java:9": "pass"}}}}
 
 
-def test_the_card_leads_with_the_survivor_and_says_what_it_proves(tmp_path):
-    card = build.mutagent_card(_review(tmp_path, results=RESULTS), tmp_path)
-    assert card.startswith('<details class="mutagent" id="mutagent">')      # folded
-    assert '1 of 2 killed · <span class="mg-sv">1 survived</span>' in card
-    # The folded line is the summary alone: the prompt pill and its ⓘ open with the list.
-    head = card[:card.index("</summary>")]
-    assert "sonnet $0.22" in head and "Prompt to get this" not in head
-    assert card.index("mg-survived") < card.index("mg-killed")
-    assert "T#none passes even with this mutant." in card
-    assert "“Says none.”" in card
-    # The mutation itself, unopened: before → after, the changed token marked.
-    assert '<code class="mg-before" data-tip="At HEAD"><del>ORDER BY name</del>' in card
-    assert 'Search.java:1</span>' in card
-    assert "expected: [A, B] but was: [B, A]" in card            # the ✗'s own message
-    assert card.count('<details class="ghfold">') == 2           # each patch, folded
-    assert 'data-explain="requirements.mutagent"' in card        # its ⓘ
-    assert "Killed: a test expected to catch the mutant failed" in card
+def _marks(out, root):
+    blob = build.mutagent_marks(out, root)
+    return json.loads(blob.split(">", 1)[1].rsplit("</script>", 1)[0]) if blob else {}
 
 
-def test_no_mutants_no_card_and_old_results_do_not_colour_new_mutants(tmp_path):
-    assert build.mutagent_card(_review(tmp_path, mutants=False), tmp_path) == ""
+def test_each_test_is_marked_by_what_it_did_against_its_mutant(tmp_path):
+    """No card any more: the verdict rides on the test's own row (testchapters.js) — a
+    killed mutant marks its test green, a survivor red, with the change before → after."""
+    got = _marks(_review(tmp_path, results=RESULTS), tmp_path)
+    assert {t: [m["how"] for m in ms] for t, ms in got.items()} == {
+        "T.java:3": ["killed"], "T.java:9": ["survived"]}
+    killed = got["T.java:3"][0]
+    assert killed["title"] == "drop ORDER BY" and killed["why"] == "r1"
+    # The mutation itself: before → after, the changed token marked.
+    assert '<code class="mg-before" data-tip="At HEAD"><del>ORDER BY name</del>' in killed["change"]
+    assert 'Search.java:1</span>' in killed["change"]
+
+
+def test_no_mutants_or_old_results_mark_nothing(tmp_path):
+    assert build.mutagent_marks(_review(tmp_path, mutants=False), tmp_path) == ""
     stale = {**RESULTS, "mutantsHead": "older"}
-    card = build.mutagent_card(_review(tmp_path / "b", results=stale), tmp_path / "b")
-    assert "2 mutants, not run yet" in card and "mg-survived" not in card
+    assert build.mutagent_marks(_review(tmp_path / "b", results=stale), tmp_path / "b") == ""
+    assert build.mutagent_marks(_review(tmp_path / "c"), tmp_path / "c") == ""   # not run yet
 
 
 def test_the_mutation_is_shown_word_by_word_and_wraps_instead_of_hiding():
@@ -458,21 +457,31 @@ def test_an_unclaimed_pre_existing_test_is_attacked_on_what_its_name_claims(
     assert doc["mutants"][0]["sentence"] == {"id": "t:" + LEGACY_ID, "kind": "test",
                                              "text": "names come back sorted"}
     assert doc["tests"][LEGACY_ID]["label"] == "SearchTest#namesComeBackSorted"
-    card = build.mutagent_card(repo / ".human-review", repo)
-    assert "claims, by its name:</span> “names come back sorted”" in card
+    assert build.mutagent_marks(repo / ".human-review", repo) == ""   # generated, not run
 
 
-def test_a_survivors_test_row_carries_the_mutation_it_let_through(tmp_path):
-    """The ledger's row opens on the mutant (testchapters.js): its title and the change,
-    before → after, drawn as the card draws it."""
-    out = _review(tmp_path, results=RESULTS)
-    blob = build.mutagent_survivors(out, tmp_path)
-    got = json.loads(blob.split(">", 1)[1].rsplit("</script>", 1)[0])
-    assert list(got) == ["T.java:9"]                       # the killed one's test is not here
-    anchor, title, change = got["T.java:9"][0]
-    assert title == "return null" and anchor.startswith("mg-")
+def test_a_test_row_carries_the_mutations_it_met(tmp_path):
+    """The ledger's row opens on its mutants (testchapters.js): the title and the change,
+    before → after; its 🧬 is red with one survivor, green when it caught them all."""
+    got = _marks(_review(tmp_path, results=RESULTS), tmp_path)
+    how, title, change = (got["T.java:9"][0][k] for k in ("how", "title", "change"))
+    assert (how, title) == ("survived", "return null")
     assert '<div class="mg-change">' in change and "<ins>null</ins>" in change
     js = (Path(build.__file__).parent / "hrbuild/assets/testchapters.js").read_text()
-    assert "rm-chmg" in js and "mutDetails" in js
+    assert "rm-chmg" in js and "mutDetails" in js and "mutColour" in js
     css = (Path(build.__file__).parent / "hrbuild/assets/css/tests.css").read_text()
     assert "rm-mg-pulse" in css and "prefers-reduced-motion" in css
+    assert ".rm-mg[data-mg=green]" in css
+
+
+def test_a_test_that_stayed_green_while_another_caught_the_mutant_is_not_red(tmp_path):
+    out = _review(tmp_path, results={"mutantsHead": "abc", "mutants": {
+        "01-drop": {"verdict": "killed", "tests": {"T.java:3": "pass", "T.java:9": "fail"}}}})
+    got = _marks(out, tmp_path)
+    assert got["T.java:3"][0]["how"] == "missed" and got["T.java:9"][0]["how"] == "killed"
+
+
+def test_the_card_is_gone_from_the_tests_tab():
+    src = (Path(build.__file__).parent / "hrbuild/tabs/tests.py").read_text()
+    assert "mutagent_card" not in src and 'class="mutagent"' not in src
+
