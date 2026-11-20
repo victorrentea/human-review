@@ -158,7 +158,7 @@
       "side": "RIGHT",
       "start_line": 21,
       "anchor": "private static final String DEFAULT_SORT = \"date,desc\";",
-      "body": "**Assumption** · confidence 1.00 — Newest first, 10 rows by default\n\n**Why:** Q&A.md:6 decides it."
+      "body": "**Assumption** · 100% confident — Newest first, 10 rows by default\n\n**Why:** Q&A.md:6 decides it."
     },
     {
       "hr_id": "A:the-repository-selects-straight-into-visitrowdto",
@@ -168,7 +168,7 @@
       "line": 23,
       "side": "RIGHT",
       "anchor": "SELECT new victor.training.petclinic.rest.dto.VisitRowDto(",
-      "body": "**Assumption** · confidence 1.00 — The repository selects straight into VisitRowDto\n\n**Why:** Q&A.md:9 decides it."
+      "body": "**Assumption** · 100% confident — The repository selects straight into VisitRowDto\n\n**Why:** Q&A.md:9 decides it."
     },
     {
       "hr_id": "A:bad-params-are-corrected-never-answered-with-400",
@@ -179,7 +179,7 @@
       "side": "RIGHT",
       "start_line": 64,
       "anchor": "return visitRepository.findGridPage(pageable.withPage(lastPage));",
-      "body": "**Assumption** · confidence 1.00 — Bad params are corrected, never answered with 400\n\n**Why:** Q&A.md:12 decides it."
+      "body": "**Assumption** · 100% confident — Bad params are corrected, never answered with 400\n\n**Why:** Q&A.md:12 decides it."
     },
     {
       "hr_id": "A:owner-column-sorts-by-first-name-then-last-name",
@@ -189,7 +189,7 @@
       "line": 29,
       "side": "RIGHT",
       "anchor": "\"owner\", List.of(\"o.firstName\", \"o.lastName\"));",
-      "body": "**Assumption** · confidence 0.60 — Owner column sorts by first name, then last name\n\n**Not taken:** last name first, the usual directory order\n\n**Why:** the column shows \"First Last\", so this order reads sorted on screen and lets the acceptance test compare the visible text. A clinic may still expect surname order, which keeps it near a coin flip."
+      "body": "**Assumption** · 60% confident — Owner column sorts by first name, then last name\n\n**Not taken:** last name first, the usual directory order\n\n**Why:** the column shows \"First Last\", so this order reads sorted on screen and lets the acceptance test compare the visible text. A clinic may still expect surname order, which keeps it near a coin flip."
     },
     {
       "hr_id": "A:a-size-equidistant-from-two-allowed-sizes-snaps",
@@ -200,7 +200,7 @@
       "side": "RIGHT",
       "start_line": 50,
       "anchor": ".orElseThrow();",
-      "body": "**Assumption** · confidence 0.50 — A size equidistant from two allowed sizes snaps down\n\n**Not taken:** 15 snaps up to 20\n\n**Why:** \"nearest\" leaves the tie open; the stream takes the first, smaller size. Nobody types 15, so it barely matters."
+      "body": "**Assumption** · 50% confident — A size equidistant from two allowed sizes snaps down\n\n**Not taken:** 15 snaps up to 20\n\n**Why:** \"nearest\" leaves the tie open; the stream takes the first, smaller size. Nobody types 15, so it barely matters."
     },
     {
       "hr_id": "A:an-unreadable-page-number-serves-the-first-page",
@@ -210,7 +210,7 @@
       "line": 41,
       "side": "RIGHT",
       "anchor": "return requested == null ? 0 : Math.clamp(requested, 0, Integer.MAX_VALUE / pageSize);",
-      "body": "**Assumption** · confidence 0.75 — An unreadable page number serves the first page\n\n**Not taken:** treat it as past the end and serve the last page\n\n**Why:** Q3 names only \"past the end\"; garbage reads closest to \"no page given\", which defaults to the first."
+      "body": "**Assumption** · 75% confident — An unreadable page number serves the first page\n\n**Not taken:** treat it as past the end and serve the last page\n\n**Why:** Q3 names only \"past the end\"; garbage reads closest to \"no page given\", which defaults to the first."
     },
     {
       "hr_id": "A:page-size-and-sort-live-in-the-url-query",
@@ -220,7 +220,7 @@
       "line": 56,
       "side": "RIGHT",
       "anchor": "void this.router.navigate([], {relativeTo: this.route, queryParams, queryParamsHandling: 'merge'});",
-      "body": "**Assumption** · confidence 0.80 — Page, size and sort live in the URL query\n\n**Not taken:** component state only, lost on reload\n\n**Why:** a reload or Back keeps the front desk's place. It is not asked for, but it is cheap and fits Angular routing."
+      "body": "**Assumption** · 80% confident — Page, size and sort live in the URL query\n\n**Not taken:** component state only, lost on reload\n\n**Why:** a reload or Back keeps the front desk's place. It is not asked for, but it is cheap and fits Angular routing."
     },
     {
       "hr_id": "A:the-response-echoes-the-sort-it-actually-applied",
@@ -230,7 +230,7 @@
       "line": 58,
       "side": "RIGHT",
       "anchor": "return VisitPageDto.of(served, params.sort());",
-      "body": "**Assumption** · confidence 0.85 — The response echoes the sort it actually applied\n\n**Not taken:** the client trusts the sort it asked for\n\n**Why:** after a fallback the header arrows must show the order actually served; the echo is built only from our own constants."
+      "body": "**Assumption** · 85% confident — The response echoes the sort it actually applied\n\n**Not taken:** the client trusts the sort it asked for\n\n**Why:** after a fallback the header arrows must show the order actually served; the echo is built only from our own constants."
     }
   ],
   "generated_by": "push-pr-comments.py --from-review-points"

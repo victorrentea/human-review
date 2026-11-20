@@ -147,7 +147,7 @@
       "line": 4,
       "side": "RIGHT",
       "anchor": "ALTER TABLE visits ADD COLUMN vet_id INT REFERENCES vets (id) ON DELETE SET NULL;",
-      "body": "**Assumption** · confidence 0.60 — Deleting a vet keeps their visits, with no vet\n\n**Not taken:** refuse deleting a vet who has visits\n\n**Why:** Ticket item 4 makes \"no vet\" a normal state, and before this change vet deletion always succeeded. Losing who attended is a real history loss, so a business owner could reasonably pick refusal."
+      "body": "**Assumption** · 60% confident — Deleting a vet keeps their visits, with no vet\n\n**Not taken:** refuse deleting a vet who has visits\n\n**Why:** Ticket item 4 makes \"no vet\" a normal state, and before this change vet deletion always succeeded. Losing who attended is a real history loss, so a business owner could reasonably pick refusal."
     },
     {
       "hr_id": "A:no-vet-is-the-wording-for-a-visit-without-one",
@@ -157,7 +157,7 @@
       "line": 5,
       "side": "RIGHT",
       "anchor": "export const NO_VET = 'No vet';",
-      "body": "**Assumption** · confidence 0.75 — \"No vet\" is the wording for a visit without one\n\n**Not taken:** \"—\" or \"Not assigned\"\n\n**Why:** Ticket item 4 rules out \"Unknown\" and blank; \"No vet\" says \"has none\" literally, and the same label serves as the combo placeholder."
+      "body": "**Assumption** · 75% confident — \"No vet\" is the wording for a visit without one\n\n**Not taken:** \"—\" or \"Not assigned\"\n\n**Why:** Ticket item 4 rules out \"Unknown\" and blank; \"No vet\" says \"has none\" literally, and the same label serves as the combo placeholder."
     },
     {
       "hr_id": "A:seed-gives-a-vet-to-some-demo-visits-only",
@@ -168,7 +168,7 @@
       "side": "RIGHT",
       "start_line": 142,
       "anchor": "INSERT INTO users (username, password, enabled) VALUES",
-      "body": "**Assumption** · confidence 0.65 — Seed gives a vet to some demo visits only\n\n**Not taken:** leave every seeded visit without a vet\n\n**Why:** The demo should show both states; ticket item 4 is about real legacy rows, not the demo dataset."
+      "body": "**Assumption** · 65% confident — Seed gives a vet to some demo visits only\n\n**Not taken:** leave every seeded visit without a vet\n\n**Why:** The demo should show both states; ticket item 4 is about real legacy rows, not the demo dataset."
     }
   ],
   "generated_by": "push-pr-comments.py --from-review-points"
