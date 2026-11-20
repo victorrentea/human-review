@@ -596,10 +596,10 @@ def tooling_investment_html(t: dict = TOOLING_INVESTMENT) -> str:
            f" {money(t['borderline']['prorated'])} pro rata), and the petclinic era before"
            " 22 Aug 2026, whose transcripts are mostly gone. Measured by"
            " scripts/tools/tooling-cost.py.")
-    # "(subsidized)": the figure is API list price, and the tool was built on a Claude
+    # "(subscription)": the figure is API list price, and the tool was built on a Claude
     # subscription that bills a flat fee far below it (Victor, 8 Oct 2026).
     tiles = [(money(t["usd"]), 'token cost (<a href="https://claude.com/pricing" '
-              'target="_blank" rel="noopener">subsidized</a>)',
+              'target="_blank" rel="noopener">subscription</a>)',
               "Claude API list price, every session counted, subagents included — what the "
               "tokens would cost on an API key; a Claude subscription bills a flat monthly "
               "fee instead. " + tip)]
