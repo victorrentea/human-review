@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+@@ -26,7 +26,7 @@
+             "date", List.of("v.date"),
+             "description", List.of("v.description"),
+             "pet", List.of("p.name"),
+-            "owner", List.of("o.firstName", "o.lastName"));
++            "owner", List.of("o.firstName"));
+ 
+     static VisitGridParams parse(String page, String size, String sort) {
+         String appliedSort = isKnownSort(sort) ? normalize(sort) : DEFAULT_SORT;

@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+@@ -18,7 +18,7 @@
+  */
+ record VisitGridParams(Pageable pageable, String sort) {
+     private static final List<Integer> PAGE_SIZES = List.of(5, 10, 20);
+-    private static final int DEFAULT_PAGE_SIZE = 10;
++    private static final int DEFAULT_PAGE_SIZE = 5;
+     private static final String DEFAULT_SORT = "date,desc";
+ 
+     /** Grid column → the JPQL paths it orders by, aliased as in {@code VisitRepository.findGridPage}. */

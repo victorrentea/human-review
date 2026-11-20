@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java
+@@ -19,7 +19,7 @@
+                 description = "The sort applied: date, description, pet or owner, then asc or desc.") String sort) {
+ 
+     public static VisitPageDto of(Page<VisitRowDto> page, String sort) {
+-        return new VisitPageDto(page.getContent(), page.getNumber(), page.getSize(),
++        return new VisitPageDto(page.getContent(), page.getNumber(), 10,
+                 page.getTotalElements(), page.getTotalPages(), sort);
+     }
+ }

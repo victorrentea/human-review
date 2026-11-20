@@ -1,0 +1,65 @@
+{
+ "schema": "mutagent-results/1",
+ "head": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
+ "mutantsHead": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
+ "when": "2026-11-20T05:54:53+00:00",
+ "baseline": {
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154": "pass",
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92": "pass"
+ },
+ "mutants": {
+  "01-descending-sort-applied-as-ascending": {
+   "verdict": "killed",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138": "fail"
+   },
+   "messages": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138": "group is not sorted according to ReverseComparator comparator because element 0: \"2026-01-01\" is not less or equal than element 1: \"2026-01-02\" group was: [\"2026-01-01\", \"2026-01-02\", \"2026-01-03\", \"2026-01-04\", \"2026-01-05\", \"2026-01-06\", "
+   },
+   "why": "1 of 1 expected test(s) failed",
+   "seconds": 17.0
+  },
+  "02-owner-sort-ignores-last-name": {
+   "verdict": "survived",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138": "pass"
+   },
+   "why": "all 1 expected test(s) stayed green with the mutant",
+   "seconds": 22.9
+  },
+  "03-default-page-size-5-instead-of-10": {
+   "verdict": "killed",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92": "fail"
+   },
+   "messages": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92": "Expecting actual: [\"visit 12\", \"visit 11\", \"visit 10\", \"visit 09\", \"visit 08\"] to contain exactly (and in same order): [\"visit 12\", \"visit 11\", \"visit 10\", \"visit 09\", \"visit 08\", \"visit 07\", \"visit 06\", \"visit 05\", \"visit 04\", \"visit 03\"] "
+   },
+   "why": "1 of 1 expected test(s) failed",
+   "seconds": 40.2
+  },
+  "04-snap-to-farthest-allowed-page-size": {
+   "verdict": "killed",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154": "fail"
+   },
+   "messages": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154": "Expected size: 5 but was: 12 in: [\"visit 12\", \"visit 11\", \"visit 10\", \"visit 09\", \"visit 08\", \"visit 07\", \"visit 06\", \"visit 05\", \"visit 04\", \"visit 03\", \"visit 02\", \"visit 01\"]"
+   },
+   "why": "1 of 1 expected test(s) failed",
+   "seconds": 49.3
+  },
+  "05-report-constant-size-instead-of-actual": {
+   "verdict": "killed",
+   "tests": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154": "fail"
+   },
+   "messages": {
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154": "expected: 5 but was: 10"
+   },
+   "why": "1 of 1 expected test(s) failed",
+   "seconds": 19.5
+  }
+ }
+}

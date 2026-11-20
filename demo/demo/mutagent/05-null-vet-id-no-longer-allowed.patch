@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java b/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/repository/VetRepository.java
+@@ -17,7 +17,7 @@
+ 
+     /** For an optional vet reference: null when no id is given, NoSuchElementException for an unknown one. */
+     default @Nullable Vet findByIdOrNull(@Nullable Integer id) {
+-        return id == null ? null : findById(id).orElseThrow();
++        return findById(id == null ? -1 : id).orElseThrow();
+     }
+ 
+     void save(Vet vet);

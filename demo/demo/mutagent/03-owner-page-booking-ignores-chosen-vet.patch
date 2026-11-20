@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/OwnerRestController.java
+@@ -196,7 +196,7 @@
+         pet.setId(petId);
+         visit.setPet(pet);
+         Vet vet = vetRepository.findByIdOrNull(visitFieldsDto.getVetId());
+-        visit.setVet(vet);
++        visit.setVet(null);
+         visitRepository.save(visit);
+         log.info("Booked visit {} for pet {}", visit.getId(), petId);
+         if (vet != null) {

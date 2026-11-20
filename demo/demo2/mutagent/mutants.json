@@ -1,0 +1,107 @@
+{
+ "schema": "mutagent/1",
+ "head": "08f6593e35fd67c82bef5b3223bdcfd317f60dc3",
+ "base": "ad1fb1d35662f8fd94ed202fc3572f309e185dbd",
+ "when": "2026-11-20T05:54:22+00:00",
+ "model": "sonnet",
+ "cost": 0.1363649,
+ "mutants": [
+  {
+   "id": "01-descending-sort-applied-as-ascending",
+   "title": "descending sort applied as ascending",
+   "sentence": {
+    "id": "s0dda55",
+    "text": "The grid should be sortable by any column"
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+   "rationale": "Requesting any column in descending order must return descending values, but the query now always orders ascending.",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138"
+   ],
+   "patch": "01-descending-sort-applied-as-ascending.patch"
+  },
+  {
+   "id": "02-owner-sort-ignores-last-name",
+   "title": "owner sort ignores last name",
+   "sentence": {
+    "id": "s0dda55",
+    "text": "The grid should be sortable by any column"
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+   "rationale": "Sorting by owner must order by the full owner name, so owners sharing a first name would come back out of order.",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138"
+   ],
+   "patch": "02-owner-sort-ignores-last-name.patch"
+  },
+  {
+   "id": "03-default-page-size-5-instead-of-10",
+   "title": "default page size 5 instead of 10",
+   "sentence": {
+    "id": "s6c13a7",
+    "text": "The grid should be paginated in pages of 5, 10, or 20 rows per page"
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+   "rationale": "The default page must hold 10 rows and report size 10 and two total pages.",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92"
+   ],
+   "patch": "03-default-page-size-5-instead-of-10.patch"
+  },
+  {
+   "id": "04-snap-to-farthest-allowed-page-size",
+   "title": "snap to farthest allowed page size",
+   "sentence": {
+    "id": "s6c13a7",
+    "text": "The grid should be paginated in pages of 5, 10, or 20 rows per page"
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java",
+   "rationale": "A size outside 5/10/20 must snap to the nearest offered size, but it now snaps to the farthest (7 gives 20, not 5).",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154"
+   ],
+   "patch": "04-snap-to-farthest-allowed-page-size.patch"
+  },
+  {
+   "id": "05-report-constant-size-instead-of-actual",
+   "title": "report constant size instead of actual",
+   "sentence": {
+    "id": "s6c13a7",
+    "text": "The grid should be paginated in pages of 5, 10, or 20 rows per page"
+   },
+   "file": "petclinic-backend/src/main/java/victor/training/petclinic/rest/dto/VisitPageDto.java",
+   "rationale": "The page must report the size actually applied (5 when 7 was requested), not a fixed 10.",
+   "expect": [
+    "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154"
+   ],
+   "patch": "05-report-constant-size-instead-of-actual.patch"
+  }
+ ],
+ "dropped": [],
+ "tests": {
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:138": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "line": 138,
+   "runnable": true,
+   "why": "",
+   "label": "VisitGridTest#sortsByAnyColumn",
+   "suite": "maven"
+  },
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:154": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "line": 154,
+   "runnable": true,
+   "why": "",
+   "label": "VisitGridTest#aSizeNotOfferedSnapsToTheNearestOne",
+   "suite": "maven"
+  },
+  "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java:92": {
+   "file": "petclinic-backend/src/test/java/victor/training/petclinic/rest/VisitGridTest.java",
+   "line": 92,
+   "runnable": true,
+   "why": "",
+   "label": "VisitGridTest#servesTheNewestTenFirst",
+   "suite": "maven"
+  }
+ }
+}

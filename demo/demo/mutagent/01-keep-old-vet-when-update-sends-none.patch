@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitRestController.java
+@@ -82,7 +82,7 @@
+         Visit currentVisit = visitRepository.findById(visitId).orElseThrow();
+         currentVisit.setDate(visitDto.getDate());
+         currentVisit.setDescription(visitDto.getDescription());
+-        currentVisit.setVet(vetRepository.findByIdOrNull(visitDto.getVetId()));
++        if (visitDto.getVetId() != null) { currentVisit.setVet(vetRepository.findByIdOrNull(visitDto.getVetId())); }
+         visitRepository.save(currentVisit);
+     }
+ 

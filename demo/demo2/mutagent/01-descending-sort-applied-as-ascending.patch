@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+@@ -77,7 +77,7 @@
+ 
+     private static Sort orderBy(String appliedSort) {
+         String[] parts = appliedSort.split(",");
+-        Direction direction = Direction.fromString(parts[1]);
++        Direction direction = Direction.ASC;
+         Sort byColumn = Sort.by(direction, COLUMNS.get(parts[0]).toArray(String[]::new));
+         return byColumn.and(Sort.by(direction, "v.id"));
+     }

@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java b/petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/mapper/VisitMapper.java
+@@ -48,7 +48,7 @@
+         }
+         Vet vet = visit.getVet();
+         if (vet != null) {
+-            visitDto.setVetId(vet.getId())
++            visitDto.setVetId(null)
+                     .setVetFirstName(vet.getFirstName())
+                     .setVetLastName(vet.getLastName());
+         }

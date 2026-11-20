@@ -1,0 +1,12 @@
+diff --git a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+--- a/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
++++ b/petclinic-backend/src/main/java/victor/training/petclinic/rest/VisitGridParams.java
+@@ -48,7 +48,7 @@
+         }
+         long inRange = Math.clamp(requested, PAGE_SIZES.getFirst(), PAGE_SIZES.getLast());
+         return PAGE_SIZES.stream()
+-                .min(Comparator.comparingLong(allowed -> Math.abs(allowed - inRange)))
++                .max(Comparator.comparingLong(allowed -> Math.abs(allowed - inRange)))
+                 .orElseThrow();
+     }
+ 
