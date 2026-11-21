@@ -1903,7 +1903,12 @@ def grade_pill_with_risk(spec, pill: str) -> str:
     target — `.ts-risk`, which tabs.js sends to the MERGE RISK line (`#mergerisk`), opening
     the PR description round it — while the number keeps the pill's own link. One hover for
     the three, a line each. `pill` unchanged without a door or a size; the marks alone in a
-    plain pill when there is no grade."""
+    plain pill when there is no grade.
+
+    ☢️ leads them all when the branch changes a method a `@critical` entry point runs
+    (`critical_tip`, Victor 21 Nov 2026): its own target (`.titlecritical`, tabs.js → the
+    Complexity tab's critical row), and its hover lines carry no robot — it is proven off
+    the call graph and the diff, not judged by a model."""
     door, n = merge_door(spec), blast_size(spec)
     marks, lines = [], []
     if door:
@@ -1912,18 +1917,29 @@ def grade_pill_with_risk(spec, pill: str) -> str:
     if n is not None:
         marks.append(f'<span class="titleblast">{BLAST_GLYPHS[n]}</span>')
         lines.append(f"{BLAST_GLYPHS[n]} {blast_tip(spec)}")
-    if not marks:
+    crit = critical_tip(spec)
+    nuke = ""
+    if crit:
+        first = crit.splitlines()[0]
+        lead = (((spec.get("_critical") or {}).get("touched") or [{}])[0]).get("name") or ""
+        nuke = (f'<span class="titlecritical" role="link" '
+                f'data-cxname="{html.escape(lead, quote=True)}" '
+                f'aria-label="{html.escape(first, quote=True)}">{CRITICAL_MARK}</span>')
+    crit_html = "<br>".join(
+        (f"{CRITICAL_MARK} " if i == 0 else '<span class="tipindent"></span>') + html.escape(l)
+        for i, l in enumerate(crit.splitlines()))
+    if not marks and not nuke:
         return pill
     risk = (f'<span class="ts-risk" role="link" aria-label="Merge risk: '
             f'{html.escape("; ".join(l.split(" ", 1)[1] for l in lines), quote=True)}">'
-            f'{"".join(marks)}</span>')
+            f'{"".join(marks)}</span>') if marks else ""
     if not pill:
-        tip = "<br>".join(_risk_tip_line(l) for l in lines)
+        tip = "<br>".join(([crit_html] if crit_html else []) + [_risk_tip_line(l) for l in lines])
         return (f'<span class="titlescore ts-alone" data-tip-html="{html.escape(tip, quote=True)}">'
-                f'{risk}</span>')
+                f'{nuke}{risk}</span>')
     m = re.match(r'<(?:a|span) class="titlescore[^>]*>', pill)
     if not m:
-        return risk + pill
+        return nuke + risk + pill
     tag = m.group(0)
     said = re.search(r' data-tip="([^"]*)"', tag)
     grade = html.unescape(said.group(1)) if said else ""
@@ -1931,9 +1947,45 @@ def grade_pill_with_risk(spec, pill: str) -> str:
         tag = tag.replace(said.group(0), "")
     if grade:
         lines.append(f"\U0001f50d {grade}")
-    tip = "<br>".join(_risk_tip_line(l) for l in lines)
-    return (f'{tag[:-1]} data-tip-html="{html.escape(tip, quote=True)}">{risk}'
+    tip = "<br>".join(([crit_html] if crit_html else []) + [_risk_tip_line(l) for l in lines])
+    return (f'{tag[:-1]} data-tip-html="{html.escape(tip, quote=True)}">{nuke}{risk}'
             + pill[m.end():])
+
+
+#: What `critical-flows.py` wrote: the entry points marked `@critical` and which of them
+#: the branch reaches. Read by the build into `spec["_critical"]`.
+CRITICAL_FLOWS_JSON = "assets/critical-flows.json"
+#: ☢️ — the branch changes a method that a critical entry point runs (Victor, 21 Nov 2026).
+CRITICAL_MARK = "\u2622\ufe0f"
+
+
+def load_critical(out_dir) -> dict | None:
+    """`assets/critical-flows.json` beside the page, or None when the step did not run."""
+    import json
+    from pathlib import Path
+    f = Path(out_dir) / CRITICAL_FLOWS_JSON
+    try:
+        return json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def critical_tip(spec) -> str:
+    """The ☢️'s hover, plain text, one line per critical flow the branch reaches: what the
+    mark means first, then `POST /api/visits — via VisitService.save, Visit.check`. Empty
+    when the branch reaches none."""
+    touched = ((spec or {}).get("_critical") or {}).get("touched") or []
+    if not touched:
+        return ""
+    lines = [f"Touches {len(touched)} critical flow{'s' if len(touched) > 1 else ''}: "
+             "it changes code a @critical entry point runs"]
+    for t in touched[:4]:
+        via = [m.get("display") or m.get("method") or "" for m in t.get("touched") or []]
+        names = ", ".join(v.split("(")[0] for v in via[:3]) + (f" +{len(via) - 3}" if len(via) > 3 else "")
+        lines.append(f"{t.get('name') or t.get('handler')} — via {names}")
+    if len(touched) > 4:
+        lines.append(f"…and {len(touched) - 4} more, on the Complexity tab")
+    return "\n".join(lines)
 
 
 #: `mergeRisk.blastSize`, 0–4: how much of the system the blast radius is, as a circle

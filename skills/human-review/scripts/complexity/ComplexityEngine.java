@@ -77,7 +77,7 @@ public final class ComplexityEngine {
 
     static final class Method {
         String key, name, display, file;
-        int line;
+        int line, endLine;            // the declaration's whole span, annotations to `}`
         TypeInfo owner;
         Node decl;
         Node body;                    // null for an abstract / interface method
@@ -224,6 +224,7 @@ public final class ComplexityEngine {
         Method m = new Method();
         m.owner = t; m.decl = member; m.file = t.file;
         m.line = member.getBegin().map(p -> p.line).orElse(1);
+        m.endLine = member.getEnd().map(p -> p.line).orElse(m.line);
         if (member instanceof MethodDeclaration md) {
             m.name = md.getNameAsString();
             m.body = md.getBody().orElse(null);
@@ -1616,6 +1617,8 @@ public final class ComplexityEngine {
             it.put("hits", m.hits);
             it.put("file", m.file);
             it.put("line", m.line);
+            // The span, so `critical-flows.py` can tell whether a diff hunk lands inside it.
+            it.put("endLine", m.endLine);
             items.add(it);
             for (Map<String, Object> u : m.unresolved) {
                 Map<String, Object> c = new LinkedHashMap<>();

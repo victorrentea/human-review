@@ -1743,6 +1743,10 @@ def _complexity(ctx: Ctx):
     sh(f"{HERE}/endpoint-complexity-delta.py {before} {after} "
        f"--out {ART}/complexity-delta.html", ctx)
     sh(f"{HERE}/endpoint-complexity-delta.py --css > {ART}/complexity-delta.css", ctx)
+    # The entry points marked `@critical`, and whether the branch changes a method any of
+    # them runs: the ☢️ in the grade pill. Off the same two snapshots, so it costs one diff.
+    sh(f"{HERE}/critical-flows.py {before} {after} --base {ctx.base} "
+       f"--out {ART}/critical-flows.json", ctx)
 
 
 def _api(ctx: Ctx):
@@ -2232,9 +2236,10 @@ STEP_INPUTS = {
                      "outputs": ("assets/c4",)},
     "complexity":   {"paths": ("*.java",),
                      "tools": ("endpoint-complexity.py", "endpoint-complexity-delta.py",
-                               "complexity/ComplexityEngine.java"),
+                               "complexity/ComplexityEngine.java", "critical-flows.py"),
                      "outputs": ("assets/complexity-delta.html",
-                                 "assets/complexity-delta.css")},
+                                 "assets/complexity-delta.css",
+                                 "assets/critical-flows.json")},
     "api":          {"paths": ("*.yaml", "*.yml", "*.json"),
                      "tools": ("openapi-compat.py", "openapi-visual-diff.py", "schema_puml.py",
                                "../puml-diff/puml_diff.py"),

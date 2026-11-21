@@ -297,6 +297,12 @@ Review tab opens on the grade's computed reasons, and a `summary` is dropped the
 open piles, a breaking API change, tabs without evidence and commits outside the review
 are computed, and they cap your score.
 
+**☢️ critical flows are the code's, not yours.** A team marks an entry point critical in
+its own source — `@critical` in the handler's Javadoc or a comment above it, or its own
+`@Critical` annotation — and the complexity step (`critical-flows.py`) puts ☢️ in the grade
+pill when the branch changes any method that handler's call graph reaches. Never add or
+remove such a marker yourself, and never argue the ☢️ away in the verdict.
+
 **Every tab after Review is the scripts', not yours — write nothing on it.** Demo, Tests,
 Sequence, API, Data, Structure, Code City, UX, Complexity, Logging and CODEOWNERS show
 what a step produced. List them in `tabs` with the blocks in the reference strip

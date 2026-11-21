@@ -197,6 +197,9 @@ def compare(before, after):
                 "why": [] if gone else breakdown(cur, old),
                 "graph": [] if gone else graph_nodes(cur, old),
                 "unresolved": [] if gone else (cur.get("unresolved") or []),
+                # Marked `@critical` on either side: a branch that drops the marker is
+                # still changing what was declared critical.
+                "critical": cur.get("critical") or (old or {}).get("critical"),
             }
         )
     rows.sort(key=lambda r: (-max(r["now"], r["was"] or 0), r["path"]))
@@ -507,7 +510,15 @@ def _path_cell(r) -> str:
     label = (f'<a class="cx-path" href="vscode://file/{found[0]}:{found[1]}:1">{face}</a>'
              if found else f'<code class="cx-path">{face}</code>')
     tip = r["path"] + (f"\n{handler}" if handler else "")
-    return f'<span class="cx-cell"{_tip(tip)}>{label}{_not_followed(r)}</span>'
+    crit = r.get("critical")
+    nuke = ""
+    if crit:
+        # ☢️ before the path: the team marked this entry point `@critical`, so every method
+        # its flow reaches is critical, and a branch touching one wears ☢️ in the grade pill.
+        nuke = '<span class="cx-nuke" aria-hidden="true">\u2622\ufe0f</span>'
+        at = f" at {Path(crit.get('file') or '').name}:{crit.get('line')}" if isinstance(crit, dict) else ""
+        tip += f"\n\u2622\ufe0f Critical flow: marked @critical{at}; every method it runs is critical"
+    return f'<span class="cx-cell"{_tip(tip)}>{nuke}{label}{_not_followed(r)}</span>'
 
 
 def _not_followed(r) -> str:
@@ -554,16 +565,20 @@ def _row(cls, head: str, why: str, key: str = "") -> str:
     `key` is the row's name in the address bar (`GET /api/owners`): the script below
     lists every open row there, so a reload — or a colleague handed the link — opens the
     same rows again."""
+    # `data-cxname` on every row of a critical flow, open-able or not: the grade pill's ☢️
+    # finds the row it is about by it (tabs.js), whatever the fold state.
+    own = f' data-cxname="{html.escape(key)}"' if key and "cx-crit" in cls else ""
     if not why:
-        return (f'<div class="cx-row {cls}"><div class="cx-head">'
+        return (f'<div class="cx-row {cls}"{own}><div class="cx-head">'
                 f'<span class="cx-caret"></span>{head}</div></div>')
     named = f' data-cx="{html.escape(key)}"' if key else ""
-    return (f'<details class="cx-row {cls}"{named}><summary class="cx-head">'
+    return (f'<details class="cx-row {cls}"{named}{own}><summary class="cx-head">'
             f'<span class="cx-caret" aria-hidden="true"></span>{head}</summary>'
             f"{why}</details>")
 
 
 def render_row(r, peak) -> str:
+    crit = " cx-crit" if r.get("critical") else ""
     if r.get("gone"):
         # The branch deleted this entry point. A ghost for the whole width it used to
         # occupy — the same "slate is what the branch removed" convention as everywhere else.
@@ -571,7 +586,7 @@ def render_row(r, peak) -> str:
         # No fold: there is no branch code left to break down. A row whose flow the branch
         # deleted has nothing to open onto, and an empty fold under it would read as a bug.
         return _row(
-            "cx-down cx-gone",
+            "cx-down cx-gone" + crit,
             f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
             f'<s>{_path_cell(r)}</s>'
             f'<span class="cx-bar">'
@@ -579,6 +594,7 @@ def render_row(r, peak) -> str:
             f'<span class="cx-badge">gone</span>'
             f'<span class="cx-n">0</span>',
             "",
+            f'{r["method"]} {r["path"]}',
         )
     if r["delta"] is None:
         badge, cls = "new", "cx-up"
@@ -602,7 +618,7 @@ def render_row(r, peak) -> str:
         delta_pct = 100.0 * abs(delta) / peak
         kept_pct = now_pct - (delta_pct if delta > 0 else 0)
     return _row(
-        cls,
+        cls + crit,
         f'<span class="cx-verb cx-{r["method"].lower()}">{html.escape(r["method"])}</span>'
         f"{_path_cell(r)}"
         f'<span class="cx-bar">'
@@ -933,6 +949,11 @@ details.cx-row.cx-same:hover { opacity:.9; }
     belong to the bar as much as to the path. The path gives way first: it shrinks to its
     ellipsis and the ↗ stays whole. */
 .cx-cell { display:flex; align-items:center; gap:3px; min-width:0; overflow:hidden; }
+/* ☢️ before the path of an entry point marked `@critical` (`_path_cell`): its whole flow
+   is critical, so the row is where the grade pill's ☢️ lands (tabs.js). */
+.cx-cell .cx-nuke { flex:none; font-size:12px; line-height:1; margin-right:2px; }
+.cx-row.cx-crit-flash { animation:cx-crit-flash 1.6s ease-out; }
+@keyframes cx-crit-flash { from { background:rgba(234,179,8,.35); } to { background:transparent; } }
 .cx-cell .cx-path { flex:0 1 auto; min-width:0; }
 /* Calls the engine could not bind: not in the number, so the row says so, in amber — a
     caveat about the measurement, not about the code. */

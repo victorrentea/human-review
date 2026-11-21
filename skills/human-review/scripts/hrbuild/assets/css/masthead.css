@@ -129,6 +129,11 @@ a.titlescore:hover { filter:brightness(1.06); box-shadow:0 0 0 1px currentColor 
             cursor:pointer; line-height:1; }
 .titlescore .titledoor { font-size:12.5px; line-height:1; position:relative; top:0; }
 .titlescore .titleblast { font-size:18px; line-height:1; position:relative; top:-2px; }
+/* ☢️ — the branch changes a method a `@critical` entry point runs (`critical_tip`). First in
+   the pill, before the door and the circle: it is the one mark here that is proven, not
+   judged. Its click goes to the Complexity tab's critical row (tabs.js). */
+.titlescore .titlecritical { font-size:13px; line-height:1; margin-right:3px; cursor:pointer; }
+.tip .tipindent { display:inline-block; width:1.35em; }
 .titlescore.ts-alone { background:var(--card); }
 .titlescore.ts-alone .ts-risk { margin-right:0; }
 .titlescore.v-good { background:rgba(46,158,91,.16); color:#1f7a45; }

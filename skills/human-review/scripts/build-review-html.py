@@ -252,6 +252,7 @@ from hrbuild.tabs.review import (
     MERGE_DOORS, merge_risk_html, merge_risk_md, BLAST_GLYPHS, BLAST_SIZES, blast_size, blast_tip,
     blast_glyph_html, MERGE_DOOR_MARKS, MERGE_DOOR_TIPS, merge_door, door_mark_html,
     grade_pill_with_risk, AI_MARK, _risk_tip_line,
+    CRITICAL_FLOWS_JSON, CRITICAL_MARK, load_critical, critical_tip,
     _md_inline, PR_BODY_JSON, _PR_BODY_BOILERPLATE, _PR_BODY_MERGE_RISK, pr_comment_slug,
     PR_COMMENTS_JSON,
     PR_PILE_LETTER, _PILE_OF_ID, stamp_fix_commits, fix_commit_links,
@@ -490,6 +491,9 @@ def _main(argv=None) -> int:
     fetch_base(root, (spec.get("pr") or {}).get("base") or "origin/main")
     base_st = page_base(root, out_dir, (spec.get("pr") or {}).get("base") or "origin/main")
     spec["_afterReview"] = commits_after_review(out_dir, root)
+    # Whether the branch changes a method some `@critical` entry point runs: the ☢️ in the
+    # grade pill. Written by the complexity step; absent, the pill is what it always was.
+    spec["_critical"] = load_critical(out_dir)
     page_rev = (base_st or {}).get("diffBase")
     if page_rev:
         set_diff_base(page_rev)

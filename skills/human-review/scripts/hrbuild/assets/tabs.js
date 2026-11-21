@@ -184,6 +184,29 @@
     line.classList.add('mr-flash');
   });
 
+  // The masthead's ☢️ (`grade_pill_with_risk`): to the Complexity tab's row of the first
+  // critical flow the branch changes, opened, with a brief glow (Victor, 21 Nov 2026).
+  document.addEventListener('click', function (ev) {
+    var mark = ev.target.closest && ev.target.closest('.titlecritical');
+    if (!mark) return;
+    var name = mark.getAttribute('data-cxname') || '';
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.cx-row.cx-crit'));
+    var row = rows.filter(function (r) { return r.getAttribute('data-cxname') === name; })[0] || rows[0];
+    if (!row) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    var i = panelIndexOf(row);
+    if (i >= 0 && (i !== active || document.body.classList.contains('showall'))) {
+      document.body.classList.remove('showall');
+      select(i, true, true);
+    }
+    if (row.tagName === 'DETAILS' && !row.open) row.open = true;
+    row.scrollIntoView({block: 'center'});
+    row.classList.remove('cx-crit-flash');
+    void row.offsetWidth;
+    row.classList.add('cx-crit-flash');
+  }, true);
+
   // Opening on a deep link: the hash may name a tab, or anything inside one.
   var wanted = decodeURIComponent((location.hash || '').slice(1));
   var start = 0;

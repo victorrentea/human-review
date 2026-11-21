@@ -388,8 +388,8 @@ EXPLAIN: dict[str, dict[str, object]] = {
         "li": [
             'Cognitive complexity per endpoint: its whole call graph, walked and summed.',
             'Nesting is what costs: each level adds one.',
-            'Green = added by this PR; hover a number for what it counts.',
-            'Watch the + per endpoint, not the total.',
+            'Green = added by this PR; watch the + per endpoint; hover a number for what it counts.',
+            '☢️ = an endpoint marked @critical; a PR touching its call graph gets ☢️ in the grade.',
             'Each faded box is a class, its methods the blocks inside; the changed one opens by itself.',
             'Click a path, class or method name to open it; click the rest to unfold.',
         ],

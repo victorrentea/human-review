@@ -327,12 +327,23 @@ class Index:
             if name in NOT_A_METHOD or (ret and ret.split("<")[0].strip() in NOT_A_RETURN_TYPE):
                 continue
             at = m.end() - 1
-            body = code[at:block(code, at)]
+            end = block(code, at)
+            body = code[at:end]
             key = f"{fqcn}#{name}"
             calls = calls_in(body)
             method = self.methods.setdefault(
                 key, {"key": key, "display": f"{simple}.{name}({_params(params)})",
-                      "cc": 0, "cyc": 0, "hits": [], "calls": set(), "types": types})
+                      "cc": 0, "cyc": 0, "hits": [], "calls": set(), "types": types,
+                      "file": path, "spans": []})
+            # Where the declaration stands, signature to closing brace — one span per
+            # overload, since overloads collapse into one key here. `critical-flows.py`
+            # reads it to tell whether a hunk of the diff lands inside a flow's method.
+            # The span opens at the annotations, as JavaParser's does: `@Transactional`
+            # added to a method changes what it does as surely as its body would.
+            lead = max(code.rfind(c, 0, m.start()) for c in ";{}") + 1
+            lead += len(code[lead:m.start()]) - len(code[lead:m.start()].lstrip())
+            method["spans"].append((code.count("\n", 0, lead) + 1,
+                                    code.count("\n", 0, max(end - 1, at)) + 1))
             hits = [_hit(path, code, lines, at + off, inc, why)
                     for off, inc, why in increments(body)]
             back = _calls_back(body, name, simple)
@@ -523,6 +534,18 @@ def _value(args: str, *names: str) -> str:
     return ""
 
 
+def _where(method: dict) -> dict:
+    """`file`, `line`, `endLine` of a flow item — the keys the JavaParser engine writes —
+    plus `spans` when overloads collapsed into this one key and sit apart in the file."""
+    spans = sorted(method.get("spans") or [])
+    if not spans:
+        return {}
+    out = {"file": method["file"], "line": spans[0][0], "endLine": spans[0][1]}
+    if len(spans) > 1:
+        out["spans"] = [list(s) for s in spans]
+    return out
+
+
 def extract(files: dict[str, str]) -> list[dict]:
     index = Index(files)
     out = []
@@ -545,7 +568,8 @@ def extract(files: dict[str, str]) -> list[dict]:
                       # The edges, so the tab can draw the flow as a graph and not only
                       # as a list: every method of the flow this one calls.
                       "calls": [t for t in index.callees(k) if t in in_flow],
-                      "hits": index.methods[k]["hits"]} for k in flow],
+                      "hits": index.methods[k]["hits"],
+                      **_where(index.methods[k])} for k in flow],
         })
     out.sort(key=lambda e: (-e["flowCc"], e["path"]))
     return out
@@ -688,6 +712,48 @@ def measure(files: dict[str, str], engine: str = "auto") -> list[dict]:
         entries = extract(files)
         for e in entries:
             e["engine"] = "regex"
+    return mark_critical(entries, files)
+
+
+# ── critical entry points ──────────────────────────────────────────────────────────────
+# A team marks an entry point whose whole flow must not break unnoticed — payments, the
+# login, the nightly settlement — by writing `@critical` in the handler's Javadoc or a
+# comment above it, or by annotating it with an annotation of its own named `@Critical`
+# (Victor, 21 Nov 2026). Every method the handler reaches is then critical, and a branch
+# that changes any of them wears ☢️ on the page (`critical-flows.py`). The marker is read
+# from the source, not configured, so it travels with the code it protects and shows up
+# in `git blame` like any other line.
+CRITICAL = re.compile(r"@[Cc]ritical\b")
+
+
+def critical_marker(text: str, line: int, name: str) -> int | None:
+    """The line of the `@critical` marker in the header of the method declared at `line`
+    and named `name` — its Javadoc, comments, annotations and modifiers, from the end of the
+    previous member up to the name itself — or None when it carries none."""
+    code = strip(text)
+    at = sum(len(l) + 1 for l in text.split("\n")[:max(line - 1, 0)])
+    sig = re.compile(rf"\b{re.escape(name)}\s*\(").search(code, at)
+    if not sig:
+        return None
+    start = max(code.rfind(c, 0, at) for c in ";{}") + 1
+    hit = CRITICAL.search(text, start, sig.start())
+    return text.count("\n", 0, hit.start()) + 1 if hit else None
+
+
+def mark_critical(entries: list[dict], files: dict[str, str]) -> list[dict]:
+    """Stamp `critical: {"file", "line"}` — where the marker stands — on every entry point
+    whose handler carries one. Nothing is stamped on the others, so a snapshot from before
+    this existed reads the same as one where nothing is marked."""
+    for e in entries:
+        head = (e.get("flow") or [{}])[0]
+        path, line = head.get("file"), head.get("line")
+        # `pkg.Class#name`, or `#name(String, int)` where the engine keeps overloads apart.
+        name = (head.get("method") or "").rsplit("#", 1)[-1].split("(")[0].strip()
+        if not (path in files and line and re.fullmatch(r"[A-Za-z_$][\w$]*", name)):
+            continue
+        at = critical_marker(files[path], int(line), name)
+        if at:
+            e["critical"] = {"file": path, "line": at}
     return entries
 
 
